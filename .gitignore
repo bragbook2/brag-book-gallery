@@ -1,0 +1,256 @@
+# WordPress Core
+*.log
+wp-config.php
+wp-content/advanced-cache.php
+wp-content/backup-db/
+wp-content/backups/
+wp-content/blogs.dir/
+wp-content/cache/
+wp-content/upgrade/
+wp-content/uploads/
+wp-content/mu-plugins/
+wp-content/wp-cache-config.php
+wp-content/plugins/hello.php
+
+# WordPress debugging
+debug.log
+error_log
+access_log
+
+# Development dependencies
+node_modules/
+vendor/
+composer.lock
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Build artifacts
+dist/
+build/
+*.min.js
+*.min.css
+*.map
+*.css.map
+*.js.map
+
+# IDE and Editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+.claude/
+*.sublime-project
+*.sublime-workspace
+.project
+.settings/
+.metadata
+*.tmproj
+*.tmproject
+tmtags
+.netbeans
+nbproject/
+
+# Testing
+tests/coverage/
+phpunit.xml
+.phpunit.result.cache
+.phpunit.cache/
+playwright-report/
+test-results/
+e2e-tests/
+coverage/
+.nyc_output/
+
+# Environment files
+.env
+.env.*
+!.env.example
+.env.local
+.env.development
+.env.test
+.env.production
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Desktop.ini
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+*.old
+*.orig
+*.rej
+*.cache
+tmp/
+temp/
+
+# Log files
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+bragbook-logs/
+
+# Package managers
+.npm
+.yarn-integrity
+
+# Optional eslint cache
+.eslintcache
+
+# Optional stylelint cache
+.stylelintcache
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Documentation
+docs/_site/
+.sass-cache/
+.jekyll-cache/
+.jekyll-metadata
+
+# Security
+*.pem
+*.key
+*.crt
+*.p12
+
+# Database
+*.sql
+*.sqlite
+*.sqlite3
+*.db
+
+# Archives
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
+
+# Media files (optional - uncomment if you don't want to track media)
+# *.jpg
+# *.jpeg
+# *.png
+# *.gif
+# *.ico
+# *.svg
+# *.webp
+# *.mp4
+# *.mp3
+# *.wav
+# *.ogg
+# *.webm
+
+# Plugin specific
+updater-cache/
+languages/*.mo
+
+# WP-CLI
+wp-cli.local.yml
+
+# Composer
+/vendor/
+composer.phar
+
+# NPM/Yarn
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Webpack
+webpack-stats.json
+.webpack-stats.json
+
+# Parcel
+.parcel-cache/
+
+# Grunt
+.grunt
+
+# Bower
+bower_components/
+
+# SASS
+.sass-cache/
+*.css.map
+*.sass.map
+*.scss.map
+
+# JetBrains IDEs
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+.idea_modules/
+
+# Visual Studio Code
+.vscode/
+.history/
+*.code-workspace
+
+# Sublime Text
+*.sublime-workspace
+*.sublime-project
+
+# TextMate
+*.tmproj
+*.tmproject
+tmtags
+
+# Vim
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+[._]s[a-rt-v][a-z]
+[._]ss[a-gi-z]
+[._]sw[a-p]
+Session.vim
+Sessionx.vim
+.netrwhist
+*~
+tags
+[._]*.un~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+.org-id-locations
+*_archive
+*_flymake.*
+/eshell/history
+/eshell/lastdir
+/elpa/
+*.rel
+/auto/
+.cask/
+dist/
+flycheck_*.el
+/server/
+.projectile
+.dir-locals.el
+/network-security.data
