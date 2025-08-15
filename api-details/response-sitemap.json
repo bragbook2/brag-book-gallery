@@ -1,0 +1,395 @@
+{
+	"data": [
+		[
+			{
+				"updatedAt": null,
+				"url": "/liposuction"
+			},
+			{
+				"updatedAt": "2025-08-05",
+				"url": "/liposuction/18390"
+			},
+			{
+				"updatedAt": "2025-08-05",
+				"url": "/liposuction/18389"
+			},
+			{
+				"updatedAt": "2025-07-31",
+				"url": "/liposuction/17711"
+			},
+			{
+				"updatedAt": "2025-07-30",
+				"url": "/liposuction/17709"
+			},
+			{
+				"updatedAt": "2025-07-29",
+				"url": "/liposuction/17657"
+			},
+			{
+				"updatedAt": "2025-07-29",
+				"url": "/liposuction/17656"
+			},
+			{
+				"updatedAt": "2025-07-29",
+				"url": "/liposuction/17652"
+			},
+			{
+				"updatedAt": "2025-07-28",
+				"url": "/liposuction/17635"
+			},
+			{
+				"updatedAt": "2025-07-28",
+				"url": "/liposuction/17626"
+			},
+			{
+				"updatedAt": null,
+				"url": "/arm-lift"
+			},
+			{
+				"updatedAt": "2025-07-30",
+				"url": "/arm-lift/17675"
+			},
+			{
+				"updatedAt": "2025-07-29",
+				"url": "/arm-lift/17652"
+			},
+			{
+				"updatedAt": null,
+				"url": "/mommy-makeover"
+			},
+			{
+				"updatedAt": "2025-08-03",
+				"url": "/mommy-makeover/17763"
+			},
+			{
+				"updatedAt": "2025-08-03",
+				"url": "/mommy-makeover/17762"
+			},
+			{
+				"updatedAt": "2025-07-31",
+				"url": "/mommy-makeover/17711"
+			},
+			{
+				"updatedAt": "2025-07-30",
+				"url": "/mommy-makeover/17709"
+			},
+			{
+				"updatedAt": "2025-07-30",
+				"url": "/mommy-makeover/17674"
+			},
+			{
+				"updatedAt": "2025-07-29",
+				"url": "/mommy-makeover/17656"
+			},
+			{
+				"updatedAt": "2025-07-28",
+				"url": "/mommy-makeover/17620"
+			},
+			{
+				"updatedAt": null,
+				"url": "/tummy-tuck"
+			},
+			{
+				"updatedAt": "2025-08-05",
+				"url": "/tummy-tuck/18390"
+			},
+			{
+				"updatedAt": "2025-08-05",
+				"url": "/tummy-tuck/18389"
+			},
+			{
+				"updatedAt": "2025-08-03",
+				"url": "/tummy-tuck/17760"
+			},
+			{
+				"updatedAt": "2025-07-31",
+				"url": "/tummy-tuck/17720"
+			},
+			{
+				"updatedAt": "2025-07-31",
+				"url": "/tummy-tuck/17711"
+			},
+			{
+				"updatedAt": "2025-07-30",
+				"url": "/tummy-tuck/17709"
+			},
+			{
+				"updatedAt": "2025-07-30",
+				"url": "/tummy-tuck/17700"
+			},
+			{
+				"updatedAt": "2025-07-29",
+				"url": "/tummy-tuck/17656"
+			},
+			{
+				"updatedAt": "2025-07-29",
+				"url": "/tummy-tuck/17654"
+			},
+			{
+				"updatedAt": "2025-07-29",
+				"url": "/tummy-tuck/17644"
+			},
+			{
+				"updatedAt": "2025-07-28",
+				"url": "/tummy-tuck/17627"
+			},
+			{
+				"updatedAt": "2025-07-28",
+				"url": "/tummy-tuck/17620"
+			},
+			{
+				"updatedAt": null,
+				"url": "/breast-lift"
+			},
+			{
+				"updatedAt": "2025-08-05",
+				"url": "/breast-lift/18392"
+			},
+			{
+				"updatedAt": "2025-08-05",
+				"url": "/breast-lift/18391"
+			},
+			{
+				"updatedAt": "2025-08-03",
+				"url": "/breast-lift/17765"
+			},
+			{
+				"updatedAt": "2025-07-31",
+				"url": "/breast-lift/17711"
+			},
+			{
+				"updatedAt": "2025-07-30",
+				"url": "/breast-lift/17709"
+			},
+			{
+				"updatedAt": "2025-07-29",
+				"url": "/breast-lift/17656"
+			},
+			{
+				"updatedAt": "2025-07-29",
+				"url": "/breast-lift/17644"
+			},
+			{
+				"updatedAt": "2025-07-28",
+				"url": "/breast-lift/17619"
+			},
+			{
+				"updatedAt": null,
+				"url": "/breast-reduction"
+			},
+			{
+				"updatedAt": "2025-08-05",
+				"url": "/breast-reduction/18388"
+			},
+			{
+				"updatedAt": "2025-08-03",
+				"url": "/breast-reduction/17766"
+			},
+			{
+				"updatedAt": "2025-07-29",
+				"url": "/breast-reduction/17658"
+			},
+			{
+				"updatedAt": "2025-07-29",
+				"url": "/breast-reduction/17653"
+			},
+			{
+				"updatedAt": "2025-07-28",
+				"url": "/breast-reduction/17619"
+			},
+			{
+				"updatedAt": null,
+				"url": "/breast-augmentation-with-lift"
+			},
+			{
+				"updatedAt": "2025-08-05",
+				"url": "/breast-augmentation-with-lift/18392"
+			},
+			{
+				"updatedAt": "2025-08-05",
+				"url": "/breast-augmentation-with-lift/18391"
+			},
+			{
+				"updatedAt": "2025-07-31",
+				"url": "/breast-augmentation-with-lift/17711"
+			},
+			{
+				"updatedAt": "2025-07-30",
+				"url": "/breast-augmentation-with-lift/17709"
+			},
+			{
+				"updatedAt": null,
+				"url": "/gynecomastia"
+			},
+			{
+				"updatedAt": "2025-07-30",
+				"url": "/gynecomastia/17676"
+			},
+			{
+				"updatedAt": "2025-07-29",
+				"url": "/gynecomastia/17662"
+			},
+			{
+				"updatedAt": null,
+				"url": "/breast-augmentation"
+			},
+			{
+				"updatedAt": "2025-08-05",
+				"url": "/breast-augmentation/18392"
+			},
+			{
+				"updatedAt": "2025-08-05",
+				"url": "/breast-augmentation/18391"
+			},
+			{
+				"updatedAt": "2025-08-05",
+				"url": "/breast-augmentation/18384"
+			},
+			{
+				"updatedAt": "2025-08-03",
+				"url": "/breast-augmentation/17761"
+			},
+			{
+				"updatedAt": "2025-07-31",
+				"url": "/breast-augmentation/17715"
+			},
+			{
+				"updatedAt": "2025-07-31",
+				"url": "/breast-augmentation/17712"
+			},
+			{
+				"updatedAt": "2025-07-31",
+				"url": "/breast-augmentation/17711"
+			},
+			{
+				"updatedAt": "2025-07-30",
+				"url": "/breast-augmentation/17709"
+			},
+			{
+				"updatedAt": "2025-07-30",
+				"url": "/breast-augmentation/17708"
+			},
+			{
+				"updatedAt": "2025-07-29",
+				"url": "/breast-augmentation/17659"
+			},
+			{
+				"updatedAt": "2025-07-28",
+				"url": "/breast-augmentation/17620"
+			},
+			{
+				"updatedAt": "2025-07-28",
+				"url": "/breast-augmentation/17618"
+			},
+			{
+				"updatedAt": "2025-07-28",
+				"url": "/breast-augmentation/17617"
+			},
+			{
+				"updatedAt": null,
+				"url": "/facelift"
+			},
+			{
+				"updatedAt": "2025-07-31",
+				"url": "/facelift/17714"
+			},
+			{
+				"updatedAt": "2025-07-30",
+				"url": "/facelift/17702"
+			},
+			{
+				"updatedAt": "2025-07-28",
+				"url": "/facelift/17636"
+			},
+			{
+				"updatedAt": "2025-07-28",
+				"url": "/facelift/17621"
+			},
+			{
+				"updatedAt": null,
+				"url": "/neck-lift"
+			},
+			{
+				"updatedAt": "2025-07-31",
+				"url": "/neck-lift/17714"
+			},
+			{
+				"updatedAt": "2025-07-30",
+				"url": "/neck-lift/17702"
+			},
+			{
+				"updatedAt": "2025-07-29",
+				"url": "/neck-lift/17661"
+			},
+			{
+				"updatedAt": "2025-07-29",
+				"url": "/neck-lift/17657"
+			},
+			{
+				"updatedAt": "2025-07-28",
+				"url": "/neck-lift/17636"
+			},
+			{
+				"updatedAt": null,
+				"url": "/brow-lift"
+			},
+			{
+				"updatedAt": "2025-07-29",
+				"url": "/brow-lift/17655"
+			},
+			{
+				"updatedAt": "2025-07-29",
+				"url": "/brow-lift/17649"
+			},
+			{
+				"updatedAt": null,
+				"url": "/chin-augmentation"
+			},
+			{
+				"updatedAt": "2025-07-29",
+				"url": "/chin-augmentation/17657"
+			},
+			{
+				"updatedAt": null,
+				"url": "/rhinoplasty"
+			},
+			{
+				"updatedAt": "2025-08-05",
+				"url": "/rhinoplasty/18393"
+			},
+			{
+				"updatedAt": "2025-07-29",
+				"url": "/rhinoplasty/17660"
+			},
+			{
+				"updatedAt": null,
+				"url": "/blepharoplasty"
+			},
+			{
+				"updatedAt": "2025-07-29",
+				"url": "/blepharoplasty/17655"
+			},
+			{
+				"updatedAt": "2025-07-29",
+				"url": "/blepharoplasty/17649"
+			},
+			{
+				"updatedAt": "2025-07-28",
+				"url": "/blepharoplasty/17624"
+			},
+			{
+				"updatedAt": null,
+				"url": "/peels-facials"
+			},
+			{
+				"updatedAt": "2025-08-03",
+				"url": "/peels-facials/17764"
+			},
+			{
+				"updatedAt": "2025-07-29",
+				"url": "/peels-facials/17649"
+			}
+		]
+	],
+	"success": true
+}

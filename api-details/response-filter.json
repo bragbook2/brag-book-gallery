@@ -1,0 +1,150 @@
+{
+	"data": {
+		"staticFilter": {
+			"height": [
+				{
+					"label": "Under 5'0\"",
+					"value": 1
+				},
+				{
+					"label": "5'0\" to 5'3\"",
+					"value": 2
+				},
+				{
+					"label": "5'4\" to 5'7\"",
+					"value": 3
+				},
+				{
+					"label": "5'8\" to 5'11\"",
+					"value": 4
+				},
+				{
+					"label": "6'0\" and Over",
+					"value": 5
+				}
+			],
+			"weight": [
+				{
+					"label": "Under 100 lbs",
+					"value": 1
+				},
+				{
+					"label": "100 to 115 lbs",
+					"value": 2
+				},
+				{
+					"label": "116 to 125 lbs",
+					"value": 3
+				},
+				{
+					"label": "126 to 135 lbs",
+					"value": 4
+				},
+				{
+					"label": "136 to 145 lbs",
+					"value": 5
+				},
+				{
+					"label": "146 to 155 lbs",
+					"value": 6
+				},
+				{
+					"label": "156 to 165 lbs",
+					"value": 7
+				},
+				{
+					"label": "166 to 175 lbs",
+					"value": 8
+				},
+				{
+					"label": "176 to 185 lbs",
+					"value": 9
+				},
+				{
+					"label": "186 lbs and Over",
+					"value": 10
+				}
+			],
+			"gender": [
+				{
+					"label": "Female",
+					"value": "female"
+				},
+				{
+					"label": "Male",
+					"value": "male"
+				}
+			],
+			"ethnicity": [
+				{
+					"label": "American Indian or Alaska Native",
+					"value": "American Indian or Alaska Native"
+				},
+				{
+					"label": "Asian",
+					"value": "Asian"
+				},
+				{
+					"label": "Black or African American",
+					"value": "Black or African American"
+				},
+				{
+					"label": "Hispanic or Latino",
+					"value": "Hispanic or Latino"
+				},
+				{
+					"label": "Middle Eastern",
+					"value": "Middle Eastern"
+				},
+				{
+					"label": "Native American",
+					"value": "Native American"
+				},
+				{
+					"label": "Native Hawaiian or Other Pacific Islander",
+					"value": "Native Hawaiian or Other Pacific Islander"
+				},
+				{
+					"label": "White",
+					"value": "White"
+				}
+			],
+			"age": [
+				{
+					"label": "Under 22",
+					"value": 1
+				},
+				{
+					"label": "22 to 35",
+					"value": 2
+				},
+				{
+					"label": "36 to 45",
+					"value": 3
+				},
+				{
+					"label": "46 to 55",
+					"value": 4
+				},
+				{
+					"label": "56 to 65",
+					"value": 5
+				},
+				{
+					"label": "66 to 75",
+					"value": 6
+				},
+				{
+					"label": "76 to 85",
+					"value": 7
+				},
+				{
+					"label": "86 and older",
+					"value": 8
+				}
+			]
+		},
+		"dynamicFilter": {}
+	},
+	"success": true
+}

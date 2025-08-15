@@ -1,0 +1,74 @@
+{
+	"name": "brag-book-gallery",
+	"version": "3.0.0",
+	"description": "BRAGBook Gallery WordPress Plugin",
+	"author": "Candace Crowe Design",
+	"license": "GPL-2.0-or-later",
+	"private": true,
+	"engines": {
+		"node": ">=18.0.0",
+		"npm": ">=9.0.0"
+	},
+	"scripts": {
+		"build": "npm run build:js && npm run build:css",
+		"build:js": "webpack --mode=production",
+		"build:css": "sass src/scss/frontend.scss:assets/css/brag-book-gallery.css src/scss/admin.scss:assets/css/brag-book-gallery-admin.css src/scss/carousel.scss:assets/css/brag-book-carousel.css --style=compressed",
+		"watch": "concurrently \"npm run watch:js\" \"npm run watch:css\"",
+		"watch:js": "webpack --mode=development --watch",
+		"watch:css": "sass --watch src/scss:assets/css --style=expanded",
+		"dev": "npm run watch",
+		"lint:js": "eslint src/js/**/*.js",
+		"lint:css": "stylelint src/scss/**/*.scss",
+		"format:js": "prettier --write src/js/**/*.js",
+		"clean": "rm -rf assets/js/* assets/css/*"
+	},
+	"devDependencies": {
+		"@babel/core": "^7.23.0",
+		"@babel/preset-env": "^7.23.0",
+		"babel-loader": "^9.1.0",
+		"concurrently": "^8.2.0",
+		"eslint": "^8.55.0",
+		"prettier": "^3.1.0",
+		"sass": "^1.69.0",
+		"stylelint": "^15.11.0",
+		"webpack": "^5.89.0",
+		"webpack-cli": "^5.1.0"
+	},
+	"browserslist": [
+		"> 1%",
+		"last 2 versions",
+		"not dead"
+	],
+	"eslintConfig": {
+		"env": {
+			"browser": true,
+			"es2021": true
+		},
+		"extends": "eslint:recommended",
+		"parserOptions": {
+			"ecmaVersion": "latest",
+			"sourceType": "module"
+		},
+		"rules": {
+			"indent": ["error", "tab"],
+			"linebreak-style": ["error", "unix"],
+			"quotes": ["error", "single"],
+			"semi": ["error", "always"]
+		}
+	},
+	"stylelint": {
+		"extends": "stylelint-config-standard-scss",
+		"rules": {
+			"indentation": "tab",
+			"string-quotes": "single"
+		}
+	},
+	"prettier": {
+		"semi": true,
+		"trailingComma": "es5",
+		"singleQuote": true,
+		"printWidth": 100,
+		"tabWidth": 4,
+		"useTabs": true
+	}
+}
