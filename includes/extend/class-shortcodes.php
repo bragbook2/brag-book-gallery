@@ -309,10 +309,28 @@ final class Shortcodes {
 	 * @return void
 	 */
 	private static function add_gallery_rewrite_rules( string $page_slug ): void {
-		$base_query = sprintf( 'index.php?pagename=%s', $page_slug );
+		// Try to find the page by slug
+		$page = get_page_by_path( $page_slug );
+		
+		if ( $page && $page->post_status === 'publish' ) {
+			// Use page_id for existing pages to avoid conflicts
+			$base_query = sprintf( 'index.php?page_id=%d', $page->ID );
+		} else {
+			// Check if this matches combine_gallery_slug and has a page_id set
+			$combine_gallery_slug = get_option( 'combine_gallery_slug' );
+			$combine_gallery_page_id = get_option( 'combine_gallery_page_id' );
+			
+			if ( $page_slug === $combine_gallery_slug && ! empty( $combine_gallery_page_id ) ) {
+				$base_query = sprintf( 'index.php?page_id=%d', absint( $combine_gallery_page_id ) );
+			} else {
+				// Fallback to pagename (this might cause 404s if page doesn't exist)
+				$base_query = sprintf( 'index.php?pagename=%s', $page_slug );
+			}
+		}
 
 		$rewrite_rules = [
 			// Case detail: /gallery/procedure-name/case-id (numeric)
+			// This must come BEFORE the procedure page rule to match properly
 			[
 				'regex' => "^{$page_slug}/([^/]+)/([0-9]+)/?$",
 				'query' => "{$base_query}&procedure_title=\$matches[1]&case_id=\$matches[2]",
