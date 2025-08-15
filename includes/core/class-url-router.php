@@ -91,7 +91,9 @@ class URL_Router {
 	 */
 	public function add_rewrite_rules(): void {
 		if ( $this->mode_manager->is_javascript_mode() ) {
-			$this->add_javascript_mode_rules();
+			// JavaScript mode rules are handled by Shortcodes class
+			// to avoid conflicts with filter_procedure and case_id query vars
+			return;
 		} else {
 			$this->add_local_mode_rules();
 		}
@@ -580,7 +582,11 @@ class URL_Router {
 	 * @return string Gallery base slug.
 	 */
 	private function get_gallery_base(): string {
-		$base = get_option( 'brag_book_gallery_base_slug', 'gallery' );
+		// Use combine_gallery_slug if set, otherwise fall back to default
+		$base = get_option( 'combine_gallery_slug' );
+		if ( empty( $base ) ) {
+			$base = get_option( 'brag_book_gallery_base_slug', 'gallery' );
+		}
 		return trim( $base, '/' );
 	}
 

@@ -7,7 +7,7 @@
  */
 
 // Load WordPress
-require_once dirname( __FILE__ ) . '/../../../../wp-load.php';
+require_once dirname( __FILE__ ) . '/../../../wp-load.php';
 
 // Check if user is logged in and has admin capabilities
 if ( ! current_user_can( 'manage_options' ) ) {
