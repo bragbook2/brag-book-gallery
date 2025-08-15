@@ -21,40 +21,40 @@ if ( ! defined( 'WPINC' ) ) {
 /**
  * Mode Settings Class
  *
- * Central interface for managing BragBook Gallery operating modes and transitions.
+ * Central interface for managing BRAG Book Gallery operating modes and transitions.
  * This class provides the primary interface for switching between JavaScript and
  * Local modes while managing the configuration and data migration aspects.
- * 
+ *
  * **Core Functionality:**
  * - Seamless mode switching with data preservation
  * - Mode-specific configuration management
  * - Real-time status monitoring and feedback
  * - Migration tools and data integrity checks
- * 
+ *
  * **Mode Management Features:**
  * - Visual mode comparison with pros/cons
  * - One-click mode switching with validation
  * - Configuration backup and restoration
  * - Data migration status tracking
- * 
+ *
  * **JavaScript Mode Management:**
  * - Real-time API connectivity validation
  * - Performance optimization settings
  * - Virtual URL configuration
  * - Cache management controls
- * 
+ *
  * **Local Mode Management:**
  * - Sync scheduling and automation
  * - Database storage monitoring
  * - Image import configuration
  * - SEO optimization settings
- * 
+ *
  * **Migration Safety:**
  * - Pre-migration compatibility checks
  * - Data backup and rollback capabilities
  * - Progress monitoring during transitions
  * - Post-migration validation and testing
- * 
+ *
  * This class serves as the command center for all mode-related operations,
  * ensuring safe and reliable transitions between different operational modes.
  *
@@ -83,7 +83,7 @@ class Settings_Mode extends Settings_Base {
 		// Set translated strings when rendering (after init)
 		$this->page_title = __( 'Mode Settings', 'brag-book-gallery' );
 		$this->menu_title = __( 'Mode', 'brag-book-gallery' );
-		
+
 		// Get mode manager instance
 		$mode_manager = \BRAGBookGallery\Includes\Mode\Mode_Manager::get_instance();
 		$current_mode = $mode_manager->get_current_mode();
@@ -93,7 +93,7 @@ class Settings_Mode extends Settings_Base {
 		if ( isset( $_POST['switch_mode'] ) ) {
 			$this->handle_mode_switch();
 		}
-		
+
 		if ( isset( $_POST['save_mode_settings'] ) ) {
 			$this->save_mode_settings();
 		}
@@ -115,7 +115,7 @@ class Settings_Mode extends Settings_Base {
 					<p>
 						<?php
 						if ( $current_mode === 'javascript' ) {
-							esc_html_e( 'Content is loaded dynamically from the BragBook API. URLs are virtual and galleries update in real-time.', 'brag-book-gallery' );
+							esc_html_e( 'Content is loaded dynamically from the BRAG Book API. URLs are virtual and galleries update in real-time.', 'brag-book-gallery' );
 						} else {
 							esc_html_e( 'Content is stored locally in WordPress. Galleries use native post types and taxonomies for better SEO and performance.', 'brag-book-gallery' );
 						}
@@ -129,14 +129,14 @@ class Settings_Mode extends Settings_Base {
 				<h2><?php esc_html_e( 'Switch Mode', 'brag-book-gallery' ); ?></h2>
 				<form id="brag-mode-switch-form" method="post">
 					<?php wp_nonce_field( 'brag_book_gallery_mode_switch', 'mode_switch_nonce' ); ?>
-					
+
 					<table class="form-table brag-book-gallery-form-table">
 						<tr>
 							<th scope="row"><?php esc_html_e( 'Select Mode', 'brag-book-gallery' ); ?></th>
 							<td>
 								<fieldset>
 									<label>
-										<input type="radio" name="gallery_mode" value="javascript" 
+										<input type="radio" name="gallery_mode" value="javascript"
 											<?php checked( $current_mode, 'javascript' ); ?>>
 										<strong><?php esc_html_e( 'JavaScript Mode', 'brag-book-gallery' ); ?></strong>
 										<p class="description">
@@ -145,7 +145,7 @@ class Settings_Mode extends Settings_Base {
 									</label>
 									<br><br>
 									<label>
-										<input type="radio" name="gallery_mode" value="local" 
+										<input type="radio" name="gallery_mode" value="local"
 											<?php checked( $current_mode, 'local' ); ?>>
 										<strong><?php esc_html_e( 'Local Mode', 'brag-book-gallery' ); ?></strong>
 										<p class="description">
@@ -168,12 +168,12 @@ class Settings_Mode extends Settings_Base {
 			<!-- Mode-Specific Settings -->
 			<div class="brag-book-gallery-section">
 				<h2><?php echo esc_html( sprintf( __( '%s Mode Settings', 'brag-book-gallery' ), ucfirst( $current_mode ) ) ); ?></h2>
-				
+
 				<?php if ( $current_mode === 'local' ) : ?>
 					<!-- Local Mode Settings -->
 					<form id="local-mode-settings-form" method="post">
 						<?php wp_nonce_field( 'brag_book_gallery_mode_settings', 'mode_settings_nonce' ); ?>
-						
+
 						<table class="form-table brag-book-gallery-form-table">
 							<tr>
 								<th scope="row"><?php esc_html_e( 'Sync Frequency', 'brag-book-gallery' ); ?></th>
@@ -201,7 +201,7 @@ class Settings_Mode extends Settings_Base {
 								<th scope="row"><?php esc_html_e( 'Auto Sync', 'brag-book-gallery' ); ?></th>
 								<td>
 									<label>
-										<input type="checkbox" name="auto_sync" value="1" 
+										<input type="checkbox" name="auto_sync" value="1"
 											<?php checked( $mode_settings['auto_sync'] ?? false, true ); ?>>
 										<?php esc_html_e( 'Enable automatic synchronization', 'brag-book-gallery' ); ?>
 									</label>
@@ -211,7 +211,7 @@ class Settings_Mode extends Settings_Base {
 								<th scope="row"><?php esc_html_e( 'Import Images', 'brag-book-gallery' ); ?></th>
 								<td>
 									<label>
-										<input type="checkbox" name="import_images" value="1" 
+										<input type="checkbox" name="import_images" value="1"
 											<?php checked( $mode_settings['import_images'] ?? true, true ); ?>>
 										<?php esc_html_e( 'Download and store images locally', 'brag-book-gallery' ); ?>
 									</label>
@@ -223,7 +223,7 @@ class Settings_Mode extends Settings_Base {
 							<tr>
 								<th scope="row"><?php esc_html_e( 'Batch Size', 'brag-book-gallery' ); ?></th>
 								<td>
-									<input type="number" name="batch_size" value="<?php echo esc_attr( $mode_settings['batch_size'] ?? 20 ); ?>" 
+									<input type="number" name="batch_size" value="<?php echo esc_attr( $mode_settings['batch_size'] ?? 20 ); ?>"
 										min="1" max="100" step="1" class="small-text">
 									<p class="description">
 										<?php esc_html_e( 'Number of items to process per batch during sync.', 'brag-book-gallery' ); ?>
@@ -243,7 +243,7 @@ class Settings_Mode extends Settings_Base {
 								<tr>
 									<th><?php esc_html_e( 'Last Sync', 'brag-book-gallery' ); ?></th>
 									<td>
-										<?php 
+										<?php
 										$last_sync = get_option( 'brag_book_gallery_last_sync', '' );
 										echo $last_sync ? esc_html( date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), strtotime( $last_sync ) ) ) : esc_html__( 'Never', 'brag-book-gallery' );
 										?>
@@ -252,7 +252,7 @@ class Settings_Mode extends Settings_Base {
 								<tr>
 									<th><?php esc_html_e( 'Sync Status', 'brag-book-gallery' ); ?></th>
 									<td>
-										<?php 
+										<?php
 										$sync_status = get_transient( 'brag_book_gallery_sync_status' );
 										if ( $sync_status === 'running' ) {
 											echo '<span class="dashicons dashicons-update spin"></span> ' . esc_html__( 'Running', 'brag-book-gallery' );
@@ -297,7 +297,7 @@ class Settings_Mode extends Settings_Base {
 			<!-- Mode Migration Tools -->
 			<div class="brag-book-gallery-section">
 				<h2><?php esc_html_e( 'Migration Tools', 'brag-book-gallery' ); ?></h2>
-				
+
 				<?php if ( $current_mode === 'local' ) : ?>
 					<div class="brag-book-gallery-notice brag-book-gallery-notice-warning inline">
 						<p>
@@ -353,21 +353,21 @@ class Settings_Mode extends Settings_Base {
 		if ( isset( $_POST['gallery_mode'] ) ) {
 			$new_mode = sanitize_text_field( $_POST['gallery_mode'] );
 			$valid_modes = array( 'javascript', 'local' );
-			
+
 			if ( in_array( $new_mode, $valid_modes, true ) ) {
 				$mode_manager = \BRAGBookGallery\Includes\Mode\Mode_Manager::get_instance();
 				$mode_manager->switch_mode( $new_mode );
-				
-				$this->add_notice( 
-					sprintf( 
+
+				$this->add_notice(
+					sprintf(
 						/* translators: %s: mode name */
-						__( 'Switched to %s mode successfully.', 'brag-book-gallery' ), 
-						ucfirst( $new_mode ) 
-					) 
+						__( 'Switched to %s mode successfully.', 'brag-book-gallery' ),
+						ucfirst( $new_mode )
+					)
 				);
 			}
 		}
-		
+
 		settings_errors( $this->page_slug );
 	}
 
@@ -393,12 +393,12 @@ class Settings_Mode extends Settings_Base {
 				'import_images'  => ! empty( $_POST['import_images'] ),
 				'batch_size'     => absint( $_POST['batch_size'] ?? 20 ),
 			);
-			
+
 			$mode_manager->update_mode_settings( $settings );
-			
+
 			$this->add_notice( __( 'Mode settings saved successfully.', 'brag-book-gallery' ) );
 		}
-		
+
 		settings_errors( $this->page_slug );
 	}
 }

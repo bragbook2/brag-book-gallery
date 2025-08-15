@@ -24,13 +24,13 @@ if ( ! defined( 'WPINC' ) ) {
 /**
  * Settings Manager Class
  *
- * Centralized manager for all settings pages in the BragBook Gallery plugin.
+ * Centralized manager for all settings pages in the BRAG Book Gallery plugin.
  * This class coordinates between different settings pages, manages the admin menu structure,
  * handles asset loading, and maintains backward compatibility with the legacy settings system.
- * 
+ *
  * The manager follows a modular approach where each settings page is a separate class
  * extending Settings_Base, allowing for clean separation of concerns and easier maintenance.
- * 
+ *
  * Key responsibilities:
  * - Initialize and manage all settings page instances
  * - Register admin menu pages with conditional visibility based on configuration state
@@ -45,15 +45,15 @@ class Settings_Manager {
 
 	/**
 	 * Collection of settings page instances
-	 * 
+	 *
 	 * Stores all instantiated settings page objects indexed by their type.
 	 * Each page handles its own rendering, form processing, and data validation.
-	 * 
+	 *
 	 * Structure:
 	 * - 'general': General plugin settings and overview
 	 * - 'mode': Operating mode selection (JavaScript vs Local)
 	 * - 'javascript': JavaScript mode specific settings
-	 * - 'local': Local mode specific settings  
+	 * - 'local': Local mode specific settings
 	 * - 'api': API connection and configuration settings
 	 * - 'api_test': API endpoint testing and diagnostics
 	 * - 'help': Help documentation and support resources
@@ -66,7 +66,7 @@ class Settings_Manager {
 
 	/**
 	 * Legacy settings instance for backward compatibility
-	 * 
+	 *
 	 * Maintains the original Settings class instance to ensure compatibility
 	 * with existing code that may rely on the legacy settings system.
 	 * This instance is created without menu registration to avoid conflicts
@@ -79,7 +79,7 @@ class Settings_Manager {
 
 	/**
 	 * Constructor - Initialize the Settings Manager
-	 * 
+	 *
 	 * Sets up the complete settings management system by initializing WordPress hooks
 	 * and loading all settings page instances. The constructor follows a two-step
 	 * initialization process to ensure proper dependency loading.
@@ -93,11 +93,11 @@ class Settings_Manager {
 
 	/**
 	 * Initialize WordPress hooks and actions
-	 * 
+	 *
 	 * Registers all necessary WordPress hooks for the settings system including:
 	 * - Admin menu registration for creating settings pages in wp-admin
 	 * - Asset enqueuing for loading CSS/JS files on settings pages only
-	 * 
+	 *
 	 * Uses late binding to ensure all WordPress functions are available when called.
 	 *
 	 * @since 3.0.0
@@ -110,15 +110,15 @@ class Settings_Manager {
 
 	/**
 	 * Load and instantiate all settings page classes
-	 * 
+	 *
 	 * Creates instances of each settings page class and stores them in the
 	 * settings_pages array for later access. Each page is responsible for its own
 	 * initialization, form handling, and rendering.
-	 * 
+	 *
 	 * Also initializes the legacy Settings class in compatibility mode (without
 	 * menu registration) to maintain backward compatibility with existing code
 	 * that may directly access the legacy settings system.
-	 * 
+	 *
 	 * Page loading order is intentional - general settings first, then API config,
 	 * followed by mode-specific pages, and finally utility pages (help, debug).
 	 *
@@ -135,7 +135,7 @@ class Settings_Manager {
 		$this->settings_pages['api_test']   = new Settings_Api_Test();
 		$this->settings_pages['help']       = new Settings_Help();
 		$this->settings_pages['debug']      = new Settings_Debug();
-		
+
 		// Load legacy settings for backward compatibility (without menu registration)
 		// This prevents duplicate menu items while maintaining API compatibility
 		$this->legacy_settings = new Settings( false );
@@ -143,26 +143,26 @@ class Settings_Manager {
 
 	/**
 	 * Register WordPress admin menu pages with conditional visibility
-	 * 
-	 * Creates the complete admin menu structure for BragBook Gallery settings.
+	 *
+	 * Creates the complete admin menu structure for BRAG Book Gallery settings.
 	 * The method implements intelligent menu visibility based on plugin configuration state:
-	 * 
+	 *
 	 * - General and API settings are always visible
-	 * - Mode selection only appears after API is configured  
+	 * - Mode selection only appears after API is configured
 	 * - Mode-specific settings (JavaScript/Local) only appear when that mode is active
 	 * - Help and Debug pages are always available for support purposes
-	 * 
+	 *
 	 * This progressive disclosure approach guides users through the setup process
 	 * while preventing configuration errors from incomplete setups.
-	 * 
+	 *
 	 * Menu structure:
-	 * - Main: "BragBook Gallery" (General settings)
+	 * - Main: "BRAG Book Gallery" (General settings)
 	 * - Sub: "General" (Overview and status)
 	 * - Sub: "API" (API configuration - always visible)
 	 * - Sub: "API Test" (Endpoint testing - requires API)
 	 * - Sub: "Mode" (Mode selection - requires API)
 	 * - Sub: "JavaScript Settings" (JavaScript mode only)
-	 * - Sub: "Local Settings" (Local mode only)  
+	 * - Sub: "Local Settings" (Local mode only)
 	 * - Sub: "Help" (Documentation and support)
 	 * - Sub: "Debug" (Diagnostic tools)
 	 *
@@ -172,7 +172,7 @@ class Settings_Manager {
 	public function add_menu_pages(): void {
 		// Get custom SVG icon for the main menu item
 		$icon_svg = $this->get_menu_icon();
-		
+
 		// Determine current plugin state to control menu visibility
 		$mode_manager = \BRAGBookGallery\Includes\Mode\Mode_Manager::get_instance();
 		$current_mode = $mode_manager->get_current_mode();
@@ -181,8 +181,8 @@ class Settings_Manager {
 
 		// Main menu page
 		add_menu_page(
-			page_title: esc_html__( 'BragBook Gallery', 'brag-book-gallery' ),
-			menu_title: esc_html__( 'BragBook Gallery', 'brag-book-gallery' ),
+			page_title: esc_html__( 'BRAG Book Gallery', 'brag-book-gallery' ),
+			menu_title: esc_html__( 'BRAG Book Gallery', 'brag-book-gallery' ),
 			capability: 'manage_options',
 			menu_slug: 'brag-book-gallery-settings',
 			callback: array( $this->settings_pages['general'], 'render' ),
@@ -294,11 +294,11 @@ class Settings_Manager {
 
 	/**
 	 * Generate base64-encoded SVG icon for admin menu
-	 * 
+	 *
 	 * Creates a custom SVG icon representing a gallery/image viewer for use in the
 	 * WordPress admin menu. The icon uses a photo/image symbol that clearly
 	 * represents the gallery functionality of the plugin.
-	 * 
+	 *
 	 * The SVG is optimized for WordPress admin menu display:
 	 * - Uses black fill for proper contrast in both light and dark admin themes
 	 * - 512x512 viewBox provides scalability at different menu sizes
@@ -314,20 +314,20 @@ class Settings_Manager {
 
 	/**
 	 * Conditionally enqueue admin assets for settings pages
-	 * 
-	 * Loads CSS and JavaScript files only on BragBook Gallery settings pages to avoid
+	 *
+	 * Loads CSS and JavaScript files only on BRAG Book Gallery settings pages to avoid
 	 * bloating other admin pages. Performs several optimizations:
-	 * 
+	 *
 	 * - Hook-based filtering to load assets only on relevant pages
 	 * - File existence check before enqueueing JavaScript to prevent 404 errors
 	 * - AJAX localization for dynamic frontend interactions
 	 * - Version-based cache busting for proper asset updates
-	 * 
+	 *
 	 * Assets loaded:
 	 * - admin.css: Main admin styling for all settings pages
 	 * - admin.js: JavaScript functionality (if file exists)
 	 * - Localized AJAX data: URL, nonce, and configuration data
-	 * 
+	 *
 	 * The method follows WordPress best practices for admin asset management.
 	 *
 	 * @since 3.0.0
@@ -373,17 +373,17 @@ class Settings_Manager {
 
 	/**
 	 * Retrieve a specific settings page instance by identifier
-	 * 
+	 *
 	 * Provides external access to individual settings page objects for components
 	 * that need to interact with specific settings functionality. This method
 	 * enables loose coupling between different parts of the plugin.
-	 * 
+	 *
 	 * Common use cases:
 	 * - Accessing settings page methods from other plugin components
 	 * - Rendering settings page content in custom contexts
 	 * - Validating settings data from external sources
-	 * 
-	 * Available page identifiers: 'general', 'mode', 'javascript', 'local', 
+	 *
+	 * Available page identifiers: 'general', 'mode', 'javascript', 'local',
 	 * 'api', 'help', 'debug'
 	 *
 	 * @since 3.0.0
@@ -396,15 +396,15 @@ class Settings_Manager {
 
 	/**
 	 * Retrieve the legacy settings instance for backward compatibility
-	 * 
+	 *
 	 * Provides access to the original Settings class instance to maintain
 	 * compatibility with existing code during the transition to the new modular
 	 * settings system. This method should be used sparingly and only when
 	 * necessary for legacy support.
-	 * 
+	 *
 	 * The legacy instance is created without menu registration to prevent
 	 * conflicts with the new settings pages managed by this class.
-	 * 
+	 *
 	 * Note: New code should use the modular settings pages instead of the
 	 * legacy settings instance whenever possible.
 	 *

@@ -253,8 +253,8 @@ class Settings {
 		$icon_svg = 'data:image/svg+xml;base64,' . base64_encode( $svg_content );
 
 		add_menu_page(
-			esc_html__( 'BragBook Gallery', 'brag-book-gallery' ),
-			esc_html__( 'BragBook', 'brag-book-gallery' ),
+			esc_html__( 'BRAG Book Gallery', 'brag-book-gallery' ),
+			esc_html__( 'BRAG Book', 'brag-book-gallery' ),
 			'manage_options',
 			'brag-book-gallery-settings',
 			array( $this, 'render_settings_page' ),
@@ -428,7 +428,7 @@ class Settings {
 
 		// Detected SEO plugin.
 		$seo_plugin = $this->detect_seo_plugin();
-		
+
 		// Debug: Check if detect_seo_plugin is working
 		if ( ! isset( $seo_plugin ) ) {
 			$seo_plugin = array(
@@ -443,8 +443,8 @@ class Settings {
 		<div class="brag-book-gallery-header-left">
 			<img
 				src="<?php echo esc_url( plugins_url( 'assets/images/bragbook-logo.svg', dirname( __DIR__ ) ) ); ?>"
-				alt="BragBook" class="brag-book-gallery-logo"/>
-			<h1><?php esc_html_e( 'BragBook Gallery', 'brag-book-gallery' ); ?></h1>
+				alt="BRAG Book" class="brag-book-gallery-logo"/>
+			<h1><?php esc_html_e( 'BRAG Book Gallery', 'brag-book-gallery' ); ?></h1>
 		</div>
 		<div class="brag-book-gallery-header-right">
                     <span class="brag-book-gallery-version-badge">
@@ -594,7 +594,7 @@ class Settings {
 							</div>
 						<?php else : ?>
 							<div class="notice notice-info" style="margin: 0;">
-								<p><?php esc_html_e( 'No SEO plugin detected. BragBook will use standard WordPress SEO features.', 'brag-book-gallery' ); ?></p>
+								<p><?php esc_html_e( 'No SEO plugin detected. BRAG Book will use standard WordPress SEO features.', 'brag-book-gallery' ); ?></p>
 								<p class="description"><?php esc_html_e( 'Supported plugins: Yoast SEO, All in One SEO, Rank Math, SEOPress', 'brag-book-gallery' ); ?></p>
 							</div>
 						<?php endif; ?>
@@ -707,7 +707,7 @@ class Settings {
 
 <script type="module">
 	/**
-	 * BragBook Gallery Settings JavaScript
+	 * BRAG Book Gallery Settings JavaScript
 	 *
 	 * Handles general settings form interactions including SERP preview,
 	 * character counters, and AJAX form submission.
@@ -899,8 +899,8 @@ class Settings {
 			<div class="brag-book-gallery-header-left">
 				<img
 					src="<?php echo esc_url( plugins_url( 'assets/images/brag-book-gallery-logo.svg', dirname( __DIR__ ) ) ); ?>"
-					alt="BragBook" class="brag-book-gallery-logo"/>
-				<h1><?php esc_html_e( 'BragBook Gallery', 'brag-book-gallery' ); ?></h1>
+					alt="BRAG Book" class="brag-book-gallery-logo"/>
+				<h1><?php esc_html_e( 'BRAG Book Gallery', 'brag-book-gallery' ); ?></h1>
 			</div>
 			<div class="brag-book-gallery-header-right">
 				<?php echo esc_html__( 'v', 'brag-book-gallery' ) . esc_html( $this->get_plugin_info_value( 'Version' ) ); ?>
@@ -912,9 +912,9 @@ class Settings {
 		<div class="brag-book-gallery-api-instructions">
 			<div
 				class="brag-book-gallery-notice brag-book-gallery-notice-info">
-				<h3><?php esc_html_e( 'Getting Started with BragBook API', 'brag-book-gallery' ); ?></h3>
+				<h3><?php esc_html_e( 'Getting Started with BRAG Book API', 'brag-book-gallery' ); ?></h3>
 				<ol>
-					<li><?php esc_html_e( 'Log in to your BragBook account at', 'brag-book-gallery' ); ?>
+					<li><?php esc_html_e( 'Log in to your BRAG Book account at', 'brag-book-gallery' ); ?>
 						<a href="https://app.bragbookgallery.com"
 						   target="_blank">app.bragbookgallery.com</a></li>
 					<li><?php esc_html_e( 'Navigate to Settings → API Tokens', 'brag-book-gallery' ); ?></li>
@@ -1312,7 +1312,7 @@ class Settings {
 						<p>
 							<?php
 							if ( $current_mode === 'javascript' ) {
-								esc_html_e( 'Content is loaded dynamically from the BragBook API. URLs are virtual and galleries update in real-time.', 'brag-book-gallery' );
+								esc_html_e( 'Content is loaded dynamically from the BRAG Book API. URLs are virtual and galleries update in real-time.', 'brag-book-gallery' );
 							} else {
 								esc_html_e( 'Content is stored locally in WordPress. Galleries use native post types and taxonomies for better SEO and performance.', 'brag-book-gallery' );
 							}
@@ -1718,8 +1718,8 @@ class Settings {
 			<div class="brag-book-gallery-header-left">
 				<img
 					src="<?php echo esc_url( plugins_url( 'assets/images/brag-book-gallery-logo.svg', dirname( __DIR__ ) ) ); ?>"
-					alt="BragBook" class="brag-book-gallery-logo"/>
-				<h1><?php esc_html_e( 'BragBook Gallery', 'brag-book-gallery' ); ?></h1>
+					alt="BRAG Book" class="brag-book-gallery-logo"/>
+				<h1><?php esc_html_e( 'BRAG Book Gallery', 'brag-book-gallery' ); ?></h1>
 			</div>
 			<div class="brag-book-gallery-header-right">
 				<?php echo esc_html__( 'v', 'brag-book-gallery' ) . esc_html( $this->get_plugin_info_value( 'Version' ) ); ?>
@@ -1735,7 +1735,7 @@ class Settings {
 				<ol class="brag-book-gallery-steps">
 					<li>
 						<h3><?php esc_html_e( 'Get Your API Credentials', 'brag-book-gallery' ); ?></h3>
-						<p><?php esc_html_e( 'Log in to your BragBook account at', 'brag-book-gallery' ); ?>
+						<p><?php esc_html_e( 'Log in to your BRAG Book account at', 'brag-book-gallery' ); ?>
 							<a href="https://app.bragbookgallery.com"
 							   target="_blank">app.bragbookgallery.com</a> <?php esc_html_e( 'and navigate to Settings → API Tokens to get your credentials.', 'brag-book-gallery' ); ?>
 						</p>
@@ -1806,7 +1806,7 @@ class Settings {
 					<tbody>
 					<tr>
 						<td><code>[brag_book_gallery]</code></td>
-						<td><?php esc_html_e( 'Display the main BragBook gallery with filters and case grid', 'brag-book-gallery' ); ?></td>
+						<td><?php esc_html_e( 'Display the main BRAG Book gallery with filters and case grid', 'brag-book-gallery' ); ?></td>
 						<td>
 							<code>website_property_id</code>
 							- <?php esc_html_e( 'Property ID (optional, uses default if not specified)', 'brag-book-gallery' ); ?>
@@ -1832,7 +1832,7 @@ class Settings {
 			<!-- API Endpoints -->
 			<div class="brag-book-gallery-section">
 				<h2><?php esc_html_e( 'REST API Endpoints', 'brag-book-gallery' ); ?></h2>
-				<p><?php esc_html_e( 'The plugin communicates with the BragBook service using the following API endpoints:', 'brag-book-gallery' ); ?></p>
+				<p><?php esc_html_e( 'The plugin communicates with the BRAG Book service using the following API endpoints:', 'brag-book-gallery' ); ?></p>
 
 				<table class="wp-list-table widefat fixed striped">
 					<thead>
@@ -2080,7 +2080,7 @@ class Settings {
 								<li><?php esc_html_e( 'Verify your API credentials are correct', 'brag-book-gallery' ); ?></li>
 								<li><?php esc_html_e( 'Check that the gallery page slug matches your configuration', 'brag-book-gallery' ); ?></li>
 								<li><?php esc_html_e( 'Clear the API cache from the API Settings page', 'brag-book-gallery' ); ?></li>
-								<li><?php esc_html_e( 'Ensure your BragBook account has active galleries', 'brag-book-gallery' ); ?></li>
+								<li><?php esc_html_e( 'Ensure your BRAG Book account has active galleries', 'brag-book-gallery' ); ?></li>
 							</ul>
 						</div>
 					</details>
@@ -2092,7 +2092,7 @@ class Settings {
 								<li><?php esc_html_e( 'Verify your server can make outbound HTTPS requests', 'brag-book-gallery' ); ?></li>
 								<li><?php esc_html_e( 'Check that your API token has not expired', 'brag-book-gallery' ); ?></li>
 								<li><?php esc_html_e( 'Ensure your Website Property ID is correct', 'brag-book-gallery' ); ?></li>
-								<li><?php esc_html_e( 'Contact BragBook support if the issue persists', 'brag-book-gallery' ); ?></li>
+								<li><?php esc_html_e( 'Contact BRAG Book support if the issue persists', 'brag-book-gallery' ); ?></li>
 							</ul>
 						</div>
 					</details>
@@ -2145,7 +2145,7 @@ class Settings {
 						<p><?php esc_html_e( 'Manage your galleries, API tokens, and account settings.', 'brag-book-gallery' ); ?></p>
 						<a href="https://app.bragbookgallery.com"
 						   target="_blank" class="button button-secondary">
-							<?php esc_html_e( 'Go to BragBook App', 'brag-book-gallery' ); ?>
+							<?php esc_html_e( 'Go to BRAG Book App', 'brag-book-gallery' ); ?>
 						</a>
 					</div>
 				</div>
@@ -2218,8 +2218,8 @@ class Settings {
 			<div class="brag-book-gallery-header-left">
 				<img
 					src="<?php echo esc_url( plugins_url( 'assets/images/brag-book-gallery-logo.svg', dirname( __DIR__ ) ) ); ?>"
-					alt="BragBook" class="brag-book-gallery-logo"/>
-				<h1><?php esc_html_e( 'BragBook Gallery', 'brag-book-gallery' ); ?></h1>
+					alt="BRAG Book" class="brag-book-gallery-logo"/>
+				<h1><?php esc_html_e( 'BRAG Book Gallery', 'brag-book-gallery' ); ?></h1>
 			</div>
 			<div class="brag-book-gallery-header-right">
 				<?php echo esc_html__( 'v', 'brag-book-gallery' ) . esc_html( $this->get_plugin_info_value( 'Version' ) ); ?>
@@ -2282,7 +2282,7 @@ class Settings {
 										 class="brag-book-gallery-error-log"><?php echo esc_html( $this->get_error_log() ); ?></pre>
 						</div>
 						<p class="description">
-							<?php esc_html_e( 'Shows the last 100 entries from the BragBook error log. Newest entries appear first.', 'brag-book-gallery' ); ?>
+							<?php esc_html_e( 'Shows the last 100 entries from the BRAG Book error log. Newest entries appear first.', 'brag-book-gallery' ); ?>
 						</p>
 					</div>
 				</div>
@@ -2394,7 +2394,7 @@ class Settings {
 							</tr>
 							<tr>
 								<th scope="row">
-									<?php esc_html_e( 'BragBook Debug Mode', 'brag-book-gallery' ); ?>
+									<?php esc_html_e( 'BRAG Book Debug Mode', 'brag-book-gallery' ); ?>
 								</th>
 								<td>
 									<label>
@@ -2503,24 +2503,24 @@ class Settings {
 			</div>
 		</div>
 	</div>
-	
+
 	<script type="text/javascript">
 	document.addEventListener('DOMContentLoaded', function() {
 		// Tab switching for debug page
 		const tabLinks = document.querySelectorAll('.brag-book-gallery-tab-link');
 		const tabContents = document.querySelectorAll('.brag-book-gallery-log-tab-content');
-		
+
 		tabLinks.forEach(link => {
 			link.addEventListener('click', function(e) {
 				e.preventDefault();
-				
+
 				// Remove active class from all tabs and contents
 				tabLinks.forEach(l => l.classList.remove('active'));
 				tabContents.forEach(c => c.classList.remove('active'));
-				
+
 				// Add active class to clicked tab
 				this.classList.add('active');
-				
+
 				// Show corresponding content
 				const tabId = this.getAttribute('data-tab');
 				const content = document.getElementById(tabId + '-tab');
@@ -2529,7 +2529,7 @@ class Settings {
 				}
 			});
 		});
-		
+
 		// Copy system info to clipboard
 		const copyBtn = document.getElementById('bb-copy-system-info');
 		if (copyBtn) {
@@ -2548,7 +2548,7 @@ class Settings {
 				}
 			});
 		}
-		
+
 		// Export system info
 		const exportBtn = document.getElementById('bb-export-system-info');
 		if (exportBtn) {
@@ -2558,7 +2558,7 @@ class Settings {
 		}
 	});
 	</script>
-	
+
 	<style type="text/css">
 	.brag-book-gallery-log-tab-content {
 		display: none;
@@ -2863,12 +2863,12 @@ class Settings {
 		/* translators: %s: enabled or disabled status */
 		$info[] = sprintf( esc_html__( 'PHP OpenSSL: %s', 'brag-book-gallery' ), ( extension_loaded( 'openssl' ) ? esc_html__( 'Enabled', 'brag-book-gallery' ) : esc_html__( 'Disabled', 'brag-book-gallery' ) ) );
 		$info[] = '';
-		
+
 		// Browser Information (from user agent)
 		$info[] = esc_html__( '--- Browser Information ---', 'brag-book-gallery' );
 		$user_agent = $_SERVER['HTTP_USER_AGENT'] ?? esc_html__( 'Unknown', 'brag-book-gallery' );
 		$info[] = sprintf( esc_html__( 'User Agent: %s', 'brag-book-gallery' ), $user_agent );
-		
+
 		// Parse browser details
 		$browser = $this->get_browser_info( $user_agent );
 		$info[] = sprintf( esc_html__( 'Browser: %s', 'brag-book-gallery' ), $browser['name'] );
@@ -2912,8 +2912,8 @@ class Settings {
 		}
 		$info[] = '';
 
-		// BragBook Specific
-		$info[]        = '--- BragBook Configuration ---';
+		// BRAG Book Specific
+		$info[]        = '--- BRAG Book Configuration ---';
 		$gallery_pages = get_option( 'brag_book_gallery_gallery_page_slug', [] );
 		$info[]        = 'Gallery Pages: ' . count( $gallery_pages );
 
@@ -2961,7 +2961,7 @@ class Settings {
 				}
 			}
 		}
-		
+
 		$info[] = '';
 		$info[] = '==========================================';
 		$info[] = '         END OF SYSTEM REPORT';
@@ -3385,12 +3385,12 @@ class Settings {
 
 		} catch ( Exception $e ) {
 			/* translators: 1: error message, 2: file name, 3: line number */
-			error_log( sprintf( __( 'BragBook Settings Save Error: %1$s in %2$s on line %3$s', 'brag-book-gallery' ), $e->getMessage(), $e->getFile(), $e->getLine() ) );
+			error_log( sprintf( __( 'BRAG Book Settings Save Error: %1$s in %2$s on line %3$s', 'brag-book-gallery' ), $e->getMessage(), $e->getFile(), $e->getLine() ) );
 			/* translators: 1: error message, 2: line number */
 			wp_send_json_error( sprintf( __( 'Error: %1$s (Line: %2$s)', 'brag-book-gallery' ), $e->getMessage(), $e->getLine() ) );
 		} catch ( Error $e ) {
 			/* translators: 1: error message, 2: file name, 3: line number */
-			error_log( sprintf( __( 'BragBook Settings Fatal Error: %1$s in %2$s on line %3$s', 'brag-book-gallery' ), $e->getMessage(), $e->getFile(), $e->getLine() ) );
+			error_log( sprintf( __( 'BRAG Book Settings Fatal Error: %1$s in %2$s on line %3$s', 'brag-book-gallery' ), $e->getMessage(), $e->getFile(), $e->getLine() ) );
 			/* translators: 1: error message, 2: line number */
 			wp_send_json_error( sprintf( __( 'Fatal Error: %1$s (Line: %2$s)', 'brag-book-gallery' ), $e->getMessage(), $e->getLine() ) );
 		}
@@ -3818,7 +3818,7 @@ class Settings {
 							<?php
 							printf(
 							/* translators: %s: settings page link */
-								esc_html__( 'BragBook Gallery is not configured. Please %s to get started.', 'brag-book-gallery' ),
+								esc_html__( 'BRAG Book Gallery is not configured. Please %s to get started.', 'brag-book-gallery' ),
 								'<a href="' . esc_url( admin_url( 'admin.php?page=brag-book-gallery-settings' ) ) . '">' .
 								esc_html__( 'configure your settings', 'brag-book-gallery' ) . '</a>'
 							);
@@ -3839,7 +3839,7 @@ class Settings {
 	private function clear_plugin_cache(): void {
 		global $wpdb;
 
-		// Clear BragBook Gallery transients
+		// Clear BRAG Book Gallery transients
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$wpdb->query(
 			$wpdb->prepare(
@@ -4070,7 +4070,7 @@ class Settings {
 	 * @since 3.0.0
 	 */
 	public function enqueue_admin_styles( string $hook ): void {
-		// Only load on BragBook pages
+		// Only load on BRAG Book pages
 		if ( ! str_contains( $hook, 'brag-book-gallery' ) ) {
 			return;
 		}

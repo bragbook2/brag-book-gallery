@@ -135,7 +135,7 @@ class Assets {
 	 * @since 3.0.0
 	 */
 	public function enqueue_frontend_assets(): void {
-		// Bail early if not on a BragBook page
+		// Bail early if not on a BRAG Book page
 		if ( ! $this->is_bragbook_page() ) {
 			return;
 		}
@@ -154,7 +154,7 @@ class Assets {
 	 * Enqueue admin assets
 	 *
 	 * Loads all necessary styles and scripts for the WordPress admin area,
-	 * but only on BragBook admin pages to avoid conflicts.
+	 * but only on BRAG Book admin pages to avoid conflicts.
 	 *
 	 * @param string $hook_suffix The current admin page hook suffix
 	 *
@@ -490,9 +490,9 @@ class Assets {
 	}
 
 	/**
-	 * Check if current page is a BragBook page
+	 * Check if current page is a BRAG Book page
 	 *
-	 * @return bool True if on a BragBook page, false otherwise
+	 * @return bool True if on a BRAG Book page, false otherwise
 	 * @since 3.0.0
 	 */
 	private function is_bragbook_page(): bool {
@@ -524,9 +524,9 @@ class Assets {
 		}
 
 		/**
-		 * Filter whether current page is a BragBook page
+		 * Filter whether current page is a BRAG Book page
 		 *
-		 * @param bool $is_bragbook_page Whether current page is a BragBook page
+		 * @param bool $is_bragbook_page Whether current page is a BRAG Book page
 		 *
 		 * @since 3.0.0
 		 */
@@ -537,11 +537,11 @@ class Assets {
 	}
 
 	/**
-	 * Check if current admin page is a BragBook admin page
+	 * Check if current admin page is a BRAG Book admin page
 	 *
 	 * @param string $hook_suffix Current admin page hook suffix
 	 *
-	 * @return bool True if on a BragBook admin page, false otherwise
+	 * @return bool True if on a BRAG Book admin page, false otherwise
 	 * @since 3.0.0
 	 */
 	private function is_bragbook_admin_page( string $hook_suffix ): bool {

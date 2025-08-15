@@ -21,7 +21,7 @@ if ( ! defined( constant_name: 'WPINC' ) ) {
 /**
  * API Settings Class
  *
- * Comprehensive API configuration management for BragBook Gallery connections.
+ * Comprehensive API configuration management for BRAG Book Gallery connections.
  * This class handles all aspects of API connectivity including:
  *
  * - Multiple API connection management with validation
@@ -31,7 +31,7 @@ if ( ! defined( constant_name: 'WPINC' ) ) {
  * - Performance optimization settings
  *
  * The API settings form supports multiple concurrent connections to different
- * BragBook API endpoints, allowing for complex deployment scenarios and
+ * BRAG Book API endpoints, allowing for complex deployment scenarios and
  * redundancy configurations. Each connection is validated individually
  * and stored securely in WordPress options.
  *
@@ -68,7 +68,7 @@ class Settings_Api extends Settings_Base {
 	/**
 	 * Render the complete API configuration interface
 	 *
-	 * Generates a comprehensive settings page for managing BragBook API connections.
+	 * Generates a comprehensive settings page for managing BRAG Book API connections.
 	 * The interface includes multiple sections:
 	 *
 	 * 1. **Setup Instructions**: Step-by-step guidance for API configuration
@@ -122,10 +122,10 @@ class Settings_Api extends Settings_Base {
 
 			<div class="brag-book-gallery-api-instructions">
 				<div class="brag-book-gallery-notice brag-book-gallery-notice-info">
-					<h3><?php esc_html_e( 'Getting Started with BragBook API', 'brag-book-gallery' ); ?></h3>
+					<h3><?php esc_html_e( 'Getting Started with BRAG Book API', 'brag-book-gallery' ); ?></h3>
 					<ol>
 						<li>
-							<?php esc_html_e( 'Log in to your BragBook account at', 'brag-book-gallery' ); ?>
+							<?php esc_html_e( 'Log in to your BRAG Book account at', 'brag-book-gallery' ); ?>
 							<a href="https://app.bragbookgallery.com" target="_blank">
 								<?php esc_html_e( 'app.bragbookgallery.com', 'brag-book-gallery' ); ?>
 							</a>
@@ -142,7 +142,7 @@ class Settings_Api extends Settings_Base {
 
 				<?php if ( empty( $api_tokens ) ) : ?>
 					<div class="brag-book-gallery-notice brag-book-gallery-notice-warning inline">
-						<p><?php esc_html_e( 'No API connections configured. Add at least one connection to connect to the BragBook API.', 'brag-book-gallery' ); ?></p>
+						<p><?php esc_html_e( 'No API connections configured. Add at least one connection to connect to the BRAG Book API.', 'brag-book-gallery' ); ?></p>
 					</div>
 				<?php endif; ?>
 
@@ -378,7 +378,7 @@ class Settings_Api extends Settings_Base {
 
 		<script type="module">
 		/**
-		 * BragBook Gallery API Settings JavaScript
+		 * BRAG Book Gallery API Settings JavaScript
 		 *
 		 * Handles API connection management, validation, and dynamic form interactions
 		 * using modern ES6+ JavaScript following WordPress VIP coding standards.
