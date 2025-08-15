@@ -20,12 +20,12 @@ if ( ! defined( 'WPINC' ) ) {
 
 /**
  * Base Settings Class
- * 
+ *
  * Abstract base class that provides common functionality and structure for all
- * settings pages in the BragBook Gallery plugin. This class implements the
+ * settings pages in the BRAG Book Gallery plugin. This class implements the
  * Template Method pattern to ensure consistent behavior across all settings pages
  * while allowing individual pages to customize their specific functionality.
- * 
+ *
  * Key features provided:
  * - Consistent page structure with header, navigation, and footer
  * - Common form handling and validation patterns
@@ -33,7 +33,7 @@ if ( ! defined( 'WPINC' ) ) {
  * - WordPress settings API integration
  * - Security and capability checking
  * - Admin notice management
- * 
+ *
  * All settings pages must extend this class and implement the abstract methods
  * to define their specific behavior while inheriting the common structure.
  *
@@ -43,13 +43,13 @@ abstract class Settings_Base {
 
 	/**
 	 * WordPress admin page slug identifier
-	 * 
+	 *
 	 * Unique identifier used by WordPress for:
 	 * - Menu registration (add_menu_page, add_submenu_page)
 	 * - URL routing (admin.php?page={slug})
 	 * - Settings group identification
 	 * - Asset targeting and hook detection
-	 * 
+	 *
 	 * Must be unique within the WordPress admin to prevent conflicts.
 	 *
 	 * @since 3.0.0
@@ -59,24 +59,24 @@ abstract class Settings_Base {
 
 	/**
 	 * Localized page title for admin display
-	 * 
+	 *
 	 * The full page title displayed in the browser title bar and page header.
 	 * This should be a human-readable, translated string that clearly identifies
 	 * the purpose of the settings page to administrators.
-	 * 
+	 *
 	 * Set during render() method to ensure translations are available.
 	 *
 	 * @since 3.0.0
-	 * @var string Translated page title (e.g., 'BragBook Gallery Settings')
+	 * @var string Translated page title (e.g., 'BRAG Book Gallery Settings')
 	 */
 	protected string $page_title = '';
 
 	/**
 	 * Localized menu title for navigation display
-	 * 
+	 *
 	 * Shorter version of the page title used in admin menu and navigation tabs.
 	 * Should be concise while remaining descriptive to fit limited menu space.
-	 * 
+	 *
 	 * Set during render() method to ensure translations are available.
 	 *
 	 * @since 3.0.0
@@ -86,7 +86,7 @@ abstract class Settings_Base {
 
 	/**
 	 * Constructor - Initialize settings page
-	 * 
+	 *
 	 * Automatically calls the init() method to allow child classes to perform
 	 * their specific initialization without needing to override __construct().
 	 * This follows the Template Method pattern where the base class controls
@@ -100,14 +100,14 @@ abstract class Settings_Base {
 
 	/**
 	 * Initialize the settings page - ABSTRACT METHOD
-	 * 
+	 *
 	 * Child classes must implement this method to perform their specific
 	 * initialization tasks such as:
 	 * - Setting page_slug property
 	 * - Registering WordPress hooks (if needed)
 	 * - Initializing page-specific properties
 	 * - Setting up validation rules
-	 * 
+	 *
 	 * Note: Localized strings (page_title, menu_title) should be set in render()
 	 * method to ensure translation functions are available.
 	 *
@@ -118,7 +118,7 @@ abstract class Settings_Base {
 
 	/**
 	 * Render the complete settings page - ABSTRACT METHOD
-	 * 
+	 *
 	 * Child classes must implement this method to define their page content.
 	 * The method should:
 	 * - Set localized page_title and menu_title properties
@@ -126,7 +126,7 @@ abstract class Settings_Base {
 	 * - Call render_header() to output common page structure
 	 * - Output page-specific content and forms
 	 * - Call render_footer() to close page structure
-	 * 
+	 *
 	 * Example implementation structure:
 	 * ```php
 	 * $this->page_title = __('My Settings', 'textdomain');
@@ -145,16 +145,16 @@ abstract class Settings_Base {
 
 	/**
 	 * Get configuration data for all navigation tabs
-	 * 
+	 *
 	 * Provides the complete navigation structure used throughout the settings interface.
-	 * Each tab includes localized labels and admin URLs. This method serves as the 
+	 * Each tab includes localized labels and admin URLs. This method serves as the
 	 * central source of truth for navigation configuration.
-	 * 
+	 *
 	 * Tab structure includes:
 	 * - Consistent URL patterns following WordPress admin conventions
 	 * - Localized labels for internationalization support
 	 * - Unique slug identifiers for routing and state management
-	 * 
+	 *
 	 * Used by render_navigation() to generate the actual navigation HTML.
 	 *
 	 * @since 3.0.0
@@ -202,19 +202,19 @@ abstract class Settings_Base {
 
 	/**
 	 * Render the complete navigation tab system with intelligent visibility
-	 * 
+	 *
 	 * Generates the HTML navigation interface that appears on all settings pages.
 	 * Implements sophisticated logic to show/hide tabs based on plugin configuration:
-	 * 
+	 *
 	 * - API status determines which tabs are accessible
 	 * - Current mode (JavaScript/Local) controls mode-specific tab visibility
 	 * - Active tab highlighting provides clear visual feedback
 	 * - Responsive design adapts to different screen sizes
 	 * - Badge notifications indicate configuration status
-	 * 
+	 *
 	 * The navigation uses WordPress admin styling conventions and integrates
 	 * seamlessly with the existing admin interface.
-	 * 
+	 *
 	 * Visual features:
 	 * - Dashicons for consistent iconography
 	 * - Hover states for better UX
@@ -230,13 +230,13 @@ abstract class Settings_Base {
 		if ( empty( $current_page ) ) {
 			$current_page = $this->page_slug;
 		}
-		
+
 		// Get current mode and API status
 		$mode_manager = \BRAGBookGallery\Includes\Mode\Mode_Manager::get_instance();
 		$current_mode = $mode_manager->get_current_mode();
 		$api_tokens = get_option( 'brag_book_gallery_api_token', array() );
 		$has_api_key = ! empty( $api_tokens );
-		
+
 		// Map page slugs to tab keys
 		$page_to_tab = array(
 			'brag-book-gallery-settings'     => 'general',
@@ -248,9 +248,9 @@ abstract class Settings_Base {
 			'brag-book-gallery-help'          => 'help',
 			'brag-book-gallery-debug'         => 'debug',
 		);
-		
+
 		$current_tab = isset( $page_to_tab[ $current_page ] ) ? $page_to_tab[ $current_page ] : 'general';
-		
+
 		// Tab configuration with icons
 		$tabs = array(
 			'general' => array(
@@ -264,7 +264,7 @@ abstract class Settings_Base {
 				'icon'  => 'dashicons-admin-network',
 			),
 		);
-		
+
 		// Only add mode and mode-specific tabs if API key is configured
 		if ( $has_api_key ) {
 			$tabs['mode'] = array(
@@ -272,7 +272,7 @@ abstract class Settings_Base {
 				'url'   => admin_url( 'admin.php?page=brag-book-gallery-mode' ),
 				'icon'  => 'dashicons-admin-generic',
 			);
-			
+
 			// Add mode-specific tabs
 			if ( $current_mode === 'javascript' ) {
 				$tabs['javascript'] = array(
@@ -288,7 +288,7 @@ abstract class Settings_Base {
 				);
 			}
 		}
-		
+
 		// Add remaining tabs
 		$tabs['consultations'] = array(
 			'title' => __( 'Consultations', 'brag-book-gallery' ),
@@ -305,7 +305,7 @@ abstract class Settings_Base {
 			'url'   => admin_url( 'admin.php?page=brag-book-gallery-debug' ),
 			'icon'  => 'dashicons-admin-tools',
 		);
-		
+
 		// Check API configuration status for badge
 		$api_tokens = get_option( 'brag_book_gallery_api_token', array() );
 		$has_api    = ! empty( $api_tokens );
@@ -345,8 +345,8 @@ abstract class Settings_Base {
 				<div class="brag-book-gallery-header-left">
 					<img
 						src="<?php echo esc_url( plugin_dir_url( dirname( __DIR__ ) ) . 'assets/images/bragbook-logo.svg' ); ?>"
-						alt="BragBook" class="brag-book-gallery-logo"/>
-					<h1><?php esc_html_e( 'BragBook Gallery', 'brag-book-gallery' ); ?></h1>
+						alt="BRAG Book" class="brag-book-gallery-logo"/>
+					<h1><?php esc_html_e( 'BRAG Book Gallery', 'brag-book-gallery' ); ?></h1>
 				</div>
 				<div class="brag-book-gallery-header-right">
 					<span class="brag-book-gallery-version-badge">
@@ -354,9 +354,9 @@ abstract class Settings_Base {
 					</span>
 				</div>
 			</div>
-			
+
 			<?php $this->render_navigation(); ?>
-			
+
 			<div class="brag-book-gallery-content">
 		<?php
 	}
@@ -376,20 +376,20 @@ abstract class Settings_Base {
 
 	/**
 	 * Validate form submission with comprehensive security checks
-	 * 
+	 *
 	 * Performs critical security validations before processing any form data.
 	 * This method should be called at the beginning of any save operation
 	 * to ensure the request is legitimate and authorized.
-	 * 
+	 *
 	 * Security checks performed:
 	 * - WordPress nonce verification to prevent CSRF attacks
 	 * - User capability verification to ensure proper permissions
 	 * - Request method validation (POST required)
-	 * 
+	 *
 	 * The method returns false if any security check fails, allowing
 	 * calling methods to abort processing safely without exposing
 	 * sensitive operations to unauthorized users.
-	 * 
+	 *
 	 * This follows WordPress security best practices and should be used
 	 * consistently across all settings save operations.
 	 *
@@ -400,7 +400,7 @@ abstract class Settings_Base {
 	 */
 	protected function save_settings( string $nonce_action, string $nonce_field ): bool {
 		// Verify nonce to prevent CSRF attacks
-		if ( ! isset( $_POST[ $nonce_field ] ) || 
+		if ( ! isset( $_POST[ $nonce_field ] ) ||
 		     ! wp_verify_nonce( $_POST[ $nonce_field ], $nonce_action ) ) {
 			return false;
 		}
@@ -415,22 +415,22 @@ abstract class Settings_Base {
 
 	/**
 	 * Add a WordPress admin notice for user feedback
-	 * 
+	 *
 	 * Creates an admin notice that will be displayed on the current settings page
 	 * to provide feedback about operations (successful saves, errors, warnings, etc.).
-	 * 
+	 *
 	 * Uses WordPress's built-in settings error system which automatically handles:
 	 * - Proper HTML structure and CSS classes
 	 * - Dismissible notices where appropriate
 	 * - Integration with WordPress admin styling
 	 * - Accessibility features for screen readers
-	 * 
+	 *
 	 * Notice types and their typical usage:
 	 * - 'success': Settings saved successfully
 	 * - 'error': Validation errors or save failures
 	 * - 'warning': Configuration issues or deprecation notices
 	 * - 'info': Informational messages or status updates
-	 * 
+	 *
 	 * The notice will be displayed when settings_errors() is called,
 	 * typically in the render() method of child classes.
 	 *

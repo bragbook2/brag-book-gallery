@@ -2,7 +2,7 @@
 /**
  * REST API Endpoints Class
  *
- * Handles all external API communications with the BragBook service,
+ * Handles all external API communications with the BRAG Book service,
  * including data retrieval, filtering, favorites management, and tracking.
  *
  * @package    BRAGBookGallery
@@ -30,7 +30,7 @@ if ( ! defined( constant_name: 'ABSPATH' ) ) {
  *
  * This class is responsible for:
  * - Managing external API communications
- * - Handling data retrieval from BragBook service
+ * - Handling data retrieval from BRAG Book service
  * - Processing filter and pagination requests
  * - Managing favorites functionality
  * - Tracking plugin usage analytics
@@ -144,7 +144,7 @@ class Endpoints {
 	/**
 	 * Send plugin version tracking data
 	 *
-	 * Sends plugin usage analytics to the BragBook service for
+	 * Sends plugin usage analytics to the BRAG Book service for
 	 * tracking active installations and versions.
 	 *
 	 * @since 3.0.0
@@ -458,7 +458,7 @@ class Endpoints {
 	): ?array {
 		// Use the case detail endpoint with case ID
 		$endpoint = sprintf( self::API_ENDPOINTS['case_detail'], $case_number );
-		
+
 		// Log the request details for debugging
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 			error_log( 'Case API Request Details:' );
@@ -468,7 +468,7 @@ class Endpoints {
 			error_log( 'Property ID: ' . $website_property_id );
 			error_log( 'Case Number: ' . $case_number );
 		}
-		
+
 		// Try both request formats - first with arrays (like pagination endpoint)
 		$request_body = [
 			'apiTokens' => [ $api_token ],
@@ -482,19 +482,19 @@ class Endpoints {
 			'POST',
 			false // Don't use cache for case details
 		);
-		
+
 		// If first format failed, try with singular keys
 		if ( empty( $response ) ) {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 				error_log( 'First format failed, trying singular keys...' );
 			}
-			
+
 			// Try with singular keys (some endpoints might expect this)
 			$request_body = [
 				'apiToken' => $api_token,
 				'websitePropertyId' => (int) $website_property_id,
 			];
-			
+
 			$response = $this->make_api_request(
 				$endpoint,
 				$request_body,
@@ -502,7 +502,7 @@ class Endpoints {
 				false
 			);
 		}
-		
+
 		if ( empty( $response ) ) {
 			$this->log_error( 'Empty response from case detail API for case: ' . $case_number . ', endpoint: ' . $endpoint );
 			return null;
@@ -510,7 +510,7 @@ class Endpoints {
 
 		// Decode response
 		$data = json_decode( $response, true );
-		
+
 		// Log the response for debugging
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 			error_log( 'Case API Response status: ' . ( ! empty( $data ) ? 'Has data' : 'Empty' ) );
@@ -521,19 +521,19 @@ class Endpoints {
 				}
 			}
 		}
-		
+
 		// Check if successful and has data
 		if ( ! is_array( $data ) ) {
 			$this->log_error( 'Invalid response format from case API' );
 			return null;
 		}
-		
+
 		// Check for success flag
 		if ( isset( $data['success'] ) && $data['success'] === true && ! empty( $data['data'] ) ) {
 			// Return the first case from data array
 			return is_array( $data['data'] ) && ! empty( $data['data'][0] ) ? $data['data'][0] : null;
 		}
-		
+
 		// If no success flag but has data key, try that
 		if ( isset( $data['data'] ) && is_array( $data['data'] ) && ! empty( $data['data'] ) ) {
 			// Return the first case from data array even without success flag
@@ -542,12 +542,12 @@ class Endpoints {
 			}
 			return $data['data'][0];
 		}
-		
+
 		// If no success flag, maybe the response is the case data directly
 		if ( isset( $data['id'] ) || isset( $data['caseId'] ) ) {
 			return $data;
 		}
-		
+
 		$this->log_error( 'Case not found or invalid response structure. Keys: ' . implode(', ', array_keys($data)) );
 		return null;
 	}
@@ -643,11 +643,11 @@ class Endpoints {
 			'headers' => array(
 				'Content-Type' => 'application/json',
 				'Accept'       => 'application/json',
-				'User-Agent'   => 'BragBook-Gallery-Plugin/3.0.0',
+				'User-Agent'   => 'BRAG Book-Gallery-Plugin/3.0.0',
 			),
 			'body'    => wp_json_encode( $body ),
 		);
-		
+
 		// Debug logging
 		error_log( 'API Request URL: ' . $url );
 		error_log( 'API Request Body: ' . wp_json_encode( $body ) );
@@ -678,7 +678,7 @@ class Endpoints {
 
 		// Get response body.
 		$response_body = wp_remote_retrieve_body( $response );
-		
+
 		// Debug log the response
 		error_log( 'API Response: ' . $response_body );
 
@@ -899,7 +899,7 @@ class Endpoints {
 	private function log_error( string $message ): void {
 
 		if ( defined( constant_name: 'WP_DEBUG' ) && WP_DEBUG ) {
-			error_log( message: '[BragBook API] ' . $message );
+			error_log( message: '[BRAG Book API] ' . $message );
 		}
 
 		/**
@@ -1041,7 +1041,7 @@ class Endpoints {
 
 		// For carousel GET request, we need to use a simpler approach
 		// The carousel endpoint doesn't use the standard make_api_request method
-		
+
 		// Check cache first
 		$cached_response = get_transient( $cache_key );
 		if ( $cached_response !== false ) {
@@ -1050,12 +1050,12 @@ class Endpoints {
 
 		// Make direct GET request
 		$full_url = Setup::get_api_url() . $url;
-		
+
 		$response = wp_remote_get( $full_url, [
 			'timeout' => 30,
 			'headers' => [
 				'Accept' => 'application/json',
-				'User-Agent' => 'BragBook Gallery Plugin/3.0.0',
+				'User-Agent' => 'BRAG Book Gallery Plugin/3.0.0',
 			],
 		] );
 
@@ -1096,7 +1096,7 @@ class Endpoints {
 		global $wpdb;
 
 		if ( empty( $type ) ) {
-			// Clear all BragBook API cache including timeout transients
+			// Clear all BRAG Book API cache including timeout transients
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$result = $wpdb->query(
 				$wpdb->prepare(

@@ -101,7 +101,7 @@ class Consultation {
 
 		// Handle non-authenticated form submissions.
 		add_action(	'wp_ajax_nopriv_' . self::AJAX_SUBMISSION, array( $this, 'handle_form_submission' ) );
-		
+
 		// Delete entry AJAX handler (admin only)
 		add_action( 'wp_ajax_' . self::AJAX_DELETE, array( $this, 'handle_delete_entry' ) );
 	}
@@ -283,12 +283,12 @@ class Consultation {
 
 		// Try to verify with consultation_form_nonce first, then fall back to general nonce
 		$nonce_valid = wp_verify_nonce( $_POST['nonce'], 'consultation_form_nonce' );
-		
+
 		// If consultation nonce fails, try the general gallery nonce
 		if ( ! $nonce_valid ) {
 			$nonce_valid = wp_verify_nonce( $_POST['nonce'], 'brag_book_gallery_nonce' );
 		}
-		
+
 		if ( ! $nonce_valid ) {
 			wp_send_json_error(
 				esc_html__(
@@ -337,11 +337,11 @@ class Consultation {
 
 		// Try to get API configuration (optional)
 		$config = $this->get_api_configuration();
-		
+
 		// If API is configured, attempt to send to external API
 		if ( ! is_wp_error( $config ) ) {
-			error_log( 'API configuration found, attempting to send consultation to BragBook API' );
-			
+			error_log( 'API configuration found, attempting to send consultation to BRAG Book API' );
+
 			// Determine gallery context from referrer.
 			$gallery_context = $this->determine_gallery_context(
 				wp_get_referer() ?: '',
@@ -372,10 +372,10 @@ class Consultation {
 						$gallery_context['index']
 					);
 				}
-				error_log( 'Consultation successfully sent to BragBook API' );
+				error_log( 'Consultation successfully sent to BRAG Book API' );
 			} catch ( \Exception $e ) {
 				// Log API error but don't fail the submission
-				error_log( 'BragBook API submission failed: ' . $e->getMessage() );
+				error_log( 'BRAG Book API submission failed: ' . $e->getMessage() );
 			}
 		} else {
 			error_log( 'No API configuration found, skipping API submission' );
@@ -691,7 +691,7 @@ class Consultation {
 	 */
 	private function send_to_api( array $data, string $api_token, string $website_property_id ): void {
 		$base_url = self::get_api_url();
-		
+
 		// Build the URL with query parameters
 		$url = sprintf(
 			'%s/api/plugin/consultations?apiToken=%s&websitepropertyId=%s',
@@ -737,7 +737,7 @@ class Consultation {
 
 		$response_code = wp_remote_retrieve_response_code( $response );
 		$body = wp_remote_retrieve_body( $response );
-		
+
 		error_log( 'API response code: ' . $response_code );
 		error_log( 'API response body: ' . $body );
 
@@ -753,7 +753,7 @@ class Consultation {
 		}
 
 		// The API might return success in different ways, so be flexible
-		if ( isset( $response_data['error'] ) || 
+		if ( isset( $response_data['error'] ) ||
 			 ( isset( $response_data['success'] ) && false === $response_data['success'] ) ) {
 			$error_msg = $response_data['message'] ?? $response_data['error'] ?? 'API submission failed';
 			throw new \Exception( 'API submission was not successful: ' . $error_msg );
@@ -815,33 +815,33 @@ class Consultation {
 	 * @since 3.0.0
 	 */
 	public function handle_delete_entry(): void {
-		
+
 		// Check user permissions
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_send_json_error( __( 'You do not have permission to delete entries.', 'brag-book-gallery' ) );
 		}
-		
+
 		// Verify nonce for security
 		if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( $_POST['nonce'], 'consultation_delete_nonce' ) ) {
 			wp_send_json_error( __( 'Security verification failed.', 'brag-book-gallery' ) );
 		}
-		
+
 		// Get and validate post ID
 		$post_id = isset( $_POST['post_id'] ) ? absint( $_POST['post_id'] ) : 0;
-		
+
 		if ( ! $post_id ) {
 			wp_send_json_error( __( 'Invalid entry ID.', 'brag-book-gallery' ) );
 		}
-		
+
 		// Verify it's a consultation entry
 		$post = get_post( $post_id );
 		if ( ! $post || $post->post_type !== self::POST_TYPE ) {
 			wp_send_json_error( __( 'Entry not found.', 'brag-book-gallery' ) );
 		}
-		
+
 		// Delete the post
 		$deleted = wp_delete_post( $post_id, true ); // true = force delete (skip trash)
-		
+
 		if ( $deleted ) {
 			wp_send_json_success( array(
 				'message' => __( 'Entry deleted successfully.', 'brag-book-gallery' ),
@@ -957,9 +957,9 @@ class Consultation {
 				esc_html( $phone ),
 				esc_html( $date ),
 				wp_kses_post( $description ),
-				( strlen( $full_description ) > 150 ? 
-					'<div class="description-full" style="display:none;">' . wp_kses_post( $full_description ) . '</div>' : 
-					'' 
+				( strlen( $full_description ) > 150 ?
+					'<div class="description-full" style="display:none;">' . wp_kses_post( $full_description ) . '</div>' :
+					''
 				),
 				$post->ID,
 				esc_attr__( 'View Details', 'brag-book-gallery' ),
@@ -1195,34 +1195,34 @@ class Consultation {
 
 						// Initial load
 						loadConsultationPosts( 1 );
-						
+
 						/**
 						 * Handle delete button clicks
 						 */
 						const handleDelete = async (button) => {
 							const postId = button.dataset.id;
 							const postName = button.dataset.name;
-							
+
 							if (!confirm(`Are you sure you want to delete the consultation from "${postName}"? This action cannot be undone.`)) {
 								return;
 							}
-							
+
 							button.disabled = true;
 							button.innerHTML = '<span class="dashicons dashicons-update spinning"></span> Deleting...';
-							
+
 							try {
 								const formData = new FormData();
 								formData.append('action', 'delete_consultation_entry');
 								formData.append('nonce', deleteNonce);
 								formData.append('post_id', postId);
-								
+
 								const response = await fetch(ajaxurl, {
 									method: 'POST',
 									body: formData
 								});
-								
+
 								const data = await response.json();
-								
+
 								if (data.success) {
 									// Remove the row with fade out effect
 									const row = button.closest('tr');
@@ -1248,14 +1248,14 @@ class Consultation {
 								button.innerHTML = '<span class="dashicons dashicons-trash"></span>';
 							}
 						};
-						
+
 						/**
 						 * Handle view details in modal dialog
 						 */
 						const handleViewDetails = (button) => {
 							const row = button.closest('tr');
 							const postId = button.dataset.id;
-							
+
 							// Get entry details from the row
 							const name = row.querySelector('.consultation-name strong').textContent;
 							const email = row.querySelector('.consultation-email a').textContent;
@@ -1264,7 +1264,7 @@ class Consultation {
 							const fullDesc = row.querySelector('.description-full');
 							const contentDiv = row.querySelector('.description-content');
 							const message = fullDesc ? fullDesc.textContent : contentDiv.textContent;
-							
+
 							// Create or get the dialog
 							let dialog = document.getElementById('consultation-detail-dialog');
 							if (!dialog) {
@@ -1273,7 +1273,7 @@ class Consultation {
 								dialog.className = 'consultation-dialog';
 								document.body.appendChild(dialog);
 							}
-							
+
 							// Populate dialog content
 							dialog.innerHTML = `
 								<div class="consultation-dialog-content">
@@ -1317,10 +1317,10 @@ class Consultation {
 									</div>
 								</div>
 							`;
-							
+
 							// Show the dialog
 							dialog.showModal();
-							
+
 							// Handle close button clicks
 							const closeButtons = dialog.querySelectorAll('.dialog-close, .dialog-close-btn');
 							closeButtons.forEach(btn => {
@@ -1328,7 +1328,7 @@ class Consultation {
 									dialog.close();
 								});
 							});
-							
+
 							// Handle reply email button
 							const replyBtn = dialog.querySelector('.reply-email');
 							if (replyBtn) {
@@ -1336,21 +1336,21 @@ class Consultation {
 									window.location.href = `mailto:${email}?subject=Re: Consultation Request from ${name}`;
 								});
 							}
-							
+
 							// Close dialog on outside click
 							dialog.addEventListener('click', (e) => {
 								if (e.target === dialog) {
 									dialog.close();
 								}
 							});
-							
+
 							// Close dialog on ESC key
 							dialog.addEventListener('cancel', (e) => {
 								e.preventDefault();
 								dialog.close();
 							});
 						};
-						
+
 						/**
 						 * Escape HTML to prevent XSS
 						 */
@@ -1376,14 +1376,14 @@ class Consultation {
 									loadConsultationPosts( page );
 								}
 							}
-							
+
 							// Handle delete button clicks
 							const deleteBtn = event.target.closest('.delete-consultation');
 							if (deleteBtn) {
 								event.preventDefault();
 								handleDelete(deleteBtn);
 							}
-							
+
 							// Handle view details button clicks
 							const viewBtn = event.target.closest('.view-consultation');
 							if (viewBtn) {
@@ -1393,7 +1393,7 @@ class Consultation {
 						} );
 					} );
 				</script>
-				
+
 				<style type="text/css">
 					.consultation-row:hover {
 						background-color: #f0f8ff;
@@ -1472,7 +1472,7 @@ class Consultation {
 						padding: 12px 8px;
 						vertical-align: middle;
 					}
-					
+
 					/* Dialog Styles */
 					.consultation-dialog {
 						border: none;
@@ -1484,18 +1484,18 @@ class Consultation {
 						max-height: 80vh;
 						overflow: visible;
 					}
-					
+
 					.consultation-dialog::backdrop {
 						background: rgba(0, 0, 0, 0.5);
 						backdrop-filter: blur(2px);
 					}
-					
+
 					.consultation-dialog-content {
 						display: flex;
 						flex-direction: column;
 						height: 100%;
 					}
-					
+
 					.consultation-dialog-header {
 						display: flex;
 						justify-content: space-between;
@@ -1505,14 +1505,14 @@ class Consultation {
 						background: #f8f9fa;
 						border-radius: 8px 8px 0 0;
 					}
-					
+
 					.consultation-dialog-header h2 {
 						margin: 0;
 						font-size: 20px;
 						font-weight: 600;
 						color: #23282d;
 					}
-					
+
 					.dialog-close {
 						background: none;
 						border: none;
@@ -1524,30 +1524,30 @@ class Consultation {
 						border-radius: 4px;
 						transition: background 0.2s;
 					}
-					
+
 					.dialog-close:hover {
 						background: rgba(0, 0, 0, 0.05);
 					}
-					
+
 					.dialog-close .dashicons {
 						font-size: 24px;
 						width: 24px;
 						height: 24px;
 						color: #666;
 					}
-					
+
 					.consultation-dialog-body {
 						padding: 20px;
 						overflow-y: auto;
 						flex-grow: 1;
 					}
-					
+
 					.detail-row {
 						display: flex;
 						margin-bottom: 15px;
 						align-items: flex-start;
 					}
-					
+
 					.detail-row label {
 						font-weight: 600;
 						color: #666;
@@ -1555,22 +1555,22 @@ class Consultation {
 						margin-right: 15px;
 						padding-top: 2px;
 					}
-					
+
 					.detail-value {
 						flex: 1;
 						color: #23282d;
 						line-height: 1.6;
 					}
-					
+
 					.detail-value a {
 						color: #0073aa;
 						text-decoration: none;
 					}
-					
+
 					.detail-value a:hover {
 						text-decoration: underline;
 					}
-					
+
 					.message-content {
 						background: #f5f5f5;
 						padding: 12px;
@@ -1580,7 +1580,7 @@ class Consultation {
 						max-height: 200px;
 						overflow-y: auto;
 					}
-					
+
 					.consultation-dialog-footer {
 						display: flex;
 						justify-content: flex-end;
@@ -1590,24 +1590,24 @@ class Consultation {
 						background: #f8f9fa;
 						border-radius: 0 0 8px 8px;
 					}
-					
+
 					.consultation-dialog-footer .button {
 						margin: 0;
 					}
-					
+
 					.reply-email {
 						display: flex;
 						align-items: center;
 						gap: 5px;
 					}
-					
+
 					.reply-email .dashicons {
 						font-size: 16px;
 						width: 16px;
 						height: 16px;
 					}
 				</style>
-				
+
 				<div class="bb_pag_loading" style="display: none;">
 					<p>
 						<?php
@@ -1716,13 +1716,13 @@ class Consultation {
 			<div class="brag-book-gallery-header-left">
 				<img
 					src="<?php echo esc_url( $logo_url ); ?>"
-					alt="BragBook"
+					alt="BRAG Book"
 					class="brag-book-gallery-logo"
 				/>
 				<h1>
 					<?php
 					esc_html_e(
-						'BragBook Gallery',
+						'BRAG Book Gallery',
 						'brag-book-gallery'
 					);
 					?>

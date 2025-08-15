@@ -21,30 +21,30 @@ if ( ! defined( 'WPINC' ) ) {
 /**
  * Help Settings Class
  *
- * Comprehensive help documentation and support resource center for BragBook Gallery.
+ * Comprehensive help documentation and support resource center for BRAG Book Gallery.
  * This class provides users with essential information, guides, and support resources
  * to effectively use and troubleshoot the plugin.
- * 
+ *
  * **Documentation Sections:**
  * - Quick setup guide with step-by-step instructions
  * - Complete shortcode reference with parameters
  * - Mode comparison table (JavaScript vs Local)
  * - Frequently asked questions with solutions
  * - System requirements and compatibility information
- * 
+ *
  * **Support Resources:**
  * - Direct links to online documentation
  * - Support contact information and channels
  * - Plugin update information and changelog access
  * - Community resources and forums
- * 
+ *
  * **User Experience Features:**
  * - Interactive FAQ section with common scenarios
  * - Visual comparison tables for mode selection
  * - Copy-paste ready shortcode examples
  * - System information display for support requests
  * - Direct links to relevant settings pages
- * 
+ *
  * This class serves as the primary self-service support interface,
  * reducing support requests by providing comprehensive documentation.
  *
@@ -177,7 +177,7 @@ class Settings_Help extends Settings_Base {
 			<!-- FAQs -->
 			<div class="brag-book-gallery-section">
 				<h2><?php esc_html_e( 'Frequently Asked Questions', 'brag-book-gallery' ); ?></h2>
-				
+
 				<div class="brag-book-gallery-faq">
 					<h3><?php esc_html_e( 'How do I switch between modes?', 'brag-book-gallery' ); ?></h3>
 					<p><?php esc_html_e( 'Go to the Mode settings page and select your preferred mode. The plugin will handle the transition automatically.', 'brag-book-gallery' ); ?></p>
@@ -237,7 +237,7 @@ class Settings_Help extends Settings_Base {
 						<tr>
 							<th><?php esc_html_e( 'Plugin Version', 'brag-book-gallery' ); ?></th>
 							<td>
-								<?php 
+								<?php
 								$plugin_data = get_plugin_data( WP_PLUGIN_DIR . '/brag-book-gallery/brag-book-gallery.php' );
 								echo esc_html( $plugin_data['Version'] ?? '3.0.0' );
 								?>
@@ -254,7 +254,7 @@ class Settings_Help extends Settings_Base {
 						<tr>
 							<th><?php esc_html_e( 'Active Mode', 'brag-book-gallery' ); ?></th>
 							<td>
-								<?php 
+								<?php
 								$mode_manager = \BRAGBookGallery\Includes\Mode\Mode_Manager::get_instance();
 								echo esc_html( ucfirst( $mode_manager->get_current_mode() ) );
 								?>

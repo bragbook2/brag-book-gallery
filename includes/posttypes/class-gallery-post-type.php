@@ -80,7 +80,7 @@ class Gallery_Post_Type {
 		$labels = array(
 			'name'                  => _x( 'Galleries', 'Post type general name', 'brag-book-gallery' ),
 			'singular_name'         => _x( 'Gallery', 'Post type singular name', 'brag-book-gallery' ),
-			'menu_name'             => _x( 'BragBook Galleries', 'Admin Menu text', 'brag-book-gallery' ),
+			'menu_name'             => _x( 'BRAG Book Galleries', 'Admin Menu text', 'brag-book-gallery' ),
 			'name_admin_bar'        => _x( 'Gallery', 'Add New on Toolbar', 'brag-book-gallery' ),
 			'add_new'               => __( 'Add New', 'brag-book-gallery' ),
 			'add_new_item'          => __( 'Add New Gallery', 'brag-book-gallery' ),
@@ -111,7 +111,7 @@ class Gallery_Post_Type {
 			'show_ui'               => true,
 			'show_in_menu'          => true,
 			'query_var'             => true,
-			'rewrite'               => array( 
+			'rewrite'               => array(
 				'slug' => self::SLUG,
 				'with_front' => false,
 			),
@@ -120,11 +120,11 @@ class Gallery_Post_Type {
 			'hierarchical'          => false,
 			'menu_position'         => 25,
 			'menu_icon'             => 'dashicons-format-gallery',
-			'supports'              => array( 
-				'title', 
-				'editor', 
-				'thumbnail', 
-				'excerpt', 
+			'supports'              => array(
+				'title',
+				'editor',
+				'thumbnail',
+				'excerpt',
 				'custom-fields',
 				'revisions',
 			),
@@ -255,10 +255,10 @@ class Gallery_Post_Type {
 	 */
 	public function render_images_meta_box( $post ): void {
 		wp_nonce_field( 'brag_gallery_meta_box', 'brag_gallery_meta_box_nonce' );
-		
+
 		$before_images = get_post_meta( $post->ID, '_brag_before_images', true );
 		$after_images = get_post_meta( $post->ID, '_brag_after_images', true );
-		
+
 		$before_images = $before_images ? json_decode( $before_images, true ) : array();
 		$after_images = $after_images ? json_decode( $after_images, true ) : array();
 		?>
@@ -367,7 +367,7 @@ class Gallery_Post_Type {
 		</p>
 		<p>
 			<strong><?php esc_html_e( 'Last Synced:', 'brag-book-gallery' ); ?></strong><br>
-			<?php 
+			<?php
 			if ( $last_synced ) {
 				echo esc_html( date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), strtotime( $last_synced ) ) );
 			} else {
@@ -389,7 +389,7 @@ class Gallery_Post_Type {
 	 */
 	public function save_meta( $post_id, $post, $update ): void {
 		// Check nonce
-		if ( ! isset( $_POST['brag_gallery_meta_box_nonce'] ) || 
+		if ( ! isset( $_POST['brag_gallery_meta_box_nonce'] ) ||
 			 ! wp_verify_nonce( $_POST['brag_gallery_meta_box_nonce'], 'brag_gallery_meta_box' ) ) {
 			return;
 		}
@@ -425,7 +425,7 @@ class Gallery_Post_Type {
 	 */
 	public function add_admin_columns( $columns ): array {
 		$new_columns = array();
-		
+
 		foreach ( $columns as $key => $title ) {
 			if ( $key === 'title' ) {
 				$new_columns[$key] = $title;
@@ -435,9 +435,9 @@ class Gallery_Post_Type {
 				$new_columns[$key] = $title;
 			}
 		}
-		
+
 		$new_columns['date'] = $columns['date'];
-		
+
 		return $new_columns;
 	}
 
@@ -455,7 +455,7 @@ class Gallery_Post_Type {
 				$case_id = get_post_meta( $post_id, '_brag_case_id', true );
 				echo esc_html( $case_id ?: '—' );
 				break;
-				
+
 			case 'sync_status':
 				$last_synced = get_post_meta( $post_id, '_brag_last_synced', true );
 				if ( $last_synced ) {

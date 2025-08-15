@@ -139,14 +139,14 @@ class Mode_Manager {
 	private function init_local_mode(): void {
 		// Check if classes exist before instantiating
 		if ( ! class_exists( 'BRAGBookGallery\Includes\PostTypes\Gallery_Post_Type' ) ) {
-			error_log( 'BragBook Gallery: Gallery_Post_Type class not found!' );
+			error_log( 'BRAG Book Gallery: Gallery_Post_Type class not found!' );
 			return;
 		}
 		if ( ! class_exists( 'BRAGBookGallery\Includes\Taxonomies\Gallery_Taxonomies' ) ) {
-			error_log( 'BragBook Gallery: Gallery_Taxonomies class not found!' );
+			error_log( 'BRAG Book Gallery: Gallery_Taxonomies class not found!' );
 			return;
 		}
-		
+
 		// Initialize post type and taxonomies
 		$this->post_type = new \BRAGBookGallery\Includes\PostTypes\Gallery_Post_Type();
 		$this->taxonomies = new \BRAGBookGallery\Includes\Taxonomies\Gallery_Taxonomies();
@@ -286,10 +286,10 @@ class Mode_Manager {
 		}
 
 		$all_settings = get_option( self::OPTION_MODE_SETTINGS, array() );
-		
+
 		$defaults = $this->get_default_settings( $mode );
 		$settings = isset( $all_settings[ $mode ] ) ? $all_settings[ $mode ] : array();
-		
+
 		return wp_parse_args( $settings, $defaults );
 	}
 
@@ -308,7 +308,7 @@ class Mode_Manager {
 
 		$all_settings = get_option( self::OPTION_MODE_SETTINGS, array() );
 		$all_settings[ $mode ] = $settings;
-		
+
 		return update_option( self::OPTION_MODE_SETTINGS, $all_settings );
 	}
 
@@ -410,7 +410,7 @@ class Mode_Manager {
 
 		$current_mode = $this->get_current_mode();
 		$settings = $this->get_mode_settings();
-		
+
 		// Get statistics for Local mode
 		$stats = array();
 		if ( $this->is_local_mode() ) {
@@ -481,7 +481,7 @@ class Mode_Manager {
 	 */
 	public function rest_switch_mode( $request ): \WP_REST_Response {
 		$new_mode = $request->get_param( 'mode' );
-		
+
 		if ( $this->switch_mode( $new_mode ) ) {
 			return new \WP_REST_Response( array(
 				'success' => true,

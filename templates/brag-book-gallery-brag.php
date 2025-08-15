@@ -2,7 +2,7 @@
 /**
  * Template Name: Brag Page Template
  *
- * Main routing template for BragBook gallery pages.
+ * Main routing template for BRAG Book gallery pages.
  * Handles routing to appropriate sub-templates based on URL structure.
  *
  * @package BRAGBook
@@ -188,8 +188,8 @@ if ( ! empty( $procedure_title ) &&
 			 * Send view tracking request to API using the centralized Endpoints class.
 			 */
 			$endpoints = new Endpoints();
-			$endpoints->track_case_view( 
-				$api_token, 
+			$endpoints->track_case_view(
+				$api_token,
 				(int) $case_id,
 				array() // No additional metadata needed
 			);

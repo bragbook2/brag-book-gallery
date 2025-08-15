@@ -2,7 +2,7 @@
 /**
  * Template Name: Consultation Page Template
  *
- * Renders the consultation request form for the BragBook gallery plugin.
+ * Renders the consultation request form for the BRAG Book gallery plugin.
  * Allows visitors to submit consultation requests with contact information.
  *
  * @package BRAGBook
@@ -128,7 +128,7 @@ $logo_image_url  = Setup::get_asset_url( asset_path:  'assets/images/fav-logo.sv
 		<div class="brag-book-gallery-bottom-bar">
 			<img
 				src="<?php echo esc_url( $logo_image_url ); ?>"
-				alt="<?php esc_attr_e( 'BragBook Logo', 'brag-book-gallery' ); ?>"
+				alt="<?php esc_attr_e( 'BRAG Book Logo', 'brag-book-gallery' ); ?>"
 				width="40"
 				height="40">
 			<p>

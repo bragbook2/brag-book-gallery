@@ -2,7 +2,7 @@
 /**
  * On-Page SEO Handler
  *
- * Manages SEO meta tags, titles, descriptions, and canonical URLs for BragBook gallery pages.
+ * Manages SEO meta tags, titles, descriptions, and canonical URLs for BRAG Book gallery pages.
  * Integrates with popular SEO plugins including Yoast, AIOSEO, and RankMath.
  *
  * @package    BRAGBookGallery
@@ -99,7 +99,7 @@ class On_Page {
 	}
 
 	/**
-	 * Get custom SEO title and description for BragBook pages
+	 * Get custom SEO title and description for BRAG Book pages
 	 *
 	 * Analyzes the current URL to determine the appropriate SEO metadata
 	 * based on gallery type, procedure, and case details.
@@ -605,7 +605,7 @@ class On_Page {
 	}
 
 	/**
-	 * Get custom BragBook title
+	 * Get custom BRAG Book title
 	 *
 	 * @return string SEO title.
 	 * @since 3.0.0
@@ -615,7 +615,7 @@ class On_Page {
 	}
 
 	/**
-	 * Get custom BragBook description
+	 * Get custom BRAG Book description
 	 *
 	 * @return string SEO description.
 	 * @since 3.0.0
@@ -687,9 +687,9 @@ class On_Page {
 	}
 
 	/**
-	 * Check if current page is a BragBook gallery page
+	 * Check if current page is a BRAG Book gallery page
 	 *
-	 * @return bool True if BragBook page.
+	 * @return bool True if BRAG Book page.
 	 * @since 3.0.0
 	 */
 	private function is_bragbook_page(): bool {

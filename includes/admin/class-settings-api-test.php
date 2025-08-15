@@ -21,7 +21,7 @@ if ( ! defined( 'WPINC' ) ) {
 /**
  * API Testing Settings Class
  *
- * Provides a testing interface for all BragBook API endpoints.
+ * Provides a testing interface for all BRAG Book API endpoints.
  * Allows administrators to verify API connectivity and test various endpoints
  * with real-time response display.
  *
@@ -37,11 +37,11 @@ class Settings_Api_Test extends Settings_Base {
 	 */
 	protected function init(): void {
 		$this->page_slug = 'brag-book-gallery-api-test';
-		
+
 		// Add AJAX handlers for API testing
 		add_action( 'wp_ajax_brag_book_test_api', array( $this, 'handle_api_test' ) );
 	}
-	
+
 	/**
 	 * Handle API test requests via AJAX
 	 *
@@ -53,13 +53,13 @@ class Settings_Api_Test extends Settings_Base {
 		if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( $_POST['nonce'], 'brag_book_api_test' ) ) {
 			wp_send_json_error( 'Invalid nonce' );
 		}
-		
+
 		// Get request parameters
 		$endpoint = sanitize_text_field( $_POST['endpoint'] ?? '' );
 		$method = sanitize_text_field( $_POST['method'] ?? 'POST' );
 		$url = sanitize_url( $_POST['url'] ?? '' );
 		$body = isset( $_POST['body'] ) ? json_decode( stripslashes( $_POST['body'] ), true ) : null;
-		
+
 		// Make the API request using wp_remote_request
 		$args = array(
 			'method' => $method,
@@ -68,21 +68,21 @@ class Settings_Api_Test extends Settings_Base {
 				'Accept' => 'application/json',
 			),
 		);
-		
+
 		// Only add Content-Type for POST requests with body
 		if ( $method === 'POST' && $body ) {
 			$args['headers']['Content-Type'] = 'application/json';
 			$args['body'] = wp_json_encode( $body );
 		}
-		
+
 		// For GET requests, URL already contains query parameters
-		
+
 		// Log the request for debugging
 		error_log( 'API Test Request: ' . print_r( array( 'url' => $url, 'method' => $method, 'body' => $body ), true ) );
-		
+
 		// Make the request
 		$response = wp_remote_request( $url, $args );
-		
+
 		if ( is_wp_error( $response ) ) {
 			wp_send_json_error( array(
 				'message' => $response->get_error_message(),
@@ -90,16 +90,16 @@ class Settings_Api_Test extends Settings_Base {
 				'details' => 'Failed to connect to API endpoint: ' . $url,
 			) );
 		}
-		
+
 		$response_code = wp_remote_retrieve_response_code( $response );
 		$response_body = wp_remote_retrieve_body( $response );
-		
+
 		// Try to decode JSON response
 		$decoded_body = json_decode( $response_body, true );
 		if ( json_last_error() === JSON_ERROR_NONE ) {
 			$response_body = $decoded_body;
 		}
-		
+
 		wp_send_json_success( array(
 			'status' => $response_code,
 			'body' => $response_body,
@@ -121,16 +121,16 @@ class Settings_Api_Test extends Settings_Base {
 		// Get API configuration
 		$api_tokens = get_option( 'brag_book_gallery_api_token', array() );
 		$website_property_ids = get_option( 'brag_book_gallery_website_property_id', array() );
-		
+
 		// Check if API is configured
 		$has_api_config = ! empty( $api_tokens ) && ! empty( $website_property_ids );
-		
+
 		$this->render_header();
 		?>
 
 		<div class="brag-book-gallery-section">
 			<h2><?php esc_html_e( 'API Endpoint Testing', 'brag-book-gallery' ); ?></h2>
-			
+
 			<?php if ( ! $has_api_config ) : ?>
 				<div class="brag-book-gallery-notice brag-book-gallery-notice-warning">
 					<p>
@@ -142,7 +142,7 @@ class Settings_Api_Test extends Settings_Base {
 				</div>
 			<?php else : ?>
 				<p class="description">
-					<?php esc_html_e( 'Test various BragBook API endpoints to verify connectivity and data retrieval.', 'brag-book-gallery' ); ?>
+					<?php esc_html_e( 'Test various BRAG Book API endpoints to verify connectivity and data retrieval.', 'brag-book-gallery' ); ?>
 				</p>
 
 				<div class="api-test-config">
@@ -154,13 +154,13 @@ class Settings_Api_Test extends Settings_Base {
 						<ul>
 							<?php foreach ( $api_tokens as $index => $token ) : ?>
 								<li>
-									<?php 
-									echo esc_html( sprintf( 
+									<?php
+									echo esc_html( sprintf(
 										__( 'Connection %d: Token %s... | Property ID: %s', 'brag-book-gallery' ),
 										$index + 1,
 										substr( $token, 0, 10 ),
 										$website_property_ids[$index] ?? 'N/A'
-									) ); 
+									) );
 									?>
 								</li>
 							<?php endforeach; ?>
@@ -210,7 +210,7 @@ class Settings_Api_Test extends Settings_Base {
 								<td><span class="method-badge method-post">POST</span></td>
 								<td><?php esc_html_e( 'Get categories and procedures with case counts', 'brag-book-gallery' ); ?></td>
 								<td>
-									<button class="button test-endpoint-btn" 
+									<button class="button test-endpoint-btn"
 									        data-endpoint="sidebar"
 									        data-method="POST"
 									        data-url="/api/plugin/combine/sidebar">
@@ -225,7 +225,7 @@ class Settings_Api_Test extends Settings_Base {
 								<td><span class="method-badge method-post">POST</span></td>
 								<td><?php esc_html_e( 'Get paginated case listings', 'brag-book-gallery' ); ?></td>
 								<td>
-									<button class="button test-endpoint-btn" 
+									<button class="button test-endpoint-btn"
 									        data-endpoint="cases"
 									        data-method="POST"
 									        data-url="/api/plugin/combine/cases">
@@ -240,7 +240,7 @@ class Settings_Api_Test extends Settings_Base {
 								<td><span class="method-badge method-get">GET</span></td>
 								<td><?php esc_html_e( 'Get carousel data (may require procedureId & memberId)', 'brag-book-gallery' ); ?></td>
 								<td>
-									<button class="button test-endpoint-btn" 
+									<button class="button test-endpoint-btn"
 									        data-endpoint="carousel"
 									        data-method="GET"
 									        data-url="/api/plugin/carousel">
@@ -255,7 +255,7 @@ class Settings_Api_Test extends Settings_Base {
 								<td><span class="method-badge method-post">POST</span></td>
 								<td><?php esc_html_e( 'Get available filter options', 'brag-book-gallery' ); ?></td>
 								<td>
-									<button class="button test-endpoint-btn" 
+									<button class="button test-endpoint-btn"
 									        data-endpoint="filters"
 									        data-method="POST"
 									        data-url="/api/plugin/combine/filters">
@@ -270,7 +270,7 @@ class Settings_Api_Test extends Settings_Base {
 								<td><span class="method-badge method-post">POST</span></td>
 								<td><?php esc_html_e( 'Get user\'s favorite cases', 'brag-book-gallery' ); ?></td>
 								<td>
-									<button class="button test-endpoint-btn" 
+									<button class="button test-endpoint-btn"
 									        data-endpoint="favorites-list"
 									        data-method="POST"
 									        data-url="/api/plugin/combine/favorites/list">
@@ -285,7 +285,7 @@ class Settings_Api_Test extends Settings_Base {
 								<td><span class="method-badge method-post">POST</span></td>
 								<td><?php esc_html_e( 'Generate sitemap data', 'brag-book-gallery' ); ?></td>
 								<td>
-									<button class="button test-endpoint-btn" 
+									<button class="button test-endpoint-btn"
 									        data-endpoint="sitemap"
 									        data-method="POST"
 									        data-url="/api/plugin/sitemap">
@@ -303,7 +303,7 @@ class Settings_Api_Test extends Settings_Base {
 									<input type="number" id="case-id-input" placeholder="Case ID" class="small-text" style="margin-left: 10px;">
 								</td>
 								<td>
-									<button class="button test-endpoint-btn" 
+									<button class="button test-endpoint-btn"
 									        data-endpoint="single-case"
 									        data-method="POST"
 									        data-url="/api/plugin/combine/cases/"
@@ -321,7 +321,7 @@ class Settings_Api_Test extends Settings_Base {
 									<?php esc_html_e( 'Submit consultation request (Test with sample data)', 'brag-book-gallery' ); ?>
 								</td>
 								<td>
-									<button class="button test-endpoint-btn" 
+									<button class="button test-endpoint-btn"
 									        data-endpoint="consultations"
 									        data-method="POST"
 									        data-url="/api/plugin/consultations"
@@ -477,22 +477,22 @@ class Settings_Api_Test extends Settings_Base {
 				const el = document.querySelector(selector);
 				if (el) el.style.display = 'block';
 			};
-			
+
 			const hideElement = (selector) => {
 				const el = document.querySelector(selector);
 				if (el) el.style.display = 'none';
 			};
-			
+
 			const setText = (selector, text) => {
 				const el = document.querySelector(selector);
 				if (el) el.textContent = text;
 			};
-			
+
 			const addClass = (selector, className) => {
 				const el = document.querySelector(selector);
 				if (el) el.classList.add(className);
 			};
-			
+
 			const removeClass = (selector, className) => {
 				const el = document.querySelector(selector);
 				if (el) el.classList.remove(className);
@@ -505,7 +505,7 @@ class Settings_Api_Test extends Settings_Base {
 					const method = this.dataset.method;
 					let url = baseUrl + this.dataset.url;
 					const needsId = this.dataset.needsId;
-					
+
 					// Check if case ID is needed
 					if (needsId) {
 						const caseIdInput = document.getElementById('case-id-input');
@@ -521,36 +521,36 @@ class Settings_Api_Test extends Settings_Base {
 					this.disabled = true;
 					const originalText = this.textContent;
 					this.innerHTML = 'Testing... <span class="spinner is-active"></span>';
-					
+
 					// Clear previous response
 					hideElement('.api-response-container');
 					setText('.api-response-content', '');
 					setText('.api-request-content', '');
-					
+
 					// Start timer
 					const startTime = Date.now();
-					
+
 					// Build request body for POST requests
 					let requestBody = null;
 					let requestHeaders = {
 						'Accept': 'application/json'
 					};
-					
+
 					if (method === 'POST') {
 						requestHeaders['Content-Type'] = 'application/json';
-						
+
 						// Build request body with arrays
 						requestBody = {
 							apiTokens: apiTokens,
 							websitePropertyIds: websitePropertyIds
 						};
-						
+
 						// Get optional parameters from inputs
 						const procedureInput = document.getElementById('test-procedure-id');
 						const memberInput = document.getElementById('test-member-id');
 						const testProcedureId = procedureInput ? (procedureInput.value || null) : null;
 						const testMemberId = memberInput ? (memberInput.value || null) : null;
-						
+
 						// Add endpoint-specific parameters
 						switch(endpoint) {
 							case 'sidebar':
@@ -559,7 +559,7 @@ class Settings_Api_Test extends Settings_Base {
 									apiTokens: apiTokens.filter(token => token && token.length > 0)
 								};
 								break;
-							
+
 							case 'cases':
 								// Cases needs count for pagination
 								requestBody.count = 1;
@@ -572,7 +572,7 @@ class Settings_Api_Test extends Settings_Base {
 									requestBody.memberId = parseInt(testMemberId);
 								}
 								break;
-							
+
 							case 'single-case':
 								// Single case needs procedureIds (use default if not provided)
 								requestBody.procedureIds = [parseInt(testProcedureId || 6851)];
@@ -581,26 +581,26 @@ class Settings_Api_Test extends Settings_Base {
 									requestBody.memberId = parseInt(testMemberId);
 								}
 								break;
-							
+
 							case 'filters':
 								// Filters needs procedureIds (use default if not provided)
 								requestBody.procedureIds = [parseInt(testProcedureId || 6851)];
 								break;
-							
+
 							case 'favorites-list':
 								// Favorites list uses default body (can add email later if needed)
 								break;
-							
+
 							case 'sitemap':
 								// Sitemap uses default body
 								break;
-								
+
 							case 'consultations':
 								// Consultations needs special handling - body is the form data
 								// URL needs apiToken and websitepropertyId as query params
-								url += '?apiToken=' + encodeURIComponent(apiTokens[0]) + 
+								url += '?apiToken=' + encodeURIComponent(apiTokens[0]) +
 								       '&websitepropertyId=' + encodeURIComponent(websitePropertyIds[0]);
-								
+
 								// Body should be the consultation data
 								requestBody = {
 									email: "test@example.com",
@@ -612,10 +612,10 @@ class Settings_Api_Test extends Settings_Base {
 								console.log('Consultations endpoint - Body:', requestBody);
 								break;
 						}
-						
+
 						console.log('POST Request Body:', requestBody);
 						console.log('POST Request JSON:', JSON.stringify(requestBody));
-						
+
 						// For sidebar, verify the exact format
 						if (endpoint === 'sidebar') {
 							console.log('Sidebar request verification:');
@@ -626,7 +626,7 @@ class Settings_Api_Test extends Settings_Base {
 						// For GET requests (carousel), add params to URL
 						const procedureInput = document.getElementById('test-procedure-id');
 						const memberInput = document.getElementById('test-member-id');
-						
+
 						// Build parameters object
 						const params = new URLSearchParams({
 							websitePropertyId: websitePropertyIds[0].toString(),
@@ -634,18 +634,18 @@ class Settings_Api_Test extends Settings_Base {
 							limit: '10',
 							apiToken: apiTokens[0]
 						});
-						
+
 						// For carousel endpoint, always include procedureId and memberId with defaults
 						if (endpoint === 'carousel') {
 							// Use provided values or defaults
 							params.append('procedureId', procedureInput?.value || '6839');
 							params.append('memberId', memberInput?.value || '129');
 						}
-						
+
 						url += '?' + params.toString();
 						console.log('GET Request URL:', url);
 					}
-					
+
 					// Store request details for display
 					const requestDetails = {
 						url: url,
@@ -653,12 +653,12 @@ class Settings_Api_Test extends Settings_Base {
 						headers: requestHeaders,
 						body: requestBody
 					};
-					
+
 					console.log('Making API request:', requestDetails);
-					
+
 					// Make the request through WordPress AJAX (server-side proxy)
 					const button = this;
-					
+
 					// Prepare form data for AJAX
 					const formData = new FormData();
 					formData.append('action', 'brag_book_test_api');
@@ -669,7 +669,7 @@ class Settings_Api_Test extends Settings_Base {
 					if (requestBody) {
 						formData.append('body', JSON.stringify(requestBody));
 					}
-					
+
 					// Make the request to WordPress AJAX
 					fetch(ajaxUrl, {
 						method: 'POST',
@@ -679,15 +679,15 @@ class Settings_Api_Test extends Settings_Base {
 					.then(result => {
 						const endTime = Date.now();
 						const duration = endTime - startTime;
-						
+
 						// Show request details
 						setText('.api-request-content', JSON.stringify(requestDetails, null, 2));
-						
+
 						console.log('AJAX Response:', result);
-						
+
 						if (result.success) {
 							const apiResponse = result.data;
-							
+
 							if (apiResponse.status >= 200 && apiResponse.status < 300) {
 								// Show success response
 								showElement('.api-response-container');
@@ -720,7 +720,7 @@ class Settings_Api_Test extends Settings_Base {
 								message: 'Failed to connect to API'
 							}, null, 2));
 						}
-						
+
 						// Re-enable button
 						button.disabled = false;
 						button.textContent = originalText;
@@ -728,12 +728,12 @@ class Settings_Api_Test extends Settings_Base {
 					.catch(error => {
 						const endTime = Date.now();
 						const duration = endTime - startTime;
-						
+
 						console.error('Fetch Error:', error);
-						
+
 						// Show request details
 						setText('.api-request-content', JSON.stringify(requestDetails, null, 2));
-						
+
 						// Show error response
 						showElement('.api-response-container');
 						setText('.response-status', 'Network Error');
@@ -744,14 +744,14 @@ class Settings_Api_Test extends Settings_Base {
 							error: error.message,
 							message: 'Could not connect to WordPress AJAX'
 						}, null, 2));
-						
+
 						// Re-enable button
 						button.disabled = false;
 						button.textContent = originalText;
 					});
 				});
 			});
-			
+
 			// Copy response button
 			document.querySelector('.copy-response-btn')?.addEventListener('click', function() {
 				const responseContent = document.querySelector('.api-response-content');

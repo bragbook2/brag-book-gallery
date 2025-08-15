@@ -21,29 +21,29 @@ if ( ! defined( 'WPINC' ) ) {
 /**
  * JavaScript Mode Settings Class
  *
- * Specialized configuration interface for JavaScript mode operations in BragBook Gallery.
+ * Specialized configuration interface for JavaScript mode operations in BRAG Book Gallery.
  * This class manages settings that specifically affect how the plugin operates when
- * in JavaScript mode, where content is loaded dynamically from the BragBook API.
- * 
+ * in JavaScript mode, where content is loaded dynamically from the BRAG Book API.
+ *
  * **Configuration Categories:**
  * - Gallery page settings and SEO metadata
  * - Performance optimization parameters
  * - Display and pagination controls
  * - AJAX timeout and caching configurations
- * 
+ *
  * **JavaScript Mode Features:**
  * - Real-time content loading from external API
  * - Dynamic gallery filtering and pagination
  * - Client-side image lazy loading
  * - Configurable cache duration for performance
  * - Custom SEO metadata for virtual pages
- * 
+ *
  * **Performance Settings:**
  * - AJAX timeout configuration for API calls
  * - Cache duration settings for response data
  * - Lazy loading controls for image optimization
  * - Pagination settings for large galleries
- * 
+ *
  * These settings only apply when the plugin operates in JavaScript mode,
  * providing fine-tuned control over API-driven content delivery.
  *
@@ -72,7 +72,7 @@ class Settings_JavaScript extends Settings_Base {
 		// Set translated strings when rendering (after init)
 		$this->page_title = __( 'JavaScript Mode Settings', 'brag-book-gallery' );
 		$this->menu_title = __( 'JavaScript Settings', 'brag-book-gallery' );
-		
+
 		// Handle form submission
 		if ( isset( $_POST['submit'] ) ) {
 			$this->save();
@@ -108,7 +108,7 @@ class Settings_JavaScript extends Settings_Base {
 		?>
 		<form method="post" action="" id="brag-book-gallery-javascript-settings-form">
 			<?php wp_nonce_field( 'brag_book_gallery_javascript_settings', 'brag_book_gallery_javascript_nonce' ); ?>
-			
+
 			<div class="brag-book-gallery-section">
 				<h2><?php esc_html_e( 'Gallery Page Settings', 'brag-book-gallery' ); ?></h2>
 				<table class="form-table brag-book-gallery-form-table" role="presentation">
@@ -173,14 +173,14 @@ class Settings_JavaScript extends Settings_Base {
 					</th>
 					<td>
 						<div class="slug-input-wrapper">
-							<input type="text" 
-							       id="combine_gallery_slug" 
-							       name="combine_gallery_slug" 
-							       value="<?php echo esc_attr( $combine_slug ); ?>" 
+							<input type="text"
+							       id="combine_gallery_slug"
+							       name="combine_gallery_slug"
+							       value="<?php echo esc_attr( $combine_slug ); ?>"
 							       class="regular-text"
 							       placeholder="<?php esc_attr_e( 'e.g., gallery, portfolio, before-after', 'brag-book-gallery' ); ?>">
-							<button type="button" 
-							        id="generate-page-btn" 
+							<button type="button"
+							        id="generate-page-btn"
 							        class="button button-secondary"
 							        style="margin-left: 10px;"
 							        disabled>
@@ -202,7 +202,7 @@ class Settings_JavaScript extends Settings_Base {
 				<p class="description">
 					<?php esc_html_e( 'Configure search engine optimization settings for your gallery pages.', 'brag-book-gallery' ); ?>
 				</p>
-				
+
 				<table class="form-table brag-book-gallery-form-table" role="presentation">
 				<tr>
 					<th scope="row">
@@ -211,10 +211,10 @@ class Settings_JavaScript extends Settings_Base {
 						</label>
 					</th>
 					<td>
-						<input type="text" 
-						       id="combine_seo_title" 
-						       name="combine_seo_title" 
-						       value="<?php echo esc_attr( $combine_seo_title ); ?>" 
+						<input type="text"
+						       id="combine_seo_title"
+						       name="combine_seo_title"
+						       value="<?php echo esc_attr( $combine_seo_title ); ?>"
 						       class="large-text"
 						       maxlength="60">
 						<div class="character-count">
@@ -236,9 +236,9 @@ class Settings_JavaScript extends Settings_Base {
 						</label>
 					</th>
 					<td>
-						<textarea id="combine_seo_description" 
-						          name="combine_seo_description" 
-						          rows="3" 
+						<textarea id="combine_seo_description"
+						          name="combine_seo_description"
+						          rows="3"
 						          class="large-text"
 						          maxlength="160"><?php echo esc_textarea( $combine_seo_description ); ?></textarea>
 						<div class="character-count">
@@ -253,13 +253,13 @@ class Settings_JavaScript extends Settings_Base {
 					</td>
 				</tr>
 				</table>
-				
+
 				<!-- SERP Preview -->
 				<div class="serp-preview-container">
 					<h3><?php esc_html_e( 'Search Result Preview', 'brag-book-gallery' ); ?></h3>
 					<div class="serp-preview">
 						<div class="serp-title" id="serp-title">
-							<?php 
+							<?php
 							if ( ! empty( $combine_seo_title ) ) {
 								echo esc_html( $combine_seo_title );
 							} else {
@@ -271,7 +271,7 @@ class Settings_JavaScript extends Settings_Base {
 							<?php echo esc_url( home_url( '/' . ( $combine_slug ?: 'gallery' ) . '/' ) ); ?>
 						</div>
 						<div class="serp-description" id="serp-description">
-							<?php 
+							<?php
 							if ( ! empty( $combine_seo_description ) ) {
 								echo esc_html( $combine_seo_description );
 							} else {
@@ -370,16 +370,16 @@ class Settings_JavaScript extends Settings_Base {
 
 			<script type="module">
 			/**
-			 * BragBook Gallery JavaScript Settings
-			 * 
+			 * BRAG Book Gallery JavaScript Settings
+			 *
 			 * Handles JavaScript mode settings including SEO optimization,
 			 * slug validation, and dynamic page generation.
-			 * 
+			 *
 			 * @since 3.0.0
 			 */
 			(() => {
 				'use strict';
-				
+
 				// DOM element references
 				const elements = {
 					titleInput: document.getElementById('combine_seo_title'),
@@ -394,22 +394,22 @@ class Settings_JavaScript extends Settings_Base {
 					slugStatus: document.getElementById('slug-status-message'),
 					generateBtn: document.getElementById('generate-page-btn')
 				};
-				
+
 				// State management
 				let checkSlugTimeout = null;
 				let currentSlugExists = false;
-				
+
 				/**
 				 * Update title character count and SERP preview
-				 * 
+				 *
 				 * @since 3.0.0
 				 */
 				const updateTitle = () => {
 					if (!elements.titleInput || !elements.titleCount || !elements.serpTitle) return;
-					
+
 					const length = elements.titleInput.value.length;
 					elements.titleCount.textContent = length;
-					
+
 					// Show warning if too long
 					if (length > 60) {
 						elements.titleWarning.style.display = 'inline';
@@ -421,22 +421,22 @@ class Settings_JavaScript extends Settings_Base {
 						elements.titleWarning.style.display = 'none';
 						elements.titleCount.style.color = '#666';
 					}
-					
+
 					// Update SERP preview
 					elements.serpTitle.textContent = elements.titleInput.value || '<?php echo esc_js( get_bloginfo( 'name' ) . ' - Gallery' ); ?>';
 				};
-				
+
 				/**
 				 * Update description character count and SERP preview
-				 * 
+				 *
 				 * @since 3.0.0
 				 */
 				const updateDescription = () => {
 					if (!elements.descInput || !elements.descCount || !elements.serpDesc) return;
-					
+
 					const length = elements.descInput.value.length;
 					elements.descCount.textContent = length;
-					
+
 					// Show warning if too long
 					if (length > 160) {
 						elements.descWarning.style.display = 'inline';
@@ -448,53 +448,53 @@ class Settings_JavaScript extends Settings_Base {
 						elements.descWarning.style.display = 'none';
 						elements.descCount.style.color = '#666';
 					}
-					
+
 					// Update SERP preview
 					elements.serpDesc.textContent = elements.descInput.value || 'View our stunning gallery of before and after transformations. Browse through real patient results and see the amazing outcomes we achieve.';
 				};
-				
+
 				/**
 				 * Check slug availability via AJAX
-				 * 
+				 *
 				 * @since 3.0.0
 				 */
 				const checkSlugAvailability = async () => {
 					if (!elements.slugInput || !elements.slugStatus || !elements.generateBtn) return;
-					
+
 					const slug = elements.slugInput.value.trim();
-					
+
 					if (!slug) {
 						elements.slugStatus.className = 'slug-status';
 						elements.slugStatus.textContent = '';
 						elements.generateBtn.disabled = true;
 						return;
 					}
-					
+
 					// Show checking message
 					elements.slugStatus.className = 'slug-status';
 					elements.slugStatus.textContent = '<?php esc_html_e( 'Checking...', 'brag-book-gallery' ); ?>';
 					elements.slugStatus.style.display = 'block';
 					elements.generateBtn.disabled = true;
-					
+
 					if (typeof ajaxurl === 'undefined') return;
-					
+
 					try {
 						// Check if page exists via AJAX
 						const formData = new FormData();
 						formData.append('action', 'brag_book_gallery_check_slug');
 						formData.append('slug', slug);
 						formData.append('nonce', '<?php echo wp_create_nonce( 'brag_book_gallery_check_slug' ); ?>');
-						
+
 						const response = await fetch(ajaxurl, {
 							method: 'POST',
 							body: formData
 						});
-						
+
 						const data = await response.json();
-						
+
 						if (data.success) {
 							currentSlugExists = data.data.exists;
-							
+
 							if (data.data.exists) {
 								elements.slugStatus.className = 'slug-status warning';
 								elements.slugStatus.innerHTML = `⚠️ ${data.data.message}`;
@@ -518,42 +518,42 @@ class Settings_JavaScript extends Settings_Base {
 						elements.generateBtn.disabled = true;
 					}
 				};
-				
+
 				/**
 				 * Handle page generation
-				 * 
+				 *
 				 * @since 3.0.0
 				 */
 				const handleGeneratePage = async () => {
 					if (!elements.slugInput || !elements.generateBtn || !elements.slugStatus) return;
-					
+
 					const slug = elements.slugInput.value.trim();
-					
+
 					if (!slug || currentSlugExists) return;
-					
+
 					try {
 						elements.generateBtn.disabled = true;
 						elements.generateBtn.textContent = '<?php esc_html_e( 'Creating...', 'brag-book-gallery' ); ?>';
-						
+
 						const formData = new FormData();
 						formData.append('action', 'brag_book_gallery_generate_page');
 						formData.append('slug', slug);
 						formData.append('nonce', '<?php echo wp_create_nonce( 'brag_book_gallery_generate_page' ); ?>');
-						
+
 						const response = await fetch(ajaxurl, {
 							method: 'POST',
 							body: formData
 						});
-						
+
 						const data = await response.json();
-						
+
 						if (data.success) {
 							elements.slugStatus.className = 'slug-status success';
 							elements.slugStatus.innerHTML = `✓ ${data.data.message}`;
 							elements.generateBtn.textContent = '<?php esc_html_e( 'Page Created', 'brag-book-gallery' ); ?>';
 							elements.generateBtn.disabled = true;
 							currentSlugExists = true;
-							
+
 							if (data.data.edit_link) {
 								elements.slugStatus.innerHTML += ` <a href="${data.data.edit_link}" target="_blank"><?php esc_html_e( 'Edit Page', 'brag-book-gallery' ); ?></a>`;
 							}
@@ -571,10 +571,10 @@ class Settings_JavaScript extends Settings_Base {
 						elements.generateBtn.disabled = false;
 					}
 				};
-				
+
 				/**
 				 * Initialize event listeners
-				 * 
+				 *
 				 * @since 3.0.0
 				 */
 				const initializeEventListeners = () => {
@@ -583,31 +583,31 @@ class Settings_JavaScript extends Settings_Base {
 						updateTitle();
 						elements.titleInput.addEventListener('input', updateTitle);
 					}
-					
+
 					if (elements.descInput) {
 						updateDescription();
 						elements.descInput.addEventListener('input', updateDescription);
 					}
-					
+
 					// Slug validation
 					if (elements.slugInput) {
 						elements.slugInput.addEventListener('input', () => {
 							clearTimeout(checkSlugTimeout);
 							checkSlugTimeout = setTimeout(checkSlugAvailability, 500);
 						});
-						
+
 						// Check on page load if there's a value
 						if (elements.slugInput.value) {
 							checkSlugAvailability();
 						}
 					}
-					
+
 					// Generate page button
 					if (elements.generateBtn) {
 						elements.generateBtn.addEventListener('click', handleGeneratePage);
 					}
 				};
-				
+
 				// Initialize when DOM is ready
 				if (document.readyState === 'loading') {
 					document.addEventListener('DOMContentLoaded', initializeEventListeners);
@@ -627,12 +627,12 @@ class Settings_JavaScript extends Settings_Base {
 						</label>
 					</th>
 					<td>
-						<input type="number" 
-						       id="ajax_timeout" 
-						       name="ajax_timeout" 
-						       value="<?php echo esc_attr( $ajax_timeout ); ?>" 
-						       min="5" 
-						       max="120" 
+						<input type="number"
+						       id="ajax_timeout"
+						       name="ajax_timeout"
+						       value="<?php echo esc_attr( $ajax_timeout ); ?>"
+						       min="5"
+						       max="120"
 						       class="small-text">
 						<?php esc_html_e( 'seconds', 'brag-book-gallery' ); ?>
 						<p class="description">
@@ -648,12 +648,12 @@ class Settings_JavaScript extends Settings_Base {
 						</label>
 					</th>
 					<td>
-						<input type="number" 
-						       id="cache_duration" 
-						       name="cache_duration" 
-						       value="<?php echo esc_attr( $cache_duration ); ?>" 
-						       min="0" 
-						       max="86400" 
+						<input type="number"
+						       id="cache_duration"
+						       name="cache_duration"
+						       value="<?php echo esc_attr( $cache_duration ); ?>"
+						       min="0"
+						       max="86400"
 						       class="small-text">
 						<?php esc_html_e( 'seconds', 'brag-book-gallery' ); ?>
 						<p class="description">
@@ -670,10 +670,10 @@ class Settings_JavaScript extends Settings_Base {
 					</th>
 					<td>
 						<label>
-							<input type="checkbox" 
-							       id="lazy_load" 
-							       name="lazy_load" 
-							       value="yes" 
+							<input type="checkbox"
+							       id="lazy_load"
+							       name="lazy_load"
+							       value="yes"
 							       <?php checked( $lazy_load, 'yes' ); ?>>
 							<?php esc_html_e( 'Enable lazy loading for gallery images', 'brag-book-gallery' ); ?>
 						</label>
@@ -692,13 +692,13 @@ class Settings_JavaScript extends Settings_Base {
 						</label>
 					</th>
 					<td>
-						<input type="number" 
-						       id="per_page" 
-						       name="per_page" 
-						       value="<?php echo esc_attr( $per_page ); ?>" 
-						       min="6" 
-						       max="48" 
-						       step="6" 
+						<input type="number"
+						       id="per_page"
+						       name="per_page"
+						       value="<?php echo esc_attr( $per_page ); ?>"
+						       min="6"
+						       max="48"
+						       step="6"
 						       class="small-text">
 						<p class="description">
 							<?php esc_html_e( 'Number of gallery items to display per page.', 'brag-book-gallery' ); ?>
@@ -736,9 +736,9 @@ class Settings_JavaScript extends Settings_Base {
 					</th>
 					<td>
 						<label class="brag-book-toggle-switch">
-							<input type="checkbox" 
+							<input type="checkbox"
 								   id="brag_book_gallery_image_display_mode"
-								   name="image_display_mode" 
+								   name="image_display_mode"
 								   value="before_after"
 								   <?php checked( $image_display_mode, 'before_after' ); ?> />
 							<span class="brag-book-toggle-slider"></span>
@@ -755,32 +755,32 @@ class Settings_JavaScript extends Settings_Base {
 			</div>
 
 			<div class="brag-book-gallery-actions">
-				<button type="submit" 
-				        name="submit" 
-				        id="submit" 
+				<button type="submit"
+				        name="submit"
+				        id="submit"
 				        class="button button-primary button-large">
 					<?php esc_html_e( 'Save Settings', 'brag-book-gallery' ); ?>
 				</button>
-				<button type="button" 
-				        id="clear-cache-btn" 
+				<button type="button"
+				        id="clear-cache-btn"
 				        class="button button-secondary button-large"
 				        style="margin-left: 10px;">
 					<?php esc_html_e( 'Clear Gallery Cache', 'brag-book-gallery' ); ?>
 				</button>
 			</div>
-			
+
 			<script>
 			document.getElementById('clear-cache-btn').addEventListener('click', function() {
 				if (confirm('This will clear all cached gallery data. Continue?')) {
 					const button = this;
 					button.disabled = true;
 					button.textContent = 'Clearing...';
-					
+
 					// Make AJAX request to clear cache
 					const formData = new FormData();
 					formData.append('action', 'brag_book_gallery_clear_cache');
 					formData.append('nonce', '<?php echo wp_create_nonce( 'brag_book_gallery_clear_cache' ); ?>');
-					
+
 					fetch(ajaxurl, {
 						method: 'POST',
 						body: formData
@@ -841,11 +841,11 @@ class Settings_JavaScript extends Settings_Base {
 		if ( isset( $_POST['combine_gallery_slug'] ) ) {
 			$new_slug = sanitize_title( $_POST['combine_gallery_slug'] );
 			$old_slug = get_option( 'combine_gallery_slug', '' );
-			
+
 			if ( ! empty( $new_slug ) && $new_slug !== $old_slug ) {
 				// Check if page with this slug exists
 				$existing_page = get_page_by_path( $new_slug );
-				
+
 				if ( ! $existing_page ) {
 					// Create the page with the gallery shortcode
 					$page_data = array(
@@ -858,20 +858,20 @@ class Settings_JavaScript extends Settings_Base {
 						'comment_status' => 'closed',
 						'ping_status'   => 'closed',
 					);
-					
+
 					$page_id = wp_insert_post( $page_data );
-					
+
 					if ( ! is_wp_error( $page_id ) ) {
-						$this->add_notice( 
-							sprintf( 
+						$this->add_notice(
+							sprintf(
 								__( 'Gallery page "%s" has been created successfully.', 'brag-book-gallery' ),
 								$new_slug
 							)
 						);
 					}
 				} else {
-					$this->add_notice( 
-						sprintf( 
+					$this->add_notice(
+						sprintf(
 							__( 'A page with slug "%s" already exists. The gallery will use the existing page.', 'brag-book-gallery' ),
 							$new_slug
 						),
@@ -879,7 +879,7 @@ class Settings_JavaScript extends Settings_Base {
 					);
 				}
 			}
-			
+
 			update_option( 'combine_gallery_slug', $new_slug );
 		}
 
@@ -910,8 +910,8 @@ class Settings_JavaScript extends Settings_Base {
 
 		if ( isset( $_POST['default_filter'] ) ) {
 			$valid_filters = array( 'all', 'popular', 'recent' );
-			$filter = in_array( $_POST['default_filter'], $valid_filters, true ) 
-				? $_POST['default_filter'] 
+			$filter = in_array( $_POST['default_filter'], $valid_filters, true )
+				? $_POST['default_filter']
 				: 'all';
 			update_option( 'brag_book_gallery_default_filter', $filter );
 		}

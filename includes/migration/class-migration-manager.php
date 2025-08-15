@@ -84,7 +84,7 @@ class Migration_Manager {
 		$this->database = new Database();
 		$this->sync_manager = new Sync_Manager();
 		$this->data_validator = new Data_Validator();
-		
+
 		$this->init();
 	}
 
@@ -173,7 +173,7 @@ class Migration_Manager {
 
 		} catch ( \Exception $e ) {
 			$this->set_migration_status( 'javascript_to_local', 'failed', $e->getMessage() );
-			error_log( 'BragBook Gallery Migration Error: ' . $e->getMessage() );
+			error_log( 'BRAG Book Gallery Migration Error: ' . $e->getMessage() );
 			return false;
 		}
 	}
@@ -235,7 +235,7 @@ class Migration_Manager {
 
 		} catch ( \Exception $e ) {
 			$this->set_migration_status( 'local_to_javascript', 'failed', $e->getMessage() );
-			error_log( 'BragBook Gallery Migration Error: ' . $e->getMessage() );
+			error_log( 'BRAG Book Gallery Migration Error: ' . $e->getMessage() );
 			return false;
 		}
 	}
@@ -248,7 +248,7 @@ class Migration_Manager {
 	 */
 	public function rollback(): bool {
 		$backup = get_option( self::BACKUP_OPTION, array() );
-		
+
 		if ( empty( $backup ) ) {
 			return false;
 		}
@@ -273,14 +273,14 @@ class Migration_Manager {
 
 			// Clear backup
 			delete_option( self::BACKUP_OPTION );
-			
+
 			// Clear migration status
 			delete_option( self::MIGRATION_STATUS_OPTION );
 
 			return true;
 
 		} catch ( \Exception $e ) {
-			error_log( 'BragBook Gallery Rollback Error: ' . $e->getMessage() );
+			error_log( 'BRAG Book Gallery Rollback Error: ' . $e->getMessage() );
 			return false;
 		}
 	}
@@ -341,7 +341,7 @@ class Migration_Manager {
 			return true;
 
 		} catch ( \Exception $e ) {
-			error_log( 'BragBook Gallery Import Error: ' . $e->getMessage() );
+			error_log( 'BRAG Book Gallery Import Error: ' . $e->getMessage() );
 			return false;
 		}
 	}
@@ -372,7 +372,7 @@ class Migration_Manager {
 		if ( $target_mode === 'local' ) {
 			// Check API connectivity
 			$checks['api_connectivity'] = $this->test_api_connectivity();
-			
+
 			// Check available storage
 			$checks['storage_space'] = $this->check_available_storage();
 		}
@@ -380,7 +380,7 @@ class Migration_Manager {
 		// Check if any checks failed
 		foreach ( $checks as $check => $result ) {
 			if ( ! $result ) {
-				error_log( "BragBook Gallery Pre-flight check failed: {$check}" );
+				error_log( "BRAG Book Gallery Pre-flight check failed: {$check}" );
 				return false;
 			}
 		}
@@ -396,7 +396,7 @@ class Migration_Manager {
 	 */
 	private function test_database_connection(): bool {
 		global $wpdb;
-		
+
 		$result = $wpdb->get_var( "SELECT 1" );
 		return $result === '1';
 	}
@@ -445,10 +445,10 @@ class Migration_Manager {
 	private function check_available_storage(): bool {
 		$upload_dir = wp_upload_dir();
 		$free_bytes = disk_free_space( $upload_dir['basedir'] );
-		
+
 		// Require at least 1GB free space
 		$required_bytes = 1073741824; // 1GB
-		
+
 		return $free_bytes > $required_bytes;
 	}
 
@@ -476,7 +476,7 @@ class Migration_Manager {
 	 */
 	private function get_current_settings(): array {
 		$settings = array();
-		
+
 		$option_keys = array(
 			'brag_book_gallery_mode',
 			'brag_book_gallery_mode_settings',
@@ -507,7 +507,7 @@ class Migration_Manager {
 		) );
 
 		$statuses = array();
-		
+
 		foreach ( $posts as $post_id ) {
 			$post = get_post( $post_id );
 			$statuses[ $post_id ] = array(
@@ -536,7 +536,7 @@ class Migration_Manager {
 		);
 
 		update_option( self::MIGRATION_STATUS_OPTION, $status_data );
-		
+
 		// Set transient for real-time status checking
 		set_transient( 'brag_book_gallery_migration_status', $status, HOUR_IN_SECONDS );
 	}
@@ -604,7 +604,7 @@ class Migration_Manager {
 				'ID' => $post->ID,
 				'post_status' => 'draft',
 			) );
-			
+
 			// Add meta to indicate this was archived during migration
 			update_post_meta( $post->ID, '_brag_migration_archived', current_time( 'mysql' ) );
 		}
@@ -638,13 +638,13 @@ class Migration_Manager {
 	private function cleanup_javascript_mode_data(): void {
 		// Clear transients and caches
 		global $wpdb;
-		
-		$wpdb->query( 
-			"DELETE FROM {$wpdb->options} 
-			 WHERE option_name LIKE '_transient_brag_book_gallery_%' 
+
+		$wpdb->query(
+			"DELETE FROM {$wpdb->options}
+			 WHERE option_name LIKE '_transient_brag_book_gallery_%'
 			 OR option_name LIKE '_transient_timeout_brag_book_gallery_%'"
 		);
-		
+
 		// Clear object cache
 		wp_cache_flush();
 	}
@@ -685,7 +685,7 @@ class Migration_Manager {
 
 		// Clean up taxonomy terms that have no posts
 		$this->cleanup_empty_terms();
-		
+
 		// Clean up sync data
 		$this->database->drop_tables();
 	}

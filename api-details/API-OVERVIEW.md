@@ -1,4 +1,4 @@
-# BragBook Gallery API Overview
+# BRAG Book Gallery API Overview
 
 ## Table of Contents
 1. [API Base Information](#api-base-information)
@@ -22,7 +22,7 @@ The API uses token-based authentication with the following methods:
 
 1. **API Token in Query Parameters**: `apiToken=YOUR_TOKEN`
 2. **API Token in Request Body**: `"apiTokens": ["YOUR_TOKEN"]`
-3. **Headers for Image Optimization**: 
+3. **Headers for Image Optimization**:
    - `x-api-token: YOUR_TOKEN`
    - `x-plugin-version: VERSION`
 
@@ -104,7 +104,7 @@ Optimizes and transforms images on-the-fly.
   "apiTokens": ["token"],
   "websitePropertyIds": [111],
   "email": "user@example.com",    // Required
-  "phone": "1234567890",           // Required  
+  "phone": "1234567890",           // Required
   "name": "User Name",             // Required
   "caseId": 17662                  // Required
 }
@@ -465,7 +465,7 @@ The API implements rate limiting to prevent abuse:
 
 ## Plugin Integration
 
-The BragBook Gallery WordPress plugin uses these endpoints to:
+The BRAG Book Gallery WordPress plugin uses these endpoints to:
 - Display before/after photo galleries
 - Manage user favorites
 - Generate navigation menus
@@ -477,7 +477,7 @@ The BragBook Gallery WordPress plugin uses these endpoints to:
 ## Version History
 
 - **Current Version**: Plugin Combine APIs v2.1.0
-- **Plugin Compatibility**: BragBook Gallery v3.0.0+
+- **Plugin Compatibility**: BRAG Book Gallery v3.0.0+
 - **Minimum PHP Version**: 8.2
 - **WordPress Compatibility**: 6.8+
 

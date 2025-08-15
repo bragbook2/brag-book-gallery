@@ -67,13 +67,13 @@ class Gallery_Taxonomies {
 		add_action( 'init', array( $this, 'register_categories' ) );
 		add_action( 'init', array( $this, 'register_procedures' ) );
 		add_action( 'init', array( $this, 'register_term_meta' ) );
-		
+
 		// Add form fields for taxonomies
 		add_action( self::CATEGORY_TAXONOMY . '_add_form_fields', array( $this, 'add_category_fields' ) );
 		add_action( self::CATEGORY_TAXONOMY . '_edit_form_fields', array( $this, 'edit_category_fields' ) );
 		add_action( self::PROCEDURE_TAXONOMY . '_add_form_fields', array( $this, 'add_procedure_fields' ) );
 		add_action( self::PROCEDURE_TAXONOMY . '_edit_form_fields', array( $this, 'edit_procedure_fields' ) );
-		
+
 		// Save term meta
 		add_action( 'created_' . self::CATEGORY_TAXONOMY, array( $this, 'save_category_meta' ) );
 		add_action( 'edited_' . self::CATEGORY_TAXONOMY, array( $this, 'save_category_meta' ) );
@@ -115,7 +115,7 @@ class Gallery_Taxonomies {
 			'show_in_nav_menus'     => true,
 			'show_tagcloud'         => false,
 			'query_var'             => true,
-			'rewrite'               => array( 
+			'rewrite'               => array(
 				'slug' => 'gallery-category',
 				'with_front' => false,
 				'hierarchical' => true,
@@ -162,7 +162,7 @@ class Gallery_Taxonomies {
 			'show_in_nav_menus'     => true,
 			'show_tagcloud'         => true,
 			'query_var'             => true,
-			'rewrite'               => array( 
+			'rewrite'               => array(
 				'slug' => 'gallery-procedure',
 				'with_front' => false,
 			),
@@ -182,9 +182,9 @@ class Gallery_Taxonomies {
 	 */
 	public function register_term_meta(): void {
 		// Category meta
-		register_term_meta( 
-			self::CATEGORY_TAXONOMY, 
-			'brag_category_api_id', 
+		register_term_meta(
+			self::CATEGORY_TAXONOMY,
+			'brag_category_api_id',
 			array(
 				'type' => 'integer',
 				'description' => 'API category ID',
@@ -193,9 +193,9 @@ class Gallery_Taxonomies {
 			)
 		);
 
-		register_term_meta( 
-			self::CATEGORY_TAXONOMY, 
-			'brag_category_order', 
+		register_term_meta(
+			self::CATEGORY_TAXONOMY,
+			'brag_category_order',
 			array(
 				'type' => 'integer',
 				'description' => 'Display order',
@@ -205,9 +205,9 @@ class Gallery_Taxonomies {
 		);
 
 		// Procedure meta
-		register_term_meta( 
-			self::PROCEDURE_TAXONOMY, 
-			'brag_procedure_api_id', 
+		register_term_meta(
+			self::PROCEDURE_TAXONOMY,
+			'brag_procedure_api_id',
 			array(
 				'type' => 'integer',
 				'description' => 'API procedure ID',
@@ -216,9 +216,9 @@ class Gallery_Taxonomies {
 			)
 		);
 
-		register_term_meta( 
-			self::PROCEDURE_TAXONOMY, 
-			'brag_procedure_slug_name', 
+		register_term_meta(
+			self::PROCEDURE_TAXONOMY,
+			'brag_procedure_slug_name',
 			array(
 				'type' => 'string',
 				'description' => 'URL slug name',
@@ -227,9 +227,9 @@ class Gallery_Taxonomies {
 			)
 		);
 
-		register_term_meta( 
-			self::PROCEDURE_TAXONOMY, 
-			'brag_procedure_nudity', 
+		register_term_meta(
+			self::PROCEDURE_TAXONOMY,
+			'brag_procedure_nudity',
 			array(
 				'type' => 'boolean',
 				'description' => 'Contains nudity',
@@ -238,9 +238,9 @@ class Gallery_Taxonomies {
 			)
 		);
 
-		register_term_meta( 
-			self::PROCEDURE_TAXONOMY, 
-			'brag_procedure_case_count', 
+		register_term_meta(
+			self::PROCEDURE_TAXONOMY,
+			'brag_procedure_case_count',
 			array(
 				'type' => 'integer',
 				'description' => 'Total case count',
@@ -261,7 +261,7 @@ class Gallery_Taxonomies {
 		<div class="form-field">
 			<label for="brag_category_api_id"><?php esc_html_e( 'API Category ID', 'brag-book-gallery' ); ?></label>
 			<input type="number" name="brag_category_api_id" id="brag_category_api_id" value="">
-			<p class="description"><?php esc_html_e( 'The category ID from the BragBook API.', 'brag-book-gallery' ); ?></p>
+			<p class="description"><?php esc_html_e( 'The category ID from the BRAG Book API.', 'brag-book-gallery' ); ?></p>
 		</div>
 		<div class="form-field">
 			<label for="brag_category_order"><?php esc_html_e( 'Display Order', 'brag-book-gallery' ); ?></label>
@@ -288,7 +288,7 @@ class Gallery_Taxonomies {
 			</th>
 			<td>
 				<input type="number" name="brag_category_api_id" id="brag_category_api_id" value="<?php echo esc_attr( $api_id ); ?>">
-				<p class="description"><?php esc_html_e( 'The category ID from the BragBook API.', 'brag-book-gallery' ); ?></p>
+				<p class="description"><?php esc_html_e( 'The category ID from the BRAG Book API.', 'brag-book-gallery' ); ?></p>
 			</td>
 		</tr>
 		<tr class="form-field">
@@ -314,7 +314,7 @@ class Gallery_Taxonomies {
 		<div class="form-field">
 			<label for="brag_procedure_api_id"><?php esc_html_e( 'API Procedure ID', 'brag-book-gallery' ); ?></label>
 			<input type="number" name="brag_procedure_api_id" id="brag_procedure_api_id" value="">
-			<p class="description"><?php esc_html_e( 'The procedure ID from the BragBook API.', 'brag-book-gallery' ); ?></p>
+			<p class="description"><?php esc_html_e( 'The procedure ID from the BRAG Book API.', 'brag-book-gallery' ); ?></p>
 		</div>
 		<div class="form-field">
 			<label for="brag_procedure_slug_name"><?php esc_html_e( 'URL Slug', 'brag-book-gallery' ); ?></label>
@@ -348,7 +348,7 @@ class Gallery_Taxonomies {
 			</th>
 			<td>
 				<input type="number" name="brag_procedure_api_id" id="brag_procedure_api_id" value="<?php echo esc_attr( $api_id ); ?>">
-				<p class="description"><?php esc_html_e( 'The procedure ID from the BragBook API.', 'brag-book-gallery' ); ?></p>
+				<p class="description"><?php esc_html_e( 'The procedure ID from the BRAG Book API.', 'brag-book-gallery' ); ?></p>
 			</td>
 		</tr>
 		<tr class="form-field">
@@ -391,19 +391,19 @@ class Gallery_Taxonomies {
 	public function save_category_meta( $term_id ): void {
 		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- WordPress handles nonce verification for term saves
 		if ( isset( $_POST['brag_category_api_id'] ) ) {
-			update_term_meta( 
-				$term_id, 
-				'brag_category_api_id', 
-				absint( $_POST['brag_category_api_id'] ) 
+			update_term_meta(
+				$term_id,
+				'brag_category_api_id',
+				absint( $_POST['brag_category_api_id'] )
 			);
 		}
 
 		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- WordPress handles nonce verification for term saves
 		if ( isset( $_POST['brag_category_order'] ) ) {
-			update_term_meta( 
-				$term_id, 
-				'brag_category_order', 
-				absint( $_POST['brag_category_order'] ) 
+			update_term_meta(
+				$term_id,
+				'brag_category_order',
+				absint( $_POST['brag_category_order'] )
 			);
 		}
 	}
@@ -418,27 +418,27 @@ class Gallery_Taxonomies {
 	public function save_procedure_meta( $term_id ): void {
 		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- WordPress handles nonce verification for term saves
 		if ( isset( $_POST['brag_procedure_api_id'] ) ) {
-			update_term_meta( 
-				$term_id, 
-				'brag_procedure_api_id', 
-				absint( $_POST['brag_procedure_api_id'] ) 
+			update_term_meta(
+				$term_id,
+				'brag_procedure_api_id',
+				absint( $_POST['brag_procedure_api_id'] )
 			);
 		}
 
 		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- WordPress handles nonce verification for term saves
 		if ( isset( $_POST['brag_procedure_slug_name'] ) ) {
-			update_term_meta( 
-				$term_id, 
-				'brag_procedure_slug_name', 
-				sanitize_text_field( $_POST['brag_procedure_slug_name'] ) 
+			update_term_meta(
+				$term_id,
+				'brag_procedure_slug_name',
+				sanitize_text_field( $_POST['brag_procedure_slug_name'] )
 			);
 		}
 
 		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- WordPress handles nonce verification for term saves
 		if ( isset( $_POST['brag_procedure_nudity'] ) ) {
-			update_term_meta( 
-				$term_id, 
-				'brag_procedure_nudity', 
+			update_term_meta(
+				$term_id,
+				'brag_procedure_nudity',
 				'1'
 			);
 		} else {

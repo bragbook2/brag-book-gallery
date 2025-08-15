@@ -321,7 +321,7 @@ function get_sidebar_data_for_page( string $page_slug, string $combine_slug ): a
 					}
 				}
 			} catch ( Exception $e ) {
-				error_log( 'BragBook Sidebar Error: ' . $e->getMessage() );
+				error_log( 'BRAG Book Sidebar Error: ' . $e->getMessage() );
 			}
 		}
 	}

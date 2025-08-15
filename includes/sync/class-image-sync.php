@@ -85,7 +85,7 @@ class Image_Sync {
 			foreach ( $photos as $photo ) {
 				try {
 					$attachment_id = $this->import_single_image( $photo, $post_id, $set_type );
-					
+
 					if ( $attachment_id ) {
 						if ( $set_type === 'before' ) {
 							$results['before_images'][] = $attachment_id;
@@ -130,12 +130,12 @@ class Image_Sync {
 
 			try {
 				$attachment_id = $this->sideload_image( $url, $post_id );
-				
+
 				if ( $attachment_id ) {
 					$attachment_ids[] = $attachment_id;
 				}
 			} catch ( \Exception $e ) {
-				error_log( "BragBook Gallery: Failed to import image {$url}: " . $e->getMessage() );
+				error_log( "BRAG Book Gallery: Failed to import image {$url}: " . $e->getMessage() );
 			}
 		}
 
@@ -154,7 +154,7 @@ class Image_Sync {
 	private function import_single_image( $image_data, int $post_id, string $image_type = '' ): ?int {
 		// Extract URL from image data
 		$url = is_array( $image_data ) ? ( $image_data['url'] ?? '' ) : $image_data;
-		
+
 		if ( empty( $url ) ) {
 			return null;
 		}
@@ -169,7 +169,7 @@ class Image_Sync {
 
 		// Sideload the image
 		$attachment_id = $this->sideload_image( $url, $post_id );
-		
+
 		if ( ! $attachment_id ) {
 			return null;
 		}
@@ -209,7 +209,7 @@ class Image_Sync {
 
 		// Get temporary file
 		$tmp = download_url( $url );
-		
+
 		if ( is_wp_error( $tmp ) ) {
 			throw new \Exception( "Failed to download image: " . $tmp->get_error_message() );
 		}
@@ -257,13 +257,13 @@ class Image_Sync {
 	 */
 	public function optimize_image( int $attachment_id ): bool {
 		$file_path = get_attached_file( $attachment_id );
-		
+
 		if ( ! $file_path || ! file_exists( $file_path ) ) {
 			return false;
 		}
 
 		$image_info = getimagesize( $file_path );
-		
+
 		if ( ! $image_info ) {
 			return false;
 		}
@@ -279,7 +279,7 @@ class Image_Sync {
 
 		// Load image editor
 		$image = wp_get_image_editor( $file_path );
-		
+
 		if ( is_wp_error( $image ) ) {
 			return false;
 		}
@@ -297,7 +297,7 @@ class Image_Sync {
 
 		// Save optimized image
 		$saved = $image->save( $file_path );
-		
+
 		if ( is_wp_error( $saved ) ) {
 			return false;
 		}
@@ -348,11 +348,11 @@ class Image_Sync {
 
 		// Add custom meta
 		update_post_meta( $attachment_id, '_brag_image_type', sanitize_text_field( $image_type ) );
-		
+
 		if ( ! empty( $image_data['width'] ) ) {
 			update_post_meta( $attachment_id, '_brag_original_width', absint( $image_data['width'] ) );
 		}
-		
+
 		if ( ! empty( $image_data['height'] ) ) {
 			update_post_meta( $attachment_id, '_brag_original_height', absint( $image_data['height'] ) );
 		}
@@ -369,9 +369,9 @@ class Image_Sync {
 		global $wpdb;
 
 		$attachment_id = $wpdb->get_var( $wpdb->prepare(
-			"SELECT post_id FROM {$wpdb->postmeta} 
-			 WHERE meta_key = '_brag_original_url' 
-			 AND meta_value = %s 
+			"SELECT post_id FROM {$wpdb->postmeta}
+			 WHERE meta_key = '_brag_original_url'
+			 AND meta_value = %s
 			 LIMIT 1",
 			$url
 		) );
@@ -389,7 +389,7 @@ class Image_Sync {
 	 */
 	private function ensure_attachment_association( int $attachment_id, int $post_id ): void {
 		$current_parent = wp_get_post_parent_id( $attachment_id );
-		
+
 		if ( $current_parent !== $post_id && $post_id > 0 ) {
 			wp_update_post( array(
 				'ID' => $attachment_id,
@@ -494,11 +494,11 @@ class Image_Sync {
 		// Try to get extension from URL path
 		$path = parse_url( $url, PHP_URL_PATH );
 		$path_info = pathinfo( $path );
-		
+
 		if ( ! empty( $path_info['extension'] ) ) {
 			$extension = strtolower( $path_info['extension'] );
 			$valid_extensions = array( 'jpg', 'jpeg', 'png', 'gif', 'webp' );
-			
+
 			if ( in_array( $extension, $valid_extensions, true ) ) {
 				return $extension;
 			}
@@ -512,7 +512,7 @@ class Image_Sync {
 
 		if ( ! is_wp_error( $response ) ) {
 			$content_type = wp_remote_retrieve_header( $response, 'content-type' );
-			
+
 			$type_extensions = array(
 				'image/jpeg' => 'jpg',
 				'image/png' => 'png',
@@ -543,7 +543,7 @@ class Image_Sync {
 
 		// Find attachments imported by this plugin that are no longer associated with any gallery posts
 		$orphaned_ids = $wpdb->get_col( $wpdb->prepare(
-			"SELECT p.ID 
+			"SELECT p.ID
 			 FROM {$wpdb->posts} p
 			 INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
 			 WHERE p.post_type = 'attachment'
@@ -589,8 +589,8 @@ class Image_Sync {
 
 		// Get total imported images
 		$stats['total_imported'] = (int) $wpdb->get_var(
-			"SELECT COUNT(*) 
-			 FROM {$wpdb->postmeta} 
+			"SELECT COUNT(*)
+			 FROM {$wpdb->postmeta}
 			 WHERE meta_key = '_brag_imported_date'"
 		);
 
@@ -614,17 +614,17 @@ class Image_Sync {
 		// Get recent imports (last 7 days)
 		$week_ago = date( 'Y-m-d H:i:s', strtotime( '-7 days' ) );
 		$stats['recent_imports'] = (int) $wpdb->get_var( $wpdb->prepare(
-			"SELECT COUNT(*) 
-			 FROM {$wpdb->postmeta} 
-			 WHERE meta_key = '_brag_imported_date' 
+			"SELECT COUNT(*)
+			 FROM {$wpdb->postmeta}
+			 WHERE meta_key = '_brag_imported_date'
 			 AND meta_value > %s",
 			$week_ago
 		) );
 
 		// Calculate total file size
 		$attachment_ids = $wpdb->get_col(
-			"SELECT post_id 
-			 FROM {$wpdb->postmeta} 
+			"SELECT post_id
+			 FROM {$wpdb->postmeta}
 			 WHERE meta_key = '_brag_imported_date'"
 		);
 
@@ -653,7 +653,7 @@ class Image_Sync {
 
 		// Find images that need optimization
 		$attachment_ids = $wpdb->get_col( $wpdb->prepare(
-			"SELECT p.ID 
+			"SELECT p.ID
 			 FROM {$wpdb->posts} p
 			 INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
 			 LEFT JOIN {$wpdb->postmeta} pm2 ON p.ID = pm2.post_id AND pm2.meta_key = '_brag_optimized'

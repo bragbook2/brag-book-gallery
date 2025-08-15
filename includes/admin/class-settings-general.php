@@ -21,11 +21,11 @@ if ( ! defined( 'WPINC' ) ) {
 /**
  * General Settings Class
  *
- * Provides the main dashboard and overview interface for BragBook Gallery.
+ * Provides the main dashboard and overview interface for BRAG Book Gallery.
  * This class serves as the primary landing page for plugin administration,
  * offering users a centralized view of plugin status, quick actions, and
  * essential information.
- * 
+ *
  * Key functionality:
  * - Plugin status dashboard with real-time configuration feedback
  * - Quick action cards for common administrative tasks
@@ -33,12 +33,12 @@ if ( ! defined( 'WPINC' ) ) {
  * - Feature overview and plugin information
  * - Contextual navigation to other settings pages
  * - Progressive disclosure based on configuration state
- * 
+ *
  * The general settings page adapts its content based on:
  * - Current operating mode (JavaScript vs Local)
  * - API configuration status
  * - Available plugin data and statistics
- * 
+ *
  * This serves as both an informational dashboard and a navigation hub,
  * guiding users through the plugin setup and ongoing management processes.
  *
@@ -48,7 +48,7 @@ class Settings_General extends Settings_Base {
 
 	/**
 	 * Initialize general settings page configuration
-	 * 
+	 *
 	 * Establishes the page slug for the main settings page, which serves
 	 * as both the default landing page and the general settings interface.
 	 * This page uses the primary plugin menu slug to appear as the default
@@ -64,30 +64,30 @@ class Settings_General extends Settings_Base {
 
 	/**
 	 * Render the comprehensive plugin dashboard and overview interface
-	 * 
+	 *
 	 * Generates the main settings page that serves as both a dashboard and
-	 * navigation hub for BragBook Gallery administration. The interface
+	 * navigation hub for BRAG Book Gallery administration. The interface
 	 * provides multiple information-rich sections:
-	 * 
+	 *
 	 * **Dashboard Sections:**
 	 * 1. Welcome Section - Plugin introduction and overview
 	 * 2. Plugin Status - Current configuration and operational state
 	 * 3. Quick Statistics - Mode-specific data summaries (Local mode only)
 	 * 4. Quick Actions - Contextual action cards for common tasks
 	 * 5. About Section - Feature list and plugin information
-	 * 
+	 *
 	 * **Adaptive Content:**
 	 * - Status cards reflect real-time configuration state
 	 * - Action cards change based on API setup and current mode
 	 * - Statistics appear only in Local mode with available data
 	 * - Navigation prompts guide users through setup process
-	 * 
+	 *
 	 * **User Experience Features:**
 	 * - Visual status indicators with color-coded feedback
 	 * - Contextual action buttons that adapt to current state
 	 * - Progressive disclosure that shows relevant options only
 	 * - Clear calls-to-action for next steps in setup
-	 * 
+	 *
 	 * The page serves as a single source of truth for plugin status
 	 * and provides intuitive pathways for all administrative tasks.
 	 *
@@ -96,29 +96,29 @@ class Settings_General extends Settings_Base {
 	 */
 	public function render(): void {
 		// Set localized page titles now that translation functions are available
-		$this->page_title = __( 'BragBook Gallery', 'brag-book-gallery' );
+		$this->page_title = __( 'BRAG Book Gallery', 'brag-book-gallery' );
 		$this->menu_title = __( 'General', 'brag-book-gallery' );
-		
+
 		// Handle form submission
 		if ( isset( $_POST['submit'] ) && $this->save_settings( 'brag_book_gallery_general_settings', 'brag_book_gallery_general_nonce' ) ) {
 			$this->save_general_settings();
 		}
-		
+
 		// Retrieve plugin metadata from main plugin file
 		$plugin_data = get_plugin_data( WP_PLUGIN_DIR . '/brag-book-gallery/brag-book-gallery.php' );
 		$version = isset( $plugin_data['Version'] ) ? $plugin_data['Version'] : '3.0.0';
-		
+
 		// Get current operational mode and mode manager for status display
 		$mode_manager = \BRAGBookGallery\Includes\Mode\Mode_Manager::get_instance();
 		$current_mode = $mode_manager->get_current_mode();
 
 		$this->render_header();
 		?>
-		
+
 		<!-- Welcome Section -->
 		<div class="brag-book-gallery-section">
 			<div class="brag-book-gallery-welcome">
-				<h2><?php esc_html_e( 'Welcome to BragBook Gallery', 'brag-book-gallery' ); ?></h2>
+				<h2><?php esc_html_e( 'Welcome to BRAG Book Gallery', 'brag-book-gallery' ); ?></h2>
 				<p class="about-description">
 					<?php esc_html_e( 'The most powerful before & after gallery plugin for WordPress. Display stunning medical and cosmetic procedure galleries with ease.', 'brag-book-gallery' ); ?>
 				</p>
@@ -141,7 +141,7 @@ class Settings_General extends Settings_Base {
 						<?php endif; ?>
 					</div>
 				</div>
-				
+
 				<div class="stat-card">
 					<div class="stat-header">
 						<span class="dashicons dashicons-admin-generic"></span>
@@ -161,7 +161,7 @@ class Settings_General extends Settings_Base {
 						<?php endif; ?>
 					</div>
 				</div>
-				
+
 				<div class="stat-card">
 					<div class="stat-header">
 						<span class="dashicons dashicons-admin-network"></span>
@@ -208,7 +208,7 @@ class Settings_General extends Settings_Base {
 				</div>
 				<div class="stat-card">
 					<div class="stat-value">
-						<?php 
+						<?php
 						$last_sync = get_option( 'brag_book_gallery_last_sync', '' );
 						if ( $last_sync ) {
 							echo esc_html( human_time_diff( strtotime( $last_sync ), current_time( 'timestamp' ) ) );
@@ -255,7 +255,7 @@ class Settings_General extends Settings_Base {
 						</div>
 					</div>
 					<?php endif; ?>
-					
+
 					<div class="action-card">
 						<div class="action-card-icon">
 							<span class="dashicons dashicons-forms"></span>
@@ -275,7 +275,7 @@ class Settings_General extends Settings_Base {
 						</div>
 						<div class="action-card-content">
 							<h3><?php esc_html_e( 'API Configuration Required', 'brag-book-gallery' ); ?></h3>
-							<p><?php esc_html_e( 'Configure your BragBook API connection to get started with galleries and mode settings.', 'brag-book-gallery' ); ?></p>
+							<p><?php esc_html_e( 'Configure your BRAG Book API connection to get started with galleries and mode settings.', 'brag-book-gallery' ); ?></p>
 							<a href="<?php echo esc_url( admin_url( 'admin.php?page=brag-book-gallery-api-settings' ) ); ?>" class="button button-primary">
 								<?php esc_html_e( 'Configure API', 'brag-book-gallery' ); ?>
 							</a>
@@ -300,10 +300,10 @@ class Settings_General extends Settings_Base {
 
 		<!-- About Section -->
 		<div class="brag-book-gallery-section">
-			<h2><?php esc_html_e( 'About BragBook Gallery', 'brag-book-gallery' ); ?></h2>
+			<h2><?php esc_html_e( 'About BRAG Book Gallery', 'brag-book-gallery' ); ?></h2>
 			<div class="about-content">
 				<p>
-					<?php esc_html_e( 'BragBook Gallery is designed specifically for medical and cosmetic professionals to showcase their work through stunning before & after galleries. With dual-mode functionality, you can choose between real-time API-driven content or locally stored galleries for maximum flexibility.', 'brag-book-gallery' ); ?>
+					<?php esc_html_e( 'BRAG Book Gallery is designed specifically for medical and cosmetic professionals to showcase their work through stunning before & after galleries. With dual-mode functionality, you can choose between real-time API-driven content or locally stored galleries for maximum flexibility.', 'brag-book-gallery' ); ?>
 				</p>
 				<h3><?php esc_html_e( 'Key Features', 'brag-book-gallery' ); ?></h3>
 				<ul class="feature-list">
@@ -323,7 +323,7 @@ class Settings_General extends Settings_Base {
 			<?php settings_errors( $this->page_slug ); ?>
 			<form method="post" action="">
 				<?php wp_nonce_field( 'brag_book_gallery_general_settings', 'brag_book_gallery_general_nonce' ); ?>
-				
+
 				<table class="form-table">
 					<tr>
 						<th scope="row">
@@ -336,10 +336,10 @@ class Settings_General extends Settings_Base {
 							$enable_sharing = get_option( 'brag_book_gallery_enable_sharing', 'no' );
 							?>
 							<input type="hidden" name="brag_book_gallery_enable_sharing" value="no" />
-							<input type="checkbox" 
-								   id="brag_book_gallery_enable_sharing" 
-								   name="brag_book_gallery_enable_sharing" 
-								   value="yes" 
+							<input type="checkbox"
+								   id="brag_book_gallery_enable_sharing"
+								   name="brag_book_gallery_enable_sharing"
+								   value="yes"
 								   <?php checked( $enable_sharing, 'yes' ); ?> />
 							<p class="description">
 								<?php esc_html_e( 'Allow users to share gallery cases via social media and other platforms.', 'brag-book-gallery' ); ?>
@@ -347,7 +347,7 @@ class Settings_General extends Settings_Base {
 						</td>
 					</tr>
 				</table>
-				
+
 				<?php submit_button( __( 'Save Settings', 'brag-book-gallery' ) ); ?>
 			</form>
 		</div>

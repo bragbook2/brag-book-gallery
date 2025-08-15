@@ -67,9 +67,9 @@ final class Shortcodes {
 		foreach ( $hooks as $hook => $callbacks ) {
 			foreach ( $callbacks as [ $method, $priority ] ) {
 				add_action(
-					hook_name: $hook,
-					callback: [ __CLASS__, $method ],
-					priority: $priority
+					$hook,
+					[ __CLASS__, $method ],
+					$priority
 				);
 			}
 		}
@@ -77,10 +77,10 @@ final class Shortcodes {
 		// Register filters
 		foreach ( $filters as $filter => [ $method, $priority, $accepted_args ] ) {
 			add_filter(
-				hook_name: $filter,
-				callback: [ __CLASS__, $method ],
-				priority: $priority,
-				accepted_args: $accepted_args
+				$filter,
+				[ __CLASS__, $method ],
+				$priority,
+				$accepted_args
 			);
 		}
 
@@ -120,8 +120,8 @@ final class Shortcodes {
 
 		foreach ( $shortcodes as $tag => $callback ) {
 			add_shortcode(
-				tag: $tag,
-				callback: [ __CLASS__, $callback ]
+				$tag,
+				[ __CLASS__, $callback ]
 			);
 		}
 	}
@@ -312,33 +312,23 @@ final class Shortcodes {
 		$base_query = sprintf( 'index.php?pagename=%s', $page_slug );
 
 		$rewrite_rules = [
-			// Case detail with procedure: /page-slug/procedure-name/case-id (numeric)
+			// Case detail: /gallery/procedure-name/case-id (numeric)
 			[
 				'regex' => "^{$page_slug}/([^/]+)/([0-9]+)/?$",
 				'query' => "{$base_query}&procedure_title=\$matches[1]&case_id=\$matches[2]",
 			],
-			// Procedure filter: /page-slug/procedure-name (single segment after page)
+			// Procedure page: /gallery/procedure-name
 			[
 				'regex' => "^{$page_slug}/([^/]+)/?$",
 				'query' => "{$base_query}&filter_procedure=\$matches[1]",
-			],
-			// Favorites case detail: /page-slug/favorites/section/procedure-name/case-id
-			[
-				'regex' => "^{$page_slug}/favorites/([^/]+)/([^/]+)/([0-9]+)/?$",
-				'query' => "{$base_query}&favorites_section=\$matches[1]&procedure_title=\$matches[2]&case_id=\$matches[3]",
-			],
-			// Favorites procedure list: /page-slug/favorites/section/procedure-name
-			[
-				'regex' => "^{$page_slug}/favorites/([^/]+)/([^/]+)/?$",
-				'query' => "{$base_query}&favorites_section=\$matches[1]&procedure_title=\$matches[2]",
 			],
 		];
 
 		foreach ( $rewrite_rules as $rule ) {
 			add_rewrite_rule(
-				regex: $rule['regex'],
-				query: $rule['query'],
-				after: 'top'
+				$rule['regex'],
+				$rule['query'],
+				'top'
 			);
 		}
 	}
@@ -512,7 +502,7 @@ final class Shortcodes {
 				}
 			} catch ( \JsonException $e ) {
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-					error_log( 'BragBook Gallery: Failed to decode API configuration JSON - ' . $e->getMessage() );
+					error_log( 'BRAG Book Gallery: Failed to decode API configuration JSON - ' . $e->getMessage() );
 				}
 			}
 
@@ -539,13 +529,13 @@ final class Shortcodes {
 		// Check if we have valid sidebar data
 		if ( empty( $sidebar_data ) || ! isset( $sidebar_data['data'] ) || ! is_array( $sidebar_data['data'] ) ) {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( 'BragBook Gallery: No sidebar data, using default filters' );
+				error_log( 'BRAG Book Gallery: No sidebar data, using default filters' );
 			}
 			return self::generate_default_filters();
 		}
 
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			error_log( 'BragBook Gallery: Generating filters for ' . count( $sidebar_data['data'] ) . ' categories' );
+			error_log( 'BRAG Book Gallery: Generating filters for ' . count( $sidebar_data['data'] ) . ' categories' );
 		}
 
 		// Process each category from the sidebar data
@@ -1104,7 +1094,7 @@ final class Shortcodes {
 	private static function get_sidebar_data( string $api_token ): array {
 		if ( empty( $api_token ) ) {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( 'BragBook Gallery: get_sidebar_data - Empty API token' );
+				error_log( 'BRAG Book Gallery: get_sidebar_data - Empty API token' );
 			}
 			return [];
 		}
@@ -1117,19 +1107,19 @@ final class Shortcodes {
 				$decoded = json_decode( $sidebar_response, true, 512, JSON_THROW_ON_ERROR );
 
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-					error_log( 'BragBook Gallery: Sidebar data received - ' . ( isset($decoded['data']) ? count($decoded['data']) . ' categories' : 'no data key' ) );
+					error_log( 'BRAG Book Gallery: Sidebar data received - ' . ( isset($decoded['data']) ? count($decoded['data']) . ' categories' : 'no data key' ) );
 				}
 
 				return is_array( $decoded ) ? $decoded : [];
 			} else {
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-					error_log( 'BragBook Gallery: Empty sidebar response' );
+					error_log( 'BRAG Book Gallery: Empty sidebar response' );
 				}
 			}
 		} catch ( \JsonException $e ) {
 			// Log JSON decode error if debug is enabled
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( 'BragBook Gallery: Failed to decode sidebar JSON - ' . $e->getMessage() );
+				error_log( 'BRAG Book Gallery: Failed to decode sidebar JSON - ' . $e->getMessage() );
 			}
 		}
 
@@ -1684,7 +1674,7 @@ final class Shortcodes {
 			}
 		} catch ( \JsonException $e ) {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( 'BragBook Carousel: Failed to decode carousel JSON - ' . $e->getMessage() );
+				error_log( 'BRAG Book Carousel: Failed to decode carousel JSON - ' . $e->getMessage() );
 			}
 		}
 
@@ -3426,7 +3416,7 @@ final class Shortcodes {
 			?>
 			<div class="notice notice-warning is-dismissible">
 				<p>
-					<strong>BragBook Gallery:</strong> If you're experiencing 404 errors with gallery filter links,
+					<strong>BRAG Book Gallery:</strong> If you're experiencing 404 errors with gallery filter links,
 					<button type="button" class="button-link brag-book-flush-rewrite-btn" onclick="bragbookFlushRewrite()">
 						click here to flush rewrite rules
 					</button>
@@ -3805,7 +3795,7 @@ final class Shortcodes {
 							}
 							$html .= 'onload="this.parentElement.parentElement.querySelector(\'.brag-book-gallery-skeleton-loader\').style.display=\'none\';" />';
 							$html .= '</picture>';
-							
+
 							// Add nudity warning overlay if applicable
 							if ( $has_nudity ) {
 								$html .= '<div class="brag-book-gallery-nudity-warning">';
@@ -3819,7 +3809,7 @@ final class Shortcodes {
 								$html .= '</div>';
 								$html .= '</div>';
 							}
-							
+
 							$html .= '</div>';
 							$html .= '</div>';
 							$html .= '</div>'; // Close case-images
@@ -3857,7 +3847,7 @@ final class Shortcodes {
 							}
 							$html .= 'onload="window.syncImageHeights(this);" />';
 							$html .= '</picture>';
-							
+
 							// Add nudity warning overlay if applicable
 							if ( $has_nudity ) {
 								$html .= '<div class="brag-book-gallery-nudity-warning">';
@@ -3871,7 +3861,7 @@ final class Shortcodes {
 								$html .= '</div>';
 								$html .= '</div>';
 							}
-							
+
 							$html .= '</div>';
 							$html .= '</div>';
 						} else {
@@ -3922,7 +3912,7 @@ final class Shortcodes {
 							}
 							$html .= 'onload="window.syncImageHeights(this);" />';
 							$html .= '</picture>';
-							
+
 							// Add nudity warning overlay if applicable
 							if ( $has_nudity ) {
 								$html .= '<div class="brag-book-gallery-nudity-warning">';
@@ -3936,7 +3926,7 @@ final class Shortcodes {
 								$html .= '</div>';
 								$html .= '</div>';
 							}
-							
+
 							$html .= '</div>';
 							$html .= '</div>';
 						} else {
@@ -4912,7 +4902,7 @@ final class Shortcodes {
 
 		global $wpdb;
 
-		// Clear all BragBook Gallery transients
+		// Clear all BRAG Book Gallery transients
 		$query = "
 			DELETE FROM {$wpdb->options}
 			WHERE option_name LIKE '%transient_brag_book_cases_%'

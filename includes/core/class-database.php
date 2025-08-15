@@ -2,7 +2,7 @@
 /**
  * Database Manager
  *
- * Manages database setup and maintenance for the BragBook Gallery plugin.
+ * Manages database setup and maintenance for the BRAG Book Gallery plugin.
  *
  * @package    BRAGBookGallery
  * @subpackage Includes\Core
@@ -71,7 +71,7 @@ class Database {
 		global $wpdb;
 		$this->wpdb = $wpdb;
 		$this->table_prefix = $wpdb->prefix . 'brag_';
-		
+
 		$this->init();
 	}
 
@@ -94,7 +94,7 @@ class Database {
 	 */
 	public function check_database_version(): void {
 		$installed_version = get_option( self::DB_VERSION_OPTION, '0.0.0' );
-		
+
 		if ( version_compare( $installed_version, self::CURRENT_DB_VERSION, '<' ) ) {
 			$this->create_tables();
 		}
@@ -109,7 +109,7 @@ class Database {
 	public function create_tables(): void {
 		$this->create_sync_log_table();
 		$this->create_case_map_table();
-		
+
 		update_option( self::DB_VERSION_OPTION, self::CURRENT_DB_VERSION );
 	}
 
@@ -121,7 +121,7 @@ class Database {
 	 */
 	private function create_sync_log_table(): void {
 		$table_name = $this->table_prefix . 'sync_log';
-		
+
 		$charset_collate = $this->wpdb->get_charset_collate();
 
 		$sql = "CREATE TABLE {$table_name} (
@@ -149,7 +149,7 @@ class Database {
 	 */
 	private function create_case_map_table(): void {
 		$table_name = $this->table_prefix . 'case_map';
-		
+
 		$charset_collate = $this->wpdb->get_charset_collate();
 
 		$sql = "CREATE TABLE {$table_name} (
@@ -201,15 +201,15 @@ class Database {
 	 * @param string $error_messages Error messages if any.
 	 * @return int|false Insert ID or false on failure.
 	 */
-	public function log_sync_operation( 
-		string $sync_type, 
-		string $sync_status, 
-		int $items_processed = 0, 
-		int $items_failed = 0, 
-		string $error_messages = '' 
+	public function log_sync_operation(
+		string $sync_type,
+		string $sync_status,
+		int $items_processed = 0,
+		int $items_failed = 0,
+		string $error_messages = ''
 	) {
 		$table_name = $this->get_sync_log_table();
-		
+
 		$data = array(
 			'sync_type' => $sync_type,
 			'sync_status' => $sync_status,
@@ -224,7 +224,7 @@ class Database {
 		}
 
 		$result = $this->wpdb->insert( $table_name, $data );
-		
+
 		return $result ? $this->wpdb->insert_id : false;
 	}
 
@@ -239,15 +239,15 @@ class Database {
 	 * @param string $error_messages Error messages if any.
 	 * @return bool Success status.
 	 */
-	public function update_sync_log( 
-		int $log_id, 
-		string $sync_status, 
-		int $items_processed = 0, 
-		int $items_failed = 0, 
-		string $error_messages = '' 
+	public function update_sync_log(
+		int $log_id,
+		string $sync_status,
+		int $items_processed = 0,
+		int $items_failed = 0,
+		string $error_messages = ''
 	): bool {
 		$table_name = $this->get_sync_log_table();
-		
+
 		$data = array(
 			'sync_status' => $sync_status,
 			'items_processed' => $items_processed,
@@ -259,9 +259,9 @@ class Database {
 			$data['completed_at'] = current_time( 'mysql' );
 		}
 
-		$result = $this->wpdb->update( 
-			$table_name, 
-			$data, 
+		$result = $this->wpdb->update(
+			$table_name,
+			$data,
 			array( 'id' => $log_id ),
 			array( '%s', '%d', '%d', '%s', '%s' ),
 			array( '%d' )
@@ -279,14 +279,14 @@ class Database {
 	 */
 	public function get_recent_sync_logs( int $limit = 10 ): array {
 		$table_name = $this->get_sync_log_table();
-		
-		$sql = $this->wpdb->prepare( 
+
+		$sql = $this->wpdb->prepare(
 			"SELECT * FROM {$table_name} ORDER BY started_at DESC LIMIT %d",
-			$limit 
+			$limit
 		);
 
 		$results = $this->wpdb->get_results( $sql );
-		
+
 		return $results ?: array();
 	}
 
@@ -301,15 +301,15 @@ class Database {
 	 * @param string $sync_hash Sync hash for change detection.
 	 * @return bool Success status.
 	 */
-	public function map_case_to_post( 
-		int $api_case_id, 
-		int $post_id, 
-		string $api_token, 
-		int $property_id, 
-		string $sync_hash = '' 
+	public function map_case_to_post(
+		int $api_case_id,
+		int $post_id,
+		string $api_token,
+		int $property_id,
+		string $sync_hash = ''
 	): bool {
 		$table_name = $this->get_case_map_table();
-		
+
 		$data = array(
 			'api_case_id' => $api_case_id,
 			'post_id' => $post_id,
@@ -328,12 +328,12 @@ class Database {
 
 		if ( $existing ) {
 			// Update existing mapping
-			$result = $this->wpdb->update( 
-				$table_name, 
-				$data, 
-				array( 
-					'api_case_id' => $api_case_id, 
-					'api_token' => $api_token 
+			$result = $this->wpdb->update(
+				$table_name,
+				$data,
+				array(
+					'api_case_id' => $api_case_id,
+					'api_token' => $api_token
 				),
 				array( '%d', '%d', '%s', '%d', '%s', '%s' ),
 				array( '%d', '%s' )
@@ -356,7 +356,7 @@ class Database {
 	 */
 	public function get_post_by_case_id( int $api_case_id, string $api_token ): ?int {
 		$table_name = $this->get_case_map_table();
-		
+
 		$post_id = $this->wpdb->get_var( $this->wpdb->prepare(
 			"SELECT post_id FROM {$table_name} WHERE api_case_id = %d AND api_token = %s",
 			$api_case_id,
@@ -376,7 +376,7 @@ class Database {
 	 */
 	public function get_sync_hash( int $api_case_id, string $api_token ): ?string {
 		$table_name = $this->get_case_map_table();
-		
+
 		$sync_hash = $this->wpdb->get_var( $this->wpdb->prepare(
 			"SELECT sync_hash FROM {$table_name} WHERE api_case_id = %d AND api_token = %s",
 			$api_case_id,
@@ -396,12 +396,12 @@ class Database {
 	 */
 	public function remove_case_mapping( int $api_case_id, string $api_token ): bool {
 		$table_name = $this->get_case_map_table();
-		
-		$result = $this->wpdb->delete( 
+
+		$result = $this->wpdb->delete(
 			$table_name,
-			array( 
+			array(
 				'api_case_id' => $api_case_id,
-				'api_token' => $api_token 
+				'api_token' => $api_token
 			),
 			array( '%d', '%s' )
 		);
@@ -421,14 +421,14 @@ class Database {
 
 		// Get total syncs
 		$total_syncs = (int) $this->wpdb->get_var( "SELECT COUNT(*) FROM {$sync_log_table}" );
-		
+
 		// Get successful syncs
-		$successful_syncs = (int) $this->wpdb->get_var( 
+		$successful_syncs = (int) $this->wpdb->get_var(
 			"SELECT COUNT(*) FROM {$sync_log_table} WHERE sync_status = 'completed'"
 		);
 
 		// Get failed syncs
-		$failed_syncs = (int) $this->wpdb->get_var( 
+		$failed_syncs = (int) $this->wpdb->get_var(
 			"SELECT COUNT(*) FROM {$sync_log_table} WHERE sync_status = 'failed'"
 		);
 
@@ -436,7 +436,7 @@ class Database {
 		$total_mapped_cases = (int) $this->wpdb->get_var( "SELECT COUNT(*) FROM {$case_map_table}" );
 
 		// Get last sync time
-		$last_sync = $this->wpdb->get_var( 
+		$last_sync = $this->wpdb->get_var(
 			"SELECT MAX(started_at) FROM {$sync_log_table}"
 		);
 
@@ -458,9 +458,9 @@ class Database {
 	 */
 	public function cleanup_old_sync_logs( int $days_to_keep = 30 ): int {
 		$table_name = $this->get_sync_log_table();
-		
+
 		$cutoff_date = date( 'Y-m-d H:i:s', strtotime( "-{$days_to_keep} days" ) );
-		
+
 		$result = $this->wpdb->query( $this->wpdb->prepare(
 			"DELETE FROM {$table_name} WHERE started_at < %s",
 			$cutoff_date

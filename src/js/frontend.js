@@ -134,8 +134,8 @@ class Carousel {
 			}
 
 			// Add share button if not present in actions container and sharing is enabled
-			if (!actionsContainer.querySelector('.brag-book-gallery-share-btn') && 
-				typeof bragBookGalleryConfig !== 'undefined' && 
+			if (!actionsContainer.querySelector('.brag-book-gallery-share-btn') &&
+				typeof bragBookGalleryConfig !== 'undefined' &&
 				bragBookGalleryConfig.enableSharing === 'yes') {
 				const shareBtn = document.createElement('button');
 				shareBtn.className = 'brag-book-gallery-share-btn';
@@ -2439,7 +2439,7 @@ class SearchAutocomplete {
  * Main Application
  * Orchestrates all components
  */
-class BragBookGalleryApp {
+class BRAG BookGalleryApp {
 	constructor() {
 		this.components = {};
 		this.init();
@@ -2457,7 +2457,7 @@ class BragBookGalleryApp {
 		this.initializeConsultationForm();
 		this.initializeCaseLinks();
 
-		console.log("BragBookGallery initialized");
+		console.log("BRAG BookGallery initialized");
 	}
 
 	initializeCarousels() {
@@ -2580,7 +2580,7 @@ class BragBookGalleryApp {
 
 	initializeShareManager() {
 		// Only initialize ShareManager if sharing is enabled
-		if (typeof bragBookGalleryConfig !== 'undefined' && 
+		if (typeof bragBookGalleryConfig !== 'undefined' &&
 			bragBookGalleryConfig.enableSharing === 'yes') {
 			this.components.shareManager = new ShareManager({
 				onShare: (data) => {
@@ -2598,7 +2598,7 @@ class BragBookGalleryApp {
 				this.handleFormSubmit(e.target);
 			});
 		}
-		
+
 		// Clear messages when dialog is opened
 		const consultationDialog = document.getElementById('consultationDialog');
 		if (consultationDialog) {
@@ -2613,7 +2613,7 @@ class BragBookGalleryApp {
 					}
 				});
 			});
-			
+
 			observer.observe(consultationDialog, { attributes: true });
 		}
 	}
@@ -2834,7 +2834,7 @@ class BragBookGalleryApp {
 		// Get submit button and disable it during submission
 		const submitBtn = form.querySelector('.brag-book-gallery-form-submit');
 		const originalBtnText = submitBtn ? submitBtn.textContent : '';
-		
+
 		if (submitBtn) {
 			submitBtn.disabled = true;
 			submitBtn.textContent = 'Sending...';
@@ -2871,7 +2871,7 @@ class BragBookGalleryApp {
 			if (result.success) {
 				// Show success message in modal
 				this.showModalMessage('Thank you for your consultation request! We will contact you soon.', 'success');
-				
+
 				// Reset form and optionally close modal after delay
 				setTimeout(() => {
 					form.reset();
@@ -2906,30 +2906,30 @@ class BragBookGalleryApp {
 	showModalMessage(message, type = 'info') {
 		const messageContainer = document.getElementById('consultationMessage');
 		const messageContent = messageContainer?.querySelector('.brag-book-gallery-form-message-content');
-		
+
 		if (!messageContainer || !messageContent) {
 			// Fallback to notification if modal elements not found
 			this.showNotification(message, type);
 			return;
 		}
-		
+
 		// Set the message text
 		messageContent.textContent = message;
-		
+
 		// Remove all type classes and add the current type
 		messageContainer.className = 'brag-book-gallery-form-message';
 		messageContainer.classList.add(`brag-book-gallery-form-message-${type}`);
-		
+
 		// Show the message container
 		messageContainer.style.display = 'block';
-		
+
 		// Scroll to top of modal to ensure message is visible
 		const dialogContent = messageContainer.closest('.brag-book-gallery-dialog-content');
 		if (dialogContent) {
 			dialogContent.scrollTop = 0;
 		}
 	}
-	
+
 	// Helper method to hide modal messages
 	hideModalMessage() {
 		const messageContainer = document.getElementById('consultationMessage');
@@ -2941,12 +2941,12 @@ class BragBookGalleryApp {
 			}
 		}
 	}
-	
+
 	// Helper method to show notifications (fallback)
 	showNotification(message, type = 'info') {
 		// Check if there's an existing notification container
 		let notificationContainer = document.querySelector('.brag-book-notification');
-		
+
 		if (!notificationContainer) {
 			// Create notification container if it doesn't exist
 			notificationContainer = document.createElement('div');
@@ -3230,7 +3230,7 @@ document.addEventListener('DOMContentLoaded', function() {
 			console.log('Initialized bragBookCompleteDataset with', window.bragBookCompleteDataset.length, 'cases');
 		}
 		initializeProcedureFilters();
-		
+
 		// Check if we need to load a case on initial page load
 		const wrapper = document.querySelector('.brag-book-gallery-wrapper');
 		if (wrapper && wrapper.dataset.initialCaseId) {
@@ -3303,7 +3303,7 @@ window.generateProcedureFilterOptions = function() {
 			const ethnicity = caseData.ethnicity || caseData.patientEthnicity;
 			const height = caseData.height || caseData.patientHeight;
 			const weight = caseData.weight || caseData.patientWeight;
-			
+
 			// Debug log to see what data we're working with
 			if (console && console.log) {
 				console.log('Processing case:', {
@@ -3610,7 +3610,7 @@ window.applyProcedureFilters = function() {
 			window.bragBookProcedureFilters[filterType].push(value);
 		}
 	});
-	
+
 	console.log('Active filters:', window.bragBookProcedureFilters);
 
 	// Check if any filters are selected
@@ -3718,13 +3718,13 @@ window.applyProcedureFilters = function() {
 		if (cards.length === 0) {
 			cards = document.querySelectorAll('.brag-book-gallery-case-card, .brag-book-case-card');
 		}
-		
+
 		console.log('Found cards for filtering:', cards.length);
-		
+
 		let visibleCount = 0;
 		cards.forEach((card, index) => {
 			let show = true;
-			
+
 			// Debug card data
 			if (index === 0) {
 				console.log('First card data attributes:', {
@@ -3760,13 +3760,13 @@ window.applyProcedureFilters = function() {
 			if (show && window.bragBookProcedureFilters.gender.length > 0) {
 				const cardGender = (card.dataset.gender || '').toLowerCase();
 				const filterGenders = window.bragBookProcedureFilters.gender.map(g => g.toLowerCase());
-				
+
 				console.log('Gender check:', {
 					cardGender: cardGender,
 					filterGenders: filterGenders,
 					matches: filterGenders.includes(cardGender)
 				});
-				
+
 				if (!filterGenders.includes(cardGender)) {
 					show = false;
 				}
@@ -3776,13 +3776,13 @@ window.applyProcedureFilters = function() {
 			if (show && window.bragBookProcedureFilters.ethnicity.length > 0) {
 				const cardEthnicity = (card.dataset.ethnicity || '').toLowerCase();
 				const filterEthnicities = window.bragBookProcedureFilters.ethnicity.map(e => e.toLowerCase());
-				
+
 				console.log('Ethnicity check:', {
 					cardEthnicity: cardEthnicity,
 					filterEthnicities: filterEthnicities,
 					matches: filterEthnicities.includes(cardEthnicity)
 				});
-				
+
 				if (!filterEthnicities.includes(cardEthnicity)) {
 					show = false;
 				}
@@ -3847,7 +3847,7 @@ window.applyProcedureFilters = function() {
 		if (!resultsEl) {
 			resultsEl = document.createElement('div');
 			resultsEl.className = 'brag-book-gallery-procedure-filters-results';
-			const grid = document.querySelector('.brag-book-gallery-cases-grid') || 
+			const grid = document.querySelector('.brag-book-gallery-cases-grid') ||
 			            document.querySelector('.brag-book-cases-grid');
 			if (grid && grid.parentNode) {
 				grid.parentNode.insertBefore(resultsEl, grid);
@@ -4257,7 +4257,7 @@ let nudityManager; // Make it globally accessible for reset
 let phoneFormatter; // Make it globally accessible
 
 document.addEventListener('DOMContentLoaded', () => {
-	new BragBookGalleryApp();
+	new BRAG BookGalleryApp();
 	nudityManager = new NudityWarningManager();
 	phoneFormatter = new PhoneFormatter();
 

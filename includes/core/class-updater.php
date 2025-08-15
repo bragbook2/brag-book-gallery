@@ -233,7 +233,7 @@ final class Updater {
 			return;
 		}
 
-		$log_message = sprintf('[BragBook Updater] %s', $message);
+		$log_message = sprintf('[BRAG Book Updater] %s', $message);
 
 		if ($error instanceof WP_Error) {
 			$log_message .= sprintf(' - %s', $error->get_error_message());
@@ -354,7 +354,7 @@ final class Updater {
 	private function prepare_plugin_info(): stdClass {
 		$info = new stdClass();
 
-		$info->name = $this->plugin['Name'] ?? 'BragBook Gallery';
+		$info->name = $this->plugin['Name'] ?? 'BRAG Book Gallery';
 		$info->slug = dirname($this->basename);
 		$info->version = $this->github_version;
 		$info->author = sprintf(

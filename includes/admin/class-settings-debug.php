@@ -21,31 +21,31 @@ if ( ! defined( 'WPINC' ) ) {
 /**
  * Debug Settings Class
  *
- * Comprehensive debugging and diagnostic tools for BragBook Gallery troubleshooting.
+ * Comprehensive debugging and diagnostic tools for BRAG Book Gallery troubleshooting.
  * This class provides administrators with essential tools for monitoring plugin
  * health, diagnosing issues, and managing plugin data.
- * 
+ *
  * **Core Features:**
  * - System status monitoring with environment compatibility checks
  * - Debug logging management with configurable verbosity levels
  * - Cache management tools for performance optimization
  * - Database information and statistics viewing
  * - Settings export/import functionality for migration and backup
- * 
+ *
  * **Diagnostic Capabilities:**
  * - WordPress, PHP, and plugin version compatibility validation
  * - API connection status verification
  * - Memory usage and system resource monitoring
  * - Local gallery data statistics (when in Local mode)
  * - Cache item counting and management
- * 
+ *
  * **Administrative Tools:**
  * - Log file viewing with recent entries display
  * - Bulk cache clearing operations
  * - Settings export for backup and migration
  * - Database cleanup utilities
  * - System information reporting
- * 
+ *
  * This class is essential for plugin support and maintenance, providing both
  * automated diagnostics and manual troubleshooting capabilities.
  *
@@ -55,10 +55,10 @@ class Settings_Debug extends Settings_Base {
 
 	/**
 	 * Initialize debug settings page configuration
-	 * 
+	 *
 	 * Sets up the page slug for the debug and diagnostic interface.
 	 * This page provides essential troubleshooting tools for administrators
-	 * and support personnel working with BragBook Gallery installations.
+	 * and support personnel working with BRAG Book Gallery installations.
 	 *
 	 * @since 3.0.0
 	 * @return void
@@ -83,11 +83,11 @@ class Settings_Debug extends Settings_Base {
 		if ( isset( $_POST['save_debug_settings'] ) ) {
 			$this->save_debug_settings();
 		}
-		
+
 		if ( isset( $_POST['clear_cache'] ) ) {
 			$this->clear_cache();
 		}
-		
+
 		if ( isset( $_POST['clear_logs'] ) ) {
 			$this->clear_logs();
 		}
@@ -95,7 +95,7 @@ class Settings_Debug extends Settings_Base {
 		if ( isset( $_POST['export_settings'] ) ) {
 			$this->export_settings();
 		}
-		
+
 		// Get current settings
 		$enable_logs = get_option( 'brag_book_gallery_enable_logs', 'no' );
 		$log_level   = get_option( 'brag_book_gallery_log_level', 'error' );
@@ -128,7 +128,7 @@ class Settings_Debug extends Settings_Base {
 								<?php
 								global $wpdb;
 								$cache_count = $wpdb->get_var(
-									"SELECT COUNT(*) FROM {$wpdb->options} 
+									"SELECT COUNT(*) FROM {$wpdb->options}
 									WHERE option_name LIKE '_transient_brag_book_gallery_%'"
 								);
 								printf(
@@ -182,13 +182,13 @@ class Settings_Debug extends Settings_Base {
 
 	/**
 	 * Render comprehensive system status diagnostics table
-	 * 
+	 *
 	 * Generates a detailed system status table that checks multiple aspects
 	 * of the plugin's operational environment. Each check includes:
 	 * - Current value or status
 	 * - Visual indicator (green checkmark, yellow warning, or red X)
 	 * - Compatibility assessment against minimum requirements
-	 * 
+	 *
 	 * **Status Checks Performed:**
 	 * - Plugin version vs minimum requirements
 	 * - WordPress version compatibility
@@ -196,12 +196,12 @@ class Settings_Debug extends Settings_Base {
 	 * - Current operational mode (JavaScript/Local)
 	 * - API connection configuration status
 	 * - Memory limit sufficiency for plugin operations
-	 * 
+	 *
 	 * **Visual Indicators:**
 	 * - Green checkmark: Requirements met or status optimal
 	 * - Yellow warning: Functional but suboptimal configuration
 	 * - Red X: Critical issue requiring attention
-	 * 
+	 *
 	 * This provides administrators with an at-a-glance view of system health
 	 * and highlights any configuration issues that may affect plugin performance.
 	 *
@@ -211,7 +211,7 @@ class Settings_Debug extends Settings_Base {
 	private function render_system_status(): void {
 		$mode_manager = \BRAGBookGallery\Includes\Mode\Mode_Manager::get_instance();
 		$plugin_data = get_plugin_data( WP_PLUGIN_DIR . '/brag-book-gallery/brag-book-gallery.php' );
-		
+
 		// Determine API connection status for system health assessment
 		$api_tokens = get_option( 'brag_book_gallery_api_token', array() );
 		$api_status = ! empty( $api_tokens ) ? 'configured' : 'not-configured';
@@ -259,7 +259,7 @@ class Settings_Debug extends Settings_Base {
 				<tr>
 					<th><?php esc_html_e( 'API Connection', 'brag-book-gallery' ); ?></th>
 					<td>
-						<?php 
+						<?php
 						if ( $api_status === 'configured' ) {
 							esc_html_e( 'Configured', 'brag-book-gallery' );
 						} else {
@@ -279,7 +279,7 @@ class Settings_Debug extends Settings_Base {
 					<th><?php esc_html_e( 'Memory Limit', 'brag-book-gallery' ); ?></th>
 					<td><?php echo esc_html( ini_get( 'memory_limit' ) ); ?></td>
 					<td>
-						<?php 
+						<?php
 						$memory_limit = wp_convert_hr_to_bytes( ini_get( 'memory_limit' ) );
 						if ( $memory_limit >= 134217728 ) : // 128M
 						?>
@@ -317,10 +317,10 @@ class Settings_Debug extends Settings_Base {
 					</th>
 					<td>
 						<label>
-							<input type="checkbox" 
-							       id="enable_logs" 
-							       name="enable_logs" 
-							       value="yes" 
+							<input type="checkbox"
+							       id="enable_logs"
+							       name="enable_logs"
+							       value="yes"
 							       <?php checked( $enable_logs, 'yes' ); ?>>
 							<?php esc_html_e( 'Enable debug logging for troubleshooting', 'brag-book-gallery' ); ?>
 						</label>
@@ -356,7 +356,7 @@ class Settings_Debug extends Settings_Base {
 					</td>
 				</tr>
 			</table>
-			
+
 			<p>
 				<button type="submit" name="save_debug_settings" class="button button-primary">
 					<?php esc_html_e( 'Save Settings', 'brag-book-gallery' ); ?>
@@ -381,12 +381,12 @@ class Settings_Debug extends Settings_Base {
 								<button type="submit" name="clear_logs" class="button button-secondary">
 									<?php esc_html_e( 'Clear Logs', 'brag-book-gallery' ); ?>
 								</button>
-								<a href="<?php echo esc_url( admin_url( 'admin-ajax.php?action=brag_book_gallery_download_logs&nonce=' . wp_create_nonce( 'download_logs' ) ) ); ?>" 
+								<a href="<?php echo esc_url( admin_url( 'admin-ajax.php?action=brag_book_gallery_download_logs&nonce=' . wp_create_nonce( 'download_logs' ) ) ); ?>"
 								   class="button button-secondary">
 									<?php esc_html_e( 'Download Logs', 'brag-book-gallery' ); ?>
 								</a>
 							</p>
-							
+
 							<h3><?php esc_html_e( 'Recent Log Entries', 'brag-book-gallery' ); ?></h3>
 							<div style="background:#f0f0f0;padding:10px;border:1px solid #ddd;max-height:300px;overflow-y:auto;">
 								<pre style="margin:0;font-size:12px;">
@@ -416,16 +416,16 @@ class Settings_Debug extends Settings_Base {
 	 */
 	private function render_database_info(): void {
 		global $wpdb;
-		
+
 		// Get option sizes
 		$options = $wpdb->get_results(
-			"SELECT option_name, LENGTH(option_value) as size 
-			FROM {$wpdb->options} 
-			WHERE option_name LIKE 'brag_book_gallery_%' 
-			ORDER BY size DESC 
+			"SELECT option_name, LENGTH(option_value) as size
+			FROM {$wpdb->options}
+			WHERE option_name LIKE 'brag_book_gallery_%'
+			ORDER BY size DESC
 			LIMIT 10"
 		);
-		
+
 		// Get post counts
 		$gallery_count = wp_count_posts( 'brag_gallery' )->publish ?? 0;
 		$draft_count = wp_count_posts( 'brag_gallery' )->draft ?? 0;
@@ -447,7 +447,7 @@ class Settings_Debug extends Settings_Base {
 				<?php endforeach; ?>
 			</tbody>
 		</table>
-		
+
 		<?php if ( $gallery_count > 0 || $draft_count > 0 ) : ?>
 			<h3><?php esc_html_e( 'Gallery Data', 'brag-book-gallery' ); ?></h3>
 			<table class="widefat striped">
@@ -491,8 +491,8 @@ class Settings_Debug extends Settings_Base {
 
 		if ( isset( $_POST['log_level'] ) ) {
 			$valid_levels = array( 'error', 'warning', 'info', 'debug' );
-			$log_level = in_array( $_POST['log_level'], $valid_levels, true ) 
-				? $_POST['log_level'] 
+			$log_level = in_array( $_POST['log_level'], $valid_levels, true )
+				? $_POST['log_level']
 				: 'error';
 			update_option( 'brag_book_gallery_log_level', $log_level );
 		}
@@ -511,14 +511,14 @@ class Settings_Debug extends Settings_Base {
 		if ( ! $this->save_settings( 'brag_book_gallery_debug_action', 'debug_nonce' ) ) {
 			return;
 		}
-		
+
 		global $wpdb;
 		$wpdb->query(
-			"DELETE FROM {$wpdb->options} 
-			WHERE option_name LIKE '_transient_brag_book_gallery_%' 
+			"DELETE FROM {$wpdb->options}
+			WHERE option_name LIKE '_transient_brag_book_gallery_%'
 			OR option_name LIKE '_transient_timeout_brag_book_gallery_%'"
 		);
-		
+
 		$this->add_notice( __( 'Cache cleared successfully.', 'brag-book-gallery' ) );
 		settings_errors( $this->page_slug );
 	}
@@ -533,13 +533,13 @@ class Settings_Debug extends Settings_Base {
 		if ( ! $this->save_settings( 'brag_book_gallery_debug_action', 'debug_nonce' ) ) {
 			return;
 		}
-		
+
 		$log_file = $this->get_log_file_path();
 		if ( file_exists( $log_file ) ) {
 			file_put_contents( $log_file, '' );
 			$this->add_notice( __( 'Logs cleared successfully.', 'brag-book-gallery' ) );
 		}
-		
+
 		settings_errors( $this->page_slug );
 	}
 
@@ -580,28 +580,28 @@ class Settings_Debug extends Settings_Base {
 		if ( ! $this->save_settings( 'brag_book_gallery_debug_action', 'debug_nonce' ) ) {
 			return;
 		}
-		
+
 		// Get all plugin options
 		global $wpdb;
 		$options = $wpdb->get_results(
-			"SELECT option_name, option_value 
-			FROM {$wpdb->options} 
+			"SELECT option_name, option_value
+			FROM {$wpdb->options}
 			WHERE option_name LIKE 'brag_book_gallery_%'"
 		);
-		
+
 		$export_data = array();
 		foreach ( $options as $option ) {
 			// Skip transients and sensitive data
-			if ( strpos( $option->option_name, '_transient' ) === false 
+			if ( strpos( $option->option_name, '_transient' ) === false
 				&& strpos( $option->option_name, 'api_token' ) === false ) {
 				$export_data[ $option->option_name ] = maybe_unserialize( $option->option_value );
 			}
 		}
-		
+
 		// Create JSON file
 		$json_data = wp_json_encode( $export_data, JSON_PRETTY_PRINT );
 		$filename = 'bragbook-settings-' . date( 'Y-m-d-His' ) . '.json';
-		
+
 		// Send download headers
 		header( 'Content-Type: application/json' );
 		header( 'Content-Disposition: attachment; filename="' . $filename . '"' );

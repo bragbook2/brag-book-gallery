@@ -1,5 +1,5 @@
 /**
- * BragBook Admin JavaScript
+ * BRAG Book Admin JavaScript
  *
  * @package BRAGBook
  * @since   3.0.0
@@ -8,10 +8,10 @@
 'use strict';
 
 /**
- * BragBook Admin Class
+ * BRAG Book Admin Class
  */
-if (typeof window.BragBookAdmin === 'undefined') {
-	window.BragBookAdmin = class {
+if (typeof window.BRAG BookAdmin === 'undefined') {
+	window.BRAG BookAdmin = class {
 		constructor() {
 			this.ajaxUrl = typeof brag_book_gallery_ajax !== 'undefined' ? brag_book_gallery_ajax.ajaxurl : '/wp-admin/admin-ajax.php';
 			this.nonce = typeof brag_book_gallery_ajax !== 'undefined' ? brag_book_gallery_ajax.nonce : '';
@@ -792,9 +792,9 @@ if (typeof window.BragBookAdmin === 'undefined') {
 if (typeof window.bragBookAdminInstance === 'undefined') {
 	if (document.readyState === 'loading') {
 		document.addEventListener('DOMContentLoaded', () => {
-			window.bragBookAdminInstance = new window.BragBookAdmin();
+			window.bragBookAdminInstance = new window.BRAG BookAdmin();
 		});
 	} else {
-		window.bragBookAdminInstance = new window.BragBookAdmin();
+		window.bragBookAdminInstance = new window.BRAG BookAdmin();
 	}
 }

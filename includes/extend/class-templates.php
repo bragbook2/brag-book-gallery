@@ -2,7 +2,7 @@
 /**
  * Template Handler
  *
- * Manages custom template inclusion for BragBook gallery pages.
+ * Manages custom template inclusion for BRAG Book gallery pages.
  * This class determines when to load custom templates based on page slugs
  * and gallery configuration.
  *
