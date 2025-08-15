@@ -2503,6 +2503,139 @@ class Settings {
 			</div>
 		</div>
 	</div>
+	
+	<script type="text/javascript">
+	document.addEventListener('DOMContentLoaded', function() {
+		// Tab switching for debug page
+		const tabLinks = document.querySelectorAll('.brag-book-gallery-tab-link');
+		const tabContents = document.querySelectorAll('.brag-book-gallery-log-tab-content');
+		
+		tabLinks.forEach(link => {
+			link.addEventListener('click', function(e) {
+				e.preventDefault();
+				
+				// Remove active class from all tabs and contents
+				tabLinks.forEach(l => l.classList.remove('active'));
+				tabContents.forEach(c => c.classList.remove('active'));
+				
+				// Add active class to clicked tab
+				this.classList.add('active');
+				
+				// Show corresponding content
+				const tabId = this.getAttribute('data-tab');
+				const content = document.getElementById(tabId + '-tab');
+				if (content) {
+					content.classList.add('active');
+				}
+			});
+		});
+		
+		// Copy system info to clipboard
+		const copyBtn = document.getElementById('bb-copy-system-info');
+		if (copyBtn) {
+			copyBtn.addEventListener('click', function() {
+				const systemInfo = document.getElementById('brag-book-gallery-system-info');
+				if (systemInfo) {
+					navigator.clipboard.writeText(systemInfo.textContent).then(() => {
+						const feedback = document.getElementById('bb-copy-feedback');
+						if (feedback) {
+							feedback.style.display = 'inline';
+							setTimeout(() => {
+								feedback.style.display = 'none';
+							}, 2000);
+						}
+					});
+				}
+			});
+		}
+		
+		// Export system info
+		const exportBtn = document.getElementById('bb-export-system-info');
+		if (exportBtn) {
+			exportBtn.addEventListener('click', function() {
+				window.location.href = '<?php echo esc_url( wp_nonce_url( admin_url( 'admin-ajax.php?action=brag_book_gallery_export_system_info' ), 'brag_book_gallery_debug_nonce', 'nonce' ) ); ?>';
+			});
+		}
+	});
+	</script>
+	
+	<style type="text/css">
+	.brag-book-gallery-log-tab-content {
+		display: none;
+	}
+	.brag-book-gallery-log-tab-content.active {
+		display: block;
+	}
+	.brag-book-gallery-log-tab-nav {
+		display: flex;
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		border-bottom: 1px solid #ccc;
+		background: #f1f1f1;
+	}
+	.brag-book-gallery-log-tab-nav li {
+		margin: 0;
+	}
+	.brag-book-gallery-tab-link {
+		display: block;
+		padding: 10px 20px;
+		text-decoration: none;
+		color: #555;
+		background: #f1f1f1;
+		border-right: 1px solid #ccc;
+		transition: background 0.3s;
+	}
+	.brag-book-gallery-tab-link:hover {
+		background: #e5e5e5;
+	}
+	.brag-book-gallery-tab-link.active {
+		background: #fff;
+		border-bottom: 1px solid #fff;
+		margin-bottom: -1px;
+		font-weight: bold;
+		color: #000;
+	}
+	.brag-book-gallery-system-info {
+		background: #f9f9f9;
+		border: 1px solid #ddd;
+		border-radius: 4px;
+		padding: 15px;
+		margin: 15px 0;
+		max-height: 500px;
+		overflow-y: auto;
+	}
+	.brag-book-gallery-system-info pre {
+		margin: 0;
+		white-space: pre-wrap;
+		word-wrap: break-word;
+		font-family: 'Courier New', Courier, monospace;
+		font-size: 12px;
+		line-height: 1.5;
+	}
+	.brag-book-gallery-copy-feedback {
+		display: none;
+		color: #46b450;
+		margin-left: 10px;
+		font-weight: bold;
+	}
+	.brag-book-gallery-log-viewer {
+		background: #f9f9f9;
+		border: 1px solid #ddd;
+		border-radius: 4px;
+		padding: 15px;
+		margin: 15px 0;
+		max-height: 400px;
+		overflow-y: auto;
+	}
+	.brag-book-gallery-log-viewer pre {
+		margin: 0;
+		white-space: pre-wrap;
+		word-wrap: break-word;
+		font-family: 'Courier New', Courier, monospace;
+		font-size: 12px;
+	}
+	</style>
 	<?php
 	}
 
@@ -2641,36 +2774,79 @@ class Settings {
 		$info[] = sprintf( esc_html__( 'Site URL: %s', 'brag-book-gallery' ), get_site_url() );
 		/* translators: %s: home URL */
 		$info[] = sprintf( esc_html__( 'Home URL: %s', 'brag-book-gallery' ), get_home_url() );
+		/* translators: %s: WordPress address */
+		$info[] = sprintf( esc_html__( 'WordPress Address (URL): %s', 'brag-book-gallery' ), get_option( 'siteurl' ) );
 		/* translators: %s: WordPress version */
 		$info[] = sprintf( esc_html__( 'WordPress Version: %s', 'brag-book-gallery' ), get_bloginfo( 'version' ) );
 		/* translators: %s: yes or no */
 		$info[] = sprintf( esc_html__( 'WordPress Multisite: %s', 'brag-book-gallery' ), ( is_multisite() ? esc_html__( 'Yes', 'brag-book-gallery' ) : esc_html__( 'No', 'brag-book-gallery' ) ) );
 		/* translators: %s: memory limit */
 		$info[] = sprintf( esc_html__( 'WordPress Memory Limit: %s', 'brag-book-gallery' ), WP_MEMORY_LIMIT );
+		/* translators: %s: max memory limit */
+		$info[] = sprintf( esc_html__( 'WordPress Max Memory Limit: %s', 'brag-book-gallery' ), ( defined( 'WP_MAX_MEMORY_LIMIT' ) ? WP_MAX_MEMORY_LIMIT : 'Not defined' ) );
 		/* translators: %s: enabled or disabled status */
 		$info[] = sprintf( esc_html__( 'WordPress Debug Mode: %s', 'brag-book-gallery' ), ( defined( 'WP_DEBUG' ) && WP_DEBUG ? esc_html__( 'Enabled', 'brag-book-gallery' ) : esc_html__( 'Disabled', 'brag-book-gallery' ) ) );
+		/* translators: %s: enabled or disabled status */
+		$info[] = sprintf( esc_html__( 'WordPress Debug Display: %s', 'brag-book-gallery' ), ( defined( 'WP_DEBUG_DISPLAY' ) && WP_DEBUG_DISPLAY ? esc_html__( 'Enabled', 'brag-book-gallery' ) : esc_html__( 'Disabled', 'brag-book-gallery' ) ) );
+		/* translators: %s: enabled or disabled status */
+		$info[] = sprintf( esc_html__( 'WordPress Debug Log: %s', 'brag-book-gallery' ), ( defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ? esc_html__( 'Enabled', 'brag-book-gallery' ) : esc_html__( 'Disabled', 'brag-book-gallery' ) ) );
+		/* translators: %s: enabled or disabled status */
+		$info[] = sprintf( esc_html__( 'Script Debug: %s', 'brag-book-gallery' ), ( defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ? esc_html__( 'Enabled', 'brag-book-gallery' ) : esc_html__( 'Disabled', 'brag-book-gallery' ) ) );
 		/* translators: %s: language locale */
 		$info[] = sprintf( esc_html__( 'WordPress Language: %s', 'brag-book-gallery' ), get_locale() );
 		/* translators: %s: timezone */
 		$info[] = sprintf( esc_html__( 'WordPress Timezone: %s', 'brag-book-gallery' ), get_option( 'timezone_string' ) ?: 'UTC' . get_option( 'gmt_offset' ) );
+		/* translators: %s: date format */
+		$info[] = sprintf( esc_html__( 'Date Format: %s', 'brag-book-gallery' ), get_option( 'date_format' ) );
+		/* translators: %s: time format */
+		$info[] = sprintf( esc_html__( 'Time Format: %s', 'brag-book-gallery' ), get_option( 'time_format' ) );
+		/* translators: %s: permalink structure */
+		$info[] = sprintf( esc_html__( 'Permalink Structure: %s', 'brag-book-gallery' ), get_option( 'permalink_structure' ) ?: 'Plain' );
+		/* translators: %s: ABSPATH */
+		$info[] = sprintf( esc_html__( 'WordPress Root Path: %s', 'brag-book-gallery' ), ABSPATH );
+		/* translators: %s: content directory */
+		$info[] = sprintf( esc_html__( 'Content Directory: %s', 'brag-book-gallery' ), WP_CONTENT_DIR );
+		/* translators: %s: plugin directory */
+		$info[] = sprintf( esc_html__( 'Plugin Directory: %s', 'brag-book-gallery' ), WP_PLUGIN_DIR );
+		/* translators: %s: uploads directory */
+		$upload_dir = wp_upload_dir();
+		$info[] = sprintf( esc_html__( 'Uploads Directory: %s', 'brag-book-gallery' ), $upload_dir['basedir'] );
 		$info[] = '';
 
 		// Server Information
 		$info[] = esc_html__( '--- Server Information ---', 'brag-book-gallery' );
 		/* translators: %s: server software */
 		$info[] = sprintf( esc_html__( 'Server Software: %s', 'brag-book-gallery' ), ( $_SERVER['SERVER_SOFTWARE'] ?? esc_html__( 'Unknown', 'brag-book-gallery' ) ) );
+		/* translators: %s: server name */
+		$info[] = sprintf( esc_html__( 'Server Name: %s', 'brag-book-gallery' ), ( $_SERVER['SERVER_NAME'] ?? esc_html__( 'Unknown', 'brag-book-gallery' ) ) );
+		/* translators: %s: server IP */
+		$info[] = sprintf( esc_html__( 'Server IP: %s', 'brag-book-gallery' ), ( $_SERVER['SERVER_ADDR'] ?? esc_html__( 'Unknown', 'brag-book-gallery' ) ) );
+		/* translators: %s: server port */
+		$info[] = sprintf( esc_html__( 'Server Port: %s', 'brag-book-gallery' ), ( $_SERVER['SERVER_PORT'] ?? esc_html__( 'Unknown', 'brag-book-gallery' ) ) );
+		/* translators: %s: server protocol */
+		$info[] = sprintf( esc_html__( 'Server Protocol: %s', 'brag-book-gallery' ), ( $_SERVER['SERVER_PROTOCOL'] ?? esc_html__( 'Unknown', 'brag-book-gallery' ) ) );
+		/* translators: %s: HTTPS status */
+		$info[] = sprintf( esc_html__( 'HTTPS: %s', 'brag-book-gallery' ), ( ! empty( $_SERVER['HTTPS'] ) && $_SERVER['HTTPS'] !== 'off' ? esc_html__( 'Yes', 'brag-book-gallery' ) : esc_html__( 'No', 'brag-book-gallery' ) ) );
 		/* translators: %s: PHP version */
 		$info[] = sprintf( esc_html__( 'PHP Version: %s', 'brag-book-gallery' ), phpversion() );
+		/* translators: %s: PHP SAPI */
+		$info[] = sprintf( esc_html__( 'PHP SAPI: %s', 'brag-book-gallery' ), php_sapi_name() );
+		/* translators: %s: PHP user */
+		$info[] = sprintf( esc_html__( 'PHP User: %s', 'brag-book-gallery' ), ( function_exists( 'get_current_user' ) ? get_current_user() : 'Unknown' ) );
 		/* translators: %s: PHP memory limit */
 		$info[] = sprintf( esc_html__( 'PHP Memory Limit: %s', 'brag-book-gallery' ), ini_get( 'memory_limit' ) );
 		/* translators: %s: execution time in seconds */
 		$info[] = sprintf( esc_html__( 'PHP Max Execution Time: %s seconds', 'brag-book-gallery' ), ini_get( 'max_execution_time' ) );
+		/* translators: %s: max input time in seconds */
+		$info[] = sprintf( esc_html__( 'PHP Max Input Time: %s seconds', 'brag-book-gallery' ), ini_get( 'max_input_time' ) );
 		/* translators: %s: max input vars */
 		$info[] = sprintf( esc_html__( 'PHP Max Input Vars: %s', 'brag-book-gallery' ), ini_get( 'max_input_vars' ) );
 		/* translators: %s: post max size */
 		$info[] = sprintf( esc_html__( 'PHP Post Max Size: %s', 'brag-book-gallery' ), ini_get( 'post_max_size' ) );
 		/* translators: %s: upload max filesize */
 		$info[] = sprintf( esc_html__( 'PHP Upload Max Filesize: %s', 'brag-book-gallery' ), ini_get( 'upload_max_filesize' ) );
+		/* translators: %s: max file uploads */
+		$info[] = sprintf( esc_html__( 'PHP Max File Uploads: %s', 'brag-book-gallery' ), ini_get( 'max_file_uploads' ) );
 		/* translators: %s: cURL status and version */
 		$curl_status = function_exists( 'curl_version' )
 			? sprintf( esc_html__( 'Enabled (v%s)', 'brag-book-gallery' ), curl_version()['version'] )
@@ -2792,6 +2968,84 @@ class Settings {
 		$info[] = '==========================================';
 
 		return implode( "\n", $info );
+	}
+
+	/**
+	 * Parse browser information from user agent string
+	 *
+	 * @param string $user_agent User agent string.
+	 * @return array Browser information.
+	 * @since 3.0.0
+	 */
+	private function get_browser_info( string $user_agent ): array {
+		$browser = array(
+			'name'     => 'Unknown',
+			'version'  => 'Unknown',
+			'os'       => 'Unknown',
+			'platform' => 'Unknown',
+		);
+
+		// Detect browser name and version
+		if ( preg_match( '/MSIE/i', $user_agent ) && ! preg_match( '/Opera/i', $user_agent ) ) {
+			$browser['name'] = 'Internet Explorer';
+			$browser['version'] = preg_match( '/MSIE\s([0-9.]+)/', $user_agent, $match ) ? $match[1] : 'Unknown';
+		} elseif ( preg_match( '/Trident/i', $user_agent ) ) {
+			$browser['name'] = 'Internet Explorer';
+			$browser['version'] = preg_match( '/rv:([0-9.]+)/', $user_agent, $match ) ? $match[1] : 'Unknown';
+		} elseif ( preg_match( '/Firefox/i', $user_agent ) ) {
+			$browser['name'] = 'Firefox';
+			$browser['version'] = preg_match( '/Firefox\/([0-9.]+)/', $user_agent, $match ) ? $match[1] : 'Unknown';
+		} elseif ( preg_match( '/Chrome/i', $user_agent ) && ! preg_match( '/Edge/i', $user_agent ) ) {
+			$browser['name'] = 'Chrome';
+			$browser['version'] = preg_match( '/Chrome\/([0-9.]+)/', $user_agent, $match ) ? $match[1] : 'Unknown';
+		} elseif ( preg_match( '/Safari/i', $user_agent ) && ! preg_match( '/Chrome/i', $user_agent ) ) {
+			$browser['name'] = 'Safari';
+			$browser['version'] = preg_match( '/Version\/([0-9.]+)/', $user_agent, $match ) ? $match[1] : 'Unknown';
+		} elseif ( preg_match( '/Opera/i', $user_agent ) ) {
+			$browser['name'] = 'Opera';
+			$browser['version'] = preg_match( '/Opera\/([0-9.]+)/', $user_agent, $match ) ? $match[1] : 'Unknown';
+		} elseif ( preg_match( '/Edge/i', $user_agent ) ) {
+			$browser['name'] = 'Microsoft Edge';
+			$browser['version'] = preg_match( '/Edge\/([0-9.]+)/', $user_agent, $match ) ? $match[1] : 'Unknown';
+		}
+
+		// Detect operating system
+		if ( preg_match( '/Windows NT 10/i', $user_agent ) ) {
+			$browser['os'] = 'Windows 10';
+		} elseif ( preg_match( '/Windows NT 11/i', $user_agent ) ) {
+			$browser['os'] = 'Windows 11';
+		} elseif ( preg_match( '/Windows NT 6.3/i', $user_agent ) ) {
+			$browser['os'] = 'Windows 8.1';
+		} elseif ( preg_match( '/Windows NT 6.2/i', $user_agent ) ) {
+			$browser['os'] = 'Windows 8';
+		} elseif ( preg_match( '/Windows NT 6.1/i', $user_agent ) ) {
+			$browser['os'] = 'Windows 7';
+		} elseif ( preg_match( '/Mac OS X/i', $user_agent ) ) {
+			$browser['os'] = 'macOS';
+			if ( preg_match( '/Mac OS X ([0-9_]+)/', $user_agent, $match ) ) {
+				$version = str_replace( '_', '.', $match[1] );
+				$browser['os'] = 'macOS ' . $version;
+			}
+		} elseif ( preg_match( '/Linux/i', $user_agent ) ) {
+			$browser['os'] = 'Linux';
+		} elseif ( preg_match( '/iPhone/i', $user_agent ) ) {
+			$browser['os'] = 'iOS';
+		} elseif ( preg_match( '/iPad/i', $user_agent ) ) {
+			$browser['os'] = 'iPadOS';
+		} elseif ( preg_match( '/Android/i', $user_agent ) ) {
+			$browser['os'] = 'Android';
+		}
+
+		// Detect platform
+		if ( preg_match( '/Mobile/i', $user_agent ) ) {
+			$browser['platform'] = 'Mobile';
+		} elseif ( preg_match( '/Tablet/i', $user_agent ) || preg_match( '/iPad/i', $user_agent ) ) {
+			$browser['platform'] = 'Tablet';
+		} else {
+			$browser['platform'] = 'Desktop';
+		}
+
+		return $browser;
 	}
 
 	/**
