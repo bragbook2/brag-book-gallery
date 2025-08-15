@@ -774,8 +774,8 @@ final class Setup {
 	 */
 	private function __clone() {
 		_doing_it_wrong(
-			function_name: __FUNCTION__,
-			message: esc_html__(
+			__FUNCTION__,
+			esc_html__(
 				'Cloning is forbidden.',
 				'brag-book-gallery'
 			),
@@ -791,8 +791,8 @@ final class Setup {
 	 */
 	public function __wakeup() {
 		_doing_it_wrong(
-			function_name: __FUNCTION__,
-			message: esc_html__(
+			__FUNCTION__,
+			esc_html__(
 				'Unserializing is forbidden.',
 				'brag-book-gallery'
 			),
