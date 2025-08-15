@@ -2108,6 +2108,59 @@ class Settings {
 							</ul>
 						</div>
 					</details>
+
+					<details class="brag-book-gallery-accordion-item">
+						<summary><?php esc_html_e( 'URLs returning 404 errors (Procedure/Case pages)', 'brag-book-gallery' ); ?></summary>
+						<div class="brag-book-gallery-accordion-content">
+							<p><?php esc_html_e( 'If your gallery URLs are returning 404 errors, try these solutions:', 'brag-book-gallery' ); ?></p>
+							<ul>
+								<li><?php esc_html_e( 'Go to Settings → Permalinks and click "Save Changes" to flush rewrite rules', 'brag-book-gallery' ); ?></li>
+								<li><?php esc_html_e( 'Ensure your gallery page exists and contains the [brag_book_gallery] shortcode', 'brag-book-gallery' ); ?></li>
+								<li><?php esc_html_e( 'Verify the "Gallery Slug" in General Settings matches your page slug', 'brag-book-gallery' ); ?></li>
+								<li><?php esc_html_e( 'Clear all caches (browser, CDN, hosting cache, caching plugins)', 'brag-book-gallery' ); ?></li>
+							</ul>
+							<p><strong><?php esc_html_e( 'Diagnostic Tools:', 'brag-book-gallery' ); ?></strong></p>
+							<p><?php esc_html_e( 'Use these built-in diagnostic tools to troubleshoot URL issues:', 'brag-book-gallery' ); ?></p>
+							<ul>
+								<li>
+									<a href="<?php echo esc_url( content_url( 'plugins/brag-book-gallery/check-gallery-page.php' ) ); ?>" target="_blank">
+										<?php esc_html_e( 'Gallery Page Checker', 'brag-book-gallery' ); ?>
+									</a> - <?php esc_html_e( 'Verify your gallery page setup and create missing pages', 'brag-book-gallery' ); ?>
+								</li>
+								<li>
+									<a href="<?php echo esc_url( content_url( 'plugins/brag-book-gallery/debug-rewrite.php' ) ); ?>" target="_blank">
+										<?php esc_html_e( 'Rewrite Rules Debugger', 'brag-book-gallery' ); ?>
+									</a> - <?php esc_html_e( 'View and test current rewrite rules', 'brag-book-gallery' ); ?>
+								</li>
+								<li>
+									<a href="<?php echo esc_url( content_url( 'plugins/brag-book-gallery/flush-rewrite-rules.php' ) ); ?>" target="_blank">
+										<?php esc_html_e( 'Flush Rewrite Rules', 'brag-book-gallery' ); ?>
+									</a> - <?php esc_html_e( 'Manually regenerate WordPress rewrite rules', 'brag-book-gallery' ); ?>
+								</li>
+								<li>
+									<a href="<?php echo esc_url( content_url( 'plugins/brag-book-gallery/fix-live-rewrites.php' ) ); ?>" target="_blank">
+										<?php esc_html_e( 'Live Site Fix Tool', 'brag-book-gallery' ); ?>
+									</a> - <?php esc_html_e( 'Comprehensive diagnostic and fix tool for production sites', 'brag-book-gallery' ); ?>
+								</li>
+							</ul>
+							<p class="description">
+								<strong><?php esc_html_e( 'Note:', 'brag-book-gallery' ); ?></strong> 
+								<?php esc_html_e( 'You must be logged in as an administrator to access these diagnostic tools.', 'brag-book-gallery' ); ?>
+							</p>
+						</div>
+					</details>
+
+					<details class="brag-book-gallery-accordion-item">
+						<summary><?php esc_html_e( 'Performance issues', 'brag-book-gallery' ); ?></summary>
+						<div class="brag-book-gallery-accordion-content">
+							<ul>
+								<li><?php esc_html_e( 'Enable caching in the JavaScript Settings tab', 'brag-book-gallery' ); ?></li>
+								<li><?php esc_html_e( 'Use the progressive loading feature for large galleries', 'brag-book-gallery' ); ?></li>
+								<li><?php esc_html_e( 'Optimize images in your BRAG Book account', 'brag-book-gallery' ); ?></li>
+								<li><?php esc_html_e( 'Consider using a CDN for faster image delivery', 'brag-book-gallery' ); ?></li>
+							</ul>
+						</div>
+					</details>
 				</div>
 			</div>
 
