@@ -1,0 +1,111 @@
+{
+	"name": "bragbook/gallery",
+	"description": "BRAGBook Gallery WordPress Plugin - Display medical/cosmetic procedure galleries",
+	"type": "wordpress-plugin",
+	"version": "3.0.0",
+	"license": "GPL-2.0-or-later",
+	"authors": [
+		{
+			"name": "Karl Adams",
+			"email": "karl@candacecrowe.com",
+			"homepage": "https://www.bragbookgallery.com/"
+		},
+		{
+			"name": "Haider Ali",
+			"email": "haider@candacecrowe.com",
+			"homepage": "https://www.bragbookgallery.com/"
+		},
+		{
+			"name": "Wiscarlens Lucius",
+			"email": "wiscarlens@candacecrowe.com",
+			"homepage": "https://www.bragbookgallery.com/"
+		},
+		{
+			"name": "John Gottshalk",
+			"email": "john@candacecrowe.com",
+			"homepage": "https://www.bragbookgallery.com/"
+		}
+	],
+	"homepage": "https://github.com/bragbook2/brag-book-gallery",
+	"minimum-stability": "stable",
+	"require": {
+		"php": "^8.2",
+		"composer/installers": "^2.0"
+	},
+	"require-dev": {
+		"phpunit/phpunit": "^10.5",
+		"yoast/phpunit-polyfills": "^2.0",
+		"wp-phpunit/wp-phpunit": "^6.4",
+		"brain/monkey": "^2.6",
+		"mockery/mockery": "^1.6",
+		"wp-coding-standards/wpcs": "^3.0",
+		"automattic/vipwpcs": "^3.0",
+		"phpcompatibility/phpcompatibility-wp": "^2.1",
+		"dealerdirect/phpcodesniffer-composer-installer": "^1.0",
+		"phpstan/phpstan": "^1.10",
+		"phpstan/extension-installer": "^1.3",
+		"szepeviktor/phpstan-wordpress": "^1.3",
+		"php-stubs/wordpress-stubs": "^6.4",
+		"squizlabs/php_codesniffer": "^3.8"
+	},
+	"autoload": {
+		"files": [
+			"includes/autoload.php"
+		]
+	},
+	"autoload-dev": {
+		"classmap": [
+			"tests/"
+		]
+	},
+	"scripts": {
+		"test": "phpunit",
+		"test:unit": "phpunit --testsuite unit",
+		"test:integration": "phpunit --testsuite integration",
+		"test:coverage": "phpunit --coverage-html coverage",
+		"phpcs": "phpcs --standard=WordPress",
+		"phpcs:vip": "phpcs --standard=WordPress-VIP-Go",
+		"phpcs:fix": "phpcbf --standard=WordPress",
+		"phpstan": "phpstan analyse",
+		"lint": [
+			"@phpcs",
+			"@phpstan"
+		],
+		"lint:vip": [
+			"@phpcs:vip",
+			"@phpstan"
+		],
+		"format": "@phpcs:fix",
+		"qa": [
+			"@lint",
+			"@test"
+		],
+		"post-install-cmd": [
+			"phpcs --config-set installed_paths vendor/wp-coding-standards/wpcs,vendor/automattic/vipwpcs,vendor/phpcompatibility/phpcompatibility-wp"
+		],
+		"post-update-cmd": [
+			"phpcs --config-set installed_paths vendor/wp-coding-standards/wpcs,vendor/automattic/vipwpcs,vendor/phpcompatibility/phpcompatibility-wp"
+		]
+	},
+	"config": {
+		"allow-plugins": {
+			"dealerdirect/phpcodesniffer-composer-installer": true,
+			"composer/installers": true,
+			"phpstan/extension-installer": true
+		},
+		"optimize-autoloader": true,
+		"sort-packages": true,
+		"platform": {
+			"php": "8.2"
+		}
+	},
+	"extra": {
+		"installer-paths": {
+			"vendor/{$vendor}/{$name}/": [
+				"type:wordpress-plugin"
+			]
+		},
+		"wordpress-install-dir": "wordpress",
+		"phpcodesniffer-search-depth": 5
+	}
+}

@@ -1,0 +1,57 @@
+includes:
+  - vendor/szepeviktor/phpstan-wordpress/extension.neon
+
+parameters:
+  level: 8
+  phpVersion: 80200
+  
+  paths:
+    - includes/
+    - bragbook.php
+    - uninstall.php
+  
+  excludePaths:
+    - vendor/
+    - node_modules/
+    - tests/
+    - build/
+    - old-files/
+  
+  scanFiles:
+    - vendor/php-stubs/wordpress-stubs/wordpress-stubs.php
+    
+  scanDirectories:
+    - vendor/php-stubs/wordpress-stubs/
+  
+  bootstrapFiles:
+    - tests/phpstan-bootstrap.php
+  
+  treatPhpDocTypesAsCertain: false
+  
+  checkMissingIterableValueType: false
+  checkGenericClassInNonGenericObjectType: false
+  
+  ignoreErrors:
+    # Ignore WordPress global variable access
+    - '#^Variable \$wp_version might not be defined\.$#'
+    - '#^Variable \$wpdb might not be defined\.$#'
+    - '#^Variable \$wp_query might not be defined\.$#'
+    
+    # Ignore WordPress hook system
+    - '#^Function apply_filters(_ref_array)? invoked with#'
+    - '#^Function do_action(_ref_array)? invoked with#'
+    
+    # Allow dynamic property access for WordPress objects
+    - '#^Access to an undefined property WP_Post::#'
+    - '#^Access to an undefined property WP_User::#'
+    
+  dynamicConstantNames:
+    - WPINC
+    - WP_CONTENT_DIR
+    - WP_PLUGIN_DIR
+    - ABSPATH
+    - BRAGBOOK_PLUGIN_VERSION
+    - BRAGBOOK_PLUGIN_DIR
+    - BRAGBOOK_PLUGIN_URL
+    - BB_BASE_URL
+    - BB_PLUGIN_DIR_PATH
