@@ -160,26 +160,26 @@ final class Setup {
 
 		// Core initialization.
 		add_action(
-			hook_name: 'init',
-			callback: array( $this, 'init' ),
-			priority: self::INIT_PRIORITY
+			'init',
+			array( $this, 'init' ),
+			self::INIT_PRIORITY
 		);
 
 		// Asset loading hooks.
 		add_action(
-			hook_name: 'wp_enqueue_scripts',
-			callback: array( $this, 'enqueue_frontend_assets' )
+			'wp_enqueue_scripts',
+			array( $this, 'enqueue_frontend_assets' )
 		);
 
 		// Admin asset loading.
 		add_action(
-			hook_name: 'admin_enqueue_scripts',
-			callback: array( $this, 'enqueue_admin_assets' )
+			'admin_enqueue_scripts',
+			array( $this, 'enqueue_admin_assets' )
 		);
 
 		// Template hooks.
 		add_filter(
-			hook_name: 'template_include',
+			'template_include',
 			callback: array( Templates::class, 'include_template' ),
 			priority: self::TEMPLATE_PRIORITY
 		);
@@ -199,7 +199,7 @@ final class Setup {
 		// Admin hooks.
 		if ( is_admin() ) {
 			add_action(
-				hook_name: 'admin_init',
+				'admin_init',
 				callback: array( $this, 'admin_init' )
 			);
 		}
@@ -275,7 +275,7 @@ final class Setup {
 		$this->init_rest_api();
 
 		// Fire custom action for extensions.
-		do_action( hook_name: 'brag_book_gallery_init', arg: $this );
+		do_action( 'brag_book_gallery_init', $this );
 	}
 
 	/**
@@ -296,7 +296,7 @@ final class Setup {
 		$this->maybe_upgrade();
 
 		// Fire custom action for admin extensions.
-		do_action( hook_name: 'brag_book_gallery_admin_init', arg: $this );
+		do_action( 'brag_book_gallery_admin_init', $this );
 	}
 
 	/**
@@ -310,13 +310,13 @@ final class Setup {
 	 * @return void
 	 */
 	private function setup_rewrite_rules(): void {
-		// Rewrite rules are now automatically registered by the Rewrite_Rules class
+		// Rewrite rules are handled by the Shortcodes class
 		// This method is kept for potential future manual flush operations
 		
 		// Flush rules if needed (check option flag).
-		if ( get_option( option: 'brag_book_gallery_flush_rewrite_rules' ) ) {
+		if ( get_option( 'brag_book_gallery_flush_rewrite_rules' ) ) {
 			flush_rewrite_rules();
-			delete_option( option: 'brag_book_gallery_flush_rewrite_rules' );
+			delete_option( 'brag_book_gallery_flush_rewrite_rules' );
 		}
 	}
 
@@ -336,7 +336,7 @@ final class Setup {
 		// for gallery pages internally
 
 		// Fire custom action for additional assets.
-		do_action( hook_name: 'brag_book_gallery_enqueue_frontend_assets' );
+		do_action( 'brag_book_gallery_enqueue_frontend_assets' );
 	}
 
 	/**
@@ -357,7 +357,7 @@ final class Setup {
 		// for admin pages internally
 
 		// Fire custom action for additional admin assets.
-		do_action( hook_name: 'brag_book_gallery_enqueue_admin_assets', arg: $hook_suffix );
+		do_action( 'brag_book_gallery_enqueue_admin_assets', $hook_suffix );
 	}
 
 	/**
@@ -370,9 +370,9 @@ final class Setup {
 	 */
 	private function load_textdomain(): void {
 		load_plugin_textdomain(
-			domain: 'brag-book-gallery',
-			deprecated: false,
-			plugin_rel_path: dirname(
+			'brag-book-gallery',
+			false,
+			dirname(
 				plugin_basename( self::get_plugin_file() )
 			) . '/languages'
 		);
@@ -437,8 +437,8 @@ final class Setup {
 		);
 
 		register_post_type(
-			post_type: 'form-entries',
-			args: array(
+			'form-entries',
+			array(
 				'labels'              => $labels,
 				'public'              => false,
 				'publicly_queryable'  => false,
@@ -469,10 +469,10 @@ final class Setup {
 	 */
 	private function init_rest_api(): void {
 		add_action(
-			hook_name: 'rest_api_init',
+			'rest_api_init',
 			callback: function() {
 				// Register custom REST routes here if needed.
-				do_action( hook_name: 'brag_book_gallery_rest_api_init' );
+				do_action( 'brag_book_gallery_rest_api_init' );
 			}
 		);
 	}
@@ -494,12 +494,12 @@ final class Setup {
 
 		// Check against stored gallery page IDs.
 		$gallery_page_ids = (array) get_option(
-			option: 'bb_gallery_stored_pages_ids',
+			'bb_gallery_stored_pages_ids',
 			default_value: array()
 		);
 
 		$combine_page_id = (int) get_option(
-			option: 'combine_gallery_page_id',
+			'combine_gallery_page_id',
 			default_value: 0
 		);
 
@@ -537,8 +537,8 @@ final class Setup {
 
 		// Get current version from options
 		$current_version = get_option(
-			option: 'brag_book_gallery_version',
-			default_value: '0.0.0'
+			'brag_book_gallery_version',
+			'0.0.0'
 		);
 
 		// Compare versions and set upgrade flag if needed.
@@ -557,7 +557,7 @@ final class Setup {
 	private function maybe_upgrade(): void {
 
 		// Check if upgrade is needed.
-		if ( ! get_option( option: 'brag_book_gallery_needs_upgrade' ) ) {
+		if ( ! get_option( 'brag_book_gallery_needs_upgrade' ) ) {
 			return;
 		}
 
@@ -565,10 +565,10 @@ final class Setup {
 		$this->run_upgrades();
 
 		// Clear upgrade flag.
-		delete_option( option: 'brag_book_gallery_needs_upgrade' );
+		delete_option( 'brag_book_gallery_needs_upgrade' );
 
 		// Set flag to flush rewrite rules.
-		update_option( option: 'brag_book_gallery_flush_rewrite_rules', value: true );
+		update_option( 'brag_book_gallery_flush_rewrite_rules', true );
 	}
 
 	/**
@@ -580,8 +580,8 @@ final class Setup {
 	private function run_upgrades(): void {
 		// Future upgrade routines go here.
 		do_action(
-			hook_name: 'brag_book_gallery_run_upgrades',
-			arg: self::VERSION
+			'brag_book_gallery_run_upgrades',
+			self::VERSION
 		);
 	}
 
@@ -597,13 +597,13 @@ final class Setup {
 
 		// Set initial version.
 		update_option(
-			option: 'brag_book_gallery_version',
+			'brag_book_gallery_version',
 			value: self::VERSION
 		);
 
 		// Set flag to flush rewrite rules on next init.
 		update_option(
-			option: 'brag_book_gallery_flush_rewrite_rules',
+			'brag_book_gallery_flush_rewrite_rules',
 			value: true
 		);
 
@@ -614,12 +614,12 @@ final class Setup {
 		$this->set_default_options();
 
 		// Register rewrite rules and flush immediately.
-		// Note: Using Rewrite_Rules class directly for activation
-		\BRAGBookGallery\Includes\Extend\Rewrite_Rules::add_custom_rewrite_rules();
+		// Rewrite rules are handled by Shortcodes class initialization
+		Shortcodes::custom_rewrite_rules();
 		flush_rewrite_rules();
 
 		// Fire custom activation hook.
-		do_action( hook_name: 'brag_book_gallery_activate' );
+		do_action( 'brag_book_gallery_activate' );
 	}
 
 	/**
@@ -639,7 +639,7 @@ final class Setup {
 		$this->clear_scheduled_events();
 
 		// Fire custom deactivation hook.
-		do_action( hook_name: 'brag_book_gallery_deactivate' );
+		do_action( 'brag_book_gallery_deactivate' );
 	}
 
 	/**
@@ -654,7 +654,7 @@ final class Setup {
 			$this->services['database']->create_tables();
 		}
 		
-		do_action( hook_name: 'brag_book_gallery_create_tables' );
+		do_action( 'brag_book_gallery_create_tables' );
 	}
 
 	/**
@@ -680,8 +680,8 @@ final class Setup {
 
 		// Fire custom action for additional defaults.
 		do_action(
-			hook_name: 'brag_book_gallery_set_default_options',
-			arg: $defaults
+			'brag_book_gallery_set_default_options',
+			$defaults
 		);
 	}
 
@@ -694,9 +694,9 @@ final class Setup {
 	private function clear_scheduled_events(): void {
 
 		// Clear any scheduled cron events.
-		wp_clear_scheduled_hook( hook: 'brag_book_gallery_daily_cleanup' );
+		wp_clear_scheduled_hook( 'brag_book_gallery_daily_cleanup' );
 
-		do_action( hook_name: 'brag_book_gallery_clear_scheduled_events' );
+		do_action( 'brag_book_gallery_clear_scheduled_events' );
 	}
 
 	/**
@@ -779,7 +779,7 @@ final class Setup {
 				'Cloning is forbidden.',
 				'brag-book-gallery'
 			),
-			version: '3.0.0'
+			'3.0.0'
 		);
 	}
 
@@ -796,7 +796,7 @@ final class Setup {
 				'Unserializing is forbidden.',
 				'brag-book-gallery'
 			),
-			version: '3.0.0'
+			'3.0.0'
 		);
 	}
 }

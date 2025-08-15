@@ -69,6 +69,14 @@ class Consultation {
 	private const AJAX_SUBMISSION = 'handle_form_submission';
 
 	/**
+	 * AJAX action for deleting entries
+	 *
+	 * @since 3.0.0
+	 * @var string
+	 */
+	private const AJAX_DELETE = 'delete_consultation_entry';
+
+	/**
 	 * Constructor - Registers WordPress hooks
 	 *
 	 * Sets up admin menu items and AJAX handlers for both authenticated
@@ -93,6 +101,9 @@ class Consultation {
 
 		// Handle non-authenticated form submissions.
 		add_action(	'wp_ajax_nopriv_' . self::AJAX_SUBMISSION, array( $this, 'handle_form_submission' ) );
+		
+		// Delete entry AJAX handler (admin only)
+		add_action( 'wp_ajax_' . self::AJAX_DELETE, array( $this, 'handle_delete_entry' ) );
 	}
 
 	/**
@@ -796,6 +807,52 @@ class Consultation {
 	}
 
 	/**
+	 * Handle delete entry request
+	 *
+	 * Deletes a consultation entry via AJAX.
+	 *
+	 * @return void Outputs JSON response and exits.
+	 * @since 3.0.0
+	 */
+	public function handle_delete_entry(): void {
+		
+		// Check user permissions
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( __( 'You do not have permission to delete entries.', 'brag-book-gallery' ) );
+		}
+		
+		// Verify nonce for security
+		if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( $_POST['nonce'], 'consultation_delete_nonce' ) ) {
+			wp_send_json_error( __( 'Security verification failed.', 'brag-book-gallery' ) );
+		}
+		
+		// Get and validate post ID
+		$post_id = isset( $_POST['post_id'] ) ? absint( $_POST['post_id'] ) : 0;
+		
+		if ( ! $post_id ) {
+			wp_send_json_error( __( 'Invalid entry ID.', 'brag-book-gallery' ) );
+		}
+		
+		// Verify it's a consultation entry
+		$post = get_post( $post_id );
+		if ( ! $post || $post->post_type !== self::POST_TYPE ) {
+			wp_send_json_error( __( 'Entry not found.', 'brag-book-gallery' ) );
+		}
+		
+		// Delete the post
+		$deleted = wp_delete_post( $post_id, true ); // true = force delete (skip trash)
+		
+		if ( $deleted ) {
+			wp_send_json_success( array(
+				'message' => __( 'Entry deleted successfully.', 'brag-book-gallery' ),
+				'post_id' => $post_id
+			) );
+		} else {
+			wp_send_json_error( __( 'Failed to delete entry.', 'brag-book-gallery' ) );
+		}
+	}
+
+	/**
 	 * Get consultation entries for a specific page
 	 *
 	 * Retrieves consultation posts with pagination.
@@ -854,7 +911,7 @@ class Consultation {
 
 		if ( empty( $entries ) ) {
 			return sprintf(
-				'<tr><td colspan="5">%s</td></tr>',
+				'<tr><td colspan="6" style="text-align: center; padding: 20px;">%s</td></tr>',
 				esc_html__( 'No consultation entries found.', 'brag-book-gallery' )
 			);
 		}
@@ -866,19 +923,49 @@ class Consultation {
 			$phone = get_post_meta( $post->ID, 'bb_phone', true );
 			$date  = mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $post->post_date );
 
+			// Truncate long descriptions for better display
+			$description = $post->post_content;
+			$full_description = $description;
+			if ( strlen( $description ) > 150 ) {
+				$description = substr( $description, 0, 150 ) . '...';
+			}
+
 			$html .= sprintf(
-				'<tr>
-					<td>%s</td>
-					<td>%s</td>
-					<td>%s</td>
-					<td>%s</td>
-					<td colspan="4">%s</td>
+				'<tr class="consultation-row" data-id="%d">
+					<td class="consultation-name"><strong>%s</strong></td>
+					<td class="consultation-email"><a href="mailto:%s">%s</a></td>
+					<td class="consultation-phone"><a href="tel:%s">%s</a></td>
+					<td class="consultation-date">%s</td>
+					<td class="consultation-description">
+						<div class="description-content">%s</div>
+						%s
+					</td>
+					<td class="consultation-actions">
+						<button class="button button-small view-consultation" data-id="%d" title="%s">
+							<span class="dashicons dashicons-visibility"></span>
+						</button>
+						<button class="button button-small delete-consultation" data-id="%d" data-name="%s" title="%s">
+							<span class="dashicons dashicons-trash"></span>
+						</button>
+					</td>
 				</tr>',
+				$post->ID,
 				esc_html( $post->post_title ),
+				esc_attr( $email ),
 				esc_html( $email ),
+				esc_attr( $phone ),
 				esc_html( $phone ),
 				esc_html( $date ),
-				esc_html( $post->post_content )
+				wp_kses_post( $description ),
+				( strlen( $full_description ) > 150 ? 
+					'<div class="description-full" style="display:none;">' . wp_kses_post( $full_description ) . '</div>' : 
+					'' 
+				),
+				$post->ID,
+				esc_attr__( 'View Details', 'brag-book-gallery' ),
+				$post->ID,
+				esc_attr( $post->post_title ),
+				esc_attr__( 'Delete Entry', 'brag-book-gallery' )
 			);
 		}
 
@@ -1020,11 +1107,12 @@ class Consultation {
 	public function display_form_entries(): void {
 
 		// Generate nonce for security.
-		$nonce = wp_create_nonce( action: 'consultation_pagination_nonce' );
+		$nonce = wp_create_nonce( 'consultation_pagination_nonce' );
+		$delete_nonce = wp_create_nonce( 'consultation_delete_nonce' );
 		?>
 		<div class="wrap brag-book-gallery-admin-wrap">
 			<?php $this->render_header(); ?>
-			<?php $this->render_tabs( current: 'consultations' ); ?>
+			<?php $this->render_tabs( 'consultations' ); ?>
 
 			<div class="brag-book-gallery-section">
 				<h2><?php esc_html_e( 'Consultation Entries', 'brag-book-gallery' ); ?></h2>
@@ -1032,6 +1120,7 @@ class Consultation {
 					document.addEventListener( 'DOMContentLoaded', () => {
 						const ajaxurl = <?php echo wp_json_encode( admin_url( 'admin-ajax.php' ) ); ?>;
 						const nonce = <?php echo wp_json_encode( $nonce ); ?>;
+						const deleteNonce = <?php echo wp_json_encode( $delete_nonce ); ?>;
 
 						/**
 						 * Fade in effect for element
@@ -1106,6 +1195,175 @@ class Consultation {
 
 						// Initial load
 						loadConsultationPosts( 1 );
+						
+						/**
+						 * Handle delete button clicks
+						 */
+						const handleDelete = async (button) => {
+							const postId = button.dataset.id;
+							const postName = button.dataset.name;
+							
+							if (!confirm(`Are you sure you want to delete the consultation from "${postName}"? This action cannot be undone.`)) {
+								return;
+							}
+							
+							button.disabled = true;
+							button.innerHTML = '<span class="dashicons dashicons-update spinning"></span> Deleting...';
+							
+							try {
+								const formData = new FormData();
+								formData.append('action', 'delete_consultation_entry');
+								formData.append('nonce', deleteNonce);
+								formData.append('post_id', postId);
+								
+								const response = await fetch(ajaxurl, {
+									method: 'POST',
+									body: formData
+								});
+								
+								const data = await response.json();
+								
+								if (data.success) {
+									// Remove the row with fade out effect
+									const row = button.closest('tr');
+									row.style.transition = 'opacity 0.3s';
+									row.style.opacity = '0';
+									setTimeout(() => {
+										row.remove();
+										// Check if table is empty
+										const tbody = document.querySelector('.bb_universal_container');
+										if (tbody && tbody.children.length === 0) {
+											tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px;">No consultation entries found.</td></tr>';
+										}
+									}, 300);
+								} else {
+									alert(data.data || 'Failed to delete entry.');
+									button.disabled = false;
+									button.innerHTML = '<span class="dashicons dashicons-trash"></span>';
+								}
+							} catch (error) {
+								console.error('Delete error:', error);
+								alert('An error occurred while deleting the entry.');
+								button.disabled = false;
+								button.innerHTML = '<span class="dashicons dashicons-trash"></span>';
+							}
+						};
+						
+						/**
+						 * Handle view details in modal dialog
+						 */
+						const handleViewDetails = (button) => {
+							const row = button.closest('tr');
+							const postId = button.dataset.id;
+							
+							// Get entry details from the row
+							const name = row.querySelector('.consultation-name strong').textContent;
+							const email = row.querySelector('.consultation-email a').textContent;
+							const phone = row.querySelector('.consultation-phone a').textContent;
+							const date = row.querySelector('.consultation-date').textContent;
+							const fullDesc = row.querySelector('.description-full');
+							const contentDiv = row.querySelector('.description-content');
+							const message = fullDesc ? fullDesc.textContent : contentDiv.textContent;
+							
+							// Create or get the dialog
+							let dialog = document.getElementById('consultation-detail-dialog');
+							if (!dialog) {
+								dialog = document.createElement('dialog');
+								dialog.id = 'consultation-detail-dialog';
+								dialog.className = 'consultation-dialog';
+								document.body.appendChild(dialog);
+							}
+							
+							// Populate dialog content
+							dialog.innerHTML = `
+								<div class="consultation-dialog-content">
+									<div class="consultation-dialog-header">
+										<h2>Consultation Details</h2>
+										<button type="button" class="dialog-close" aria-label="Close">
+											<span class="dashicons dashicons-no-alt"></span>
+										</button>
+									</div>
+									<div class="consultation-dialog-body">
+										<div class="detail-row">
+											<label>Name:</label>
+											<div class="detail-value"><strong>${escapeHtml(name)}</strong></div>
+										</div>
+										<div class="detail-row">
+											<label>Email:</label>
+											<div class="detail-value">
+												<a href="mailto:${escapeHtml(email)}">${escapeHtml(email)}</a>
+											</div>
+										</div>
+										<div class="detail-row">
+											<label>Phone:</label>
+											<div class="detail-value">
+												<a href="tel:${escapeHtml(phone)}">${escapeHtml(phone)}</a>
+											</div>
+										</div>
+										<div class="detail-row">
+											<label>Date Submitted:</label>
+											<div class="detail-value">${escapeHtml(date)}</div>
+										</div>
+										<div class="detail-row">
+											<label>Message:</label>
+											<div class="detail-value message-content">${escapeHtml(message)}</div>
+										</div>
+									</div>
+									<div class="consultation-dialog-footer">
+										<button type="button" class="button button-primary reply-email" data-email="${escapeHtml(email)}">
+											<span class="dashicons dashicons-email"></span> Reply via Email
+										</button>
+										<button type="button" class="button dialog-close-btn">Close</button>
+									</div>
+								</div>
+							`;
+							
+							// Show the dialog
+							dialog.showModal();
+							
+							// Handle close button clicks
+							const closeButtons = dialog.querySelectorAll('.dialog-close, .dialog-close-btn');
+							closeButtons.forEach(btn => {
+								btn.addEventListener('click', () => {
+									dialog.close();
+								});
+							});
+							
+							// Handle reply email button
+							const replyBtn = dialog.querySelector('.reply-email');
+							if (replyBtn) {
+								replyBtn.addEventListener('click', () => {
+									window.location.href = `mailto:${email}?subject=Re: Consultation Request from ${name}`;
+								});
+							}
+							
+							// Close dialog on outside click
+							dialog.addEventListener('click', (e) => {
+								if (e.target === dialog) {
+									dialog.close();
+								}
+							});
+							
+							// Close dialog on ESC key
+							dialog.addEventListener('cancel', (e) => {
+								e.preventDefault();
+								dialog.close();
+							});
+						};
+						
+						/**
+						 * Escape HTML to prevent XSS
+						 */
+						const escapeHtml = (text) => {
+							const map = {
+								'&': '&amp;',
+								'<': '&lt;',
+								'>': '&gt;',
+								'"': '&quot;',
+								"'": '&#039;'
+							};
+							return text.replace(/[&<>"']/g, m => map[m]);
+						};
 
 						// Handle pagination clicks using event delegation
 						document.addEventListener( 'click', ( event ) => {
@@ -1118,21 +1376,250 @@ class Consultation {
 									loadConsultationPosts( page );
 								}
 							}
+							
+							// Handle delete button clicks
+							const deleteBtn = event.target.closest('.delete-consultation');
+							if (deleteBtn) {
+								event.preventDefault();
+								handleDelete(deleteBtn);
+							}
+							
+							// Handle view details button clicks
+							const viewBtn = event.target.closest('.view-consultation');
+							if (viewBtn) {
+								event.preventDefault();
+								handleViewDetails(viewBtn);
+							}
 						} );
 					} );
 				</script>
+				
+				<style type="text/css">
+					.consultation-row:hover {
+						background-color: #f0f8ff;
+					}
+					.consultation-actions {
+						white-space: nowrap;
+						text-align: center;
+					}
+					.consultation-actions .button {
+						margin: 0 2px;
+						padding: 4px 8px;
+						min-width: auto;
+					}
+					.consultation-actions .button-small {
+						font-size: 12px;
+					}
+					.consultation-description {
+						max-width: 400px;
+					}
+					.description-content, .description-full {
+						word-wrap: break-word;
+						line-height: 1.6;
+						color: #555;
+					}
+					.consultation-email a, .consultation-phone a {
+						text-decoration: none;
+						color: #0073aa;
+						font-weight: 500;
+					}
+					.consultation-email a:hover, .consultation-phone a:hover {
+						text-decoration: underline;
+					}
+					.dashicons.spinning {
+						animation: spin 1s linear infinite;
+					}
+					@keyframes spin {
+						from { transform: rotate(0deg); }
+						to { transform: rotate(360deg); }
+					}
+					.wp-list-table.consultation-entries th {
+						font-weight: 600;
+						background: #f1f1f1;
+						color: #333;
+					}
+					.consultation-name strong {
+						color: #23282d;
+						font-size: 14px;
+					}
+					.consultation-date {
+						white-space: nowrap;
+						color: #666;
+					}
+					.view-consultation, .delete-consultation {
+						cursor: pointer;
+						transition: all 0.3s ease;
+					}
+					.delete-consultation:hover {
+						color: #dc3232 !important;
+						border-color: #dc3232 !important;
+						background: #fff !important;
+					}
+					.view-consultation:hover {
+						color: #0073aa !important;
+						border-color: #0073aa !important;
+						background: #fff !important;
+					}
+					.bb_pag_loading {
+						text-align: center;
+						padding: 20px;
+					}
+					.bb-pagination-nav {
+						margin-top: 20px;
+						text-align: center;
+					}
+					.consultation-entries tbody td {
+						padding: 12px 8px;
+						vertical-align: middle;
+					}
+					
+					/* Dialog Styles */
+					.consultation-dialog {
+						border: none;
+						border-radius: 8px;
+						box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+						padding: 0;
+						max-width: 600px;
+						width: 90%;
+						max-height: 80vh;
+						overflow: visible;
+					}
+					
+					.consultation-dialog::backdrop {
+						background: rgba(0, 0, 0, 0.5);
+						backdrop-filter: blur(2px);
+					}
+					
+					.consultation-dialog-content {
+						display: flex;
+						flex-direction: column;
+						height: 100%;
+					}
+					
+					.consultation-dialog-header {
+						display: flex;
+						justify-content: space-between;
+						align-items: center;
+						padding: 20px;
+						border-bottom: 1px solid #e5e5e5;
+						background: #f8f9fa;
+						border-radius: 8px 8px 0 0;
+					}
+					
+					.consultation-dialog-header h2 {
+						margin: 0;
+						font-size: 20px;
+						font-weight: 600;
+						color: #23282d;
+					}
+					
+					.dialog-close {
+						background: none;
+						border: none;
+						cursor: pointer;
+						padding: 5px;
+						display: flex;
+						align-items: center;
+						justify-content: center;
+						border-radius: 4px;
+						transition: background 0.2s;
+					}
+					
+					.dialog-close:hover {
+						background: rgba(0, 0, 0, 0.05);
+					}
+					
+					.dialog-close .dashicons {
+						font-size: 24px;
+						width: 24px;
+						height: 24px;
+						color: #666;
+					}
+					
+					.consultation-dialog-body {
+						padding: 20px;
+						overflow-y: auto;
+						flex-grow: 1;
+					}
+					
+					.detail-row {
+						display: flex;
+						margin-bottom: 15px;
+						align-items: flex-start;
+					}
+					
+					.detail-row label {
+						font-weight: 600;
+						color: #666;
+						min-width: 120px;
+						margin-right: 15px;
+						padding-top: 2px;
+					}
+					
+					.detail-value {
+						flex: 1;
+						color: #23282d;
+						line-height: 1.6;
+					}
+					
+					.detail-value a {
+						color: #0073aa;
+						text-decoration: none;
+					}
+					
+					.detail-value a:hover {
+						text-decoration: underline;
+					}
+					
+					.message-content {
+						background: #f5f5f5;
+						padding: 12px;
+						border-radius: 4px;
+						white-space: pre-wrap;
+						word-wrap: break-word;
+						max-height: 200px;
+						overflow-y: auto;
+					}
+					
+					.consultation-dialog-footer {
+						display: flex;
+						justify-content: flex-end;
+						gap: 10px;
+						padding: 20px;
+						border-top: 1px solid #e5e5e5;
+						background: #f8f9fa;
+						border-radius: 0 0 8px 8px;
+					}
+					
+					.consultation-dialog-footer .button {
+						margin: 0;
+					}
+					
+					.reply-email {
+						display: flex;
+						align-items: center;
+						gap: 5px;
+					}
+					
+					.reply-email .dashicons {
+						font-size: 16px;
+						width: 16px;
+						height: 16px;
+					}
+				</style>
+				
 				<div class="bb_pag_loading" style="display: none;">
 					<p>
 						<?php
 						esc_html_e(
-							'Loading...',
+							'Loading consultation entries...',
 							'brag-book-gallery'
 						);
 						?>
 					</p>
 				</div>
 				<table
-					class="wp-list-table widefat fixed striped"
+					class="wp-list-table widefat fixed striped consultation-entries"
 					style="width: 100%;"
 				>
 					<thead>
@@ -1145,7 +1632,7 @@ class Consultation {
 							);
 							?>
 						</th>
-						<th style="width: 20%;">
+						<th style="width: 18%;">
 							<?php
 							esc_html_e(
 								'Email',
@@ -1153,7 +1640,7 @@ class Consultation {
 							);
 							?>
 						</th>
-						<th style="width: 15%;">
+						<th style="width: 12%;">
 							<?php
 							esc_html_e(
 								'Phone',
@@ -1161,7 +1648,7 @@ class Consultation {
 							);
 							?>
 						</th>
-						<th style="width: 15%;">
+						<th style="width: 12%;">
 							<?php
 							esc_html_e(
 								'Date',
@@ -1169,9 +1656,16 @@ class Consultation {
 							);
 							?>
 						</th>
-						<th style="width: 35%;">
+						<th style="width: 33%;">
 							<?php esc_html_e(
-								'Description',
+								'Message',
+								'brag-book-gallery'
+							);
+							?>
+						</th>
+						<th style="width: 10%; text-align: center;">
+							<?php esc_html_e(
+								'Actions',
 								'brag-book-gallery'
 							);
 							?>
@@ -1180,7 +1674,7 @@ class Consultation {
 					</thead>
 					<tbody class="bb_universal_container">
 					<tr>
-						<td colspan="5"
+						<td colspan="6"
 							style="text-align: center;">
 							<?php
 							esc_html_e(
