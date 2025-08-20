@@ -1,0 +1,24 @@
+@charset "UTF-8";
+
+// -----------------------------------------------------------------------------
+// components / carousel actions
+// -----------------------------------------------------------------------------
+
+.brag-book-gallery-item-actions {
+	position: absolute;
+	top: calc( 3 * var(--wp--custom--brag-book-gallery--spacer) );
+	right: calc( 3 * var(--wp--custom--brag-book-gallery--spacer) );
+	display: flex;
+	gap: calc( 2 * var(--wp--custom--brag-book-gallery--spacer) );
+	opacity: 0;
+	visibility: hidden;
+	transition: var(--wp--custom--brag-book-gallery--transition);
+	pointer-events: none;
+
+	.brag-book-gallery-carousel-item:hover &,
+	.brag-book-gallery-carousel-item:has(.brag-book-gallery-heart-btn[data-favorited="true"]) & {
+		opacity: 1;
+		visibility: visible;
+		pointer-events: auto;
+	}
+}

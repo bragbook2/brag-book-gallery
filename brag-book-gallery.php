@@ -1,6 +1,6 @@
 <?php
 /**
- * BRAG Book Plugin
+ * BRAG book Plugin
  *
  * This file is used to generate all plugin information. Including all the
  * dependencies used by the plugin, registers the activation and deactivation
@@ -14,9 +14,9 @@
  * @since      3.0.0
  *
  * @wordpress-plugin
- * Plugin Name:       BRAG Book Gallery
+ * Plugin Name:       BRAG book Gallery
  * Plugin URI:        https://www.bragbookgallery.com/
- * Description:       BRAG Book before and after gallery.
+ * Description:       BRAG book before and after gallery.
  * Version:           3.0.0
  * Requires at Least: 6.8
  * Requires PHP:      8.2

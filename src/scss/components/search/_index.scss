@@ -1,0 +1,204 @@
+@charset "UTF-8";
+
+// -----------------------------------------------------------------------------
+// components / search / index
+// -----------------------------------------------------------------------------
+
+.brag-book-gallery-search-wrapper {
+	position: relative;
+	width: 100%;
+	margin-block-end: calc( 8 * var(--wp--custom--brag-book-gallery--spacer) );
+	flex: 1;
+
+	@media (min-width: 960px) {
+		&--mobile {
+			display: none;
+		}
+	}
+}
+
+.brag-book-gallery-search-input {
+	width: 100%;
+	padding-block: calc( 3 * var(--wp--custom--brag-book-gallery--spacer) );
+	padding-inline: calc( 10 * var(--wp--custom--brag-book-gallery--spacer) ) calc( 4 * var(--wp--custom--brag-book-gallery--spacer) );
+	background: var(--wp--custom--brag-book-gallery--color--white);
+	border: 0 solid var(--wp--custom--brag-book-gallery--color--lighter-grey);
+	box-shadow: 0 0 0 0.125rem var(--wp--custom--brag-book-gallery--color--lighter-grey);
+	border-radius: var(--wp--custom--brag-book-gallery--rounded);
+	font-size: var(--wp--custom--brag-book-gallery--text-sm);
+	line-height: calc( 4 * var(--wp--custom--brag-book-gallery--spacer) );
+	font-weight: var(--wp--custom--brag-book-gallery--font-weight--regular);
+	transition: var(--wp--custom--brag-book-gallery--transition);
+	outline: none;
+
+	&:hover {
+		border-color: var(--wp--custom--brag-book-gallery--light-grey);
+	}
+
+	&:focus {
+		border-color: var(--wp--custom--brag-book-gallery--color--black);
+		box-shadow: 0 0 0 var(--wp--custom--brag-book-gallery--spacer) rgba(0,0,0,.05)
+	}
+
+	.brag-book-gallery-search-wrapper.active & {
+		border-color: var(--wp--custom--brag-book-gallery--color--black);
+		border-bottom-left-radius: 0;
+		border-bottom-right-radius: 0
+	}
+}
+
+.brag-book-gallery-search-icon {
+	position: absolute;
+	left: calc( 2 * var(--wp--custom--brag-book-gallery--spacer) );
+	top: calc( 2 * var(--wp--custom--brag-book-gallery--spacer) );
+	width: calc( 6 * var(--wp--custom--brag-book-gallery--spacer) );
+	height: calc( 6 * var(--wp--custom--brag-book-gallery--spacer) );
+	stroke: var(--wp--custom--brag-book-gallery--color--grey);
+	pointer-events: none;
+	z-index: 1
+}
+
+.brag-book-gallery-search-dropdown {
+	position: absolute;
+	top: calc( 100% + var(--wp--custom--brag-book-gallery--spacer) );
+	left: 0;
+	right: 0;
+	background-color: var(--wp--custom--brag-book-gallery--color--white);
+	border: 2px solid var(--wp--custom--brag-book-gallery--color--light-grey);
+	border-radius: calc( 2 * var(--wp--custom--brag-book-gallery--spacer) );
+	box-shadow: var(--wp--custom--brag-book-gallery--shadow-lg);
+	max-height: calc( 80 * var(--wp--custom--brag-book-gallery--spacer) );
+	overflow-y: auto;
+	z-index: 100;
+	display: none;
+	animation: slideDown .2s ease-out;
+
+	&.active {
+		display: block;
+	}
+
+	&::-webkit-scrollbar {
+		width: 6px
+	}
+
+	&::-webkit-scrollbar-track {
+		background: var(--wp--custom--brag-book-gallery--color--lightest-grey);
+		border-radius: var(--wp--custom--brag-book-gallery--spacer);
+	}
+
+	&::-webkit-scrollbar-thumb {
+		background: var(--wp--custom--brag-book-gallery--color--light-grey);
+		border-radius: var(--wp--custom--brag-book-gallery--spacer);
+	}
+
+	&::-webkit-scrollbar-thumb:hover {
+		background: var(--wp--custom--brag-book-gallery--color--grey)
+	}
+
+	.brag-book-gallery-search-wrapper.active & {
+		border-top-left-radius: 0;
+		border-top-right-radius: 0;
+		border-top-color: var(--wp--custom--brag-book-gallery--color--black)
+	}
+}
+
+.brag-book-gallery-search-item {
+	padding: calc( 2 * var(--wp--custom--brag-book-gallery--spacer) ) calc( 4 * var(--wp--custom--brag-book-gallery--spacer) );
+	cursor: pointer;
+	transition: var(--wp--custom--brag-book-gallery--transition);
+	border-bottom: 1px solid var(---wp--custom--brag-book-gallery--color--lightest-grey);
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	position: relative;
+	gap: calc( 4 * var(--wp--custom--brag-book-gallery--spacer) );
+
+	&:last-child {
+		border-bottom: none
+	}
+
+	&:hover,
+	&[aria-selected=true] {
+		background: var(---wp--custom--brag-book-gallery--color--lightest-grey);
+		padding-left: 1.25rem;
+
+		.brag-book-gallery-search-item-count {
+			color: var(--wp--custom--brag-book-gallery--color--grey)
+		}
+	}
+
+	&[aria-selected=true]::before {
+		content: '';
+		position: absolute;
+		left: 0;
+		top: 0;
+		bottom: 0;
+		width: var(--wp--custom--brag-book-gallery--spacer);
+		background: var(--wp--custom--brag-book-gallery--color--black)
+	}
+
+	&-content {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		gap: .125rem
+	}
+
+	&-name {
+		font-size: var(--wp--custom--brag-book-gallery--font-size--sm);
+		font-weight: var(--wp--custom--brag-book-gallery--font-weight--semibold);
+		color: var(--wp--custom--brag-book-gallery--color--black);
+		line-height: 1.25
+	}
+
+	&-count {
+		font-size: var(--wp--custom--brag-book-gallery--font-size--sm);
+		color: var(--wp--custom--brag-book-gallery--color--grey);
+		font-weight: var(--wp--custom--brag-book-gallery--font-weight--regular);
+		display: inline-flex;
+		align-items: center;
+		gap: var(--wp--custom--brag-book-gallery--spacer);
+
+		&::before {
+			content: "•";
+			color: var(--wp--custom--brag-book-gallery--color--light-grey);
+		}
+	}
+
+	&-category {
+		font-size: var(--wp--custom--brag-book-gallery--font-size--sm);
+		color: var(--wp--custom--brag-book-gallery--color--grey);
+		background: var(--wp--custom--brag-book-gallery--color--lighter-grey);
+		padding: var(--wp--custom--brag-book-gallery--spacer) calc( 2 * var(--wp--custom--brag-book-gallery--spacer) );
+		border-radius: var(--wp--custom--brag-book-gallery--rounded-full);
+		font-weight: var(--wp--custom--brag-book-gallery--font-weight--regular);
+		white-space: nowrap
+	}
+
+	mark {
+		background: var(--wp--custom--brag-book-gallery--color--lighter-grey);
+		color: var(--wp--custom--brag-book-gallery--color--black);
+		font-weight: 600;
+		padding: 0 2px;
+		border-radius: 2px
+	}
+}
+
+.brag-book-gallery-search-no-results {
+	padding: calc( 6 * var(--wp--custom--brag-book-gallery--spacer) );
+	text-align: center;
+	color: var(--wp--custom--brag-book-gallery--color--grey);
+	font-size: var(--wp--custom--brag-book-gallery--font-size--sm);
+}
+
+@keyframes slideDown {
+	from {
+		opacity: 0;
+		transform: translateY(-10px)
+	}
+
+	to {
+		opacity: 1;
+		transform: translateY(0)
+	}
+}

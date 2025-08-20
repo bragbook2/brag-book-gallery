@@ -1,0 +1,45 @@
+@charset "UTF-8";
+
+// -----------------------------------------------------------------------------
+// admin / utilities
+// -----------------------------------------------------------------------------
+
+.opacity-0 { opacity: 0; }
+.opacity-50 { opacity: 0.5; }
+.opacity-100 { opacity: 1; }
+
+.transition-opacity { transition: var(--transition-opacity); }
+.transition-colors { transition: var(--transition-colors); }
+.transition-shadow { transition: var(--transition-shadow); }
+.transition-transform { transition: var(--transition-transform); }
+
+.cursor-pointer { cursor: pointer; }
+.cursor-not-allowed { cursor: not-allowed; }
+
+.select-none { user-select: none; }
+.select-text { user-select: text; }
+.select-all { user-select: all; }
+
+.sr-only {
+	position: absolute;
+	inline-size: var(--space-px);
+	block-size: var(--space-px);
+	padding: 0;
+	margin: calc(var(--space-px) * -1);
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border-width: 0;
+}
+
+.screen-reader-text {
+	position: absolute !important;
+	inline-size: var(--space-px);
+	block-size: var(--space-px);
+	padding: 0;
+	margin: calc(var(--space-px) * -1);
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
+}

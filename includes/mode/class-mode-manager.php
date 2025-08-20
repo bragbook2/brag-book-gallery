@@ -139,11 +139,11 @@ class Mode_Manager {
 	private function init_local_mode(): void {
 		// Check if classes exist before instantiating
 		if ( ! class_exists( 'BRAGBookGallery\Includes\PostTypes\Gallery_Post_Type' ) ) {
-			error_log( 'BRAG Book Gallery: Gallery_Post_Type class not found!' );
+			error_log( 'BRAG book Gallery: Gallery_Post_Type class not found!' );
 			return;
 		}
 		if ( ! class_exists( 'BRAGBookGallery\Includes\Taxonomies\Gallery_Taxonomies' ) ) {
-			error_log( 'BRAG Book Gallery: Gallery_Taxonomies class not found!' );
+			error_log( 'BRAG book Gallery: Gallery_Taxonomies class not found!' );
 			return;
 		}
 

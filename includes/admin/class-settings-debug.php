@@ -21,7 +21,7 @@ if ( ! defined( 'WPINC' ) ) {
 /**
  * Debug Settings Class
  *
- * Comprehensive debugging and diagnostic tools for BRAG Book Gallery troubleshooting.
+ * Comprehensive debugging and diagnostic tools for BRAG book Gallery troubleshooting.
  * This class provides administrators with essential tools for monitoring plugin
  * health, diagnosing issues, and managing plugin data.
  *
@@ -53,12 +53,14 @@ if ( ! defined( 'WPINC' ) ) {
  */
 class Settings_Debug extends Settings_Base {
 
+	use \BRAGBookGallery\Includes\Admin\Traits\Trait_Ajax_Handler;
+
 	/**
 	 * Initialize debug settings page configuration
 	 *
 	 * Sets up the page slug for the debug and diagnostic interface.
 	 * This page provides essential troubleshooting tools for administrators
-	 * and support personnel working with BRAG Book Gallery installations.
+	 * and support personnel working with BRAG book Gallery installations.
 	 *
 	 * @since 3.0.0
 	 * @return void
@@ -66,6 +68,62 @@ class Settings_Debug extends Settings_Base {
 	protected function init(): void {
 		$this->page_slug  = 'brag-book-gallery-debug';
 		// Don't translate here - translations happen in render method
+		$this->init_ajax_handlers();
+		$this->init_log_file();
+		
+		// Initialize Debug Tools for AJAX handlers
+		// Must be initialized always, not just during AJAX, so the action is registered
+		if ( ! class_exists( '\BragBookGallery\Admin\Debug_Tools' ) ) {
+			require_once __DIR__ . '/class-debug-tools.php';
+		}
+		\BragBookGallery\Admin\Debug_Tools::get_instance();
+	}
+
+	/**
+	 * Initialize AJAX handlers for debug settings
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	protected function init_ajax_handlers(): void {
+		// Debug settings
+		$this->register_ajax_action( 'brag_book_gallery_save_debug_settings', array( $this, 'handle_save_debug_settings' ) );
+		
+		// Error log management
+		$this->register_ajax_action( 'brag_book_gallery_get_error_log', array( $this, 'handle_get_error_log' ) );
+		$this->register_ajax_action( 'brag_book_gallery_clear_error_log', array( $this, 'handle_clear_error_log' ) );
+		$this->register_ajax_action( 'brag_book_gallery_download_error_log', array( $this, 'handle_download_error_log' ) );
+		
+		// API log management
+		$this->register_ajax_action( 'brag_book_gallery_get_api_log', array( $this, 'handle_get_api_log' ) );
+		$this->register_ajax_action( 'brag_book_gallery_clear_api_log', array( $this, 'handle_clear_api_log' ) );
+		$this->register_ajax_action( 'brag_book_gallery_download_api_log', array( $this, 'handle_download_api_log' ) );
+		
+		// System info export
+		$this->register_ajax_action( 'brag_book_gallery_export_system_info', array( $this, 'handle_export_system_info' ) );
+	}
+
+	/**
+	 * Initialize log file and directory
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	private function init_log_file(): void {
+		$upload_dir = wp_upload_dir();
+		$log_dir    = $upload_dir['basedir'] . '/brag-book-gallery-logs';
+
+		if ( ! file_exists( $log_dir ) ) {
+			wp_mkdir_p( $log_dir );
+
+			// Add .htaccess for security
+			$htaccess_content = "deny from all";
+			file_put_contents( $log_dir . '/.htaccess', $htaccess_content );
+
+			// Add index.php for additional security
+			$index_content = "<?php // Silence is golden";
+			file_put_contents( $log_dir . '/index.php', $index_content );
+		}
 	}
 
 	/**
@@ -173,6 +231,12 @@ class Settings_Debug extends Settings_Base {
 						</tr>
 					</table>
 				</form>
+			</div>
+
+			<!-- Diagnostic Tools -->
+			<div class="brag-book-gallery-section">
+				<h2><?php esc_html_e( 'Diagnostic Tools', 'brag-book-gallery' ); ?></h2>
+				<?php $this->render_diagnostic_tools(); ?>
 			</div>
 		</div>
 
@@ -608,5 +672,433 @@ class Settings_Debug extends Settings_Base {
 		header( 'Content-Length: ' . strlen( $json_data ) );
 		echo $json_data;
 		exit;
+	}
+
+	/**
+	 * Handle save debug settings AJAX request
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	public function handle_save_debug_settings(): void {
+		$this->verify_ajax_request();
+
+		// Get and sanitize settings
+		$debug_mode  = isset( $_POST['debug_mode'] ) && $_POST['debug_mode'] === '1';
+		$api_logging = isset( $_POST['api_logging'] ) && $_POST['api_logging'] === '1';
+		$wp_debug    = isset( $_POST['wp_debug'] ) && $_POST['wp_debug'] === '1';
+		$log_level   = sanitize_text_field( $_POST['log_level'] ?? 'error' );
+
+		// Validate log level
+		$valid_levels = [ 'error', 'warning', 'info', 'debug' ];
+		if ( ! in_array( $log_level, $valid_levels, true ) ) {
+			$log_level = 'error';
+		}
+
+		// Save settings
+		update_option( 'brag_book_gallery_debug_mode', $debug_mode );
+		update_option( 'brag_book_gallery_api_logging', $api_logging );
+		update_option( 'brag_book_gallery_log_level', $log_level );
+
+		// Build success message
+		$messages   = [];
+		$messages[] = __( 'Debug settings saved successfully.', 'brag-book-gallery' );
+
+		wp_send_json_success( [ 'message' => implode( ' ', $messages ) ] );
+	}
+
+	/**
+	 * Handle get error log AJAX request
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	public function handle_get_error_log(): void {
+		$this->verify_ajax_request();
+
+		$log_content = $this->get_error_log();
+		wp_send_json_success( [ 'log' => $log_content ] );
+	}
+
+	/**
+	 * Handle clear error log AJAX request
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	public function handle_clear_error_log(): void {
+		$this->verify_ajax_request();
+
+		$log_file = $this->get_log_file_path( 'error' );
+		if ( file_exists( $log_file ) ) {
+			file_put_contents( $log_file, '' );
+			wp_send_json_success( __( 'Error log cleared successfully.', 'brag-book-gallery' ) );
+		} else {
+			wp_send_json_error( __( 'Error log file not found.', 'brag-book-gallery' ) );
+		}
+	}
+
+	/**
+	 * Handle download error log AJAX request
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	public function handle_download_error_log(): void {
+		$this->verify_ajax_request();
+
+		$log_file = $this->get_log_file_path( 'error' );
+		
+		if ( ! file_exists( $log_file ) ) {
+			wp_die( __( 'Error log file not found.', 'brag-book-gallery' ) );
+		}
+
+		$filename = 'brag-book-gallery-error-log-' . date( 'Y-m-d-His' ) . '.txt';
+		
+		header( 'Content-Type: text/plain' );
+		header( 'Content-Disposition: attachment; filename="' . $filename . '"' );
+		header( 'Content-Length: ' . filesize( $log_file ) );
+		readfile( $log_file );
+		exit;
+	}
+
+	/**
+	 * Handle get API log AJAX request
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	public function handle_get_api_log(): void {
+		$this->verify_ajax_request();
+
+		$log_content = $this->get_api_log();
+		wp_send_json_success( [ 'log' => $log_content ] );
+	}
+
+	/**
+	 * Handle clear API log AJAX request
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	public function handle_clear_api_log(): void {
+		$this->verify_ajax_request();
+
+		$log_file = $this->get_log_file_path( 'api' );
+		if ( file_exists( $log_file ) ) {
+			file_put_contents( $log_file, '' );
+			wp_send_json_success( __( 'API log cleared successfully.', 'brag-book-gallery' ) );
+		} else {
+			wp_send_json_error( __( 'API log file not found.', 'brag-book-gallery' ) );
+		}
+	}
+
+	/**
+	 * Handle download API log AJAX request
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	public function handle_download_api_log(): void {
+		$this->verify_ajax_request();
+
+		$log_file = $this->get_log_file_path( 'api' );
+		
+		if ( ! file_exists( $log_file ) ) {
+			wp_die( __( 'API log file not found.', 'brag-book-gallery' ) );
+		}
+
+		$filename = 'brag-book-gallery-api-log-' . date( 'Y-m-d-His' ) . '.txt';
+		
+		header( 'Content-Type: text/plain' );
+		header( 'Content-Disposition: attachment; filename="' . $filename . '"' );
+		header( 'Content-Length: ' . filesize( $log_file ) );
+		readfile( $log_file );
+		exit;
+	}
+
+	/**
+	 * Handle export system info AJAX request
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	public function handle_export_system_info(): void {
+		$this->verify_ajax_request();
+
+		$system_info = $this->get_complete_system_info();
+		$filename = 'brag-book-gallery-system-info-' . date( 'Y-m-d-His' ) . '.txt';
+		
+		header( 'Content-Type: text/plain' );
+		header( 'Content-Disposition: attachment; filename="' . $filename . '"' );
+		header( 'Content-Length: ' . strlen( $system_info ) );
+		echo $system_info;
+		exit;
+	}
+
+	/**
+	 * Get error log content
+	 *
+	 * @since 3.0.0
+	 * @return string
+	 */
+	private function get_error_log(): string {
+		$log_file = $this->get_log_file_path( 'error' );
+
+		if ( ! file_exists( $log_file ) ) {
+			return __( 'No error log file found.', 'brag-book-gallery' );
+		}
+
+		$lines = $this->tail_file( $log_file, 100 );
+
+		if ( empty( $lines ) ) {
+			return __( 'No errors logged yet.', 'brag-book-gallery' );
+		}
+
+		return implode( "\n", $lines );
+	}
+
+	/**
+	 * Get API log content
+	 *
+	 * @since 3.0.0
+	 * @return string
+	 */
+	private function get_api_log(): string {
+		$log_file = $this->get_log_file_path( 'api' );
+
+		if ( ! file_exists( $log_file ) ) {
+			return __( 'No API log file found.', 'brag-book-gallery' );
+		}
+
+		$lines = $this->tail_file( $log_file, 100 );
+
+		if ( empty( $lines ) ) {
+			return __( 'No API requests logged yet.', 'brag-book-gallery' );
+		}
+
+		return implode( "\n", $lines );
+	}
+
+
+	/**
+	 * Read last N lines from a file
+	 *
+	 * @since 3.0.0
+	 * @param string $file File path
+	 * @param int    $lines Number of lines to read
+	 * @return array
+	 */
+	private function tail_file( string $file, int $lines = 100 ): array {
+		if ( ! file_exists( $file ) || ! is_readable( $file ) ) {
+			return [];
+		}
+
+		$handle = fopen( $file, 'r' );
+		if ( ! $handle ) {
+			return [];
+		}
+
+		$line_count = 0;
+		$cursor = -1;
+		$content = [];
+
+		fseek( $handle, $cursor, SEEK_END );
+		$char = fgetc( $handle );
+
+		while ( $char !== false && $line_count < $lines ) {
+			if ( $char === "\n" ) {
+				$line_count++;
+			}
+			$content[] = $char;
+			fseek( $handle, --$cursor, SEEK_END );
+			$char = fgetc( $handle );
+		}
+
+		fclose( $handle );
+
+		// Reverse and join the content
+		$content = array_reverse( $content );
+		$text = implode( '', $content );
+
+		// Split into lines and return
+		return array_filter( explode( "\n", $text ) );
+	}
+
+	/**
+	 * Get complete system information
+	 *
+	 * @since 3.0.0
+	 * @return string
+	 */
+	private function get_complete_system_info(): string {
+		global $wpdb;
+
+		$info = [];
+		$info[] = '=== BRAG book Gallery System Information ===';
+		$info[] = 'Generated: ' . current_time( 'mysql' );
+		$info[] = '';
+
+		// Plugin Information
+		$plugin_data = get_plugin_data( WP_PLUGIN_DIR . '/brag-book-gallery/brag-book-gallery.php' );
+		$info[] = '== Plugin Information ==';
+		$info[] = 'Version: ' . ( $plugin_data['Version'] ?? 'Unknown' );
+		$info[] = 'PHP Version Required: ' . ( $plugin_data['RequiresPHP'] ?? 'Unknown' );
+		$info[] = 'WP Version Required: ' . ( $plugin_data['RequiresWP'] ?? 'Unknown' );
+		$info[] = '';
+
+		// WordPress Information
+		$info[] = '== WordPress Information ==';
+		$info[] = 'Version: ' . get_bloginfo( 'version' );
+		$info[] = 'Language: ' . get_locale();
+		$info[] = 'Multisite: ' . ( is_multisite() ? 'Yes' : 'No' );
+		$info[] = 'Home URL: ' . home_url();
+		$info[] = 'Site URL: ' . site_url();
+		$info[] = 'Admin Email: ' . get_option( 'admin_email' );
+		$info[] = '';
+
+		// Server Information
+		$info[] = '== Server Information ==';
+		$info[] = 'PHP Version: ' . phpversion();
+		$info[] = 'MySQL Version: ' . $wpdb->db_version();
+		$info[] = 'Server Software: ' . ( $_SERVER['SERVER_SOFTWARE'] ?? 'Unknown' );
+		$info[] = 'Max Execution Time: ' . ini_get( 'max_execution_time' );
+		$info[] = 'Memory Limit: ' . ini_get( 'memory_limit' );
+		$info[] = 'Upload Max Filesize: ' . ini_get( 'upload_max_filesize' );
+		$info[] = 'Post Max Size: ' . ini_get( 'post_max_size' );
+		$info[] = '';
+
+		// Plugin Settings
+		$info[] = '== Plugin Settings ==';
+		$api_tokens = get_option( 'brag_book_gallery_api_token', [] );
+		$info[] = 'API Connections: ' . count( $api_tokens );
+		$info[] = 'Debug Mode: ' . ( get_option( 'brag_book_gallery_debug_mode' ) ? 'Enabled' : 'Disabled' );
+		$info[] = 'API Logging: ' . ( get_option( 'brag_book_gallery_api_logging' ) ? 'Enabled' : 'Disabled' );
+		$info[] = '';
+
+		// Active Theme
+		$theme = wp_get_theme();
+		$info[] = '== Active Theme ==';
+		$info[] = 'Name: ' . $theme->get( 'Name' );
+		$info[] = 'Version: ' . $theme->get( 'Version' );
+		$info[] = 'Author: ' . $theme->get( 'Author' );
+		$info[] = '';
+
+		// Active Plugins
+		$info[] = '== Active Plugins ==';
+		$active_plugins = get_option( 'active_plugins', [] );
+		foreach ( $active_plugins as $plugin ) {
+			$plugin_data = get_plugin_data( WP_PLUGIN_DIR . '/' . $plugin );
+			$info[] = $plugin_data['Name'] . ' v' . $plugin_data['Version'] . ' by ' . $plugin_data['Author'];
+		}
+
+		return implode( "\n", $info );
+	}
+
+	/**
+	 * Render diagnostic tools section
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	private function render_diagnostic_tools(): void {
+		// Load debug tools if not already loaded
+		if ( ! class_exists( '\BragBookGallery\Admin\Debug_Tools' ) ) {
+			require_once __DIR__ . '/class-debug-tools.php';
+		}
+		
+		// Get debug tools instance
+		$debug_tools = \BragBookGallery\Admin\Debug_Tools::get_instance();
+		
+		// Enqueue necessary scripts and styles
+		$plugin_dir_url = plugin_dir_url( dirname( dirname( __FILE__ ) ) );
+		
+		wp_enqueue_script(
+			'brag-book-debug-tools',
+			$plugin_dir_url . 'assets/js/debug-tools.js',
+			[],
+			'1.0.0',
+			true
+		);
+
+		wp_localize_script(
+			'brag-book-debug-tools',
+			'bragBookDebugTools',
+			[
+				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+				'nonce'   => wp_create_nonce( 'brag_book_debug_tools' ),
+			]
+		);
+
+		wp_enqueue_style(
+			'brag-book-debug-tools',
+			$plugin_dir_url . 'assets/css/debug-tools.css',
+			[],
+			'1.0.0'
+		);
+		
+		// Render the debug tools interface
+		?>
+		<div class="brag-book-debug-tools">
+			<div class="tool-tabs">
+				<ul class="nav-tab-wrapper">
+					<li><a href="#gallery-checker" class="nav-tab nav-tab-active"><?php esc_html_e( 'Gallery Checker', 'brag-book-gallery' ); ?></a></li>
+					<li><a href="#rewrite-debug" class="nav-tab"><?php esc_html_e( 'Rewrite Debug', 'brag-book-gallery' ); ?></a></li>
+					<li><a href="#rewrite-fix" class="nav-tab"><?php esc_html_e( 'Rewrite Fix', 'brag-book-gallery' ); ?></a></li>
+					<li><a href="#rewrite-flush" class="nav-tab"><?php esc_html_e( 'Flush Rules', 'brag-book-gallery' ); ?></a></li>
+				</ul>
+			</div>
+
+			<div class="tool-content">
+				<?php
+				// Load tool classes
+				require_once __DIR__ . '/debug-tools/class-gallery-checker.php';
+				require_once __DIR__ . '/debug-tools/class-rewrite-debug.php';
+				require_once __DIR__ . '/debug-tools/class-rewrite-fix.php';
+				require_once __DIR__ . '/debug-tools/class-rewrite-flush.php';
+				
+				// Initialize tools
+				$tools = [
+					'gallery-checker' => new \BragBookGallery\Admin\Debug_Tools\Gallery_Checker(),
+					'rewrite-debug'   => new \BragBookGallery\Admin\Debug_Tools\Rewrite_Debug(),
+					'rewrite-fix'     => new \BragBookGallery\Admin\Debug_Tools\Rewrite_Fix(),
+					'rewrite-flush'   => new \BragBookGallery\Admin\Debug_Tools\Rewrite_Flush(),
+				];
+				?>
+				
+				<div id="gallery-checker" class="tool-panel active">
+					<?php $tools['gallery-checker']->render(); ?>
+				</div>
+				
+				<div id="rewrite-debug" class="tool-panel">
+					<?php $tools['rewrite-debug']->render(); ?>
+				</div>
+				
+				<div id="rewrite-fix" class="tool-panel">
+					<?php $tools['rewrite-fix']->render(); ?>
+				</div>
+				
+				<div id="rewrite-flush" class="tool-panel">
+					<?php $tools['rewrite-flush']->render(); ?>
+				</div>
+			</div>
+		</div>
+
+		<script>
+		jQuery(document).ready(function($) {
+			// Tab switching
+			$('.nav-tab-wrapper a').on('click', function(e) {
+				e.preventDefault();
+				var target = $(this).attr('href');
+				
+				$('.nav-tab').removeClass('nav-tab-active');
+				$(this).addClass('nav-tab-active');
+				
+				$('.tool-panel').removeClass('active');
+				$(target).addClass('active');
+			});
+		});
+		</script>
+		<?php
 	}
 }

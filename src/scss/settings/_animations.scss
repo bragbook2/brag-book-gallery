@@ -1,0 +1,35 @@
+@charset "UTF-8";
+
+// -----------------------------------------------------------------------------
+// admin / animations
+// -----------------------------------------------------------------------------
+
+@keyframes fade-in {
+	from {
+		opacity: 0;
+		transform: scale(0.95);
+	}
+	to {
+		opacity: 1;
+		transform: scale(1);
+	}
+}
+
+@keyframes slide-down {
+	from {
+		opacity: 0;
+		transform: translateY(calc(var(--space-2) * -1));
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+.notice.is-dismissible {
+	animation: slide-down 200ms ease-out;
+}
+
+.brag-book-gallery-dialog {
+	animation: fade-in 200ms ease-out;
+}

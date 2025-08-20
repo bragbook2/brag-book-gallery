@@ -173,7 +173,7 @@ class Migration_Manager {
 
 		} catch ( \Exception $e ) {
 			$this->set_migration_status( 'javascript_to_local', 'failed', $e->getMessage() );
-			error_log( 'BRAG Book Gallery Migration Error: ' . $e->getMessage() );
+			error_log( 'BRAG book Gallery Migration Error: ' . $e->getMessage() );
 			return false;
 		}
 	}
@@ -235,7 +235,7 @@ class Migration_Manager {
 
 		} catch ( \Exception $e ) {
 			$this->set_migration_status( 'local_to_javascript', 'failed', $e->getMessage() );
-			error_log( 'BRAG Book Gallery Migration Error: ' . $e->getMessage() );
+			error_log( 'BRAG book Gallery Migration Error: ' . $e->getMessage() );
 			return false;
 		}
 	}
@@ -280,7 +280,7 @@ class Migration_Manager {
 			return true;
 
 		} catch ( \Exception $e ) {
-			error_log( 'BRAG Book Gallery Rollback Error: ' . $e->getMessage() );
+			error_log( 'BRAG book Gallery Rollback Error: ' . $e->getMessage() );
 			return false;
 		}
 	}
@@ -341,7 +341,7 @@ class Migration_Manager {
 			return true;
 
 		} catch ( \Exception $e ) {
-			error_log( 'BRAG Book Gallery Import Error: ' . $e->getMessage() );
+			error_log( 'BRAG book Gallery Import Error: ' . $e->getMessage() );
 			return false;
 		}
 	}
@@ -380,7 +380,7 @@ class Migration_Manager {
 		// Check if any checks failed
 		foreach ( $checks as $check => $result ) {
 			if ( ! $result ) {
-				error_log( "BRAG Book Gallery Pre-flight check failed: {$check}" );
+				error_log( "BRAG book Gallery Pre-flight check failed: {$check}" );
 				return false;
 			}
 		}

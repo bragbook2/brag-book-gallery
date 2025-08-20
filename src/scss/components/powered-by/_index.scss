@@ -1,0 +1,15 @@
+
+
+.brag-book-gallery-powered-by-link {
+	font-size: .75rem;
+	color: var(--wp--custom--brag-book-gallery--color--light-grey);
+	text-decoration: none;
+	transition: var(--wp--custom--brag-book-gallery--transition);
+
+	&:hover {
+		color: var(--wp--custom--brag-book-gallery--color--grey);
+		text-decoration: underline
+	}
+}
+
+

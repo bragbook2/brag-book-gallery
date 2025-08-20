@@ -298,8 +298,9 @@ trait Trait_Tools {
 	 * @static
 	 *
 	 */
-	public static function get_asset_url( string $asset_path = '' ): string {
+	public static function get_asset_url( ?string $asset_path = '' ): string {
 		$base_url = self::get_plugin_url();
+		$asset_path = $asset_path ?? '';
 
 		if ( ! empty( $asset_path ) ) {
 			// Remove leading slash to prevent double slashes
@@ -329,8 +330,9 @@ trait Trait_Tools {
 	 * @static
 	 *
 	 */
-	public static function get_asset_path( string $asset_path = '' ): string {
+	public static function get_asset_path( ?string $asset_path = '' ): string {
 		$base_path = self::get_plugin_path();
+		$asset_path = $asset_path ?? '';
 
 		if ( ! empty( $asset_path ) ) {
 			// Remove leading slash to prevent double slashes

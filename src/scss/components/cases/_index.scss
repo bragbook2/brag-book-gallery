@@ -1,0 +1,21 @@
+@charset "UTF-8";
+
+// -----------------------------------------------------------------------------
+// components / cases / index
+// -----------------------------------------------------------------------------
+
+.brag-book-gallery-case-images {
+	display: grid;
+	gap: calc( 8 * var(--wp--custom--brag-book-gallery--spacer) );
+}
+
+.brag-book-gallery-case-images {
+	width: 100%;
+	display: flex;
+	gap: .125rem;
+	overflow: hidden
+}
+
+.brag-book-gallery-case-images.single-image {
+	display: block
+}

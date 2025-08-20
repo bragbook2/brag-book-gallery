@@ -233,7 +233,7 @@ final class Updater {
 			return;
 		}
 
-		$log_message = sprintf('[BRAG Book Updater] %s', $message);
+		$log_message = sprintf('[BRAG book Updater] %s', $message);
 
 		if ($error instanceof WP_Error) {
 			$log_message .= sprintf(' - %s', $error->get_error_message());
@@ -303,7 +303,7 @@ final class Updater {
 	 * Get plugin icons
 	 */
 	private function get_plugin_icons(): array {
-		$default_icon = plugins_url('assets/images/bragbook-emblem.svg', $this->file);
+		$default_icon = plugins_url('assets/images/brag-book-gallery-emblem.svg', $this->file);
 
 		return [
 			'1x' => $default_icon,
@@ -354,7 +354,7 @@ final class Updater {
 	private function prepare_plugin_info(): stdClass {
 		$info = new stdClass();
 
-		$info->name = $this->plugin['Name'] ?? 'BRAG Book Gallery';
+		$info->name = $this->plugin['Name'] ?? 'BRAG book Gallery';
 		$info->slug = dirname($this->basename);
 		$info->version = $this->github_version;
 		$info->author = sprintf(

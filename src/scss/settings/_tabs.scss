@@ -1,0 +1,119 @@
+@charset "UTF-8";
+
+// -----------------------------------------------------------------------------
+// admin / tabs
+// -----------------------------------------------------------------------------
+
+.brag-book-gallery-tabs {
+	background: white;
+	border: var(--space-px) solid var(--slate-200);
+	border-radius: var(--rounded-lg);
+	overflow: hidden;
+	margin-block-end: var(--space-6);
+	box-shadow: var(--shadow-sm);
+
+	@media (max-width: 768px) {
+		margin-inline: calc(var(--space-4) * -1);
+		border-radius: 0;
+	}
+}
+
+.brag-book-gallery-tab-list {
+	display: flex;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	background: var(--slate-50);
+
+	@media (max-width: 768px) {
+		flex-wrap: wrap;
+	}
+}
+
+.brag-book-gallery-tab-item {
+	flex: 0 0 auto;
+	margin: 0;
+
+	&.active {
+		.brag-book-gallery-tab-link {
+			color: var(--blue-600);
+			background: white;
+			font-weight: var(--font-semibold);
+
+			&::after {
+				content: '';
+				position: absolute;
+				inset-block-end: 0;
+				inset-inline: 0;
+				block-size: var(--space-0-5);
+				background: var(--blue-500);
+			}
+		}
+	}
+
+	@media (max-width: 640px) {
+		flex: 1 1 100%;
+	}
+
+	@media (max-width: 768px) {
+		flex: 1 1 50%;
+	}
+}
+
+.brag-book-gallery-tab-link {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	padding-inline: var(--space-6);
+	padding-block: var(--space-3);
+	color: var(--slate-600);
+	text-decoration: none;
+	font-size: var(--text-sm);
+	font-weight: var(--font-medium);
+	transition: var(--transition-colors);
+	position: relative;
+	border-inline-end: var(--space-px) solid var(--slate-200);
+
+	&:hover {
+		color: var(--slate-900);
+		background: var(--slate-100);
+	}
+
+	&:focus-visible {
+		outline: 2px solid var(--blue-500);
+		outline-offset: -2px;
+		border-radius: var(--rounded);
+	}
+
+	.dashicons {
+		font-size: var(--text-lg);
+		inline-size: var(--text-lg);
+		block-size: var(--text-lg);
+	}
+
+	@media (max-width: 768px) {
+		justify-content: center;
+		padding-inline: var(--space-3);
+	}
+}
+
+.brag-book-gallery-tab-badge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-inline-size: var(--space-5);
+	block-size: var(--space-5);
+	padding-inline: var(--space-1-5);
+	background: var(--red-500);
+	color: white;
+	border-radius: var(--rounded-full);
+	font-size: var(--text-xs);
+	font-weight: var(--font-bold);
+	margin-inline-start: var(--space-2);
+}
+
+@media (max-width: 768px) {
+	.brag-book-gallery-tab-title {
+		display: none;
+	}
+}

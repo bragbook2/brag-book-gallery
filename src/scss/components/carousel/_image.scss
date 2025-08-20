@@ -1,0 +1,19 @@
+@charset "UTF-8";
+
+// -----------------------------------------------------------------------------
+// components / carousel actions
+// -----------------------------------------------------------------------------
+
+.brag-book-gallery-carousel-image {
+	display: block;
+	width: 100%;
+	height: auto;
+	transition: var(--wp--custom--brag-book-gallery--transition);
+
+	img {
+		width: 100%;
+		height: auto;
+		display: block;
+		border-radius: var(--wp--custom--brag-book-gallery--rounded);
+	}
+}

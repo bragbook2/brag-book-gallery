@@ -1,0 +1,52 @@
+@charset "UTF-8";
+
+// -----------------------------------------------------------------------------
+// admin / forms
+// -----------------------------------------------------------------------------
+
+.brag-book-gallery-admin-wrap .form-table th {
+	font-weight: var(--font-medium);
+	color: var(--slate-700);
+}
+
+.brag-book-gallery-admin-wrap input[type="text"],
+.brag-book-gallery-admin-wrap input[type="email"],
+.brag-book-gallery-admin-wrap input[type="url"],
+.brag-book-gallery-admin-wrap input[type="password"],
+.brag-book-gallery-admin-wrap textarea,
+.brag-book-gallery-admin-wrap select {
+	border: var(--space-px) solid var(--slate-300);
+	border-radius: var(--rounded-md);
+	padding-block: var(--space-2);
+	padding-inline: var(--space-3);
+	font-size: var(--text-sm);
+	transition: var(--transition-colors);
+	background: white;
+}
+
+.brag-book-gallery-admin-wrap input[type="text"]:hover,
+.brag-book-gallery-admin-wrap input[type="email"]:hover,
+.brag-book-gallery-admin-wrap input[type="url"]:hover,
+.brag-book-gallery-admin-wrap input[type="password"]:hover,
+.brag-book-gallery-admin-wrap textarea:hover,
+.brag-book-gallery-admin-wrap select:hover {
+	border-color: var(--slate-400);
+}
+
+.brag-book-gallery-admin-wrap input[type="text"]:focus,
+.brag-book-gallery-admin-wrap input[type="email"]:focus,
+.brag-book-gallery-admin-wrap input[type="url"]:focus,
+.brag-book-gallery-admin-wrap input[type="password"]:focus,
+.brag-book-gallery-admin-wrap textarea:focus,
+.brag-book-gallery-admin-wrap select:focus {
+	outline: 2px solid var(--blue-500);
+	outline-offset: -1px;
+	border-color: var(--blue-500);
+}
+
+.brag-book-gallery-admin-wrap .description {
+	color: var(--slate-600);
+	font-size: var(--text-sm);
+	margin-block-start: var(--space-1);
+	line-height: var(--leading-relaxed);
+}

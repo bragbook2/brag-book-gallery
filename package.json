@@ -12,7 +12,7 @@
 	"scripts": {
 		"build": "npm run build:js && npm run build:css",
 		"build:js": "webpack --mode=production",
-		"build:css": "sass src/scss/frontend.scss:assets/css/brag-book-gallery.css src/scss/admin.scss:assets/css/brag-book-gallery-admin.css src/scss/carousel.scss:assets/css/brag-book-carousel.css --style=compressed",
+		"build:css": "sass src/scss/frontend.scss:assets/css/brag-book-gallery.css src/scss/admin.scss:assets/css/brag-book-gallery-admin.css --style=compressed",
 		"watch": "concurrently \"npm run watch:js\" \"npm run watch:css\"",
 		"watch:js": "webpack --mode=development --watch",
 		"watch:css": "sass --watch src/scss:assets/css --style=expanded",

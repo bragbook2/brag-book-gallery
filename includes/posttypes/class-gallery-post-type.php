@@ -52,7 +52,11 @@ class Gallery_Post_Type {
 	 * @since 3.0.0
 	 */
 	public function __construct() {
-		$this->init();
+		// Only initialize if in Local Mode
+		$current_mode = get_option( 'brag_book_gallery_current_mode', 'javascript' );
+		if ( $current_mode === 'local' ) {
+			$this->init();
+		}
 	}
 
 	/**
@@ -80,7 +84,7 @@ class Gallery_Post_Type {
 		$labels = array(
 			'name'                  => _x( 'Galleries', 'Post type general name', 'brag-book-gallery' ),
 			'singular_name'         => _x( 'Gallery', 'Post type singular name', 'brag-book-gallery' ),
-			'menu_name'             => _x( 'BRAG Book Galleries', 'Admin Menu text', 'brag-book-gallery' ),
+			'menu_name'             => _x( 'BRAG book Galleries', 'Admin Menu text', 'brag-book-gallery' ),
 			'name_admin_bar'        => _x( 'Gallery', 'Add New on Toolbar', 'brag-book-gallery' ),
 			'add_new'               => __( 'Add New', 'brag-book-gallery' ),
 			'add_new_item'          => __( 'Add New Gallery', 'brag-book-gallery' ),

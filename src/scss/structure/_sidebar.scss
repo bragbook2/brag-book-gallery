@@ -1,0 +1,57 @@
+@charset "UTF-8";
+
+// -----------------------------------------------------------------------------
+// structure / sidebar
+// -----------------------------------------------------------------------------
+
+.brag-book-gallery-sidebar {
+	position: sticky;
+	top: 0;
+	width: 100%;
+	height: 100vh;
+	max-inline-size: calc( 96 * var(--wp--custom--brag-book-gallery--spacer) );
+	background: var(--wp--custom--brag-book-gallery--color--white);
+	box-shadow: inset -1px 0 0 var(--wp--custom--brag-book-gallery--color--lighter-grey);
+	padding: calc( 6 * var(--wp--custom--brag-book-gallery--spacer) );
+	overflow-y: auto;
+	overflow-x: hidden;
+
+	&-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: calc( 4 * var(--wp--custom--brag-book-gallery--spacer) ) calc( 8 * var(--wp--custom--brag-book-gallery--spacer) );
+		margin-inline: calc( -1  * ( 8 * var(--wp--custom--brag-book-gallery--spacer) ) );
+		margin-block-start: calc( -1  * ( 8 * var(--wp--custom--brag-book-gallery--spacer) ) );
+		margin-block-end: calc( 8 * var(--wp--custom--brag-book-gallery--spacer) );
+		background: var(--wp--custom--brag-book-gallery--color--white);
+		position: sticky;
+		top: 0;
+		z-index: 10
+	}
+
+	&-title {
+		font-size: var(--wp--custom--brag-book-gallery--text-lg);
+		font-weight: var(--wp--custom--brag-book-gallery--font-weight--semibold);
+		color: var(--wp--custom--brag-book-gallery--color--black);
+	}
+
+	&-close {
+		margin-left: auto;
+		width: calc( 8 * var(--wp--custom--brag-book-gallery--spacer) );
+		height: calc( 8 * var(--wp--custom--brag-book-gallery--spacer) );
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: rgba(0,0,0,0);
+		border: none;
+		cursor: pointer;
+		transition: var(--wp--custom--brag-book-gallery--transition);
+
+		svg {
+			width: calc( 5 * var(--wp--custom--brag-book-gallery--spacer) );
+			height: calc( 5 * var(--wp--custom--brag-book-gallery--spacer) );
+			stroke: var(--wp--custom--brag-book-gallery--color--grey)
+		}
+	}
+}

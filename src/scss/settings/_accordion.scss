@@ -1,0 +1,72 @@
+@charset "UTF-8";
+
+// -----------------------------------------------------------------------------
+// admin / accordion
+// -----------------------------------------------------------------------------
+
+.brag-book-gallery-accordion-item {
+	background: white;
+	border: var(--space-px) solid var(--slate-200);
+	border-radius: var(--rounded-md);
+	margin-block-end: var(--space-2);
+	overflow: hidden;
+
+	summary {
+		background: var(--slate-50);
+		padding: var(--space-3) var(--space-4);
+		cursor: pointer;
+		position: relative;
+		transition: var(--transition-colors);
+		font-size: var(--text-base);
+		font-weight: var(--font-medium);
+		color: var(--slate-700);
+		list-style: none;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+
+		&::-webkit-details-marker {
+			display: none;
+		}
+
+		&::after {
+			content: '\f140';
+			font-family: dashicons, sans-serif;
+			transition: var(--transition-transform);
+			color: var(--slate-400);
+			font-size: var(--text-xl);
+		}
+
+		&:hover {
+			background: var(--slate-100);
+			color: var(--slate-900);
+		}
+	}
+
+	&[open] {
+		summary {
+			background: white;
+			color: var(--slate-900);
+			border-block-end: var(--space-px) solid var(--slate-200);
+
+			&::after {
+				transform: rotate(180deg);
+			}
+		}
+	}
+}
+
+.brag-book-gallery-accordion-content {
+	padding: var(--space-4);
+	background: white;
+
+	ul {
+		margin: 0;
+		padding-inline-start: var(--space-5);
+	}
+
+	li {
+		margin-block-end: var(--space-2);
+		color: var(--slate-600);
+	}
+}

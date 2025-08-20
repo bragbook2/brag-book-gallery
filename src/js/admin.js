@@ -1,5 +1,5 @@
 /**
- * BRAG Book Admin JavaScript
+ * BRAG book Admin JavaScript
  *
  * @package BRAGBook
  * @since   3.0.0
@@ -8,10 +8,10 @@
 'use strict';
 
 /**
- * BRAG Book Admin Class
+ * BRAG book Admin Class
  */
-if (typeof window.BRAG BookAdmin === 'undefined') {
-	window.BRAG BookAdmin = class {
+if (typeof window.BRAGbookAdmin === 'undefined') {
+	window.BRAGbookAdmin = class {
 		constructor() {
 			this.ajaxUrl = typeof brag_book_gallery_ajax !== 'undefined' ? brag_book_gallery_ajax.ajaxurl : '/wp-admin/admin-ajax.php';
 			this.nonce = typeof brag_book_gallery_ajax !== 'undefined' ? brag_book_gallery_ajax.nonce : '';
@@ -30,7 +30,7 @@ if (typeof window.BRAG BookAdmin === 'undefined') {
 			this.initDynamicTable();
 			this.initCombineGallery();
 			this.initDebugPage();
-			this.initApiValidation();
+			// this.initApiValidation(); // DISABLED - now handled by inline JS in settings page
 		}
 
 		/**
@@ -212,9 +212,9 @@ if (typeof window.BRAG BookAdmin === 'undefined') {
 
 				row.appendChild(createInputCell("brag_book_gallery_api_token", newRowNumber));
 				row.appendChild(createInputCell("brag_book_gallery_website_property_id", newRowNumber));
-				row.appendChild(createInputCell("bb_gallery_page_slug", newRowNumber));
-				row.appendChild(createInputCell("bb_seo_page_title", newRowNumber));
-				row.appendChild(createInputCell("bb_seo_page_description", newRowNumber));
+				row.appendChild(createInputCell("brag_book_gallery_page_slug", newRowNumber));
+				row.appendChild(createInputCell("brag_book_gallery_seo_page_title", newRowNumber));
+				row.appendChild(createInputCell("brag_book_gallery_seo_page_description", newRowNumber));
 				row.appendChild(createButtonCell());
 
 				tableBody.appendChild(row);
@@ -225,12 +225,12 @@ if (typeof window.BRAG BookAdmin === 'undefined') {
 				if (tableBody.rows.length <= 1) return;
 
 				const input = row.querySelector('input[data-key^="page_"]');
-				const bb_remove_id = input ? input.dataset.key : '';
+				const remove_id = input ? input.dataset.key : '';
 
-				if (bb_remove_id) {
+				if (remove_id) {
 					this.ajaxPost({
-						action: 'bb_setting_remove_row',
-						bb_remove_id
+						action: 'brag_book_gallery_setting_remove_row',
+						remove_id
 					});
 				}
 
@@ -331,9 +331,9 @@ if (typeof window.BRAG BookAdmin === 'undefined') {
 		 * Initialize error log functionality
 		 */
 		initErrorLog() {
-			const refreshBtn = document.getElementById('bb-refresh-error-log');
-			const clearBtn = document.getElementById('bb-clear-error-log');
-			const downloadBtn = document.getElementById('bb-download-error-log');
+			const refreshBtn = document.getElementById('brag-book-gallery-refresh-error-log');
+			const clearBtn = document.getElementById('brag-book-gallery-clear-error-log');
+			const downloadBtn = document.getElementById('brag-book-gallery-download-error-log');
 			const errorLogContent = document.getElementById('brag-book-gallery-error-log'); // Fixed ID
 
 			if (refreshBtn && errorLogContent) {
@@ -345,7 +345,7 @@ if (typeof window.BRAG BookAdmin === 'undefined') {
 
 					try {
 						const response = await this.ajaxPost({
-							action: 'bb_get_error_log',
+							action: 'brag_book_gallery_get_error_log',
 							nonce: this.nonce
 						});
 
@@ -410,7 +410,7 @@ if (typeof window.BRAG BookAdmin === 'undefined') {
 
 						try {
 							const response = await this.ajaxPost({
-								action: 'bb_clear_error_log',
+								action: 'brag_book_gallery_clear_error_log',
 								nonce: this.nonce
 							});
 
@@ -459,9 +459,9 @@ if (typeof window.BRAG BookAdmin === 'undefined') {
 		 * Initialize API log functionality
 		 */
 		initApiLog() {
-			const refreshBtn = document.getElementById('bb-refresh-api-log');
-			const clearBtn = document.getElementById('bb-clear-api-log');
-			const downloadBtn = document.getElementById('bb-download-api-log');
+			const refreshBtn = document.getElementById('brag-book-gallery-refresh-api-log');
+			const clearBtn = document.getElementById('brag-book-gallery-clear-api-log');
+			const downloadBtn = document.getElementById('brag-book-gallery-download-api-log');
 			const apiLogContent = document.getElementById('brag-book-gallery-api-log');
 
 			if (refreshBtn && apiLogContent) {
@@ -472,7 +472,7 @@ if (typeof window.BRAG BookAdmin === 'undefined') {
 
 					try {
 						const response = await this.ajaxPost({
-							action: 'bb_get_api_log',
+							action: 'brag_book_gallery_get_api_log',
 							nonce: this.nonce
 						});
 
@@ -540,7 +540,7 @@ if (typeof window.BRAG BookAdmin === 'undefined') {
 
 						try {
 							const response = await this.ajaxPost({
-								action: 'bb_clear_api_log',
+								action: 'brag_book_gallery_clear_api_log',
 								nonce: this.nonce
 							});
 
@@ -585,8 +585,8 @@ if (typeof window.BRAG BookAdmin === 'undefined') {
 		 * Initialize system info functionality
 		 */
 		initSystemInfo() {
-			const copyBtn = document.getElementById('bb-copy-system-info');
-			const exportBtn = document.getElementById('bb-export-system-info');
+			const copyBtn = document.getElementById('brag-book-gallery-copy-system-info');
+			const exportBtn = document.getElementById('brag-book-gallery-export-system-info');
 			const systemInfoContent = document.getElementById('brag-book-gallery-system-info'); // Fixed ID
 
 			if (copyBtn && systemInfoContent) {
@@ -594,7 +594,7 @@ if (typeof window.BRAG BookAdmin === 'undefined') {
 					const systemInfo = systemInfoContent.textContent;
 					try {
 						await navigator.clipboard.writeText(systemInfo);
-						const feedback = document.getElementById('bb-copy-feedback');
+						const feedback = document.getElementById('brag-book-gallery-copy-feedback');
 						if (feedback) {
 							feedback.classList.add('show');
 							setTimeout(() => feedback.classList.remove('show'), 2000);
@@ -611,7 +611,7 @@ if (typeof window.BRAG BookAdmin === 'undefined') {
 						textArea.select();
 						try {
 							document.execCommand('copy');
-							const feedback = document.getElementById('bb-copy-feedback');
+							const feedback = document.getElementById('brag-book-gallery-copy-feedback');
 							if (feedback) {
 								feedback.classList.add('show');
 								setTimeout(() => feedback.classList.remove('show'), 2000);
@@ -645,7 +645,7 @@ if (typeof window.BRAG BookAdmin === 'undefined') {
 		 * Initialize debug settings
 		 */
 		initDebugSettings() {
-			const saveBtn = document.getElementById('bb-save-debug-settings');
+			const saveBtn = document.getElementById('brag-book-gallery-save-debug-settings');
 			const debugModeCheckbox = document.getElementById('brag-book-gallery-debug-mode');
 			const apiLoggingCheckbox = document.getElementById('brag-book-gallery-api-logging');
 			const wpDebugCheckbox = document.getElementById('wp-debug-mode');
@@ -660,7 +660,7 @@ if (typeof window.BRAG BookAdmin === 'undefined') {
 
 					try {
 						const response = await this.ajaxPost({
-							action: 'bb_save_debug_settings',
+							action: 'brag_book_gallery_save_debug_settings',
 							nonce: this.nonce,
 							debug_mode: debugMode,
 							api_logging: apiLogging,
@@ -711,7 +711,7 @@ if (typeof window.BRAG BookAdmin === 'undefined') {
 					if (!row) return;
 
 					const tokenInput = row.querySelector('input[name*="api_token"]');
-					const propertyInput = row.querySelector('input[name*="websiteproperty_id"]');
+					const propertyInput = row.querySelector('input[name*="website_property_id"]');
 					const statusDiv = row.querySelector('.bb-api-status');
 
 					if (!tokenInput || !propertyInput) return;
@@ -734,10 +734,10 @@ if (typeof window.BRAG BookAdmin === 'undefined') {
 
 					try {
 						const response = await this.ajaxPost({
-							action: 'bb_validate_api',
+							action: 'brag_book_gallery_validate_api',
 							nonce: this.nonce,
 							api_token: token,
-							websiteproperty_id: propertyId
+							website_property_id: propertyId
 						});
 
 						if (statusDiv) {
@@ -792,9 +792,9 @@ if (typeof window.BRAG BookAdmin === 'undefined') {
 if (typeof window.bragBookAdminInstance === 'undefined') {
 	if (document.readyState === 'loading') {
 		document.addEventListener('DOMContentLoaded', () => {
-			window.bragBookAdminInstance = new window.BRAG BookAdmin();
+			window.bragBookAdminInstance = new window.BRAGbookAdmin();
 		});
 	} else {
-		window.bragBookAdminInstance = new window.BRAG BookAdmin();
+		window.bragBookAdminInstance = new window.BRAGbookAdmin();
 	}
 }

@@ -16,7 +16,7 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "{{baseURL}}/api/plugin/carousel?websitePropertyId=111&start=1&limit=10&apiToken=504ce40e-3787-49dc-a21e-1788e239c690&procedureId=6839&memberId=129",
+					"raw": "{{baseURL}}/api/plugin/carousel?websitePropertyId=111&start=1&limit=10&apiToken=504ce40e-3787-49dc-a21e-1788e239c690&procedureId=6839",
 					"host": [
 						"{{baseURL}}"
 					],

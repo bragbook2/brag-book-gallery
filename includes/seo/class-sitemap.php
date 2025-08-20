@@ -294,7 +294,7 @@ final class Sitemap {
 		);
 
 		$combine_slug = get_option(
-			option: 'brag_book_gallery_combine_gallery_slug',
+			option: 'brag_book_gallery_brag_book_gallery_page_slug',
 			default_value: ''
 		);
 

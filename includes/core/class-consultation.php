@@ -340,7 +340,7 @@ class Consultation {
 
 		// If API is configured, attempt to send to external API
 		if ( ! is_wp_error( $config ) ) {
-			error_log( 'API configuration found, attempting to send consultation to BRAG Book API' );
+			error_log( 'API configuration found, attempting to send consultation to BRAG book API' );
 
 			// Determine gallery context from referrer.
 			$gallery_context = $this->determine_gallery_context(
@@ -372,10 +372,10 @@ class Consultation {
 						$gallery_context['index']
 					);
 				}
-				error_log( 'Consultation successfully sent to BRAG Book API' );
+				error_log( 'Consultation successfully sent to BRAG book API' );
 			} catch ( \Exception $e ) {
 				// Log API error but don't fail the submission
-				error_log( 'BRAG Book API submission failed: ' . $e->getMessage() );
+				error_log( 'BRAG book API submission failed: ' . $e->getMessage() );
 			}
 		} else {
 			error_log( 'No API configuration found, skipping API submission' );
@@ -488,8 +488,8 @@ class Consultation {
 				option: 'bb_gallery_stored_pages',
 				default_value: array()
 			),
-			'combine_gallery_slug' => (string) get_option(
-				option: 'combine_gallery_slug',
+			'brag_book_gallery_page_slug' => (string) get_option(
+				option: 'brag_book_gallery_page_slug',
 				default_value: ''
 			),
 		);
@@ -526,7 +526,7 @@ class Consultation {
 		$first_segment = $parts[0] ?? '';
 
 		// Check if it's a combined gallery
-		if ( $first_segment === $config['combine_gallery_slug'] ) {
+		if ( $first_segment === $config['brag_book_gallery_page_slug'] ) {
 			return [ 'is_combined' => true, 'index' => null ];
 		}
 
@@ -941,11 +941,11 @@ class Consultation {
 						%s
 					</td>
 					<td class="consultation-actions">
-						<button class="button button-small view-consultation" data-id="%d" title="%s">
-							<span class="dashicons dashicons-visibility"></span>
+						<button class="button button-small button-secondary view-consultation" data-id="%d" title="%s">
+							<span class="dashicons dashicons-visibility"></span> View
 						</button>
-						<button class="button button-small delete-consultation" data-id="%d" data-name="%s" title="%s">
-							<span class="dashicons dashicons-trash"></span>
+						<button class="button button-small button-secondary delete-consultation" data-id="%d" data-name="%s" title="%s">
+							<span class="dashicons dashicons-trash"></span> Delete
 						</button>
 					</td>
 				</tr>',
@@ -1116,8 +1116,8 @@ class Consultation {
 
 			<div class="brag-book-gallery-section">
 				<h2><?php esc_html_e( 'Consultation Entries', 'brag-book-gallery' ); ?></h2>
-				<script type="text/javascript">
-					document.addEventListener( 'DOMContentLoaded', () => {
+				<script>
+					document.addEventListener('DOMContentLoaded', () => {
 						const ajaxurl = <?php echo wp_json_encode( admin_url( 'admin-ajax.php' ) ); ?>;
 						const nonce = <?php echo wp_json_encode( $nonce ); ?>;
 						const deleteNonce = <?php echo wp_json_encode( $delete_nonce ); ?>;
@@ -1127,7 +1127,7 @@ class Consultation {
 						 * @param {HTMLElement} element Element to fade in
 						 * @param {number} duration Duration in milliseconds
 						 */
-						const fadeIn = ( element, duration = 400 ) => {
+						const fadeIn = (element, duration = 400) => {
 							element.style.opacity = '0';
 							element.style.display = 'block';
 							element.style.transition = `opacity ${duration}ms`;
@@ -1142,38 +1142,38 @@ class Consultation {
 						 * Load consultation posts via AJAX
 						 * @param {number} page Page number to load
 						 */
-						const loadConsultationPosts = async ( page ) => {
-							const loadingDiv = document.querySelector( '.bb_pag_loading' );
-							const container = document.querySelector( '.bb_universal_container' );
-							const paginationNav = document.querySelector( '.bb-pagination-nav' );
+						const loadConsultationPosts = async (page) => {
+							const loadingDiv = document.querySelector('.bb_pag_loading');
+							const container = document.querySelector('.bb_universal_container');
+							const paginationNav = document.querySelector('.bb-pagination-nav');
 
 							// Show loading state
-							if ( loadingDiv ) {
+							if (loadingDiv) {
 								loadingDiv.style.display = 'block';
 							}
 
 							// Show loading message in table
-							if ( container ) {
+							if (container) {
 								container.innerHTML = '<tr><td colspan="5" style="text-align: center;">Loading...</td></tr>';
 							}
 
 							// Prepare form data
 							const formData = new FormData();
-							formData.append( 'page', page );
-							formData.append( 'nonce', nonce );
-							formData.append( 'action', '<?php echo esc_js( self::AJAX_PAGINATION ); ?>' );
+							formData.append('page', page);
+							formData.append('nonce', nonce);
+							formData.append('action', '<?php echo esc_js( self::AJAX_PAGINATION ); ?>');
 
 							try {
 								// Make AJAX request
-								const response = await fetch( ajaxurl, {
+								const response = await fetch(ajaxurl, {
 									method: 'POST',
 									body: formData,
 									credentials: 'same-origin'
-								} );
+								});
 
 								const data = await response.json();
 
-								if ( data.success ) {
+								if (data.success) {
 									// Update table content
 									container.innerHTML = data.data.message;
 									paginationNav.innerHTML = data.data.pagination;
@@ -1181,20 +1181,20 @@ class Consultation {
 									// Show error message
 									container.innerHTML = `<tr><td colspan="5">${data.data || 'Error loading data'}</td></tr>`;
 								}
-							} catch ( error ) {
+							} catch (error) {
 								// Handle fetch error
-								console.error( 'Error loading consultation entries:', error );
+								console.error('Error loading consultation entries:', error);
 								container.innerHTML = '<tr><td colspan="5">Failed to load consultation entries.</td></tr>';
 							} finally {
 								// Hide loading state
-								if ( loadingDiv ) {
+								if (loadingDiv) {
 									loadingDiv.style.display = 'none';
 								}
 							}
 						};
 
 						// Initial load
-						loadConsultationPosts( 1 );
+						loadConsultationPosts(1);
 
 						/**
 						 * Handle delete button clicks
@@ -1265,10 +1265,19 @@ class Consultation {
 							const contentDiv = row.querySelector('.description-content');
 							const message = fullDesc ? fullDesc.textContent : contentDiv.textContent;
 
+							// Check if dialog element is supported, otherwise use a div fallback
+							const supportsDialog = typeof HTMLDialogElement === 'function';
+
 							// Create or get the dialog
 							let dialog = document.getElementById('consultation-detail-dialog');
 							if (!dialog) {
-								dialog = document.createElement('dialog');
+								if (supportsDialog) {
+									dialog = document.createElement('dialog');
+								} else {
+									dialog = document.createElement('div');
+									dialog.setAttribute('role', 'dialog');
+									dialog.setAttribute('aria-modal', 'true');
+								}
 								dialog.id = 'consultation-detail-dialog';
 								dialog.className = 'consultation-dialog';
 								document.body.appendChild(dialog);
@@ -1319,14 +1328,53 @@ class Consultation {
 							`;
 
 							// Show the dialog
-							dialog.showModal();
+							if (supportsDialog && dialog.showModal) {
+								dialog.showModal();
+							} else {
+								// Fallback for browsers that don't support dialog
+								dialog.style.display = 'block';
+								dialog.style.position = 'fixed';
+								dialog.style.top = '50%';
+								dialog.style.left = '50%';
+								dialog.style.transform = 'translate(-50%, -50%)';
+								dialog.style.zIndex = '10000';
+
+								// Create backdrop
+								let backdrop = document.getElementById('consultation-backdrop');
+								if (!backdrop) {
+									backdrop = document.createElement('div');
+									backdrop.id = 'consultation-backdrop';
+									backdrop.style.position = 'fixed';
+									backdrop.style.top = '0';
+									backdrop.style.left = '0';
+									backdrop.style.width = '100%';
+									backdrop.style.height = '100%';
+									backdrop.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+									backdrop.style.backdropFilter = 'blur(2px)';
+									backdrop.style.zIndex = '9999';
+									document.body.appendChild(backdrop);
+								} else {
+									backdrop.style.display = 'block';
+								}
+							}
+
+							// Function to close the dialog
+							const closeDialog = () => {
+								if (supportsDialog && dialog.close) {
+									dialog.close();
+								} else {
+									dialog.style.display = 'none';
+									const backdrop = document.getElementById('consultation-backdrop');
+									if (backdrop) {
+										backdrop.style.display = 'none';
+									}
+								}
+							};
 
 							// Handle close button clicks
 							const closeButtons = dialog.querySelectorAll('.dialog-close, .dialog-close-btn');
 							closeButtons.forEach(btn => {
-								btn.addEventListener('click', () => {
-									dialog.close();
-								});
+								btn.addEventListener('click', closeDialog);
 							});
 
 							// Handle reply email button
@@ -1340,15 +1388,31 @@ class Consultation {
 							// Close dialog on outside click
 							dialog.addEventListener('click', (e) => {
 								if (e.target === dialog) {
-									dialog.close();
+									closeDialog();
 								}
 							});
 
+							// For backdrop click (fallback mode)
+							if (!supportsDialog) {
+								const backdrop = document.getElementById('consultation-backdrop');
+								if (backdrop) {
+									backdrop.addEventListener('click', closeDialog);
+								}
+							}
+
 							// Close dialog on ESC key
-							dialog.addEventListener('cancel', (e) => {
-								e.preventDefault();
-								dialog.close();
-							});
+							if (supportsDialog) {
+								dialog.addEventListener('cancel', (e) => {
+									e.preventDefault();
+									closeDialog();
+								});
+							} else {
+								document.addEventListener('keydown', (e) => {
+									if (e.key === 'Escape' && dialog.style.display === 'block') {
+										closeDialog();
+									}
+								});
+							}
 						};
 
 						/**
@@ -1366,14 +1430,14 @@ class Consultation {
 						};
 
 						// Handle pagination clicks using event delegation
-						document.addEventListener( 'click', ( event ) => {
+						document.addEventListener('click', (event) => {
 							// Check if clicked element is an active pagination button
-							const activeButton = event.target.closest( '.bb-universal-pagination li.active' );
+							const activeButton = event.target.closest('.bb-universal-pagination li.active');
 
-							if ( activeButton ) {
-								const page = parseInt( activeButton.getAttribute( 'p' ), 10 );
-								if ( !isNaN( page ) ) {
-									loadConsultationPosts( page );
+							if (activeButton) {
+								const page = parseInt(activeButton.getAttribute('p'), 10);
+								if (!isNaN(page)) {
+									loadConsultationPosts(page);
 								}
 							}
 
@@ -1390,11 +1454,11 @@ class Consultation {
 								event.preventDefault();
 								handleViewDetails(viewBtn);
 							}
-						} );
-					} );
+						});
+					});
 				</script>
 
-				<style type="text/css">
+				<style>
 					.consultation-row:hover {
 						background-color: #f0f8ff;
 					}
@@ -1406,9 +1470,18 @@ class Consultation {
 						margin: 0 2px;
 						padding: 4px 8px;
 						min-width: auto;
+						display: inline-flex;
+						align-items: center;
+						gap: 4px;
 					}
 					.consultation-actions .button-small {
 						font-size: 12px;
+					}
+					.consultation-actions .dashicons {
+						font-size: 16px;
+						width: 16px;
+						height: 16px;
+						line-height: 1;
 					}
 					.consultation-description {
 						max-width: 400px;
@@ -1716,13 +1789,13 @@ class Consultation {
 			<div class="brag-book-gallery-header-left">
 				<img
 					src="<?php echo esc_url( $logo_url ); ?>"
-					alt="BRAG Book"
+					alt="BRAG book"
 					class="brag-book-gallery-logo"
 				/>
 				<h1>
 					<?php
 					esc_html_e(
-						'BRAG Book Gallery',
+						'BRAG book Gallery',
 						'brag-book-gallery'
 					);
 					?>

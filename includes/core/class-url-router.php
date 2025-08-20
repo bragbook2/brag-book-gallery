@@ -71,14 +71,14 @@ class URL_Router {
 		add_action( 'init', array( $this, 'add_rewrite_rules' ), 10 );
 		add_filter( 'query_vars', array( $this, 'add_query_vars' ) );
 		add_action( 'parse_request', array( $this, 'parse_request' ) );
-		
+
 		// Handle URL generation
 		add_filter( 'post_type_link', array( $this, 'filter_post_type_link' ), 10, 3 );
 		add_filter( 'term_link', array( $this, 'filter_term_link' ), 10, 3 );
-		
+
 		// Handle legacy URLs
 		add_action( 'template_redirect', array( $this, 'handle_legacy_urls' ), 1 );
-		
+
 		// Flush rewrite rules when mode changes
 		add_action( 'brag_book_gallery_post_mode_switch', array( $this, 'flush_rewrite_rules' ) );
 	}
@@ -107,7 +107,7 @@ class URL_Router {
 	 */
 	private function add_javascript_mode_rules(): void {
 		$gallery_base = $this->get_gallery_base();
-		
+
 		// Main gallery page
 		add_rewrite_rule(
 			"^{$gallery_base}/?$",
@@ -159,7 +159,7 @@ class URL_Router {
 	private function add_local_mode_rules(): void {
 		// Local mode uses WordPress native rewrite rules
 		// These are automatically handled by the post type and taxonomy registration
-		
+
 		// Add any custom rules if needed
 		$this->add_custom_local_rules();
 	}
@@ -272,7 +272,7 @@ class URL_Router {
 	 */
 	private function handle_gallery_category( $wp ): void {
 		$slug = $wp->query_vars['brag_gallery_slug'] ?? '';
-		
+
 		if ( $slug ) {
 			$wp->query_vars['is_gallery_category'] = true;
 			$wp->query_vars['gallery_category_slug'] = $slug;
@@ -290,7 +290,7 @@ class URL_Router {
 	private function handle_gallery_single( $wp ): void {
 		$category = $wp->query_vars['brag_gallery_category'] ?? '';
 		$case = $wp->query_vars['brag_gallery_case'] ?? '';
-		
+
 		if ( $category && $case ) {
 			$wp->query_vars['is_gallery_single'] = true;
 			$wp->query_vars['gallery_category_slug'] = $category;
@@ -307,7 +307,7 @@ class URL_Router {
 	 */
 	private function handle_gallery_search( $wp ): void {
 		$search = $wp->query_vars['brag_gallery_search'] ?? '';
-		
+
 		if ( $search ) {
 			$wp->query_vars['is_gallery_search'] = true;
 			$wp->query_vars['gallery_search_term'] = urldecode( $search );
@@ -360,12 +360,12 @@ class URL_Router {
 		}
 
 		$categories = get_the_terms( $post_id, Gallery_Taxonomies::CATEGORY_TAXONOMY );
-		$category_slug = ! empty( $categories ) && ! is_wp_error( $categories ) 
-			? $categories[0]->slug 
+		$category_slug = ! empty( $categories ) && ! is_wp_error( $categories )
+			? $categories[0]->slug
 			: 'uncategorized';
 
 		$gallery_base = $this->get_gallery_base();
-		
+
 		return home_url( "/{$gallery_base}/{$category_slug}/{$post->post_name}/" );
 	}
 
@@ -389,7 +389,7 @@ class URL_Router {
 		}
 
 		$gallery_base = $this->get_gallery_base();
-		
+
 		return home_url( "/{$gallery_base}/{$term->slug}/" );
 	}
 
@@ -413,7 +413,7 @@ class URL_Router {
 		}
 
 		$gallery_base = $this->get_gallery_base();
-		
+
 		return home_url( "/{$gallery_base}/{$term->slug}/" );
 	}
 
@@ -494,7 +494,7 @@ class URL_Router {
 	 */
 	private function handle_javascript_to_local_redirects( string $request_uri ): ?string {
 		$gallery_base = $this->get_gallery_base();
-		
+
 		if ( strpos( $request_uri, "/{$gallery_base}/" ) !== 0 ) {
 			return null;
 		}
@@ -510,13 +510,13 @@ class URL_Router {
 		if ( count( $path_parts ) === 1 ) {
 			// Category/Procedure page
 			$slug = $path_parts[0];
-			
+
 			// Try category first
 			$category = get_term_by( 'slug', $slug, Gallery_Taxonomies::CATEGORY_TAXONOMY );
 			if ( $category && ! is_wp_error( $category ) ) {
 				return get_term_link( $category );
 			}
-			
+
 			// Try procedure
 			$procedure = get_term_by( 'slug', $slug, Gallery_Taxonomies::PROCEDURE_TAXONOMY );
 			if ( $procedure && ! is_wp_error( $procedure ) ) {
@@ -533,7 +533,7 @@ class URL_Router {
 				'post_status' => 'publish',
 				'numberposts' => 1,
 			) );
-			
+
 			if ( ! empty( $post ) ) {
 				return get_permalink( $post[0] );
 			}
@@ -582,8 +582,8 @@ class URL_Router {
 	 * @return string Gallery base slug.
 	 */
 	private function get_gallery_base(): string {
-		// Use combine_gallery_slug if set, otherwise fall back to default
-		$base = get_option( 'combine_gallery_slug' );
+		// Use brag_book_gallery_page_slug if set, otherwise fall back to default
+		$base = get_option( 'brag_book_gallery_page_slug' );
 		if ( empty( $base ) ) {
 			$base = get_option( 'brag_book_gallery_base_slug', 'gallery' );
 		}
@@ -671,7 +671,7 @@ class URL_Router {
 
 		// Add gallery home
 		$gallery_base = $this->get_gallery_base();
-		$gallery_url = $this->mode_manager->is_local_mode() 
+		$gallery_url = $this->mode_manager->is_local_mode()
 			? get_post_type_archive_link( Gallery_Post_Type::POST_TYPE )
 			: home_url( "/{$gallery_base}/" );
 
@@ -738,7 +738,7 @@ class URL_Router {
 		if ( $term->parent ) {
 			$parents = array();
 			$parent = get_term( $term->parent, Gallery_Taxonomies::CATEGORY_TAXONOMY );
-			
+
 			while ( $parent && ! is_wp_error( $parent ) ) {
 				$parents[] = $parent;
 				$parent = $parent->parent ? get_term( $parent->parent, Gallery_Taxonomies::CATEGORY_TAXONOMY ) : null;

@@ -1,0 +1,108 @@
+
+
+.brag-book-gallery-favorites-list {
+	padding: .75rem;
+	max-height: 400px;
+	overflow-y: auto
+}
+
+.brag-book-gallery-filter-content .brag-book-gallery-favorites-list {
+	padding: .75rem 1rem
+}
+
+.brag-book-gallery-favorites-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+	gap: .5rem;
+	margin-bottom: .75rem
+}
+
+.brag-book-gallery-favorites-item {
+	position: relative;
+	aspect-ratio: 1;
+	border-radius: .375rem;
+	overflow: hidden;
+	border: 1px solid var(--wp--custom--brag-book-gallery--color--lighter-grey);
+	cursor: pointer;
+	transition: var(--wp--custom--brag-book-gallery--transition)
+}
+
+.brag-book-gallery-favorites-item:hover {
+	border-color: var(--wp--custom--brag-book-gallery--color--black);
+	transform: scale(1.05)
+}
+
+.brag-book-gallery-favorites-item img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover
+}
+
+.brag-book-gallery-favorites-item-remove {
+	position: absolute;
+	top: .25rem;
+	right: .25rem;
+	width: 20px;
+	height: 20px;
+	background: var(--wp--custom--brag-book-gallery--color--white);
+	border: 1px solid var(--wp--custom--brag-book-gallery--color--light-grey);
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	opacity: 0;
+	transition: var(--wp--custom--brag-book-gallery--transition)
+}
+
+.brag-book-gallery-favorites-item:hover .brag-book-gallery-favorites-item-remove {
+	opacity: 1
+}
+
+.brag-book-gallery-favorites-item-remove:hover {
+	background: var(--wp--custom--brag-book-gallery--color--black);
+	border-color: var(--wp--custom--brag-book-gallery--color--black);
+	color: var(--wp--custom--brag-book-gallery--color--white)
+}
+
+.brag-book-gallery-favorites-empty {
+	color: var(--wp--custom--brag-book-gallery--color--light-grey);
+	font-size: .8125rem;
+	text-align: left;
+	padding: 0;
+	margin: 0
+}
+
+.brag-book-gallery-favorites-header {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 1.5rem;
+	margin-bottom: 0;
+	justify-content: center
+}
+
+.brag-book-gallery-favorites-logo {
+	width: 100%;
+	max-width: 240px;
+	height: auto;
+	flex-shrink: 0
+}
+
+.brag-book-gallery-favorites-text {
+	flex: 1;
+	text-align: left;
+	max-width: 512px
+}
+
+.brag-book-gallery-favorites-description {
+	font-size: 22px;
+	line-height: 1.75;
+	color: var(--wp--custom--brag-book-gallery--color--grey);
+	margin: 0
+}
+
+.brag-book-gallery-favorites-description strong {
+	font-weight: 700;
+	color: var(--wp--custom--brag-book-gallery--color--black)
+}

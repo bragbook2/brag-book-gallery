@@ -1,0 +1,15 @@
+@charset "UTF-8";
+
+// -----------------------------------------------------------------------------
+// components / carousel / content
+// -----------------------------------------------------------------------------
+
+.brag-book-gallery-carousel-content {
+	position: relative;
+	display: flex;
+	align-items: center;
+
+	.brag-book-gallery-favorites-list {
+		padding: calc( 3 * var(--wp--custom--brag-book-gallery--spacer) ) calc( 4 * var(--wp--custom--brag-book-gallery--spacer) );
+	}
+}

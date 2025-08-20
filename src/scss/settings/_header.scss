@@ -1,0 +1,62 @@
+@charset "UTF-8";
+
+// -----------------------------------------------------------------------------
+// admin / header
+// -----------------------------------------------------------------------------
+
+.brag-book-gallery-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-block-end: var(--space-8);
+	padding-block-end: var(--space-6);
+	border-block-end: var(--space-px) solid var(--slate-200);
+
+	@media (max-width: 768px) {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: var(--space-4);
+	}
+}
+
+.brag-book-gallery-header-left {
+	display: flex;
+	align-items: center;
+	gap: var(--space-5);
+}
+
+.brag-book-gallery-header-right {
+	flex-shrink: 0;
+
+	@media (max-width: 768px) {
+		align-self: flex-end;
+	}
+}
+
+.brag-book-gallery-version-badge {
+	display: inline-flex;
+	align-items: center;
+	padding-inline: var(--space-3);
+	padding-block: var(--space-1-5);
+	background: var(--slate-100);
+	color: var(--slate-700);
+	border: var(--space-px) solid var(--slate-200);
+	border-radius: var(--rounded-full);
+	font-size: var(--text-sm);
+	font-weight: var(--font-medium);
+	line-height: var(--leading-none);
+}
+
+.brag-book-gallery-header .brag-book-gallery-logo {
+	inline-size: var(--space-14);
+	block-size: var(--space-14);
+	flex-shrink: 0;
+}
+
+.brag-book-gallery-header h1 {
+	font-size: var(--text-3xl);
+	font-weight: var(--font-bold);
+	color: var(--slate-900);
+	margin: 0;
+	line-height: var(--leading-tight);
+}

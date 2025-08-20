@@ -1,0 +1,53 @@
+@charset "UTF-8";
+
+// -----------------------------------------------------------------------------
+// structure / wrapper
+// -----------------------------------------------------------------------------
+
+.brag-book-gallery-wrapper,
+.brag-book-gallery-wrapper *,
+.brag-book-gallery-wrapper *::before,
+.brag-book-gallery-wrapper *::after {
+	box-sizing: border-box
+}
+
+.brag-book-gallery-wrapper {
+	--wp--custom--brag-book-gallery--color--black: oklch(13% 0.028 261.692);
+	--wp--custom--brag-book-gallery--color--grey: oklch(70.7% 0.022 261.325);
+	--wp--custom--brag-book-gallery--color--light-grey: oklch(92.8% 0.006 264.531);
+	--wp--custom--brag-book-gallery--color--lighter-grey: oklch(96.7% 0.003 264.542);
+	--wp--custom--brag-book-gallery--color--lightest-grey: oklch(98.5% 0.002 247.839);
+	--wp--custom--brag-book-gallery--color--white: #FFF;
+
+	--wp--custom--brag-book-gallery--spacer: 0.25rem;
+
+	--wp--custom--brag-book-gallery--font-weight--bold: 700;
+	--wp--custom--brag-book-gallery--font-weight--semibold: 600;
+	--wp--custom--brag-book-gallery--font-weight--regular: 400;
+
+	--wp--custom--brag-book-gallery--text-xs: 0.75rem;
+	--wp--custom--brag-book-gallery--text-sm: 0.875rem;
+	--wp--custom--brag-book-gallery--text-base: 1rem;
+	--wp--custom--brag-book-gallery--text-lg: 1.125rem;
+	--wp--custom--brag-book-gallery--text-xl: 1.25rem;
+	--wp--custom--brag-book-gallery--text-2xl: 1.5rem;
+	--wp--custom--brag-book-gallery--text-3xl: 1.75rem;
+	--wp--custom--brag-book-gallery--text-4xl: 2rem;
+
+	--wp--custom--brag-book-gallery--rounded: 0.25rem;
+	--wp--custom--brag-book-gallery--rounded-full: 10em;
+
+	--wp--custom--brag-book-gallery--transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+
+	--wp--custom--brag-book-gallery--shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+	--wp--custom--brag-book-gallery--shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+	--wp--custom--brag-book-gallery--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+	--wp--custom--brag-book-gallery--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+	--wp--custom--brag-book-gallery--shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+
+	position: relative;
+	width: 100%;
+	min-height: 100vh;
+	isolation: isolate;
+	max-width: 100% !important
+}

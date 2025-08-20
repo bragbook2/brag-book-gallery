@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg id="a" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 56">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 56">
   <g>
     <rect x="2.61" y="2.61" width="50.79" height="50.79" fill="#161a1b"/>
     <path d="M54.38,54.38H1.62V1.62h52.74v52.74h.01ZM3.58,52.42h48.84V3.58H3.58v48.84Z" fill="#fff"/>

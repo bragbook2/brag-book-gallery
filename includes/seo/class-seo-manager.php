@@ -216,7 +216,7 @@ final class SEO_Manager {
 
 		// Sanitize stored pages to ensure they are strings.
 		$combine_page_id = get_option(
-			option: 'brag_book_gallery_combine_gallery_page_id',
+			option: 'brag_book_gallery_page_id',
 			default_value: ''
 		);
 
@@ -260,7 +260,7 @@ final class SEO_Manager {
 
 		// Check if this is the combine gallery page.
 		$combine_slug       = get_option(
-			option: 'brag_book_gallery_combine_gallery_slug',
+			option: 'brag_book_gallery_brag_book_gallery_page_slug',
 			default_value: ''
 		);
 

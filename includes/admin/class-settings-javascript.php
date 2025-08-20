@@ -21,9 +21,9 @@ if ( ! defined( 'WPINC' ) ) {
 /**
  * JavaScript Mode Settings Class
  *
- * Specialized configuration interface for JavaScript mode operations in BRAG Book Gallery.
+ * Specialized configuration interface for JavaScript mode operations in BRAG book Gallery.
  * This class manages settings that specifically affect how the plugin operates when
- * in JavaScript mode, where content is loaded dynamically from the BRAG Book API.
+ * in JavaScript mode, where content is loaded dynamically from the BRAG book API.
  *
  * **Configuration Categories:**
  * - Gallery page settings and SEO metadata
@@ -80,7 +80,8 @@ class Settings_JavaScript extends Settings_Base {
 
 		// Get current settings
 		$landing_text            = get_option( 'brag_book_gallery_landing_page_text', '' );
-		$combine_slug            = get_option( 'combine_gallery_slug', '' );
+		// Use helper to get the first slug (handles array/string formats)
+		$combine_slug            = \BRAGBookGallery\Includes\Core\Slug_Helper::get_first_gallery_page_slug( '' );
 		$combine_seo_title       = get_option( 'brag_book_gallery_combine_seo_page_title', '' );
 		$combine_seo_description = get_option( 'brag_book_gallery_combine_seo_page_description', '' );
 		$ajax_timeout            = get_option( 'brag_book_gallery_ajax_timeout', 30 );
@@ -167,15 +168,15 @@ class Settings_JavaScript extends Settings_Base {
 				</tr>
 				<tr>
 					<th scope="row">
-						<label for="combine_gallery_slug">
-							<?php esc_html_e( 'Combined Gallery Slug', 'brag-book-gallery' ); ?>
+						<label for="brag_book_gallery_page_slug">
+							<?php esc_html_e( 'Gallery Slug', 'brag-book-gallery' ); ?>
 						</label>
 					</th>
 					<td>
 						<div class="slug-input-wrapper">
 							<input type="text"
-							       id="combine_gallery_slug"
-							       name="combine_gallery_slug"
+							       id="brag_book_gallery_page_slug"
+							       name="brag_book_gallery_page_slug"
 							       value="<?php echo esc_attr( $combine_slug ); ?>"
 							       class="regular-text"
 							       placeholder="<?php esc_attr_e( 'e.g., gallery, portfolio, before-after', 'brag-book-gallery' ); ?>">
@@ -370,7 +371,7 @@ class Settings_JavaScript extends Settings_Base {
 
 			<script type="module">
 			/**
-			 * BRAG Book Gallery JavaScript Settings
+			 * BRAG book Gallery JavaScript Settings
 			 *
 			 * Handles JavaScript mode settings including SEO optimization,
 			 * slug validation, and dynamic page generation.
@@ -390,7 +391,7 @@ class Settings_JavaScript extends Settings_Base {
 					descWarning: document.getElementById('desc-char-warning'),
 					serpTitle: document.getElementById('serp-title'),
 					serpDesc: document.getElementById('serp-description'),
-					slugInput: document.getElementById('combine_gallery_slug'),
+					slugInput: document.getElementById('brag_book_gallery_page_slug'),
 					slugStatus: document.getElementById('slug-status-message'),
 					generateBtn: document.getElementById('generate-page-btn')
 				};
@@ -535,9 +536,15 @@ class Settings_JavaScript extends Settings_Base {
 						elements.generateBtn.disabled = true;
 						elements.generateBtn.textContent = '<?php esc_html_e( 'Creating...', 'brag-book-gallery' ); ?>';
 
+						// Generate a title from the slug
+						const title = slug.split('-').map(word => 
+							word.charAt(0).toUpperCase() + word.slice(1)
+						).join(' ');
+
 						const formData = new FormData();
 						formData.append('action', 'brag_book_gallery_generate_page');
 						formData.append('slug', slug);
+						formData.append('title', title);
 						formData.append('nonce', '<?php echo wp_create_nonce( 'brag_book_gallery_generate_page' ); ?>');
 
 						const response = await fetch(ajaxurl, {
@@ -838,9 +845,12 @@ class Settings_JavaScript extends Settings_Base {
 		}
 
 		// Save combined gallery settings and create page if needed
-		if ( isset( $_POST['combine_gallery_slug'] ) ) {
-			$new_slug = sanitize_title( $_POST['combine_gallery_slug'] );
-			$old_slug = get_option( 'combine_gallery_slug', '' );
+		if ( isset( $_POST['brag_book_gallery_page_slug'] ) ) {
+			$new_slug = sanitize_title( $_POST['brag_book_gallery_page_slug'] );
+			
+			// Get existing slugs as array
+			$existing_slugs = \BRAGBookGallery\Includes\Core\Slug_Helper::get_all_gallery_page_slugs();
+			$old_slug = ! empty( $existing_slugs ) ? $existing_slugs[0] : '';
 
 			if ( ! empty( $new_slug ) && $new_slug !== $old_slug ) {
 				// Check if page with this slug exists
@@ -880,7 +890,16 @@ class Settings_JavaScript extends Settings_Base {
 				}
 			}
 
-			update_option( 'combine_gallery_slug', $new_slug );
+			// Update the slug - maintain array format for consistency
+			if ( ! empty( $new_slug ) ) {
+				// Replace the first slug or add if empty
+				if ( ! empty( $existing_slugs ) ) {
+					$existing_slugs[0] = $new_slug;
+				} else {
+					$existing_slugs = array( $new_slug );
+				}
+				update_option( 'brag_book_gallery_page_slug', $existing_slugs );
+			}
 		}
 
 		if ( isset( $_POST['combine_seo_title'] ) ) {

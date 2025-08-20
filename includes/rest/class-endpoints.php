@@ -2,7 +2,7 @@
 /**
  * REST API Endpoints Class
  *
- * Handles all external API communications with the BRAG Book service,
+ * Handles all external API communications with the BRAG book service,
  * including data retrieval, filtering, favorites management, and tracking.
  *
  * @package    BRAGBookGallery
@@ -30,7 +30,7 @@ if ( ! defined( constant_name: 'ABSPATH' ) ) {
  *
  * This class is responsible for:
  * - Managing external API communications
- * - Handling data retrieval from BRAG Book service
+ * - Handling data retrieval from BRAG book service
  * - Processing filter and pagination requests
  * - Managing favorites functionality
  * - Tracking plugin usage analytics
@@ -70,15 +70,17 @@ class Endpoints {
 	 * @var array<string, string>
 	 */
 	private const API_ENDPOINTS = array(
-		'filters'        => '/api/plugin/combine/filters',
-		'tracker'        => '/api/plugin/tracker',
-		'cases'          => '/api/plugin/combine/cases/',
-		'case_detail'    => '/api/plugin/combine/cases/%s',
-		'favorites_add'  => '/api/plugin/combine/favorites/add',
-		'favorites_list' => '/api/plugin/combine/favorites/list',
-		'sidebar'        => '/api/plugin/combine/sidebar',
-		'views'          => '/api/plugin/views',
-		'carousel'       => '/api/plugin/carousel',
+		'carousel'         => '/api/plugin/carousel',
+		'optimize_image'   => '/api/plugin/optimize-image',
+		'favorites_add'    => '/api/plugin/combine/favorites/add',
+		'favorites_list'   => '/api/plugin/combine/favorites/list',
+		'sidebar'          => '/api/plugin/combine/sidebar',
+		'cases'            => '/api/plugin/combine/cases',
+		'case_detail'      => '/api/plugin/combine/cases/%s',
+		'filters'          => '/api/plugin/combine/filters',
+		'tracker'          => '/api/plugin/tracker',
+		'sitemap'          => '/api/plugin/sitemap',
+		'consultations'    => '/api/plugin/consultations',
 	);
 
 	/**
@@ -100,7 +102,8 @@ class Endpoints {
 		string $procedure_ids,
 		string $website_property_ids
 	): ?string {
-		// Parse and validate input data
+
+		// Parse and validate input data.
 		$tokens = $this->parse_comma_separated( $api_tokens );
 
 		// Convert procedure IDs and website property IDs to integers.
@@ -144,7 +147,7 @@ class Endpoints {
 	/**
 	 * Send plugin version tracking data
 	 *
-	 * Sends plugin usage analytics to the BRAG Book service for
+	 * Sends plugin usage analytics to the BRAG book service for
 	 * tracking active installations and versions.
 	 *
 	 * @since 3.0.0
@@ -449,12 +452,14 @@ class Endpoints {
 	 * @param string $api_token API authentication token
 	 * @param int $website_property_id Website property ID
 	 * @param string $case_number Case number to fetch
+	 * @param array $procedure_ids Optional procedure IDs for filtering
 	 * @return array|null Case data on success, null on failure
 	 */
 	public function bb_get_case_by_number(
 		string $api_token,
 		int $website_property_id,
-		string $case_number
+		string $case_number,
+		array $procedure_ids = []
 	): ?array {
 		// Use the case detail endpoint with case ID
 		$endpoint = sprintf( self::API_ENDPOINTS['case_detail'], $case_number );
@@ -473,6 +478,7 @@ class Endpoints {
 		$request_body = [
 			'apiTokens' => [ $api_token ],
 			'websitePropertyIds' => [ (int) $website_property_id ],
+			'procedureIds' => array_map( 'intval', $procedure_ids ),
 		];
 
 		// Make API request to get specific case
@@ -493,6 +499,7 @@ class Endpoints {
 			$request_body = [
 				'apiToken' => $api_token,
 				'websitePropertyId' => (int) $website_property_id,
+				'procedureIds' => array_map( 'intval', $procedure_ids ),
 			];
 
 			$response = $this->make_api_request(
@@ -582,7 +589,10 @@ class Endpoints {
 		);
 
 		// Generate cache key for sidebar data.
-		$cache_key = $this->generate_cache_key( 'sidebar', $tokens );
+		$cache_key = $this->generate_cache_key(
+			'sidebar',
+			$tokens
+		);
 
 		// Make cached API request with extended cache time for sidebar.
 		return $this->make_api_request(
@@ -621,6 +631,17 @@ class Endpoints {
 		int $cache_duration = self::CACHE_DURATION
 	): ?string {
 
+		// Check if caching is enabled in settings
+		$enable_caching = get_option(
+			'brag_book_gallery_enable_caching',
+			'yes'
+		);
+
+		// Override cache flag if caching is disabled
+		if ( $enable_caching !== 'yes' ) {
+			$use_cache = false;
+		}
+
 		// Check cache first if enabled.
 		if ( $use_cache && ! empty( $cache_key ) ) {
 
@@ -636,14 +657,17 @@ class Endpoints {
 		// Build full URL.
 		$url = Setup::get_api_url() . $endpoint;
 
+		// Get timeout from settings
+		$api_timeout = intval( get_option( 'brag_book_gallery_api_timeout', self::API_TIMEOUT ) );
+
 		// Prepare request arguments.
 		$args = array(
 			'method'  => $method,
-			'timeout' => self::API_TIMEOUT,
+			'timeout' => $api_timeout,
 			'headers' => array(
 				'Content-Type' => 'application/json',
 				'Accept'       => 'application/json',
-				'User-Agent'   => 'BRAG Book-Gallery-Plugin/3.0.0',
+				'User-Agent'   => 'BRAG book-Gallery-Plugin/3.0.0',
 			),
 			'body'    => wp_json_encode( $body ),
 		);
@@ -691,6 +715,10 @@ class Endpoints {
 
 		// Cache successful response if enabled
 		if ( $use_cache && ! empty( $cache_key ) && ! empty( $response_body ) ) {
+			// Get cache duration from settings if not provided
+			if ( $cache_duration === self::CACHE_DURATION ) {
+				$cache_duration = intval( get_option( 'brag_book_gallery_cache_duration', self::CACHE_DURATION ) );
+			}
 			set_transient( $cache_key, $response_body, $cache_duration );
 		}
 
@@ -810,7 +838,7 @@ class Endpoints {
 	 *
 	 * @return array Normalized array
 	 */
-	private function normalize_to_array( $input ): array {
+	private function normalize_to_array( mixed $input ): array {
 		if ( is_array( $input ) ) {
 			return $input;
 		}
@@ -899,7 +927,7 @@ class Endpoints {
 	private function log_error( string $message ): void {
 
 		if ( defined( constant_name: 'WP_DEBUG' ) && WP_DEBUG ) {
-			error_log( message: '[BRAG Book API] ' . $message );
+			error_log( message: '[BRAG book API] ' . $message );
 		}
 
 		/**
@@ -1012,25 +1040,23 @@ class Endpoints {
 			return null;
 		}
 
-		// Set default options with defaults for memberId and procedureId
+		// Set default options (removed memberId as it's not needed for carousel)
 		$default_options = [
 			'websitePropertyId' => '',
 			'limit'            => 10,
 			'start'            => 1,
-			'procedureId'      => 6839,  // Default procedureId
-			'memberId'         => 129,   // Default memberId
+			'procedureId'      => 3405,  // Updated default procedureId
 		];
 
 		$options = array_merge( $default_options, $options );
 
-		// Build query parameters - always include all params with defaults
+		// Build query parameters - removed memberId as it's not needed for carousel endpoint
 		$query_params = [
 			'websitePropertyId' => absint( $options['websitePropertyId'] ),
 			'start'            => absint( $options['start'] ) ?: 1,
 			'limit'            => absint( $options['limit'] ) ?: 10,
 			'apiToken'         => $token,
-			'procedureId'      => absint( $options['procedureId'] ) ?: 6839,
-			'memberId'         => absint( $options['memberId'] ) ?: 129,
+			'procedureId'      => absint( $options['procedureId'] ) ?: 3405,
 		];
 
 		// Build URL with query parameters
@@ -1055,7 +1081,7 @@ class Endpoints {
 			'timeout' => 30,
 			'headers' => [
 				'Accept' => 'application/json',
-				'User-Agent' => 'BRAG Book Gallery Plugin/3.0.0',
+				'User-Agent' => 'BRAG book Gallery Plugin/3.0.0',
 			],
 		] );
 
@@ -1095,8 +1121,11 @@ class Endpoints {
 	public function clear_api_cache( string $type = '' ): bool {
 		global $wpdb;
 
+		// Ensure $type is never null to avoid deprecation warnings
+		$type = $type ?? '';
+
 		if ( empty( $type ) ) {
-			// Clear all BRAG Book API cache including timeout transients
+			// Clear all BRAG book API cache including timeout transients
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$result = $wpdb->query(
 				$wpdb->prepare(
@@ -1139,5 +1168,186 @@ class Endpoints {
 		);
 
 		return $result !== false;
+	}
+
+	/**
+	 * Optimize image using API
+	 *
+	 * Optimizes and transforms images on-the-fly using the API service.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @param string $api_token API authentication token
+	 * @param string $image_url Source image URL to optimize
+	 * @param string $quality Image quality (small/medium/large)
+	 * @param string $format Output format (png/jpg/webp)
+	 * @param string $plugin_version Plugin version for tracking
+	 *
+	 * @return string|null Optimized image URL on success, null on failure
+	 */
+	public function optimize_image(
+		string $api_token,
+		string $image_url,
+		string $quality = 'medium',
+		string $format = 'webp',
+		string $plugin_version = '3.0.0'
+	): ?string {
+		// Validate inputs
+		if ( empty( $api_token ) || empty( $image_url ) ) {
+			$this->log_error( 'API token and image URL are required for image optimization' );
+			return null;
+		}
+
+		// Validate URL
+		if ( ! filter_var( $image_url, FILTER_VALIDATE_URL ) ) {
+			$this->log_error( 'Invalid image URL provided for optimization' );
+			return null;
+		}
+
+		// Build query parameters
+		$query_params = [
+			'url' => $image_url,
+			'quality' => $quality,
+			'format' => $format,
+		];
+
+		// Build URL with query parameters
+		$url = self::API_ENDPOINTS['optimize_image'] . '?' . http_build_query( $query_params );
+		$full_url = Setup::get_api_url() . $url;
+
+		// Make GET request with headers
+		$response = wp_remote_get( $full_url, [
+			'timeout' => self::API_TIMEOUT,
+			'headers' => [
+				'x-api-token' => $api_token,
+				'x-plugin-version' => $plugin_version,
+				'Accept' => 'application/json',
+			],
+		] );
+
+		if ( is_wp_error( $response ) ) {
+			$this->log_error( 'Image optimization API request failed: ' . $response->get_error_message() );
+			return null;
+		}
+
+		$response_code = wp_remote_retrieve_response_code( $response );
+		$response_body = wp_remote_retrieve_body( $response );
+
+		if ( $response_code !== 200 ) {
+			$this->log_error( sprintf( 'Image optimization API returned status %d', $response_code ) );
+			return null;
+		}
+
+		return $response_body;
+	}
+
+	/**
+	 * Get sitemap data from API
+	 *
+	 * Generates sitemap data for SEO purposes.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @param string|array $api_tokens API token(s)
+	 * @param string|array $website_property_ids Website property ID(s)
+	 *
+	 * @return string|null JSON response on success, null on failure
+	 */
+	public function get_sitemap_data( string|array $api_tokens, string|array $website_property_ids ): ?string {
+		// Normalize inputs to arrays
+		$tokens = $this->normalize_to_array( $api_tokens );
+		$property_ids = array_map( 'intval', $this->normalize_to_array( $website_property_ids ) );
+
+		if ( empty( $tokens ) || empty( $property_ids ) ) {
+			$this->log_error( 'API tokens and website property IDs are required for sitemap generation' );
+			return null;
+		}
+
+		// Prepare request body
+		$body = [
+			'apiTokens' => $tokens,
+			'websitePropertyIds' => $property_ids,
+		];
+
+		// Generate cache key
+		$cache_key = $this->generate_cache_key( 'sitemap', $body );
+
+		// Make API request
+		return $this->make_api_request(
+			self::API_ENDPOINTS['sitemap'],
+			$body,
+			'POST',
+			true,
+			$cache_key,
+			1800 // Cache for 30 minutes
+		);
+	}
+
+	/**
+	 * Submit consultation request
+	 *
+	 * Submits a consultation request to the API.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @param string $api_token API authentication token
+	 * @param int    $website_property_id Website property ID
+	 * @param string $email User's email address
+	 * @param string $phone User's phone number
+	 * @param string $name User's name
+	 * @param string $details Consultation details
+	 *
+	 * @return string|null JSON response on success, null on failure
+	 */
+	public function submit_consultation(
+		string $api_token,
+		int $website_property_id,
+		string $email,
+		string $phone,
+		string $name,
+		string $details = ''
+	): ?string {
+		// Validate inputs
+		if ( empty( $api_token ) || empty( $website_property_id ) ) {
+			$this->log_error( 'API token and website property ID are required for consultation' );
+			return null;
+		}
+
+		// Validate email
+		if ( ! is_email( $email ) ) {
+			$this->log_error( 'Valid email address is required for consultation' );
+			return null;
+		}
+
+		// Sanitize inputs
+		$email = sanitize_email( $email );
+		$phone = $this->sanitize_phone( $phone );
+		$name = sanitize_text_field( $name );
+		$details = sanitize_textarea_field( $details );
+
+		// Build query parameters for authentication
+		$query_params = [
+			'apiToken' => $api_token,
+			'websitepropertyId' => $website_property_id, // Note: lowercase 'p' as per API docs
+		];
+
+		// Build URL with query parameters
+		$url = self::API_ENDPOINTS['consultations'] . '?' . http_build_query( $query_params );
+
+		// Prepare request body
+		$body = [
+			'email' => $email,
+			'phone' => $phone,
+			'name' => $name,
+			'details' => $details,
+		];
+
+		// Make API request (don't cache consultation submissions)
+		return $this->make_api_request(
+			$url,
+			$body,
+			'POST',
+			false // Don't cache
+		);
 	}
 }

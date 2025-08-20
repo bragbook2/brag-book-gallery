@@ -135,7 +135,7 @@ class Image_Sync {
 					$attachment_ids[] = $attachment_id;
 				}
 			} catch ( \Exception $e ) {
-				error_log( "BRAG Book Gallery: Failed to import image {$url}: " . $e->getMessage() );
+				error_log( "BRAG book Gallery: Failed to import image {$url}: " . $e->getMessage() );
 			}
 		}
 

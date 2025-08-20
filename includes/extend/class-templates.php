@@ -2,7 +2,7 @@
 /**
  * Template Handler
  *
- * Manages custom template inclusion for BRAG Book gallery pages.
+ * Manages custom template inclusion for BRAG book gallery pages.
  * This class determines when to load custom templates based on page slugs
  * and gallery configuration.
  *
@@ -153,7 +153,7 @@ final class Templates {
 	private static function is_combine_gallery_page( string $page_slug ): bool {
 
 		// Get the combined gallery slug from options.
-		$combine_slug = self::get_combine_gallery_slug();
+		$combine_slug = self::get_brag_book_gallery_page_slug();
 
 		return ! empty( $combine_slug ) && $combine_slug === $page_slug;
 	}
@@ -202,9 +202,9 @@ final class Templates {
 	 *
 	 * @return string The combined gallery slug, or empty string if not set.
 	 */
-	private static function get_combine_gallery_slug(): string {
+	private static function get_brag_book_gallery_page_slug(): string {
 		if ( self::$combine_slug_cache === null ) {
-			$slug = get_option( 'combine_gallery_slug', '' );
+			$slug = get_option( 'brag_book_gallery_page_slug', '' );
 			self::$combine_slug_cache = is_string( $slug ) ? $slug : '';
 		}
 
@@ -262,7 +262,7 @@ final class Templates {
 		}
 
 		// Get ID for combined gallery page
-		$combine_slug = self::get_combine_gallery_slug();
+		$combine_slug = self::get_brag_book_gallery_page_slug();
 		if ( ! empty( $combine_slug ) ) {
 			$page = get_page_by_path( $combine_slug );
 			if ( $page instanceof WP_Post ) {
@@ -355,7 +355,7 @@ final class Templates {
 
 		return [
 			'gallery_slugs' => self::get_gallery_slugs(),
-			'combine_slug' => self::get_combine_gallery_slug(),
+			'combine_slug' => self::get_brag_book_gallery_page_slug(),
 			'template_path' => self::get_custom_template_path(),
 			'template_exists' => self::template_exists(),
 			'current_page_slug' => $current_slug,

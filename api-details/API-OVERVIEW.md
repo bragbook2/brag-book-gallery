@@ -1,4 +1,4 @@
-# BRAG Book Gallery API Overview
+# BRAG book Gallery API Overview
 
 ## Table of Contents
 1. [API Base Information](#api-base-information)
@@ -465,7 +465,7 @@ The API implements rate limiting to prevent abuse:
 
 ## Plugin Integration
 
-The BRAG Book Gallery WordPress plugin uses these endpoints to:
+The BRAG book Gallery WordPress plugin uses these endpoints to:
 - Display before/after photo galleries
 - Manage user favorites
 - Generate navigation menus
@@ -477,7 +477,7 @@ The BRAG Book Gallery WordPress plugin uses these endpoints to:
 ## Version History
 
 - **Current Version**: Plugin Combine APIs v2.1.0
-- **Plugin Compatibility**: BRAG Book Gallery v3.0.0+
+- **Plugin Compatibility**: BRAG book Gallery v3.0.0+
 - **Minimum PHP Version**: 8.2
 - **WordPress Compatibility**: 6.8+
 

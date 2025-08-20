@@ -211,11 +211,11 @@ final class Shortcodes {
 			}
 		}
 
-		// Check for combine_gallery_slug option (used in settings)
-		$combine_gallery_slug = get_option( 'combine_gallery_slug' );
-		if ( ! empty( $combine_gallery_slug ) && ! in_array( $combine_gallery_slug, $processed_slugs ) ) {
-			self::add_gallery_rewrite_rules( $combine_gallery_slug );
-			$processed_slugs[] = $combine_gallery_slug;
+		// Check for brag_book_gallery_page_slug option (used in settings)
+		$brag_book_gallery_page_slug = get_option( 'brag_book_gallery_page_slug' );
+		if ( ! empty( $brag_book_gallery_page_slug ) && ! in_array( $brag_book_gallery_page_slug, $processed_slugs ) ) {
+			self::add_gallery_rewrite_rules( $brag_book_gallery_page_slug );
+			$processed_slugs[] = $brag_book_gallery_page_slug;
 		}
 
 		// Also check saved options as fallback (legacy support)
@@ -311,16 +311,16 @@ final class Shortcodes {
 	private static function add_gallery_rewrite_rules( string $page_slug ): void {
 		// Try to find the page by slug
 		$page = get_page_by_path( $page_slug );
-		
+
 		if ( $page && $page->post_status === 'publish' ) {
 			// Use page_id for existing pages to avoid conflicts
 			$base_query = sprintf( 'index.php?page_id=%d', $page->ID );
 		} else {
-			// Check if this matches combine_gallery_slug and has a page_id set
-			$combine_gallery_slug = get_option( 'combine_gallery_slug' );
+			// Check if this matches brag_book_gallery_page_slug and has a page_id set
+			$brag_book_gallery_page_slug = get_option( 'brag_book_gallery_page_slug' );
 			$combine_gallery_page_id = get_option( 'combine_gallery_page_id' );
-			
-			if ( $page_slug === $combine_gallery_slug && ! empty( $combine_gallery_page_id ) ) {
+
+			if ( $page_slug === $brag_book_gallery_page_slug && ! empty( $combine_gallery_page_id ) ) {
 				$base_query = sprintf( 'index.php?page_id=%d', absint( $combine_gallery_page_id ) );
 			} else {
 				// Fallback to pagename (this might cause 404s if page doesn't exist)
@@ -493,7 +493,7 @@ final class Shortcodes {
 		// Get configuration options with null coalescing
 		$api_tokens = get_option( 'brag_book_gallery_api_token' ) ?: [];
 		$website_property_ids = get_option( 'brag_book_gallery_website_property_id' ) ?: [];
-		$gallery_slugs = get_option( 'bb_gallery_page_slug' ) ?: [];
+		$gallery_slugs = get_option( 'brag_book_gallery_page_slug' ) ?: [];
 
 		// Ensure all are arrays
 		if ( ! is_array( $api_tokens ) || ! is_array( $website_property_ids ) || ! is_array( $gallery_slugs ) ) {
@@ -520,7 +520,7 @@ final class Shortcodes {
 				}
 			} catch ( \JsonException $e ) {
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-					error_log( 'BRAG Book Gallery: Failed to decode API configuration JSON - ' . $e->getMessage() );
+					error_log( 'BRAG book Gallery: Failed to decode API configuration JSON - ' . $e->getMessage() );
 				}
 			}
 
@@ -547,13 +547,13 @@ final class Shortcodes {
 		// Check if we have valid sidebar data
 		if ( empty( $sidebar_data ) || ! isset( $sidebar_data['data'] ) || ! is_array( $sidebar_data['data'] ) ) {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( 'BRAG Book Gallery: No sidebar data, using default filters' );
+				error_log( 'BRAG book Gallery: No sidebar data, using default filters' );
 			}
 			return self::generate_default_filters();
 		}
 
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			error_log( 'BRAG Book Gallery: Generating filters for ' . count( $sidebar_data['data'] ) . ' categories' );
+			error_log( 'BRAG book Gallery: Generating filters for ' . count( $sidebar_data['data'] ) . ' categories' );
 		}
 
 		// Process each category from the sidebar data
@@ -576,18 +576,18 @@ final class Shortcodes {
 
 			// Build the filter group HTML using sprintf for better readability
 			$html .= sprintf(
-				'<div class="brag-book-gallery-filter-group" data-category="%s" data-expanded="false">',
+				'<div class="brag-book-gallery-nav-list__item" data-category="%s" data-expanded="false">',
 				esc_attr( $category_slug )
 			);
 
 			$html .= sprintf(
-				'<button class="brag-book-gallery-filter-header" data-category="%1$s" data-expanded="false" aria-label="%2$s">',
+				'<button class="brag-book-gallery-nav-button" data-category="%1$s" data-expanded="false" aria-label="%2$s">',
 				esc_attr( $category_slug ),
 				/* translators: %s: Category name */
 				esc_attr( sprintf( __( '%s category filter', 'brag-book-gallery' ), $category_name ) )
 			);
 
-			$html .= '<div class="brag-book-gallery-filter-label">';
+			$html .= '<div class="brag-book-gallery-nav-button__label">';
 			$html .= sprintf(
 				'<span>%s</span>',
 				esc_html( $category_name )
@@ -597,9 +597,9 @@ final class Shortcodes {
 				$total_cases
 			);
 			$html .= '</div>';
-			$html .= '<div class="brag-book-gallery-filter-toggle"></div>';
+			$html .= '<div class="brag-book-gallery-nav-button__toggle"></div>';
 			$html .= '</button>';
-			$html .= '<ul class="brag-book-gallery-filter-content" data-expanded="false">';
+			$html .= '<ul class="brag-book-gallery-nav-list-submenu" data-expanded="false">';
 
 			// Add procedures as filter options
 			foreach ( $procedures as $procedure ) {
@@ -634,13 +634,13 @@ final class Shortcodes {
 				$filter_url = rtrim( $base_path, '/' ) . '/' . $procedure_slug;
 
 				// Wrap in a li for semantic list
-				$html .= '<li class="brag-book-gallery-filter-item">';
+				$html .= '<li class="brag-book-gallery-nav-list-submenu__item">';
 
 				// Check if procedure has nudity
 				$has_nudity = ! empty( $procedure['nudity'] ) ? 'true' : 'false';
 
 				$html .= sprintf(
-					'<a href="%1$s" class="brag-book-gallery-filter-link" data-category="%2$s" data-procedure="%3$s" data-procedure-ids="%4$s" data-procedure-count="%5$d" data-nudity="%6$s">',
+					'<a href="%1$s" class="brag-book-gallery-nav-link" data-category="%2$s" data-procedure="%3$s" data-procedure-ids="%4$s" data-procedure-count="%5$d" data-nudity="%6$s">',
 					esc_url( $filter_url ),
 					esc_attr( $category_slug ),
 					esc_attr( $procedure_slug ),
@@ -669,26 +669,26 @@ final class Shortcodes {
 
 		// Always add the favorites filter at the end using sprintf
 		$favorites_html = sprintf(
-			'<div class="brag-book-gallery-filter-group" data-category="%s" data-expanded="false">',
+			'<div class="brag-book-gallery-nav-list__item" data-category="%s" data-expanded="false">',
 			'favorites'
 		);
 
 		$favorites_html .= sprintf(
-			'<button class="brag-book-gallery-filter-header" data-category="%1$s" data-expanded="false" aria-label="%2$s">',
+			'<button class="brag-book-gallery-nav-button" data-category="%1$s" data-expanded="false" aria-label="%2$s">',
 			'favorites',
 			esc_attr__( 'My Favorites filter', 'brag-book-gallery' )
 		);
 
-		$favorites_html .= '<div class="brag-book-gallery-filter-label">';
+		$favorites_html .= '<div class="brag-book-gallery-nav-button__label">';
 		$favorites_html .= sprintf(
 			'<span>%s</span>',
 			esc_html__( 'My Favorites', 'brag-book-gallery' )
 		);
 		$favorites_html .= '<span class="brag-book-gallery-filter-count" data-favorites-count>(0)</span>';
 		$favorites_html .= '</div>';
-		$favorites_html .= '<div class="brag-book-gallery-filter-toggle"></div>';
+		$favorites_html .= '<div class="brag-book-gallery-nav-button__toggle"></div>';
 		$favorites_html .= '</button>';
-		$favorites_html .= '<div class="brag-book-gallery-filter-content" data-expanded="false">';
+		$favorites_html .= '<div class="brag-book-gallery-nav-list-submenu" data-expanded="false">';
 		$favorites_html .= '<!-- Favorites List -->';
 		$favorites_html .= '<div class="brag-book-gallery-favorites-list" id="favorites-list">';
 		$favorites_html .= '<div class="brag-book-gallery-favorites-grid" id="favorites-grid">';
@@ -718,26 +718,26 @@ final class Shortcodes {
 
 		// Add default body filter
 		$html .= sprintf(
-			'<div class="brag-book-gallery-filter-group" data-category="%s" data-expanded="false">',
+			'<div class="brag-book-gallery-nav-list__item" data-category="%s" data-expanded="false">',
 			'body'
 		);
 
 		$html .= sprintf(
-			'<button class="brag-book-gallery-filter-header" data-category="%1$s" data-expanded="false" aria-label="%2$s">',
+			'<button class="brag-book-gallery-nav-button" data-category="%1$s" data-expanded="false" aria-label="%2$s">',
 			'body',
 			esc_attr__( 'Body category filter', 'brag-book-gallery' )
 		);
 
-		$html .= '<div class="brag-book-gallery-filter-label">';
+		$html .= '<div class="brag-book-gallery-nav-button__label">';
 		$html .= sprintf(
 			'<span>%s</span>',
 			esc_html__( 'Body', 'brag-book-gallery' )
 		);
 		$html .= '<span class="brag-book-gallery-filter-count">(0)</span>';
 		$html .= '</div>';
-		$html .= '<div class="brag-book-gallery-filter-toggle"></div>';
+		$html .= '<div class="brag-book-gallery-nav-button__toggle"></div>';
 		$html .= '</button>';
-		$html .= '<div class="brag-book-gallery-filter-content" data-expanded="false">';
+		$html .= '<div class="brag-book-gallery-nav-list-submenu" data-expanded="false">';
 		$html .= sprintf(
 			'<p class="no-procedures">%s</p>',
 			esc_html__( 'No procedures available', 'brag-book-gallery' )
@@ -747,26 +747,26 @@ final class Shortcodes {
 
 		// Add favorites filter
 		$html .= sprintf(
-			'<div class="brag-book-gallery-filter-group" data-category="%s" data-expanded="false">',
+			'<div class="brag-book-gallery-nav-list__item" data-category="%s" data-expanded="false">',
 			'favorites'
 		);
 
 		$html .= sprintf(
-			'<button class="brag-book-gallery-filter-header" data-category="%1$s" data-expanded="false" aria-label="%2$s">',
+			'<button class="brag-book-gallery-nav-button" data-category="%1$s" data-expanded="false" aria-label="%2$s">',
 			'favorites',
 			esc_attr__( 'My Favorites filter', 'brag-book-gallery' )
 		);
 
-		$html .= '<div class="brag-book-gallery-filter-label">';
+		$html .= '<div class="brag-book-gallery-nav-button__label">';
 		$html .= sprintf(
 			'<span>%s</span>',
 			esc_html__( 'My Favorites', 'brag-book-gallery' )
 		);
 		$html .= '<span class="brag-book-gallery-filter-count" data-favorites-count>(0)</span>';
 		$html .= '</div>';
-		$html .= '<div class="brag-book-gallery-filter-toggle"></div>';
+		$html .= '<div class="brag-book-gallery-nav-button__toggle"></div>';
 		$html .= '</button>';
-		$html .= '<div class="brag-book-gallery-filter-content" data-expanded="false">';
+		$html .= '<div class="brag-book-gallery-nav-list-submenu" data-expanded="false">';
 		$html .= '<div class="brag-book-gallery-favorites-list" id="favorites-list">';
 		$html .= '<div class="brag-book-gallery-favorites-grid" id="favorites-grid"></div>';
 		$html .= sprintf(
@@ -1112,7 +1112,7 @@ final class Shortcodes {
 	private static function get_sidebar_data( string $api_token ): array {
 		if ( empty( $api_token ) ) {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( 'BRAG Book Gallery: get_sidebar_data - Empty API token' );
+				error_log( 'BRAG book Gallery: get_sidebar_data - Empty API token' );
 			}
 			return [];
 		}
@@ -1125,19 +1125,19 @@ final class Shortcodes {
 				$decoded = json_decode( $sidebar_response, true, 512, JSON_THROW_ON_ERROR );
 
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-					error_log( 'BRAG Book Gallery: Sidebar data received - ' . ( isset($decoded['data']) ? count($decoded['data']) . ' categories' : 'no data key' ) );
+					error_log( 'BRAG book Gallery: Sidebar data received - ' . ( isset($decoded['data']) ? count($decoded['data']) . ' categories' : 'no data key' ) );
 				}
 
 				return is_array( $decoded ) ? $decoded : [];
 			} else {
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-					error_log( 'BRAG Book Gallery: Empty sidebar response' );
+					error_log( 'BRAG book Gallery: Empty sidebar response' );
 				}
 			}
 		} catch ( \JsonException $e ) {
 			// Log JSON decode error if debug is enabled
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( 'BRAG Book Gallery: Failed to decode sidebar JSON - ' . $e->getMessage() );
+				error_log( 'BRAG book Gallery: Failed to decode sidebar JSON - ' . $e->getMessage() );
 			}
 		}
 
@@ -1166,7 +1166,7 @@ final class Shortcodes {
 				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
 				'nonce' => wp_create_nonce( 'brag_book_gallery_nonce' ),
 				'pluginUrl' => $plugin_url,
-				'gallerySlug' => get_option( 'combine_gallery_slug', 'gallery' ),
+				'gallerySlug' => get_option( 'brag_book_gallery_page_slug', 'gallery' ),
 				'enableSharing' => get_option( 'brag_book_gallery_enable_sharing', 'no' ),
 				'sidebarData' => $sidebar_data,
 				'completeDataset' => ! empty( $all_cases_data['data'] ) ? array_map( function( $case ) {
@@ -1226,7 +1226,7 @@ final class Shortcodes {
 
 		ob_start();
 		?>
-		<!-- BRAG Book Gallery Component Start -->
+		<!-- BRAG book Gallery Component Start -->
 		<div class="brag-book-gallery-wrapper"
 		     data-base-url="<?php echo esc_attr( rtrim( $base_path, '/' ) ); ?>"
 		     <?php if ( ! empty( $initial_procedure ) ) : ?>
@@ -1251,7 +1251,7 @@ final class Shortcodes {
 					</svg>
 				</button>
 
-				<div class="brag-book-gallery-mobile-search-wrapper">
+				<div class="brag-book-gallery-search-wrapper">
 					<svg class="brag-book-gallery-search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
 						<path stroke-linecap="round" stroke-linejoin="round"
 							  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -1259,6 +1259,7 @@ final class Shortcodes {
 					<input type="search"
 						   class="brag-book-gallery-mobile-search-input"
 						   placeholder="Search Procedures..."
+						   name="procedure-search"
 						   aria-label="Search cosmetic procedures"
 						   aria-describedby="mobile-search-hint"
 						   autocomplete="off">
@@ -1300,19 +1301,19 @@ final class Shortcodes {
 						</div>
 					</div>
 
-					<div class="brag-book-gallery-filters" role="group" aria-label="Procedure filters">
+					<aside class="brag-book-gallery-nav" role="group" aria-label="Procedure filters">
 						<?php
-					// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- HTML is already escaped in method
-					echo self::generate_filters_from_sidebar( $sidebar_data );
-					?>
-					</div>
+						// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- HTML is already escaped in method
+						echo self::generate_filters_from_sidebar( $sidebar_data );
+						?>
+					</aside>
 
-					<button class="brag-book-gallery-btn-consultation" data-action="request-consultation">
+					<p class="brag-book-gallery-consultation-text">
+						<strong>Ready for the next step?</strong><br/>Contact us to request your consultation.
+					</p>
+					<button class="brag-book-gallery-button" data-action="request-consultation">
 						Request a Consultation
 					</button>
-					<p class="brag-book-gallery-consultation-text">
-						Ready for the next step? Contact us to request your consultation.
-					</p>
 				</div>
 
 				<div class="brag-book-gallery-main-content" role="region" aria-label="Gallery content" id="gallery-content">
@@ -1382,7 +1383,7 @@ final class Shortcodes {
 					</div>
 
 					<div class="brag-book-gallery-powered-by">
-						<a href="https://bragbookgallery.com/" class="brag-book-gallery-powered-by-link" target="_blank" rel="noopener noreferrer">Powered by BRAG Book</a>
+						<a href="https://bragbookgallery.com/" class="brag-book-gallery-powered-by-link" target="_blank" rel="noopener noreferrer">Powered by BRAG book</a>
 					</div>
 				</div>
 			</div>
@@ -1392,7 +1393,7 @@ final class Shortcodes {
 
 			<!-- Share dropdown will be created dynamically by JavaScript -->
 
-			<dialog class="brag-book-gallery-consultation-dialog" id="consultationDialog">
+			<dialog class="brag-book-gallery-dialog" id="consultationDialog">
 				<div class="brag-book-gallery-dialog-backdrop"></div>
 				<div class="brag-book-gallery-dialog-content">
 					<div class="brag-book-gallery-dialog-header">
@@ -1438,7 +1439,7 @@ final class Shortcodes {
 			</dialog>
 
 			<!-- Favorites Dialog -->
-			<dialog class="brag-book-gallery-favorites-dialog" id="favoritesDialog">
+			<dialog class="brag-book-gallery-dialog" id="favoritesDialog">
 				<div class="brag-book-gallery-dialog-content">
 					<div class="brag-book-gallery-dialog-header">
 						<svg class="brag-book-gallery-dialog-logo" viewBox="0 0 900 180">
@@ -1515,7 +1516,7 @@ final class Shortcodes {
 		</script>
 		<?php endif; ?>
 
-		<!-- BRAG Book Gallery Component End -->
+		<!-- BRAG book Gallery Component End -->
 		<?php
 		return ob_get_clean();
 	}
@@ -1692,7 +1693,7 @@ final class Shortcodes {
 			}
 		} catch ( \JsonException $e ) {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( 'BRAG Book Carousel: Failed to decode carousel JSON - ' . $e->getMessage() );
+				error_log( 'BRAG book Carousel: Failed to decode carousel JSON - ' . $e->getMessage() );
 			}
 		}
 
@@ -2012,7 +2013,7 @@ final class Shortcodes {
 
 		// Validate required fields
 		if ( empty( $atts['api_token'] ) || empty( $atts['website_property_id'] ) ) {
-			return '<p class="brag-book-cases-error">' .
+			return '<p class="brag-book-gallery-cases-error">' .
 				   esc_html__( 'Please configure API settings to display cases.', 'brag-book-gallery' ) .
 				   '</p>';
 		}
@@ -2143,11 +2144,25 @@ final class Shortcodes {
 				'total' => count( $all_cases ),
 			];
 
-			// Only cache if we have data
+			// Only cache if we have data and caching is enabled
 			if ( count( $all_cases ) > 0 ) {
-				// Cache for 5 minutes during development, 1 hour in production
-				$cache_duration = defined( 'WP_DEBUG' ) && WP_DEBUG ? 300 : 3600;
-				set_transient( $cache_key, $result, $cache_duration );
+				// Check if caching is enabled
+				$enable_caching = get_option( 'brag_book_gallery_enable_caching', 'yes' );
+
+				if ( $enable_caching === 'yes' ) {
+					// Get cache duration from settings
+					$cache_duration = intval( get_option( 'brag_book_gallery_cache_duration', 3600 ) );
+
+					// Override for debug mode if needed
+					if ( defined( 'WP_DEBUG' ) && WP_DEBUG && $cache_duration > 300 ) {
+						$cache_duration = 300; // Max 5 minutes in debug mode
+					}
+
+					if ( $cache_duration > 0 ) {
+						set_transient( $cache_key, $result, $cache_duration );
+						error_log( "Cached all cases data for {$cache_duration} seconds" );
+					}
+				}
 			} else {
 				// Clear any existing empty cache
 				delete_transient( $cache_key );
@@ -2427,20 +2442,25 @@ final class Shortcodes {
 				'procedure_ids' => $procedure_ids_int,
 			];
 
-			// Cache the result (1 hour default, or shorter for development)
-			$cache_duration = 3600; // 1 hour default
+			// Check if caching is enabled
+			$enable_caching = get_option( 'brag_book_gallery_enable_caching', 'yes' );
 
-			// Allow disabling cache for development
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				$cache_duration = 60; // Only 1 minute in debug mode
-			}
+			if ( $enable_caching === 'yes' ) {
+				// Get cache duration from settings
+				$cache_duration = intval( get_option( 'brag_book_gallery_cache_duration', 3600 ) );
 
-			// Also allow filter to customize cache duration
-			$cache_duration = apply_filters( 'brag_book_gallery_cache_duration', $cache_duration );
+				// Override for debug mode if needed
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG && $cache_duration > 300 ) {
+					$cache_duration = 300; // Max 5 minutes in debug mode
+				}
 
-			if ( $cache_duration > 0 ) {
-				set_transient( $cache_key, $result, $cache_duration );
-				error_log( "Cached cases data for {$cache_duration} seconds" );
+				// Also allow filter to customize cache duration
+				$cache_duration = apply_filters( 'brag_book_gallery_cache_duration', $cache_duration );
+
+				if ( $cache_duration > 0 ) {
+					set_transient( $cache_key, $result, $cache_duration );
+					error_log( "Cached cases data for {$cache_duration} seconds" );
+				}
 			}
 
 			return $result;
@@ -2491,30 +2511,30 @@ final class Shortcodes {
 
 		ob_start();
 		?>
-		<div class="brag-book-cases-grid <?php echo esc_attr( $custom_class ); ?>"
+		<div class="brag-book-gallery-case-grid <?php echo esc_attr( $custom_class ); ?>"
 		     data-columns="<?php echo esc_attr( $columns ); ?>">
 
 			<?php if ( ! empty( $filter_procedure ) ) : ?>
-				<div class="brag-book-cases-header">
+				<div class="brag-book-gallery-cases-header">
 					<h2>
 						<?php echo esc_html( ucwords( str_replace( '-', ' ', $filter_procedure ) ) ); ?> Cases
 						<?php if ( $shown_count > 0 ) : ?>
 							<span class="cases-count">(Showing <?php echo esc_html( $shown_count ); ?> of <?php echo esc_html( $display_total ); ?>)</span>
 						<?php endif; ?>
 					</h2>
-					<a href="<?php echo esc_url( $base_path ); ?>" class="brag-book-cases-back">
+					<a href="<?php echo esc_url( $base_path ); ?>" class="brag-book-gallery-cases-back">
 						&larr; Back to Gallery
 					</a>
 				</div>
 			<?php endif; ?>
 
 			<?php if ( ! empty( $cases_data['data'] ) && is_array( $cases_data['data'] ) ) : ?>
-				<div class="brag-book-cases-loading-indicator">
+				<div class="brag-book-gallery-cases-loading-indicator">
 					<div class="loading-spinner"></div>
 					<p>Loading all cases...</p>
 				</div>
 
-				<div class="brag-book-cases-container" data-columns="<?php echo esc_attr( $columns ); ?>">
+				<div class="brag-book-gallery-cases-container" data-columns="<?php echo esc_attr( $columns ); ?>">
 					<?php foreach ( $cases_data['data'] as $case ) : ?>
 						<?php echo self::render_case_card( $case, $base_path, $show_details, $procedure_nudity ); ?>
 					<?php endforeach; ?>
@@ -2526,8 +2546,8 @@ final class Shortcodes {
 						? implode( ',', $cases_data['procedure_ids'] )
 						: ( ! empty( $_GET['procedure_ids'] ) ? sanitize_text_field( $_GET['procedure_ids'] ) : '' );
 					?>
-					<div class="brag-book-load-more-container">
-						<button class="brag-book-load-more-btn"
+					<div class="brag-book-gallery-load-more-container">
+						<button class="brag-book-gallery-load-more-btn"
 						        data-start-page="<?php echo esc_attr( ( $cases_data['pagination']['last_page_loaded'] ?? 5 ) + 1 ); ?>"
 						        data-procedure-ids="<?php echo esc_attr( $procedure_ids_str ); ?>"
 						        onclick="loadMoreCases(this)">
@@ -2537,12 +2557,12 @@ final class Shortcodes {
 				<?php endif; ?>
 
 				<?php if ( ! empty( $cases_data['pagination'] ) && $cases_data['pagination']['total_pages'] > 1 ) : ?>
-					<div class="brag-book-cases-pagination">
+					<div class="brag-book-gallery-cases-pagination">
 						<?php echo self::render_pagination( $cases_data['pagination'], $base_path, $filter_procedure ); ?>
 					</div>
 				<?php endif; ?>
 			<?php else : ?>
-				<p class="brag-book-cases-empty">
+				<p class="brag-book-gallery-cases-empty">
 					<?php esc_html_e( 'No cases found.', 'brag-book-gallery' ); ?>
 				</p>
 			<?php endif; ?>
@@ -2569,7 +2589,7 @@ final class Shortcodes {
 					}
 
 					// Check if container exists
-					const container = document.getElementById('brag-book-gallery-procedure-filters-options');
+					const container = document.getElementById('brag-book-gallery-filters');
 					if (!container) {
 						console.log('Filter container not found, retrying...');
 						setTimeout(tryInitializeFilters, 200);
@@ -2618,7 +2638,7 @@ final class Shortcodes {
 			.then(data => {
 				if (data.success) {
 					// Add new cases to the container
-					const container = document.querySelector('.brag-book-cases-container');
+					const container = document.querySelector('.brag-book-gallery-cases-container');
 					if (container) {
 						container.insertAdjacentHTML('beforeend', data.data.html);
 					}
@@ -2748,14 +2768,14 @@ final class Shortcodes {
 
 		ob_start();
 		?>
-		<div class="brag-book-case-card" <?php echo $data_attrs; ?>>
+		<div class="brag-book-gallery-case-card" <?php echo $data_attrs; ?>>
 			<a href="<?php echo esc_url( $case_url ); ?>" class="brag-book-gallery-case-link"
 			   data-case-id="<?php echo esc_attr( $case['id'] ); ?>">
 				<div class="brag-book-gallery-image-container">
 					<?php if ( $before_url && $after_url ) : ?>
-						<div class="brag-book-case-images-split">
-							<div class="brag-book-case-image-before">
-								<span class="brag-book-case-image-label">Before</span>
+						<div class="brag-book-gallery-case-images-split">
+							<div class="brag-book-gallery-case-image-before">
+								<span class="brag-book-gallery-case-image-label">Before</span>
 								<picture class="brag-book-gallery-picture">
 									<img src="<?php echo esc_url( $before_url ); ?>"
 									     alt="<?php echo esc_attr( $procedure_name . ' - Before' ); ?>"
@@ -2763,8 +2783,8 @@ final class Shortcodes {
 									     <?php echo $procedure_nudity ? 'class="brag-book-gallery-nudity-blur"' : ''; ?>>
 								</picture>
 							</div>
-							<div class="brag-book-case-image-after">
-								<span class="brag-book-case-image-label">After</span>
+							<div class="brag-book-gallery-case-image-after">
+								<span class="brag-book-gallery-case-image-label">After</span>
 								<picture class="brag-book-gallery-picture">
 									<img src="<?php echo esc_url( $after_url ); ?>"
 									     alt="<?php echo esc_attr( $procedure_name . ' - After' ); ?>"
@@ -2788,7 +2808,7 @@ final class Shortcodes {
 							<?php endif; ?>
 						</div>
 					<?php elseif ( $image_url ) : ?>
-						<div class="brag-book-case-image-single">
+						<div class="brag-book-gallery-case-image-single">
 							<picture class="brag-book-gallery-picture">
 								<img src="<?php echo esc_url( $image_url ); ?>"
 								     alt="<?php echo esc_attr( $procedure_name . ' - Case ' . $case['id'] ); ?>"
@@ -2811,7 +2831,7 @@ final class Shortcodes {
 							<?php endif; ?>
 						</div>
 					<?php else : ?>
-						<div class="brag-book-case-image-placeholder">
+						<div class="brag-book-gallery-case-image-placeholder">
 							<span>No Image Available</span>
 						</div>
 					<?php endif; ?>
@@ -2830,18 +2850,18 @@ final class Shortcodes {
 						<?php endif; ?>
 					</div>
 				</div>
-				<div class="brag-book-case-info">
-					<h3 class="brag-book-case-title">
+				<div class="brag-book-gallery-case-info">
+					<h3 class="brag-book-gallery-case-title">
 						<?php echo esc_html( $procedure_name ); ?>
 					</h3>
 					<?php if ( ! empty( $demographics ) ) : ?>
-						<div class="brag-book-case-demographics">
+						<div class="brag-book-gallery-case-demographics">
 							<?php echo esc_html( implode( ' • ', $demographics ) ); ?>
 						</div>
 					<?php endif; ?>
-					<div class="brag-book-case-footer">
-						<span class="brag-book-case-id">Case #<?php echo esc_html( $case['id'] ); ?></span>
-						<span class="brag-book-case-view-link">View Details →</span>
+					<div class="brag-book-gallery-case-footer">
+						<span class="brag-book-gallery-case-id">Case #<?php echo esc_html( $case['id'] ); ?></span>
+						<span class="brag-book-gallery-case-view-link">View Details →</span>
 					</div>
 				</div>
 			</a>
@@ -2993,7 +3013,7 @@ final class Shortcodes {
 					$html .= '<div class="brag-book-gallery-before-image">';
 					$html .= '<div class="brag-book-gallery-image-container">';
 					$html .= '<div class="brag-book-gallery-skeleton-loader"></div>';
-					$html .= '<div class="brag-book-gallery-image-label">Before</div>';
+					$html .= '<div class="brag-book-gallery-case-image-label">Before</div>';
 					$html .= '<picture class="brag-book-gallery-picture">';
 					$html .= '<img src="' . esc_url( $before_image ) . '" ';
 					$html .= 'alt="Before - Case ' . esc_attr( $case_id ) . '" ';
@@ -3017,7 +3037,7 @@ final class Shortcodes {
 					$html .= '<div class="brag-book-gallery-after-image">';
 					$html .= '<div class="brag-book-gallery-image-container">';
 					$html .= '<div class="brag-book-gallery-skeleton-loader"></div>';
-					$html .= '<div class="brag-book-gallery-image-label">After</div>';
+					$html .= '<div class="brag-book-gallery-case-image-label">After</div>';
 
 					// Add action buttons (share and heart)
 					$html .= '<div class="brag-book-gallery-item-actions">';
@@ -3257,13 +3277,16 @@ final class Shortcodes {
 				error_log( 'Request body: ' . wp_json_encode( $request_body ) );
 			}
 
+			// Get API timeout from settings
+			$api_timeout = intval( get_option( 'brag_book_gallery_api_timeout', 30 ) );
+
 			$response = wp_remote_post( $api_url, [
 				'headers' => [
 					'Authorization' => 'Bearer ' . $atts['api_token'],
 					'Content-Type' => 'application/json',
 				],
 				'body' => wp_json_encode( $request_body ),
-				'timeout' => 30,
+				'timeout' => $api_timeout,
 			] );
 
 			if ( ! is_wp_error( $response ) ) {
@@ -3326,11 +3349,11 @@ final class Shortcodes {
 		}
 
 		if ( empty( $case_data ) ) {
-			$error_message = '<div class="brag-book-case-error">';
+			$error_message = '<div class="brag-book-gallery-case-error">';
 			$error_message .= '<p><strong>' . esc_html__( 'Case not found.', 'brag-book-gallery' ) . '</strong></p>';
 
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				$error_message .= '<div class="brag-book-debug-error">';
+				$error_message .= '<div class="brag-book-gallery-debug-error">';
 				$error_message .= '<p><strong>Debug Information:</strong></p>';
 				$error_message .= '<ul>';
 				$error_message .= '<li>Case ID requested: ' . esc_html( $case_id ) . '</li>';
@@ -3354,16 +3377,16 @@ final class Shortcodes {
 
 		ob_start();
 		?>
-		<div class="brag-book-single-case">
-			<div class="brag-book-case-header">
-				<a href="<?php echo esc_url( $base_path ); ?>" class="brag-book-case-back">
+		<div class="brag-book-gallery-single-case">
+			<div class="brag-book-gallery-brag-book-gallery-case-header">
+				<a href="<?php echo esc_url( $base_path ); ?>" class="brag-book-gallery-case-back">
 					&larr; Back to Gallery
 				</a>
 				<h1><?php echo esc_html( $procedure_name ); ?></h1>
 			</div>
 
-			<div class="brag-book-case-details">
-				<div class="brag-book-case-meta-info">
+			<div class="brag-book-gallery-case-details">
+				<div class="brag-book-gallery-case-meta-info">
 					<?php if ( ! empty( $case_data['age'] ) ) : ?>
 						<span class="meta-item">Age: <?php echo esc_html( $case_data['age'] ); ?></span>
 					<?php endif; ?>
@@ -3376,9 +3399,9 @@ final class Shortcodes {
 				</div>
 
 				<?php if ( ! empty( $case_data['photoSets'] ) ) : ?>
-					<div class="brag-book-case-images">
+					<div class="brag-book-gallery-case-images">
 						<?php foreach ( $case_data['photoSets'] as $photoSet ) : ?>
-							<div class="brag-book-photo-set">
+							<div class="brag-book-gallery-photo-set">
 								<?php if ( ! empty( $photoSet['beforeLocationUrl'] ) ) : ?>
 									<div class="before-image">
 										<h3>Before</h3>
@@ -3399,7 +3422,7 @@ final class Shortcodes {
 				<?php endif; ?>
 
 				<?php if ( ! empty( $case_data['details'] ) ) : ?>
-					<div class="brag-book-case-description">
+					<div class="brag-book-gallery-case-description">
 						<h2>Case Details</h2>
 						<?php echo wp_kses_post( $case_data['details'] ); ?>
 					</div>
@@ -3434,8 +3457,8 @@ final class Shortcodes {
 			?>
 			<div class="notice notice-warning is-dismissible">
 				<p>
-					<strong>BRAG Book Gallery:</strong> If you're experiencing 404 errors with gallery filter links,
-					<button type="button" class="button-link brag-book-flush-rewrite-btn" onclick="bragbookFlushRewrite()">
+					<strong>BRAG book Gallery:</strong> If you're experiencing 404 errors with gallery filter links,
+					<button type="button" class="button-link brag-book-gallery-flush-rewrite-btn" onclick="bragbookFlushRewrite()">
 						click here to flush rewrite rules
 					</button>
 				</p>
@@ -3612,12 +3635,15 @@ final class Shortcodes {
 
 			// Add H2 header with procedure name - WP VIP: Use sprintf
 			$procedure_display_name = ucwords( str_replace( '-', ' ', $procedure_name ) );
+
+
 			$html .= sprintf(
-				'<h2>%s</h2>',
+				'<h2 class="brag-book-gallery-content-title"><strong>%s</strong> %s</h2>',
 				sprintf(
-					esc_html__( '%s Before & After Gallery', 'brag-book-gallery' ),
+					'%s',
 					esc_html( $procedure_display_name )
-				)
+				),
+				esc_html__( 'Before & After Gallery', 'brag-book-gallery' ),
 			);
 
 			// Add controls container for grid selector and filters
@@ -3628,28 +3654,26 @@ final class Shortcodes {
 
 			// Procedure filters details - WP VIP: Use sprintf
 			$html .= sprintf(
-				'<details class="brag-book-gallery-procedure-filters-dropdown" id="procedure-filters-details">
-					<summary class="brag-book-gallery-procedure-filters-toggle">
+				'<details class="brag-book-gallery-filter-dropdown" id="procedure-filters-details">
+					<summary class="brag-book-gallery-filter-toggle">
 						<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 -960 960 960" fill="currentColor"><path d="M411.15-260v-60h137.31v60H411.15ZM256.16-450v-60h447.3v60h-447.3ZM140-640v-60h680v60H140Z"/></svg>
 						<span>%s</span>
 					</summary>
-					<div class="brag-book-gallery-procedure-filters-panel">
-						<div class="brag-book-gallery-procedure-filters-content">
-							<div class="brag-book-gallery-procedure-filters-section">
-								<h4>%s</h4>
-								<div id="brag-book-gallery-procedure-filters-options">
+					<div class="brag-book-gallery-filter-panel">
+						<div class="brag-book-gallery-filter-content">
+							<div class="brag-book-gallery-filter-section">
+								<div id="brag-book-gallery-filters">
 									%s
 								</div>
 							</div>
 						</div>
-						<div class="brag-book-gallery-procedure-filters-actions">
-							<button class="brag-book-gallery-procedure-filters-apply" onclick="applyProcedureFilters()">%s</button>
-							<button class="brag-book-gallery-procedure-filters-clear" onclick="clearProcedureFilters()">%s</button>
+						<div class="brag-book-gallery-filter-actions">
+							<button class="brag-book-gallery-filter-apply" onclick="applyProcedureFilters()">%s</button>
+							<button class="brag-book-gallery-filter-clear" onclick="clearProcedureFilters()">%s</button>
 						</div>
 					</div>
 				</details>',
 				esc_html__( 'Procedure Filters', 'brag-book-gallery' ),
-				esc_html__( 'Filter by Patient Details', 'brag-book-gallery' ),
 				'', // Filter options will be dynamically generated by JavaScript
 				esc_html__( 'Apply Filters', 'brag-book-gallery' ),
 				esc_html__( 'Clear All', 'brag-book-gallery' )
@@ -3698,7 +3722,7 @@ final class Shortcodes {
 			$html .= '</div>'; // Close controls container
 
 			// Start cases grid with CSS Grid layout
-			$html .= '<div class="brag-book-gallery-cases-grid" data-columns="2">';
+			$html .= '<div class="brag-book-gallery-case-grid" data-columns="2">';
 
 			// Loop through cases
 			if ( ! empty( $cases_data['data'] ) ) {
@@ -3854,7 +3878,7 @@ final class Shortcodes {
 							$html .= '<div class="brag-book-gallery-before-image">';
 							$html .= '<div class="brag-book-gallery-image-container">';
 							$html .= '<div class="brag-book-gallery-skeleton-loader"></div>';
-							$html .= '<div class="brag-book-gallery-image-label">Before</div>';
+							$html .= '<div class="brag-book-gallery-case-image-label">Before</div>';
 							$html .= '<picture class="brag-book-gallery-picture">';
 							$html .= '<img src="' . esc_url( $before_image ) . '" ';
 							$html .= 'alt="Before - Case ' . esc_attr( $case_id ) . '" ';
@@ -3895,7 +3919,7 @@ final class Shortcodes {
 							$html .= '<div class="brag-book-gallery-after-image">';
 							$html .= '<div class="brag-book-gallery-image-container">';
 							$html .= '<div class="brag-book-gallery-skeleton-loader"></div>';
-							$html .= '<div class="brag-book-gallery-image-label">After</div>';
+							$html .= '<div class="brag-book-gallery-case-image-label">After</div>';
 
 							// Add action buttons (share and heart)
 							$html .= '<div class="brag-book-gallery-item-actions">';
@@ -3968,12 +3992,12 @@ final class Shortcodes {
 					$html .= '<div class="brag-book-gallery-case-info">';
 
 					// Card header with title and View Case button
-					$html .= '<div class="brag-book-gallery-case-header">';
+					$html .= '<div class="brag-book-gallery-brag-book-gallery-case-header">';
 
 					// Title section (left side)
 					$html .= '<div class="brag-book-gallery-case-title-section">';
 					$html .= sprintf(
-						'<h3 class="brag-book-gallery-case-title">%s <span class="brag-book-gallery-case-number">Case #%s</span></h3>',
+						'<h3 class="brag-book-gallery-case-title">%s <span class="brag-book-gallery-brag-book-gallery-case-number">Case #%s</span></h3>',
 						esc_html( $procedure_name_for_card ),
 						esc_html( $case_id )
 					);
@@ -4011,7 +4035,7 @@ final class Shortcodes {
 					);
 					$html .= '</div>';
 
-					$html .= '</div>'; // Close case-header
+					$html .= '</div>'; // Close brag-book-gallery-case-header
 
 					// Add case details if available
 					if ( ! empty( $case['caseDetails'] ) && is_array( $case['caseDetails'] ) ) {
@@ -4028,8 +4052,8 @@ final class Shortcodes {
 
 					// List procedures at the bottom
 					if ( ! empty( $case['procedures'] ) && is_array( $case['procedures'] ) ) {
-						$html .= '<div class="brag-book-gallery-case-procedures">';
-						$html .= '<div class="brag-book-gallery-procedures-label">Procedures performed:</div>';
+						$html .= '<div class="brag-book-gallery-case-details__more">';
+						$html .= '<div class="brag-book-gallery-filter-label">Procedures performed:</div>';
 						$html .= '<div class="brag-book-gallery-procedures-badges">';
 
 						$gallery_slugs = get_option( 'brag_book_gallery_gallery_page_slug', [] );
@@ -4039,7 +4063,7 @@ final class Shortcodes {
 							if ( ! empty( $procedure['name'] ) && ! empty( $procedure['id'] ) ) {
 								$procedure_url = home_url( '/' . $gallery_base . '/' . ( ! empty( $procedure['slugName'] ) ? $procedure['slugName'] : sanitize_title( $procedure['name'] ) ) );
 								$html .= sprintf(
-									'<a href="%s" class="brag-book-gallery-procedure-badge brag-book-gallery-filter-link" data-procedure-ids="%s" data-category="all" data-procedure="%s">%s</a>',
+									'<a href="%s" class="brag-book-gallery-procedure-badge brag-book-gallery-nav-link" data-procedure-ids="%s" data-category="all" data-procedure="%s">%s</a>',
 									esc_url( $procedure_url ),
 									esc_attr( $procedure['id'] ),
 									esc_attr( $procedure['name'] ),
@@ -4063,8 +4087,8 @@ final class Shortcodes {
 			// Add Load More button if there are more cases
 			if ( $has_more ) {
 				$procedure_ids_str = ! empty( $procedure_ids ) ? implode( ',', $procedure_ids ) : '';
-				$html .= '<div class="brag-book-load-more-container">';
-				$html .= '<button class="brag-book-load-more-btn" ';
+				$html .= '<div class="brag-book-gallery-load-more-container">';
+				$html .= '<button class="brag-book-gallery-load-more-btn" ';
 				$html .= 'data-start-page="' . ( ( $cases_data['pagination']['last_page_loaded'] ?? 5 ) + 1 ) . '" ';
 				$html .= 'data-procedure-ids="' . esc_attr( $procedure_ids_str ) . '" ';
 				$html .= 'onclick="loadMoreCases(this)">';
@@ -4124,7 +4148,7 @@ final class Shortcodes {
 					.then(data => {
 						if (data.success) {
 							// Add new cases to the container
-							const container = document.querySelector(".brag-book-cases-grid");
+							const container = document.querySelector(".brag-book-gallery-case-grid");
 							if (container) {
 								container.insertAdjacentHTML("beforeend", data.data.html);
 							}
@@ -4142,7 +4166,7 @@ final class Shortcodes {
 							// Update the count display
 							const countLabel = document.querySelector(".brag-book-gallery-count-label");
 							if (countLabel) {
-								const currentShown = container.querySelectorAll(".brag-book-case-card").length;
+								const currentShown = container.querySelectorAll(".brag-book-gallery-case-card").length;
 								const match = countLabel.textContent.match(/of (\d+)/);
 								if (match) {
 									const total = match[1];
@@ -4163,8 +4187,8 @@ final class Shortcodes {
 				}
 
 				function updateGridLayout(columns) {
-					const grid = document.querySelector(".brag-book-cases-grid");
-					const cards = document.querySelectorAll(".brag-book-case-card[data-card=\"true\"]");
+					const grid = document.querySelector(".brag-book-gallery-case-grid");
+					const cards = document.querySelectorAll(".brag-book-gallery-case-card[data-card=\"true\"]");
 					const buttons = document.querySelectorAll(".grid-btn");
 
 					if (grid && cards.length > 0) {
@@ -4706,7 +4730,7 @@ final class Shortcodes {
 		}
 
 		// Header section with navigation and title
-		$html .= '<div class="brag-book-gallery-case-header-section">';
+		$html .= '<div class="brag-book-gallery-brag-book-gallery-case-header-section">';
 
 		// Back to gallery link
 		$html .= '<div class="brag-book-gallery-case-navigation">';
@@ -4714,7 +4738,7 @@ final class Shortcodes {
 		$html .= '</div>';
 
 		// Case header with title
-		$html .= '<div class="brag-book-gallery-case-header">';
+		$html .= '<div class="brag-book-gallery-brag-book-gallery-case-header">';
 		$html .= '<h1 class="brag-book-gallery-case-title">';
 		$html .= esc_html( $procedure_name );
 		if ( ! empty( $case_id ) ) {
@@ -4725,17 +4749,17 @@ final class Shortcodes {
 		$html .= '</div>';
 
 		// Main content container
-		$html .= '<div class="brag-book-gallery-case-content">';
+		$html .= '<div class="brag-book-gallery-brag-book-gallery-case-content">';
 
 		// Images section - now takes full width at top
 		$html .= '<div class="brag-book-gallery-case-images-section">';
-		$html .= '<h2 class="section-title">Before & After Photos</h2>';
+		$html .= '<h2 class="brag-book-gallery-section-title">Before & After Photos</h2>';
 		$html .= '<div class="brag-book-gallery-case-images-grid">';
 
 		if ( ! empty( $case_data['photoSets'] ) && is_array( $case_data['photoSets'] ) ) {
 			$image_count = count( $case_data['photoSets'] );
 			$grid_class = $image_count === 1 ? 'single-image' : ( $image_count === 2 ? 'two-images' : 'multiple-images' );
-			$html .= '<div class="case-images-container ' . esc_attr( $grid_class ) . '">';
+			$html .= '<div class="brag-book-gallery-case-images-container ' . esc_attr( $grid_class ) . '">';
 
 			foreach ( $case_data['photoSets'] as $index => $photo ) {
 				if ( ! empty( $photo['postProcessedImageLocation'] ) ) {
@@ -4770,8 +4794,8 @@ final class Shortcodes {
 			}
 			$html .= '</div>';
 		} else {
-			$html .= '<div class="no-images-container">';
-			$html .= '<p class="no-images">No images available for this case.</p>';
+			$html .= '<div class="brag-book-gallery-no-images-container">';
+			$html .= '<p class="brag-book-gallery-no-images">No images available for this case.</p>';
 			$html .= '</div>';
 		}
 		$html .= '</div>';
@@ -4779,7 +4803,7 @@ final class Shortcodes {
 
 		// Details section - now below images in a card layout
 		$html .= '<div class="brag-book-gallery-case-details-section">';
-		$html .= '<div class="case-details-grid">';
+		$html .= '<div class="brag-book-gallery-case-details-grid">';
 
 		// Procedures performed card
 		if ( ! empty( $case_data['procedures'] ) && is_array( $case_data['procedures'] ) ) {
@@ -4788,7 +4812,7 @@ final class Shortcodes {
 			$html .= '<h3 class="card-title">Procedures Performed</h3>';
 			$html .= '</div>';
 			$html .= '<div class="card-content">';
-			$html .= '<div class="procedures-badges-list">';
+			$html .= '<div class="brag-book-gallery-procedure-badges-list">';
 			foreach ( $case_data['procedures'] as $procedure ) {
 				if ( ! empty( $procedure['name'] ) ) {
 					$html .= '<span class="procedure-badge">' . esc_html( $procedure['name'] ) . '</span>';
@@ -4809,41 +4833,41 @@ final class Shortcodes {
 
 		// Ethnicity
 		if ( ! empty( $case_data['ethnicity'] ) ) {
-			$html .= '<div class="info-item">';
-			$html .= '<span class="info-label">Ethnicity</span>';
-			$html .= '<span class="info-value">' . esc_html( $case_data['ethnicity'] ) . '</span>';
+			$html .= '<div class="brag-book-gallery-info-item">';
+			$html .= '<span class="brag-book-gallery-info-label">Ethnicity</span>';
+			$html .= '<span class="brag-book-gallery-info-value">' . esc_html( $case_data['ethnicity'] ) . '</span>';
 			$html .= '</div>';
 		}
 
 		// Gender
 		if ( ! empty( $case_data['gender'] ) ) {
-			$html .= '<div class="info-item">';
-			$html .= '<span class="info-label">Gender</span>';
-			$html .= '<span class="info-value">' . esc_html( ucfirst( $case_data['gender'] ) ) . '</span>';
+			$html .= '<div class="brag-book-gallery-info-item">';
+			$html .= '<span class="brag-book-gallery-info-label">Gender</span>';
+			$html .= '<span class="brag-book-gallery-info-value">' . esc_html( ucfirst( $case_data['gender'] ) ) . '</span>';
 			$html .= '</div>';
 		}
 
 		// Age
 		if ( ! empty( $case_data['age'] ) ) {
-			$html .= '<div class="info-item">';
-			$html .= '<span class="info-label">Age</span>';
-			$html .= '<span class="info-value">' . esc_html( $case_data['age'] ) . ' years</span>';
+			$html .= '<div class="brag-book-gallery-info-item">';
+			$html .= '<span class="brag-book-gallery-info-label">Age</span>';
+			$html .= '<span class="brag-book-gallery-info-value">' . esc_html( $case_data['age'] ) . ' years</span>';
 			$html .= '</div>';
 		}
 
 		// Height
 		if ( ! empty( $case_data['height'] ) ) {
-			$html .= '<div class="info-item">';
-			$html .= '<span class="info-label">Height</span>';
-			$html .= '<span class="info-value">' . esc_html( $case_data['height'] ) . '</span>';
+			$html .= '<div class="brag-book-gallery-info-item">';
+			$html .= '<span class="brag-book-gallery-info-label">Height</span>';
+			$html .= '<span class="brag-book-gallery-info-value">' . esc_html( $case_data['height'] ) . '</span>';
 			$html .= '</div>';
 		}
 
 		// Weight
 		if ( ! empty( $case_data['weight'] ) ) {
-			$html .= '<div class="info-item">';
-			$html .= '<span class="info-label">Weight</span>';
-			$html .= '<span class="info-value">' . esc_html( $case_data['weight'] ) . ' lbs</span>';
+			$html .= '<div class="brag-book-gallery-info-item">';
+			$html .= '<span class="brag-book-gallery-info-label">Weight</span>';
+			$html .= '<span class="brag-book-gallery-info-value">' . esc_html( $case_data['weight'] ) . ' lbs</span>';
 			$html .= '</div>';
 		}
 
@@ -4865,9 +4889,9 @@ final class Shortcodes {
 					$html .= '<div class="procedure-details-grid">';
 					foreach ( $details as $label => $value ) {
 						if ( ! empty( $value ) ) {
-							$html .= '<div class="info-item">';
-							$html .= '<span class="info-label">' . esc_html( $label ) . '</span>';
-							$html .= '<span class="info-value">' . esc_html( $value ) . '</span>';
+							$html .= '<div class="brag-book-gallery-info-item">';
+							$html .= '<span class="brag-book-gallery-info-label">' . esc_html( $label ) . '</span>';
+							$html .= '<span class="brag-book-gallery-info-value">' . esc_html( $value ) . '</span>';
 							$html .= '</div>';
 						}
 					}
@@ -4893,9 +4917,9 @@ final class Shortcodes {
 			$html .= '</div>';
 		}
 
-		$html .= '</div>'; // End case-details-grid
+		$html .= '</div>'; // End brag-book-gallery-case-details-grid
 		$html .= '</div>'; // End case-details-section
-		$html .= '</div>'; // End case-content
+		$html .= '</div>'; // End brag-book-gallery-case-content
 		$html .= '</div>'; // End main container
 
 		return $html;
@@ -4920,7 +4944,7 @@ final class Shortcodes {
 
 		global $wpdb;
 
-		// Clear all BRAG Book Gallery transients
+		// Clear all BRAG book Gallery transients
 		$query = "
 			DELETE FROM {$wpdb->options}
 			WHERE option_name LIKE '%transient_brag_book_cases_%'

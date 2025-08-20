@@ -1,0 +1,13 @@
+@charset "UTF-8";
+
+// -----------------------------------------------------------------------------
+// components / carousel pagination
+// -----------------------------------------------------------------------------
+
+.brag-book-gallery-carousel-pagination {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	gap: calc( 2 * var(--wp--custom--brag-book-gallery--spacer) );
+	margin-block-start: calc( 4 * var(--wp--custom--brag-book-gallery--spacer) );
+}

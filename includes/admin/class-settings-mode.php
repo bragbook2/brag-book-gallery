@@ -21,7 +21,7 @@ if ( ! defined( 'WPINC' ) ) {
 /**
  * Mode Settings Class
  *
- * Central interface for managing BRAG Book Gallery operating modes and transitions.
+ * Central interface for managing BRAG book Gallery operating modes and transitions.
  * This class provides the primary interface for switching between JavaScript and
  * Local modes while managing the configuration and data migration aspects.
  *
@@ -115,7 +115,7 @@ class Settings_Mode extends Settings_Base {
 					<p>
 						<?php
 						if ( $current_mode === 'javascript' ) {
-							esc_html_e( 'Content is loaded dynamically from the BRAG Book API. URLs are virtual and galleries update in real-time.', 'brag-book-gallery' );
+							esc_html_e( 'Content is loaded dynamically from the BRAG book API. URLs are virtual and galleries update in real-time.', 'brag-book-gallery' );
 						} else {
 							esc_html_e( 'Content is stored locally in WordPress. Galleries use native post types and taxonomies for better SEO and performance.', 'brag-book-gallery' );
 						}
