@@ -5,6 +5,7 @@
 // -----------------------------------------------------------------------------
 
 .brag-book-gallery-admin-wrap {
+
 	/* Slate (Primary neutrals) */
 	--slate-50: #f8fafc;
 	--slate-100: #f1f5f9;
@@ -19,9 +20,8 @@
 	--slate-950: #020617;
 
 	/* Brand Primary (custom dark) */
-	--primary-DEFAULT: #161a1b;
-	--primary-dark: #0a0c0d;
-	--primary-light: #2a2e2f;
+	--brag-book-gallery-primary: #D94540;
+	--brag-book-gallery-white: #FFF;
 
 	/* Blue (Accent) */
 	--blue-50: #eff6ff;
@@ -186,8 +186,8 @@
 	--z-50: 50;
 	--z-auto: auto;
 
-	max-inline-size: var(--space-320); /* 1280px */
-	margin-inline: auto;
+	position: relative;
+	margin-inline-start: calc( -1 * var(--space-6) );
 	padding-inline: var(--space-6);
 	padding-block: var(--space-6);
 
@@ -196,8 +196,13 @@
 		outline-offset: 2px;
 		border-radius: var(--rounded-sm);
 	}
+}
 
-	@media (max-width: 768px) {
-		padding-inline: var(--space-4);
-	}
+.brag-book-gallery-admin-container {
+	max-inline-size: var(--space-320); /* 1280px */
+	background-color: var(--brag-book-gallery-white);
+	padding: var(--space-6);
+	box-sizing: border-box;
+	border-radius: 0.8rem;
+	box-shadow: var(--shadow-sm);
 }

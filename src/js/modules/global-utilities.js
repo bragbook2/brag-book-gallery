@@ -727,7 +727,6 @@ window.updateFilteredCount = function(shown, total) {
 	if (!resultsEl) {
 		resultsEl = document.createElement('div');
 		resultsEl.className = 'brag-book-gallery-filter-results';
-		resultsEl.style.cssText = 'padding: 10px; background: #f0f0f0; margin: 10px 0; border-radius: 4px;';
 		const grid = document.querySelector('.brag-book-gallery-case-grid') ||
 		             document.querySelector('.brag-book-gallery-case-grid');
 		if (grid && grid.parentNode) {
@@ -748,6 +747,8 @@ window.updateFilteredCount = function(shown, total) {
 
 // Clear all procedure filters
 window.clearProcedureFilters = function() {
+	console.log('Clearing all procedure filters');
+	
 	const checkboxes = document.querySelectorAll('.brag-book-gallery-filter-option input');
 	checkboxes.forEach(checkbox => {
 		checkbox.checked = false;
@@ -778,6 +779,50 @@ window.clearProcedureFilters = function() {
 	const toggle = document.querySelector('.brag-book-gallery-filter-toggle');
 	if (toggle) {
 		toggle.classList.remove('has-active-filters');
+	}
+	
+	// Clear all filter badges from the DOM
+	const badgesContainer = document.getElementById('brag-book-gallery-filter-badges');
+	if (badgesContainer) {
+		console.log('Clearing filter badges container');
+		badgesContainer.innerHTML = '';
+	}
+	
+	// Also remove any individual badges that might exist elsewhere
+	const allBadges = document.querySelectorAll('.brag-book-gallery-filter-badge');
+	allBadges.forEach(badge => {
+		console.log('Removing badge:', badge);
+		badge.remove();
+	});
+	
+	// Hide the Clear All button since no filters are active
+	const clearAllButton = document.getElementById('brag-book-gallery-clear-all');
+	if (clearAllButton) {
+		clearAllButton.style.display = 'none';
+	}
+	
+	// Trigger any app-level badge updates if the app instance exists
+	if (window.bragBookGalleryApp && typeof window.bragBookGalleryApp.updateDemographicBadges === 'function') {
+		console.log('Calling app updateDemographicBadges with empty filters');
+		window.bragBookGalleryApp.updateDemographicBadges({
+			age: [],
+			gender: [],
+			ethnicity: [],
+			height: [],
+			weight: []
+		});
+	}
+	
+	// Also call the global update function if it exists
+	if (typeof window.updateDemographicFilterBadges === 'function') {
+		console.log('Calling global updateDemographicFilterBadges with empty filters');
+		window.updateDemographicFilterBadges({
+			age: [],
+			gender: [],
+			ethnicity: [],
+			height: [],
+			weight: []
+		});
 	}
 };
 

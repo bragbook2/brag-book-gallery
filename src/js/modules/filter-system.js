@@ -206,6 +206,10 @@ class FilterSystem {
 			hasNudity: hasNudity // Store nudity flag
 		});
 
+		// Update filter badges
+		console.log('Updating filter badges after filter activation');
+		this.updateFilterBadges();
+
 		// Get the base URL from the gallery wrapper data attribute
 		const galleryWrapper = document.querySelector('.brag-book-gallery-wrapper');
 		let basePath = galleryWrapper?.dataset.baseUrl || window.location.pathname;
@@ -302,6 +306,9 @@ class FilterSystem {
 				procedureIds: filterLink.dataset.procedureIds,
 				count: parseInt(filterLink.dataset.procedureCount || '0')
 			});
+
+			// Update filter badges
+			this.updateFilterBadges();
 		}
 	}
 
@@ -481,6 +488,138 @@ class FilterSystem {
 				console.error('Filter loading error:', error);
 				galleryContent.innerHTML = '<div class="brag-book-gallery-error">Failed to load filtered content. Please try again.</div>';
 			});
+	}
+
+	/**
+	 * Update filter badges display based on active filters
+	 */
+	updateFilterBadges() {
+		console.log('updateFilterBadges called, activeFilters size:', this.activeFilters.size);
+		const badgesContainer = document.getElementById('brag-book-gallery-filter-badges');
+		const clearAllButton = document.getElementById('brag-book-gallery-clear-all');
+		
+		console.log('Badges container found:', !!badgesContainer);
+		console.log('Clear all button found:', !!clearAllButton);
+		
+		if (!badgesContainer || !clearAllButton) return;
+
+		// Clear existing procedure badges (but preserve demographic badges)
+		const existingProcedureBadges = badgesContainer.querySelectorAll('[data-filter-key]');
+		existingProcedureBadges.forEach(badge => badge.remove());
+
+		// Check if there are active procedure filters
+		const hasActiveProcedureFilters = this.activeFilters.size > 0;
+		
+		if (hasActiveProcedureFilters) {
+			// Add procedure badges
+			console.log('Creating badges for procedure filters:', Array.from(this.activeFilters.entries()));
+			this.activeFilters.forEach((filter, key) => {
+				const badge = this.createFilterBadge(filter.category, filter.procedure, key);
+				console.log('Created badge for:', filter.category, filter.procedure);
+				badgesContainer.appendChild(badge);
+			});
+		}
+
+		// Check if there are any active filters (demographic or procedure)
+		const demographicBadges = badgesContainer.querySelectorAll('[data-filter-category]');
+		const hasAnyActiveFilters = hasActiveProcedureFilters || demographicBadges.length > 0;
+		
+		// Show/hide clear all button based on any active filters
+		clearAllButton.style.display = hasAnyActiveFilters ? 'inline-block' : 'none';
+	}
+
+	/**
+	 * Create a filter badge element
+	 */
+	createFilterBadge(category, procedure, filterKey) {
+		const badge = document.createElement('div');
+		badge.className = 'brag-book-gallery-filter-badge';
+		badge.setAttribute('data-filter-key', filterKey);
+
+		// Format the display text based on category
+		let displayText = '';
+		switch(category) {
+			case 'age':
+				displayText = `Age: ${procedure}`;
+				break;
+			case 'gender':
+				displayText = `Gender: ${procedure}`;
+				break;
+			case 'ethnicity':
+				displayText = `Ethnicity: ${procedure}`;
+				break;
+			case 'procedure':
+				displayText = procedure;
+				break;
+			default:
+				displayText = `${category}: ${procedure}`;
+		}
+
+		badge.innerHTML = `
+			<span class="brag-book-gallery-badge-text">${displayText}</span>
+			<button class="brag-book-gallery-badge-remove" aria-label="Remove ${displayText} filter">
+				<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
+					<path d="M13 1L1 13M1 1l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+				</svg>
+			</button>
+		`;
+
+		// Add click handler to remove button
+		const removeButton = badge.querySelector('.brag-book-gallery-badge-remove');
+		removeButton.addEventListener('click', (e) => {
+			e.preventDefault();
+			this.removeFilterBadge(filterKey);
+		});
+
+		return badge;
+	}
+
+	/**
+	 * Remove a specific filter badge
+	 */
+	removeFilterBadge(filterKey) {
+		// Remove from active filters
+		const filter = this.activeFilters.get(filterKey);
+		if (filter) {
+			this.activeFilters.delete(filterKey);
+			
+			// Remove active class from the corresponding filter link
+			const filterLink = document.querySelector(
+				`[data-category="${filter.category}"][data-procedure="${filter.procedure}"]`
+			);
+			if (filterLink) {
+				filterLink.classList.remove('brag-book-gallery-active');
+			}
+
+			// Update badges display
+			this.updateFilterBadges();
+
+			// Trigger filter change event
+			this.options.onFilterChange(this.activeFilters);
+		}
+	}
+
+	/**
+	 * Clear all active filters
+	 */
+	clearAllFilters() {
+		// Remove active classes from all filter links
+		const filterLinks = this.container?.querySelectorAll('.brag-book-gallery-nav-list-submenu-link');
+		filterLinks?.forEach(link => {
+			link.classList.remove('brag-book-gallery-active');
+		});
+
+		// Clear active filters
+		this.activeFilters.clear();
+
+		// Update badges display
+		this.updateFilterBadges();
+
+		// Trigger filter change event
+		this.options.onFilterChange(this.activeFilters);
+
+		// Reset URL to base
+		window.history.pushState({}, '', window.location.pathname);
 	}
 }
 

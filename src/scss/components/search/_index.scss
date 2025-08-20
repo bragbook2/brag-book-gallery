@@ -106,7 +106,7 @@
 	padding: calc( 2 * var(--wp--custom--brag-book-gallery--spacer) ) calc( 4 * var(--wp--custom--brag-book-gallery--spacer) );
 	cursor: pointer;
 	transition: var(--wp--custom--brag-book-gallery--transition);
-	border-bottom: 1px solid var(---wp--custom--brag-book-gallery--color--lightest-grey);
+	border-bottom: 1px solid var(--wp--custom--brag-book-gallery--color--lightest-grey);
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
@@ -119,7 +119,7 @@
 
 	&:hover,
 	&[aria-selected=true] {
-		background: var(---wp--custom--brag-book-gallery--color--lightest-grey);
+		background: var(--wp--custom--brag-book-gallery--color--lightest-grey);
 		padding-left: 1.25rem;
 
 		.brag-book-gallery-search-item-count {
@@ -145,14 +145,14 @@
 	}
 
 	&-name {
-		font-size: var(--wp--custom--brag-book-gallery--font-size--sm);
+		font-size: var(--wp--custom--brag-book-gallery--text-sm);
 		font-weight: var(--wp--custom--brag-book-gallery--font-weight--semibold);
 		color: var(--wp--custom--brag-book-gallery--color--black);
 		line-height: 1.25
 	}
 
 	&-count {
-		font-size: var(--wp--custom--brag-book-gallery--font-size--sm);
+		font-size: var(--wp--custom--brag-book-gallery--text-xs);
 		color: var(--wp--custom--brag-book-gallery--color--grey);
 		font-weight: var(--wp--custom--brag-book-gallery--font-weight--regular);
 		display: inline-flex;
@@ -166,7 +166,7 @@
 	}
 
 	&-category {
-		font-size: var(--wp--custom--brag-book-gallery--font-size--sm);
+		font-size: var(--wp--custom--brag-book-gallery--text-xs);
 		color: var(--wp--custom--brag-book-gallery--color--grey);
 		background: var(--wp--custom--brag-book-gallery--color--lighter-grey);
 		padding: var(--wp--custom--brag-book-gallery--spacer) calc( 2 * var(--wp--custom--brag-book-gallery--spacer) );
@@ -188,7 +188,7 @@
 	padding: calc( 6 * var(--wp--custom--brag-book-gallery--spacer) );
 	text-align: center;
 	color: var(--wp--custom--brag-book-gallery--color--grey);
-	font-size: var(--wp--custom--brag-book-gallery--font-size--sm);
+	font-size: var(--wp--custom--brag-book-gallery--text-sm);
 }
 
 @keyframes slideDown {

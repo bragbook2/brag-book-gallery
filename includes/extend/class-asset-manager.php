@@ -99,6 +99,37 @@ final class Asset_Manager {
 	}
 
 	/**
+	 * Enqueue carousel assets.
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	public static function enqueue_carousel_assets(): void {
+		$plugin_url = Setup::get_plugin_url();
+		$plugin_path = Setup::get_plugin_path();
+		$version = self::VERSION;
+
+		// Enqueue carousel styles
+		wp_enqueue_style(
+			handle: 'brag-book-carousel',
+			src: $plugin_url . 'assets/css/brag-book-carousel.css',
+			deps: [],
+			ver: $version
+		);
+
+		// Enqueue GSAP library if not already loaded
+		if ( ! wp_script_is( 'gsap', 'enqueued' ) ) {
+			wp_enqueue_script(
+				handle: 'gsap',
+				src: 'https://cdnjs.cloudflare.com/ajax/libs/gsap/' . self::GSAP_VERSION . '/gsap.min.js',
+				deps: [],
+				ver: self::GSAP_VERSION,
+				args: true
+			);
+		}
+	}
+
+	/**
 	 * Localize gallery script with configuration data.
 	 *
 	 * @since 3.0.0

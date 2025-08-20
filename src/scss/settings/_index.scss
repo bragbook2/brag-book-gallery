@@ -8,20 +8,22 @@
 @use 'header';
 
 @use 'accordion';
+@use 'alerts-notices';
 @use 'badge';
 @use 'buttons';
 @use 'cards';
+@use 'dashboard';
 @use 'debug';
 @use 'dialog';
 @use 'forms';
 @use 'log';
+@use 'notice';
 @use 'section';
 @use 'seo';
 @use 'status';
 @use 'steps';
 @use 'tabs';
 @use 'toggle';
-@use 'vertical-tabs';
-@use 'dashboard';
-
 @use 'utilities';
+
+@use 'animations';

@@ -308,3 +308,77 @@ details[open] .brag-book-gallery-filter-toggle.has-active-filters {
 	font-weight: 500;
 	display: none
 }
+
+// Filter Badges (replaces the "Showing X of Y" count)
+.brag-book-gallery-active-filters {
+	display: flex;
+	align-items: center;
+	gap: .75rem;
+	flex-wrap: wrap;
+	margin: 0;
+}
+
+.brag-book-gallery-filter-badges {
+	display: flex;
+	align-items: center;
+	gap: .5rem;
+	flex-wrap: wrap;
+}
+
+.brag-book-gallery-filter-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: .375rem;
+	padding: .25rem .5rem;
+	background-color: var(--wp--custom--brag-book-gallery--color--light-grey);
+	color: var(--wp--custom--brag-book-gallery--color--black);
+	font-size: var(--wp--custom--brag-book-gallery--text-sm);
+	line-height: calc( 4 * var(--wp--custom--brag-book-gallery--spacer) );
+	font-weight: var(--wp--custom--brag-book-gallery--font-weight--semibold);
+	border-radius: var(--wp--custom--brag-book-gallery--rounded);
+	transition: all 150ms ease;
+	max-width: fit-content;
+}
+
+.brag-book-gallery-badge-text {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	max-width: 150px;
+}
+
+.brag-book-gallery-badge-remove {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+	margin: 0;
+	background: none;
+	border: none;
+	cursor: pointer;
+	border-radius: 50%;
+	color: currentColor;
+	transition: var(--wp--custom--brag-book-gallery--transition);
+
+	svg {
+		width: calc( 2.5 * var(--wp--custom--brag-book-gallery--spacer) );
+		height: calc( 2.5 * var(--wp--custom--brag-book-gallery--spacer) );
+	}
+}
+
+.brag-book-gallery-clear-all-filters {
+	display: inline-flex;
+	align-items: center;
+	background-color: transparent;
+	border-radius: .375rem;
+	color: #1E4AE9;
+	font-size: var(--wp--custom--brag-book-gallery--text-sm);
+	cursor: pointer;
+	text-decoration: none;
+	transition: all 150ms ease;
+	border: 0 none;
+
+	&:focus {
+		outline: none;
+	}
+}

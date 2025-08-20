@@ -392,21 +392,22 @@ class Settings_Dashboard extends Settings_Base {
 		);
 		if ( $mode_selected ) $completed++;
 
-		// Step 3: Configure Mode Settings
+		// Step 3: Configure Gallery Settings
 		$mode_configured = false;
 		if ( $mode_selected ) {
 			if ( $current_mode === 'javascript' ) {
-				$js_settings = get_option( 'brag_book_gallery_javascript_configured', false );
-				$mode_configured = $js_settings;
+				// For JavaScript mode, check if gallery page slug is configured
+				$gallery_slugs = get_option( 'brag_book_gallery_gallery_page_slug', array() );
+				$mode_configured = ! empty( $gallery_slugs );
 				$settings_url = admin_url( 'admin.php?page=brag-book-gallery-javascript' );
 			} else {
-				$local_settings = get_option( 'brag_book_gallery_local_configured', false );
-				$mode_configured = $local_settings;
+				// For Local mode, just check if mode is selected (local mode doesn't need additional config)
+				$mode_configured = true;
 				$settings_url = admin_url( 'admin.php?page=brag-book-gallery-local' );
 			}
 		}
 		$steps[] = array(
-			'title' => __( 'Configure Mode Settings', 'brag-book-gallery' ),
+			'title' => __( 'Configure Gallery Settings', 'brag-book-gallery' ),
 			'description' => sprintf(
 				/* translators: %s: Current mode name */
 				__( 'Complete the %s mode configuration.', 'brag-book-gallery' ),
@@ -424,16 +425,40 @@ class Settings_Dashboard extends Settings_Base {
 			$gallery_count = wp_count_posts( 'brag_gallery' );
 			$has_gallery = ( $gallery_count->publish ?? 0 ) > 0;
 		} else if ( $current_mode === 'javascript' ) {
-			// For JavaScript mode, check if any pages have been configured
-			$gallery_pages = get_option( 'brag_book_gallery_stored_pages', array() );
-			$has_gallery = ! empty( $gallery_pages );
+			// For JavaScript mode, check if gallery page exists (page with shortcode or configured slug)
+			$gallery_slugs = get_option( 'brag_book_gallery_gallery_page_slug', array() );
+			if ( ! empty( $gallery_slugs ) ) {
+				// Check if a page exists with the gallery slug
+				foreach ( $gallery_slugs as $slug ) {
+					$page = get_page_by_path( $slug );
+					if ( $page && $page->post_status === 'publish' ) {
+						$has_gallery = true;
+						break;
+					}
+				}
+				// Also check for pages with the shortcode
+				if ( ! $has_gallery ) {
+					global $wpdb;
+					$pages_with_shortcode = $wpdb->get_var( 
+						"SELECT COUNT(*) FROM {$wpdb->posts} 
+						WHERE post_content LIKE '%[brag_book_gallery%' 
+						AND post_status = 'publish' 
+						AND post_type IN ('page', 'post')"
+					);
+					$has_gallery = $pages_with_shortcode > 0;
+				}
+			}
 		}
 		$steps[] = array(
 			'title' => __( 'Create Your First Gallery', 'brag-book-gallery' ),
 			'description' => __( 'Add your first before & after gallery to a page or post.', 'brag-book-gallery' ),
 			'completed' => $has_gallery,
-			'action_url' => admin_url( 'admin.php?page=brag-book-gallery-help' ),
-			'action_text' => __( 'View Guide', 'brag-book-gallery' ),
+			'action_url' => $current_mode === 'local' 
+				? admin_url( 'post-new.php?post_type=brag_gallery' )
+				: admin_url( 'admin.php?page=brag-book-gallery-help' ),
+			'action_text' => $current_mode === 'local' 
+				? __( 'Create Gallery', 'brag-book-gallery' )
+				: __( 'View Guide', 'brag-book-gallery' ),
 		);
 		if ( $has_gallery ) $completed++;
 

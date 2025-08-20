@@ -83,135 +83,243 @@ final class HTML_Renderer {
 	 * @param array $sidebar_data Sidebar data from API.
 	 * @return string Filters HTML.
 	 */
-	private static function generate_filters_from_sidebar( array $sidebar_data ): string {
-		if ( empty( $sidebar_data['data'] ) || ! is_array( $sidebar_data['data'] ) ) {
+	public static function generate_filters_from_sidebar( array $sidebar_data ): string {
+		$html = '';
+
+		// Check if we have valid sidebar data
+		if ( empty( $sidebar_data ) || ! isset( $sidebar_data['data'] ) || ! is_array( $sidebar_data['data'] ) ) {
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'BRAG book Gallery: No sidebar data, using default filters' );
+			}
 			return self::generate_default_filters();
 		}
 
-		$categories = $sidebar_data['data'];
-		$all_procedures = [];
-
-		// Collect all procedures from all categories
-		foreach ( $categories as $category ) {
-			if ( ! empty( $category['procedures'] ) && is_array( $category['procedures'] ) ) {
-				foreach ( $category['procedures'] as $procedure ) {
-					if ( ! empty( $procedure['slug'] ) && ! empty( $procedure['title'] ) ) {
-						$all_procedures[] = $procedure;
-					}
-				}
-			}
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( 'BRAG book Gallery: Generating filters for ' . count( $sidebar_data['data'] ) . ' categories' );
 		}
 
-		// Sort procedures alphabetically by title
-		usort( $all_procedures, fn( $a, $b ) => strcasecmp( $a['title'], $b['title'] ) );
+		// Process each category from the sidebar data
+		foreach ( $sidebar_data['data'] as $category_data ) {
+			if ( ! isset( $category_data['name'] ) || ! isset( $category_data['procedures'] ) ) {
+				continue;
+			}
 
-		ob_start();
-		?>
-		<div class="brag-book-gallery-nav" role="navigation" aria-label="<?php esc_attr_e( 'Gallery Filters', 'brag-book-gallery' ); ?>">
-			<div class="brag-book-gallery-nav-button">
-				<h3 class="brag-book-gallery-filter-title">
-					<?php esc_html_e( 'Filter by Procedure', 'brag-book-gallery' ); ?>
-				</h3>
-				<button
-					type="button"
-					class="brag-book-gallery-nav-button__toggle"
-					aria-expanded="false"
-					aria-controls="filter-content"
-					aria-label="<?php esc_attr_e( 'Toggle filters', 'brag-book-gallery' ); ?>">
-					<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor" class="toggle-icon" aria-hidden="true">
-						<path d="M480-357.85 253.85-584 296-626.15l184 184 184-184L706.15-584 480-357.85Z"/>
-					</svg>
-				</button>
-			</div>
-			<div id="filter-content" class="brag-book-gallery-nav-list-submenu" aria-hidden="true">
-				<div class="brag-book-gallery-nav-list__item all-procedures">
-					<ul class="brag-book-gallery-filter-list" role="list">
-						<li class="brag-book-gallery-nav-list-submenu__item" role="listitem">
-							<a href="#"
-							   class="brag-book-gallery-nav-link active"
-							   data-filter="all"
-							   role="button"
-							   aria-pressed="true"
-							   aria-label="<?php esc_attr_e( 'Show all procedures', 'brag-book-gallery' ); ?>">
-								<?php esc_html_e( 'All Procedures', 'brag-book-gallery' ); ?>
-								<span class="brag-book-gallery-filter-count" aria-label="<?php esc_attr_e( 'Total cases', 'brag-book-gallery' ); ?>">
-									(0)
-								</span>
-							</a>
-						</li>
-						<?php foreach ( $all_procedures as $procedure ) : ?>
-							<li class="brag-book-gallery-nav-list-submenu__item" role="listitem">
-								<a href="#"
-								   class="brag-book-gallery-nav-link"
-								   data-filter="<?php echo esc_attr( $procedure['slug'] ); ?>"
-								   data-procedure-id="<?php echo esc_attr( $procedure['id'] ?? '' ); ?>"
-								   role="button"
-								   aria-pressed="false"
-								   aria-label="<?php printf( esc_attr__( 'Filter by %s', 'brag-book-gallery' ), esc_attr( $procedure['title'] ) ); ?>">
-									<?php echo esc_html( $procedure['title'] ); ?>
-									<span class="brag-book-gallery-filter-count"
-										  data-procedure="<?php echo esc_attr( $procedure['slug'] ); ?>"
-										  aria-label="<?php printf( esc_attr__( 'Cases for %s', 'brag-book-gallery' ), esc_attr( $procedure['title'] ) ); ?>">
-										(0)
-									</span>
-								</a>
-							</li>
-						<?php endforeach; ?>
-					</ul>
-				</div>
-			</div>
-		</div>
-		<?php
-		return ob_get_clean();
+			$category_name = sanitize_text_field( $category_data['name'] );
+			$procedures = $category_data['procedures'];
+			$total_cases = absint( $category_data['totalCase'] ?? 0 );
+
+			// Skip if no procedures
+			if ( empty( $procedures ) || ! is_array( $procedures ) ) {
+				continue;
+			}
+
+			// Generate category slug for data attributes
+			$category_slug = sanitize_title( $category_name );
+
+			// Build the filter group HTML using sprintf for better readability
+			$html .= sprintf(
+				'<div class="brag-book-gallery-nav-list__item" data-category="%s" data-expanded="false">',
+				esc_attr( $category_slug )
+			);
+
+			$html .= sprintf(
+				'<button class="brag-book-gallery-nav-button" data-category="%1$s" data-expanded="false" aria-label="%2$s">',
+				esc_attr( $category_slug ),
+				/* translators: %s: Category name */
+				esc_attr( sprintf( __( '%s category filter', 'brag-book-gallery' ), $category_name ) )
+			);
+
+			$html .= '<div class="brag-book-gallery-nav-button__label">';
+			$html .= sprintf(
+				'<span>%s</span>',
+				esc_html( $category_name )
+			);
+			$html .= sprintf(
+				'<span class="brag-book-gallery-filter-count">(%d)</span>',
+				$total_cases
+			);
+			$html .= '</div>';
+			$html .= '<svg class="brag-book-gallery-nav-button__toggle" xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="currentColor"><path d="M480-344 240-584l56-56 184 184 184-184 56 56-240 240Z"/></svg>';
+			$html .= '</button>';
+			$html .= '<ul class="brag-book-gallery-nav-list-submenu" data-expanded="false">';
+
+			// Add procedures as filter options
+			foreach ( $procedures as $procedure ) {
+				$procedure_name = sanitize_text_field( $procedure['name'] ?? '' );
+				$procedure_slug = sanitize_title( $procedure['slugName'] ?? $procedure_name );
+				$case_count = absint( $procedure['totalCase'] ?? 0 );
+				$procedure_ids = $procedure['ids'] ?? array();
+
+				// Debug: Log procedure details
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG && stripos( $procedure_name, 'liposuction' ) !== false ) {
+					error_log( 'Sidebar procedure debug - ' . $procedure_name . ':' );
+					error_log( '  Procedure IDs: ' . print_r( $procedure_ids, true ) );
+					error_log( '  Case count: ' . $case_count );
+					error_log( '  Full procedure data: ' . print_r( $procedure, true ) );
+				}
+
+				// Ensure procedure IDs are properly sanitized
+				if ( is_array( $procedure_ids ) ) {
+					$procedure_ids = array_map( 'absint', $procedure_ids );
+					$procedure_id_str = implode( ',', $procedure_ids );
+				} else {
+					$procedure_id_str = '';
+				}
+
+				if ( empty( $procedure_name ) ) {
+					continue;
+				}
+
+				// Get current page URL and append filter path (procedure only, no category)
+				$current_url = get_permalink();
+				$base_path = parse_url( $current_url, PHP_URL_PATH ) ?: '';
+				$filter_url = rtrim( $base_path, '/' ) . '/' . $procedure_slug;
+
+				// Wrap in a li for semantic list
+				$html .= '<li class="brag-book-gallery-nav-list-submenu__item">';
+
+				// Check if procedure has nudity
+				$has_nudity = ! empty( $procedure['nudity'] ) ? 'true' : 'false';
+
+				$html .= sprintf(
+					'<a href="%1$s" class="brag-book-gallery-nav-link" data-category="%2$s" data-procedure="%3$s" data-procedure-ids="%4$s" data-procedure-count="%5$d" data-nudity="%6$s">',
+					esc_url( $filter_url ),
+					esc_attr( $category_slug ),
+					esc_attr( $procedure_slug ),
+					esc_attr( $procedure_id_str ),
+					$case_count,
+					esc_attr( $has_nudity )
+				);
+
+				$html .= sprintf(
+					'<span class="brag-book-gallery-filter-option-label">%1$s</span>',
+					esc_html( $procedure_name )
+				);
+
+				$html .= sprintf(
+					'<span class="brag-book-gallery-filter-count">(%d)</span>',
+					$case_count
+				);
+
+				$html .= '</a>';
+				$html .= '</li>';
+			}
+
+			$html .= '</ul>';
+			$html .= '</div>';
+		}
+
+		// Always add the favorites filter at the end using sprintf
+		$favorites_html = sprintf(
+			'<div class="brag-book-gallery-nav-list__item" data-category="%s" data-expanded="false">',
+			'favorites'
+		);
+
+		$favorites_html .= sprintf(
+			'<button class="brag-book-gallery-nav-button" data-category="%1$s" data-expanded="false" aria-label="%2$s">',
+			'favorites',
+			esc_attr__( 'My Favorites filter', 'brag-book-gallery' )
+		);
+
+		$favorites_html .= '<div class="brag-book-gallery-nav-button__label">';
+		$favorites_html .= sprintf(
+			'<span>%s</span>',
+			esc_html__( 'My Favorites', 'brag-book-gallery' )
+		);
+		$favorites_html .= '<span class="brag-book-gallery-filter-count" data-favorites-count>(0)</span>';
+		$favorites_html .= '</div>';
+		$favorites_html .= '<svg class="brag-book-gallery-nav-button__toggle" xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="currentColor"><path d="M480-344 240-584l56-56 184 184 184-184 56 56-240 240Z"/></svg>';
+		$favorites_html .= '</button>';
+		$favorites_html .= '<div class="brag-book-gallery-nav-list-submenu" data-expanded="false">';
+		$favorites_html .= '<!-- Favorites List -->';
+		$favorites_html .= '<div class="brag-book-gallery-favorites-list" id="favorites-list">';
+		$favorites_html .= '<div class="brag-book-gallery-favorites-grid" id="favorites-grid">';
+		$favorites_html .= '<!-- Favorites will be dynamically added here -->';
+		$favorites_html .= '</div>';
+		$favorites_html .= sprintf(
+			'<p class="brag-book-gallery-favorites-empty" id="favorites-empty">%s</p>',
+			esc_html__( 'No favorites yet. Click the heart icon on images to add.', 'brag-book-gallery' )
+		);
+		$favorites_html .= '</div>';
+		$favorites_html .= '</div>';
+		$favorites_html .= '</div>';
+
+		$html .= $favorites_html;
+
+		return $html;
 	}
 
 	/**
 	 * Generate default filters when no sidebar data is available.
 	 *
 	 * @since 3.0.0
-	 * @return string Default filters HTML.
+	 * @return string Generated HTML for default filters.
 	 */
-	private static function generate_default_filters(): string {
-		ob_start();
-		?>
-		<div class="brag-book-gallery-nav" role="navigation" aria-label="<?php esc_attr_e( 'Gallery Filters', 'brag-book-gallery' ); ?>">
-			<div class="brag-book-gallery-nav-button">
-				<h3 class="brag-book-gallery-filter-title">
-					<?php esc_html_e( 'Filter by Procedure', 'brag-book-gallery' ); ?>
-				</h3>
-				<button
-					type="button"
-					class="brag-book-gallery-nav-button__toggle"
-					aria-expanded="false"
-					aria-controls="filter-content"
-					aria-label="<?php esc_attr_e( 'Toggle filters', 'brag-book-gallery' ); ?>">
-					<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor" class="toggle-icon" aria-hidden="true">
-						<path d="M480-357.85 253.85-584 296-626.15l184 184 184-184L706.15-584 480-357.85Z"/>
-					</svg>
-				</button>
-			</div>
-			<div id="filter-content" class="brag-book-gallery-nav-list-submenu" aria-hidden="true">
-				<div class="brag-book-gallery-nav-list__item">
-					<ul class="brag-book-gallery-filter-list" role="list">
-						<li class="brag-book-gallery-nav-list-submenu__item" role="listitem">
-							<a href="#"
-							   class="brag-book-gallery-nav-link active"
-							   data-filter="all"
-							   role="button"
-							   aria-pressed="true"
-							   aria-label="<?php esc_attr_e( 'Show all procedures', 'brag-book-gallery' ); ?>">
-								<?php esc_html_e( 'All Procedures', 'brag-book-gallery' ); ?>
-								<span class="brag-book-gallery-filter-count" aria-label="<?php esc_attr_e( 'Total cases', 'brag-book-gallery' ); ?>">
-									(0)
-								</span>
-							</a>
-						</li>
-					</ul>
-				</div>
-			</div>
-		</div>
-		<?php
-		return ob_get_clean();
+	public static function generate_default_filters(): string {
+		$html = '';
+
+		// Add default body filter
+		$html .= sprintf(
+			'<div class="brag-book-gallery-nav-list__item" data-category="%s" data-expanded="false">',
+			'body'
+		);
+
+		$html .= sprintf(
+			'<button class="brag-book-gallery-nav-button" data-category="%1$s" data-expanded="false" aria-label="%2$s">',
+			'body',
+			esc_attr__( 'Body category filter', 'brag-book-gallery' )
+		);
+
+		$html .= '<div class="brag-book-gallery-nav-button__label">';
+		$html .= sprintf(
+			'<span>%s</span>',
+			esc_html__( 'Body', 'brag-book-gallery' )
+		);
+		$html .= '<span class="brag-book-gallery-filter-count">(0)</span>';
+		$html .= '</div>';
+		$html .= '<svg class="brag-book-gallery-nav-button__toggle" xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="currentColor"><path d="M480-344 240-584l56-56 184 184 184-184 56 56-240 240Z"/></svg>';
+		$html .= '</button>';
+		$html .= '<div class="brag-book-gallery-nav-list-submenu" data-expanded="false">';
+		$html .= sprintf(
+			'<p class="no-procedures">%s</p>',
+			esc_html__( 'No procedures available', 'brag-book-gallery' )
+		);
+		$html .= '</div>';
+		$html .= '</div>';
+
+		// Add favorites filter
+		$html .= sprintf(
+			'<div class="brag-book-gallery-nav-list__item" data-category="%s" data-expanded="false">',
+			'favorites'
+		);
+
+		$html .= sprintf(
+			'<button class="brag-book-gallery-nav-button" data-category="%1$s" data-expanded="false" aria-label="%2$s">',
+			'favorites',
+			esc_attr__( 'My Favorites filter', 'brag-book-gallery' )
+		);
+
+		$html .= '<div class="brag-book-gallery-nav-button__label">';
+		$html .= sprintf(
+			'<span>%s</span>',
+			esc_html__( 'My Favorites', 'brag-book-gallery' )
+		);
+		$html .= '<span class="brag-book-gallery-filter-count" data-favorites-count>(0)</span>';
+		$html .= '</div>';
+		$html .= '<svg class="brag-book-gallery-nav-button__toggle" xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="currentColor"><path d="M480-344 240-584l56-56 184 184 184-184 56 56-240 240Z"/></svg>';
+		$html .= '</button>';
+		$html .= '<div class="brag-book-gallery-nav-list-submenu" data-expanded="false">';
+		$html .= '<div class="brag-book-gallery-favorites-list" id="favorites-list">';
+		$html .= '<div class="brag-book-gallery-favorites-grid" id="favorites-grid"></div>';
+		$html .= sprintf(
+			'<p class="brag-book-gallery-favorites-empty" id="favorites-empty">%s</p>',
+			esc_html__( 'No favorites yet. Click the heart icon on images to add.', 'brag-book-gallery' )
+		);
+		$html .= '</div>';
+		$html .= '</div>';
+		$html .= '</div>';
+
+		return $html;
 	}
 
 	/**
@@ -258,7 +366,7 @@ final class HTML_Renderer {
 	 * @param bool   $has_nudity Whether content has nudity.
 	 * @return string Carousel item HTML.
 	 */
-	private static function generate_single_carousel_item(
+	public static function generate_single_carousel_item(
 		array $case,
 		int $index,
 		string $base_path,
@@ -291,77 +399,8 @@ final class HTML_Renderer {
 		return ob_get_clean();
 	}
 
-	/**
-	 * Generate nudity warning HTML.
-	 *
-	 * @since 3.0.0
-	 * @return string Nudity warning HTML.
-	 */
-	private static function generate_nudity_warning(): string {
-		return sprintf(
-			'<div class="brag-book-gallery-nudity-warning" aria-label="%s">
-				<p>%s</p>
-			</div>',
-			esc_attr__( 'Content warning', 'brag-book-gallery' ),
-			esc_html__( 'This content contains nudity', 'brag-book-gallery' )
-		);
-	}
 
-	/**
-	 * Generate carousel image HTML.
-	 *
-	 * @since 3.0.0
-	 * @param string $image_url Image URL.
-	 * @param bool   $has_nudity Whether image has nudity.
-	 * @return string Image HTML.
-	 */
-	private static function generate_carousel_image( string $image_url, bool $has_nudity ): string {
-		$blur_class = $has_nudity ? ' brag-book-gallery-nudity-blur' : '';
-		return sprintf(
-			'<picture class="brag-book-gallery-image%s">
-				<img src="%s" alt="%s" loading="lazy" />
-			</picture>',
-			esc_attr( $blur_class ),
-			esc_url( $image_url ),
-			esc_attr__( 'Gallery image', 'brag-book-gallery' )
-		);
-	}
 
-	/**
-	 * Generate item action buttons HTML.
-	 *
-	 * @since 3.0.0
-	 * @param string $item_id Item ID.
-	 * @return string Actions HTML.
-	 */
-	private static function generate_item_actions( string $item_id ): string {
-		ob_start();
-		?>
-		<div class="brag-book-gallery-item-actions">
-			<button type="button"
-					class="brag-book-gallery-heart-btn"
-					data-case-id="<?php echo esc_attr( $item_id ); ?>"
-					aria-label="<?php esc_attr_e( 'Add to favorites', 'brag-book-gallery' ); ?>"
-					title="<?php esc_attr_e( 'Add to favorites', 'brag-book-gallery' ); ?>">
-				<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-					<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-				</svg>
-			</button>
-			<button type="button"
-					class="brag-book-gallery-share-btn"
-					data-case-id="<?php echo esc_attr( $item_id ); ?>"
-					aria-label="<?php esc_attr_e( 'Share this case', 'brag-book-gallery' ); ?>"
-					title="<?php esc_attr_e( 'Share', 'brag-book-gallery' ); ?>">
-				<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-					<path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
-					<polyline points="16 6 12 2 8 6"/>
-					<line x1="12" y1="2" x2="12" y2="15"/>
-				</svg>
-			</button>
-		</div>
-		<?php
-		return ob_get_clean();
-	}
 
 	/**
 	 * Generate carousel items from data.
@@ -395,7 +434,7 @@ final class HTML_Renderer {
 	 * @param int   $slide_index Slide index.
 	 * @return string Slide HTML.
 	 */
-	private static function generate_carousel_slide_from_photo( array $photo, array $case, int $slide_index ): string {
+	public static function generate_carousel_slide_from_photo( array $photo, array $case, int $slide_index ): string {
 		$photo_id = $photo['id'] ?? '';
 		$image_url = $photo['url'] ?? '';
 		$case_id = $case['id'] ?? '';
@@ -505,5 +544,304 @@ final class HTML_Renderer {
 			esc_url( $image_url ),
 			esc_attr( $alt_text )
 		);
+	}
+
+	/**
+	 * Generate nudity warning overlay.
+	 *
+	 * @since 3.0.0
+	 * @return string Generated HTML for nudity warning.
+	 */
+	public static function generate_nudity_warning(): string {
+		return sprintf(
+			'<div class="brag-book-carousel-nudity-warning" aria-label="%s">
+				<div class="nudity-warning-content">
+					<span class="nudity-warning-text">%s</span>
+				</div>
+			</div>',
+			esc_attr__( 'This image contains nudity', 'brag-book-gallery' ),
+			esc_html__( 'Nudity Warning', 'brag-book-gallery' )
+		);
+	}
+
+	/**
+	 * Generate carousel image element.
+	 *
+	 * @since 3.0.0
+	 * @param string $image_url Image URL.
+	 * @param bool   $has_nudity Whether image contains nudity.
+	 * @return string Generated HTML for image.
+	 */
+	public static function generate_carousel_image( string $image_url, bool $has_nudity ): string {
+		$blur_class = $has_nudity ? ' brag-book-carousel-nudity-blur' : '';
+		return sprintf(
+			'<picture class="brag-book-carousel-image%s">
+				<img src="%s" alt="%s" loading="lazy" />
+			</picture>',
+			esc_attr( $blur_class ),
+			esc_url( $image_url ),
+			esc_attr__( 'Before and after procedure photo', 'brag-book-gallery' )
+		);
+	}
+
+	/**
+	 * Generate item action buttons.
+	 *
+	 * @since 3.0.0
+	 * @param string $item_id Item identifier.
+	 * @return string Generated HTML for action buttons.
+	 */
+	public static function generate_item_actions( string $item_id ): string {
+		return sprintf(
+			'<div class="brag-book-carousel-actions">
+				<button class="brag-book-gallery-favorite-btn" data-case-id="%1$s" aria-label="%2$s" title="%3$s">
+					<svg class="heart-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+					</svg>
+				</button>
+				<button class="brag-book-gallery-share-btn" data-case-id="%1$s" aria-label="%4$s" title="%5$s">
+					<svg class="share-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<circle cx="18" cy="5" r="3"></circle>
+						<circle cx="6" cy="12" r="3"></circle>
+						<circle cx="18" cy="19" r="3"></circle>
+						<line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+						<line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+					</svg>
+				</button>
+			</div>',
+			esc_attr( $item_id ),
+			esc_attr__( 'Add to favorites', 'brag-book-gallery' ),
+			esc_attr__( 'Add to favorites', 'brag-book-gallery' ),
+			esc_attr__( 'Share this image', 'brag-book-gallery' ),
+			esc_attr__( 'Share this image', 'brag-book-gallery' )
+		);
+	}
+
+	/**
+	 * Render case details HTML.
+	 *
+	 * @since 3.0.0
+	 * @param array $case_data Case data array.
+	 * @return string Rendered HTML.
+	 */
+	public static function render_case_details_html( array $case_data ): string {
+		$html = '<div class="brag-book-gallery-case-detail-view">';
+
+		// Get procedure name and case ID
+		$procedure_name = '';
+		$procedure_slug = '';
+		if ( ! empty( $case_data['procedures'] ) && is_array( $case_data['procedures'] ) ) {
+			$first_procedure = reset( $case_data['procedures'] );
+			$procedure_name = $first_procedure['name'] ?? '';
+			$procedure_slug = sanitize_title( $procedure_name );
+		}
+		$case_id = $case_data['id'] ?? '';
+
+		// Get current page URL for back link
+		$current_url = get_permalink();
+		if ( ! empty( $current_url ) ) {
+			$base_path = parse_url( $current_url, PHP_URL_PATH ) ?: '';
+			// Remove the case-specific part of the URL to get back to gallery
+			$base_path = preg_replace( '/\/[^\/]+\/[^\/]+\/?$/', '', $base_path );
+		} else {
+			// Fallback to getting gallery page from options
+			$gallery_slugs = get_option( 'brag_book_gallery_gallery_page_slug', [] );
+			$base_path = ! empty( $gallery_slugs[0] ) ? '/' . $gallery_slugs[0] : '/before-after';
+		}
+
+		// Header section with navigation and title
+		$html .= '<div class="brag-book-gallery-brag-book-gallery-case-header-section">';
+
+		// Back to gallery link
+		$html .= '<div class="brag-book-gallery-case-navigation">';
+		$html .= '<a href="' . esc_url( $base_path ) . '" class="brag-book-gallery-back-link">← Back to Gallery</a>';
+		$html .= '</div>';
+
+		// Case header with title
+		$html .= '<div class="brag-book-gallery-brag-book-gallery-case-header">';
+		$html .= '<h1 class="brag-book-gallery-case-title">';
+		$html .= esc_html( $procedure_name );
+		if ( ! empty( $case_id ) ) {
+			$html .= ' <span class="case-id">#' . esc_html( $case_id ) . '</span>';
+		}
+		$html .= '</h1>';
+		$html .= '</div>';
+		$html .= '</div>';
+
+		// Main content container
+		$html .= '<div class="brag-book-gallery-brag-book-gallery-case-content">';
+
+		// Images section - now takes full width at top
+		$html .= '<div class="brag-book-gallery-case-images-section">';
+		$html .= '<h2 class="brag-book-gallery-section-title">Before & After Photos</h2>';
+		$html .= '<div class="brag-book-gallery-case-images-grid">';
+
+		if ( ! empty( $case_data['photoSets'] ) && is_array( $case_data['photoSets'] ) ) {
+			$image_count = count( $case_data['photoSets'] );
+			$grid_class = $image_count === 1 ? 'single-image' : ( $image_count === 2 ? 'two-images' : 'multiple-images' );
+			$html .= '<div class="brag-book-gallery-case-images-container ' . esc_attr( $grid_class ) . '">';
+
+			foreach ( $case_data['photoSets'] as $index => $photo ) {
+				if ( ! empty( $photo['postProcessedImageLocation'] ) ) {
+					$image_url = $photo['postProcessedImageLocation'];
+					$image_id = 'case_' . $case_id . '_image_' . $index;
+
+					$html .= '<div class="brag-book-gallery-case-image-container">';
+					$html .= '<picture class="brag-book-gallery-case-image">';
+					$html .= '<source srcset="' . esc_url( $image_url ) . '" type="image/jpeg">';
+					$html .= '<img src="' . esc_url( $image_url ) . '" alt="' . esc_attr( $procedure_name . ' - Case ' . $case_id ) . '" loading="lazy">';
+					$html .= '</picture>';
+					$html .= '<div class="brag-book-gallery-item-actions">';
+					$html .= '<button class="brag-book-gallery-heart-btn" data-favorited="false" data-item-id="' . esc_attr( $image_id ) . '" data-image-url="' . esc_attr( $image_url ) . '" aria-label="Add to favorites">';
+					$html .= '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24">';
+					$html .= '<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>';
+					$html .= '</svg>';
+					$html .= '</button>';
+
+					// Only show share button if sharing is enabled
+					$enable_sharing = get_option( 'brag_book_gallery_enable_sharing', 'no' );
+					if ( $enable_sharing === 'yes' ) {
+						$html .= '<button class="brag-book-gallery-share-btn" data-item-id="' . esc_attr( $image_id ) . '" data-image-url="' . esc_attr( $image_url ) . '" aria-label="Share this image">';
+						$html .= '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor">';
+						$html .= '<path d="M672.22-100q-44.91 0-76.26-31.41-31.34-31.41-31.34-76.28 0-6 4.15-29.16L284.31-404.31q-14.46 15-34.36 23.5t-42.64 8.5q-44.71 0-76.01-31.54Q100-435.39 100-480q0-44.61 31.3-76.15 31.3-31.54 76.01-31.54 22.74 0 42.64 8.5 19.9 8.5 34.36 23.5l284.46-167.08q-2.38-7.38-3.27-14.46-.88-7.08-.88-15.08 0-44.87 31.43-76.28Q627.49-860 672.4-860t76.25 31.44Q780-797.13 780-752.22q0 44.91-31.41 76.26-31.41 31.34-76.28 31.34-22.85 0-42.5-8.69Q610.15-662 595.69-677L311.23-509.54q2.38 7.39 3.27 14.46.88 7.08.88 15.08t-.88 15.08q-.89 7.07-3.27 14.46L595.69-283q14.46-15 34.12-23.69 19.65-8.69 42.5-8.69 44.87 0 76.28 31.43Q780-252.51 780-207.6t-31.44 76.25Q717.13-100 672.22-100Zm.09-60q20.27 0 33.98-13.71Q720-187.42 720-207.69q0-20.27-13.71-33.98-13.71-13.72-33.98-13.72-20.27 0-33.98 13.72-13.72 13.71-13.72 33.98 0 20.27 13.72 33.98Q652.04-160 672.31-160Zm-465-272.31q20.43 0 34.25-13.71 13.83-13.71 13.83-33.98 0-20.27-13.83-33.98-13.82-13.71-34.25-13.71-20.11 0-33.71 13.71Q160-500.27 160-480q0 20.27 13.6 33.98 13.6 13.71 33.71 13.71Zm465-272.3q20.27 0 33.98-13.72Q720-732.04 720-752.31q0-20.27-13.71-33.98Q692.58-800 672.31-800q-20.27 0-33.98 13.71-13.72 13.71-13.72 33.98 0 20.27 13.72 33.98 13.71 13.72 33.98 13.72Zm0 496.92ZM207.69-480Zm464.62-272.31Z"/>';
+						$html .= '</svg>';
+						$html .= '</button>';
+					}
+
+					$html .= '</div>';
+					$html .= '</div>';
+				}
+			}
+			$html .= '</div>';
+		} else {
+			$html .= '<div class="brag-book-gallery-no-images-container">';
+			$html .= '<p class="brag-book-gallery-no-images">No images available for this case.</p>';
+			$html .= '</div>';
+		}
+		$html .= '</div>';
+		$html .= '</div>';
+
+		// Details section - now below images in a card layout
+		$html .= '<div class="brag-book-gallery-case-details-section">';
+		$html .= '<div class="brag-book-gallery-case-details-grid">';
+
+		// Procedures performed card
+		if ( ! empty( $case_data['procedures'] ) && is_array( $case_data['procedures'] ) ) {
+			$html .= '<div class="case-detail-card procedures-performed-card">';
+			$html .= '<div class="card-header">';
+			$html .= '<h3 class="card-title">Procedures Performed</h3>';
+			$html .= '</div>';
+			$html .= '<div class="card-content">';
+			$html .= '<div class="brag-book-gallery-procedure-badges-list">';
+			foreach ( $case_data['procedures'] as $procedure ) {
+				if ( ! empty( $procedure['name'] ) ) {
+					$html .= '<span class="procedure-badge">' . esc_html( $procedure['name'] ) . '</span>';
+				}
+			}
+			$html .= '</div>';
+			$html .= '</div>';
+			$html .= '</div>';
+		}
+
+		// Patient details card
+		$html .= '<div class="case-detail-card patient-details-card">';
+		$html .= '<div class="card-header">';
+		$html .= '<h3 class="card-title">Patient Information</h3>';
+		$html .= '</div>';
+		$html .= '<div class="card-content">';
+		$html .= '<div class="patient-info-grid">';
+
+		// Ethnicity
+		if ( ! empty( $case_data['ethnicity'] ) ) {
+			$html .= '<div class="brag-book-gallery-info-item">';
+			$html .= '<span class="brag-book-gallery-info-label">Ethnicity</span>';
+			$html .= '<span class="brag-book-gallery-info-value">' . esc_html( $case_data['ethnicity'] ) . '</span>';
+			$html .= '</div>';
+		}
+
+		// Gender
+		if ( ! empty( $case_data['gender'] ) ) {
+			$html .= '<div class="brag-book-gallery-info-item">';
+			$html .= '<span class="brag-book-gallery-info-label">Gender</span>';
+			$html .= '<span class="brag-book-gallery-info-value">' . esc_html( ucfirst( $case_data['gender'] ) ) . '</span>';
+			$html .= '</div>';
+		}
+
+		// Age
+		if ( ! empty( $case_data['age'] ) ) {
+			$html .= '<div class="brag-book-gallery-info-item">';
+			$html .= '<span class="brag-book-gallery-info-label">Age</span>';
+			$html .= '<span class="brag-book-gallery-info-value">' . esc_html( $case_data['age'] ) . ' years</span>';
+			$html .= '</div>';
+		}
+
+		// Height
+		if ( ! empty( $case_data['height'] ) ) {
+			$html .= '<div class="brag-book-gallery-info-item">';
+			$html .= '<span class="brag-book-gallery-info-label">Height</span>';
+			$html .= '<span class="brag-book-gallery-info-value">' . esc_html( $case_data['height'] ) . '</span>';
+			$html .= '</div>';
+		}
+
+		// Weight
+		if ( ! empty( $case_data['weight'] ) ) {
+			$html .= '<div class="brag-book-gallery-info-item">';
+			$html .= '<span class="brag-book-gallery-info-label">Weight</span>';
+			$html .= '<span class="brag-book-gallery-info-value">' . esc_html( $case_data['weight'] ) . ' lbs</span>';
+			$html .= '</div>';
+		}
+
+		$html .= '</div>';
+		$html .= '</div>';
+		$html .= '</div>';
+
+		// Procedure details card
+		if ( ! empty( $case_data['procedureDetails'] ) && is_array( $case_data['procedureDetails'] ) ) {
+			$html .= '<div class="case-detail-card procedure-details-card">';
+			$html .= '<div class="card-header">';
+			$html .= '<h3 class="card-title">Procedure Details</h3>';
+			$html .= '</div>';
+			$html .= '<div class="card-content">';
+
+			// Iterate through each procedure's details
+			foreach ( $case_data['procedureDetails'] as $procedure_id => $details ) {
+				if ( is_array( $details ) && ! empty( $details ) ) {
+					$html .= '<div class="procedure-details-grid">';
+					foreach ( $details as $label => $value ) {
+						if ( ! empty( $value ) ) {
+							$html .= '<div class="brag-book-gallery-info-item">';
+							$html .= '<span class="brag-book-gallery-info-label">' . esc_html( $label ) . '</span>';
+							$html .= '<span class="brag-book-gallery-info-value">' . esc_html( $value ) . '</span>';
+							$html .= '</div>';
+						}
+					}
+					$html .= '</div>';
+				}
+			}
+
+			$html .= '</div>';
+			$html .= '</div>';
+		}
+
+		// Case details card
+		if ( ! empty( $case_data['details'] ) ) {
+			$html .= '<div class="case-detail-card case-notes-card">';
+			$html .= '<div class="card-header">';
+			$html .= '<h3 class="card-title">Case Notes</h3>';
+			$html .= '</div>';
+			$html .= '<div class="card-content">';
+			$html .= '<div class="case-details-content">';
+			$html .= wp_kses_post( $case_data['details'] );
+			$html .= '</div>';
+			$html .= '</div>';
+			$html .= '</div>';
+		}
+
+		$html .= '</div>'; // End brag-book-gallery-case-details-grid
+		$html .= '</div>'; // End case-details-section
+		$html .= '</div>'; // End brag-book-gallery-case-content
+		$html .= '</div>'; // End main container
+
+		return $html;
 	}
 }

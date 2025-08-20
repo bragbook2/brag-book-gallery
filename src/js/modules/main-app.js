@@ -14,6 +14,8 @@ import { NudityWarningManager, PhoneFormatter } from './utilities.js';
 class BRAGbookGalleryApp {
 	constructor() {
 		this.components = {};
+		// Store a global reference to the app instance
+		window.bragBookGalleryApp = this;
 		this.init();
 	}
 
@@ -96,6 +98,12 @@ class BRAGbookGalleryApp {
 				window.location.href = url;
 			}
 		});
+
+		// Set up Clear All button
+		this.initializeClearAllButton();
+
+		// Initialize demographic filter badge integration
+		this.initializeDemographicFilterBadges();
 	}
 
 	initializeMobileMenu() {
@@ -111,9 +119,12 @@ class BRAGbookGalleryApp {
 	}
 
 	initializeSearch() {
-		const searchWrapper = document.querySelector('.brag-book-gallery-search-wrapper');
-		if (searchWrapper) {
-			this.components.searchAutocomplete = new SearchAutocomplete(searchWrapper, {
+		// Initialize all search wrappers (both desktop and mobile)
+		const searchWrappers = document.querySelectorAll('.brag-book-gallery-search-wrapper');
+		this.components.searchAutocompletes = [];
+		
+		searchWrappers.forEach((searchWrapper) => {
+			const searchInstance = new SearchAutocomplete(searchWrapper, {
 				minChars: 1,
 				debounceDelay: 200,
 				maxResults: 10,
@@ -122,32 +133,8 @@ class BRAGbookGalleryApp {
 					// The checkbox is automatically checked by the SearchAutocomplete class
 				}
 			});
-		}
-
-		// Also initialize mobile search
-		const mobileSearchWrapper = document.querySelector('.brag-book-gallery-search-wrapper');
-		if (mobileSearchWrapper) {
-			// Create a modified search autocomplete for mobile
-			const mobileInput = mobileSearchWrapper.querySelector('.brag-book-gallery-search-input');
-			const mobileDropdown = mobileSearchWrapper.querySelector('.brag-book-gallery-search-dropdown');
-
-			// Update the wrapper to have the correct elements
-			if (mobileInput && mobileDropdown) {
-				// Temporarily rename the mobile elements to match what SearchAutocomplete expects
-				mobileInput.classList.add('brag-book-gallery-search-input');
-				mobileDropdown.classList.add('brag-book-gallery-search-dropdown');
-
-				this.components.mobileSearchAutocomplete = new SearchAutocomplete(mobileSearchWrapper, {
-					minChars: 1,
-					debounceDelay: 200,
-					maxResults: 10,
-					onSelect: (result) => {
-						console.log('Selected procedure (mobile):', result);
-						// The checkbox is automatically checked by the SearchAutocomplete class
-					}
-				});
-			}
-		}
+			this.components.searchAutocompletes.push(searchInstance);
+		});
 	}
 
 	initializeShareManager() {
@@ -191,17 +178,22 @@ class BRAGbookGalleryApp {
 	}
 
 	initializeCaseLinks() {
+		// Temporarily disable JavaScript case link interception to use native WordPress page loading
+		// This allows case detail pages to load via WordPress rewrite rules instead of AJAX
+		// TODO: Re-enable dynamic loading once AJAX case details are working properly
+		
 		// Add click handlers to case links to load content dynamically
 		document.addEventListener('click', (e) => {
 			const caseLink = e.target.closest('.brag-book-gallery-case-link');
 			if (caseLink) {
-				e.preventDefault();
-				const caseId = caseLink.dataset.caseId;
-				const url = caseLink.href;
+				// Temporarily comment out preventDefault to allow normal page navigation
+				// e.preventDefault();
+				// const caseId = caseLink.dataset.caseId;
+				// const url = caseLink.href;
 
-				if (caseId) {
-					this.loadCaseDetails(caseId, url);
-				}
+				// if (caseId) {
+				// 	this.loadCaseDetails(caseId, url);
+				// }
 			}
 		});
 
@@ -557,6 +549,485 @@ class BRAGbookGalleryApp {
 				}
 			}, 300);
 		}, 5000);
+	}
+
+	initializeClearAllButton() {
+		// Try multiple approaches to find and attach the clear all button
+		const setupClearAllHandler = () => {
+			const clearAllButton = document.getElementById('brag-book-gallery-clear-all');
+			console.log('Clear All button found:', clearAllButton);
+			
+			if (clearAllButton) {
+				// Remove any existing listeners
+				clearAllButton.removeEventListener('click', this.handleClearAll);
+				
+				// Add new listener
+				clearAllButton.addEventListener('click', this.handleClearAll.bind(this));
+				console.log('Clear All button event listener attached');
+				return true;
+			} else {
+				console.log('Clear All button not found - ID: brag-book-gallery-clear-all');
+				return false;
+			}
+		};
+
+		// Try immediately
+		if (!setupClearAllHandler()) {
+			// If not found, try again after a short delay (for AJAX loaded content)
+			setTimeout(() => {
+				console.log('Retrying Clear All button setup...');
+				setupClearAllHandler();
+			}, 1000);
+		}
+
+		// Also set up a global click handler as backup
+		document.addEventListener('click', (e) => {
+			if (e.target && e.target.id === 'brag-book-gallery-clear-all') {
+				console.log('Global click handler caught Clear All button');
+				e.preventDefault();
+				this.handleClearAll(e);
+			}
+		});
+	}
+
+	handleClearAll(e) {
+		e.preventDefault();
+		console.log('Clear All button clicked - handling...');
+		
+		// Clear demographic filter checkboxes
+		console.log('Clearing demographic filter checkboxes');
+		this.clearDemographicFilters();
+	}
+
+	/**
+	 * Initialize demographic filter badge integration
+	 */
+	initializeDemographicFilterBadges() {
+		// Create a global function that demographic filters can call
+		window.updateDemographicFilterBadges = (activeFilters) => {
+				this.updateDemographicBadges(activeFilters);
+		};
+
+		// Monitor demographic filter changes if the system exists
+		if (window.applyProcedureFilters) {
+		}
+
+		// Monitor demographic filter checkboxes for changes
+		this.monitorDemographicFilters();
+		
+		// Add global delegated event handler for badge remove buttons
+		document.addEventListener('click', (e) => {
+			// Check if the clicked element is a remove button or inside one
+			const removeButton = e.target.closest('.brag-book-gallery-badge-remove');
+			if (removeButton) {
+				console.log('Global handler: Badge remove button clicked!');
+				e.preventDefault();
+				e.stopPropagation();
+				
+				// Get the parent badge element
+				const badge = removeButton.closest('.brag-book-gallery-filter-badge');
+				if (badge) {
+					const category = badge.getAttribute('data-filter-category');
+					const value = badge.getAttribute('data-filter-value');
+					
+					console.log('Global handler: Removing filter', { category, value });
+					
+					if (category && value) {
+						this.removeDemographicFilter(category, value);
+					}
+				}
+			}
+		});
+	}
+
+	/**
+	 * Monitor demographic filter checkboxes and update badges
+	 */
+	monitorDemographicFilters() {
+		
+		// Override console.log to capture filter logs and extract data
+		const originalConsoleLog = console.log;
+		console.log = (...args) => {
+			// Call original console.log first
+			originalConsoleLog.apply(console, args);
+			
+			// Check if this is an "Active filters" log message
+			if (args.length >= 2 && args[0] === 'Active filters:' && typeof args[1] === 'object') {
+				this.updateDemographicBadges(args[1]);
+			}
+		};
+
+		// Also try direct checkbox monitoring
+		document.addEventListener('change', (e) => {
+			if (e.target.type === 'checkbox' && e.target.closest('.brag-book-gallery-filter-group')) {
+				console.log('Checkbox changed - target:', e.target);
+				
+				// Manually build activeFilters from checked checkboxes
+				setTimeout(() => {
+					const activeFilters = this.buildActiveFiltersFromDOM();
+					console.log('Built activeFilters from DOM:', activeFilters);
+					this.updateDemographicBadges(activeFilters);
+				}, 100);
+			}
+		});
+
+		// Set up periodic check as backup
+		let lastFilterState = '';
+		setInterval(() => {
+			const currentState = this.buildActiveFiltersFromDOM();
+			const currentStateStr = JSON.stringify(currentState);
+			
+			if (currentStateStr !== lastFilterState) {
+				console.log('Detected filter change via periodic check:', currentState);
+				this.updateDemographicBadges(currentState);
+				lastFilterState = currentStateStr;
+			}
+		}, 1000);
+	}
+
+	/**
+	 * Build activeFilters object by examining DOM checkboxes
+	 */
+	buildActiveFiltersFromDOM() {
+		const activeFilters = {
+			age: [],
+			gender: [],
+			ethnicity: [],
+			height: [],
+			weight: []
+		};
+
+		// Find all checked filter checkboxes
+		const checkboxes = document.querySelectorAll('.brag-book-gallery-filter-group input[type="checkbox"]:checked');
+		
+		checkboxes.forEach(checkbox => {
+			// Try to determine category from parent elements or data attributes
+			const filterGroup = checkbox.closest('.brag-book-gallery-filter-group');
+			const filterSummary = filterGroup?.querySelector('summary');
+			const groupText = filterSummary?.textContent?.toLowerCase() || '';
+			
+			// Get the filter value from label text
+			const label = checkbox.nextElementSibling;
+			const filterValue = label?.textContent?.trim() || checkbox.value || '';
+			
+			// Categorize based on group text or filter value
+			if (groupText.includes('age') || filterValue.includes('-')) {
+				activeFilters.age.push(filterValue);
+			} else if (groupText.includes('gender') || ['male', 'female'].some(g => filterValue.toLowerCase().includes(g))) {
+				activeFilters.gender.push(filterValue);
+			} else if (groupText.includes('ethnicity')) {
+				activeFilters.ethnicity.push(filterValue);
+			} else if (groupText.includes('height') || filterValue.includes('ft') || filterValue.includes("'")) {
+				activeFilters.height.push(filterValue);
+			} else if (groupText.includes('weight') || filterValue.includes('lbs') || filterValue.includes('kg')) {
+				activeFilters.weight.push(filterValue);
+			}
+		});
+
+		return activeFilters;
+	}
+
+	/**
+	 * Update badges for demographic filters
+	 */
+	updateDemographicBadges(activeFilters) {
+		const badgesContainer = document.getElementById('brag-book-gallery-filter-badges');
+		const clearAllButton = document.getElementById('brag-book-gallery-clear-all');
+		
+		if (!badgesContainer || !clearAllButton) return;
+
+		// Clear existing badges
+		badgesContainer.innerHTML = '';
+		let hasActiveFilters = false;
+
+		// Process demographic filters
+		if (activeFilters) {
+			Object.keys(activeFilters).forEach(category => {
+				const filters = activeFilters[category];
+				if (filters && filters.length > 0) {
+					hasActiveFilters = true;
+					filters.forEach(filterValue => {
+						const badge = this.createDemographicBadge(category, filterValue);
+						badgesContainer.appendChild(badge);
+					});
+				}
+			});
+		}
+
+		// Note: Procedure filters are handled separately by the FilterSystem class
+		// We only handle demographic filters (age, gender, etc.) in this method
+
+		// Check if there are any active filters (demographic or procedure)
+		const procedureBadges = badgesContainer.querySelectorAll('[data-filter-key]');
+		const hasAnyActiveFilters = hasActiveFilters || procedureBadges.length > 0;
+		
+		// Show/hide clear all button based on any active filters
+		clearAllButton.style.display = hasAnyActiveFilters ? 'inline-block' : 'none';
+	}
+
+	/**
+	 * Create a demographic filter badge
+	 */
+	createDemographicBadge(category, value) {
+		const badge = document.createElement('div');
+		badge.className = 'brag-book-gallery-filter-badge';
+		badge.setAttribute('data-filter-category', category);
+		badge.setAttribute('data-filter-value', value);
+
+		// Format display text - but store the original value
+		let displayText = '';
+		let originalValue = value; // Keep the original value for matching
+		
+		switch(category) {
+			case 'age':
+				displayText = `Age: ${value}`;
+				break;
+			case 'gender':
+				displayText = `Gender: ${value}`;
+				// Store just the gender value (Male/Female) without the prefix
+				originalValue = value.replace(/^(Male|Female)$/i, (match) => {
+					// Capitalize first letter
+					return match.charAt(0).toUpperCase() + match.slice(1).toLowerCase();
+				});
+				break;
+			case 'ethnicity':
+				displayText = `Ethnicity: ${value}`;
+				break;
+			case 'height':
+				displayText = `Height: ${value}`;
+				break;
+			case 'weight':
+				displayText = `Weight: ${value}`;
+				break;
+			default:
+				displayText = `${category}: ${value}`;
+		}
+
+		badge.innerHTML = `
+			<span class="brag-book-gallery-badge-text">${displayText}</span>
+			<button class="brag-book-gallery-badge-remove" aria-label="Remove ${displayText} filter">
+				<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
+					<path d="M13 1L1 13M1 1l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+				</svg>
+			</button>
+		`;
+
+		// Add click handler to remove button
+		const removeButton = badge.querySelector('.brag-book-gallery-badge-remove');
+		removeButton.addEventListener('click', (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+			console.log('Badge remove button clicked!', { category, value });
+			this.removeDemographicFilter(category, value);
+		});
+
+		return badge;
+	}
+
+	/**
+	 * Create a procedure filter badge
+	 */
+	createProcedureBadge(category, procedure, filterKey) {
+		const badge = document.createElement('div');
+		badge.className = 'brag-book-gallery-filter-badge';
+		badge.setAttribute('data-filter-key', filterKey);
+
+		let displayText = procedure; // Procedures just show the name
+
+		badge.innerHTML = `
+			<span class="brag-book-gallery-badge-text">${displayText}</span>
+			<button class="brag-book-gallery-badge-remove" aria-label="Remove ${displayText} filter">
+				<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
+					<path d="M13 1L1 13M1 1l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+				</svg>
+			</button>
+		`;
+
+		// Add click handler to remove button
+		const removeButton = badge.querySelector('.brag-book-gallery-badge-remove');
+		removeButton.addEventListener('click', (e) => {
+			e.preventDefault();
+			if (this.components.filterSystem) {
+				this.components.filterSystem.removeFilterBadge(filterKey);
+			}
+		});
+
+		return badge;
+	}
+
+	/**
+	 * Remove a demographic filter
+	 */
+	removeDemographicFilter(category, value) {
+		console.log(`Removing demographic filter: ${category} = ${value}`);
+		
+		// Find the checkbox directly using the data-filter-type attribute and value
+		let targetCheckbox = null;
+		
+		// Based on the HTML structure, checkboxes have data-filter-type attribute
+		// and the value attribute matches what we're looking for
+		const selector = `input[type="checkbox"][data-filter-type="${category}"][value="${value}"]`;
+		console.log('Looking for checkbox with selector:', selector);
+		
+		targetCheckbox = document.querySelector(selector);
+		
+		// If not found, try without quotes or with different case
+		if (!targetCheckbox) {
+			// Try to find any checkbox with the matching value in the category
+			const checkboxes = document.querySelectorAll(`input[type="checkbox"][data-filter-type="${category}"]`);
+			console.log(`Found ${checkboxes.length} checkboxes with data-filter-type="${category}"`);
+			
+			checkboxes.forEach(checkbox => {
+				const checkboxValue = checkbox.value;
+				const label = checkbox.nextElementSibling;
+				const labelText = label?.textContent?.trim() || '';
+				
+				console.log(`Checking: value="${checkboxValue}", label="${labelText}", looking for="${value}"`);
+				
+				// Match the value exactly or case-insensitively
+				if (checkboxValue === value || 
+					checkboxValue.toLowerCase() === value.toLowerCase() ||
+					labelText === value ||
+					labelText.toLowerCase() === value.toLowerCase()) {
+					targetCheckbox = checkbox;
+					console.log('Found matching checkbox!');
+				}
+			});
+		}
+		
+		// If still not found, try a broader search
+		if (!targetCheckbox) {
+			console.log('Trying broader search...');
+			// Look for checkboxes by ID pattern (e.g., procedure-filter-age-18-24)
+			const idPattern = `procedure-filter-${category}-${value}`.toLowerCase().replace(/\s+/g, '-');
+			targetCheckbox = document.getElementById(idPattern);
+			
+			if (targetCheckbox) {
+				console.log('Found checkbox by ID pattern:', idPattern);
+			}
+		}
+		
+		if (targetCheckbox) {
+			console.log('Unchecking checkbox:', targetCheckbox);
+			targetCheckbox.checked = false;
+			
+			// Trigger change event to update the filter system
+			const changeEvent = new Event('change', { bubbles: true });
+			targetCheckbox.dispatchEvent(changeEvent);
+			
+			// Also trigger input event as some handlers might listen to it
+			const inputEvent = new Event('input', { bubbles: true });
+			targetCheckbox.dispatchEvent(inputEvent);
+			
+			// Also manually trigger the filter update
+			setTimeout(() => {
+				const activeFilters = this.buildActiveFiltersFromDOM();
+				this.updateDemographicBadges(activeFilters);
+				
+				// Trigger any global filter update functions
+				if (typeof window.applyDemographicFilters === 'function') {
+					console.log('Calling applyDemographicFilters');
+					window.applyDemographicFilters();
+				}
+			}, 100);
+			
+			// Remove the badge immediately from DOM
+			const badge = document.querySelector(`.brag-book-gallery-filter-badge[data-filter-category="${category}"][data-filter-value="${value}"]`);
+			if (badge) {
+				console.log('Removing badge from DOM');
+				badge.remove();
+			}
+		} else {
+			console.warn(`Could not find checkbox for ${category}: ${value}`);
+			
+			// Log all available checkboxes for debugging
+			console.log('Available checkboxes with data-filter-type:');
+			const allCheckboxes = document.querySelectorAll('input[type="checkbox"][data-filter-type]');
+			allCheckboxes.forEach(cb => {
+				console.log(`  - Type: ${cb.getAttribute('data-filter-type')}, Value: ${cb.value}, ID: ${cb.id}`);
+			});
+		}
+	}
+
+	/**
+	 * Clear all demographic filters
+	 */
+	clearDemographicFilters() {
+		console.log('Starting to clear demographic filters...');
+		
+		// Find all checked checkboxes in filter groups with multiple selector patterns
+		const selectors = [
+			'.brag-book-gallery-filter-group input[type="checkbox"]:checked',
+			'input[type="checkbox"][data-filter-category]:checked',
+			'.brag-book-gallery-filter-option input[type="checkbox"]:checked'
+		];
+		
+		let totalCleared = 0;
+		
+		selectors.forEach(selector => {
+			const checkboxes = document.querySelectorAll(selector);
+			console.log(`Found ${checkboxes.length} checked checkboxes with selector: ${selector}`);
+			
+			checkboxes.forEach((checkbox) => {
+				console.log('Unchecking checkbox:', checkbox);
+				checkbox.checked = false;
+				checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+				totalCleared++;
+			});
+		});
+		
+		console.log(`Total checkboxes cleared: ${totalCleared}`);
+
+		// Also try to trigger any global filter clear functions
+		if (window.clearProcedureFilters) {
+			console.log('Calling global clearProcedureFilters function');
+			window.clearProcedureFilters();
+		}
+
+		// Force update badges to hide them
+		setTimeout(() => {
+			console.log('Updating badges to hide them');
+			this.updateDemographicBadges({
+				age: [],
+				gender: [],
+				ethnicity: [],
+				height: [],
+				weight: []
+			});
+		}, 100);
+	}
+
+	/**
+	 * Reload gallery content (clear all filters and show all cases)
+	 */
+	reloadGalleryContent() {
+		// Find the filtered gallery container
+		const filteredGallery = document.querySelector('.brag-book-gallery-filtered-results');
+		
+		if (filteredGallery) {
+			// Trigger AJAX reload with no filters
+			const formData = new FormData();
+			formData.append('action', 'brag_book_load_filtered_gallery');
+			formData.append('nonce', window.bragBookGalleryAjax?.nonce || '');
+			formData.append('procedure_ids', ''); // Empty procedure IDs = show all
+			formData.append('has_nudity', document.body.classList.contains('nudity-accepted') ? '1' : '0');
+
+			fetch(window.bragBookGalleryAjax?.ajax_url || '/wp-admin/admin-ajax.php', {
+				method: 'POST',
+				body: formData
+			})
+			.then(response => response.json())
+			.then(data => {
+				if (data.success) {
+					filteredGallery.innerHTML = data.data.html;
+				} else {
+					console.error('Failed to reload gallery:', data.data?.message);
+				}
+			})
+			.catch(error => {
+				console.error('Error reloading gallery:', error);
+			});
+		}
 	}
 }
 
