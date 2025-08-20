@@ -23,25 +23,25 @@
 		margin-block-start: var(--space-2);
 	}
 
-	&.brag-book-gallery-notice-info {
+	&.brag-book-gallery-notice--info {
 		background: var(--blue-50);
 		border-inline-start-color: var(--blue-500);
 		color: var(--blue-900);
 	}
 
-	&.brag-book-gallery-notice-success {
+	&.brag-book-gallery-notice--success {
 		background: var(--green-50);
 		border-inline-start-color: var(--green-500);
 		color: var(--green-900);
 	}
 
-	&.brag-book-gallery-notice-warning {
+	&.brag-book-gallery-notice--warning {
 		background: var(--amber-50);
 		border-inline-start-color: var(--amber-500);
 		color: var(--amber-900);
 	}
 
-	&.brag-book-gallery-notice-error {
+	&.brag-book-gallery-notice--error {
 		background: var(--red-50);
 		border-inline-start-color: var(--red-500);
 		color: var(--red-900);

@@ -8,9 +8,7 @@
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	margin-block-end: var(--space-8);
 	padding-block-end: var(--space-6);
-	border-block-end: var(--space-px) solid var(--slate-200);
 
 	@media (max-width: 768px) {
 		flex-direction: column;
@@ -19,14 +17,17 @@
 	}
 }
 
-.brag-book-gallery-header-left {
+.brag-book-gallery-header__branding {
 	display: flex;
 	align-items: center;
 	gap: var(--space-5);
 }
 
-.brag-book-gallery-header-right {
+.brag-book-gallery-header__status {
+	display: flex;
+	align-items: center;
 	flex-shrink: 0;
+	gap: var(--space-4);
 
 	@media (max-width: 768px) {
 		align-self: flex-end;
@@ -48,8 +49,7 @@
 }
 
 .brag-book-gallery-header .brag-book-gallery-logo {
-	inline-size: var(--space-14);
-	block-size: var(--space-14);
+	inline-size: 22.5rem;
 	flex-shrink: 0;
 }
 

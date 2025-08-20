@@ -1,10 +1,18 @@
+@charset "UTF-8";
 
+// -----------------------------------------------------------------------------
+// components / powered-by / index
+// -----------------------------------------------------------------------------
 
 .brag-book-gallery-powered-by-link {
-	font-size: .75rem;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: var(--wp--custom--brag-book-gallery--text-sm);
 	color: var(--wp--custom--brag-book-gallery--color--light-grey);
 	text-decoration: none;
 	transition: var(--wp--custom--brag-book-gallery--transition);
+	margin-block: calc( 4 * var(--wp--custom--brag-book-gallery--spacer) );
 
 	&:hover {
 		color: var(--wp--custom--brag-book-gallery--color--grey);

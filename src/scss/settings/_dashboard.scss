@@ -9,7 +9,7 @@
 	background: var(--brag-book-gallery-primary);
 	color: var(--brag-book-gallery-white);
 	padding: 2.5rem;
-	border-radius: var(--space-2);
+	border-radius: var(--space-1);
 	margin-block-end: var(--space-6);
 	display: flex;
 	align-items: center;
@@ -47,11 +47,11 @@
 }
 
 .progress-bar {
-	background: var(--gray-100);
-	border-radius: var(--rounded-sm);
+	background: var(--slate-100);
+	border-radius: var(--rounded-full);
 	height: var(--space-4);
 	overflow: hidden;
-	margin-bottom: 10px;
+	margin-block-end: var(--space-6);
 }
 
 .progress-fill {
@@ -72,6 +72,7 @@
 
 .progress-status {
 	text-align: right;
+	margin-block: 0 var(--space-6);
 }
 
 .setup-checklist {
@@ -83,9 +84,9 @@
 .setup-step {
 	display: flex;
 	align-items: flex-start;
-	padding: 1rem;
-	background: var(--wp--custom--brag-book-gallery--color--lightest-grey);
-	border: 1px solid var(--wp--custom--brag-book-gallery--color--lighter-grey);
+	padding: var(--space-4);
+	background: var(--slate-50);
+	border: 1px solid var(--slate-200);
 	border-radius: var(--rounded-sm);
 	transition: all 0.3s ease;
 
@@ -98,8 +99,13 @@
 		}
 	}
 
-	&.pending .step-icon {
-		color: var(--amber-600);
+	&.pending {
+		background: var(--amber-50);
+		border: 1px solid var(--amber-200);
+
+		.step-icon {
+			color: var(--amber-600);
+		}
 	}
 
 	&:hover {

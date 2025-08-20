@@ -209,6 +209,10 @@ class Database {
 		string $error_messages = ''
 	) {
 		$table_name = $this->get_sync_log_table();
+		
+		if ( empty( $table_name ) ) {
+			return false;
+		}
 
 		$data = array(
 			'sync_type' => $sync_type,
@@ -247,6 +251,10 @@ class Database {
 		string $error_messages = ''
 	): bool {
 		$table_name = $this->get_sync_log_table();
+		
+		if ( empty( $table_name ) ) {
+			return false;
+		}
 
 		$data = array(
 			'sync_status' => $sync_status,
@@ -279,6 +287,10 @@ class Database {
 	 */
 	public function get_recent_sync_logs( int $limit = 10 ): array {
 		$table_name = $this->get_sync_log_table();
+		
+		if ( empty( $table_name ) ) {
+			return array();
+		}
 
 		$sql = $this->wpdb->prepare(
 			"SELECT * FROM {$table_name} ORDER BY started_at DESC LIMIT %d",
@@ -309,6 +321,10 @@ class Database {
 		string $sync_hash = ''
 	): bool {
 		$table_name = $this->get_case_map_table();
+		
+		if ( empty( $table_name ) ) {
+			return false;
+		}
 
 		$data = array(
 			'api_case_id' => $api_case_id,
@@ -356,6 +372,10 @@ class Database {
 	 */
 	public function get_post_by_case_id( int $api_case_id, string $api_token ): ?int {
 		$table_name = $this->get_case_map_table();
+		
+		if ( empty( $table_name ) ) {
+			return null;
+		}
 
 		$post_id = $this->wpdb->get_var( $this->wpdb->prepare(
 			"SELECT post_id FROM {$table_name} WHERE api_case_id = %d AND api_token = %s",
@@ -376,6 +396,10 @@ class Database {
 	 */
 	public function get_sync_hash( int $api_case_id, string $api_token ): ?string {
 		$table_name = $this->get_case_map_table();
+		
+		if ( empty( $table_name ) ) {
+			return null;
+		}
 
 		$sync_hash = $this->wpdb->get_var( $this->wpdb->prepare(
 			"SELECT sync_hash FROM {$table_name} WHERE api_case_id = %d AND api_token = %s",
@@ -396,6 +420,10 @@ class Database {
 	 */
 	public function remove_case_mapping( int $api_case_id, string $api_token ): bool {
 		$table_name = $this->get_case_map_table();
+		
+		if ( empty( $table_name ) ) {
+			return false;
+		}
 
 		$result = $this->wpdb->delete(
 			$table_name,
@@ -418,6 +446,16 @@ class Database {
 	public function get_sync_stats(): array {
 		$sync_log_table = $this->get_sync_log_table();
 		$case_map_table = $this->get_case_map_table();
+		
+		if ( empty( $sync_log_table ) || empty( $case_map_table ) ) {
+			return array(
+				'total_syncs' => 0,
+				'successful_syncs' => 0,
+				'failed_syncs' => 0,
+				'total_mapped_cases' => 0,
+				'last_sync' => null,
+			);
+		}
 
 		// Get total syncs
 		$total_syncs = (int) $this->wpdb->get_var( "SELECT COUNT(*) FROM {$sync_log_table}" );
@@ -458,6 +496,10 @@ class Database {
 	 */
 	public function cleanup_old_sync_logs( int $days_to_keep = 30 ): int {
 		$table_name = $this->get_sync_log_table();
+		
+		if ( empty( $table_name ) ) {
+			return 0;
+		}
 
 		$cutoff_date = date( 'Y-m-d H:i:s', strtotime( "-{$days_to_keep} days" ) );
 

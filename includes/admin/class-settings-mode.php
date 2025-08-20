@@ -105,7 +105,7 @@ class Settings_Mode extends Settings_Base {
 			<!-- Current Mode Status -->
 			<div class="brag-book-gallery-section">
 				<h2><?php esc_html_e( 'Current Mode', 'brag-book-gallery' ); ?></h2>
-				<div class="brag-book-gallery-notice brag-book-gallery-notice-info inline">
+				<div class="brag-book-gallery-notice brag-book-gallery-notice--info inline">
 					<p>
 						<strong><?php esc_html_e( 'Active Mode:', 'brag-book-gallery' ); ?></strong>
 						<span class="brag-mode-badge <?php echo esc_attr( $current_mode ); ?>">
@@ -278,7 +278,7 @@ class Settings_Mode extends Settings_Base {
 					</form>
 				<?php else : ?>
 					<!-- JavaScript Mode Settings Info -->
-					<div class="brag-book-gallery-notice brag-book-gallery-notice-info inline">
+					<div class="brag-book-gallery-notice brag-book-gallery-notice--info inline">
 						<p>
 							<?php esc_html_e( 'JavaScript mode uses real-time API connections. Configure API settings to manage your connection.', 'brag-book-gallery' ); ?>
 						</p>
@@ -299,14 +299,14 @@ class Settings_Mode extends Settings_Base {
 				<h2><?php esc_html_e( 'Migration Tools', 'brag-book-gallery' ); ?></h2>
 
 				<?php if ( $current_mode === 'local' ) : ?>
-					<div class="brag-book-gallery-notice brag-book-gallery-notice-warning inline">
+					<div class="brag-book-gallery-notice brag-book-gallery-notice--warning inline">
 						<p>
 							<strong><?php esc_html_e( 'Warning:', 'brag-book-gallery' ); ?></strong>
 							<?php esc_html_e( 'Switching to JavaScript mode will not delete your local content, but galleries will load from the API instead.', 'brag-book-gallery' ); ?>
 						</p>
 					</div>
 				<?php else : ?>
-					<div class="brag-book-gallery-notice brag-book-gallery-notice-info inline">
+					<div class="brag-book-gallery-notice brag-book-gallery-notice--info inline">
 						<p>
 							<?php esc_html_e( 'Switching to Local mode will import gallery data from the API and store it in WordPress.', 'brag-book-gallery' ); ?>
 						</p>

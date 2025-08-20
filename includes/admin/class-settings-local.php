@@ -106,7 +106,7 @@ class Settings_Local extends Settings_Base {
 		// Show notice if not in Local mode
 		if ( ! $this->is_local_mode() ) {
 			?>
-			<div class="brag-book-gallery-notice brag-book-gallery-notice-warning">
+			<div class="brag-book-gallery-notice brag-book-gallery-notice--warning">
 				<p>
 					<?php esc_html_e( 'These settings only apply when Local mode is active.', 'brag-book-gallery' ); ?>
 					<a href="<?php echo esc_url( admin_url( 'admin.php?page=brag-book-gallery-mode' ) ); ?>">
@@ -125,7 +125,7 @@ class Settings_Local extends Settings_Base {
 				<h2><?php esc_html_e( 'Sync Settings', 'brag-book-gallery' ); ?></h2>
 
 				<?php if ( $sync_status === 'running' ) : ?>
-					<div class="brag-book-gallery-notice brag-book-gallery-notice-info inline">
+					<div class="brag-book-gallery-notice brag-book-gallery-notice--info inline">
 						<p>
 							<span class="spinner is-active" style="float: left; margin: 0 10px 0 0;"></span>
 							<?php esc_html_e( 'Sync is currently running...', 'brag-book-gallery' ); ?>

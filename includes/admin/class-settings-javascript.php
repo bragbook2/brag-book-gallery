@@ -96,7 +96,7 @@ class Settings_JavaScript extends Settings_Base {
 		// Show notice if not in JavaScript mode
 		if ( ! $this->is_javascript_mode() ) {
 			?>
-			<div class="brag-book-gallery-notice brag-book-gallery-notice-warning">
+			<div class="brag-book-gallery-notice brag-book-gallery-notice--warning">
 				<p>
 					<?php esc_html_e( 'These settings only apply when JavaScript mode is active.', 'brag-book-gallery' ); ?>
 					<a href="<?php echo esc_url( admin_url( 'admin.php?page=brag-book-gallery-mode' ) ); ?>">
@@ -537,7 +537,7 @@ class Settings_JavaScript extends Settings_Base {
 						elements.generateBtn.textContent = '<?php esc_html_e( 'Creating...', 'brag-book-gallery' ); ?>';
 
 						// Generate a title from the slug
-						const title = slug.split('-').map(word => 
+						const title = slug.split('-').map(word =>
 							word.charAt(0).toUpperCase() + word.slice(1)
 						).join(' ');
 
@@ -847,7 +847,7 @@ class Settings_JavaScript extends Settings_Base {
 		// Save combined gallery settings and create page if needed
 		if ( isset( $_POST['brag_book_gallery_page_slug'] ) ) {
 			$new_slug = sanitize_title( $_POST['brag_book_gallery_page_slug'] );
-			
+
 			// Get existing slugs as array
 			$existing_slugs = \BRAGBookGallery\Includes\Core\Slug_Helper::get_all_gallery_page_slugs();
 			$old_slug = ! empty( $existing_slugs ) ? $existing_slugs[0] : '';

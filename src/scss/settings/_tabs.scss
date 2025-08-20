@@ -5,12 +5,13 @@
 // -----------------------------------------------------------------------------
 
 .brag-book-gallery-tabs {
-	background: white;
-	border: var(--space-px) solid var(--slate-200);
-	border-radius: var(--rounded-lg);
+	position: sticky;
+	top: 2rem;
+	background: var(--slate-50);
 	overflow: hidden;
 	margin-block-end: var(--space-6);
 	box-shadow: var(--shadow-sm);
+	margin-inline: calc( -1 * var(--space-6) );
 
 	@media (max-width: 768px) {
 		margin-inline: calc(var(--space-4) * -1);
@@ -23,7 +24,6 @@
 	margin: 0;
 	padding: 0;
 	list-style: none;
-	background: var(--slate-50);
 
 	@media (max-width: 768px) {
 		flex-wrap: wrap;
@@ -36,7 +36,7 @@
 
 	&.active {
 		.brag-book-gallery-tab-link {
-			color: var(--blue-600);
+			color: var(--brag-book-gallery-primary);
 			background: white;
 			font-weight: var(--font-semibold);
 
@@ -46,7 +46,7 @@
 				inset-block-end: 0;
 				inset-inline: 0;
 				block-size: var(--space-0-5);
-				background: var(--blue-500);
+				background: var(--brag-book-gallery-primary);
 			}
 		}
 	}
@@ -72,15 +72,18 @@
 	font-weight: var(--font-medium);
 	transition: var(--transition-colors);
 	position: relative;
-	border-inline-end: var(--space-px) solid var(--slate-200);
 
 	&:hover {
 		color: var(--slate-900);
 		background: var(--slate-100);
 	}
 
+	&:focus {
+		box-shadow: none;
+	}
+
 	&:focus-visible {
-		outline: 2px solid var(--blue-500);
+		outline: 2px solid var(--brag-book-gallery-primary);
 		outline-offset: -2px;
 		border-radius: var(--rounded);
 	}

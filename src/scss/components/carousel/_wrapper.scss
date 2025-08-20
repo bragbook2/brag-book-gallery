@@ -6,4 +6,5 @@
 
 .brag-book-gallery-carousel-wrapper {
 	position: relative;
+	margin-block: calc( 6 * var(--wp--custom--brag-book-gallery--spacer) );
 }

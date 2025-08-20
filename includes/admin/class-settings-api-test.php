@@ -104,7 +104,7 @@ class Settings_Api_Test extends Settings_Base {
 			error_log( 'API Test Error Code: ' . $response->get_error_code() );
 			error_log( 'API Test URL: ' . $url );
 			error_log( 'API Test Args: ' . print_r( $args, true ) );
-			
+
 			wp_send_json_error( array(
 				'message' => $response->get_error_message(),
 				'code' => $response->get_error_code(),
@@ -164,7 +164,7 @@ class Settings_Api_Test extends Settings_Base {
 			<h2><?php esc_html_e( 'API Endpoint Testing', 'brag-book-gallery' ); ?></h2>
 
 			<?php if ( ! $has_api_config ) : ?>
-				<div class="brag-book-gallery-notice brag-book-gallery-notice-warning">
+				<div class="brag-book-gallery-notice brag-book-gallery-notice--warning">
 					<p>
 						<?php esc_html_e( 'Please configure your API settings first.', 'brag-book-gallery' ); ?>
 						<a href="<?php echo esc_url( admin_url( 'admin.php?page=brag-book-gallery-api-settings' ) ); ?>">
@@ -208,7 +208,7 @@ class Settings_Api_Test extends Settings_Base {
 									<label for="test-procedure-id"><?php esc_html_e( 'Procedure ID:', 'brag-book-gallery' ); ?></label>
 								</th>
 								<td style="padding: 5px;">
-									<input type="number" id="test-procedure-id" placeholder="3405" class="regular-text" style="width: 150px;">
+									<input type="number" id="test-procedure-id" placeholder="3405" class="input-field regular-text" style="width: 150px;">
 									<span class="description"><?php esc_html_e( 'Used by: Carousel, Cases, Filters (default: 3405)', 'brag-book-gallery' ); ?></span>
 								</td>
 							</tr>
@@ -217,7 +217,7 @@ class Settings_Api_Test extends Settings_Base {
 									<label for="test-member-id"><?php esc_html_e( 'Member ID:', 'brag-book-gallery' ); ?></label>
 								</th>
 								<td style="padding: 5px;">
-									<input type="number" id="test-member-id" placeholder="129" class="regular-text" style="width: 150px;">
+									<input type="number" id="test-member-id" placeholder="129" class="input-field regular-text" style="width: 150px;">
 									<span class="description"><?php esc_html_e( 'Used by: Cases, Filters (default: 129) - Not used by Carousel', 'brag-book-gallery' ); ?></span>
 								</td>
 							</tr>
@@ -242,7 +242,7 @@ class Settings_Api_Test extends Settings_Base {
 								<td><span class="method-badge method-post">POST</span></td>
 								<td><?php esc_html_e( 'Get categories and procedures with case counts', 'brag-book-gallery' ); ?></td>
 								<td>
-									<button class="button test-endpoint-btn"
+									<button class="button button-secondary test-endpoint-btn"
 									        data-endpoint="sidebar"
 									        data-method="POST"
 									        data-url="/api/plugin/combine/sidebar">
@@ -257,7 +257,7 @@ class Settings_Api_Test extends Settings_Base {
 								<td><span class="method-badge method-post">POST</span></td>
 								<td><?php esc_html_e( 'Get paginated case listings', 'brag-book-gallery' ); ?></td>
 								<td>
-									<button class="button test-endpoint-btn"
+									<button class="button button-secondary test-endpoint-btn"
 									        data-endpoint="cases"
 									        data-method="POST"
 									        data-url="/api/plugin/combine/cases">
@@ -272,7 +272,7 @@ class Settings_Api_Test extends Settings_Base {
 								<td><span class="method-badge method-get">GET</span></td>
 								<td><?php esc_html_e( 'Get carousel data (requires procedureId)', 'brag-book-gallery' ); ?></td>
 								<td>
-									<button class="button test-endpoint-btn"
+									<button class="button button-secondary test-endpoint-btn"
 									        data-endpoint="carousel"
 									        data-method="GET"
 									        data-url="/api/plugin/carousel">
@@ -287,7 +287,7 @@ class Settings_Api_Test extends Settings_Base {
 								<td><span class="method-badge method-post">POST</span></td>
 								<td><?php esc_html_e( 'Get available filter options', 'brag-book-gallery' ); ?></td>
 								<td>
-									<button class="button test-endpoint-btn"
+									<button class="button button-secondary test-endpoint-btn"
 									        data-endpoint="filters"
 									        data-method="POST"
 									        data-url="/api/plugin/combine/filters">
@@ -302,7 +302,7 @@ class Settings_Api_Test extends Settings_Base {
 								<td><span class="method-badge method-post">POST</span></td>
 								<td><?php esc_html_e( 'Get user\'s favorite cases', 'brag-book-gallery' ); ?></td>
 								<td>
-									<button class="button test-endpoint-btn"
+									<button class="button button-secondary test-endpoint-btn"
 									        data-endpoint="favorites-list"
 									        data-method="POST"
 									        data-url="/api/plugin/combine/favorites/list">
@@ -317,7 +317,7 @@ class Settings_Api_Test extends Settings_Base {
 								<td><span class="method-badge method-post">POST</span></td>
 								<td><?php esc_html_e( 'Generate sitemap data', 'brag-book-gallery' ); ?></td>
 								<td>
-									<button class="button test-endpoint-btn"
+									<button class="button button-secondary test-endpoint-btn"
 									        data-endpoint="sitemap"
 									        data-method="POST"
 									        data-url="/api/plugin/sitemap">
@@ -335,7 +335,7 @@ class Settings_Api_Test extends Settings_Base {
 									<input type="number" id="case-id-input" placeholder="Case ID" class="small-text" style="margin-left: 10px;">
 								</td>
 								<td>
-									<button class="button test-endpoint-btn"
+									<button class="button button-secondary test-endpoint-btn"
 									        data-endpoint="single-case"
 									        data-method="POST"
 									        data-url="/api/plugin/combine/cases/"
@@ -353,7 +353,7 @@ class Settings_Api_Test extends Settings_Base {
 									<?php esc_html_e( 'Submit consultation request (Test with sample data)', 'brag-book-gallery' ); ?>
 								</td>
 								<td>
-									<button class="button test-endpoint-btn"
+									<button class="button button-secondary test-endpoint-btn"
 									        data-endpoint="consultations"
 									        data-method="POST"
 									        data-url="/api/plugin/consultations"
@@ -393,12 +393,13 @@ class Settings_Api_Test extends Settings_Base {
 
 		<style>
 		.api-test-config {
-			background: #f0f0f1;
-			padding: 15px;
-			border-radius: 4px;
-			margin: 20px 0;
+			background: var(--slate-100);
+			border: 1px solid var(--slate-200);
+			padding: var(--space-6);
+			border-radius: 0.25rem;
+			margin-block: var(--space-6);
 			display: flex;
-			gap: 30px;
+			gap: var(--space-6);
 		}
 		.config-info, .test-parameters {
 			flex: 1;
@@ -503,11 +504,11 @@ class Settings_Api_Test extends Settings_Base {
 			const baseUrl = 'https://app.bragbookgallery.com';
 			const ajaxUrl = '<?php echo admin_url( 'admin-ajax.php' ); ?>';
 			const nonce = '<?php echo wp_create_nonce( 'brag_book_api_test' ); ?>';
-			
+
 			// Debug log the tokens and IDs
 			console.log('API Tokens:', apiTokens);
 			console.log('Website Property IDs:', websitePropertyIds);
-			
+
 			// Check if we have valid tokens
 			if (!apiTokens || apiTokens.length === 0) {
 				console.error('No valid API tokens found. Please check your API settings.');
@@ -598,7 +599,7 @@ class Settings_Api_Test extends Settings_Base {
 								// Sidebar only needs apiTokens
 								const validTokens = apiTokens.filter(token => token && token.length > 0);
 								console.log('Sidebar endpoint - Valid tokens:', validTokens);
-								
+
 								if (validTokens.length === 0) {
 									console.error('No valid API tokens available for sidebar endpoint');
 									alert('No valid API tokens found. Please check your API settings.');
@@ -606,7 +607,7 @@ class Settings_Api_Test extends Settings_Base {
 									button.textContent = originalText;
 									return;
 								}
-								
+
 								requestBody = {
 									apiTokens: validTokens
 								};
