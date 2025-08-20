@@ -499,7 +499,7 @@ final class Setup {
 		);
 
 		$combine_page_id = (int) get_option(
-			'combine_gallery_page_id',
+			'brag_book_gallery_page_id',
 			default_value: 0
 		);
 

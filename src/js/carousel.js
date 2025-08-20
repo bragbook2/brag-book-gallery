@@ -15,7 +15,7 @@
 	/**
 	 * Carousel class for managing carousel functionality
 	 */
-	class BRAG BookCarousel {
+	class BRAGbookCarousel {
 		/**
 		 * Constructor
 		 * @param {HTMLElement} container - The carousel container element
@@ -60,7 +60,7 @@
 		 */
 		init() {
 			if (!this.track || this.items.length === 0) {
-				console.warn('BRAG Book Carousel: Invalid carousel structure');
+				console.warn('BRAG book Carousel: Invalid carousel structure');
 				return;
 			}
 
@@ -475,7 +475,7 @@
 			};
 
 			// Create carousel instance
-			const carousel = new BRAG BookCarousel(container, options);
+			const carousel = new BRAGbookCarousel(container, options);
 
 			// Store reference for external access
 			container.bragBookCarousel = carousel;
@@ -485,9 +485,9 @@
 	/**
 	 * Global API for external carousel control
 	 */
-	window.BRAG BookCarousel = {
+	window.BRAGbookCarousel = {
 		init: initCarousels,
-		create: (container, options) => new BRAG BookCarousel(container, options),
+		create: (container, options) => new BRAGbookCarousel(container, options),
 		destroyAll: () => {
 			document.querySelectorAll('.brag-book-carousel').forEach(container => {
 				if (container.bragBookCarousel) {
@@ -527,7 +527,7 @@
 										loop: carousel.dataset.loop !== 'false'
 									};
 
-									carousel.bragBookCarousel = new BRAG BookCarousel(carousel, options);
+									carousel.bragBookCarousel = new BRAGbookCarousel(carousel, options);
 								}
 							});
 						}

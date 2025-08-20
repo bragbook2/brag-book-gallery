@@ -1,0 +1,51 @@
+@charset "UTF-8";
+
+// -----------------------------------------------------------------------------
+// admin / steps
+// -----------------------------------------------------------------------------
+
+.brag-book-gallery-steps {
+	counter-reset: step-counter;
+	list-style: none;
+	padding: 0;
+	margin: 0;
+
+	li {
+		position: relative;
+		padding-inline-start: var(--space-16);
+		margin-block-end: var(--space-6);
+		counter-increment: step-counter;
+
+		&::before {
+			content: counter(step-counter);
+			position: absolute;
+			inset-inline-start: 0;
+			inset-block-start: 0;
+			inline-size: var(--space-10);
+			block-size: var(--space-10);
+			background: var(--blue-500);
+			color: white;
+			border-radius: var(--rounded-full);
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			font-weight: var(--font-bold);
+			font-size: var(--text-lg);
+			box-shadow: var(--shadow-md);
+		}
+	}
+
+	h3 {
+		margin-block-start: 0;
+		margin-block-end: var(--space-2);
+		font-size: var(--text-lg);
+		font-weight: var(--font-semibold);
+		color: var(--slate-900);
+	}
+
+	p {
+		margin: 0;
+		color: var(--slate-600);
+		line-height: var(--leading-relaxed);
+	}
+}

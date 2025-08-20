@@ -1,0 +1,48 @@
+@charset "UTF-8";
+
+// -----------------------------------------------------------------------------
+// components / carousel items
+// -----------------------------------------------------------------------------
+
+.brag-book-gallery-carousel-item {
+	min-width: calc(33.333% - 0.67rem);
+	background: linear-gradient(135deg, var(--wp--custom--brag-book-gallery--color--lighter-grey) 0%, var(--wp--custom--brag-book-gallery--color--light-grey) 100%);
+	border-radius: 0.5rem;
+	position: relative;
+	overflow: hidden;
+	cursor: pointer;
+	scroll-snap-align: center;
+	display: inline-block;
+	font-size: var(--wp--custom--brag-book-gallery--text-sm);
+	font-weight: var(--wp--custom--brag-book-gallery--font-weight--semibold);
+	color: var(--wp--custom--brag-book-gallery--color--grey);
+	transform: scale(1);
+	transition: transform 0.3s ease, box-shadow 0.3s ease;
+	outline: none;
+
+	&:hover {
+		transform: scale(1.02);
+	}
+
+	&:focus {
+		box-shadow: var(--wp--custom--brag-book-gallery--shadow-sm);
+		transform: scale(1.02);
+	}
+
+	&:focus-visible {
+		box-shadow: var(--wp--custom--brag-book-gallery--shadow-sm);
+		transform: scale(1.02);
+	}
+
+	&.brag-book-gallery-nudity-revealed {
+		.brag-book-gallery-nudity-warning {
+			opacity: 0;
+			pointer-events: none;
+			transition: var(--wp--custom--brag-book-gallery--transition);
+		}
+
+		.brag-book-gallery-carousel-image img {
+			filter: none;
+		}
+	}
+}

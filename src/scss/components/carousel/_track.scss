@@ -1,0 +1,29 @@
+@charset "UTF-8";
+
+// -----------------------------------------------------------------------------
+// components / carousel track
+// -----------------------------------------------------------------------------
+
+.brag-book-gallery-carousel-track {
+	display: flex;
+	gap: var(--wp--custom--brag-book-gallery--spacer);
+	overflow-x: auto;
+	scroll-behavior: smooth;
+	scroll-snap-type: x mandatory;
+	padding-block: calc( 4 * var(--wp--custom--brag-book-gallery--spacer) );
+	cursor: grab;
+	-webkit-overflow-scrolling: touch;
+	scrollbar-width: none;
+	-ms-overflow-style: none;
+	flex: 1;
+	outline: none;
+
+	&::-webkit-scrollbar {
+		display: none;
+	}
+
+	&.brag-book-gallery-grabbing {
+		cursor: grabbing;
+		scroll-behavior: auto;
+	}
+}

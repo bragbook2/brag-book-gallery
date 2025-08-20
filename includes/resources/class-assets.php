@@ -135,7 +135,7 @@ class Assets {
 	 * @since 3.0.0
 	 */
 	public function enqueue_frontend_assets(): void {
-		// Bail early if not on a BRAG Book page
+		// Bail early if not on a BRAG book page
 		if ( ! $this->is_bragbook_page() ) {
 			return;
 		}
@@ -154,7 +154,7 @@ class Assets {
 	 * Enqueue admin assets
 	 *
 	 * Loads all necessary styles and scripts for the WordPress admin area,
-	 * but only on BRAG Book admin pages to avoid conflicts.
+	 * but only on BRAG book admin pages to avoid conflicts.
 	 *
 	 * @param string $hook_suffix The current admin page hook suffix
 	 *
@@ -308,15 +308,6 @@ class Assets {
 				'jquery',
 				'jquery-ui-accordion'
 			),
-			ver: $this->get_asset_version(),
-			args: true
-		);
-
-		// Settings table management script
-		wp_enqueue_script(
-			handle: 'brag-book-gallery-admin-settings-table',
-			src: Setup::get_asset_url( 'assets/js/brag-book-gallery-admin-settings-table-add-row.js' ),
-			deps: array( 'jquery' ),
 			ver: $this->get_asset_version(),
 			args: true
 		);
@@ -490,9 +481,9 @@ class Assets {
 	}
 
 	/**
-	 * Check if current page is a BRAG Book page
+	 * Check if current page is a BRAG book page
 	 *
-	 * @return bool True if on a BRAG Book page, false otherwise
+	 * @return bool True if on a BRAG book page, false otherwise
 	 * @since 3.0.0
 	 */
 	private function is_bragbook_page(): bool {
@@ -518,15 +509,15 @@ class Assets {
 		}
 
 		// Check for combined gallery page
-		$combine_slug = get_option( 'brag_book_gallery_combine_gallery_slug', '' );
+		$combine_slug = get_option( 'brag_book_gallery_brag_book_gallery_page_slug', '' );
 		if ( ! empty( $combine_slug ) && str_starts_with( $current_path, $combine_slug ) ) {
 			return true;
 		}
 
 		/**
-		 * Filter whether current page is a BRAG Book page
+		 * Filter whether current page is a BRAG book page
 		 *
-		 * @param bool $is_bragbook_page Whether current page is a BRAG Book page
+		 * @param bool $is_bragbook_page Whether current page is a BRAG book page
 		 *
 		 * @since 3.0.0
 		 */
@@ -537,24 +528,30 @@ class Assets {
 	}
 
 	/**
-	 * Check if current admin page is a BRAG Book admin page
+	 * Check if current admin page is a BRAG book admin page
 	 *
 	 * @param string $hook_suffix Current admin page hook suffix
 	 *
-	 * @return bool True if on a BRAG Book admin page, false otherwise
+	 * @return bool True if on a BRAG book admin page, false otherwise
 	 * @since 3.0.0
 	 */
 	private function is_bragbook_admin_page( string $hook_suffix ): bool {
-		return in_array(
-			$hook_suffix,
-			array(
-				'brag-book-gallery-settings',
-				'brag-book-gallery-api-settings',
-				'brag-book-gallery-quick-start',
-				'brag-book-gallery-consultation',
-			),
-			true
-		);
+		// Check if this is one of our admin pages
+		// We'll check if the hook contains our plugin slug anywhere
+		if ( strpos( $hook_suffix, 'brag-book-gallery' ) !== false ) {
+			return true;
+		}
+
+		// Also check for specific page parameter for custom admin pages
+		if ( isset( $_GET['page'] ) ) {
+			$page = sanitize_text_field( $_GET['page'] );
+			// Check if the page parameter starts with our prefix
+			if ( strpos( $page, 'brag-book-gallery' ) === 0 ) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**

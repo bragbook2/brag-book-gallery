@@ -1,0 +1,137 @@
+@charset "UTF-8";
+
+// -----------------------------------------------------------------------------
+// admin / log
+// -----------------------------------------------------------------------------
+
+.brag-book-gallery-log-tabs {
+	margin-block-start: var(--space-6);
+}
+
+.brag-book-gallery-log-tab-nav {
+	display: flex;
+	gap: var(--space-2);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	border-block-end: 1px solid var(--slate-200);
+}
+
+.brag-book-gallery-log-tab-nav li {
+	margin: 0;
+}
+
+.brag-book-gallery-log-tab-nav a {
+	display: inline-block;
+	padding: var(--space-3) var(--space-4);
+	color: var(--slate-600);
+	text-decoration: none;
+	font-weight: var(--font-medium);
+	border-block-end: 2px solid transparent;
+	transition: var(--transition-colors);
+	position: relative;
+	inset-block-end: -1px;
+}
+
+.brag-book-gallery-log-tab-nav a:hover {
+	color: var(--slate-900);
+	background-color: var(--slate-50);
+}
+
+.brag-book-gallery-log-tab-nav a.active {
+	color: var(--primary-DEFAULT);
+	border-block-end-color: var(--primary-DEFAULT);
+	background-color: var(--wp--custom--brag-book-gallery--color--white);
+}
+
+.brag-book-gallery-log-tab-content {
+	display: none;
+	padding: var(--space-6) 0;
+}
+
+.brag-book-gallery-log-tab-content.active {
+	display: block;
+	animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+		transform: translateY(-10px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+/* Debug Log Viewer Styles */
+.brag-book-gallery-log-viewer {
+	margin-block: var(--space-4);
+}
+
+.brag-book-gallery-error-log,
+.brag-book-gallery-api-log {
+	padding: var(--space-4);
+	background-color: var(--slate-900);
+	color: var(--slate-100);
+	font-family: var(--font-mono);
+	font-size: var(--text-sm);
+	line-height: var(--leading-relaxed);
+	border-radius: var(--rounded-md);
+	overflow-x: auto;
+	max-block-size: 500px;
+	overflow-y: auto;
+}
+
+/* Debug Settings Form Enhancements */
+.brag-book-gallery-debug-content .form-table th {
+	padding-inline-start: 0;
+	font-weight: var(--font-semibold);
+	color: var(--slate-700);
+}
+
+.brag-book-gallery-debug-content .form-table td {
+	padding-block: var(--space-4);
+}
+
+.brag-book-gallery-debug-content .form-table input[type="checkbox"] {
+	margin-inline-end: var(--space-2);
+}
+
+.brag-book-gallery-debug-content .form-table input[type="checkbox"]:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.brag-book-gallery-debug-content .notice {
+	margin-block: var(--space-2);
+	padding: var(--space-2) var(--space-3);
+	border-radius: var(--rounded-sm);
+}
+
+.brag-book-gallery-debug-content .notice.notice-info {
+	background-color: var(--blue-50);
+	color: var(--blue-900);
+	border-inline-start: 3px solid var(--blue-500);
+}
+
+/* Debug Controls Button Group */
+.brag-book-gallery-debug-controls {
+	display: flex;
+	gap: var(--space-2);
+	margin-block-end: var(--space-4);
+}
+
+.brag-book-gallery-debug-controls .button {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--space-1);
+}
+
+.brag-book-gallery-debug-controls .button .dashicons {
+	font-size: 16px;
+	inline-size: 16px;
+	block-size: 16px;
+	line-height: 1;
+}

@@ -1,0 +1,69 @@
+@charset "UTF-8";
+
+// -----------------------------------------------------------------------------
+// components / nudity / index
+// -----------------------------------------------------------------------------
+
+.brag-book-gallery-nudity-warning {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(0,0,0,.75);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	z-index: 10;
+	padding: calc( 4 * var(--wp--custom--brag-book-gallery--spacer) );
+	text-align: center;
+	backdrop-filter: blur(8px);
+	-webkit-backdrop-filter: blur(8px);
+
+	&-title {
+		color: var(--wp--custom--brag-book-gallery--color--white);
+		font-size: var(--wp--custom--brag-book-gallery--text-lg);
+		font-weight: var(--wp--custom--brag-book-gallery--font-weight--semibold);
+		margin-block-end: calc( 2 * var(--wp--custom--brag-book-gallery--spacer) );
+	}
+
+	&-caption {
+		color: var(--wp--custom--brag-book-gallery--color--white);
+		font-size: var(--wp--custom--brag-book-gallery--text-sm);
+		line-height: 1.25;
+		margin-bottom: calc( 6 * var(--wp--custom--brag-book-gallery--spacer) );
+		max-width: 280px
+	}
+
+	&-button {
+		background: var(--wp--custom--brag-book-gallery--color--white);
+		color: var(--wp--custom--brag-book-gallery--color--black);
+		border: none;
+		padding: calc( 3 * var(--wp--custom--brag-book-gallery--spacer) ) calc( 4 * var(--wp--custom--brag-book-gallery--spacer) );
+		border-radius: var(--wp--custom--brag-book-gallery--rounded);
+		font-size: var(--wp--custom--brag-book-gallery--text-xs);
+		font-weight: var(--wp--custom--brag-book-gallery--font-weight--semibold);
+		cursor: pointer;
+		transition: all .3s ease;
+		text-transform: uppercase;
+		letter-spacing: .05em;
+		box-shadow: 0 2px 8px rgba(0,0,0,.15);
+		min-width: 120px;
+
+		&:hover {
+			background: var(--wp--custom--brag-book-gallery--color--lightest-grey);
+			box-shadow: 0 4px 12px rgba(0,0,0,.2)
+		}
+	}
+
+	&-blur {
+		filter: blur(20px);
+		transition: filter .5s ease
+	}
+}
+
+
+
+
+

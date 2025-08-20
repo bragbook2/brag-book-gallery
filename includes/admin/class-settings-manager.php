@@ -15,8 +15,10 @@ declare( strict_types=1 );
 namespace BRAGBookGallery\Includes\Admin;
 
 use BRAGBookGallery\Includes\Traits\Trait_Tools;
+use BRAGBookGallery\Includes\Admin\Traits\Trait_Cache_Handler;
 use BRAGBookGallery\Includes\Core\Setup;
 
+// Exit if accessed directly.
 if ( ! defined( 'WPINC' ) ) {
 	die( 'Restricted Access' );
 }
@@ -24,7 +26,7 @@ if ( ! defined( 'WPINC' ) ) {
 /**
  * Settings Manager Class
  *
- * Centralized manager for all settings pages in the BRAG Book Gallery plugin.
+ * Centralized manager for all settings pages in the BRAG book Gallery plugin.
  * This class coordinates between different settings pages, manages the admin menu structure,
  * handles asset loading, and maintains backward compatibility with the legacy settings system.
  *
@@ -42,6 +44,7 @@ if ( ! defined( 'WPINC' ) ) {
  */
 class Settings_Manager {
 	use Trait_Tools;
+	use Trait_Cache_Handler;
 
 	/**
 	 * Collection of settings page instances
@@ -64,48 +67,76 @@ class Settings_Manager {
 	 */
 	private array $settings_pages = array();
 
+
 	/**
-	 * Legacy settings instance for backward compatibility
+	 * Menu manager instance
 	 *
-	 * Maintains the original Settings class instance to ensure compatibility
-	 * with existing code that may rely on the legacy settings system.
-	 * This instance is created without menu registration to avoid conflicts
-	 * with the new modular settings pages.
+	 * Handles all menu registration and visibility logic.
 	 *
 	 * @since 3.0.0
-	 * @var Settings|null Legacy settings class instance or null if not initialized
+	 * @var Menu|null Menu manager instance
 	 */
-	private ?Settings $legacy_settings = null;
+	private ?Menu $menu_manager = null;
 
 	/**
 	 * Constructor - Initialize the Settings Manager
 	 *
-	 * Sets up the complete settings management system by initializing WordPress hooks
-	 * and loading all settings page instances. The constructor follows a two-step
-	 * initialization process to ensure proper dependency loading.
+	 * Sets up the complete settings management system by initializing WordPress hooks.
+	 * Settings pages are loaded lazily when needed to avoid early translation loading.
 	 *
 	 * @since 3.0.0
 	 */
 	public function __construct() {
 		$this->init_hooks();
-		$this->load_settings_pages();
 	}
 
 	/**
 	 * Initialize WordPress hooks and actions
 	 *
 	 * Registers all necessary WordPress hooks for the settings system including:
-	 * - Admin menu registration for creating settings pages in wp-admin
+	 * - Settings page loading and menu registration
 	 * - Asset enqueuing for loading CSS/JS files on settings pages only
-	 *
-	 * Uses late binding to ensure all WordPress functions are available when called.
+	 * - AJAX handlers for settings operations
+	 * - Cache management hooks
 	 *
 	 * @since 3.0.0
 	 * @return void
 	 */
 	private function init_hooks(): void {
-		add_action( 'admin_menu', array( $this, 'add_menu_pages' ) );
+		// Register AJAX actions early - before admin_menu
+		add_action( 'init', array( $this, 'register_ajax_actions' ) );
+		
+		// Load settings pages and register menus after init to ensure translations are loaded
+		add_action( 'admin_menu', array( $this, 'initialize_settings_pages' ), 5 );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ) );
+
+		// Register AJAX handler for cache clearing.
+		add_action( 'wp_ajax_brag_book_gallery_clear_all_cache', array( $this, 'handle_clear_all_cache' ) );
+	}
+
+	/**
+	 * Register AJAX actions early
+	 *
+	 * Creates settings page instances early just to register their AJAX actions.
+	 * The pages will be re-used when initialize_settings_pages() is called later.
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	public function register_ajax_actions(): void {
+		// Only register AJAX actions if we haven't loaded pages yet
+		if ( empty( $this->settings_pages ) ) {
+			// Log AJAX registration for debugging
+			error_log( 'BRAG book Gallery: Registering AJAX actions early on init hook' );
+			
+			// Create minimal instances just for AJAX registration
+			$this->settings_pages['api'] = new Settings_Api();
+			$this->settings_pages['api_test'] = new Settings_Api_Test();
+			$this->settings_pages['debug'] = new Settings_Debug();
+			// Add other pages that have AJAX actions as needed
+			
+			error_log( 'BRAG book Gallery: Settings_Api, Settings_Api_Test, and Settings_Debug instances created for AJAX registration' );
+		}
 	}
 
 	/**
@@ -127,45 +158,89 @@ class Settings_Manager {
 	 */
 	private function load_settings_pages(): void {
 		// Initialize all settings pages in logical order
-		$this->settings_pages['general']    = new Settings_General();
-		$this->settings_pages['mode']       = new Settings_Mode();
-		$this->settings_pages['javascript'] = new Settings_JavaScript();
-		$this->settings_pages['local']      = new Settings_Local();
-		$this->settings_pages['api']        = new Settings_Api();
-		$this->settings_pages['api_test']   = new Settings_Api_Test();
-		$this->settings_pages['help']       = new Settings_Help();
-		$this->settings_pages['debug']      = new Settings_Debug();
+		$this->settings_pages['dashboard']    = new Settings_Dashboard();
+		$this->settings_pages['general']      = new Settings_General();
+		$this->settings_pages['mode']         = new Settings_Mode();
+		$this->settings_pages['javascript']   = new Settings_JavaScript();
+		$this->settings_pages['local']        = new Settings_Local();
+		
+		// Only create Settings_Api if it doesn't exist (it may have been created for AJAX registration)
+		if ( ! isset( $this->settings_pages['api'] ) ) {
+			$this->settings_pages['api'] = new Settings_Api();
+		}
+		
+		// Only create Settings_Api_Test if it doesn't exist (it may have been created for AJAX registration)
+		if ( ! isset( $this->settings_pages['api_test'] ) ) {
+			$this->settings_pages['api_test'] = new Settings_Api_Test();
+		}
+		
+		// Only create Settings_Debug if it doesn't exist (it may have been created for AJAX registration)
+		if ( ! isset( $this->settings_pages['debug'] ) ) {
+			$this->settings_pages['debug'] = new Settings_Debug();
+		}
+		
+		$this->settings_pages['consultation'] = new Settings_Consultation();
+		$this->settings_pages['help']         = new Settings_Help();
 
-		// Load legacy settings for backward compatibility (without menu registration)
-		// This prevents duplicate menu items while maintaining API compatibility
-		$this->legacy_settings = new Settings( false );
+		// Initialize menu manager with settings pages.
+		$this->menu_manager = new Menu( $this->settings_pages );
 	}
 
 	/**
-	 * Register WordPress admin menu pages with conditional visibility
+	 * Initialize settings pages and menu manager
 	 *
-	 * Creates the complete admin menu structure for BRAG Book Gallery settings.
-	 * The method implements intelligent menu visibility based on plugin configuration state:
+	 * Loads all settings page instances and initializes the menu manager.
+	 * This is called via admin_menu hook to ensure translations are available.
 	 *
-	 * - General and API settings are always visible
-	 * - Mode selection only appears after API is configured
-	 * - Mode-specific settings (JavaScript/Local) only appear when that mode is active
-	 * - Help and Debug pages are always available for support purposes
+	 * @since 3.0.0
+	 * @return void
+	 */
+	public function initialize_settings_pages(): void {
+		// Only load once - check if menu manager exists (which means full initialization is done)
+		if ( $this->menu_manager !== null ) {
+			return;
+		}
+
+		$this->load_settings_pages();
+	}
+
+	/**
+	 * Handle cache clearing AJAX request
 	 *
-	 * This progressive disclosure approach guides users through the setup process
-	 * while preventing configuration errors from incomplete setups.
+	 * Clears all plugin caches including API cache, gallery cache,
+	 * and flushes rewrite rules.
 	 *
-	 * Menu structure:
-	 * - Main: "BRAG Book Gallery" (General settings)
-	 * - Sub: "General" (Overview and status)
-	 * - Sub: "API" (API configuration - always visible)
-	 * - Sub: "API Test" (Endpoint testing - requires API)
-	 * - Sub: "Mode" (Mode selection - requires API)
-	 * - Sub: "JavaScript Settings" (JavaScript mode only)
-	 * - Sub: "Local Settings" (Local mode only)
-	 * - Sub: "Help" (Documentation and support)
-	 * - Sub: "Debug" (Diagnostic tools)
+	 * @since 3.0.0
+	 * @return void
+	 */
+	public function handle_clear_all_cache(): void {
+		// Verify nonce.
+		if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'brag_book_clear_cache' ) ) {
+			wp_send_json_error( __( 'Security check failed.', 'brag-book-gallery' ) );
+		}
+
+		// Check capability.
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( __( 'Insufficient permissions.', 'brag-book-gallery' ) );
+		}
+
+		// Clear all caches.
+		$success = $this->clear_plugin_cache();
+
+		if ( $success ) {
+			wp_send_json_success( array( 'message' => __( 'All caches cleared successfully.', 'brag-book-gallery' ) ) );
+		} else {
+			wp_send_json_error( array( 'message' => __( 'Failed to clear some caches. Please try again.', 'brag-book-gallery' ) ) );
+		}
+	}
+
+	/**
+	 * DEPRECATED: Register WordPress admin menu pages
 	 *
+	 * This method is deprecated and kept for backward compatibility.
+	 * Menu registration is now handled by the Menu class.
+	 *
+	 * @deprecated 3.0.0 Use Menu class instead
 	 * @since 3.0.0
 	 * @return void
 	 */
@@ -181,8 +256,8 @@ class Settings_Manager {
 
 		// Main menu page
 		add_menu_page(
-			page_title: esc_html__( 'BRAG Book Gallery', 'brag-book-gallery' ),
-			menu_title: esc_html__( 'BRAG Book Gallery', 'brag-book-gallery' ),
+			page_title: esc_html__( 'BRAG book Gallery', 'brag-book-gallery' ),
+			menu_title: esc_html__( 'BRAG book Gallery', 'brag-book-gallery' ),
 			capability: 'manage_options',
 			menu_slug: 'brag-book-gallery-settings',
 			callback: array( $this->settings_pages['general'], 'render' ),
@@ -315,7 +390,7 @@ class Settings_Manager {
 	/**
 	 * Conditionally enqueue admin assets for settings pages
 	 *
-	 * Loads CSS and JavaScript files only on BRAG Book Gallery settings pages to avoid
+	 * Loads CSS and JavaScript files only on BRAG book Gallery settings pages to avoid
 	 * bloating other admin pages. Performs several optimizations:
 	 *
 	 * - Hook-based filtering to load assets only on relevant pages
@@ -339,14 +414,6 @@ class Settings_Manager {
 		if ( ! str_contains( $hook, 'brag-book-gallery' ) ) {
 			return;
 		}
-
-		// Enqueue the main admin CSS file for consistent styling across all settings pages
-		wp_enqueue_style(
-			'brag-book-gallery-admin',
-			plugins_url( 'assets/css/admin.css', dirname( __DIR__ ) ),
-			array(), // No dependencies - standalone styles
-			'3.0.0'  // Version for cache busting
-		);
 
 		// Conditionally enqueue admin JavaScript if the file exists
 		$js_file = plugins_url( 'assets/js/admin.js', dirname( __DIR__ ) );
@@ -392,26 +459,5 @@ class Settings_Manager {
 	 */
 	public function get_settings_page( string $page ): ?Settings_Base {
 		return $this->settings_pages[ $page ] ?? null;
-	}
-
-	/**
-	 * Retrieve the legacy settings instance for backward compatibility
-	 *
-	 * Provides access to the original Settings class instance to maintain
-	 * compatibility with existing code during the transition to the new modular
-	 * settings system. This method should be used sparingly and only when
-	 * necessary for legacy support.
-	 *
-	 * The legacy instance is created without menu registration to prevent
-	 * conflicts with the new settings pages managed by this class.
-	 *
-	 * Note: New code should use the modular settings pages instead of the
-	 * legacy settings instance whenever possible.
-	 *
-	 * @since 3.0.0
-	 * @return Settings Legacy settings class instance (always available)
-	 */
-	public function get_legacy_settings(): Settings {
-		return $this->legacy_settings;
 	}
 }

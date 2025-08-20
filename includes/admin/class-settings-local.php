@@ -21,7 +21,7 @@ if ( ! defined( 'WPINC' ) ) {
 /**
  * Local Mode Settings Class
  *
- * Comprehensive configuration interface for Local mode operations in BRAG Book Gallery.
+ * Comprehensive configuration interface for Local mode operations in BRAG book Gallery.
  * This class manages all aspects of Local mode functionality where gallery data
  * is synchronized from the API and stored locally in WordPress for optimal performance.
  *

@@ -1,0 +1,83 @@
+@charset "UTF-8";
+
+// -----------------------------------------------------------------------------
+// components / carousel controls
+// -----------------------------------------------------------------------------
+
+.brag-book-gallery-carousel-btn {
+	position: absolute;
+	top: 50%;
+	transform: translateY(-50%);
+	width: calc( 12 * var(--wp--custom--brag-book-gallery--spacer) );
+	height: calc( 12 * var(--wp--custom--brag-book-gallery--spacer) );
+	background: rgba(255, 255, 255, 0.95);
+	backdrop-filter: blur(10px);
+	-webkit-backdrop-filter: blur(10px);
+	border: 1.5px solid var(--wp--custom--brag-book-gallery--color--lighter-grey);
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	transition: var(--wp--custom--brag-book-gallery--transition);
+	z-index: 10;
+	box-shadow: var(--wp--custom--brag-book-gallery--shadow-lg);
+
+	&:hover {
+		&:not(.disabled) {
+			background: var(--wp--custom--brag-book-gallery--color--white);
+			border-color: var(--wp--custom--brag-book-gallery--color--black);
+			box-shadow: var(--wp--custom--brag-book-gallery--shadow-xl);
+			transform: translateY(-50%) scale(1.05);
+
+			.brag-book-gallery-arrow-icon {
+				transform: scale(1.1);
+			}
+		}
+	}
+
+	&.active {
+		&:not(.disabled) {
+			transform: translateY(-50%) scale(0.98);
+		}
+	}
+
+	&:disabled {
+		opacity: 0.4;
+		cursor: not-allowed;
+		background: rgba(255, 255, 255, 0.5);
+	}
+
+	&:focus-visible {
+		outline: 2px solid var(--wp--custom--brag-book-gallery--color--black);
+		outline-offset: 2px;
+	}
+
+	&[data-direction="prev"] {
+		position: absolute;
+		left: 0;
+
+		&:hover:not(.disabled) {
+			.brag-book-gallery-arrow-icon {
+				transform: translateX(-2px) scale(1.1);
+			}
+		}
+	}
+
+	&[data-direction="next"] {
+		position: absolute;
+		right: 0;
+
+		&:hover:not(.disabled) {
+			.brag-book-gallery-arrow-icon {
+				transform: translateX(2px) scale(1.1);
+			}
+		}
+	}
+}
+
+.brag-book-gallery-arrow-icon {
+	width: calc( 6 * var(--wp--custom--brag-book-gallery--spacer) );
+	height: calc( 6 * var(--wp--custom--brag-book-gallery--spacer) );
+	transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}

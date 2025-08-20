@@ -1,0 +1,25 @@
+@charset "UTF-8";
+
+// -----------------------------------------------------------------------------
+// components / gallery / controls
+// -----------------------------------------------------------------------------
+
+.brag-book-gallery-controls {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-block: calc( 4 * var(--wp--custom--brag-book-gallery--spacer) );
+	padding-block: calc( 2 * var(--wp--custom--brag-book-gallery--spacer) );
+	border-width: 1px 0;
+	border-style: solid;
+	border-color: var(--wp--custom--brag-book-gallery--color--light-grey);
+	flex-wrap: wrap;
+	gap: calc( 4 * var(--wp--custom--brag-book-gallery--spacer) );
+
+	&-left {
+		display: flex;
+		align-items: center;
+		gap: calc( 4 * var(--wp--custom--brag-book-gallery--spacer) );
+		flex-wrap: wrap
+	}
+}

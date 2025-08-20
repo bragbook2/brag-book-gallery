@@ -1,0 +1,11 @@
+@charset "UTF-8";
+
+// -----------------------------------------------------------------------------
+// admin / admin menu
+// -----------------------------------------------------------------------------
+
+#adminmenu .toplevel_page_brag-book-gallery-settings .wp-menu-image img {
+	inline-size: var(--space-5);
+	block-size: var(--space-5);
+	padding-block: var(--space-1-5);
+}

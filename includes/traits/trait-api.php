@@ -16,7 +16,7 @@ namespace BRAGBookGallery\Includes\Traits;
 
 use WP_Error;
 
-if ( ! defined( constant_name: 'WPINC' ) ) {
+if ( ! defined( 'WPINC' ) ) {
 	die( 'Restricted Access' );
 }
 
@@ -82,6 +82,8 @@ trait Trait_Api {
 	protected function make_api_request( string $endpoint, array $args = [], string $method = 'POST' ): array|WP_Error {
 
 		// Check rate limit.
+		// Ensure endpoint is never null for PHP 8.2 compatibility
+		$endpoint = $endpoint ?: '';
 		$url = $this->get_api_base_url() . '/' . ltrim( $endpoint, '/' );
 
 		// Validate URL.
@@ -92,10 +94,13 @@ trait Trait_Api {
 			);
 		}
 
+		// Get timeout from settings or use default
+		$timeout = intval( get_option( 'brag_book_gallery_api_timeout', $this->request_timeout ) );
+		
 		// Set default headers.
 		$default_args = array(
 			'method'      => strtoupper( $method ),
-			'timeout'     => $this->request_timeout,
+			'timeout'     => $timeout,
 			'redirection' => 5,
 			'httpversion' => '1.1',
 			'blocking'    => true,
@@ -257,7 +262,7 @@ trait Trait_Api {
 	protected function clear_api_cache( ?string $pattern = null ): void {
 		global $wpdb;
 
-		if ( $pattern ) {
+		if ( ! empty( $pattern ) ) {
 			// Clear specific pattern including timeout transients
 			$cache_pattern = '_transient_brag_book_gallery_api_%' . $pattern . '%';
 			$timeout_pattern = '_transient_timeout_brag_book_gallery_api_%' . $pattern . '%';
@@ -339,6 +344,8 @@ trait Trait_Api {
 	 * @return string Complete endpoint URL.
 	 */
 	protected function build_api_endpoint( string $endpoint, array $params = array() ): string {
+		// Ensure endpoint is never null for PHP 8.2 compatibility
+		$endpoint = $endpoint ?: '';
 		$endpoint = ltrim( $endpoint, '/' );
 
 		if ( ! empty( $params ) ) {

@@ -2,7 +2,7 @@
 /**
  * Database Manager
  *
- * Manages database setup and maintenance for the BRAG Book Gallery plugin.
+ * Manages database setup and maintenance for the BRAG book Gallery plugin.
  *
  * @package    BRAGBookGallery
  * @subpackage Includes\Core

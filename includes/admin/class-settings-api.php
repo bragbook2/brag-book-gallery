@@ -21,7 +21,7 @@ if ( ! defined( constant_name: 'WPINC' ) ) {
 /**
  * API Settings Class
  *
- * Comprehensive API configuration management for BRAG Book Gallery connections.
+ * Comprehensive API configuration management for BRAG book Gallery connections.
  * This class handles all aspects of API connectivity including:
  *
  * - Multiple API connection management with validation
@@ -31,7 +31,7 @@ if ( ! defined( constant_name: 'WPINC' ) ) {
  * - Performance optimization settings
  *
  * The API settings form supports multiple concurrent connections to different
- * BRAG Book API endpoints, allowing for complex deployment scenarios and
+ * BRAG book API endpoints, allowing for complex deployment scenarios and
  * redundancy configurations. Each connection is validated individually
  * and stored securely in WordPress options.
  *
@@ -46,6 +46,8 @@ if ( ! defined( constant_name: 'WPINC' ) ) {
  * @since 3.0.0
  */
 class Settings_Api extends Settings_Base {
+
+	use \BRAGBookGallery\Includes\Admin\Traits\Trait_Ajax_Handler;
 
 	/**
 	 * Initialize API settings page configuration
@@ -63,12 +65,44 @@ class Settings_Api extends Settings_Base {
 	 */
 	protected function init(): void {
 		$this->page_slug = 'brag-book-gallery-api-settings';
+		$this->init_ajax_handlers();
+	}
+
+	/**
+	 * Initialize AJAX handlers for API settings
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	protected function init_ajax_handlers(): void {
+		// Debug logging for AJAX registration
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( 'BRAG book Gallery: Registering AJAX handlers' );
+		}
+
+		// Validate API credentials
+		$this->register_ajax_action( 'brag_book_gallery_validate_api', array( $this, 'handle_validate_api' ) );
+
+		// Remove API connection
+		$this->register_ajax_action( 'brag_book_gallery_remove_api_connection', array( $this, 'handle_remove_api_connection' ) );
+
+		// Save API settings
+		$this->register_ajax_action( 'brag_book_gallery_save_api_settings', array( $this, 'handle_save_api_settings_ajax' ) );
+
+		// Check slug availability
+		$this->register_ajax_action( 'brag_book_gallery_check_slug', array( $this, 'handle_check_slug' ) );
+
+		// Generate page
+		$this->register_ajax_action( 'brag_book_gallery_generate_page', array( $this, 'handle_generate_page' ) );
+
+		// Remove settings row
+		$this->register_ajax_action( 'brag_book_gallery_setting_remove_row', array( $this, 'handle_remove_row' ) );
 	}
 
 	/**
 	 * Render the complete API configuration interface
 	 *
-	 * Generates a comprehensive settings page for managing BRAG Book API connections.
+	 * Generates a comprehensive settings page for managing BRAG book API connections.
 	 * The interface includes multiple sections:
 	 *
 	 * 1. **Setup Instructions**: Step-by-step guidance for API configuration
@@ -110,7 +144,7 @@ class Settings_Api extends Settings_Base {
 		$website_property_ids = get_option( option: 'brag_book_gallery_website_property_id', default_value: array() );
 		$api_endpoint         = get_option( option: 'brag_book_gallery_api_endpoint', default_value: 'https://app.bragbookgallery.com' );
 		$api_timeout          = get_option( option: 'brag_book_gallery_api_timeout', default_value: 30 );
-		$enable_caching       = get_option( option: 'brag_book_gallery_enable_api_cache', default_value: 'yes' );
+		$enable_caching       = get_option( option: 'brag_book_gallery_enable_caching', default_value: 'yes' );
 		$cache_duration       = get_option( option:'brag_book_gallery_api_cache_duration', default_value: 3600 );
 
 		$this->render_header();
@@ -120,29 +154,27 @@ class Settings_Api extends Settings_Base {
 			<?php wp_nonce_field( 'brag_book_gallery_api_settings', 'brag_book_gallery_api_nonce' ); ?>
 			<input type="hidden" name="brag_book_gallery_api_form_submitted" value="1" />
 
-			<div class="brag-book-gallery-api-instructions">
-				<div class="brag-book-gallery-notice brag-book-gallery-notice-info">
-					<h3><?php esc_html_e( 'Getting Started with BRAG Book API', 'brag-book-gallery' ); ?></h3>
-					<ol>
-						<li>
-							<?php esc_html_e( 'Log in to your BRAG Book account at', 'brag-book-gallery' ); ?>
-							<a href="https://app.bragbookgallery.com" target="_blank">
-								<?php esc_html_e( 'app.bragbookgallery.com', 'brag-book-gallery' ); ?>
-							</a>
-						</li>
-						<li><?php esc_html_e( 'Navigate to Settings → API Tokens', 'brag-book-gallery' ); ?></li>
-						<li><?php esc_html_e( 'Copy your API Token and Website Property ID', 'brag-book-gallery' ); ?></li>
-						<li><?php esc_html_e( 'Enter them below and click "Save Settings"', 'brag-book-gallery' ); ?></li>
-					</ol>
-				</div>
+			<div class="brag-book-gallery-notice brag-book-gallery-notice--info">
+				<h3><?php esc_html_e( 'Getting Started with BRAG book API', 'brag-book-gallery' ); ?></h3>
+				<ol>
+					<li>
+						<?php esc_html_e( 'Log in to your BRAG book account at', 'brag-book-gallery' ); ?>
+						<a href="https://app.bragbookgallery.com" target="_blank">
+							<?php esc_html_e( 'app.bragbookgallery.com', 'brag-book-gallery' ); ?>
+						</a>
+					</li>
+					<li><?php esc_html_e( 'Navigate to Settings → API Tokens', 'brag-book-gallery' ); ?></li>
+					<li><?php esc_html_e( 'Copy your API Token and Website Property ID', 'brag-book-gallery' ); ?></li>
+					<li><?php esc_html_e( 'Enter them below and click "Save Settings"', 'brag-book-gallery' ); ?></li>
+				</ol>
 			</div>
 
 			<div class="brag-book-gallery-section">
 				<h2><?php esc_html_e( 'API Connections', 'brag-book-gallery' ); ?></h2>
 
 				<?php if ( empty( $api_tokens ) ) : ?>
-					<div class="brag-book-gallery-notice brag-book-gallery-notice-warning inline">
-						<p><?php esc_html_e( 'No API connections configured. Add at least one connection to connect to the BRAG Book API.', 'brag-book-gallery' ); ?></p>
+					<div class="brag-book-gallery-notice brag-book-gallery-notice--warning">
+						<p><?php esc_html_e( 'No API connections configured. Add at least one connection to connect to the BRAG book API.', 'brag-book-gallery' ); ?></p>
 					</div>
 				<?php endif; ?>
 
@@ -185,9 +217,16 @@ class Settings_Api extends Settings_Base {
 											<label><?php esc_html_e( 'Website Property ID', 'brag-book-gallery' ); ?></label>
 										</th>
 										<td>
+											<?php 
+												$property_id_value = $website_property_ids[ $index ] ?? '';
+												// Ensure we have a string, not an array
+												if ( is_array( $property_id_value ) ) {
+													$property_id_value = $property_id_value[0] ?? '';
+												}
+											?>
 											<input type="text"
 											       name="brag_book_gallery_website_property_id[]"
-											       value="<?php echo esc_attr( $website_property_ids[ $index ] ?? '' ); ?>"
+											       value="<?php echo esc_attr( $property_id_value ); ?>"
 											       placeholder="<?php esc_attr_e( 'Enter your website property ID', 'brag-book-gallery' ); ?>"
 											       class="regular-text bb-websiteproperty-id"/>
 										</td>
@@ -196,12 +235,12 @@ class Settings_Api extends Settings_Base {
 										<th scope="row"></th>
 										<td>
 											<button type="button"
-											        class="button bb-validate-api"
+											        class="button button-primary bb-validate-api"
 											        data-index="<?php echo esc_attr( $index ); ?>">
 												<?php esc_html_e( 'Validate & Save', 'brag-book-gallery' ); ?>
 											</button>
 											<button type="button"
-											        class="button button-link-delete bb-remove-api-row"
+											        class="button button-secondary button-link-delete bb-remove-api-row"
 											        data-index="<?php echo esc_attr( $index ); ?>">
 												<?php esc_html_e( 'Remove Connection', 'brag-book-gallery' ); ?>
 											</button>
@@ -214,7 +253,7 @@ class Settings_Api extends Settings_Base {
 
 				<p class="add-api-connection">
 					<button type="button" id="bb-add-api-row" class="button button-secondary">
-						<span class="dashicons dashicons-plus-alt"></span>
+						<svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="currentColor"><path d="M450-290h60v-160h160v-60H510v-160h-60v160H290v60h160v160Zm30.07 190q-78.84 0-148.21-29.92t-120.68-81.21q-51.31-51.29-81.25-120.63Q100-401.1 100-479.93q0-78.84 29.92-148.21t81.21-120.68q51.29-51.31 120.63-81.25Q401.1-860 479.93-860q78.84 0 148.21 29.92t120.68 81.21q51.31 51.29 81.25 120.63Q860-558.9 860-480.07q0 78.84-29.92 148.21t-81.21 120.68q-51.29 51.31-120.63 81.25Q558.9-100 480.07-100Zm-.07-60q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z"/></svg>
 						<?php esc_html_e( 'Add New Connection', 'brag-book-gallery' ); ?>
 					</button>
 				</p>
@@ -247,19 +286,23 @@ class Settings_Api extends Settings_Base {
 
 					<tr>
 						<th scope="row">
-							<label for="enable_caching">
+							<label for="enable_caching" class="brag-book-toggle-label">
 								<?php esc_html_e( 'Enable Caching', 'brag-book-gallery' ); ?>
 							</label>
 						</th>
 						<td>
-							<label>
+							<label class="brag-book-toggle-switch">
+								<input type="hidden" name="enable_caching" value="no" />
 								<input type="checkbox"
 								       id="enable_caching"
 								       name="enable_caching"
 								       value="yes"
-								       <?php checked( $enable_caching, 'yes' ); ?>>
-								<?php esc_html_e( 'Cache API responses for better performance', 'brag-book-gallery' ); ?>
+								       <?php checked( $enable_caching, 'yes' ); ?> />
+								<span class="brag-book-toggle-slider"></span>
 							</label>
+							<p class="description">
+								<?php esc_html_e( 'Cache API responses for better performance', 'brag-book-gallery' ); ?>
+							</p>
 						</td>
 					</tr>
 
@@ -378,7 +421,7 @@ class Settings_Api extends Settings_Base {
 
 		<script type="module">
 		/**
-		 * BRAG Book Gallery API Settings JavaScript
+		 * BRAG book Gallery API Settings JavaScript
 		 *
 		 * Handles API connection management, validation, and dynamic form interactions
 		 * using modern ES6+ JavaScript following WordPress VIP coding standards.
@@ -387,6 +430,9 @@ class Settings_Api extends Settings_Base {
 		 */
 		(() => {
 			'use strict';
+
+			// Define ajaxurl if not already defined
+			const ajaxurl = window.ajaxurl || '<?php echo esc_js( admin_url( 'admin-ajax.php' ) ); ?>';
 
 			// State management
 			let apiRowIndex = <?php echo ! empty( $api_tokens ) ? count( $api_tokens ) : 1; ?>;
@@ -631,6 +677,7 @@ class Settings_Api extends Settings_Base {
 
 					const response = await fetch(ajaxurl, {
 						method: 'POST',
+						credentials: 'same-origin',
 						body: formData
 					});
 
@@ -672,6 +719,15 @@ class Settings_Api extends Settings_Base {
 				const btn = e.target.closest('.bb-validate-api');
 				if (!btn) return;
 
+				// Prevent duplicate calls if already processing
+				if (btn.disabled) {
+					console.log('BRAG book Gallery: Button already disabled, skipping');
+					return;
+				}
+
+				// Debug logging
+				console.log('BRAG book Gallery: handleValidateConnection called', e);
+
 				const index = btn.dataset.index;
 				const row = btn.closest('.bb-api-row');
 				const status = row.querySelector('.bb-api-status');
@@ -696,28 +752,30 @@ class Settings_Api extends Settings_Base {
 					formData.append('action', 'brag_book_gallery_validate_api');
 					formData.append('nonce', '<?php echo wp_create_nonce( 'brag_book_gallery_settings_nonce' ); ?>');
 					formData.append('api_token', apiToken);
-					formData.append('websiteproperty_id', propertyId);
+					formData.append('website_property_id', propertyId);
 					formData.append('index', index);
 
 					const response = await fetch(ajaxurl, {
 						method: 'POST',
+						credentials: 'same-origin',
 						body: formData
 					});
 
 					const data = await response.json();
 					btn.disabled = false;
 
+					console.log('BRAG book Gallery: Response received', data);
+
 					if (data.success) {
 						status.innerHTML = '<span class="dashicons dashicons-yes-alt api-status-success"></span> <?php esc_html_e( "Valid & Saved", "brag-book-gallery" ); ?>';
-						// Show success message and reload
+						// Show success message
 						if (data.data?.message) {
-							await showDialog(
+							showDialog(
 								'<?php esc_html_e( "Success", "brag-book-gallery" ); ?>',
 								data.data.message,
 								'success'
 							);
-							// Reload the page to show the saved credentials
-							window.location.reload();
+							// Don't reload automatically - let user see the result
 						}
 					} else {
 						status.innerHTML = '<span class="dashicons dashicons-warning api-status-error"></span> <?php esc_html_e( "Invalid", "brag-book-gallery" ); ?>';
@@ -893,18 +951,385 @@ class Settings_Api extends Settings_Base {
 
 		// Normalize caching setting to string boolean
 		$enable_caching = isset( $_POST['enable_caching'] ) && $_POST['enable_caching'] === 'yes' ? 'yes' : 'no';
-		update_option( 'brag_book_gallery_enable_api_cache', $enable_caching );
+		update_option( 'brag_book_gallery_enable_caching', $enable_caching );
 
 		// Process cache duration with bounds checking
 		if ( isset( $_POST['cache_duration'] ) ) {
 			$duration = absint( $_POST['cache_duration'] );
 			// Ensure duration is within reasonable bounds (60 seconds to 24 hours)
 			$duration = max( 60, min( 86400, $duration ) );
-			update_option( 'brag_book_gallery_api_cache_duration', $duration );
+			update_option( 'brag_book_gallery_cache_duration', $duration );
 		}
 
 		// Provide user feedback for successful save operation
 		$this->add_notice( __( 'API settings saved successfully.', 'brag-book-gallery' ) );
 		settings_errors( $this->page_slug );
+	}
+
+	/**
+	 * Handle API validation AJAX request
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	public function handle_validate_api(): void {
+		// Clean any output that might have been sent already
+		if ( ob_get_level() ) {
+			ob_clean();
+		}
+
+		// Log to file for debugging (since we can't easily check WP_DEBUG in this environment)
+		error_log( 'BRAG book Gallery: AJAX validate_api called' );
+		error_log( 'BRAG book Gallery: POST data keys: ' . implode( ', ', array_keys( $_POST ) ) );
+
+		// Verify nonce - check manually first for debugging
+		if ( ! isset( $_POST['nonce'] ) ) {
+			error_log( 'BRAG book Gallery: No nonce in POST data' );
+			wp_send_json_error( __( 'Missing security nonce.', 'brag-book-gallery' ) );
+			return;
+		}
+
+		$nonce = sanitize_text_field( wp_unslash( $_POST['nonce'] ) );
+		if ( ! wp_verify_nonce( $nonce, 'brag_book_gallery_settings_nonce' ) ) {
+			error_log( 'BRAG book Gallery: Nonce verification failed' );
+			wp_send_json_error( __( 'Security check failed.', 'brag-book-gallery' ) );
+			return;
+		}
+
+		// Check capability
+		if ( ! current_user_can( 'manage_options' ) ) {
+			error_log( 'BRAG book Gallery: User capability check failed' );
+			wp_send_json_error( __( 'You do not have permission to perform this action.', 'brag-book-gallery' ) );
+			return;
+		}
+
+		$api_token          = sanitize_text_field( $_POST['api_token'] ?? '' );
+		$website_property_id = sanitize_text_field( $_POST['website_property_id'] ?? $_POST['websiteproperty_id'] ?? '' );
+		$index              = isset( $_POST['index'] ) ? intval( $_POST['index'] ) : 0;
+
+		error_log( "BRAG book Gallery: Processing API token (length: " . strlen( $api_token ) . ") and property ID: {$website_property_id}" );
+
+		// Validate inputs
+		if ( empty( $api_token ) || empty( $website_property_id ) ) {
+			error_log( 'BRAG book Gallery: Missing API token or property ID' );
+			wp_send_json_error( __( 'API token and Website Property ID are required.', 'brag-book-gallery' ) );
+			return;
+		}
+
+		try {
+			$validation = $this->validate_api_credentials( $api_token, $website_property_id );
+			error_log( 'BRAG book Gallery: Validation completed' );
+		} catch ( Exception $e ) {
+			error_log( 'BRAG book Gallery: Exception in validate_api_credentials: ' . $e->getMessage() );
+			wp_send_json_error( __( 'Validation failed due to an error.', 'brag-book-gallery' ) );
+			return;
+		}
+
+		if ( $validation['valid'] ) {
+			error_log( 'BRAG book Gallery: Validation successful, saving credentials' );
+
+			// Save the validated credentials
+			$saved_tokens       = get_option( 'brag_book_gallery_api_token', array() );
+			$saved_property_ids = get_option( 'brag_book_gallery_website_property_id', array() );
+
+			// Ensure we have arrays
+			if ( ! is_array( $saved_tokens ) ) {
+				$saved_tokens = array();
+			}
+			if ( ! is_array( $saved_property_ids ) ) {
+				$saved_property_ids = array();
+			}
+
+			// Update the specific index
+			$saved_tokens[ $index ]       = $api_token;
+			$saved_property_ids[ $index ] = $website_property_id;
+
+			// Save back to database
+			update_option( 'brag_book_gallery_api_token', $saved_tokens );
+			update_option( 'brag_book_gallery_website_property_id', $saved_property_ids );
+
+			error_log( 'BRAG book Gallery: Sending success response' );
+			wp_send_json_success( array(
+				'valid'   => true,
+				'message' => __( 'API credentials validated and saved successfully.', 'brag-book-gallery' ),
+			) );
+		} else {
+			error_log( 'BRAG book Gallery: Validation failed: ' . $validation['message'] );
+			wp_send_json_error( $validation['message'] );
+		}
+	}
+
+	/**
+	 * Handle remove API connection AJAX request
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	public function handle_remove_api_connection(): void {
+		$this->verify_ajax_request();
+
+		$index = isset( $_POST['index'] ) ? intval( $_POST['index'] ) : -1;
+
+		if ( $index < 0 ) {
+			wp_send_json_error( __( 'Invalid connection index.', 'brag-book-gallery' ) );
+		}
+
+		// Get current options
+		$api_tokens    = get_option( 'brag_book_gallery_api_token', array() );
+		$property_ids  = get_option( 'brag_book_gallery_website_property_id', array() );
+		$page_slugs    = get_option( 'brag_book_gallery_page_slug', array() );
+		$seo_titles    = get_option( 'brag_book_gallery_seo_page_title', array() );
+		$seo_descs     = get_option( 'brag_book_gallery_seo_page_description', array() );
+
+		// Remove the specific index
+		if ( isset( $api_tokens[ $index ] ) ) {
+			unset( $api_tokens[ $index ] );
+			unset( $property_ids[ $index ] );
+			unset( $page_slugs[ $index ] );
+			unset( $seo_titles[ $index ] );
+			unset( $seo_descs[ $index ] );
+
+			// Re-index arrays
+			$api_tokens   = array_values( $api_tokens );
+			$property_ids = array_values( $property_ids );
+			$page_slugs   = array_values( $page_slugs );
+			$seo_titles   = array_values( $seo_titles );
+			$seo_descs    = array_values( $seo_descs );
+
+			// Update options
+			update_option( 'brag_book_gallery_api_token', $api_tokens );
+			update_option( 'brag_book_gallery_website_property_id', $property_ids );
+			update_option( 'brag_book_gallery_page_slug', $page_slugs );
+			update_option( 'brag_book_gallery_seo_page_title', $seo_titles );
+			update_option( 'brag_book_gallery_seo_page_description', $seo_descs );
+
+			wp_send_json_success( __( 'API connection removed successfully.', 'brag-book-gallery' ) );
+		} else {
+			wp_send_json_error( __( 'Connection not found.', 'brag-book-gallery' ) );
+		}
+	}
+
+	/**
+	 * Handle save API settings via AJAX
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	public function handle_save_api_settings_ajax(): void {
+		$this->verify_ajax_request();
+
+		// Process the save
+		$this->process_api_settings_save();
+
+		wp_send_json_success( __( 'API settings saved successfully.', 'brag-book-gallery' ) );
+	}
+
+	/**
+	 * Handle check slug AJAX request
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	public function handle_check_slug(): void {
+		// Use the correct nonce action for this handler
+		$this->verify_ajax_request( 'brag_book_gallery_check_slug' );
+
+		$slug = sanitize_text_field( $_POST['slug'] ?? '' );
+
+		if ( empty( $slug ) ) {
+			wp_send_json_error( __( 'Slug is required.', 'brag-book-gallery' ) );
+		}
+
+		// Check if slug exists as a post or page
+		$exists = get_page_by_path( $slug, OBJECT, array( 'post', 'page' ) );
+
+		wp_send_json_success( array(
+			'exists'    => (bool) $exists,  // JavaScript expects 'exists' property
+			'available' => ! $exists,
+			'message'   => $exists
+				? __( 'This slug is already in use.', 'brag-book-gallery' )
+				: __( 'This slug is available.', 'brag-book-gallery' ),
+		) );
+	}
+
+	/**
+	 * Handle generate page AJAX request
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	public function handle_generate_page(): void {
+		// Use the correct nonce action for this handler
+		$this->verify_ajax_request( 'brag_book_gallery_generate_page' );
+
+		$slug  = sanitize_text_field( $_POST['slug'] ?? '' );
+		$title = sanitize_text_field( $_POST['title'] ?? '' );
+
+		if ( empty( $slug ) || empty( $title ) ) {
+			wp_send_json_error( __( 'Slug and title are required.', 'brag-book-gallery' ) );
+		}
+
+		// Check if page already exists
+		if ( get_page_by_path( $slug ) ) {
+			wp_send_json_error( __( 'A page with this slug already exists.', 'brag-book-gallery' ) );
+		}
+
+		// Create the page
+		$page_id = wp_insert_post( array(
+			'post_title'   => $title,
+			'post_name'    => $slug,
+			'post_content' => '[brag_book_gallery]',
+			'post_status'  => 'publish',
+			'post_type'    => 'page',
+		) );
+
+		if ( is_wp_error( $page_id ) ) {
+			wp_send_json_error( $page_id->get_error_message() );
+		}
+
+		// Save the slug to the options
+		$page_slugs = get_option( 'brag_book_gallery_page_slug', array() );
+		if ( ! is_array( $page_slugs ) ) {
+			$page_slugs = array();
+		}
+		$page_slugs[] = $slug;
+		update_option( 'brag_book_gallery_page_slug', $page_slugs );
+
+		wp_send_json_success( array(
+			'page_id'   => $page_id,
+			'message'   => __( 'Page created successfully.', 'brag-book-gallery' ),
+			'url'       => get_permalink( $page_id ),
+			'edit_link' => get_edit_post_link( $page_id, 'raw' ),
+		) );
+	}
+
+	/**
+	 * Handle remove settings row AJAX request
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	public function handle_remove_row(): void {
+		$this->verify_ajax_request();
+
+		$remove_id = sanitize_text_field( $_POST['remove_id'] ?? '' );
+
+		if ( empty( $remove_id ) ) {
+			wp_send_json_error( __( 'Invalid row ID.', 'brag-book-gallery' ) );
+		}
+
+		// Extract index from remove_id (format: page_X)
+		if ( preg_match( '/page_(\d+)/', $remove_id, $matches ) ) {
+			$index = intval( $matches[1] );
+
+			// Get current stored pages
+			$stored_pages = get_option( 'brag_book_gallery_stored_pages', array() );
+
+			// Remove the page at this index
+			if ( isset( $stored_pages[ $index ] ) ) {
+				unset( $stored_pages[ $index ] );
+				$stored_pages = array_values( $stored_pages ); // Re-index
+				update_option( 'brag_book_gallery_stored_pages', $stored_pages );
+			}
+		}
+
+		wp_send_json_success( __( 'Row removed successfully.', 'brag-book-gallery' ) );
+	}
+
+	/**
+	 * Validate API credentials
+	 *
+	 * @since 3.0.0
+	 * @param string $api_token API token
+	 * @param string $website_property_id Website property ID
+	 * @return array Validation result
+	 */
+	private function validate_api_credentials( string $api_token, string $website_property_id ): array {
+		if ( empty( $api_token ) || empty( $website_property_id ) ) {
+			return [
+				'valid'   => false,
+				'message' => __( 'API token and Website Property ID are required.', 'brag-book-gallery' ),
+			];
+		}
+
+		// Use sidebar endpoint for validation with both token and property ID
+		$test_endpoint = 'https://app.bragbookgallery.com/api/plugin/combine/sidebar';
+
+		// Sidebar endpoint expects POST with arrays of tokens and property IDs
+		$request_body = [
+			'apiTokens' => [ $api_token ],
+			'websitePropertyIds' => [ intval( $website_property_id ) ],
+		];
+
+		// Make POST request to sidebar endpoint for validation
+		$response = wp_remote_post(
+			$test_endpoint,
+			[
+				'timeout' => 10,
+				'headers' => [
+					'Accept'       => 'application/json',
+					'Content-Type' => 'application/json',
+				],
+				'body'    => wp_json_encode( $request_body ),
+			]
+		);
+
+		if ( is_wp_error( $response ) ) {
+			return [
+				'valid'   => false,
+				'message' => sprintf( __( 'API connection failed: %s', 'brag-book-gallery' ), $response->get_error_message() ),
+			];
+		}
+
+		$response_code = wp_remote_retrieve_response_code( $response );
+		$response_body = wp_remote_retrieve_body( $response );
+		$data          = json_decode( $response_body, true );
+
+		// Check if response is successful
+		if ( 200 !== $response_code && 201 !== $response_code ) {
+			$error_message = $data['message'] ?? $data['error'] ?? __( 'Invalid API credentials.', 'brag-book-gallery' );
+
+			// Check for specific error patterns
+			if ( 401 === $response_code || 403 === $response_code ) {
+				$error_message = __( 'Invalid API token or Website Property ID.', 'brag-book-gallery' );
+			} elseif ( 404 === $response_code ) {
+				$error_message = __( 'API endpoint not found. Please contact support.', 'brag-book-gallery' );
+			}
+
+			return [
+				'valid'   => false,
+				'message' => $error_message,
+			];
+		}
+
+		// Check if we got valid data back
+		if ( ! $data ) {
+			return [
+				'valid'   => false,
+				'message' => __( 'Invalid response from API. No data returned.', 'brag-book-gallery' ),
+			];
+		}
+
+		// Check for error in response
+		if ( isset( $data['error'] ) && $data['error'] ) {
+			return [
+				'valid'   => false,
+				'message' => $data['message'] ?? __( 'API returned an error.', 'brag-book-gallery' ),
+			];
+		}
+
+		// Check if we have valid sidebar data (should have 'data' key with procedures)
+		if ( ! isset( $data['data'] ) ) {
+			return [
+				'valid'   => false,
+				'message' => __( 'Invalid response structure from API.', 'brag-book-gallery' ),
+			];
+		}
+
+		// If we got here, credentials are valid
+		return [
+			'valid'   => true,
+			'message' => __( 'API credentials are valid.', 'brag-book-gallery' ),
+		];
 	}
 }

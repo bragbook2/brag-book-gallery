@@ -14,26 +14,23 @@ BRAGBook Gallery is a WordPress plugin (v3.0.0) for displaying before/after medi
 npm install
 
 # Development build with watch mode
-npm run watch
+npm run watch     # Watches both JS and CSS
+npm run dev       # Alias for watch
 
 # Production build
-npm run build
+npm run build     # Builds both JS and CSS
+npm run build:js  # Build JavaScript only (webpack)
+npm run build:css # Build CSS only (sass)
 
-# Individual builds
-npm run build:blocks     # Build Gutenberg blocks
-npm run build:admin      # Build admin assets
-npm run build:frontend   # Build frontend assets
+# Watch individual assets
+npm run watch:js  # Watch JavaScript files
+npm run watch:css # Watch SCSS files
 
-# Linting
-npm run lint:js          # Lint JavaScript files
-npm run lint:css         # Lint CSS/SCSS files
-npm run format:js        # Format JavaScript files
-npm run format:css       # Fix CSS/SCSS issues
-
-# Testing
-npm run test:unit        # Run unit tests
-npm run test:e2e         # Run Playwright E2E tests
-npm run check-types      # TypeScript type checking
+# Code quality
+npm run lint:js   # ESLint for JavaScript
+npm run lint:css  # Stylelint for SCSS
+npm run format:js # Prettier formatting
+npm run clean     # Clean build directories
 ```
 
 ### PHP Development
@@ -41,26 +38,22 @@ npm run check-types      # TypeScript type checking
 # Install dependencies
 composer install
 
-# PHP Linting and Standards
+# PHP quality checks
 composer run phpcs       # Check WordPress coding standards
+composer run phpcs:vip   # Check VIP coding standards
 composer run phpcs:fix   # Auto-fix coding standard issues
 composer run phpstan     # Static analysis with PHPStan
 
 # Testing
 composer run test        # Run all PHPUnit tests
 composer run test:unit   # Run unit tests only
-composer run test:integration  # Run integration tests
+composer run test:integration # Run integration tests
+composer run test:coverage    # Generate coverage report
 
-# Quality Assurance
+# Combined quality checks
+composer run lint        # Run phpcs + phpstan
+composer run lint:vip    # Run VIP standards + phpstan
 composer run qa          # Run all linting and tests
-```
-
-### WordPress Environment
-```bash
-# Local development environment
-npm run env:start        # Start wp-env
-npm run env:stop         # Stop wp-env
-npm run env:reset        # Reset wp-env
 ```
 
 ## Architecture
@@ -70,7 +63,7 @@ The plugin follows a modular architecture with clear separation of concerns:
 
 - **Main Entry**: `brag-book-gallery.php` - Plugin bootstrap file that initializes the Setup class
 - **Autoloader**: Custom PSR-4 compatible autoloader in `includes/autoload.php`
-- **Core Setup**: `Setup` class (includes/core/class-setup.php) handles all initialization, hooks, and service management using singleton pattern
+- **Core Setup**: `Setup` class (`includes/core/class-setup.php`) handles all initialization using singleton pattern
 
 ### Key Components
 
@@ -78,29 +71,67 @@ The plugin follows a modular architecture with clear separation of concerns:
 - `Setup`: Main plugin orchestrator, manages services and hooks
 - `Updater`: Handles plugin updates from GitHub repository
 - `Consultation`: Manages consultation form submissions
+- `Database`: Database operations and queries
+- `URL_Router`: Custom URL routing for gallery pages
+- `Slug_Helper`: URL slug generation and management
 
 **Admin** (`includes/admin/`):
-- `Settings`: Plugin settings page management
+- `Settings_Manager`: Centralized settings management
+- `Settings_*`: Individual settings pages (Debug, Help, JavaScript, Mode, etc.)
+- `Menu`: Admin menu registration
+- `Tabs`: Settings page tab management
+- `Debug_Tools`: Debugging utilities
+
+**Frontend Extensions** (`includes/extend/`):
+- `Shortcodes`: Main shortcode coordinator with rewrite rules
+- `Gallery_Shortcode_Handler`: Gallery display shortcode
+- `Cases_Shortcode_Handler`: Individual case display
+- `Carousel_Shortcode_Handler`: Carousel functionality
+- `Ajax_Handlers`: AJAX request processing
+- `Asset_Manager`: Asset loading optimization
+- `Cache_Manager`: Transient cache management
+- `Data_Fetcher`: API data retrieval
+- `HTML_Renderer`: HTML generation utilities
+- `Rewrite_Rules_Handler`: URL rewrite management
+- `Templates`: Custom template handling
+
+**Resources** (`includes/resources/`):
+- `Assets`: CSS/JS asset management and enqueuing
 
 **SEO** (`includes/seo/`):
 - `SEO_Manager`: Central SEO functionality coordinator
 - `On_Page`: On-page SEO optimizations
 - `Sitemap`: XML sitemap generation
 
-**Extend** (`includes/extend/`):
-- `Shortcodes`: Gallery shortcode implementations and rewrite rules
-- `Templates`: Custom template handling for gallery pages
-
-**Resources** (`includes/resources/`):
-- `Assets`: CSS/JS asset management and enqueuing
-
-**REST API** (`includes/rest/`):
-- `Endpoints`: Custom REST API endpoints
-
 **Traits** (`includes/traits/`):
 - `Trait_Api`: API communication utilities
-- `Trait_Sanitizer`: Input sanitization helpers
 - `Trait_Tools`: Common utility functions
+
+### JavaScript Architecture
+
+**Entry Points** (built via webpack):
+- `src/js/frontend.js` → `assets/js/brag-book-gallery.js`
+- `src/js/admin.js` → `assets/js/brag-book-gallery-admin.js`
+- `src/js/carousel.js` → `assets/js/brag-book-carousel.js`
+
+**Frontend Modules** (`src/js/modules/`):
+- `main-app.js`: Main application controller
+- `filter-system.js`: Gallery filtering logic
+- `carousel.js`: Carousel functionality
+- `dialog.js`: Modal dialog management
+- `favorites-manager.js`: Favorite cases management
+- `mobile-menu.js`: Mobile navigation
+- `search-autocomplete.js`: Search functionality
+- `share-manager.js`: Social sharing
+- `utilities.js`: Common utilities
+- `global-utilities.js`: Global helper functions
+
+**SCSS Structure** (`src/scss/`):
+- `frontend.scss`: Main frontend styles
+- `admin.scss`: Admin area styles
+- `components/`: Modular component styles
+- `settings/`: Admin settings page styles
+- `structure/`: Layout and structure styles
 
 ### Data Flow
 1. Plugin loads via `brag-book-gallery.php`
@@ -114,7 +145,7 @@ The plugin follows a modular architecture with clear separation of concerns:
 ### External Dependencies
 - BRAGBook API: External service for gallery data
 - WordPress APIs: Uses standard WP hooks, options, and post types
-- Custom Post Type: `form-entries` for consultation submissions
+- GitHub Updater: Plugin updates via `bragbook2/brag-book-gallery` repository
 
 ## Gallery Features
 
@@ -135,7 +166,6 @@ The plugin follows a modular architecture with clear separation of concerns:
 - Cache duration: 1 hour (production) / 1 minute (debug mode)
 - Clear cache methods:
   - Admin button in JavaScript Settings page
-  - Utility file: `/wp-content/plugins/brag-book-gallery/clear-cache.php?clear=1`
   - WP-CLI: `wp transient delete --all`
 
 ### AJAX Endpoints
@@ -149,8 +179,7 @@ The plugin follows a modular architecture with clear separation of concerns:
 - Plugin requires PHP 8.2+ and WordPress 6.8+
 - Uses WordPress options for settings storage (no custom database tables)
 - Follows WordPress coding standards (WPCS)
-- Assets are built using WordPress Scripts package (@wordpress/scripts)
-- E2E tests use Playwright framework
-- Plugin updates are handled via GitHub repository (bragbook2/brag-book-gallery)
+- Assets are built using webpack for JavaScript and Sass for CSS
+- Plugin updates are handled via GitHub repository (`bragbook2/brag-book-gallery`)
 - All button styling should be in CSS files, not inline
 - API returns 10 cases per page, requiring pagination for larger datasets

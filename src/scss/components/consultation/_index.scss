@@ -1,0 +1,15 @@
+@charset "UTF-8";
+
+// -----------------------------------------------------------------------------
+// components / consultation / index
+// -----------------------------------------------------------------------------
+
+.brag-book-gallery-consultation-text {
+	font-size: var(--wp--custom--brag-book-gallery--text-lg);
+	line-height: 1.5;
+	text-align: center;
+
+	strong {
+		font-weight: var(--wp--custom--brag-book-gallery--font-weight--semibold);
+	}
+}

@@ -1,0 +1,191 @@
+
+
+.brag-book-gallery-share-option {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: .5rem;
+	padding: 1rem .5rem;
+	background: var(--wp--custom--brag-book-gallery--color--lightest-grey);
+	border: 1px solid rgba(0,0,0,0);
+	border-radius: .75rem;
+	cursor: pointer;
+	transition: var(--wp--custom--brag-book-gallery--transition);
+	font-size: .875rem;
+	color: var(--wp--custom--brag-book-gallery--color--grey);
+	font-weight: 500
+}
+
+.brag-book-gallery-share-option:hover {
+	background: var(--wp--custom--brag-book-gallery--color--white);
+	border-color: var(--wp--custom--brag-book-gallery--color--black);
+	transform: translateY(-2px);
+	box-shadow: var(--shadow-md)
+}
+
+.brag-book-gallery-share-option:active {
+	transform: translateY(0)
+}
+
+.brag-book-gallery-share-icon {
+	width: 24px;
+	height: 24px;
+	color: var(--wp--custom--brag-book-gallery--color--grey)
+}
+
+.brag-book-gallery-share-option:hover .brag-book-gallery-share-icon {
+	color: var(--wp--custom--brag-book-gallery--color--black)
+}
+
+.brag-book-gallery-share-close {
+	position: absolute;
+	top: 1rem;
+	right: 1rem;
+	width: 32px;
+	height: 32px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba(0,0,0,0);
+	border: 1px solid var(--wp--custom--brag-book-gallery--color--lighter-grey);
+	border-radius: 50%;
+	cursor: pointer;
+	transition: var(--wp--custom--brag-book-gallery--transition)
+}
+
+.brag-book-gallery-share-close:hover {
+	border-color: var(--wp--custom--brag-book-gallery--color--black);
+	background: var(--wp--custom--brag-book-gallery--color--lightest-grey)
+}
+
+.brag-book-gallery-share-close svg {
+	width: 16px;
+	height: 16px;
+	stroke: var(--wp--custom--brag-book-gallery--color--grey)
+}
+
+.brag-book-gallery-share-success {
+	position: absolute;
+	bottom: -100px;
+	left: 50%;
+	transform: translateX(-50%);
+	background: var(--wp--custom--brag-book-gallery--color--black);
+	color: var(--wp--custom--brag-book-gallery--color--white);
+	padding: .75rem 1.5rem;
+	border-radius: 2rem;
+	display: flex;
+	align-items: center;
+	gap: .5rem;
+	font-size: .875rem;
+	font-weight: 500;
+	opacity: 0;
+	transition: all .3s cubic-bezier(0.4, 0, 0.2, 1);
+	pointer-events: none
+}
+
+.brag-book-gallery-share-success.show {
+	bottom: 2rem;
+	opacity: 1
+}
+
+.brag-book-gallery-share-success-icon {
+	width: 18px;
+	height: 18px;
+	stroke: var(--wp--custom--brag-book-gallery--color--white);
+	stroke-width: 3
+}
+
+.brag-book-gallery-share-backdrop {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(0,0,0,.3);
+	backdrop-filter: blur(2px);
+	z-index: 1099;
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity .3s ease
+}
+
+.brag-book-gallery-share-backdrop.active {
+	opacity: 1;
+	pointer-events: auto
+}
+
+.brag-book-gallery-share-dropdown {
+	position: fixed;
+	background: #000;
+	border: 1px solid hsla(0,0%,100%,.1);
+	border-radius: 8px;
+	box-shadow: 0 8px 24px rgba(0,0,0,.4);
+	padding: 4px;
+	display: none;
+	z-index: 1001;
+	min-width: 120px;
+	opacity: 0
+}
+
+.brag-book-gallery-share-dropdown.active {
+	display: block;
+	opacity: 1
+}
+
+.brag-book-gallery-share-dropdown-item {
+	display: block;
+	width: 100%;
+	padding: 10px 16px;
+	background: none;
+	border: none;
+	border-radius: 6px;
+	text-align: left;
+	font-size: .875rem;
+	color: hsla(0,0%,100%,.9);
+	cursor: pointer;
+	transition: background-color .15s ease,color .15s ease;
+	font-family: inherit;
+	line-height: 1.2
+}
+
+.brag-book-gallery-share-dropdown-item:hover {
+	background-color: hsla(0,0%,100%,.1);
+	color: #fff
+}
+
+.brag-book-gallery-share-dropdown-item:focus {
+	outline: none;
+	background-color: hsla(0,0%,100%,.15);
+	color: #fff
+}
+
+.brag-book-gallery-share-dropdown-item:active {
+	background-color: hsla(0,0%,100%,.2)
+}
+
+.brag-book-gallery-share-notification,.brag-book-gallery-favorites-notification {
+	position: fixed;
+	top: 20px;
+	left: 50%;
+	transform: translateX(-50%);
+	background: var(--primary, #007bff);
+	color: #fff;
+	padding: 12px 24px;
+	border-radius: 8px;
+	box-shadow: 0 4px 12px rgba(0,0,0,.15);
+	font-size: .875rem;
+	font-weight: 500;
+	z-index: 10000;
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity .3s ease,transform .3s ease
+}
+
+.brag-book-gallery-favorites-notification {
+	background: #dc2626
+}
+
+.brag-book-gallery-share-notification.active,.brag-book-gallery-favorites-notification.active {
+	opacity: 1;
+	pointer-events: auto
+}

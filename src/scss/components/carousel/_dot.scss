@@ -1,0 +1,44 @@
+@charset "UTF-8";
+
+// -----------------------------------------------------------------------------
+// components / carousel dot
+// -----------------------------------------------------------------------------
+
+.brag-book-gallery-pagination-dot {
+	width: calc( 4 * var(--wp--custom--brag-book-gallery--spacer) );
+	height: var(--wp--custom--brag-book-gallery--spacer);
+	border-radius: 10em;
+	background: var(--wp--custom--brag-book-gallery--color--light-grey);
+	border: none;
+	cursor: pointer;
+	transition: var(--wp--custom--brag-book-gallery--transition);
+	padding: 0;
+	position: relative;
+
+	&::after {
+		content: '';
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		width: calc( 4 * var(--wp--custom--brag-book-gallery--spacer) );
+		height: var(--wp--custom--brag-book-gallery--spacer);
+		border-radius: 50%;
+		background: transparent;
+	}
+
+	&:focus-visible {
+		outline: none;
+	}
+
+	&:hover {
+		background: var(--wp--custom--brag-book-gallery--color--grey);
+		transform: scale(1.2);
+	}
+
+	&.brag-book-gallery-active {
+		background: var(--wp--custom--brag-book-gallery--color--black);
+		width: calc( 8 * var(--wp--custom--brag-book-gallery--spacer) );
+		border-radius: 10em;
+	}
+}

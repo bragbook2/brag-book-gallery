@@ -2,7 +2,7 @@
 /**
  * On-Page SEO Handler
  *
- * Manages SEO meta tags, titles, descriptions, and canonical URLs for BRAG Book gallery pages.
+ * Manages SEO meta tags, titles, descriptions, and canonical URLs for BRAG book gallery pages.
  * Integrates with popular SEO plugins including Yoast, AIOSEO, and RankMath.
  *
  * @package    BRAGBookGallery
@@ -99,7 +99,7 @@ class On_Page {
 	}
 
 	/**
-	 * Get custom SEO title and description for BRAG Book pages
+	 * Get custom SEO title and description for BRAG book pages
 	 *
 	 * Analyzes the current URL to determine the appropriate SEO metadata
 	 * based on gallery type, procedure, and case details.
@@ -166,13 +166,13 @@ class On_Page {
 	 * @since 3.0.0
 	 */
 	private function get_seo_configuration(): array {
+		// Use helper to get the first slug
+		$page_slug = \BRAGBookGallery\Includes\Core\Slug_Helper::get_first_gallery_page_slug( '' );
+		
 		return array(
-			'combine_gallery_slug'    => (string) get_option(
-				option: 'combine_gallery_slug',
-				default_value: ''
-			),
-			'combine_gallery_page_id' => (int) get_option(
-				option: 'combine_gallery_page_id',
+			'brag_book_gallery_page_slug'    => $page_slug,
+			'brag_book_gallery_page_id' => (int) get_option(
+				option: 'brag_book_gallery_page_id',
 				default_value: 0
 			),
 			'api_tokens'              => (array) get_option(
@@ -255,7 +255,7 @@ class On_Page {
 	private function get_gallery_listing_seo( array $url_parts, array $config, string $site_title ): array {
 		$first_segment = $url_parts[0] ?? '';
 
-		if ( $first_segment === $config['combine_gallery_slug'] ) {
+		if ( $first_segment === $config['brag_book_gallery_page_slug'] ) {
 			return [
 				'bb_title'          => $config['combine_seo_title'],
 				'bb_description'    => $config['combine_seo_description'],
@@ -306,7 +306,7 @@ class On_Page {
 			];
 		}
 
-		$is_combine = $url_parts[0] === $config['combine_gallery_slug'];
+		$is_combine = $url_parts[0] === $config['brag_book_gallery_page_slug'];
 		$api_tokens = $is_combine ? array_values( $config['api_tokens'] ) : $this->get_matching_api_token( $url_parts[0], $config );
 
 		$procedure_data = $this->get_procedure_data_from_sidebar( $api_tokens, $procedure_slug, $is_combine );
@@ -379,7 +379,7 @@ class On_Page {
 	 * @since 3.0.0
 	 */
 	private function fetch_case_data( array $url_parts, array $config, ?int $case_id, ?string $seo_suffix ): array {
-		$is_combine     = $url_parts[0] === $config['combine_gallery_slug'];
+		$is_combine     = $url_parts[0] === $config['brag_book_gallery_page_slug'];
 		$procedure_slug = $url_parts[1];
 
 		if ( $is_combine ) {
@@ -605,7 +605,7 @@ class On_Page {
 	}
 
 	/**
-	 * Get custom BRAG Book title
+	 * Get custom BRAG book title
 	 *
 	 * @return string SEO title.
 	 * @since 3.0.0
@@ -615,7 +615,7 @@ class On_Page {
 	}
 
 	/**
-	 * Get custom BRAG Book description
+	 * Get custom BRAG book description
 	 *
 	 * @return string SEO description.
 	 * @since 3.0.0
@@ -665,7 +665,7 @@ class On_Page {
 			return;
 		}
 
-		$seo_plugin = (int) get_option( 'bb_seo_plugin_selector', self::SEO_PLUGIN_NONE );
+		$seo_plugin = (int) get_option( 'brag_book_gallery_seo_plugin_selector', self::SEO_PLUGIN_NONE );
 
 		switch ( $seo_plugin ) {
 			case self::SEO_PLUGIN_YOAST:
@@ -687,9 +687,9 @@ class On_Page {
 	}
 
 	/**
-	 * Check if current page is a BRAG Book gallery page
+	 * Check if current page is a BRAG book gallery page
 	 *
-	 * @return bool True if BRAG Book page.
+	 * @return bool True if BRAG book page.
 	 * @since 3.0.0
 	 */
 	private function is_bragbook_page(): bool {
@@ -705,22 +705,19 @@ class On_Page {
 
 		// Ensure all IDs are integers.
 		$combine_gallery_page_id = (int) get_option(
-			option: 'combine_gallery_page_id',
+			option: 'brag_book_gallery_page_id',
 			default_value: 0
 		);
 
-		// Ensure slug is a string.
-		$combine_gallery_slug  = (string) get_option(
-			option: 'combine_gallery_slug',
-			default_value: ''
-		);
+		// Get all gallery page slugs
+		$brag_book_gallery_page_slugs = \BRAGBookGallery\Includes\Core\Slug_Helper::get_all_gallery_page_slugs();
 
 		$current_post = get_post( $current_page_id );
 		$current_slug = $current_post->post_name ?? '';
 
 		return in_array( $current_page_id, $stored_pages_ids, true )
 		       || $current_page_id === $combine_gallery_page_id
-		       || $current_slug === $combine_gallery_slug;
+		       || in_array( $current_slug, $brag_book_gallery_page_slugs, true );
 	}
 
 	/**

@@ -54,7 +54,11 @@ class Gallery_Taxonomies {
 	 * @since 3.0.0
 	 */
 	public function __construct() {
-		$this->init();
+		// Only initialize if in Local Mode
+		$current_mode = get_option( 'brag_book_gallery_current_mode', 'javascript' );
+		if ( $current_mode === 'local' ) {
+			$this->init();
+		}
 	}
 
 	/**
@@ -261,7 +265,7 @@ class Gallery_Taxonomies {
 		<div class="form-field">
 			<label for="brag_category_api_id"><?php esc_html_e( 'API Category ID', 'brag-book-gallery' ); ?></label>
 			<input type="number" name="brag_category_api_id" id="brag_category_api_id" value="">
-			<p class="description"><?php esc_html_e( 'The category ID from the BRAG Book API.', 'brag-book-gallery' ); ?></p>
+			<p class="description"><?php esc_html_e( 'The category ID from the BRAG book API.', 'brag-book-gallery' ); ?></p>
 		</div>
 		<div class="form-field">
 			<label for="brag_category_order"><?php esc_html_e( 'Display Order', 'brag-book-gallery' ); ?></label>
@@ -288,7 +292,7 @@ class Gallery_Taxonomies {
 			</th>
 			<td>
 				<input type="number" name="brag_category_api_id" id="brag_category_api_id" value="<?php echo esc_attr( $api_id ); ?>">
-				<p class="description"><?php esc_html_e( 'The category ID from the BRAG Book API.', 'brag-book-gallery' ); ?></p>
+				<p class="description"><?php esc_html_e( 'The category ID from the BRAG book API.', 'brag-book-gallery' ); ?></p>
 			</td>
 		</tr>
 		<tr class="form-field">
@@ -314,7 +318,7 @@ class Gallery_Taxonomies {
 		<div class="form-field">
 			<label for="brag_procedure_api_id"><?php esc_html_e( 'API Procedure ID', 'brag-book-gallery' ); ?></label>
 			<input type="number" name="brag_procedure_api_id" id="brag_procedure_api_id" value="">
-			<p class="description"><?php esc_html_e( 'The procedure ID from the BRAG Book API.', 'brag-book-gallery' ); ?></p>
+			<p class="description"><?php esc_html_e( 'The procedure ID from the BRAG book API.', 'brag-book-gallery' ); ?></p>
 		</div>
 		<div class="form-field">
 			<label for="brag_procedure_slug_name"><?php esc_html_e( 'URL Slug', 'brag-book-gallery' ); ?></label>
@@ -348,7 +352,7 @@ class Gallery_Taxonomies {
 			</th>
 			<td>
 				<input type="number" name="brag_procedure_api_id" id="brag_procedure_api_id" value="<?php echo esc_attr( $api_id ); ?>">
-				<p class="description"><?php esc_html_e( 'The procedure ID from the BRAG Book API.', 'brag-book-gallery' ); ?></p>
+				<p class="description"><?php esc_html_e( 'The procedure ID from the BRAG book API.', 'brag-book-gallery' ); ?></p>
 			</td>
 		</tr>
 		<tr class="form-field">

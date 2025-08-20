@@ -21,7 +21,7 @@ if ( ! defined( 'WPINC' ) ) {
 /**
  * Help Settings Class
  *
- * Comprehensive help documentation and support resource center for BRAG Book Gallery.
+ * Comprehensive help documentation and support resource center for BRAG book Gallery.
  * This class provides users with essential information, guides, and support resources
  * to effectively use and troubleshoot the plugin.
  *
@@ -84,7 +84,7 @@ class Settings_Help extends Settings_Base {
 				<div class="brag-book-gallery-card">
 					<h3><?php esc_html_e( 'Quick Setup Guide', 'brag-book-gallery' ); ?></h3>
 					<ol>
-						<li><?php esc_html_e( 'Get your API Token and Website Property ID from your BRAG Book account', 'brag-book-gallery' ); ?></li>
+						<li><?php esc_html_e( 'Get your API Token and Website Property ID from your BRAG book account', 'brag-book-gallery' ); ?></li>
 						<li><?php esc_html_e( 'Configure API credentials in the API Settings page', 'brag-book-gallery' ); ?></li>
 						<li><?php esc_html_e( 'Set your Gallery Slug in General Settings (e.g., "gallery" or "before-after")', 'brag-book-gallery' ); ?></li>
 						<li><?php esc_html_e( 'Create a page and add the [brag_book_gallery] shortcode', 'brag-book-gallery' ); ?></li>
@@ -193,7 +193,7 @@ class Settings_Help extends Settings_Base {
 
 				<div class="brag-book-gallery-faq">
 					<h3><?php esc_html_e( 'How do I get my API Token and Website Property ID?', 'brag-book-gallery' ); ?></h3>
-					<p><?php esc_html_e( 'Log into your BRAG Book account at app.bragbookgallery.com, go to Settings → API, and copy your API Token and Website Property ID.', 'brag-book-gallery' ); ?></p>
+					<p><?php esc_html_e( 'Log into your BRAG book account at app.bragbookgallery.com, go to Settings → API, and copy your API Token and Website Property ID.', 'brag-book-gallery' ); ?></p>
 				</div>
 
 				<div class="brag-book-gallery-faq">
@@ -225,45 +225,30 @@ class Settings_Help extends Settings_Base {
 			<!-- Troubleshooting -->
 			<div class="brag-book-gallery-section">
 				<h2><?php esc_html_e( 'Troubleshooting', 'brag-book-gallery' ); ?></h2>
-				
+
 				<div class="brag-book-gallery-card">
 					<h3><?php esc_html_e( 'URLs Returning 404 Errors', 'brag-book-gallery' ); ?></h3>
-					<p><?php esc_html_e( 'If your gallery procedure or case URLs are returning 404 errors, use these diagnostic tools:', 'brag-book-gallery' ); ?></p>
-					
+					<p><?php esc_html_e( 'If your gallery procedure or case URLs are returning 404 errors:', 'brag-book-gallery' ); ?></p>
+
 					<div class="brag-book-gallery-diagnostic-tools">
-						<h4><?php esc_html_e( 'Diagnostic Tools', 'brag-book-gallery' ); ?></h4>
-						<ul>
-							<li>
-								<strong><a href="<?php echo esc_url( content_url( 'plugins/brag-book-gallery/check-gallery-page.php' ) ); ?>" target="_blank">
-									<?php esc_html_e( 'Gallery Page Checker', 'brag-book-gallery' ); ?>
-								</a></strong><br>
-								<?php esc_html_e( 'Verify your gallery page exists and is configured correctly. Can automatically create missing pages.', 'brag-book-gallery' ); ?>
-							</li>
-							<li>
-								<strong><a href="<?php echo esc_url( content_url( 'plugins/brag-book-gallery/debug-rewrite.php' ) ); ?>" target="_blank">
-									<?php esc_html_e( 'Rewrite Rules Debugger', 'brag-book-gallery' ); ?>
-								</a></strong><br>
-								<?php esc_html_e( 'View all active rewrite rules and test if your URLs match any patterns.', 'brag-book-gallery' ); ?>
-							</li>
-							<li>
-								<strong><a href="<?php echo esc_url( content_url( 'plugins/brag-book-gallery/flush-rewrite-rules.php' ) ); ?>" target="_blank">
-									<?php esc_html_e( 'Flush Rewrite Rules', 'brag-book-gallery' ); ?>
-								</a></strong><br>
-								<?php esc_html_e( 'Force WordPress to regenerate all rewrite rules. Use after changing gallery slug.', 'brag-book-gallery' ); ?>
-							</li>
-							<li>
-								<strong><a href="<?php echo esc_url( content_url( 'plugins/brag-book-gallery/fix-live-rewrites.php' ) ); ?>" target="_blank">
-									<?php esc_html_e( 'Live Site Fix Tool', 'brag-book-gallery' ); ?>
-								</a></strong><br>
-								<?php esc_html_e( 'Comprehensive diagnostic for production sites. Checks server config, .htaccess, and applies automatic fixes.', 'brag-book-gallery' ); ?>
-							</li>
-						</ul>
-						<p class="description">
-							<strong><?php esc_html_e( 'Note:', 'brag-book-gallery' ); ?></strong> 
-							<?php esc_html_e( 'You must be logged in as an administrator to access these tools.', 'brag-book-gallery' ); ?>
+						<h4><?php esc_html_e( 'Debug Tools Available', 'brag-book-gallery' ); ?></h4>
+						<p><?php esc_html_e( 'We provide comprehensive debug tools to help diagnose and fix common issues:', 'brag-book-gallery' ); ?></p>
+						<p>
+							<a href="<?php echo esc_url( admin_url( 'admin.php?page=brag-book-gallery-debug' ) ); ?>" class="button button-primary">
+								<?php esc_html_e( 'Open Debug Tools', 'brag-book-gallery' ); ?>
+							</a>
 						</p>
+						<p class="description">
+							<?php esc_html_e( 'The Debug Tools include:', 'brag-book-gallery' ); ?>
+						</p>
+						<ul style="list-style: disc; margin-left: 20px;">
+							<li><strong><?php esc_html_e( 'Gallery Checker', 'brag-book-gallery' ); ?></strong> - <?php esc_html_e( 'Verify gallery page setup and configuration', 'brag-book-gallery' ); ?></li>
+							<li><strong><?php esc_html_e( 'Rewrite Debug', 'brag-book-gallery' ); ?></strong> - <?php esc_html_e( 'Analyze and test rewrite rules', 'brag-book-gallery' ); ?></li>
+							<li><strong><?php esc_html_e( 'Rewrite Fix', 'brag-book-gallery' ); ?></strong> - <?php esc_html_e( 'Automatic fixes for production sites', 'brag-book-gallery' ); ?></li>
+							<li><strong><?php esc_html_e( 'Flush Rules', 'brag-book-gallery' ); ?></strong> - <?php esc_html_e( 'Regenerate WordPress rewrite rules', 'brag-book-gallery' ); ?></li>
+						</ul>
 					</div>
-					
+
 					<h4><?php esc_html_e( 'Quick Fixes', 'brag-book-gallery' ); ?></h4>
 					<ol>
 						<li><?php esc_html_e( 'Go to Settings → Permalinks and click "Save Changes"', 'brag-book-gallery' ); ?></li>
@@ -279,7 +264,7 @@ class Settings_Help extends Settings_Base {
 						<li><?php esc_html_e( 'Verify API credentials are correct in API Settings', 'brag-book-gallery' ); ?></li>
 						<li><?php esc_html_e( 'Check Website Property ID is set correctly', 'brag-book-gallery' ); ?></li>
 						<li><?php esc_html_e( 'Clear API cache from JavaScript Settings tab', 'brag-book-gallery' ); ?></li>
-						<li><?php esc_html_e( 'Ensure galleries exist in your BRAG Book account', 'brag-book-gallery' ); ?></li>
+						<li><?php esc_html_e( 'Ensure galleries exist in your BRAG book account', 'brag-book-gallery' ); ?></li>
 					</ul>
 				</div>
 
@@ -288,7 +273,7 @@ class Settings_Help extends Settings_Base {
 					<ul>
 						<li><?php esc_html_e( 'Enable caching in JavaScript Settings', 'brag-book-gallery' ); ?></li>
 						<li><?php esc_html_e( 'Use progressive loading for large galleries', 'brag-book-gallery' ); ?></li>
-						<li><?php esc_html_e( 'Optimize images in BRAG Book account', 'brag-book-gallery' ); ?></li>
+						<li><?php esc_html_e( 'Optimize images in BRAG book account', 'brag-book-gallery' ); ?></li>
 						<li><?php esc_html_e( 'Consider using a CDN for faster delivery', 'brag-book-gallery' ); ?></li>
 					</ul>
 				</div>

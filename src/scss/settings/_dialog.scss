@@ -1,0 +1,112 @@
+@charset "UTF-8";
+
+// -----------------------------------------------------------------------------
+// admin / dialog
+// -----------------------------------------------------------------------------
+
+.brag-book-gallery-dialog {
+	padding: 0;
+	border: none;
+	border-radius: var(--rounded-xl);
+	box-shadow: var(--shadow-2xl);
+	max-inline-size: var(--space-96);
+	inline-size: 90vw;
+	backdrop-filter: blur(4px);
+
+	&::backdrop {
+		background: rgb(0 0 0 / 0.5);
+	}
+
+	&-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: var(--space-6);
+		border-block-end: var(--space-px) solid var(--slate-200);
+	}
+
+	&-title {
+		margin: 0;
+		font-size: var(--text-lg);
+		font-weight: var(--font-semibold);
+		color: var(--slate-900);
+	}
+
+
+	&-close {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		inline-size: var(--space-8);
+		block-size: var(--space-8);
+		background: transparent;
+		border: none;
+		border-radius: var(--rounded-md);
+		cursor: pointer;
+		transition: var(--transition-colors);
+		color: var(--slate-500);
+
+		&:hover {
+			background: var(--slate-100);
+			color: var(--slate-700);
+		}
+	}
+
+	&-content {
+		background: white;
+		border-radius: var(--rounded-xl);
+		overflow: hidden;
+	}
+
+	&-body {
+		padding: var(--space-6);
+		display: flex;
+		gap: var(--space-3);
+	}
+
+	&-icon {
+		flex-shrink: 0;
+
+		.dashicons {
+			font-size: var(--text-2xl);
+			inline-size: var(--text-2xl);
+			block-size: var(--text-2xl);
+		}
+	}
+
+	&-message {
+		flex: 1;
+		color: var(--slate-600);
+		line-height: var(--leading-relaxed);
+	}
+
+	&-footer {
+		display: flex;
+		justify-content: flex-end;
+		gap: var(--space-3);
+		padding: var(--space-4) var(--space-6);
+		background: var(--slate-50);
+		border-block-start: var(--space-px) solid var(--slate-200);
+	}
+
+	@media (max-width: 640px) {
+		max-inline-size: calc(100vw - var(--space-8));
+	}
+}
+
+/* Dialog variants */
+.brag-book-gallery-dialog-success .brag-book-gallery-dialog-icon .dashicons {
+	color: var(--green-500);
+}
+
+.brag-book-gallery-dialog-error .brag-book-gallery-dialog-icon .dashicons {
+	color: var(--red-500);
+}
+
+.brag-book-gallery-dialog-warning .brag-book-gallery-dialog-icon .dashicons {
+	color: var(--amber-500);
+}
+
+.brag-book-gallery-dialog-info .brag-book-gallery-dialog-icon .dashicons {
+	color: var(--blue-500);
+}

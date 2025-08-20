@@ -21,7 +21,7 @@ if ( ! defined( 'WPINC' ) ) {
 /**
  * API Testing Settings Class
  *
- * Provides a testing interface for all BRAG Book API endpoints.
+ * Provides a testing interface for all BRAG book API endpoints.
  * Allows administrators to verify API connectivity and test various endpoints
  * with real-time response display.
  *
@@ -52,6 +52,7 @@ class Settings_Api_Test extends Settings_Base {
 		// Verify nonce
 		if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( $_POST['nonce'], 'brag_book_api_test' ) ) {
 			wp_send_json_error( 'Invalid nonce' );
+			return;
 		}
 
 		// Get request parameters
@@ -60,35 +61,57 @@ class Settings_Api_Test extends Settings_Base {
 		$url = sanitize_url( $_POST['url'] ?? '' );
 		$body = isset( $_POST['body'] ) ? json_decode( stripslashes( $_POST['body'] ), true ) : null;
 
-		// Make the API request using wp_remote_request
+		// Get timeout from settings or use default
+		$api_timeout = intval( get_option( 'brag_book_gallery_api_timeout', 30 ) );
+
+		// Make the API request using wp_remote_request - matching the format in class-endpoints.php
 		$args = array(
 			'method' => $method,
-			'timeout' => 30,
+			'timeout' => $api_timeout,
 			'headers' => array(
+				'Content-Type' => 'application/json',
 				'Accept' => 'application/json',
+				'User-Agent' => 'BRAG book-Gallery-Plugin/3.0.0',
+				'X-Plugin-Version' => '3.0.0',
+				'X-WordPress-Version' => get_bloginfo( 'version' ),
+				'X-Site-URL' => home_url(),
 			),
+			'sslverify' => false, // Set to false for local development
 		);
 
-		// Only add Content-Type for POST requests with body
+		// Add body for POST requests
 		if ( $method === 'POST' && $body ) {
-			$args['headers']['Content-Type'] = 'application/json';
 			$args['body'] = wp_json_encode( $body );
+		} elseif ( $method === 'GET' ) {
+			// For GET requests, use simpler headers (carousel endpoint)
+			$args['headers'] = array(
+				'Accept' => 'application/json',
+				'User-Agent' => 'BRAG book Gallery Plugin/3.0.0',
+			);
 		}
 
-		// For GET requests, URL already contains query parameters
-
 		// Log the request for debugging
-		error_log( 'API Test Request: ' . print_r( array( 'url' => $url, 'method' => $method, 'body' => $body ), true ) );
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( 'API Test Request: ' . print_r( array( 'url' => $url, 'method' => $method, 'body' => $body ), true ) );
+		}
 
 		// Make the request
 		$response = wp_remote_request( $url, $args );
 
 		if ( is_wp_error( $response ) ) {
+			// Log detailed error information
+			error_log( 'API Test Error: ' . $response->get_error_message() );
+			error_log( 'API Test Error Code: ' . $response->get_error_code() );
+			error_log( 'API Test URL: ' . $url );
+			error_log( 'API Test Args: ' . print_r( $args, true ) );
+			
 			wp_send_json_error( array(
 				'message' => $response->get_error_message(),
 				'code' => $response->get_error_code(),
 				'details' => 'Failed to connect to API endpoint: ' . $url,
+				'wp_error_data' => $response->get_error_data(),
 			) );
+			return;
 		}
 
 		$response_code = wp_remote_retrieve_response_code( $response );
@@ -100,10 +123,19 @@ class Settings_Api_Test extends Settings_Base {
 			$response_body = $decoded_body;
 		}
 
+		// Get headers array
+		$headers_object = wp_remote_retrieve_headers( $response );
+		$headers = array();
+		if ( is_object( $headers_object ) && method_exists( $headers_object, 'getAll' ) ) {
+			$headers = $headers_object->getAll();
+		} elseif ( is_array( $headers_object ) ) {
+			$headers = $headers_object;
+		}
+
 		wp_send_json_success( array(
 			'status' => $response_code,
 			'body' => $response_body,
-			'headers' => wp_remote_retrieve_headers( $response )->getAll(),
+			'headers' => $headers,
 		) );
 	}
 
@@ -142,7 +174,7 @@ class Settings_Api_Test extends Settings_Base {
 				</div>
 			<?php else : ?>
 				<p class="description">
-					<?php esc_html_e( 'Test various BRAG Book API endpoints to verify connectivity and data retrieval.', 'brag-book-gallery' ); ?>
+					<?php esc_html_e( 'Test various BRAG book API endpoints to verify connectivity and data retrieval.', 'brag-book-gallery' ); ?>
 				</p>
 
 				<div class="api-test-config">
@@ -176,8 +208,8 @@ class Settings_Api_Test extends Settings_Base {
 									<label for="test-procedure-id"><?php esc_html_e( 'Procedure ID:', 'brag-book-gallery' ); ?></label>
 								</th>
 								<td style="padding: 5px;">
-									<input type="number" id="test-procedure-id" placeholder="6839" class="regular-text" style="width: 150px;">
-									<span class="description"><?php esc_html_e( 'Used by: Carousel, Cases, Filters (default: 6839)', 'brag-book-gallery' ); ?></span>
+									<input type="number" id="test-procedure-id" placeholder="3405" class="regular-text" style="width: 150px;">
+									<span class="description"><?php esc_html_e( 'Used by: Carousel, Cases, Filters (default: 3405)', 'brag-book-gallery' ); ?></span>
 								</td>
 							</tr>
 							<tr>
@@ -186,7 +218,7 @@ class Settings_Api_Test extends Settings_Base {
 								</th>
 								<td style="padding: 5px;">
 									<input type="number" id="test-member-id" placeholder="129" class="regular-text" style="width: 150px;">
-									<span class="description"><?php esc_html_e( 'Used by: Carousel, Cases (default: 129)', 'brag-book-gallery' ); ?></span>
+									<span class="description"><?php esc_html_e( 'Used by: Cases, Filters (default: 129) - Not used by Carousel', 'brag-book-gallery' ); ?></span>
 								</td>
 							</tr>
 						</table>
@@ -238,7 +270,7 @@ class Settings_Api_Test extends Settings_Base {
 							<tr>
 								<td><code>/api/plugin/carousel</code></td>
 								<td><span class="method-badge method-get">GET</span></td>
-								<td><?php esc_html_e( 'Get carousel data (may require procedureId & memberId)', 'brag-book-gallery' ); ?></td>
+								<td><?php esc_html_e( 'Get carousel data (requires procedureId)', 'brag-book-gallery' ); ?></td>
 								<td>
 									<button class="button test-endpoint-btn"
 									        data-endpoint="carousel"
@@ -466,11 +498,20 @@ class Settings_Api_Test extends Settings_Base {
 		<script>
 		document.addEventListener('DOMContentLoaded', function() {
 			// Get all API tokens and property IDs as arrays
-			const apiTokens = <?php echo wp_json_encode( $api_tokens ); ?>;
-			const websitePropertyIds = <?php echo wp_json_encode( array_map( 'intval', $website_property_ids ) ); ?>;
+			const apiTokens = <?php echo wp_json_encode( array_values( array_filter( $api_tokens ) ) ); ?>;
+			const websitePropertyIds = <?php echo wp_json_encode( array_values( array_filter( array_map( 'intval', $website_property_ids ) ) ) ); ?>;
 			const baseUrl = 'https://app.bragbookgallery.com';
 			const ajaxUrl = '<?php echo admin_url( 'admin-ajax.php' ); ?>';
 			const nonce = '<?php echo wp_create_nonce( 'brag_book_api_test' ); ?>';
+			
+			// Debug log the tokens and IDs
+			console.log('API Tokens:', apiTokens);
+			console.log('Website Property IDs:', websitePropertyIds);
+			
+			// Check if we have valid tokens
+			if (!apiTokens || apiTokens.length === 0) {
+				console.error('No valid API tokens found. Please check your API settings.');
+			}
 
 			// Helper functions
 			const showElement = (selector) => {
@@ -555,8 +596,19 @@ class Settings_Api_Test extends Settings_Base {
 						switch(endpoint) {
 							case 'sidebar':
 								// Sidebar only needs apiTokens
+								const validTokens = apiTokens.filter(token => token && token.length > 0);
+								console.log('Sidebar endpoint - Valid tokens:', validTokens);
+								
+								if (validTokens.length === 0) {
+									console.error('No valid API tokens available for sidebar endpoint');
+									alert('No valid API tokens found. Please check your API settings.');
+									button.disabled = false;
+									button.textContent = originalText;
+									return;
+								}
+								
 								requestBody = {
-									apiTokens: apiTokens.filter(token => token && token.length > 0)
+									apiTokens: validTokens
 								};
 								break;
 
@@ -625,7 +677,6 @@ class Settings_Api_Test extends Settings_Base {
 					} else {
 						// For GET requests (carousel), add params to URL
 						const procedureInput = document.getElementById('test-procedure-id');
-						const memberInput = document.getElementById('test-member-id');
 
 						// Build parameters object
 						const params = new URLSearchParams({
@@ -635,11 +686,10 @@ class Settings_Api_Test extends Settings_Base {
 							apiToken: apiTokens[0]
 						});
 
-						// For carousel endpoint, always include procedureId and memberId with defaults
+						// For carousel endpoint, include procedureId (no memberId needed)
 						if (endpoint === 'carousel') {
-							// Use provided values or defaults
-							params.append('procedureId', procedureInput?.value || '6839');
-							params.append('memberId', memberInput?.value || '129');
+							// Use provided value or default
+							params.append('procedureId', procedureInput?.value || '3405');
 						}
 
 						url += '?' + params.toString();

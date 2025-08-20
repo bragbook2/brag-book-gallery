@@ -1,0 +1,78 @@
+@charset "UTF-8";
+
+// -----------------------------------------------------------------------------
+// components / mobile / index
+// -----------------------------------------------------------------------------
+
+.brag-book-gallery-mobile-header {
+	display: flex;
+	background: var(--wp--custom--brag-book-gallery--color--white);
+	padding: calc( 3 * var(--wp--custom--brag-book-gallery--spacer) ) calc( 4 * var(--wp--custom--brag-book-gallery--spacer) );
+	z-index: 999;
+	align-items: center;
+	gap: calc( 3 * var(--wp--custom--brag-book-gallery--spacer) );
+	box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,.05);
+
+	@media (min-width: 1024px) {
+		display: none;
+	}
+}
+
+.brag-book-gallery-mobile-menu-toggle {
+	width: calc( 12 * var(--wp--custom--brag-book-gallery--spacer));
+	height: calc( 12 * var(--wp--custom--brag-book-gallery--spacer));
+	color: var(--wp--custom--brag-book-gallery--color--lighter-grey);
+	background:var(--wp--custom--brag-book-gallery--color--black);
+	border: 1px solid var(--wp--custom--brag-book-gallery--color--lighter-grey);
+	border-radius: var(--wp--custom--brag-book-gallery--rounded);
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	transition: var(--wp--custom--brag-book-gallery--transition);
+	flex-shrink: 0;
+
+	svg {
+		width: calc( 4 * var(--wp--custom--brag-book-gallery--spacer) );
+		height: calc( 4 * var(--wp--custom--brag-book-gallery--spacer) );
+		stroke: var(--wp--custom--brag-book-gallery--color--grey);
+		transition: var(--wp--custom--brag-book-gallery--transition);
+	}
+
+	&:hover {
+		border-color: var(--wp--custom--brag-book-gallery--color--black);
+		transform: scale(1.05)
+	}
+
+	&[data-menu-open=true] svg {
+		stroke: var(--wp--custom--brag-book-gallery--color--black);
+	}
+}
+
+.brag-book-gallery-mobile-overlay {
+	display: block;
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(0,0,0,.5);
+	backdrop-filter: blur(4px);
+	z-index: 999;
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity .3s ease;
+
+	&.brag-book-gallery-active {
+		opacity: 1;
+		pointer-events: auto
+	}
+
+	@media (min-width: 1024px) {
+		display: none;
+	}
+}
+
+body:has(.brag-book-gallery-sidebar.brag-book-gallery-active) .brag-book-gallery-mobile-menu-toggle {
+	opacity: 0;
+	pointer-events: none
+}

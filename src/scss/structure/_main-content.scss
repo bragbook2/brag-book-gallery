@@ -1,0 +1,25 @@
+@charset "UTF-8";
+
+// -----------------------------------------------------------------------------
+// structure / main-content
+// -----------------------------------------------------------------------------
+
+.brag-book-gallery-main-content {
+	flex: 1;
+	padding: calc( 4 * var(--wp--custom--brag-book-gallery--spacer) );
+	background: var(--wp--custom--brag-book-gallery--color--white);
+
+	h2 {
+		font-size: 2rem;
+		line-height: 1.25;
+		margin-block: 0 calc( 6 * var(--wp--custom--brag-book-gallery--spacer) );
+	}
+
+	@media (min-width:960px) {
+		padding: calc( 6 * var(--wp--custom--brag-book-gallery--spacer) );
+
+		h2 {
+			font-size: 3rem;
+		}
+	}
+}

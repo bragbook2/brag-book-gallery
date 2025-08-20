@@ -1,0 +1,167 @@
+@charset "UTF-8";
+
+// -----------------------------------------------------------------------------
+// Settings / Dashboard
+// -----------------------------------------------------------------------------
+
+// Welcome Hero Section
+.brag-book-gallery-welcome-hero {
+	background: var(--brag-book-gallery-primary);
+	color: var(--brag-book-gallery-white);
+	padding: 2.5rem;
+	border-radius: var(--space-2);
+	margin-block-end: var(--space-6);
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.welcome-content {
+	flex: 1;
+
+	h2 {
+		color: var(--brag-book-gallery-white);
+		font-size: 2rem;
+		margin-block-end: var(--space-2);
+	}
+}
+
+.welcome-description {
+	font-size: 1rem;
+	line-height: 1.5;
+	margin-block-end: var(--space-4);
+}
+
+.welcome-actions {
+	display: flex;
+	gap: 1rem;
+}
+
+.welcome-illustration {
+	flex-shrink: 0;
+}
+
+// Setup Progress Section
+.setup-progress {
+	margin-block-end: var(--space-6);
+}
+
+.progress-bar {
+	background: var(--gray-100);
+	border-radius: var(--rounded-sm);
+	height: var(--space-4);
+	overflow: hidden;
+	margin-bottom: 10px;
+}
+
+.progress-fill {
+	background-color: var(--brag-book-gallery-primary);
+	height: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: width 0.5s ease;
+	min-width: 2.5rem;
+}
+
+.progress-text {
+	color: var(--brag-book-gallery-white);
+	font-weight: var(--font-bold);
+	font-size: var(--text-xs);
+}
+
+.progress-status {
+	text-align: right;
+}
+
+.setup-checklist {
+	display: grid;
+	gap: var(--space-3);
+	margin-block-start: var(--space-4);
+}
+
+.setup-step {
+	display: flex;
+	align-items: flex-start;
+	padding: 1rem;
+	background: var(--wp--custom--brag-book-gallery--color--lightest-grey);
+	border: 1px solid var(--wp--custom--brag-book-gallery--color--lighter-grey);
+	border-radius: var(--rounded-sm);
+	transition: all 0.3s ease;
+
+	&.completed {
+		background: var(--blue-50);
+		border-color: var(--blue-200);
+
+		.step-icon {
+			color: var(--blue-600);
+		}
+	}
+
+	&.pending .step-icon {
+		color: var(--amber-600);
+	}
+
+	&:hover {
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+	}
+}
+
+.step-icon {
+	margin-inline-end: var(--space-4);
+	font-size: var(--text-2xl);
+}
+
+.step-content {
+	flex: 1;
+
+	h4 {
+		margin: 0 0 5px 0;
+		font-size: 16px;
+	}
+
+	p {
+		margin: 0 0 10px 0;
+		color: #666;
+	}
+}
+
+// Resources Section
+.resources-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+	gap: 20px;
+}
+
+.resource-card {
+	background: white;
+	border: 1px solid var(--wp--custom--brag-book-gallery--color--lighter-grey);
+	border-radius: var(--space-2);
+	padding: var(--space-4);
+	transition: all 0.3s ease;
+
+	&:hover {
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+	}
+
+	h3 {
+		margin: 0 0 var(--space-3) 0;
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+	}
+
+	p {
+		margin-block-end: var(--space-2);
+	}
+
+	a {
+		color: var(--brag-book-gallery-primary);
+		text-decoration: none;
+		font-weight: 500;
+
+		&:hover {
+			text-decoration: underline;
+		}
+	}
+}
