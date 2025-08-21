@@ -5,25 +5,6 @@
 // -----------------------------------------------------------------------------
 
 .brag-book-gallery-dialog {
-
-	&-backdrop {
-		display: none;
-		position: fixed;
-		top: 0;
-		left: 0;
-		right: 0;
-		bottom: 0;
-		background: rgba(0,0,0,.5);
-		backdrop-filter: blur(4px);
-		z-index: 1099;
-
-		&.active {
-			display: block;
-		}
-	}
-}
-
-.brag-book-gallery-consultation-dialog,.brag-book-gallery-favorites-dialog {
 	padding: 0;
 	border: none;
 	border-radius: .75rem;
@@ -37,11 +18,32 @@
 	margin: 0;
 	z-index: 1100;
 	background: var(--wp--custom--brag-book-gallery--color--white);
-	display: none
+	opacity: 1;
+	visibility: visible;
+
+	&:not([open]) {
+		display: none;
+	}
+
+	&::backdrop {
+		background-image: linear-gradient(45deg, rgb( 0 0 0 / .85 ), rgb( 0 0 0 / .65 ) );
+	}
 }
 
 .brag-book-gallery-consultation-dialog[open],.brag-book-gallery-favorites-dialog[open] {
-	display: block
+	display: block;
+	animation: dialogFadeIn 0.3s ease-out;
+}
+
+@keyframes dialogFadeIn {
+	from {
+		opacity: 0;
+		transform: translate(-50%, -50%) scale(0.95);
+	}
+	to {
+		opacity: 1;
+		transform: translate(-50%, -50%) scale(1);
+	}
 }
 
 .brag-book-gallery-consultation-dialog::backdrop,.brag-book-gallery-favorites-dialog::backdrop {

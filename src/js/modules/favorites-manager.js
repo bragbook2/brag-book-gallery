@@ -22,7 +22,6 @@ class FavoritesManager {
 
 	init() {
 		this.favoritesDialog = new Dialog('favoritesDialog', {
-			backdropId: 'dialogBackdrop',
 			onClose: () => {
 				// If user closes without submitting, remove the just-added favorite
 				if (!this.userInfo && this.lastAddedFavorite) {

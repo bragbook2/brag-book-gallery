@@ -66,7 +66,6 @@ class BRAGbookGalleryApp {
 
 	initializeDialogs() {
 		this.components.consultationDialog = new Dialog('consultationDialog', {
-			backdropId: 'dialogBackdrop',
 			onOpen: () => console.log('Consultation dialog opened'),
 			onClose: () => console.log('Consultation dialog closed')
 		});

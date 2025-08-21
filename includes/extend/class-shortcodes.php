@@ -602,13 +602,9 @@ final class Shortcodes {
 				</div>
 			</div>
 
-			<!-- Custom backdrop for dialog -->
-			<div class="brag-book-gallery-dialog-backdrop" id="dialogBackdrop"></div>
-
 			<!-- Share dropdown will be created dynamically by JavaScript -->
 
 			<dialog class="brag-book-gallery-dialog" id="consultationDialog">
-				<div class="brag-book-gallery-dialog-backdrop"></div>
 				<div class="brag-book-gallery-dialog-content">
 					<div class="brag-book-gallery-dialog-header">
 						<h2 class="brag-book-gallery-dialog-title">Consultation Request</h2>
