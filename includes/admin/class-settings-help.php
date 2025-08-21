@@ -84,12 +84,46 @@ class Settings_Help extends Settings_Base {
 				<div class="brag-book-gallery-card">
 					<h3><?php esc_html_e( 'Quick Setup Guide', 'brag-book-gallery' ); ?></h3>
 					<ol>
-						<li><?php esc_html_e( 'Get your API Token and Website Property ID from your BRAG book account', 'brag-book-gallery' ); ?></li>
-						<li><?php esc_html_e( 'Configure API credentials in the API Settings page', 'brag-book-gallery' ); ?></li>
-						<li><?php esc_html_e( 'Set your Gallery Slug in General Settings (e.g., "gallery" or "before-after")', 'brag-book-gallery' ); ?></li>
-						<li><?php esc_html_e( 'Create a page and add the [brag_book_gallery] shortcode', 'brag-book-gallery' ); ?></li>
-						<li><?php esc_html_e( 'Customize JavaScript Settings as needed (caching, landing page text)', 'brag-book-gallery' ); ?></li>
-						<li><?php esc_html_e( 'Go to Settings → Permalinks and click "Save Changes" to flush rewrite rules', 'brag-book-gallery' ); ?></li>
+						<li>
+							<strong><?php esc_html_e( 'Get Your API Credentials', 'brag-book-gallery' ); ?></strong>
+							<ul style="list-style: disc; margin-left: 20px; margin-top: 5px;">
+								<li><?php esc_html_e( 'Log into your BRAGBook account at', 'brag-book-gallery' ); ?> <a href="https://app.bragbookgallery.com" target="_blank">app.bragbookgallery.com</a></li>
+								<li><?php esc_html_e( 'Navigate to Settings → API', 'brag-book-gallery' ); ?></li>
+								<li><?php esc_html_e( 'Copy your API Token and Website Property ID', 'brag-book-gallery' ); ?></li>
+							</ul>
+						</li>
+						<li>
+							<strong><?php esc_html_e( 'Configure API Settings', 'brag-book-gallery' ); ?></strong>
+							<ul style="list-style: disc; margin-left: 20px; margin-top: 5px;">
+								<li><?php esc_html_e( 'Go to', 'brag-book-gallery' ); ?> <a href="<?php echo esc_url( admin_url( 'admin.php?page=brag-book-gallery-settings&tab=api' ) ); ?>"><?php esc_html_e( 'API Settings', 'brag-book-gallery' ); ?></a></li>
+								<li><?php esc_html_e( 'Enter your API Token and Website Property ID', 'brag-book-gallery' ); ?></li>
+								<li><?php esc_html_e( 'Save the settings', 'brag-book-gallery' ); ?></li>
+							</ul>
+						</li>
+						<li>
+							<strong><?php esc_html_e( 'Set Gallery Slug', 'brag-book-gallery' ); ?></strong>
+							<ul style="list-style: disc; margin-left: 20px; margin-top: 5px;">
+								<li><?php esc_html_e( 'Go to', 'brag-book-gallery' ); ?> <a href="<?php echo esc_url( admin_url( 'admin.php?page=brag-book-gallery-settings' ) ); ?>"><?php esc_html_e( 'General Settings', 'brag-book-gallery' ); ?></a></li>
+								<li><?php esc_html_e( 'Set your Gallery Slug (e.g., "gallery", "before-after", "results")', 'brag-book-gallery' ); ?></li>
+								<li><?php esc_html_e( 'This will be the base URL for your gallery pages', 'brag-book-gallery' ); ?></li>
+							</ul>
+						</li>
+						<li>
+							<strong><?php esc_html_e( 'Create Gallery Page', 'brag-book-gallery' ); ?></strong>
+							<ul style="list-style: disc; margin-left: 20px; margin-top: 5px;">
+								<li><?php esc_html_e( 'Create a new page with the same slug as your Gallery Slug setting', 'brag-book-gallery' ); ?></li>
+								<li><?php esc_html_e( 'Add the shortcode:', 'brag-book-gallery' ); ?> <code>[brag_book_gallery]</code></li>
+								<li><?php esc_html_e( 'Publish the page', 'brag-book-gallery' ); ?></li>
+							</ul>
+						</li>
+						<li>
+							<strong><?php esc_html_e( 'Flush Permalinks', 'brag-book-gallery' ); ?></strong>
+							<ul style="list-style: disc; margin-left: 20px; margin-top: 5px;">
+								<li><?php esc_html_e( 'Go to Settings → Permalinks', 'brag-book-gallery' ); ?></li>
+								<li><?php esc_html_e( 'Click "Save Changes" (no need to change anything)', 'brag-book-gallery' ); ?></li>
+								<li><?php esc_html_e( 'This ensures your gallery URLs work correctly', 'brag-book-gallery' ); ?></li>
+							</ul>
+						</li>
 					</ol>
 				</div>
 			</div>
@@ -97,128 +131,81 @@ class Settings_Help extends Settings_Base {
 			<!-- Shortcodes -->
 			<div class="brag-book-gallery-section">
 				<h2><?php esc_html_e( 'Available Shortcodes', 'brag-book-gallery' ); ?></h2>
-				<table class="widefat striped">
-					<thead>
-						<tr>
-							<th><?php esc_html_e( 'Shortcode', 'brag-book-gallery' ); ?></th>
-							<th><?php esc_html_e( 'Description', 'brag-book-gallery' ); ?></th>
-							<th><?php esc_html_e( 'Parameters', 'brag-book-gallery' ); ?></th>
-						</tr>
-					</thead>
-					<tbody>
-						<tr>
-							<td><code>[brag_book_gallery]</code></td>
-							<td><?php esc_html_e( 'Main gallery with filtering and pagination', 'brag-book-gallery' ); ?></td>
-							<td>
-								<code>website_property_id</code> - <?php esc_html_e( 'Override global Website Property ID', 'brag-book-gallery' ); ?>
-							</td>
-						</tr>
-						<tr>
-							<td><code>[brag_book_carousel]</code></td>
-							<td><?php esc_html_e( 'Image carousel display', 'brag-book-gallery' ); ?></td>
-							<td>
-								<code>api_token</code> - <?php esc_html_e( 'API Token (required)', 'brag-book-gallery' ); ?><br>
-								<code>website_property_id</code> - <?php esc_html_e( 'Website Property ID', 'brag-book-gallery' ); ?><br>
-								<code>member_id</code> - <?php esc_html_e( 'Filter by member ID', 'brag-book-gallery' ); ?><br>
-								<code>procedure_id</code> - <?php esc_html_e( 'Filter by procedure ID', 'brag-book-gallery' ); ?><br>
-								<code>limit</code> - <?php esc_html_e( 'Number of items (default: 10)', 'brag-book-gallery' ); ?><br>
-								<code>show_controls</code> - <?php esc_html_e( 'Show nav controls (true/false)', 'brag-book-gallery' ); ?><br>
-								<code>show_pagination</code> - <?php esc_html_e( 'Show dots (true/false)', 'brag-book-gallery' ); ?><br>
-								<code>auto_play</code> - <?php esc_html_e( 'Auto advance (true/false)', 'brag-book-gallery' ); ?>
-							</td>
-						</tr>
-						<tr>
-							<td><code>[brag_book_gallery_cases]</code></td>
-							<td><?php esc_html_e( 'Display cases in grid layout', 'brag-book-gallery' ); ?></td>
-							<td>
-								<code>website_property_id</code> - <?php esc_html_e( 'Override global Website Property ID', 'brag-book-gallery' ); ?>
-							</td>
-						</tr>
-						<tr>
-							<td><code>[brag_book_gallery_case]</code></td>
-							<td><?php esc_html_e( 'Display single case details', 'brag-book-gallery' ); ?></td>
-							<td>
-								<code>case_id</code> - <?php esc_html_e( 'Specific case ID to display', 'brag-book-gallery' ); ?><br>
-								<code>website_property_id</code> - <?php esc_html_e( 'Override global Website Property ID', 'brag-book-gallery' ); ?>
-							</td>
-						</tr>
-					</tbody>
-				</table>
+				
+				<div class="brag-book-gallery-card">
+					<h3><?php esc_html_e( 'Main Gallery Shortcode', 'brag-book-gallery' ); ?></h3>
+					<p><code style="display: block; padding: 10px; background: #f0f0f0; margin: 10px 0;">[brag_book_gallery]</code></p>
+					<p><?php esc_html_e( 'Displays the full gallery with filtering sidebar, search, and pagination. This is the main shortcode you\'ll use on your gallery page.', 'brag-book-gallery' ); ?></p>
+					<p><strong><?php esc_html_e( 'Optional Parameters:', 'brag-book-gallery' ); ?></strong></p>
+					<ul style="list-style: disc; margin-left: 20px;">
+						<li><code>website_property_id="123"</code> - <?php esc_html_e( 'Override the global Website Property ID', 'brag-book-gallery' ); ?></li>
+					</ul>
+				</div>
+
+				<div class="brag-book-gallery-card">
+					<h3><?php esc_html_e( 'Carousel Shortcode', 'brag-book-gallery' ); ?></h3>
+					<p><code style="display: block; padding: 10px; background: #f0f0f0; margin: 10px 0;">[brag_book_carousel procedure="arm-lift" limit="5"]</code></p>
+					<p><?php esc_html_e( 'Displays cases in a carousel/slider format. Perfect for homepage or landing pages.', 'brag-book-gallery' ); ?></p>
+					<p><strong><?php esc_html_e( 'Parameters:', 'brag-book-gallery' ); ?></strong></p>
+					<ul style="list-style: disc; margin-left: 20px;">
+						<li><code>procedure</code> - <?php esc_html_e( 'Procedure slug to filter by (e.g., "arm-lift", "breast-augmentation")', 'brag-book-gallery' ); ?></li>
+						<li><code>procedure_id</code> - <?php esc_html_e( 'Procedure ID to filter by (alternative to slug)', 'brag-book-gallery' ); ?></li>
+						<li><code>member_id</code> - <?php esc_html_e( 'Filter by specific member/doctor', 'brag-book-gallery' ); ?></li>
+						<li><code>limit</code> - <?php esc_html_e( 'Number of items to display (default: 10)', 'brag-book-gallery' ); ?></li>
+						<li><code>show_controls</code> - <?php esc_html_e( 'Show navigation arrows (true/false, default: true)', 'brag-book-gallery' ); ?></li>
+						<li><code>show_pagination</code> - <?php esc_html_e( 'Show dots pagination (true/false, default: true)', 'brag-book-gallery' ); ?></li>
+						<li><code>autoplay</code> - <?php esc_html_e( 'Auto-advance slides (true/false, default: false)', 'brag-book-gallery' ); ?></li>
+						<li><code>autoplay_delay</code> - <?php esc_html_e( 'Delay between slides in ms (default: 3000)', 'brag-book-gallery' ); ?></li>
+					</ul>
+					<p><strong><?php esc_html_e( 'Legacy Format Support:', 'brag-book-gallery' ); ?></strong></p>
+					<p><?php esc_html_e( 'The old shortcode format is still supported:', 'brag-book-gallery' ); ?></p>
+					<p><code style="display: block; padding: 10px; background: #f0f0f0; margin: 10px 0;">[bragbook_carousel_shortcode procedure="arm-lift" limit="5" title="0" details="0"]</code></p>
+				</div>
+
+				<div class="brag-book-gallery-card">
+					<h3><?php esc_html_e( 'Cases Grid Shortcode', 'brag-book-gallery' ); ?></h3>
+					<p><code style="display: block; padding: 10px; background: #f0f0f0; margin: 10px 0;">[brag_book_gallery_cases]</code></p>
+					<p><?php esc_html_e( 'Displays cases in a grid layout without the filtering sidebar. Good for embedding specific cases on other pages.', 'brag-book-gallery' ); ?></p>
+				</div>
+
+				<div class="brag-book-gallery-card">
+					<h3><?php esc_html_e( 'Single Case Shortcode', 'brag-book-gallery' ); ?></h3>
+					<p><code style="display: block; padding: 10px; background: #f0f0f0; margin: 10px 0;">[brag_book_gallery_case case_id="12345"]</code></p>
+					<p><?php esc_html_e( 'Displays a single specific case with all its details and images.', 'brag-book-gallery' ); ?></p>
+				</div>
 			</div>
 
-			<!-- Mode Comparison -->
+			<!-- Common Tasks -->
 			<div class="brag-book-gallery-section">
-				<h2><?php esc_html_e( 'Mode Comparison', 'brag-book-gallery' ); ?></h2>
-				<table class="widefat striped">
-					<thead>
-						<tr>
-							<th><?php esc_html_e( 'Feature', 'brag-book-gallery' ); ?></th>
-							<th><?php esc_html_e( 'JavaScript Mode', 'brag-book-gallery' ); ?></th>
-							<th><?php esc_html_e( 'Local Mode', 'brag-book-gallery' ); ?></th>
-						</tr>
-					</thead>
-					<tbody>
-						<tr>
-							<td><?php esc_html_e( 'Data Storage', 'brag-book-gallery' ); ?></td>
-							<td><?php esc_html_e( 'External API', 'brag-book-gallery' ); ?></td>
-							<td><?php esc_html_e( 'WordPress Database', 'brag-book-gallery' ); ?></td>
-						</tr>
-						<tr>
-							<td><?php esc_html_e( 'Real-time Updates', 'brag-book-gallery' ); ?></td>
-							<td><span class="dashicons dashicons-yes-alt" style="color:#46b450;"></span></td>
-							<td><span class="dashicons dashicons-no-alt" style="color:#dc3232;"></span></td>
-						</tr>
-						<tr>
-							<td><?php esc_html_e( 'SEO Optimization', 'brag-book-gallery' ); ?></td>
-							<td><?php esc_html_e( 'Built-in SEO features', 'brag-book-gallery' ); ?></td>
-							<td><span class="dashicons dashicons-yes-alt" style="color:#46b450;"></span></td>
-						</tr>
-						<tr>
-							<td><?php esc_html_e( 'Offline Access', 'brag-book-gallery' ); ?></td>
-							<td><span class="dashicons dashicons-no-alt" style="color:#dc3232;"></span></td>
-							<td><span class="dashicons dashicons-yes-alt" style="color:#46b450;"></span></td>
-						</tr>
-						<tr>
-							<td><?php esc_html_e( 'Performance', 'brag-book-gallery' ); ?></td>
-							<td><?php esc_html_e( 'Depends on API', 'brag-book-gallery' ); ?></td>
-							<td><?php esc_html_e( 'Fast (local data)', 'brag-book-gallery' ); ?></td>
-						</tr>
-					</tbody>
-				</table>
-			</div>
-
-			<!-- FAQs -->
-			<div class="brag-book-gallery-section">
-				<h2><?php esc_html_e( 'Frequently Asked Questions', 'brag-book-gallery' ); ?></h2>
-
-				<div class="brag-book-gallery-faq">
-					<h3><?php esc_html_e( 'How do I get my API Token and Website Property ID?', 'brag-book-gallery' ); ?></h3>
-					<p><?php esc_html_e( 'Log into your BRAG book account at app.bragbookgallery.com, go to Settings → API, and copy your API Token and Website Property ID.', 'brag-book-gallery' ); ?></p>
+				<h2><?php esc_html_e( 'Common Tasks', 'brag-book-gallery' ); ?></h2>
+				
+				<div class="brag-book-gallery-card">
+					<h3><?php esc_html_e( 'Clear Gallery Cache', 'brag-book-gallery' ); ?></h3>
+					<p><?php esc_html_e( 'If your gallery isn\'t showing the latest cases:', 'brag-book-gallery' ); ?></p>
+					<ol>
+						<li><?php esc_html_e( 'Go to', 'brag-book-gallery' ); ?> <a href="<?php echo esc_url( admin_url( 'admin.php?page=brag-book-gallery-settings&tab=javascript' ) ); ?>"><?php esc_html_e( 'JavaScript Settings', 'brag-book-gallery' ); ?></a></li>
+						<li><?php esc_html_e( 'Click the "Clear API Cache" button', 'brag-book-gallery' ); ?></li>
+						<li><?php esc_html_e( 'Refresh your gallery page', 'brag-book-gallery' ); ?></li>
+					</ol>
 				</div>
 
-				<div class="brag-book-gallery-faq">
-					<h3><?php esc_html_e( 'What is the Gallery Slug setting?', 'brag-book-gallery' ); ?></h3>
-					<p><?php esc_html_e( 'The Gallery Slug determines your URL structure. For example, if set to "before-after", your gallery URLs will be yoursite.com/before-after/procedure-name/.', 'brag-book-gallery' ); ?></p>
+				<div class="brag-book-gallery-card">
+					<h3><?php esc_html_e( 'Enable Nudity Warnings', 'brag-book-gallery' ); ?></h3>
+					<ol>
+						<li><?php esc_html_e( 'Go to', 'brag-book-gallery' ); ?> <a href="<?php echo esc_url( admin_url( 'admin.php?page=brag-book-gallery-settings&tab=javascript' ) ); ?>"><?php esc_html_e( 'JavaScript Settings', 'brag-book-gallery' ); ?></a></li>
+						<li><?php esc_html_e( 'Toggle "Enable Nudity Warning" to ON', 'brag-book-gallery' ); ?></li>
+						<li><?php esc_html_e( 'Save settings', 'brag-book-gallery' ); ?></li>
+					</ol>
 				</div>
 
-				<div class="brag-book-gallery-faq">
-					<h3><?php esc_html_e( 'Why are my procedure URLs returning 404 errors?', 'brag-book-gallery' ); ?></h3>
-					<p><?php esc_html_e( 'This usually means rewrite rules need to be flushed. Go to Settings → Permalinks and click "Save Changes", or use the diagnostic tools in the Troubleshooting section above.', 'brag-book-gallery' ); ?></p>
-				</div>
-
-				<div class="brag-book-gallery-faq">
-					<h3><?php esc_html_e( 'How do I enable nudity warnings?', 'brag-book-gallery' ); ?></h3>
-					<p><?php esc_html_e( 'In JavaScript Settings, enable "Nudity Warning" to show an overlay on images that require user acceptance before viewing.', 'brag-book-gallery' ); ?></p>
-				</div>
-
-				<div class="brag-book-gallery-faq">
-					<h3><?php esc_html_e( 'Can I customize the gallery appearance?', 'brag-book-gallery' ); ?></h3>
-					<p><?php esc_html_e( 'Yes! The plugin includes CSS classes for styling. You can also add custom CSS through your theme or the WordPress Customizer.', 'brag-book-gallery' ); ?></p>
-				</div>
-
-				<div class="brag-book-gallery-faq">
-					<h3><?php esc_html_e( 'How does caching work?', 'brag-book-gallery' ); ?></h3>
-					<p><?php esc_html_e( 'The plugin caches API responses for 1 hour in production (1 minute in debug mode). You can clear cache from JavaScript Settings or use the diagnostic tools.', 'brag-book-gallery' ); ?></p>
+				<div class="brag-book-gallery-card">
+					<h3><?php esc_html_e( 'Customize Landing Page', 'brag-book-gallery' ); ?></h3>
+					<ol>
+						<li><?php esc_html_e( 'Go to', 'brag-book-gallery' ); ?> <a href="<?php echo esc_url( admin_url( 'admin.php?page=brag-book-gallery-settings&tab=javascript' ) ); ?>"><?php esc_html_e( 'JavaScript Settings', 'brag-book-gallery' ); ?></a></li>
+						<li><?php esc_html_e( 'Edit the "Landing Page Text" field', 'brag-book-gallery' ); ?></li>
+						<li><?php esc_html_e( 'You can use HTML and shortcodes here', 'brag-book-gallery' ); ?></li>
+						<li><?php esc_html_e( 'Save settings', 'brag-book-gallery' ); ?></li>
+					</ol>
 				</div>
 			</div>
 
@@ -227,55 +214,115 @@ class Settings_Help extends Settings_Base {
 				<h2><?php esc_html_e( 'Troubleshooting', 'brag-book-gallery' ); ?></h2>
 
 				<div class="brag-book-gallery-card">
-					<h3><?php esc_html_e( 'URLs Returning 404 Errors', 'brag-book-gallery' ); ?></h3>
-					<p><?php esc_html_e( 'If your gallery procedure or case URLs are returning 404 errors:', 'brag-book-gallery' ); ?></p>
-
-					<div class="brag-book-gallery-diagnostic-tools">
-						<h4><?php esc_html_e( 'Debug Tools Available', 'brag-book-gallery' ); ?></h4>
-						<p><?php esc_html_e( 'We provide comprehensive debug tools to help diagnose and fix common issues:', 'brag-book-gallery' ); ?></p>
-						<p>
-							<a href="<?php echo esc_url( admin_url( 'admin.php?page=brag-book-gallery-debug' ) ); ?>" class="button button-primary">
-								<?php esc_html_e( 'Open Debug Tools', 'brag-book-gallery' ); ?>
-							</a>
-						</p>
-						<p class="description">
-							<?php esc_html_e( 'The Debug Tools include:', 'brag-book-gallery' ); ?>
-						</p>
-						<ul style="list-style: disc; margin-left: 20px;">
-							<li><strong><?php esc_html_e( 'Gallery Checker', 'brag-book-gallery' ); ?></strong> - <?php esc_html_e( 'Verify gallery page setup and configuration', 'brag-book-gallery' ); ?></li>
-							<li><strong><?php esc_html_e( 'Rewrite Debug', 'brag-book-gallery' ); ?></strong> - <?php esc_html_e( 'Analyze and test rewrite rules', 'brag-book-gallery' ); ?></li>
-							<li><strong><?php esc_html_e( 'Rewrite Fix', 'brag-book-gallery' ); ?></strong> - <?php esc_html_e( 'Automatic fixes for production sites', 'brag-book-gallery' ); ?></li>
-							<li><strong><?php esc_html_e( 'Flush Rules', 'brag-book-gallery' ); ?></strong> - <?php esc_html_e( 'Regenerate WordPress rewrite rules', 'brag-book-gallery' ); ?></li>
-						</ul>
-					</div>
-
-					<h4><?php esc_html_e( 'Quick Fixes', 'brag-book-gallery' ); ?></h4>
+					<h3><?php esc_html_e( '🔴 Gallery URLs Return 404 Errors', 'brag-book-gallery' ); ?></h3>
+					<p><?php esc_html_e( 'This is the most common issue. Here\'s how to fix it:', 'brag-book-gallery' ); ?></p>
+					
+					<h4><?php esc_html_e( 'Quick Fix:', 'brag-book-gallery' ); ?></h4>
 					<ol>
-						<li><?php esc_html_e( 'Go to Settings → Permalinks and click "Save Changes"', 'brag-book-gallery' ); ?></li>
-						<li><?php esc_html_e( 'Verify your gallery slug matches an existing page with [brag_book_gallery] shortcode', 'brag-book-gallery' ); ?></li>
-						<li><?php esc_html_e( 'Clear all caches (browser, CDN, hosting, plugins)', 'brag-book-gallery' ); ?></li>
-						<li><?php esc_html_e( 'For Nginx servers, manually add rewrite rules to nginx.conf', 'brag-book-gallery' ); ?></li>
+						<li><?php esc_html_e( 'Go to Settings → Permalinks', 'brag-book-gallery' ); ?></li>
+						<li><?php esc_html_e( 'Click "Save Changes" (don\'t change anything)', 'brag-book-gallery' ); ?></li>
+						<li><?php esc_html_e( 'Test your gallery URLs again', 'brag-book-gallery' ); ?></li>
+					</ol>
+
+					<h4><?php esc_html_e( 'Advanced Debugging:', 'brag-book-gallery' ); ?></h4>
+					<p>
+						<a href="<?php echo esc_url( admin_url( 'admin.php?page=brag-book-gallery-debug' ) ); ?>" class="button button-primary">
+							<?php esc_html_e( 'Open Debug Tools', 'brag-book-gallery' ); ?>
+						</a>
+					</p>
+					<p><?php esc_html_e( 'The Debug Tools provide:', 'brag-book-gallery' ); ?></p>
+					<ul style="list-style: disc; margin-left: 20px;">
+						<li><strong><?php esc_html_e( 'Gallery Checker', 'brag-book-gallery' ); ?></strong> - <?php esc_html_e( 'Verifies your gallery page exists and is configured correctly', 'brag-book-gallery' ); ?></li>
+						<li><strong><?php esc_html_e( 'Rewrite Debug', 'brag-book-gallery' ); ?></strong> - <?php esc_html_e( 'Shows exactly which rewrite rules are active', 'brag-book-gallery' ); ?></li>
+						<li><strong><?php esc_html_e( 'Rewrite Fix', 'brag-book-gallery' ); ?></strong> - <?php esc_html_e( 'Automatically fixes common rewrite issues', 'brag-book-gallery' ); ?></li>
+						<li><strong><?php esc_html_e( 'Cache Management', 'brag-book-gallery' ); ?></strong> - <?php esc_html_e( 'View and clear specific cached items', 'brag-book-gallery' ); ?></li>
+					</ul>
+
+					<h4><?php esc_html_e( 'For Nginx Servers:', 'brag-book-gallery' ); ?></h4>
+					<p><?php esc_html_e( 'Add these rules to your nginx.conf:', 'brag-book-gallery' ); ?></p>
+					<pre style="background: #f0f0f0; padding: 10px; overflow-x: auto;">
+location ~ ^/gallery/([^/]+)/([^/]+)/? {
+    try_files $uri $uri/ /index.php?$args;
+}
+location ~ ^/gallery/([^/]+)/? {
+    try_files $uri $uri/ /index.php?$args;
+}</pre>
+				</div>
+
+				<div class="brag-book-gallery-card">
+					<h3><?php esc_html_e( '🟡 Gallery Not Showing Cases', 'brag-book-gallery' ); ?></h3>
+					<h4><?php esc_html_e( 'Check these items:', 'brag-book-gallery' ); ?></h4>
+					<ol>
+						<li>
+							<strong><?php esc_html_e( 'API Credentials', 'brag-book-gallery' ); ?></strong>
+							<ul style="list-style: disc; margin-left: 20px;">
+								<li><?php esc_html_e( 'Verify API Token is correct in', 'brag-book-gallery' ); ?> <a href="<?php echo esc_url( admin_url( 'admin.php?page=brag-book-gallery-settings&tab=api' ) ); ?>"><?php esc_html_e( 'API Settings', 'brag-book-gallery' ); ?></a></li>
+								<li><?php esc_html_e( 'Confirm Website Property ID matches your BRAGBook account', 'brag-book-gallery' ); ?></li>
+							</ul>
+						</li>
+						<li>
+							<strong><?php esc_html_e( 'Clear Cache', 'brag-book-gallery' ); ?></strong>
+							<ul style="list-style: disc; margin-left: 20px;">
+								<li><?php esc_html_e( 'Clear plugin cache from JavaScript Settings', 'brag-book-gallery' ); ?></li>
+								<li><?php esc_html_e( 'Clear browser cache (Ctrl+Shift+R or Cmd+Shift+R)', 'brag-book-gallery' ); ?></li>
+							</ul>
+						</li>
+						<li>
+							<strong><?php esc_html_e( 'Check Console', 'brag-book-gallery' ); ?></strong>
+							<ul style="list-style: disc; margin-left: 20px;">
+								<li><?php esc_html_e( 'Open browser developer tools (F12)', 'brag-book-gallery' ); ?></li>
+								<li><?php esc_html_e( 'Check Console tab for JavaScript errors', 'brag-book-gallery' ); ?></li>
+								<li><?php esc_html_e( 'Check Network tab for failed API requests', 'brag-book-gallery' ); ?></li>
+							</ul>
+						</li>
 					</ol>
 				</div>
 
 				<div class="brag-book-gallery-card">
-					<h3><?php esc_html_e( 'Gallery Not Displaying', 'brag-book-gallery' ); ?></h3>
-					<ul>
-						<li><?php esc_html_e( 'Verify API credentials are correct in API Settings', 'brag-book-gallery' ); ?></li>
-						<li><?php esc_html_e( 'Check Website Property ID is set correctly', 'brag-book-gallery' ); ?></li>
-						<li><?php esc_html_e( 'Clear API cache from JavaScript Settings tab', 'brag-book-gallery' ); ?></li>
-						<li><?php esc_html_e( 'Ensure galleries exist in your BRAG book account', 'brag-book-gallery' ); ?></li>
+					<h3><?php esc_html_e( '🟢 Performance Optimization', 'brag-book-gallery' ); ?></h3>
+					<h4><?php esc_html_e( 'Speed up your gallery:', 'brag-book-gallery' ); ?></h4>
+					<ul style="list-style: disc; margin-left: 20px;">
+						<li><?php esc_html_e( 'Enable caching in JavaScript Settings (1 hour recommended)', 'brag-book-gallery' ); ?></li>
+						<li><?php esc_html_e( 'Use progressive loading (loads 10 cases initially)', 'brag-book-gallery' ); ?></li>
+						<li><?php esc_html_e( 'Optimize images in your BRAGBook account before uploading', 'brag-book-gallery' ); ?></li>
+						<li><?php esc_html_e( 'Consider using a CDN like Cloudflare', 'brag-book-gallery' ); ?></li>
+						<li><?php esc_html_e( 'Enable lazy loading for images (enabled by default)', 'brag-book-gallery' ); ?></li>
 					</ul>
 				</div>
+			</div>
 
-				<div class="brag-book-gallery-card">
-					<h3><?php esc_html_e( 'Performance Issues', 'brag-book-gallery' ); ?></h3>
-					<ul>
-						<li><?php esc_html_e( 'Enable caching in JavaScript Settings', 'brag-book-gallery' ); ?></li>
-						<li><?php esc_html_e( 'Use progressive loading for large galleries', 'brag-book-gallery' ); ?></li>
-						<li><?php esc_html_e( 'Optimize images in BRAG book account', 'brag-book-gallery' ); ?></li>
-						<li><?php esc_html_e( 'Consider using a CDN for faster delivery', 'brag-book-gallery' ); ?></li>
-					</ul>
+			<!-- FAQs -->
+			<div class="brag-book-gallery-section">
+				<h2><?php esc_html_e( 'Frequently Asked Questions', 'brag-book-gallery' ); ?></h2>
+
+				<div class="brag-book-gallery-faq">
+					<h3><?php esc_html_e( 'Q: How do I find my procedure slugs for the carousel shortcode?', 'brag-book-gallery' ); ?></h3>
+					<p><?php esc_html_e( 'A: Visit your gallery page and look at the URLs when you click on a procedure. The slug is the last part of the URL. For example, in "/gallery/breast-augmentation/", the slug is "breast-augmentation".', 'brag-book-gallery' ); ?></p>
+				</div>
+
+				<div class="brag-book-gallery-faq">
+					<h3><?php esc_html_e( 'Q: Can I have multiple galleries on different pages?', 'brag-book-gallery' ); ?></h3>
+					<p><?php esc_html_e( 'A: Yes! You can use the [brag_book_gallery] shortcode on multiple pages. Each can have different Website Property IDs if needed.', 'brag-book-gallery' ); ?></p>
+				</div>
+
+				<div class="brag-book-gallery-faq">
+					<h3><?php esc_html_e( 'Q: How often does the gallery update with new cases?', 'brag-book-gallery' ); ?></h3>
+					<p><?php esc_html_e( 'A: The gallery caches data for 1 hour by default. New cases will appear automatically after the cache expires, or you can manually clear the cache to see updates immediately.', 'brag-book-gallery' ); ?></p>
+				</div>
+
+				<div class="brag-book-gallery-faq">
+					<h3><?php esc_html_e( 'Q: Can I customize the gallery colors and styling?', 'brag-book-gallery' ); ?></h3>
+					<p><?php esc_html_e( 'A: Yes! The plugin uses CSS classes prefixed with "brag-book-gallery-". You can add custom CSS in your theme or using the WordPress Customizer → Additional CSS.', 'brag-book-gallery' ); ?></p>
+				</div>
+
+				<div class="brag-book-gallery-faq">
+					<h3><?php esc_html_e( 'Q: What\'s the difference between JavaScript and Local mode?', 'brag-book-gallery' ); ?></h3>
+					<p><?php esc_html_e( 'A: JavaScript mode (recommended) loads data directly from the BRAGBook API and stays in sync. Local mode imports cases into your WordPress database for offline access but requires manual syncing.', 'brag-book-gallery' ); ?></p>
+				</div>
+
+				<div class="brag-book-gallery-faq">
+					<h3><?php esc_html_e( 'Q: How do I enable the consultation form?', 'brag-book-gallery' ); ?></h3>
+					<p><?php esc_html_e( 'A: Go to Consultation Settings and configure your form preferences. The consultation button will automatically appear on gallery pages and case details.', 'brag-book-gallery' ); ?></p>
 				</div>
 			</div>
 
@@ -285,8 +332,8 @@ class Settings_Help extends Settings_Base {
 				<div class="brag-book-gallery-grid">
 					<div class="brag-book-gallery-card">
 						<h3><span class="dashicons dashicons-book"></span> <?php esc_html_e( 'Documentation', 'brag-book-gallery' ); ?></h3>
-						<p><?php esc_html_e( 'Complete documentation and guides', 'brag-book-gallery' ); ?></p>
-						<a href="https://bragbook.com/docs" target="_blank" class="button button-secondary">
+						<p><?php esc_html_e( 'Complete documentation and video tutorials', 'brag-book-gallery' ); ?></p>
+						<a href="https://bragbookgallery.com/docs" target="_blank" class="button button-secondary">
 							<?php esc_html_e( 'View Documentation', 'brag-book-gallery' ); ?>
 						</a>
 					</div>
@@ -294,16 +341,16 @@ class Settings_Help extends Settings_Base {
 					<div class="brag-book-gallery-card">
 						<h3><span class="dashicons dashicons-email"></span> <?php esc_html_e( 'Email Support', 'brag-book-gallery' ); ?></h3>
 						<p><?php esc_html_e( 'Get help from our support team', 'brag-book-gallery' ); ?></p>
-						<a href="mailto:support@bragbook.com" class="button button-secondary">
+						<a href="mailto:support@bragbookgallery.com" class="button button-secondary">
 							<?php esc_html_e( 'Contact Support', 'brag-book-gallery' ); ?>
 						</a>
 					</div>
 
 					<div class="brag-book-gallery-card">
-						<h3><span class="dashicons dashicons-update"></span> <?php esc_html_e( 'Updates', 'brag-book-gallery' ); ?></h3>
-						<p><?php esc_html_e( 'Check for plugin updates', 'brag-book-gallery' ); ?></p>
-						<a href="<?php echo esc_url( admin_url( 'plugins.php' ) ); ?>" class="button button-secondary">
-							<?php esc_html_e( 'View Updates', 'brag-book-gallery' ); ?>
+						<h3><span class="dashicons dashicons-admin-site"></span> <?php esc_html_e( 'BRAGBook Account', 'brag-book-gallery' ); ?></h3>
+						<p><?php esc_html_e( 'Manage your cases and settings', 'brag-book-gallery' ); ?></p>
+						<a href="https://app.bragbookgallery.com" target="_blank" class="button button-secondary">
+							<?php esc_html_e( 'Login to BRAGBook', 'brag-book-gallery' ); ?>
 						</a>
 					</div>
 				</div>
@@ -312,36 +359,90 @@ class Settings_Help extends Settings_Base {
 			<!-- System Information -->
 			<div class="brag-book-gallery-section">
 				<h2><?php esc_html_e( 'System Information', 'brag-book-gallery' ); ?></h2>
-				<table class="widefat striped">
-					<tbody>
-						<tr>
-							<th><?php esc_html_e( 'Plugin Version', 'brag-book-gallery' ); ?></th>
-							<td>
-								<?php
-								$plugin_data = get_plugin_data( WP_PLUGIN_DIR . '/brag-book-gallery/brag-book-gallery.php' );
-								echo esc_html( $plugin_data['Version'] ?? '3.0.0' );
-								?>
-							</td>
-						</tr>
-						<tr>
-							<th><?php esc_html_e( 'WordPress Version', 'brag-book-gallery' ); ?></th>
-							<td><?php echo esc_html( get_bloginfo( 'version' ) ); ?></td>
-						</tr>
-						<tr>
-							<th><?php esc_html_e( 'PHP Version', 'brag-book-gallery' ); ?></th>
-							<td><?php echo esc_html( phpversion() ); ?></td>
-						</tr>
-						<tr>
-							<th><?php esc_html_e( 'Active Mode', 'brag-book-gallery' ); ?></th>
-							<td>
-								<?php
-								$mode_manager = \BRAGBookGallery\Includes\Mode\Mode_Manager::get_instance();
-								echo esc_html( ucfirst( $mode_manager->get_current_mode() ) );
-								?>
-							</td>
-						</tr>
-					</tbody>
-				</table>
+				<div class="brag-book-gallery-card">
+					<table class="widefat striped">
+						<tbody>
+							<tr>
+								<th><?php esc_html_e( 'Plugin Version', 'brag-book-gallery' ); ?></th>
+								<td>
+									<?php
+									$plugin_data = get_plugin_data( WP_PLUGIN_DIR . '/brag-book-gallery/brag-book-gallery.php' );
+									echo esc_html( $plugin_data['Version'] ?? '3.0.0' );
+									?>
+								</td>
+							</tr>
+							<tr>
+								<th><?php esc_html_e( 'WordPress Version', 'brag-book-gallery' ); ?></th>
+								<td><?php echo esc_html( get_bloginfo( 'version' ) ); ?></td>
+							</tr>
+							<tr>
+								<th><?php esc_html_e( 'PHP Version', 'brag-book-gallery' ); ?></th>
+								<td><?php echo esc_html( phpversion() ); ?></td>
+							</tr>
+							<tr>
+								<th><?php esc_html_e( 'Active Mode', 'brag-book-gallery' ); ?></th>
+								<td>
+									<?php
+									$mode_manager = \BRAGBookGallery\Includes\Mode\Mode_Manager::get_instance();
+									echo esc_html( ucfirst( $mode_manager->get_current_mode() ) );
+									?>
+								</td>
+							</tr>
+							<tr>
+								<th><?php esc_html_e( 'Gallery Page', 'brag-book-gallery' ); ?></th>
+								<td>
+									<?php
+									$gallery_slug = get_option( 'brag_book_gallery_slug', 'gallery' );
+									$gallery_page = get_page_by_path( $gallery_slug );
+									if ( $gallery_page ) {
+										echo '<span style="color: #46b450;">✓</span> ';
+										printf(
+											'<a href="%s">%s</a>',
+											esc_url( get_permalink( $gallery_page->ID ) ),
+											esc_html( $gallery_page->post_title )
+										);
+									} else {
+										echo '<span style="color: #dc3232;">✗</span> ';
+										esc_html_e( 'Not found', 'brag-book-gallery' );
+									}
+									?>
+								</td>
+							</tr>
+							<tr>
+								<th><?php esc_html_e( 'API Status', 'brag-book-gallery' ); ?></th>
+								<td>
+									<?php
+									$api_token = get_option( 'brag_book_gallery_api_token' );
+									$website_property_id = get_option( 'brag_book_gallery_website_property_id' );
+									
+									if ( $api_token && $website_property_id ) {
+										echo '<span style="color: #46b450;">✓</span> ';
+										esc_html_e( 'Configured', 'brag-book-gallery' );
+									} else {
+										echo '<span style="color: #dc3232;">✗</span> ';
+										esc_html_e( 'Not configured', 'brag-book-gallery' );
+									}
+									?>
+								</td>
+							</tr>
+						</tbody>
+					</table>
+					
+					<div style="margin-top: 20px;">
+						<p><strong><?php esc_html_e( 'Quick Actions:', 'brag-book-gallery' ); ?></strong></p>
+						<p>
+							<a href="<?php echo esc_url( admin_url( 'admin.php?page=brag-book-gallery-debug' ) ); ?>" class="button">
+								<?php esc_html_e( 'Debug Tools', 'brag-book-gallery' ); ?>
+							</a>
+							<a href="<?php echo esc_url( admin_url( 'admin.php?page=brag-book-gallery-settings' ) ); ?>" class="button">
+								<?php esc_html_e( 'General Settings', 'brag-book-gallery' ); ?>
+							</a>
+							<a href="<?php echo esc_url( admin_url( 'options-permalink.php' ) ); ?>" class="button">
+								<?php esc_html_e( 'Flush Permalinks', 'brag-book-gallery' ); ?>
+							</a>
+						</p>
+					</div>
+				</div>
 			</div>
 		</div>
 

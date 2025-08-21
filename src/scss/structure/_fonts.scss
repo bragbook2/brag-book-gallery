@@ -1,0 +1,58 @@
+@charset "UTF-8";
+
+// -----------------------------------------------------------------------------
+// structure / fonts
+// -----------------------------------------------------------------------------
+
+// Poppins Font Face Definitions
+@font-face {
+	font-family: 'Poppins';
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src: url('../fonts/poppins/Poppins-Regular.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Poppins';
+	font-style: italic;
+	font-weight: 400;
+	font-display: swap;
+	src: url('../fonts/poppins/Poppins-Italic.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Poppins';
+	font-style: normal;
+	font-weight: 600;
+	font-display: swap;
+	src: url('../fonts/poppins/Poppins-SemiBold.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Poppins';
+	font-style: italic;
+	font-weight: 600;
+	font-display: swap;
+	src: url('../fonts/poppins/Poppins-SemiBoldItalic.woff2') format('woff2');
+}
+
+// Apply Poppins font to gallery wrapper when enabled
+.brag-book-gallery-wrapper:not(.disable-custom-font) {
+	font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
+	
+	// Ensure all child elements inherit the font
+	* {
+		font-family: inherit;
+	}
+}
+
+// Also apply to body when on gallery pages (if enabled)
+body.brag-book-gallery-page:not(.disable-custom-font) {
+	.brag-book-gallery-wrapper,
+	.brag-book-gallery-case-details,
+	.brag-book-gallery-consultation-form,
+	.brag-book-gallery-favorites-page {
+		font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
+	}
+}

@@ -135,21 +135,25 @@ class Settings_Mode extends Settings_Base {
 							<th scope="row"><?php esc_html_e( 'Select Mode', 'brag-book-gallery' ); ?></th>
 							<td>
 								<fieldset>
-									<label>
+									<label style="display: block; margin-bottom: 20px;">
 										<input type="radio" name="gallery_mode" value="javascript"
 											<?php checked( $current_mode, 'javascript' ); ?>>
 										<strong><?php esc_html_e( 'JavaScript Mode', 'brag-book-gallery' ); ?></strong>
-										<p class="description">
+										<p class="description" style="margin-left: 24px; margin-top: 5px;">
 											<?php esc_html_e( 'Dynamic API-driven content. Best for real-time updates and minimal database usage.', 'brag-book-gallery' ); ?>
 										</p>
 									</label>
-									<br><br>
-									<label>
+									
+									<label style="display: block; opacity: 0.6; cursor: not-allowed;">
 										<input type="radio" name="gallery_mode" value="local"
-											<?php checked( $current_mode, 'local' ); ?>>
+											<?php checked( $current_mode, 'local' ); ?> disabled>
 										<strong><?php esc_html_e( 'Local Mode', 'brag-book-gallery' ); ?></strong>
-										<p class="description">
+										<span style="display: inline-block; margin-left: 10px; padding: 2px 8px; background: #f0f0f1; border-radius: 3px; font-size: 12px; font-weight: 600; color: #666;">
+											<?php esc_html_e( 'COMING SOON', 'brag-book-gallery' ); ?>
+										</span>
+										<p class="description" style="margin-left: 24px; margin-top: 5px;">
 											<?php esc_html_e( 'WordPress native content. Best for SEO, performance, and offline access.', 'brag-book-gallery' ); ?>
+											<br><em style="color: #666;"><?php esc_html_e( 'This mode is currently under development and will be available in a future update.', 'brag-book-gallery' ); ?></em>
 										</p>
 									</label>
 								</fieldset>
@@ -158,9 +162,15 @@ class Settings_Mode extends Settings_Base {
 					</table>
 
 					<div class="brag-book-gallery-actions">
-						<button type="submit" name="switch_mode" class="button button-primary button-large">
+						<button type="submit" name="switch_mode" class="button button-primary button-large" 
+							<?php echo ( $current_mode === 'javascript' ) ? 'disabled' : ''; ?>>
 							<?php esc_html_e( 'Switch Mode', 'brag-book-gallery' ); ?>
 						</button>
+						<?php if ( $current_mode === 'javascript' ) : ?>
+							<span class="description" style="display: inline-block; margin-left: 10px; line-height: 30px;">
+								<?php esc_html_e( 'JavaScript Mode is currently active', 'brag-book-gallery' ); ?>
+							</span>
+						<?php endif; ?>
 					</div>
 				</form>
 			</div>
@@ -170,7 +180,28 @@ class Settings_Mode extends Settings_Base {
 				<h2><?php echo esc_html( sprintf( __( '%s Mode Settings', 'brag-book-gallery' ), ucfirst( $current_mode ) ) ); ?></h2>
 
 				<?php if ( $current_mode === 'local' ) : ?>
-					<!-- Local Mode Settings -->
+					<!-- Local Mode Coming Soon Notice -->
+					<div class="brag-book-gallery-notice brag-book-gallery-notice--info inline">
+						<h3><?php esc_html_e( 'Local Mode - Coming Soon', 'brag-book-gallery' ); ?></h3>
+						<p>
+							<?php esc_html_e( 'Local Mode is currently under development and will be available in a future update.', 'brag-book-gallery' ); ?>
+						</p>
+						<p>
+							<?php esc_html_e( 'This mode will offer:', 'brag-book-gallery' ); ?>
+						</p>
+						<ul style="list-style: disc; margin-left: 20px;">
+							<li><?php esc_html_e( 'WordPress native content management', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Enhanced SEO capabilities', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Offline access to gallery content', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Automated sync with API', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Custom post types for galleries', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<p>
+							<strong><?php esc_html_e( 'Stay tuned for updates!', 'brag-book-gallery' ); ?></strong>
+						</p>
+					</div>
+				<?php elseif ( false ) : // Disabled Local Mode Settings Form ?>
+					<!-- Original Local Mode Settings (hidden) -->
 					<form id="local-mode-settings-form" method="post">
 						<?php wp_nonce_field( 'brag_book_gallery_mode_settings', 'mode_settings_nonce' ); ?>
 
@@ -276,7 +307,7 @@ class Settings_Mode extends Settings_Base {
 							<?php endif; ?>
 						</div>
 					</form>
-				<?php else : ?>
+				<?php elseif ( $current_mode === 'javascript' ) : ?>
 					<!-- JavaScript Mode Settings Info -->
 					<div class="brag-book-gallery-notice brag-book-gallery-notice--info inline">
 						<p>

@@ -1045,7 +1045,7 @@ class Endpoints {
 			'websitePropertyId' => '',
 			'limit'            => 10,
 			'start'            => 1,
-			'procedureId'      => 3405,  // Updated default procedureId
+			'procedureId'      => null,  // No default - only filter if specifically requested
 		];
 
 		$options = array_merge( $default_options, $options );
@@ -1056,8 +1056,12 @@ class Endpoints {
 			'start'            => absint( $options['start'] ) ?: 1,
 			'limit'            => absint( $options['limit'] ) ?: 10,
 			'apiToken'         => $token,
-			'procedureId'      => absint( $options['procedureId'] ) ?: 3405,
 		];
+		
+		// Only add procedureId if it's actually provided and valid
+		if ( ! empty( $options['procedureId'] ) && $options['procedureId'] !== null ) {
+			$query_params['procedureId'] = absint( $options['procedureId'] );
+		}
 
 		// Build URL with query parameters
 		$url = self::API_ENDPOINTS['carousel'] . '?' . http_build_query( $query_params );

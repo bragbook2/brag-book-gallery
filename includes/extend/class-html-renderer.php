@@ -45,6 +45,73 @@ final class HTML_Renderer {
 	private const DEFAULT_START_INDEX = 0;
 
 	/**
+	 * Format procedure display name with proper casing and formatting.
+	 *
+	 * @since 3.0.0
+	 * @param string $procedure_name The procedure name to format.
+	 * @return string Formatted procedure name.
+	 */
+	public static function format_procedure_display_name( string $procedure_name ): string {
+		// Handle known special cases
+		$special_cases = [
+			'ipl bbl laser' => 'IPL / BBL Laser',
+			'ipl/bbl laser' => 'IPL / BBL Laser',
+			'ipl-bbl-laser' => 'IPL / BBL Laser',
+			'co2 laser' => 'CO2 Laser',
+			'co2-laser' => 'CO2 Laser',
+			'halo laser' => 'HALO Laser',
+			'halo-laser' => 'HALO Laser',
+			'bbl laser' => 'BBL Laser',
+			'bbl-laser' => 'BBL Laser',
+			'ipl laser' => 'IPL Laser',
+			'ipl-laser' => 'IPL Laser',
+			'rf microneedling' => 'RF Microneedling',
+			'rf-microneedling' => 'RF Microneedling',
+			'prp therapy' => 'PRP Therapy',
+			'prp-therapy' => 'PRP Therapy',
+			'pdo threads' => 'PDO Threads',
+			'pdo-threads' => 'PDO Threads',
+			'lower lid canthoplasty' => 'Lower Lid (Canthoplasty)',
+			'lower-lid-canthoplasty' => 'Lower Lid (Canthoplasty)',
+			'upper lid ptosis repair' => 'Upper Lid (Ptosis Repair)',
+			'upper-lid-ptosis-repair' => 'Upper Lid (Ptosis Repair)',
+		];
+
+		// Check for special cases (case-insensitive)
+		$lower_name = strtolower( trim( $procedure_name ) );
+		if ( isset( $special_cases[ $lower_name ] ) ) {
+			return $special_cases[ $lower_name ];
+		}
+
+		// Check if the name already contains parentheses and preserve them
+		if ( preg_match( '/^(.+?)\s*\((.+?)\)/', $procedure_name, $matches ) ) {
+			// Already has parentheses, ensure proper capitalization
+			$main_part = ucwords( strtolower( trim( $matches[1] ) ) );
+			$parens_part = ucwords( strtolower( trim( $matches[2] ) ) );
+			return $main_part . ' (' . $parens_part . ')';
+		}
+
+		// For slug format (with hyphens), convert to title case
+		if ( strpos( $procedure_name, '-' ) !== false ) {
+			// Check if it might be a procedure that should have parentheses
+			if ( preg_match( '/^(lower|upper)[-\s]lid[-\s](.+)$/i', $procedure_name, $matches ) ) {
+				$lid_part = ucwords( strtolower( $matches[1] ) ) . ' Lid';
+				$procedure_part = ucwords( str_replace( '-', ' ', $matches[2] ) );
+				return $lid_part . ' (' . $procedure_part . ')';
+			}
+			return ucwords( str_replace( '-', ' ', $procedure_name ) );
+		}
+
+		// If it already looks properly formatted (has uppercase letters), keep it
+		if ( preg_match( '/[A-Z]/', $procedure_name ) ) {
+			return $procedure_name;
+		}
+
+		// Default: convert to title case
+		return ucwords( strtolower( $procedure_name ) );
+	}
+
+	/**
 	 * Limit words in a text string.
 	 *
 	 * @since 3.0.0
@@ -145,8 +212,9 @@ final class HTML_Renderer {
 
 			// Add procedures as filter options
 			foreach ( $procedures as $procedure ) {
-				$procedure_name = sanitize_text_field( $procedure['name'] ?? '' );
-				$procedure_slug = sanitize_title( $procedure['slugName'] ?? $procedure_name );
+				$raw_procedure_name = sanitize_text_field( $procedure['name'] ?? '' );
+				$procedure_name = self::format_procedure_display_name( $raw_procedure_name );
+				$procedure_slug = sanitize_title( $procedure['slugName'] ?? $raw_procedure_name );
 				$case_count = absint( $procedure['totalCase'] ?? 0 );
 				$procedure_ids = $procedure['ids'] ?? array();
 
@@ -375,89 +443,77 @@ final class HTML_Renderer {
 	 */
 	public static function generate_carousel_slide_from_photo( array $photo, array $case, int $slide_index ): string {
 		$photo_id = $photo['id'] ?? '';
-		$image_url = $photo['url'] ?? '';
+		// Handle different image URL field names based on API response format
+		$image_url = $photo['postProcessedImageLocation'] ?? $photo['url'] ?? $photo['originalBeforeLocation'] ?? '';
 		$case_id = $case['id'] ?? '';
-		$procedure_title = $case['procedureTitle'] ?? '';
-		$patient_age = $case['patientAge'] ?? '';
-		$patient_gender = $case['patientGender'] ?? '';
-		$patient_height = $case['patientHeight'] ?? '';
-		$patient_weight = $case['patientWeight'] ?? '';
-		$patient_ethnicity = $case['patientEthnicity'] ?? '';
-		$description = $case['description'] ?? '';
-
-		// Check for nudity based on photo ID (example logic, adapt as needed)
-		$has_nudity = ! empty( $photo['hasNudity'] );
-
-		// Build alt text
-		$alt_text = sprintf(
-			__( 'Case %s: %s', 'brag-book-gallery' ),
-			esc_attr( $case_id ),
-			esc_attr( $procedure_title )
-		);
-
-		// Add patient details to alt text if available
-		if ( $patient_age || $patient_gender ) {
-			$details = [];
-			if ( $patient_age ) {
-				$details[] = sprintf( __( '%s years old', 'brag-book-gallery' ), $patient_age );
+		
+		// Extract procedure title from details HTML or use direct field
+		$procedure_title = '';
+		if ( ! empty( $case['procedureTitle'] ) ) {
+			$procedure_title = $case['procedureTitle'];
+		} elseif ( ! empty( $case['details'] ) ) {
+			// Try to extract from details HTML
+			if ( preg_match( '/<p>([^<]+)<\/p>/', $case['details'], $matches ) ) {
+				$procedure_title = trim( $matches[1] );
 			}
-			if ( $patient_gender ) {
-				$details[] = $patient_gender;
-			}
-			$alt_text .= ' - ' . implode( ', ', $details );
 		}
+		
+		// Default alt text based on procedure or generic
+		$alt_text = ! empty( $procedure_title ) 
+			? $procedure_title . ' before and after result'
+			: 'Body procedure before and after result';
+		
+		// Check if SEO alt text is provided
+		if ( ! empty( $photo['seoAltText'] ) ) {
+			$alt_text = $photo['seoAltText'];
+		}
+
+		// Check for nudity flag in photo data
+		$has_nudity = ! empty( $photo['hasNudity'] ) || ! empty( $photo['nudity'] );
+		
+		// Generate unique slide ID using case and photo IDs
+		$slide_id = 'bd-' . $slide_index;
+		if ( ! empty( $case_id ) && ! empty( $photo_id ) ) {
+			$slide_id = $case_id . '-' . $photo_id;
+		}
+		
+		// Count total slides from photos array
+		$total_slides = count( $case['photos'] ?? [] );
 
 		ob_start();
 		?>
-		<div class="brag-book-carousel-item"
-			 data-index="<?php echo esc_attr( (string) $slide_index ); ?>"
-			 data-case-id="<?php echo esc_attr( $case_id ); ?>"
-			 data-photo-id="<?php echo esc_attr( $photo_id ); ?>">
-			<div class="brag-book-carousel-image-container">
-				<?php if ( $has_nudity ) : ?>
-					<?php echo self::generate_nudity_warning(); ?>
-				<?php endif; ?>
-				<?php echo self::generate_carousel_image_with_alt( $image_url, $has_nudity, $alt_text ); ?>
-			</div>
-			<div class="brag-book-carousel-details">
-				<h3 class="brag-book-carousel-title"><?php echo esc_html( $procedure_title ); ?></h3>
-				<?php if ( $description ) : ?>
-					<p class="brag-book-carousel-description">
-						<?php echo esc_html( self::limit_words( $description, 30 ) ); ?>
-					</p>
-				<?php endif; ?>
-				<div class="brag-book-carousel-demographics">
-					<?php if ( $patient_age ) : ?>
-						<span class="demographic-item">
-							<strong><?php esc_html_e( 'Age:', 'brag-book-gallery' ); ?></strong>
-							<?php echo esc_html( $patient_age ); ?>
-						</span>
-					<?php endif; ?>
-					<?php if ( $patient_gender ) : ?>
-						<span class="demographic-item">
-							<strong><?php esc_html_e( 'Gender:', 'brag-book-gallery' ); ?></strong>
-							<?php echo esc_html( $patient_gender ); ?>
-						</span>
-					<?php endif; ?>
-					<?php if ( $patient_height ) : ?>
-						<span class="demographic-item">
-							<strong><?php esc_html_e( 'Height:', 'brag-book-gallery' ); ?></strong>
-							<?php echo esc_html( $patient_height ); ?>
-						</span>
-					<?php endif; ?>
-					<?php if ( $patient_weight ) : ?>
-						<span class="demographic-item">
-							<strong><?php esc_html_e( 'Weight:', 'brag-book-gallery' ); ?></strong>
-							<?php echo esc_html( $patient_weight ); ?>
-						</span>
-					<?php endif; ?>
-					<?php if ( $patient_ethnicity ) : ?>
-						<span class="demographic-item">
-							<strong><?php esc_html_e( 'Ethnicity:', 'brag-book-gallery' ); ?></strong>
-							<?php echo esc_html( $patient_ethnicity ); ?>
-						</span>
-					<?php endif; ?>
+		<div class="brag-book-gallery-carousel-item" 
+			 data-slide="<?php echo esc_attr( $slide_id ); ?>" 
+			 role="group" 
+			 aria-roledescription="slide" 
+			 aria-label="<?php echo esc_attr( sprintf( 'Slide %d of %d', $slide_index + 1, $total_slides ) ); ?>">
+			<?php if ( $has_nudity ) : ?>
+				<div class="brag-book-gallery-nudity-warning">
+					<div class="brag-book-gallery-nudity-warning-content">
+						<h4 class="brag-book-gallery-nudity-warning-title"><?php esc_html_e( 'WARNING: Contains Nudity', 'brag-book-gallery' ); ?></h4>
+						<p class="brag-book-gallery-nudity-warning-caption"><?php esc_html_e( 'If you are offended by such material or are under 18 years of age. Please do not proceed.', 'brag-book-gallery' ); ?></p>
+						<button class="brag-book-gallery-nudity-warning-button" type="button"><?php esc_html_e( 'Proceed', 'brag-book-gallery' ); ?></button>
+					</div>
 				</div>
+			<?php endif; ?>
+			<picture class="brag-book-gallery-carousel-image">
+				<source srcset="<?php echo esc_url( $image_url ); ?>" type="image/jpeg">
+				<img src="<?php echo esc_url( $image_url ); ?>" 
+					 alt="<?php echo esc_attr( $alt_text ); ?>" 
+					 loading="lazy"
+					 <?php if ( $has_nudity ) : ?>class="brag-book-gallery-nudity-blur"<?php endif; ?>
+					 width="400"
+					 height="300">
+			</picture>
+			<div class="brag-book-gallery-item-actions">
+				<button class="brag-book-gallery-favorite-button" 
+						data-favorited="false" 
+						data-item-id="<?php echo esc_attr( 'case-' . $case_id ); ?>"
+						aria-label="<?php esc_attr_e( 'Add to favorites', 'brag-book-gallery' ); ?>">
+					<svg fill="rgba(255, 255, 255, 0.5)" stroke="white" stroke-width="2" viewBox="0 0 24 24">
+						<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+					</svg>
+				</button>
 			</div>
 		</div>
 		<?php

@@ -163,7 +163,7 @@ class Settings_General extends Settings_Base {
 						</th>
 						<td>
 							<?php
-							$enable_lightbox = get_option( 'brag_book_gallery_enable_lightbox', 'yes' );
+							$enable_lightbox = get_option( 'brag_book_gallery_enable_lightbox', 'no' );
 							?>
 							<label class="brag-book-toggle-switch">
 								<input type="hidden" name="brag_book_gallery_enable_lightbox" value="no" />
@@ -201,6 +201,31 @@ class Settings_General extends Settings_Base {
 							</label>
 							<p class="description">
 								<?php esc_html_e( 'Show filter options for procedures, categories, and demographics.', 'brag-book-gallery' ); ?>
+							</p>
+						</td>
+					</tr>
+
+					<tr>
+						<th scope="row">
+							<label for="brag_book_gallery_use_custom_font" class="brag-book-toggle-label">
+								<?php esc_html_e( 'Use Poppins Font', 'brag-book-gallery' ); ?>
+							</label>
+						</th>
+						<td>
+							<?php
+							$use_custom_font = get_option( 'brag_book_gallery_use_custom_font', 'yes' );
+							?>
+							<label class="brag-book-toggle-switch">
+								<input type="hidden" name="brag_book_gallery_use_custom_font" value="no" />
+								<input type="checkbox"
+									   id="brag_book_gallery_use_custom_font"
+									   name="brag_book_gallery_use_custom_font"
+									   value="yes"
+									   <?php checked( $use_custom_font, 'yes' ); ?> />
+								<span class="brag-book-toggle-slider"></span>
+							</label>
+							<p class="description">
+								<?php esc_html_e( 'Use the Poppins font family for gallery text. When disabled, uses your theme\'s default font.', 'brag-book-gallery' ); ?>
 							</p>
 						</td>
 					</tr>
@@ -305,31 +330,6 @@ class Settings_General extends Settings_Base {
 							</select>
 							<p class="description">
 								<?php esc_html_e( 'How long to cache API responses and gallery data.', 'brag-book-gallery' ); ?>
-							</p>
-						</td>
-					</tr>
-
-					<tr>
-						<th scope="row">
-							<label for="brag_book_gallery_enable_cdn" class="brag-book-toggle-label">
-								<?php esc_html_e( 'Enable CDN', 'brag-book-gallery' ); ?>
-							</label>
-						</th>
-						<td>
-							<?php
-							$enable_cdn = get_option( 'brag_book_gallery_enable_cdn', 'no' );
-							?>
-							<label class="brag-book-toggle-switch">
-								<input type="hidden" name="brag_book_gallery_enable_cdn" value="no" />
-								<input type="checkbox"
-									   id="brag_book_gallery_enable_cdn"
-									   name="brag_book_gallery_enable_cdn"
-									   value="yes"
-									   <?php checked( $enable_cdn, 'yes' ); ?> />
-								<span class="brag-book-toggle-slider"></span>
-							</label>
-							<p class="description">
-								<?php esc_html_e( 'Use CDN for loading external assets and images.', 'brag-book-gallery' ); ?>
 							</p>
 						</td>
 					</tr>
@@ -464,6 +464,9 @@ class Settings_General extends Settings_Base {
 		$enable_filtering = isset( $_POST['brag_book_gallery_enable_filtering'] ) ? sanitize_text_field( $_POST['brag_book_gallery_enable_filtering'] ) : 'no';
 		update_option( 'brag_book_gallery_enable_filtering', $enable_filtering );
 
+		$use_custom_font = isset( $_POST['brag_book_gallery_use_custom_font'] ) ? sanitize_text_field( $_POST['brag_book_gallery_use_custom_font'] ) : 'no';
+		update_option( 'brag_book_gallery_use_custom_font', $use_custom_font );
+
 		// Image Settings
 		$image_size = isset( $_POST['brag_book_gallery_image_size'] ) ? sanitize_text_field( $_POST['brag_book_gallery_image_size'] ) : 'medium';
 		update_option( 'brag_book_gallery_image_size', $image_size );
@@ -478,9 +481,6 @@ class Settings_General extends Settings_Base {
 		// Performance Settings
 		$cache_duration = isset( $_POST['brag_book_gallery_cache_duration'] ) ? absint( $_POST['brag_book_gallery_cache_duration'] ) : 3600;
 		update_option( 'brag_book_gallery_cache_duration', $cache_duration );
-
-		$enable_cdn = isset( $_POST['brag_book_gallery_enable_cdn'] ) ? sanitize_text_field( $_POST['brag_book_gallery_enable_cdn'] ) : 'no';
-		update_option( 'brag_book_gallery_enable_cdn', $enable_cdn );
 
 		$minify_assets = isset( $_POST['brag_book_gallery_minify_assets'] ) ? sanitize_text_field( $_POST['brag_book_gallery_minify_assets'] ) : 'no';
 		update_option( 'brag_book_gallery_minify_assets', $minify_assets );

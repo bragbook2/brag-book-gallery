@@ -121,7 +121,7 @@ class Settings_Dashboard extends Settings_Base {
 		</section>
 
 		<!-- Setup Progress -->
-		<?php if ( $setup_steps['total'] > 0 ) : ?>
+		<?php if ( $setup_steps['total'] > 0 && $setup_steps['completed'] < $setup_steps['total'] ) : ?>
 		<div class="brag-book-gallery-section">
 			<h2><?php esc_html_e( 'Setup Progress', 'brag-book-gallery' ); ?></h2>
 			<div class="setup-progress">
@@ -407,8 +407,13 @@ class Settings_Dashboard extends Settings_Base {
 		if ( $mode_selected ) {
 			if ( $current_mode === 'javascript' ) {
 				// For JavaScript mode, check if gallery page slug is configured
-				$gallery_slugs = get_option( 'brag_book_gallery_gallery_page_slug', array() );
-				$mode_configured = ! empty( $gallery_slugs );
+				$gallery_slugs = get_option( 'brag_book_gallery_page_slug', array() );
+				// Check if we have at least one non-empty slug
+				if ( is_array( $gallery_slugs ) ) {
+					$mode_configured = count( array_filter( $gallery_slugs ) ) > 0;
+				} else if ( is_string( $gallery_slugs ) ) {
+					$mode_configured = ! empty( $gallery_slugs );
+				}
 				$settings_url = admin_url( 'admin.php?page=brag-book-gallery-javascript' );
 			} else {
 				// For Local mode, just check if mode is selected (local mode doesn't need additional config)
@@ -435,27 +440,35 @@ class Settings_Dashboard extends Settings_Base {
 			$gallery_count = wp_count_posts( 'brag_gallery' );
 			$has_gallery = ( $gallery_count->publish ?? 0 ) > 0;
 		} else if ( $current_mode === 'javascript' ) {
-			// For JavaScript mode, check if gallery page exists (page with shortcode or configured slug)
-			$gallery_slugs = get_option( 'brag_book_gallery_gallery_page_slug', array() );
-			if ( ! empty( $gallery_slugs ) ) {
-				// Check if a page exists with the gallery slug
-				foreach ( $gallery_slugs as $slug ) {
-					$page = get_page_by_path( $slug );
-					if ( $page && $page->post_status === 'publish' ) {
-						$has_gallery = true;
-						break;
+			// For JavaScript mode, check if gallery page exists (page with shortcode)
+			global $wpdb;
+			
+			// First check for pages with the shortcode
+			$pages_with_shortcode = $wpdb->get_var( 
+				"SELECT COUNT(*) FROM {$wpdb->posts} 
+				WHERE post_content LIKE '%[brag_book_gallery%' 
+				AND post_status = 'publish' 
+				AND post_type IN ('page', 'post')"
+			);
+			$has_gallery = $pages_with_shortcode > 0;
+			
+			// If no shortcode found, check if a page exists with the configured slug
+			if ( ! $has_gallery ) {
+				$gallery_slugs = get_option( 'brag_book_gallery_page_slug', array() );
+				if ( ! empty( $gallery_slugs ) ) {
+					// Handle both array and string formats
+					$slugs_to_check = is_array( $gallery_slugs ) ? $gallery_slugs : array( $gallery_slugs );
+					foreach ( $slugs_to_check as $slug ) {
+						if ( empty( $slug ) ) continue;
+						$page = get_page_by_path( $slug );
+						if ( $page && $page->post_status === 'publish' ) {
+							// Check if this page has the shortcode
+							if ( strpos( $page->post_content, '[brag_book_gallery' ) !== false ) {
+								$has_gallery = true;
+								break;
+							}
+						}
 					}
-				}
-				// Also check for pages with the shortcode
-				if ( ! $has_gallery ) {
-					global $wpdb;
-					$pages_with_shortcode = $wpdb->get_var( 
-						"SELECT COUNT(*) FROM {$wpdb->posts} 
-						WHERE post_content LIKE '%[brag_book_gallery%' 
-						AND post_status = 'publish' 
-						AND post_type IN ('page', 'post')"
-					);
-					$has_gallery = $pages_with_shortcode > 0;
 				}
 			}
 		}

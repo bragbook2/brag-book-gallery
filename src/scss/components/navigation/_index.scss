@@ -20,6 +20,13 @@
 	border-radius: var(--wp--custom--brag-book-gallery--rounded);
 
 	&__label {
+		display: flex;
+		gap: var(--wp--custom--brag-book-gallery--spacer);
+		align-items: center;
+		font-size: var(--wp--custom--brag-book-gallery--text-base);
+		user-select: none;
+		font-weight: var(--wp--custom--brag-book-gallery--font-weight--regular);
+
 		.brag-book-gallery-favorites-logo {
 			max-inline-size: 144px;
 		}
@@ -47,15 +54,20 @@
 }
 
 .brag-book-gallery-nav-list-submenu {
-	margin: 0;
+	margin: 0 !important;
 	padding: 0;
 	list-style: none;
 	height: 0;
 	overflow: hidden;
 
 	&[data-expanded="true"] {
-		margin-block-end: calc( 8 * var(--wp--custom--brag-book-gallery--spacer) );
+		margin-block-end: calc( 8 * var(--wp--custom--brag-book-gallery--spacer) ) !important;
 	}
+}
+
+.brag-book-gallery-nav-list-submenu__item {
+	padding: 0;
+	list-style: none;
 }
 
 .brag-book-gallery-nav-link {

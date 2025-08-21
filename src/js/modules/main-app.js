@@ -1121,27 +1121,57 @@ class BRAGbookGalleryApp {
 	}
 
 	initializeFavoritesButton() {
-		const favoritesBtn = document.querySelector('[data-action="show-favorites"]');
-		if (!favoritesBtn) return;
+		// Handle all elements with data-action="show-favorites"
+		const favoritesBtns = document.querySelectorAll('[data-action="show-favorites"]');
+		if (!favoritesBtns.length) return;
 
-		favoritesBtn.addEventListener('click', (e) => {
-			e.preventDefault();
-			this.toggleFavoritesView();
+		favoritesBtns.forEach(btn => {
+			btn.addEventListener('click', (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				
+				// If this is the favorites link in sidebar, always show favorites (don't toggle)
+				if (btn.classList.contains('brag-book-gallery-favorites-link')) {
+					this.showFavoritesView();
+				} else {
+					// For other buttons, toggle the view
+					this.toggleFavoritesView();
+				}
+			});
 		});
 	}
 
+	showFavoritesView() {
+		// Always show favorites (used by sidebar link)
+		const favoritesBtns = document.querySelectorAll('[data-action="show-favorites"]');
+		favoritesBtns.forEach(btn => btn.classList.add('active'));
+		
+		// Update URL to reflect favorites view
+		if (window.history && window.history.pushState) {
+			const gallerySlug = window.bragBookGalleryData?.gallerySlug || 'before-after';
+			const favoritesUrl = `/${gallerySlug}/myfavorites`;
+			window.history.pushState({ view: 'favorites' }, '', favoritesUrl);
+		}
+		
+		this.showFavoritesOnly();
+	}
+
 	toggleFavoritesView() {
-		const favoritesBtn = document.querySelector('[data-action="show-favorites"]');
+		const favoritesBtn = document.querySelector('[data-action="show-favorites"]:not(.brag-book-gallery-favorites-link)');
 		const isActive = favoritesBtn?.classList.contains('active');
 		
 		if (isActive) {
 			// Return to normal gallery view
 			this.showAllCases();
-			favoritesBtn.classList.remove('active');
+			document.querySelectorAll('[data-action="show-favorites"]').forEach(btn => {
+				btn.classList.remove('active');
+			});
 		} else {
 			// Show only favorited cases
 			this.showFavoritesOnly();
-			favoritesBtn?.classList.add('active');
+			document.querySelectorAll('[data-action="show-favorites"]').forEach(btn => {
+				btn.classList.add('active');
+			});
 		}
 	}
 
@@ -1150,6 +1180,23 @@ class BRAGbookGalleryApp {
 		const galleryContent = document.getElementById('gallery-content');
 		
 		if (!galleryContent) return;
+
+		// Add favorites header if not already present
+		let favoritesHeader = galleryContent.querySelector('.brag-book-gallery-favorites-header');
+		if (!favoritesHeader) {
+			favoritesHeader = document.createElement('div');
+			favoritesHeader.className = 'brag-book-gallery-favorites-header';
+			favoritesHeader.innerHTML = `
+				<h2 class="brag-book-gallery-content-title">
+					<strong>My Favorites</strong> Collection
+				</h2>
+				<p class="brag-book-gallery-favorites-description">
+					Your saved before & after cases
+				</p>
+			`;
+			// Insert at the beginning of gallery content
+			galleryContent.insertBefore(favoritesHeader, galleryContent.firstChild);
+		}
 
 		// If no favorites, show empty state
 		if (favorites.size === 0) {
@@ -1335,7 +1382,7 @@ class BRAGbookGalleryApp {
 		const isFavorited = this.components.favoritesManager.getFavorites().has(`case-${caseId}`);
 
 		return `
-			<div class="brag-book-gallery-case-card" data-case-id="${caseId}">
+			<article class="brag-book-gallery-case-card" data-case-id="${caseId}">
 				<div class="brag-book-gallery-image-container brag-book-gallery-single-image">
 					<div class="brag-book-gallery-skeleton-loader" style="display:none;"></div>
 					<div class="brag-book-gallery-item-actions">
@@ -1361,7 +1408,7 @@ class BRAGbookGalleryApp {
 						${caseData.gender ? `<span class="brag-book-gallery-gender">${caseData.gender}</span>` : ''}
 					</div>
 				</div>
-			</div>
+			</article>
 		`;
 	}
 
