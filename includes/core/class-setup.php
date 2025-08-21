@@ -203,6 +203,13 @@ final class Setup {
 				'admin_init',
 				callback: array( $this, 'admin_init' )
 			);
+			
+			// Add plugin action links (Settings link on plugins page)
+			$plugin_basename = plugin_basename( self::get_plugin_file() );
+			add_filter(
+				'plugin_action_links_' . $plugin_basename,
+				array( $this, 'add_plugin_action_links' )
+			);
 		}
 		
 		// Add LiteSpeed cache exclusions
@@ -301,6 +308,29 @@ final class Setup {
 
 		// Fire custom action for admin extensions.
 		do_action( 'brag_book_gallery_admin_init', $this );
+	}
+
+	/**
+	 * Add plugin action links
+	 *
+	 * Adds a Settings link to the plugin's row on the plugins page.
+	 *
+	 * @since 3.0.0
+	 * @param array $links Existing plugin action links.
+	 * @return array Modified plugin action links.
+	 */
+	public function add_plugin_action_links( array $links ): array {
+		// Add Settings link
+		$settings_link = sprintf(
+			'<a href="%s">%s</a>',
+			esc_url( admin_url( 'admin.php?page=brag-book-gallery-settings' ) ),
+			esc_html__( 'Settings', 'brag-book-gallery' )
+		);
+		
+		// Add to beginning of links array
+		array_unshift( $links, $settings_link );
+		
+		return $links;
 	}
 
 	/**

@@ -4,6 +4,14 @@
 // structure / wrapper
 // -----------------------------------------------------------------------------
 
+.brag-book-gallery-page {
+	article {
+		.grid-container {
+			max-width: initial;
+		}
+	}
+}
+
 .brag-book-gallery-wrapper,
 .brag-book-gallery-wrapper *,
 .brag-book-gallery-wrapper *::before,

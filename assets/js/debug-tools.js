@@ -18,7 +18,27 @@ class DebugTools {
         this.ajaxUrl = window.bragBookDebugTools.ajaxUrl;
         this.nonce = window.bragBookDebugTools.nonce;
         
+        // Prevent jQuery UI tabs from interfering with our tabs
+        this.preventTabsInterference();
+        
         this.init();
+    }
+
+    preventTabsInterference() {
+        // Only prevent jQuery UI tabs from initializing on our specific elements
+        if (typeof jQuery !== 'undefined' && jQuery.fn.tabs) {
+            const originalTabs = jQuery.fn.tabs;
+            jQuery.fn.tabs = function() {
+                // Check if this is within our debug tools area
+                if (this.hasClass('brag-book-gallery-tabs') || 
+                    this.hasClass('brag-book-debug-tabs') ||
+                    this.closest('.brag-book-debug-tools').length > 0) {
+                    // Don't initialize jQuery UI tabs on our elements
+                    return this;
+                }
+                return originalTabs.apply(this, arguments);
+            };
+        }
     }
 
     init() {
@@ -31,11 +51,23 @@ class DebugTools {
     }
 
     setupEventListeners() {
-        // Tab switching for debug tools
-        const tabLinks = document.querySelectorAll('.brag-book-debug-tools .nav-tab');
-        tabLinks.forEach(link => {
-            link.addEventListener('click', (e) => this.handleTabSwitch(e));
-        });
+        // Set System Info as default tab on page load
+        this.setDefaultTab();
+        
+        // Prevent WordPress or other scripts from handling our tabs
+        // Use capture phase to intercept before jQuery handlers
+        const tabContainer = document.querySelector('.brag-book-debug-tools');
+        if (tabContainer) {
+            tabContainer.addEventListener('click', (e) => {
+                const link = e.target.closest('.brag-book-debug-tab-link, .brag-book-gallery-tab-link, .nav-tab');
+                if (link && link.closest('.brag-book-debug-tools')) {
+                    e.stopImmediatePropagation(); // Stop other handlers
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.handleTabSwitch(e, link);
+                }
+            }, true); // Use capture phase
+        }
 
         // Setup tool-specific handlers
         this.setupGalleryChecker();
@@ -43,27 +75,100 @@ class DebugTools {
         this.setupRewriteFix();
         this.setupRewriteFlush();
     }
+    
+    setDefaultTab() {
+        // Ensure System Info tab is active by default
+        const systemInfoTab = document.querySelector('.brag-book-debug-tab-link[data-tab-target="system-info"]');
+        const systemInfoPanel = document.getElementById('system-info');
+        
+        if (systemInfoTab && systemInfoPanel) {
+            // Set tab as active
+            const parentLi = systemInfoTab.closest('.brag-book-debug-tab-item');
+            if (parentLi) {
+                // Remove active from all tabs
+                document.querySelectorAll('.brag-book-debug-tab-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+                parentLi.classList.add('active');
+            }
+            
+            // Show panel
+            document.querySelectorAll('.brag-book-debug-tools .tool-panel').forEach(panel => {
+                panel.classList.remove('active');
+                panel.style.display = 'none';
+            });
+            systemInfoPanel.classList.add('active');
+            systemInfoPanel.style.display = 'block';
+        }
+        
+        // Also ensure main debug tab stays active in the main navigation
+        const mainDebugTab = document.querySelector('.brag-book-gallery-nav-tabs .nav-tab[href*="brag-book-gallery-debug"]');
+        if (mainDebugTab) {
+            mainDebugTab.classList.add('nav-tab-active');
+        }
+    }
 
-    handleTabSwitch(e) {
-        e.preventDefault();
+    handleTabSwitch(e, link) {
+        // Prevent default and stop propagation already done in setupEventListeners
         
-        const link = e.currentTarget;
-        const targetId = link.getAttribute('href').substring(1);
+        // First try data-tab-target attribute, then fall back to href
+        let targetId = link.getAttribute('data-tab-target');
         
-        // Update active tab
+        if (!targetId) {
+            const href = link.getAttribute('href');
+            // Extract target ID from href - handle both #id and full URLs
+            if (href && href.startsWith('#')) {
+                targetId = href.substring(1);
+            } else if (href && href.includes('#')) {
+                targetId = href.split('#')[1];
+            } else {
+                console.error('Invalid tab href:', href);
+                return false;
+            }
+        }
+        
+        // Preserve main navigation active state
+        const mainDebugTab = document.querySelector('.brag-book-gallery-nav-tabs .nav-tab[href*="brag-book-gallery-debug"]');
+        if (mainDebugTab) {
+            // Ensure main debug tab stays active
+            mainDebugTab.classList.add('nav-tab-active');
+        }
+        
+        // Update active tab for nav-tab style (only within debug tools)
         document.querySelectorAll('.brag-book-debug-tools .nav-tab').forEach(tab => {
             tab.classList.remove('nav-tab-active');
         });
-        link.classList.add('nav-tab-active');
+        if (link.classList.contains('nav-tab')) {
+            link.classList.add('nav-tab-active');
+        }
         
-        // Update active panel
-        document.querySelectorAll('.brag-book-debug-tools .tool-panel').forEach(panel => {
+        // Update active tab for brag-book-gallery-tab style (only within debug tools)
+        document.querySelectorAll('.brag-book-debug-tools .brag-book-debug-tab-item').forEach(item => {
+            item.classList.remove('active');
+        });
+        const parentLi = link.closest('.brag-book-debug-tab-item');
+        if (parentLi) {
+            parentLi.classList.add('active');
+        }
+        
+        // Update active panel - handle both tool-panel and tab-panel
+        document.querySelectorAll('.brag-book-debug-tools .tool-panel, .brag-book-debug-tools .tab-panel').forEach(panel => {
             panel.classList.remove('active');
+            panel.style.display = 'none';
         });
         const targetPanel = document.getElementById(targetId);
         if (targetPanel) {
             targetPanel.classList.add('active');
+            targetPanel.style.display = 'block';
         }
+        
+        // Update URL hash without triggering navigation
+        if (window.history && window.history.replaceState) {
+            const newUrl = window.location.pathname + window.location.search + '#' + targetId;
+            window.history.replaceState(null, '', newUrl);
+        }
+        
+        return false; // Extra prevention
     }
 
     setupGalleryChecker() {

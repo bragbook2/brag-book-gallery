@@ -12,6 +12,7 @@ namespace BRAGBookGallery\Includes\Extend;
 
 use BRAGBookGallery\Includes\REST\Endpoints;
 use BRAGBookGallery\Includes\Core\Setup;
+use BRAGBookGallery\Includes\Core\Slug_Helper;
 use BRAGBookGallery\Includes\Extend\Asset_Manager;
 use BRAGBookGallery\Includes\Extend\Data_Fetcher;
 use BRAGBookGallery\Includes\Extend\HTML_Renderer;
@@ -72,8 +73,69 @@ final class Shortcodes {
 				[ __CLASS__, $callback ]
 			);
 		}
+		
+		// Register backwards compatibility shortcode for old carousel
+		add_shortcode(
+			'bragbook_carousel_shortcode',
+			[ __CLASS__, 'legacy_carousel_shortcode' ]
+		);
+		
+		// Add body class for gallery pages
+		add_filter( 'body_class', [ __CLASS__, 'add_gallery_body_class' ] );
 	}
 
+	/**
+	 * Add body class for pages containing gallery shortcodes.
+	 *
+	 * @since 3.0.0
+	 * @param array $classes Current body classes.
+	 * @return array Modified body classes.
+	 */
+	public static function add_gallery_body_class( array $classes ): array {
+		global $post;
+		
+		$is_gallery_page = false;
+		
+		// Check if we're on a singular page/post
+		if ( is_singular() && isset( $post->post_content ) ) {
+			// Check if the content contains any of our shortcodes
+			$gallery_shortcodes = [
+				'brag_book_gallery',
+				'brag_book_carousel',
+				'brag_book_gallery_cases',
+				'brag_book_gallery_case',
+			];
+			
+			foreach ( $gallery_shortcodes as $shortcode ) {
+				if ( has_shortcode( $post->post_content, $shortcode ) ) {
+					$classes[] = 'brag-book-gallery-page';
+					$is_gallery_page = true;
+					break; // Only add the class once
+				}
+			}
+		}
+		
+		// Also check if we're on a gallery virtual URL (for rewrite rules)
+		$current_url = $_SERVER['REQUEST_URI'] ?? '';
+		$gallery_slug = Slug_Helper::get_first_gallery_page_slug();
+		
+		if ( ! empty( $gallery_slug ) && strpos( $current_url, '/' . $gallery_slug . '/' ) !== false ) {
+			if ( ! in_array( 'brag-book-gallery-page', $classes, true ) ) {
+				$classes[] = 'brag-book-gallery-page';
+				$is_gallery_page = true;
+			}
+		}
+		
+		// Add disable-custom-font class to body if custom font is disabled and we're on a gallery page
+		if ( $is_gallery_page ) {
+			$use_custom_font = get_option( 'brag_book_gallery_use_custom_font', 'yes' );
+			if ( $use_custom_font !== 'yes' ) {
+				$classes[] = 'disable-custom-font';
+			}
+		}
+		
+		return $classes;
+	}
 
 	/**
 	 * Find pages containing the gallery shortcode.
@@ -440,9 +502,16 @@ final class Shortcodes {
 		$base_path   = parse_url( $current_url, PHP_URL_PATH ) ?: '/';
 
 		ob_start();
+		
+		// Check if custom font is disabled
+		$use_custom_font = get_option( 'brag_book_gallery_use_custom_font', 'yes' );
+		$wrapper_class = 'brag-book-gallery-wrapper';
+		if ( $use_custom_font !== 'yes' ) {
+			$wrapper_class .= ' disable-custom-font';
+		}
 		?>
 		<!-- BRAG book Gallery Component Start -->
-		<div class="brag-book-gallery-wrapper"
+		<div class="<?php echo esc_attr( $wrapper_class ); ?>"
 			 data-base-url="<?php echo esc_attr( rtrim( $base_path, '/' ) ); ?>"
 			<?php if ( ! empty( $initial_procedure ) ) : ?>
 				data-initial-procedure="<?php echo esc_attr( $initial_procedure ); ?>"
@@ -554,7 +623,7 @@ final class Shortcodes {
 						}
 						$favorites_url = '/' . ltrim( $gallery_slug, '/' ) . '/myfavorites';
 						?>
-						<a href="<?php echo esc_url( $favorites_url ); ?>" class="brag-book-gallery-favorites-link">
+						<a href="<?php echo esc_url( $favorites_url ); ?>" class="brag-book-gallery-favorites-link" data-action="show-favorites">
 							<svg class="brag-book-gallery-favorites-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 180">
 								<path fill="#ff595c" d="M85.5,124.6l40-84.7h16.2v104.9h-12.8V60.7l-39.8,84.1h-7.2L42.2,59.7v85.1h-12.8V39.9h16.8l39.3,84.7Z"></path>
 								<path fill="#ff595c" d="M186.2,131.1l25-62.4h12.9l-32.6,80.1c-2.6,6.3-5.2,11.4-7.9,15.3-2.7,3.8-5.7,6.6-9.1,8.3-3.3,1.7-7.4,2.6-12.2,2.6s-3.4,0-4.9-.4c-1.5-.2-2.9-.6-4.2-.9v-10.6c1.3.2,2.7.4,4.2.6,1.4.2,2.9.3,4.5.3,3.9,0,7.2-1.3,9.8-3.9,2.6-2.6,5.3-7.2,8.1-13.9l-32.4-77.3h13.4l25.4,62.4v-.2Z"></path>
@@ -914,6 +983,7 @@ final class Shortcodes {
 				'limit'               => self::DEFAULT_CAROUSEL_LIMIT,
 				'start'               => 1,
 				'procedure_id'        => '',
+				'procedure'           => '', // Support both procedure and procedure_id
 				'member_id'           => '',
 				'show_controls'       => 'true',
 				'show_pagination'     => 'true',
@@ -923,6 +993,11 @@ final class Shortcodes {
 			$atts,
 			'brag_book_carousel'
 		);
+		
+		// If procedure is provided but not procedure_id, use procedure
+		if ( empty( $atts['procedure_id'] ) && ! empty( $atts['procedure'] ) ) {
+			$atts['procedure_id'] = $atts['procedure'];
+		}
 
 		// Validate configuration
 		$validation = self::validate_carousel_configuration( $atts );
@@ -943,6 +1018,64 @@ final class Shortcodes {
 
 		// Generate and return carousel HTML
 		return self::render_carousel_html( $carousel_data, $config );
+	}
+
+	/**
+	 * Handle legacy carousel shortcode for backwards compatibility.
+	 *
+	 * Maps old [bragbook_carousel_shortcode] attributes to new [brag_book_carousel] format.
+	 * Old format: [bragbook_carousel_shortcode procedure="nonsurgical-facelift" start="1" limit="10" title="0" details="0" website_property_id="89"]
+	 * 
+	 * @param array $atts Legacy shortcode attributes.
+	 * @return string Carousel HTML output.
+	 * @since 3.0.0
+	 */
+	public static function legacy_carousel_shortcode( array $atts ): string {
+		// Parse legacy attributes
+		$legacy_atts = shortcode_atts(
+			[
+				'procedure'           => '',
+				'start'               => '1',
+				'limit'               => '10',
+				'title'               => '0',
+				'details'             => '0',
+				'website_property_id' => '',
+			],
+			$atts,
+			'bragbook_carousel_shortcode'
+		);
+		
+		// Map legacy attributes to new format
+		$new_atts = [];
+		
+		// Get API token from settings (wasn't in old shortcode)
+		$api_tokens = get_option( 'brag_book_gallery_api_token', array() );
+		$new_atts['api_token'] = ! empty( $api_tokens ) && isset( $api_tokens[0] ) ? $api_tokens[0] : '';
+		
+		// Map website_property_id directly
+		if ( ! empty( $legacy_atts['website_property_id'] ) ) {
+			$new_atts['website_property_id'] = $legacy_atts['website_property_id'];
+		}
+		
+		// Map limit and start
+		$new_atts['limit'] = $legacy_atts['limit'];
+		$new_atts['start'] = $legacy_atts['start'];
+		
+		// Map procedure to procedure_id if provided
+		if ( ! empty( $legacy_atts['procedure'] ) ) {
+			// Try to find the procedure ID from the slug
+			// First, get the carousel data to find the procedure ID
+			$new_atts['procedure_id'] = $legacy_atts['procedure']; // Will be converted to ID in the carousel handler
+		}
+		
+		// Map title and details to show_controls and show_pagination
+		// In the old version, title="0" meant hide title, details="0" meant hide details
+		// We'll interpret these as controls for the new carousel
+		$new_atts['show_controls'] = ( $legacy_atts['title'] !== '0' ) ? 'true' : 'false';
+		$new_atts['show_pagination'] = ( $legacy_atts['details'] !== '0' ) ? 'true' : 'false';
+		
+		// Call the new carousel shortcode with mapped attributes
+		return self::carousel_shortcode( $new_atts );
 	}
 
 	/**
@@ -973,9 +1106,26 @@ final class Shortcodes {
 			];
 		}
 
-		// Get procedure_id and member_id with defaults
-		$procedure_id = ! empty( $atts['procedure_id'] ) ? absint( $atts['procedure_id'] ) : 6839;
-		$member_id    = ! empty( $atts['member_id'] ) ? absint( $atts['member_id'] ) : 129;
+		// Get procedure_id and member_id - only set if provided
+		$procedure_id = null;
+		if ( ! empty( $atts['procedure_id'] ) ) {
+			// Check if it's numeric (ID) or string (slug)
+			if ( is_numeric( $atts['procedure_id'] ) ) {
+				$procedure_id = absint( $atts['procedure_id'] );
+			} else {
+				// It's a slug - convert it to an ID using sidebar data
+				$procedure_id = self::get_procedure_id_from_slug( 
+					$atts['procedure_id'], 
+					$atts['api_token'], 
+					$atts['website_property_id'] 
+				);
+				
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+					error_log( 'BRAG book Carousel: Converted slug "' . $atts['procedure_id'] . '" to ID: ' . ( $procedure_id ?: 'not found' ) );
+				}
+			}
+		}
+		$member_id = ! empty( $atts['member_id'] ) ? absint( $atts['member_id'] ) : null;
 
 		return [
 			'error'  => false,
@@ -995,13 +1145,48 @@ final class Shortcodes {
 	}
 
 	/**
-	 * Get carousel data from API.
+	 * Get procedure ID from slug using sidebar data.
 	 *
-	 * @param array $config Carousel configuration.
-	 *
-	 * @return array Carousel data.
+	 * @param string $slug Procedure slug.
+	 * @param string $api_token API token.
+	 * @param string $website_property_id Website property ID.
+	 * @return int|null Procedure ID or null if not found.
 	 * @since 3.0.0
 	 */
+	private static function get_procedure_id_from_slug( string $slug, string $api_token, string $website_property_id ): ?int {
+		// Get sidebar data which contains procedure information
+		$sidebar_data = Data_Fetcher::get_sidebar_data( $api_token );
+		
+		if ( empty( $sidebar_data ) ) {
+			return null;
+		}
+		
+		// Get the data array from the response
+		$categories = $sidebar_data['data'] ?? $sidebar_data;
+		
+		// Search through categories for the procedure
+		foreach ( $categories as $category ) {
+			if ( ! empty( $category['procedures'] ) ) {
+				foreach ( $category['procedures'] as $procedure ) {
+					// Check if slug matches
+					if ( isset( $procedure['slugName'] ) && $procedure['slugName'] === $slug ) {
+						// Return the first ID from the ids array
+						if ( ! empty( $procedure['ids'] ) && is_array( $procedure['ids'] ) ) {
+							return (int) $procedure['ids'][0];
+						}
+					}
+					// Also check by sanitized name as fallback
+					if ( isset( $procedure['name'] ) && sanitize_title( $procedure['name'] ) === $slug ) {
+						if ( ! empty( $procedure['ids'] ) && is_array( $procedure['ids'] ) ) {
+							return (int) $procedure['ids'][0];
+						}
+					}
+				}
+			}
+		}
+		
+		return null;
+	}
 
 	/**
 	 * Render carousel HTML.
@@ -1013,7 +1198,12 @@ final class Shortcodes {
 	 * @since 3.0.0
 	 */
 	private static function render_carousel_html( array $carousel_data, array $config ): string {
-		if ( empty( $carousel_data ) || ! isset( $carousel_data['data'] ) ) {
+		// Check if we have data in either format
+		$has_data = ! empty( $carousel_data ) && 
+					( ! empty( $carousel_data['data'] ) || 
+					  ( is_array( $carousel_data ) && isset( $carousel_data[0] ) ) );
+		
+		if ( ! $has_data ) {
 			return sprintf(
 				'<p class="brag-book-carousel-no-data">%s</p>',
 				esc_html__( 'No carousel images available.', 'brag-book-gallery' )
@@ -1046,8 +1236,9 @@ final class Shortcodes {
 					 role="region"
 					 aria-label="<?php esc_attr_e( 'Image carousel', 'brag-book-gallery' ); ?>">
 					<?php
+					// Use the local method which handles the correct data structure
 					// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- HTML is already escaped in method
-					echo HTML_Renderer::generate_carousel_items_from_data( $carousel_data['data'] );
+					echo self::generate_carousel_items_from_data( $carousel_data['data'] ?? $carousel_data );
 					?>
 				</div>
 
@@ -1094,10 +1285,16 @@ final class Shortcodes {
 
 		// Loop through each case
 		foreach ( $items as $case ) {
-			// Loop through all photoSets in each case
-			$photo_sets = $case['photoSets'] ?? [];
+			// Check for both possible data structures: photoSets and photos
+			$photo_sets = $case['photoSets'] ?? $case['photos'] ?? [];
+			
+			// If photo_sets is empty, skip this case
+			if ( empty( $photo_sets ) ) {
+				continue;
+			}
+			
 			foreach ( $photo_sets as $photo ) {
-				$slide_index ++;
+				$slide_index++;
 				$html_parts[] = HTML_Renderer::generate_carousel_slide_from_photo( $photo, $case, $slide_index );
 			}
 		}
@@ -1413,7 +1610,7 @@ final class Shortcodes {
 			$case_id      = $first_detail['caseId'] ?? '';
 		}
 
-		$html .= '<div class="brag-book-gallery-case-card" ' . $data_attrs . ' data-case-id="' . esc_attr( $case_id ) . '">';
+		$html .= '<article class="brag-book-gallery-case-card" ' . $data_attrs . ' data-case-id="' . esc_attr( $case_id ) . '">';
 
 		// Get case URL for linking - prioritize procedure context from AJAX filter
 		$filter_procedure = get_query_var( 'filter_procedure', '' );
@@ -1494,7 +1691,7 @@ final class Shortcodes {
 					$html .= '<p class="brag-book-gallery-nudity-warning-caption">';
 					$html .= 'This procedure may contain nudity or sensitive content. Click to proceed if you wish to view.';
 					$html .= '</p>';
-					$html .= '<button class="brag-book-gallery-nudity-warning-button" onclick="event.preventDefault(); event.stopPropagation();">Proceed</button>';
+					$html .= '<button class="brag-book-gallery-nudity-warning-button">Proceed</button>';
 					$html .= '</div>';
 					$html .= '</div>';
 				}
@@ -1616,7 +1813,7 @@ final class Shortcodes {
 					$html .= '<p class="brag-book-gallery-nudity-warning-caption">';
 					$html .= 'This procedure may contain nudity or sensitive content. Click to proceed if you wish to view.';
 					$html .= '</p>';
-					$html .= '<button class="brag-book-gallery-nudity-warning-button" onclick="event.preventDefault(); event.stopPropagation();">Proceed</button>';
+					$html .= '<button class="brag-book-gallery-nudity-warning-button">Proceed</button>';
 					$html .= '</div>';
 					$html .= '</div>';
 				}
@@ -1631,11 +1828,11 @@ final class Shortcodes {
 		
 		// Try to get the procedure name from the URL context or filter
 		if ( ! empty( $procedure_context ) ) {
-			// Convert slug back to title case for display
-			$procedure_display_name = ucwords( str_replace( '-', ' ', $procedure_context ) );
+			// Convert slug back to proper display format
+			$procedure_display_name = HTML_Renderer::format_procedure_display_name( $procedure_context );
 		} elseif ( ! empty( $procedure_slug ) ) {
 			// Use the procedure slug we determined earlier
-			$procedure_display_name = ucwords( str_replace( '-', ' ', $procedure_slug ) );
+			$procedure_display_name = HTML_Renderer::format_procedure_display_name( $procedure_slug );
 		} else {
 			// Fallback to first procedure from case data if no context
 			if ( ! empty( $case['procedures'] ) && is_array( $case['procedures'] ) ) {
@@ -1673,7 +1870,7 @@ final class Shortcodes {
 		$html .= '</ul>';
 		$html .= '</div>'; // Close details content
 		$html .= '</details>'; // Close details
-		$html .= '</div>'; // Close case card
+		$html .= '</article>'; // Close case card
 
 		return $html;
 	}
@@ -2229,7 +2426,7 @@ final class Shortcodes {
 				}
 
 				return `
-					<div class="brag-book-gallery-case-card" data-case-id="${caseId}">
+					<article class="brag-book-gallery-case-card" data-case-id="${caseId}">
 						<div class="brag-book-gallery-image-container brag-book-gallery-single-image">
 							<div class="brag-book-gallery-skeleton-loader" style="display:none;"></div>
 							<div class="brag-book-gallery-item-actions">
@@ -2255,7 +2452,7 @@ final class Shortcodes {
 								${caseData.gender ? `<span class="brag-book-gallery-gender">${caseData.gender}</span>` : ''}
 							</div>
 						</div>
-					</div>
+					</article>
 				`;
 			}
 

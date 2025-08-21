@@ -1079,21 +1079,89 @@ class Settings_Debug extends Settings_Base {
 			'1.0.0'
 		);
 		
+		// Add inline script to handle tab navigation properly
+		wp_add_inline_script( 'brag-book-debug-tools', "
+			document.addEventListener('DOMContentLoaded', function() {
+				// Handle main navigation clicks to prevent jQuery errors
+				const mainNavTabs = document.querySelectorAll('.brag-book-gallery-nav-tabs .nav-tab');
+				mainNavTabs.forEach(function(tab) {
+					tab.addEventListener('click', function(e) {
+						// Let the browser handle the navigation naturally
+						// Don't prevent default - we want normal navigation
+						return true;
+					});
+				});
+				
+				// Handle debug tool tab clicks separately
+				const debugTabLinks = document.querySelectorAll('.brag-book-debug-tab-link');
+				debugTabLinks.forEach(function(link) {
+					link.addEventListener('click', function(e) {
+						e.preventDefault();
+						e.stopPropagation();
+						
+						const targetId = this.getAttribute('data-tab-target') || this.getAttribute('href').substring(1);
+						
+						// Update active tab
+						document.querySelectorAll('.brag-book-debug-tab-item').forEach(function(item) {
+							item.classList.remove('active');
+						});
+						this.closest('.brag-book-debug-tab-item').classList.add('active');
+						
+						// Update active panel
+						document.querySelectorAll('.brag-book-debug-tools .tool-panel').forEach(function(panel) {
+							panel.classList.remove('active');
+							panel.style.display = 'none';
+						});
+						const targetPanel = document.getElementById(targetId);
+						if (targetPanel) {
+							targetPanel.classList.add('active');
+							targetPanel.style.display = 'block';
+						}
+						
+						return false;
+					});
+				});
+				
+				// Set System Info as default active tab
+				const systemInfoPanel = document.getElementById('system-info');
+				if (systemInfoPanel) {
+					systemInfoPanel.classList.add('active');
+					systemInfoPanel.style.display = 'block';
+				}
+			});
+		", 'before' );
+		
 		// Render the debug tools interface
 		?>
-		<div class="brag-book-debug-tools">
-			<div class="tool-tabs">
-				<ul class="nav-tab-wrapper">
-					<li><a href="#gallery-checker" class="nav-tab nav-tab-active"><?php esc_html_e( 'Gallery Checker', 'brag-book-gallery' ); ?></a></li>
-					<li><a href="#rewrite-debug" class="nav-tab"><?php esc_html_e( 'Rewrite Debug', 'brag-book-gallery' ); ?></a></li>
-					<li><a href="#rewrite-fix" class="nav-tab"><?php esc_html_e( 'Rewrite Fix', 'brag-book-gallery' ); ?></a></li>
-					<li><a href="#rewrite-flush" class="nav-tab"><?php esc_html_e( 'Flush Rules', 'brag-book-gallery' ); ?></a></li>
+		<div class="brag-book-debug-tools" data-no-jquery="true">
+			<div class="brag-book-gallery-tabs brag-book-debug-tabs">
+				<ul class="brag-book-gallery-tab-list brag-book-debug-tab-list">
+					<li class="brag-book-gallery-tab-item brag-book-debug-tab-item active">
+						<a href="#system-info" class="brag-book-gallery-tab-link brag-book-debug-tab-link" data-tab-target="system-info"><?php esc_html_e( 'System Info', 'brag-book-gallery' ); ?></a>
+					</li>
+					<li class="brag-book-gallery-tab-item brag-book-debug-tab-item">
+						<a href="#cache-management" class="brag-book-gallery-tab-link brag-book-debug-tab-link" data-tab-target="cache-management"><?php esc_html_e( 'Cache Management', 'brag-book-gallery' ); ?></a>
+					</li>
+					<li class="brag-book-gallery-tab-item brag-book-debug-tab-item">
+						<a href="#gallery-checker" class="brag-book-gallery-tab-link brag-book-debug-tab-link" data-tab-target="gallery-checker"><?php esc_html_e( 'Gallery Checker', 'brag-book-gallery' ); ?></a>
+					</li>
+					<li class="brag-book-gallery-tab-item brag-book-debug-tab-item">
+						<a href="#rewrite-debug" class="brag-book-gallery-tab-link brag-book-debug-tab-link" data-tab-target="rewrite-debug"><?php esc_html_e( 'Rewrite Debug', 'brag-book-gallery' ); ?></a>
+					</li>
+					<li class="brag-book-gallery-tab-item brag-book-debug-tab-item">
+						<a href="#rewrite-fix" class="brag-book-gallery-tab-link brag-book-debug-tab-link" data-tab-target="rewrite-fix"><?php esc_html_e( 'Rewrite Fix', 'brag-book-gallery' ); ?></a>
+					</li>
+					<li class="brag-book-gallery-tab-item brag-book-debug-tab-item">
+						<a href="#rewrite-flush" class="brag-book-gallery-tab-link brag-book-debug-tab-link" data-tab-target="rewrite-flush"><?php esc_html_e( 'Flush Rules', 'brag-book-gallery' ); ?></a>
+					</li>
 				</ul>
 			</div>
 
 			<div class="tool-content">
 				<?php
 				// Load tool classes
+				require_once __DIR__ . '/debug-tools/class-system-info.php';
+				require_once __DIR__ . '/debug-tools/class-cache-management.php';
 				require_once __DIR__ . '/debug-tools/class-gallery-checker.php';
 				require_once __DIR__ . '/debug-tools/class-rewrite-debug.php';
 				require_once __DIR__ . '/debug-tools/class-rewrite-fix.php';
@@ -1101,14 +1169,24 @@ class Settings_Debug extends Settings_Base {
 				
 				// Initialize tools
 				$tools = [
-					'gallery-checker' => new \BragBookGallery\Admin\Debug_Tools\Gallery_Checker(),
-					'rewrite-debug'   => new \BragBookGallery\Admin\Debug_Tools\Rewrite_Debug(),
-					'rewrite-fix'     => new \BragBookGallery\Admin\Debug_Tools\Rewrite_Fix(),
-					'rewrite-flush'   => new \BragBookGallery\Admin\Debug_Tools\Rewrite_Flush(),
+					'system-info'      => new \BragBookGallery\Admin\Debug_Tools\System_Info(),
+					'cache-management' => new \BragBookGallery\Admin\Debug_Tools\Cache_Management(),
+					'gallery-checker'  => new \BragBookGallery\Admin\Debug_Tools\Gallery_Checker(),
+					'rewrite-debug'    => new \BragBookGallery\Admin\Debug_Tools\Rewrite_Debug(),
+					'rewrite-fix'      => new \BragBookGallery\Admin\Debug_Tools\Rewrite_Fix(),
+					'rewrite-flush'    => new \BragBookGallery\Admin\Debug_Tools\Rewrite_Flush(),
 				];
 				?>
 				
-				<div id="gallery-checker" class="tool-panel active">
+				<div id="system-info" class="tool-panel active">
+					<?php $tools['system-info']->render(); ?>
+				</div>
+				
+				<div id="cache-management" class="tool-panel">
+					<?php $tools['cache-management']->render(); ?>
+				</div>
+				
+				<div id="gallery-checker" class="tool-panel">
 					<?php $tools['gallery-checker']->render(); ?>
 				</div>
 				
@@ -1129,13 +1207,15 @@ class Settings_Debug extends Settings_Base {
 		<script>
 		jQuery(document).ready(function($) {
 			// Tab switching
-			$('.nav-tab-wrapper a').on('click', function(e) {
+			$('.brag-book-gallery-tab-link').on('click', function(e) {
 				e.preventDefault();
 				var target = $(this).attr('href');
 				
-				$('.nav-tab').removeClass('nav-tab-active');
-				$(this).addClass('nav-tab-active');
+				// Update active tab
+				$('.brag-book-gallery-tab-item').removeClass('active');
+				$(this).parent('.brag-book-gallery-tab-item').addClass('active');
 				
+				// Update active panel
 				$('.tool-panel').removeClass('active');
 				$(target).addClass('active');
 			});

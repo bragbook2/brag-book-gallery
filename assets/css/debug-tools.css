@@ -8,8 +8,83 @@
 	margin-top: 20px;
 }
 
-.brag-book-debug-tools .tool-tabs {
-	margin-bottom: 20px;
+/* Tool panels - hidden by default except active */
+.brag-book-debug-tools .tool-panel {
+	display: none;
+}
+
+.brag-book-debug-tools .tool-panel.active {
+	display: block;
+}
+
+/* Override main tab styles for debug tools context */
+.brag-book-debug-tools .brag-book-gallery-tabs {
+	position: relative;
+	top: auto;
+	margin-inline: 0;
+	margin-block-end: 1.5rem;
+	background: #f0f0f1;
+	border-radius: 4px;
+	overflow: hidden;
+	box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.brag-book-debug-tools .brag-book-gallery-tab-list {
+	display: flex;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.brag-book-debug-tools .brag-book-gallery-tab-item {
+	flex: 0 0 auto;
+	margin: 0;
+}
+
+.brag-book-debug-tools .brag-book-gallery-tab-item.active .brag-book-gallery-tab-link {
+	color: #2271b1;
+	background: white;
+	font-weight: 600;
+	position: relative;
+}
+
+.brag-book-debug-tools .brag-book-gallery-tab-item.active .brag-book-gallery-tab-link::after {
+	content: '';
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	height: 3px;
+	background: #2271b1;
+}
+
+.brag-book-debug-tools .brag-book-gallery-tab-link {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	padding: 0.75rem 1.5rem;
+	color: #50575e;
+	text-decoration: none;
+	font-size: 14px;
+	font-weight: 500;
+	transition: all 0.2s ease;
+	position: relative;
+}
+
+.brag-book-debug-tools .brag-book-gallery-tab-link:hover {
+	color: #1d2327;
+	background: #dcdcde;
+}
+
+.brag-book-debug-tools .brag-book-gallery-tab-link:focus {
+	box-shadow: none;
+	outline: none;
+}
+
+.brag-book-debug-tools .brag-book-gallery-tab-link:focus-visible {
+	outline: 2px solid #2271b1;
+	outline-offset: -2px;
+	border-radius: 2px;
 }
 
 .brag-book-debug-tools .tool-panel {

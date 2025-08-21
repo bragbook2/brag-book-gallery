@@ -75,6 +75,8 @@ class Ajax_Handlers {
 
 		// Cache management
 		add_action( 'wp_ajax_brag_book_gallery_clear_cache', [ __CLASS__, 'ajax_clear_cache' ] );
+		add_action( 'wp_ajax_brag_book_delete_cache_items', [ __CLASS__, 'ajax_delete_cache_items' ] );
+		add_action( 'wp_ajax_brag_book_get_cache_data', [ __CLASS__, 'ajax_get_cache_data' ] );
 
 		// Rewrite rules
 		add_action( 'wp_ajax_brag_book_flush_rewrite_rules', [ __CLASS__, 'ajax_flush_rewrite_rules' ] );
@@ -352,7 +354,7 @@ class Ajax_Handlers {
 				$html = '<div class="brag-book-filtered-results">';
 
 				// Add H2 header with procedure name
-				$procedure_display_name = ucwords( str_replace( '-', ' ', $procedure_name ) );
+				$procedure_display_name = HTML_Renderer::format_procedure_display_name( $procedure_name );
 				$html .= sprintf(
 					'<h2 class="brag-book-gallery-content-title"><strong>%s</strong> %s</h2>',
 					esc_html( $procedure_display_name ),
@@ -754,6 +756,75 @@ class Ajax_Handlers {
 		} else {
 			wp_send_json_error( $result['message'] );
 		}
+	}
+
+	/**
+	 * AJAX handler to delete specific cache items.
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	public static function ajax_delete_cache_items(): void {
+		// Verify nonce
+		if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'brag_book_cache_management' ) ) {
+			wp_send_json_error( 'Security check failed' );
+		}
+
+		// Check user capability
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( 'Insufficient permissions' );
+		}
+
+		// Get cache keys to delete
+		$keys = isset( $_POST['keys'] ) ? array_map( 'sanitize_text_field', wp_unslash( $_POST['keys'] ) ) : [];
+
+		if ( empty( $keys ) ) {
+			wp_send_json_error( 'No cache keys provided' );
+		}
+
+		$deleted = 0;
+		foreach ( $keys as $key ) {
+			if ( delete_transient( $key ) ) {
+				$deleted++;
+			}
+		}
+
+		wp_send_json_success( sprintf( _n( '%d item deleted', '%d items deleted', $deleted, 'brag-book-gallery' ), $deleted ) );
+	}
+
+	/**
+	 * AJAX handler to get cache data for viewing.
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	public static function ajax_get_cache_data(): void {
+		// Verify nonce
+		if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'brag_book_cache_management' ) ) {
+			wp_send_json_error( 'Security check failed' );
+		}
+
+		// Check user capability
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( 'Insufficient permissions' );
+		}
+
+		// Get cache key
+		$key = isset( $_POST['key'] ) ? sanitize_text_field( wp_unslash( $_POST['key'] ) ) : '';
+
+		if ( empty( $key ) ) {
+			wp_send_json_error( 'No cache key provided' );
+		}
+
+		// Get the cache data
+		$data = get_transient( $key );
+
+		if ( false === $data ) {
+			wp_send_json_error( 'Cache item not found or expired' );
+		}
+
+		// Return the data
+		wp_send_json_success( $data );
 	}
 
 	/**

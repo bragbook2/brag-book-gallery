@@ -6,7 +6,7 @@
 
 .brag-book-gallery-carousel-track {
 	display: flex;
-	gap: var(--wp--custom--brag-book-gallery--spacer);
+	gap: calc( 4 * var(--wp--custom--brag-book-gallery--spacer) );
 	overflow-x: auto;
 	scroll-behavior: smooth;
 	scroll-snap-type: x mandatory;
