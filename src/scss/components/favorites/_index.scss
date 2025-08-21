@@ -1,4 +1,7 @@
 
+// Import favorites sub-modules
+@use 'link';
+@use 'view';
 
 .brag-book-gallery-favorites-list {
 	padding: .75rem;

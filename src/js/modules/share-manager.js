@@ -45,7 +45,7 @@ class ShareManager {
 	setupEventListeners() {
 		// Listen for share button clicks (delegated)
 		document.addEventListener('click', (e) => {
-			const shareButton = e.target.closest('.brag-book-gallery-share-btn');
+			const shareButton = e.target.closest('.brag-book-gallery-share-button');
 			if (shareButton) {
 				e.preventDefault();
 				e.stopPropagation();
@@ -66,7 +66,7 @@ class ShareManager {
 			// Close dropdown when clicking outside
 			if (this.shareMenu?.classList.contains('active') &&
 			    !this.shareMenu.contains(e.target) &&
-			    !e.target.closest('.brag-book-gallery-share-btn')) {
+			    !e.target.closest('.brag-book-gallery-share-button')) {
 				this.hideShareDropdown();
 			}
 		});

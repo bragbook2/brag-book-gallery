@@ -23,6 +23,29 @@ use Exception;
 class Ajax_Handlers {
 
 	/**
+	 * Set no-cache headers for AJAX responses.
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	private static function set_no_cache_headers(): void {
+		// Prevent all caching
+		nocache_headers();
+		
+		// Additional headers for LiteSpeed and other caching systems
+		header( 'X-LiteSpeed-Cache-Control: no-cache' );
+		header( 'Cache-Control: no-cache, no-store, must-revalidate, max-age=0' );
+		header( 'Pragma: no-cache' );
+		header( 'Expires: Wed, 11 Jan 1984 05:00:00 GMT' );
+		header( 'X-Accel-Expires: 0' );
+		
+		// Disable LiteSpeed caching for this response
+		if ( defined( 'LSCWP_V' ) ) {
+			do_action( 'litespeed_control_set_nocache', 'bragbook ajax request' );
+		}
+	}
+
+	/**
 	 * Register all AJAX handlers.
 	 *
 	 * @since 3.0.0
@@ -64,8 +87,8 @@ class Ajax_Handlers {
 	 * @return void
 	 */
 	public static function ajax_flush_rewrite_rules(): void {
-		// Check nonce
-		if ( ! wp_verify_nonce( $_POST['_wpnonce'] ?? '', 'bragbook_flush' ) ) {
+		// Check nonce - fixed to match what's being sent
+		if ( ! wp_verify_nonce( $_POST['nonce'] ?? '', 'brag_book_flush_rewrite_rules' ) ) {
 			wp_send_json_error( 'Security check failed' );
 		}
 
@@ -74,24 +97,66 @@ class Ajax_Handlers {
 			wp_send_json_error( 'Insufficient permissions' );
 		}
 
-		try {
-			// Force register our rules
-			Rewrite_Rules_Handler::custom_rewrite_rules();
+		$flush_type = sanitize_text_field( $_POST['flush_type'] ?? 'standard' );
+		$message = '';
 
-			// Flush rewrite rules
-			flush_rewrite_rules( true );
+		try {
+			switch ( $flush_type ) {
+				case 'hard':
+					// Force register our rules
+					Rewrite_Rules_Handler::custom_rewrite_rules();
+					// Hard flush (updates .htaccess)
+					flush_rewrite_rules( true );
+					$message = 'Hard flush completed successfully. Rewrite rules and .htaccess updated.';
+					break;
+					
+				case 'with_registration':
+					// Re-register custom rules first
+					Rewrite_Rules_Handler::custom_rewrite_rules();
+					// Then flush
+					flush_rewrite_rules( false );
+					$message = 'Rules re-registered and flushed successfully.';
+					break;
+					
+				case 'verify':
+					global $wp_rewrite;
+					$rules = $wp_rewrite->wp_rewrite_rules();
+					$gallery_rules_count = 0;
+					
+					if ( ! empty( $rules ) ) {
+						foreach ( $rules as $pattern => $query ) {
+							if ( strpos( $query, 'procedure_title' ) !== false ||
+								 strpos( $query, 'case_id' ) !== false ) {
+								$gallery_rules_count++;
+							}
+						}
+					}
+					
+					$message = sprintf( 
+						'Verification complete. Found %d total rules, %d gallery-specific rules.',
+						count( $rules ),
+						$gallery_rules_count
+					);
+					break;
+					
+				case 'standard':
+				default:
+					// Standard flush
+					flush_rewrite_rules( false );
+					$message = 'Standard flush completed successfully.';
+					break;
+			}
 
 			// Clear the notice
 			delete_transient( 'bragbook_show_rewrite_notice' );
 
-			// Get debug info
-			$gallery_slugs = get_option( 'brag_book_gallery_gallery_page_slug', [] );
+			// Clear any caches
+			if ( function_exists( 'wp_cache_flush' ) ) {
+				wp_cache_flush();
+				$message .= ' Object cache cleared.';
+			}
 
-			wp_send_json_success( [
-				'message' => 'Rewrite rules flushed successfully',
-				'gallery_slugs' => $gallery_slugs,
-				'timestamp' => current_time( 'mysql' )
-			] );
+			wp_send_json_success( $message );
 
 		} catch ( Exception $e ) {
 			wp_send_json_error( 'Error flushing rules: ' . $e->getMessage() );
@@ -105,6 +170,9 @@ class Ajax_Handlers {
 	 * @return void
 	 */
 	public static function ajax_load_filtered_gallery(): void {
+		// Set no-cache headers first
+		self::set_no_cache_headers();
+		
 		// Simple test response - uncomment to test if handler is reached
 		// wp_send_json_success( [ 'html' => '<div class="brag-book-gallery-test">AJAX handler is working! Received action: ' . ($_POST['action'] ?? 'none') . '</div>', 'count' => 0 ] );
 		// return;
@@ -188,8 +256,17 @@ class Ajax_Handlers {
 				return;
 			}
 
-			// Filter cases based on procedure IDs
+			// Filter cases based on procedure IDs or procedure name
 			$filtered_cases = [];
+			
+			// Debug log for HALO Laser
+			if ( stripos( $procedure_name, 'halo' ) !== false && defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'HALO Laser Filter Debug:' );
+				error_log( '  Procedure name: ' . $procedure_name );
+				error_log( '  Procedure IDs: ' . $procedure_ids );
+				error_log( '  Total cases to filter: ' . count( $gallery_data['data'] ?? [] ) );
+			}
+			
 			if ( ! empty( $procedure_ids ) ) {
 				$ids_array = array_map( 'intval', explode( ',', $procedure_ids ) );
 				
@@ -204,8 +281,34 @@ class Ajax_Handlers {
 					}
 				}
 			} else {
-				// If no procedure IDs, return all cases
-				$filtered_cases = $gallery_data['data'];
+				// If no procedure IDs, try to filter by procedure name as fallback
+				if ( ! empty( $procedure_name ) ) {
+					foreach ( $gallery_data['data'] as $case ) {
+						if ( ! empty( $case['procedures'] ) && is_array( $case['procedures'] ) ) {
+							foreach ( $case['procedures'] as $procedure ) {
+								// Check if procedure name matches (case-insensitive)
+								$case_procedure_name = $procedure['name'] ?? '';
+								$case_procedure_slug = sanitize_title( $procedure['slugName'] ?? $case_procedure_name );
+								$filter_procedure_slug = sanitize_title( $procedure_name );
+								
+								if ( strcasecmp( $case_procedure_name, $procedure_name ) === 0 || 
+									 strcasecmp( $case_procedure_slug, $filter_procedure_slug ) === 0 ||
+									 stripos( $case_procedure_name, $procedure_name ) !== false ) {
+									$filtered_cases[] = $case;
+									
+									// Debug log for HALO Laser matches
+									if ( stripos( $procedure_name, 'halo' ) !== false && defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+										error_log( '  Found HALO case: ' . $case['id'] . ' with procedure: ' . $case_procedure_name );
+									}
+									break;
+								}
+							}
+						}
+					}
+				} else {
+					// If no procedure IDs and no procedure name, return all cases
+					$filtered_cases = $gallery_data['data'];
+				}
 			}
 
 			// Transform case data to match what HTML_Renderer expects
@@ -301,24 +404,31 @@ class Ajax_Handlers {
 
 				$html .= '</div>'; // Close left controls
 
+				// Get default columns from settings
+				$default_columns = get_option( 'brag_book_gallery_columns', '3' );
+				$column2_active = ( $default_columns === '2' ) ? ' active' : '';
+				$column3_active = ( $default_columns === '3' ) ? ' active' : '';
+
 				// Grid layout selector (on the right)
 				$html .= sprintf(
 					'<div class="brag-book-gallery-grid-selector">
 						<span class="brag-book-gallery-grid-label">%s</span>
 						<div class="brag-book-gallery-grid-buttons">
-							<button class="brag-book-gallery-grid-btn" data-columns="2" onclick="updateGridLayout(2)" aria-label="%s">
+							<button class="brag-book-gallery-grid-btn%s" data-columns="2" onclick="updateGridLayout(2)" aria-label="%s">
 								<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><rect x="1" y="1" width="6" height="6"/><rect x="9" y="1" width="6" height="6"/><rect x="1" y="9" width="6" height="6"/><rect x="9" y="9" width="6" height="6"/></svg>
 								<span class="sr-only">%s</span>
 							</button>
-							<button class="brag-book-gallery-grid-btn active" data-columns="3" onclick="updateGridLayout(3)" aria-label="%s">
+							<button class="brag-book-gallery-grid-btn%s" data-columns="3" onclick="updateGridLayout(3)" aria-label="%s">
 								<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><rect x="1" y="1" width="4" height="4"/><rect x="6" y="1" width="4" height="4"/><rect x="11" y="1" width="4" height="4"/><rect x="1" y="6" width="4" height="4"/><rect x="6" y="6" width="4" height="4"/><rect x="11" y="6" width="4" height="4"/><rect x="1" y="11" width="4" height="4"/><rect x="6" y="11" width="4" height="4"/><rect x="11" y="11" width="4" height="4"/></svg>
 								<span class="sr-only">%s</span>
 							</button>
 						</div>
 					</div>',
 					esc_html__( 'View:', 'brag-book-gallery' ),
+					esc_attr( $column2_active ),
 					esc_attr__( 'View in 2 columns', 'brag-book-gallery' ),
 					esc_html__( '2 Columns', 'brag-book-gallery' ),
+					esc_attr( $column3_active ),
 					esc_attr__( 'View in 3 columns', 'brag-book-gallery' ),
 					esc_html__( '3 Columns', 'brag-book-gallery' )
 				);
@@ -326,7 +436,7 @@ class Ajax_Handlers {
 				$html .= '</div>'; // Close controls container
 
 				// Start cases grid with CSS Grid layout
-				$html .= '<div class="brag-book-gallery-case-grid" data-columns="3">';
+				$html .= sprintf( '<div class="brag-book-gallery-case-grid" data-columns="%s">', esc_attr( $default_columns ) );
 
 				// Loop through cases and render them
 				if ( ! empty( $transformed_cases ) ) {
@@ -346,8 +456,11 @@ class Ajax_Handlers {
 
 				$html .= '</div>'; // Close cases grid
 
+				// Get items per page from settings
+				$items_per_page = absint( get_option( 'brag_book_gallery_items_per_page', '10' ) );
+				
 				// Add Load More button if there are enough cases
-				if ( count( $transformed_cases ) >= 10 ) {
+				if ( count( $transformed_cases ) >= $items_per_page ) {
 					$html .= '<div class="brag-book-gallery-load-more-container">';
 					$html .= '<button class="brag-book-gallery-load-more-btn" ';
 					$html .= 'data-start-page="2" ';
@@ -650,6 +763,9 @@ class Ajax_Handlers {
 	 * @return void
 	 */
 	public static function ajax_load_more_cases(): void {
+		// Set no-cache headers first
+		self::set_no_cache_headers();
+		
 		// Verify nonce
 		if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'brag_book_gallery_nonce' ) ) {
 			wp_send_json_error( [
@@ -661,6 +777,9 @@ class Ajax_Handlers {
 		$start_page = isset( $_POST['start_page'] ) ? intval( $_POST['start_page'] ) : 2;
 		$procedure_ids = isset( $_POST['procedure_ids'] ) ? array_map( 'intval', explode( ',', sanitize_text_field( wp_unslash( $_POST['procedure_ids'] ) ) ) ) : [];
 		$has_nudity = isset( $_POST['has_nudity'] ) && $_POST['has_nudity'] === '1';
+		
+		// Get already loaded case IDs to prevent duplicates
+		$loaded_case_ids = isset( $_POST['loaded_ids'] ) ? array_map( 'trim', explode( ',', sanitize_text_field( wp_unslash( $_POST['loaded_ids'] ) ) ) ) : [];
 
 		// Get API configuration
 		$api_tokens = get_option( 'brag_book_gallery_api_token', [] );
@@ -685,45 +804,39 @@ class Ajax_Handlers {
 				'procedureIds'       => $procedure_ids,
 			];
 
-			// Fetch additional pages
+			// Fetch the specific page
 			$has_more = false;
+			$filter_body['count'] = $start_page; // 'count' is the page number in this API
 
-			for ( $i = 0; $i < $pages_to_load; $i++ ) {
-				$current_page = $start_page + $i;
-				$filter_body['count'] = $current_page;
+			$response = $endpoints->bb_get_pagination_data( $filter_body );
 
-				$response = $endpoints->bb_get_pagination_data( $filter_body );
+			if ( ! empty( $response ) ) {
+				$page_data = json_decode( $response, true );
 
-				if ( ! empty( $response ) ) {
-					$page_data = json_decode( $response, true );
-
-					if ( is_array( $page_data ) && ! empty( $page_data['data'] ) ) {
-						$new_cases_count = count( $page_data['data'] );
-						$all_cases = array_merge( $all_cases, $page_data['data'] );
-
-						// Check if there might be more
-						if ( $new_cases_count == $cases_per_page ) {
-							$next_page = $current_page + 1;
-							$filter_body['count'] = $next_page;
-							$check_response = $endpoints->bb_get_pagination_data( $filter_body );
-							if ( ! empty( $check_response ) ) {
-								$check_data = json_decode( $check_response, true );
-								if ( is_array( $check_data ) && ! empty( $check_data['data'] ) ) {
-									$has_more = true;
-								}
+				if ( is_array( $page_data ) && ! empty( $page_data['data'] ) ) {
+					// Filter out already loaded cases to prevent duplicates
+					foreach ( $page_data['data'] as $case ) {
+						$case_id = isset( $case['id'] ) ? strval( $case['id'] ) : '';
+						if ( ! empty( $case_id ) && ! in_array( $case_id, $loaded_case_ids, true ) ) {
+							$all_cases[] = $case;
+						}
+					}
+					
+					$new_cases_count = count( $page_data['data'] );
+					
+					// Check if there might be more pages
+					if ( $new_cases_count >= $cases_per_page ) {
+						// Check if next page has data
+						$next_page = $start_page + 1;
+						$filter_body['count'] = $next_page;
+						$check_response = $endpoints->bb_get_pagination_data( $filter_body );
+						if ( ! empty( $check_response ) ) {
+							$check_data = json_decode( $check_response, true );
+							if ( is_array( $check_data ) && ! empty( $check_data['data'] ) ) {
+								$has_more = true;
 							}
 						}
-
-						// If we got less than a full page, we've reached the end
-						if ( $new_cases_count < $cases_per_page ) {
-							$has_more = false;
-							break;
-						}
-					} else {
-						break; // No more data
 					}
-				} else {
-					break; // Failed to load
 				}
 			}
 
@@ -738,10 +851,16 @@ class Ajax_Handlers {
 				$html .= $method->invoke( null, $case, $image_display_mode, $has_nudity, '' );
 			}
 
+			// Log for debugging
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'Load More Results: Cases loaded: ' . count( $all_cases ) . ', Has more: ' . ( $has_more ? 'true' : 'false' ) );
+			}
+			
 			wp_send_json_success( [
 				'html' => $html,
 				'casesLoaded' => count( $all_cases ),
 				'hasMore' => $has_more,
+				'nextPage' => $has_more ? ( $start_page + 1 ) : null,
 			] );
 
 		} catch ( \Exception $e ) {
@@ -758,6 +877,9 @@ class Ajax_Handlers {
 	 * @return void
 	 */
 	public static function ajax_load_filtered_cases(): void {
+		// Set no-cache headers first
+		self::set_no_cache_headers();
+		
 		// Get case IDs from request
 		$case_ids_str = isset( $_POST['case_ids'] ) ? sanitize_text_field( wp_unslash( $_POST['case_ids'] ) ) : '';
 
@@ -1079,9 +1201,13 @@ class Ajax_Handlers {
 
 			// Set initial active state
 			document.addEventListener("DOMContentLoaded", function() {
-				const defaultBtn = document.querySelector(".brag-book-gallery-grid-btn[data-columns=\"3\"]");
-				if (defaultBtn) {
-					defaultBtn.classList.add("active");
+				const grid = document.querySelector(".brag-book-gallery-case-grid");
+				if (grid) {
+					const defaultColumns = grid.getAttribute("data-columns") || "3";
+					const defaultBtn = document.querySelector(".brag-book-gallery-grid-btn[data-columns=\"" + defaultColumns + "\"]");
+					if (defaultBtn) {
+						defaultBtn.classList.add("active");
+					}
 				}
 			});
 		</script>';

@@ -357,8 +357,8 @@ class Rewrite_Debug {
 	 */
 	private function regenerate_rules(): string {
 		// Register custom rules
-		if ( class_exists( 'BragBookGallery\Extend\Shortcodes' ) ) {
-			\BragBookGallery\Extend\Shortcodes::custom_rewrite_rules();
+		if ( class_exists( '\BRAGBookGallery\Includes\Extend\Rewrite_Rules_Handler' ) ) {
+			\BRAGBookGallery\Includes\Extend\Rewrite_Rules_Handler::custom_rewrite_rules();
 		}
 
 		// Flush rules

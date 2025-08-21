@@ -44,7 +44,7 @@ class Rewrite_Rules_Handler {
 	public static function register_query_vars(): void {
 		global $wp;
 
-		$query_vars = [ 'procedure_title', 'case_id', 'favorites_section', 'filter_category', 'filter_procedure' ];
+		$query_vars = [ 'procedure_title', 'case_id', 'favorites_section', 'filter_category', 'filter_procedure', 'favorites_page' ];
 
 		foreach ( $query_vars as $var ) {
 			$wp->add_query_var( $var );
@@ -66,6 +66,7 @@ class Rewrite_Rules_Handler {
 			'favorites_section',
 			'filter_category',
 			'filter_procedure',
+			'favorites_page',
 		];
 	}
 
@@ -209,6 +210,11 @@ class Rewrite_Rules_Handler {
 		}
 
 		$rewrite_rules = [
+			// My Favorites page: /gallery/myfavorites
+			[
+				'regex' => "^{$page_slug}/myfavorites/?$",
+				'query' => "{$base_query}&favorites_page=1",
+			],
 			// Case detail: /gallery/procedure-name/case-id (numeric)
 			// This must come BEFORE the procedure page rule to match properly
 			[

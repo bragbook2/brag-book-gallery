@@ -234,7 +234,7 @@
 	right: 10px;
 	display: flex;
 	gap: 8px;
-	z-index: 10;
+	z-index: 30;
 	opacity: 0;
 	visibility: hidden;
 	transition: all .3s ease;
@@ -247,8 +247,21 @@
 	pointer-events: auto
 }
 
-.brag-book-gallery-after-image:has(.brag-book-gallery-heart-btn[data-favorited=true]) .brag-book-gallery-item-actions {
+.brag-book-gallery-after-image:has(.brag-book-gallery-favorite-button[data-favorited=true]) .brag-book-gallery-item-actions {
 	opacity: 1;
 	visibility: visible;
 	pointer-events: auto
+}
+
+// Single image cards - buttons always visible and clickable
+.brag-book-gallery-single-image .brag-book-gallery-item-actions {
+	position: absolute;
+	bottom: 10px;
+	right: 10px;
+	display: flex;
+	gap: 8px;
+	opacity: 1;
+	visibility: visible;
+	pointer-events: auto;
+	z-index: 30;
 }

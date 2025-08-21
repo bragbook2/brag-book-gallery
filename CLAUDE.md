@@ -77,10 +77,20 @@ The plugin follows a modular architecture with clear separation of concerns:
 
 **Admin** (`includes/admin/`):
 - `Settings_Manager`: Centralized settings management
-- `Settings_*`: Individual settings pages (Debug, Help, JavaScript, Mode, etc.)
+- `Settings_*`: Individual settings pages (API, API Test, Debug, Help, JavaScript, Mode, Local, Dashboard, Consultation, etc.)
 - `Menu`: Admin menu registration
 - `Tabs`: Settings page tab management
-- `Debug_Tools`: Debugging utilities
+- `Debug_Tools`: Debugging utilities with specialized debug tools
+- **Debug Tools** (`includes/admin/debug-tools/`):
+  - `Gallery_Checker`: Gallery page validation
+  - `Query_Var_Forcer`: Force query variable registration
+  - `Rewrite_Debug`: Rewrite rules debugging
+  - `Rewrite_Fix`: Fix rewrite rule issues
+  - `Rewrite_Flush`: Flush rewrite rules utility
+- **Admin Traits** (`includes/admin/traits/`):
+  - `Trait_Ajax_Handler`: AJAX handling utilities
+  - `Trait_Cache_Handler`: Cache management utilities  
+  - `Trait_Render_Helper`: Rendering helper methods
 
 **Frontend Extensions** (`includes/extend/`):
 - `Shortcodes`: Main shortcode coordinator with rewrite rules
@@ -129,9 +139,9 @@ The plugin follows a modular architecture with clear separation of concerns:
 **SCSS Structure** (`src/scss/`):
 - `frontend.scss`: Main frontend styles
 - `admin.scss`: Admin area styles
-- `components/`: Modular component styles
-- `settings/`: Admin settings page styles
-- `structure/`: Layout and structure styles
+- `components/`: Modular component styles (carousel, cases, dialog, filters, etc.)
+- `settings/`: Admin settings page styles (accordion, buttons, forms, tabs, dashboard, debug, etc.)
+- `structure/`: Layout and structure styles (container, wrapper, sidebar)
 
 ### Data Flow
 1. Plugin loads via `brag-book-gallery.php`
@@ -173,6 +183,10 @@ The plugin follows a modular architecture with clear separation of concerns:
 - `brag_book_load_filtered_cases`: Load specific cases by IDs for filtering
 - `brag_book_load_filtered_gallery`: Load filtered gallery content
 - `brag_book_gallery_clear_cache`: Clear all gallery transient cache
+- `brag_book_load_case_details`: Load individual case details
+- `brag_book_load_case_details_html`: Load case details HTML content
+- `brag_book_simple_case_handler`: Handle simple case operations
+- `brag_book_flush_rewrite_rules`: Flush WordPress rewrite rules
 
 ## Important Considerations
 
@@ -183,3 +197,25 @@ The plugin follows a modular architecture with clear separation of concerns:
 - Plugin updates are handled via GitHub repository (`bragbook2/brag-book-gallery`)
 - All button styling should be in CSS files, not inline
 - API returns 10 cases per page, requiring pagination for larger datasets
+
+## Debug and Development Tools
+
+### Debug Tools Available
+- Gallery page checker to validate gallery setup
+- Rewrite rules debugging and fixing utilities
+- Query variable forcing for troubleshooting
+- Cache clearing and management tools
+- Admin settings with debug mode toggles
+
+### Development Environment
+- Node.js 18+ and npm 9+ required for frontend builds
+- ESLint configuration with tab indentation and single quotes
+- Stylelint for SCSS with tab indentation
+- Prettier formatting with 4-space tabs and single quotes
+- Babel transpilation for modern JavaScript features
+
+### File Organization
+- Modular SCSS architecture with component-based styling
+- JavaScript modules for maintainable frontend code
+- PHP traits for reusable admin functionality
+- Separate debug tools for development troubleshooting

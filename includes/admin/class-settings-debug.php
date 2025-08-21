@@ -101,6 +101,9 @@ class Settings_Debug extends Settings_Base {
 		
 		// System info export
 		$this->register_ajax_action( 'brag_book_gallery_export_system_info', array( $this, 'handle_export_system_info' ) );
+		
+		// Factory reset
+		$this->register_ajax_action( 'brag_book_gallery_factory_reset', array( $this, 'handle_factory_reset' ) );
 	}
 
 	/**
@@ -231,6 +234,45 @@ class Settings_Debug extends Settings_Base {
 						</tr>
 					</table>
 				</form>
+			</div>
+
+			<!-- Factory Reset -->
+			<div class="brag-book-gallery-section brag-book-gallery-danger-zone">
+				<h2 style="color: #dc3232;"><?php esc_html_e( 'Danger Zone - Factory Reset', 'brag-book-gallery' ); ?></h2>
+				<div class="brag-book-gallery-warning-box" style="background: #fff3cd; border-left: 4px solid #dc3232; padding: 12px; margin-bottom: 20px;">
+					<p><strong><?php esc_html_e( 'Warning:', 'brag-book-gallery' ); ?></strong> <?php esc_html_e( 'This action cannot be undone. All plugin settings, data, and configurations will be permanently deleted.', 'brag-book-gallery' ); ?></p>
+				</div>
+				<table class="form-table brag-book-gallery-form-table">
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Factory Reset', 'brag-book-gallery' ); ?></th>
+						<td>
+							<p class="description">
+								<?php esc_html_e( 'This will completely reset the plugin to its initial state by:', 'brag-book-gallery' ); ?>
+							</p>
+							<ul style="list-style: disc; margin-left: 20px;">
+								<li><?php esc_html_e( 'Deleting all plugin settings and configurations', 'brag-book-gallery' ); ?></li>
+								<li><?php esc_html_e( 'Clearing all cached data and transients', 'brag-book-gallery' ); ?></li>
+								<li><?php esc_html_e( 'Removing all API tokens and credentials', 'brag-book-gallery' ); ?></li>
+								<li><?php esc_html_e( 'Deleting custom database tables (if any)', 'brag-book-gallery' ); ?></li>
+								<li><?php esc_html_e( 'Resetting rewrite rules', 'brag-book-gallery' ); ?></li>
+							</ul>
+							<p style="margin-top: 15px;">
+								<button type="button" id="brag-book-gallery-factory-reset" class="button button-danger" style="background: #dc3232; color: white; border-color: #dc3232;" data-nonce="<?php echo wp_create_nonce( 'brag_book_gallery_admin' ); ?>">
+									<?php esc_html_e( 'Factory Reset Plugin', 'brag-book-gallery' ); ?>
+								</button>
+							</p>
+							<script>
+							// Ensure nonce is available globally for admin script
+							if (typeof brag_book_gallery_admin === 'undefined') {
+								window.brag_book_gallery_admin = {
+									ajaxurl: '<?php echo admin_url( 'admin-ajax.php' ); ?>',
+									nonce: '<?php echo wp_create_nonce( 'brag_book_gallery_admin' ); ?>'
+								};
+							}
+							</script>
+						</td>
+					</tr>
+				</table>
 			</div>
 
 			<!-- Diagnostic Tools -->
@@ -1100,5 +1142,138 @@ class Settings_Debug extends Settings_Base {
 		});
 		</script>
 		<?php
+	}
+
+	/**
+	 * Handle factory reset AJAX request
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	public function handle_factory_reset(): void {
+		// Start output buffering to catch any unexpected output
+		ob_start();
+		
+		try {
+			// Verify nonce - using the admin nonce that's actually generated
+			if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'brag_book_gallery_admin' ) ) {
+				ob_end_clean();
+				wp_send_json_error( __( 'Security check failed. Please refresh the page and try again.', 'brag-book-gallery' ) );
+				return;
+			}
+
+			// Double-check user capabilities
+			if ( ! current_user_can( 'manage_options' ) ) {
+				ob_end_clean();
+				wp_send_json_error( __( 'Insufficient permissions.', 'brag-book-gallery' ) );
+				return;
+			}
+
+			global $wpdb;
+			// Get all plugin options
+			$plugin_options = [
+				'brag_book_gallery_api_token',
+				'brag_book_gallery_website_property_id',
+				'brag_book_gallery_page_slug',
+				'brag_book_gallery_mode',
+				'brag_book_gallery_debug_mode',
+				'brag_book_gallery_javascript_enabled',
+				'brag_book_gallery_log_api_calls',
+				'brag_book_gallery_log_errors',
+				'brag_book_gallery_log_verbosity',
+				'brag_book_gallery_cache_duration',
+				'brag_book_gallery_items_per_page',
+				'brag_book_gallery_enable_favorites',
+				'brag_book_gallery_enable_sharing',
+				'brag_book_gallery_enable_nudity_warning',
+				'brag_book_gallery_consultation_form_url',
+				'brag_book_gallery_consultation_form_type',
+				'brag_book_gallery_consultation_custom_html',
+				'brag_book_gallery_db_version',
+				'brag_book_gallery_version',
+				'brag_book_gallery_activation_time',
+				'brag_book_gallery_last_sync',
+			];
+
+			// Delete all plugin options
+			foreach ( $plugin_options as $option ) {
+				delete_option( $option );
+			}
+
+			// Clear all transients
+			$wpdb->query(
+				"DELETE FROM {$wpdb->options} 
+				WHERE option_name LIKE '_transient_brag_book_%' 
+				OR option_name LIKE '_transient_timeout_brag_book_%'"
+			);
+
+			// Clear site transients
+			$wpdb->query(
+				"DELETE FROM {$wpdb->sitemeta} 
+				WHERE meta_key LIKE '_site_transient_brag_book_%' 
+				OR meta_key LIKE '_site_transient_timeout_brag_book_%'"
+			);
+
+			// Drop custom database tables if they exist
+			$tables = [
+				$wpdb->prefix . 'brag_case_map',
+				$wpdb->prefix . 'brag_sync_log',
+			];
+
+			foreach ( $tables as $table ) {
+				$wpdb->query( "DROP TABLE IF EXISTS {$table}" );
+			}
+
+			// Clear rewrite rules
+			flush_rewrite_rules();
+
+			// Clear any cached data
+			wp_cache_flush();
+
+			// Clear logs
+			$upload_dir = wp_upload_dir();
+			$log_dir = $upload_dir['basedir'] . '/brag-book-gallery-logs';
+			if ( is_dir( $log_dir ) ) {
+				$files = glob( $log_dir . '/*.log' );
+				foreach ( $files as $file ) {
+					if ( is_file( $file ) ) {
+						unlink( $file );
+					}
+				}
+			}
+
+			// Reinitialize the plugin by running activation routine
+			// This will recreate default options and tables
+			if ( class_exists( '\BRAGBookGallery\Includes\Core\Setup' ) ) {
+				$setup = \BRAGBookGallery\Includes\Core\Setup::get_instance();
+				if ( method_exists( $setup, 'activate' ) ) {
+					$setup->activate();
+				}
+			}
+			
+			// Clear output buffer and send success response
+			ob_end_clean();
+			wp_send_json_success( [
+				'message' => __( 'Plugin has been successfully reset to factory defaults. The page will reload.', 'brag-book-gallery' ),
+				'redirect' => admin_url( 'admin.php?page=brag-book-gallery&reset=success' )
+			] );
+
+		} catch ( \Exception $e ) {
+			// Clear output buffer on error
+			ob_end_clean();
+			wp_send_json_error( sprintf(
+				/* translators: %s: error message */
+				__( 'Factory reset failed: %s', 'brag-book-gallery' ),
+				$e->getMessage()
+			) );
+		} catch ( \Error $e ) {
+			// Catch fatal errors too
+			ob_end_clean();
+			wp_send_json_error( sprintf(
+				/* translators: %s: error message */
+				__( 'Factory reset critical error: %s', 'brag-book-gallery' ),
+				$e->getMessage()
+			) );
+		}
 	}
 }

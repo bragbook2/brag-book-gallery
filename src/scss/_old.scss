@@ -201,7 +201,7 @@
 
 
 
-.brag-book-gallery-carousel-item:has(.brag-book-gallery-heart-btn[data-favorited=true]) .brag-book-gallery-item-actions {
+.brag-book-gallery-carousel-item:has(.brag-book-gallery-favorite-button[data-favorited=true]) .brag-book-gallery-item-actions {
 	opacity: 1;
 	visibility: visible;
 	pointer-events: auto
@@ -683,7 +683,7 @@
 	pointer-events: auto
 }
 
-.brag-book-gallery-case-image-container:has(.brag-book-gallery-heart-btn[data-favorited=true]) .brag-book-gallery-item-actions {
+.brag-book-gallery-case-image-container:has(.brag-book-gallery-favorite-button[data-favorited=true]) .brag-book-gallery-item-actions {
 	opacity: 1;
 	visibility: visible;
 	pointer-events: auto

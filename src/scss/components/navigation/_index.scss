@@ -4,6 +4,10 @@
 // components / navigation / index
 // -----------------------------------------------------------------------------
 
+.brag-book-gallery-nav {
+	margin-block-start: calc( 6 * var(--wp--custom--brag-book-gallery--spacer) );
+}
+
 .brag-book-gallery-nav-button {
 	display: flex;
 	align-items: center;

@@ -14,8 +14,23 @@
 		line-height: 1.25;
 		margin-block: 0 calc( 6 * var(--wp--custom--brag-book-gallery--spacer) );
 	}
+	
+	// Mobile adjustments
+	@media (max-width: 1023px) {
+		width: 100%;
+		margin-left: 0;
+	}
+	
+	@media (max-width: 480px) {
+		padding: calc( 2 * var(--wp--custom--brag-book-gallery--spacer) );
+		
+		h2 {
+			font-size: 1.5rem;
+			margin-block: 0 calc( 4 * var(--wp--custom--brag-book-gallery--spacer) );
+		}
+	}
 
-	@media (min-width:960px) {
+	@media (min-width: 960px) {
 		padding: calc( 6 * var(--wp--custom--brag-book-gallery--spacer) );
 
 		h2 {

@@ -830,8 +830,12 @@ window.clearProcedureFilters = function() {
 window.syncImageHeights = function(img) {
 	// Hide skeleton loader and show image
 	img.style.opacity = '1';
-	const loader = img.parentElement.querySelector('.brag-book-gallery-skeleton-loader');
-	if (loader) loader.style.display = 'none';
+	// Find the skeleton loader in the image container (new structure with anchor wrapping picture)
+	const container = img.closest('.brag-book-gallery-image-container');
+	if (container) {
+		const loader = container.querySelector('.brag-book-gallery-skeleton-loader');
+		if (loader) loader.style.display = 'none';
+	}
 
 	// Get the parent case images container
 	const caseContainer = img.closest('.brag-book-gallery-case-images');
@@ -963,6 +967,11 @@ window.loadMoreCases = function(button) {
 		hasNudity = true;
 	}
 
+	// Get all currently loaded case IDs to prevent duplicates
+	const loadedCases = document.querySelectorAll('[data-case-id]');
+	const loadedIds = Array.from(loadedCases).map(el => el.getAttribute('data-case-id')).filter(Boolean);
+	console.log('Currently loaded case IDs:', loadedIds.length, 'cases');
+
 	// Get the nonce from the localized script data
 	const nonce = window.bragBookGalleryConfig?.nonce || '';
 	const ajaxUrl = window.bragBookGalleryConfig?.ajaxUrl || '/wp-admin/admin-ajax.php';
@@ -974,6 +983,7 @@ window.loadMoreCases = function(button) {
 	formData.append('start_page', startPage);
 	formData.append('procedure_ids', procedureIds);
 	formData.append('has_nudity', hasNudity ? '1' : '0');
+	formData.append('loaded_ids', loadedIds.join(','));
 
 	// Make AJAX request
 	fetch(ajaxUrl, {
@@ -1016,14 +1026,21 @@ window.loadMoreCases = function(button) {
 				}
 
 				// Update button for next load
-				if (data.data.hasMore) {
+				// Check if we actually loaded any new cases or if there are more to load
+				const newCasesLoaded = data.data.casesLoaded || 0;
+				
+				if (data.data.hasMore && newCasesLoaded > 0) {
 					// Increment page by 1 since we load 1 page at a time
 					button.setAttribute('data-start-page', parseInt(startPage) + 1);
 					button.disabled = false;
 					button.textContent = originalText;
 				} else {
-					// No more cases, hide the button
-					button.parentElement.style.display = 'none';
+					// No more cases or no new cases loaded (all were duplicates), hide the button
+					console.log('Hiding load more button - hasMore:', data.data.hasMore, 'newCasesLoaded:', newCasesLoaded);
+					const loadMoreContainer = button.closest('.brag-book-gallery-load-more-container') || button.parentElement;
+					if (loadMoreContainer) {
+						loadMoreContainer.style.display = 'none';
+					}
 				}
 
 				// Update the count display - only if we found the container

@@ -8,7 +8,7 @@
 	--columns: auto-fit;
 
 	display: grid;
-	grid-template-columns: repeat(var(--columns), minmax(350px, 1fr));
+	grid-template-columns: repeat(var(--columns), minmax(240px, 1fr));
 	gap: 2rem;
 
 	@media(min-width: 768px) {
@@ -31,9 +31,13 @@
 }
 
 .brag-book-gallery-grid-selector {
-	display: flex;
+	display: none;
 	align-items: center;
 	gap: calc( 3 * var(--wp--custom--brag-book-gallery--spacer) );
+
+	@media (min-width: 1024px) {
+		display: flex;
+	}
 }
 
 .brag-book-gallery-grid-buttons {

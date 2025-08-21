@@ -97,7 +97,7 @@ trait Trait_Api {
 		// Get timeout from settings or use default
 		$timeout = intval( get_option( 'brag_book_gallery_api_timeout', $this->request_timeout ) );
 		
-		// Set default headers.
+		// Set default headers with cache-busting headers
 		$default_args = array(
 			'method'      => strtoupper( $method ),
 			'timeout'     => $timeout,
@@ -107,6 +107,9 @@ trait Trait_Api {
 			'headers'     => array(
 				'Content-Type' => 'application/json',
 				'Accept'       => 'application/json',
+				'Cache-Control' => 'no-cache, no-store, must-revalidate',
+				'Pragma' => 'no-cache',
+				'X-LiteSpeed-Cache-Control' => 'no-cache',
 			),
 			'cookies'     => array(),
 			'sslverify'   => true,
@@ -118,6 +121,12 @@ trait Trait_Api {
 		// Add body if provided.
 		if ( isset( $args['body'] ) && is_array( $args['body'] ) ) {
 			$args['body'] = wp_json_encode( $args['body'] );
+		}
+		
+		// Add cache-busting query parameter for GET requests
+		if ( 'GET' === strtoupper( $method ) ) {
+			$separator = strpos( $url, '?' ) !== false ? '&' : '?';
+			$url .= $separator . '_nocache=' . time();
 		}
 
 		// Make the request.

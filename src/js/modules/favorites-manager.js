@@ -101,6 +101,11 @@ class FavoritesManager {
 
 		this.updateUI();
 		this.options.onUpdate(this.favorites);
+		
+		// Dispatch custom event for other components
+		window.dispatchEvent(new CustomEvent('favoritesUpdated', { 
+			detail: { favorites: this.favorites } 
+		}));
 	}
 
 	removeFavorite(itemId, button) {
@@ -122,6 +127,11 @@ class FavoritesManager {
 
 		this.updateUI();
 		this.options.onUpdate(this.favorites);
+		
+		// Dispatch custom event for other components
+		window.dispatchEvent(new CustomEvent('favoritesUpdated', { 
+			detail: { favorites: this.favorites } 
+		}));
 	}
 
 	handleFavoritesFormSubmit(form) {

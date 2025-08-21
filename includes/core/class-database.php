@@ -70,7 +70,8 @@ class Database {
 	public function __construct() {
 		global $wpdb;
 		$this->wpdb = $wpdb;
-		$this->table_prefix = $wpdb->prefix . 'brag_';
+		$prefix = ! empty( $wpdb->prefix ) ? $wpdb->prefix : 'wp_';
+		$this->table_prefix = $prefix . 'brag_';
 
 		$this->init();
 	}
@@ -322,7 +323,7 @@ class Database {
 	): bool {
 		$table_name = $this->get_case_map_table();
 		
-		if ( empty( $table_name ) ) {
+		if ( empty( $table_name ) || empty( $api_token ) ) {
 			return false;
 		}
 
@@ -373,7 +374,7 @@ class Database {
 	public function get_post_by_case_id( int $api_case_id, string $api_token ): ?int {
 		$table_name = $this->get_case_map_table();
 		
-		if ( empty( $table_name ) ) {
+		if ( empty( $table_name ) || empty( $api_token ) ) {
 			return null;
 		}
 
@@ -397,7 +398,7 @@ class Database {
 	public function get_sync_hash( int $api_case_id, string $api_token ): ?string {
 		$table_name = $this->get_case_map_table();
 		
-		if ( empty( $table_name ) ) {
+		if ( empty( $table_name ) || empty( $api_token ) ) {
 			return null;
 		}
 
