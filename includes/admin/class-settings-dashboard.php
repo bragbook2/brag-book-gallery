@@ -71,6 +71,16 @@ class Settings_Dashboard extends Settings_Base {
 		$this->page_title = __( 'Dashboard', 'brag-book-gallery' );
 		$this->menu_title = __( 'Dashboard', 'brag-book-gallery' );
 
+		// Check if coming from a factory reset
+		if ( isset( $_GET['reset'] ) && $_GET['reset'] === 'success' ) {
+			?>
+			<div class="notice notice-success is-dismissible">
+				<p><strong><?php esc_html_e( 'Factory Reset Complete!', 'brag-book-gallery' ); ?></strong></p>
+				<p><?php esc_html_e( 'The plugin has been successfully reset to factory defaults. Please configure your settings to get started.', 'brag-book-gallery' ); ?></p>
+			</div>
+			<?php
+		}
+
 		// Get plugin metadata
 		$plugin_data = get_plugin_data( WP_PLUGIN_DIR . '/brag-book-gallery/brag-book-gallery.php' );
 		$version = isset( $plugin_data['Version'] ) ? $plugin_data['Version'] : '3.0.0';

@@ -418,8 +418,8 @@ location ~ ^/<?php echo esc_html( $brag_book_gallery_page_slug ); ?>/([^/]+)/?$ 
 		$results[] = $this->get_check_icon( true ) . 'Query vars registered';
 
 		// 2. Force add rewrite rules
-		if ( class_exists( 'BragBookGallery\Extend\Shortcodes' ) ) {
-			\BragBookGallery\Extend\Shortcodes::custom_rewrite_rules();
+		if ( class_exists( '\BRAGBookGallery\Includes\Extend\Rewrite_Rules_Handler' ) ) {
+			\BRAGBookGallery\Includes\Extend\Rewrite_Rules_Handler::custom_rewrite_rules();
 			$results[] = $this->get_check_icon( true ) . 'Custom rewrite rules added';
 		}
 

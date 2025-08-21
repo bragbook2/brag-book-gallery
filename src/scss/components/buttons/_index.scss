@@ -26,99 +26,62 @@
 	}
 }
 
-.brag-book-gallery-heart-btn:focus,.brag-book-gallery-share-btn:focus {
-	outline: none
-}
+.brag-book-gallery-favorite-button,
+.brag-book-gallery-share-button {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: calc( 10 * var(--wp--custom--brag-book-gallery--spacer) );
+	height: calc( 10 * var(--wp--custom--brag-book-gallery--spacer) );
+	border: 0 none;
+	background: transparent;
+	border-radius: var(--wp--custom--brag-book-gallery--rounded-full);
+	font-size: var(--wp--custom--brag-book-gallery--text-sm);
+	font-weight: var(--wp--custom--brag-book-gallery--font-weight--semibold);
+	cursor: pointer;
+	transition: var(--wp--custom--brag-book-gallery--transition);
+	position: relative;
+	z-index: 30;
+	pointer-events: auto;
 
-.brag-book-gallery-heart-btn:hover,.brag-book-gallery-share-btn:hover {
-	border-color: var(--wp--custom--brag-book-gallery--color--black);
-	transform: scale(1.1);
-	background: var(--wp--custom--brag-book-gallery--color--white)
-}
-
-.brag-book-gallery-heart-btn[data-favorited=true] {
-	border-color: var(--wp--custom--brag-book-gallery--color--black);
-	background: var(--wp--custom--brag-book-gallery--color--black);
-	animation: heartPulse .6s ease
-}
-
-.brag-book-gallery-heart-btn[data-favorited=true]:hover {
-	background: var(--wp--custom--brag-book-gallery--color--black);
-	transform: scale(1.15)
-}
-
-@keyframes heartPulse {
-	0% {
-		transform: scale(1)
+	&:focus {
+		outline: none
 	}
 
-	25% {
-		transform: scale(1.3)
-	}
-
-	50% {
-		transform: scale(1.1)
-	}
-
-	75% {
-		transform: scale(1.2)
-	}
-
-	100% {
-		transform: scale(1)
+	svg {
+		width: 1.5rem;
+		height: 1.5rem;
+		transition: var(--wp--custom--brag-book-gallery--transition)
 	}
 }
 
-.brag-book-gallery-heart-btn svg,.brag-book-gallery-share-btn svg {
-	width: 1rem;
-	height: 1rem;
-	stroke: var(--wp--custom--brag-book-gallery--color--grey);
-	fill: var(--wp--custom--brag-book-gallery--color--grey);
-	stroke-width: 1;
-	transition: var(--wp--custom--brag-book-gallery--transition)
+.brag-book-gallery-favorite-button[data-favorited=true] {
+	opacity: 1;
+
+	svg {
+		fill: red;
+	}
 }
 
-.brag-book-gallery-share-btn svg {
-	fill: var(--wp--custom--brag-book-gallery--color--grey);
-	stroke: none
+.brag-book-gallery-load-more-container {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-block: calc( 4 * var(--wp--custom--brag-book-gallery--spacer) );
 }
 
-.brag-book-gallery-heart-btn[data-favorited=true] svg {
-	stroke: #dc2626;
-	fill: #dc2626
-}
-
-
-.brag-book-gallery-heart-btn:hover svg {
-	stroke: var(--wp--custom--brag-book-gallery--color--black)
-}
-
-.brag-book-gallery-share-btn:hover svg {
-	fill: var(--wp--custom--brag-book-gallery--color--black)
-}
-
-.brag-book-gallery-share-btn.active {
-	background: var(--wp--custom--brag-book-gallery--color--black);
-	border-color: var(--wp--custom--brag-book-gallery--color--black)
-}
-
-.brag-book-gallery-share-btn.active svg {
-	fill: #fff
-}
-
-.brag-book-gallery-share-btn.active:hover {
-	background: var(--wp--custom--brag-book-gallery--color--black)
-}
-
-.brag-book-gallery-share-btn.active:hover svg {
-	fill: #fff
-}
-
-.brag-book-gallery-heart-btn[data-favorited=true]:hover svg {
-	stroke: #b91c1c;
-	fill: #b91c1c
-}
-
-.brag-book-gallery-heart-btn[data-favorited=true] {
-	opacity: 1
+.brag-book-gallery-load-more-btn {
+	width: 100%;
+	padding: calc( 3 * var(--wp--custom--brag-book-gallery--spacer) ) calc( 4 * var(--wp--custom--brag-book-gallery--spacer) );
+	background: var(--wp--custom--brag-book-gallery--color--white);
+	color: var(--wp--custom--brag-book-gallery--color--black);
+	border: 2px solid var(--wp--custom--brag-book-gallery--color--light-grey);
+	border-radius: var(--wp--custom--brag-book-gallery--rounded);
+	font-size: var(--wp--custom--brag-book-gallery--text-sm);
+	font-weight: var(--wp--custom--brag-book-gallery--font-weight--semibold);
+	text-transform: uppercase;
+	letter-spacing: .05em;
+	cursor: pointer;
+	transition: var(--wp--custom--brag-book-gallery--transition);
+	margin-block-end: calc( 5 * var(--wp--custom--brag-book-gallery--spacer) );
 }

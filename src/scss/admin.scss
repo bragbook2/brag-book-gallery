@@ -4,4 +4,8 @@
 // admin / build
 // -----------------------------------------------------------------------------
 
+// Global dialog styles (outside wrapper since dialogs are appended to body)
+@use 'settings/dialog-global';
+
+// Settings styles (inside wrapper)
 @use 'settings';

@@ -59,4 +59,27 @@
 			outline-offset: 2px;
 		}
 	}
+
+	.button-danger {
+		background: var(--red-600);
+		color: white;
+		border-color: var(--red-600);
+
+		&:hover {
+			background: var(--red-700);
+			border-color: var(--red-700);
+			color: white;
+		}
+
+		&:focus-visible {
+			outline: 2px solid var(--red-500);
+			outline-offset: 2px;
+		}
+
+		&:disabled {
+			background: var(--red-300);
+			border-color: var(--red-300);
+			cursor: not-allowed;
+		}
+	}
 }

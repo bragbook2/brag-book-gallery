@@ -139,6 +139,138 @@ class Rewrite_Flush {
 				</ul>
 			</div>
 		</div>
+		
+		<script>
+		jQuery(document).ready(function($) {
+			// Standard flush
+			$('#flush-rules-standard').on('click', function() {
+				var button = $(this);
+				var resultDiv = $('#flush-result');
+				
+				button.prop('disabled', true);
+				resultDiv.html('<p>Flushing rewrite rules...</p>');
+				
+				$.ajax({
+					url: ajaxurl,
+					method: 'POST',
+					data: {
+						action: 'brag_book_flush_rewrite_rules',
+						nonce: '<?php echo wp_create_nonce( 'brag_book_flush_rewrite_rules' ); ?>',
+						flush_type: 'standard'
+					},
+					success: function(response) {
+						if (response.success) {
+							resultDiv.html('<div class="notice notice-success"><p>' + response.data + '</p></div>');
+						} else {
+							resultDiv.html('<div class="notice notice-error"><p>Error: ' + response.data + '</p></div>');
+						}
+					},
+					error: function() {
+						resultDiv.html('<div class="notice notice-error"><p>Failed to flush rewrite rules. Please try again.</p></div>');
+					},
+					complete: function() {
+						button.prop('disabled', false);
+					}
+				});
+			});
+			
+			// Hard flush
+			$('#flush-rules-hard').on('click', function() {
+				var button = $(this);
+				var resultDiv = $('#flush-result');
+				
+				button.prop('disabled', true);
+				resultDiv.html('<p>Performing hard flush...</p>');
+				
+				$.ajax({
+					url: ajaxurl,
+					method: 'POST',
+					data: {
+						action: 'brag_book_flush_rewrite_rules',
+						nonce: '<?php echo wp_create_nonce( 'brag_book_flush_rewrite_rules' ); ?>',
+						flush_type: 'hard'
+					},
+					success: function(response) {
+						if (response.success) {
+							resultDiv.html('<div class="notice notice-success"><p>' + response.data + '</p></div>');
+						} else {
+							resultDiv.html('<div class="notice notice-error"><p>Error: ' + response.data + '</p></div>');
+						}
+					},
+					error: function() {
+						resultDiv.html('<div class="notice notice-error"><p>Failed to flush rewrite rules. Please try again.</p></div>');
+					},
+					complete: function() {
+						button.prop('disabled', false);
+					}
+				});
+			});
+			
+			// Flush with registration
+			$('#flush-with-registration').on('click', function() {
+				var button = $(this);
+				var resultDiv = $('#flush-result');
+				
+				button.prop('disabled', true);
+				resultDiv.html('<p>Re-registering rules and flushing...</p>');
+				
+				$.ajax({
+					url: ajaxurl,
+					method: 'POST',
+					data: {
+						action: 'brag_book_flush_rewrite_rules',
+						nonce: '<?php echo wp_create_nonce( 'brag_book_flush_rewrite_rules' ); ?>',
+						flush_type: 'with_registration'
+					},
+					success: function(response) {
+						if (response.success) {
+							resultDiv.html('<div class="notice notice-success"><p>' + response.data + '</p></div>');
+						} else {
+							resultDiv.html('<div class="notice notice-error"><p>Error: ' + response.data + '</p></div>');
+						}
+					},
+					error: function() {
+						resultDiv.html('<div class="notice notice-error"><p>Failed to flush rewrite rules. Please try again.</p></div>');
+					},
+					complete: function() {
+						button.prop('disabled', false);
+					}
+				});
+			});
+			
+			// Verify rules
+			$('#verify-rules').on('click', function() {
+				var button = $(this);
+				var resultDiv = $('#verify-result');
+				
+				button.prop('disabled', true);
+				resultDiv.html('<p>Verifying rules...</p>');
+				
+				$.ajax({
+					url: ajaxurl,
+					method: 'POST',
+					data: {
+						action: 'brag_book_flush_rewrite_rules',
+						nonce: '<?php echo wp_create_nonce( 'brag_book_flush_rewrite_rules' ); ?>',
+						flush_type: 'verify'
+					},
+					success: function(response) {
+						if (response.success) {
+							resultDiv.html('<div class="notice notice-info"><p>' + response.data + '</p></div>');
+						} else {
+							resultDiv.html('<div class="notice notice-error"><p>Error: ' + response.data + '</p></div>');
+						}
+					},
+					error: function() {
+						resultDiv.html('<div class="notice notice-error"><p>Failed to verify rules. Please try again.</p></div>');
+					},
+					complete: function() {
+						button.prop('disabled', false);
+					}
+				});
+			});
+		});
+		</script>
 		<?php
 	}
 
@@ -234,8 +366,8 @@ class Rewrite_Flush {
 				$results[] = $this->get_check_icon( true ) . 'Cleared existing rules from database';
 
 				// Register custom rules
-				if ( class_exists( 'BragBookGallery\Extend\Shortcodes' ) ) {
-					\BragBookGallery\Extend\Shortcodes::custom_rewrite_rules();
+				if ( class_exists( '\BRAGBookGallery\Includes\Extend\Rewrite_Rules_Handler' ) ) {
+					\BRAGBookGallery\Includes\Extend\Rewrite_Rules_Handler::custom_rewrite_rules();
 					$results[] = $this->get_check_icon( true ) . 'Re-registered custom rules';
 				}
 
@@ -246,8 +378,8 @@ class Rewrite_Flush {
 
 			case 'with_registration':
 				// Register custom rules first
-				if ( class_exists( 'BragBookGallery\Extend\Shortcodes' ) ) {
-					\BragBookGallery\Extend\Shortcodes::custom_rewrite_rules();
+				if ( class_exists( '\BRAGBookGallery\Includes\Extend\Rewrite_Rules_Handler' ) ) {
+					\BRAGBookGallery\Includes\Extend\Rewrite_Rules_Handler::custom_rewrite_rules();
 					$results[] = $this->get_check_icon( true ) . 'Re-registered custom rules';
 				}
 

@@ -11,7 +11,6 @@ class Dialog {
 		this.options = {
 			closeOnBackdrop: options.closeOnBackdrop !== false,
 			closeOnEscape: options.closeOnEscape !== false,
-			animateWithGsap: typeof gsap !== 'undefined',
 			onOpen: options.onOpen || (() => {}),
 			onClose: options.onClose || (() => {}),
 			...options
@@ -23,57 +22,33 @@ class Dialog {
 	}
 
 	init() {
-		this.checkDialogSupport();
 		this.setupEventListeners();
 	}
 
-	checkDialogSupport() {
-		const testDialog = document.createElement('dialog');
-		if (!testDialog.showModal) {
-			console.log('Dialog element not fully supported, using polyfill');
-
-			if (!HTMLDialogElement.prototype.showModal) {
-				HTMLDialogElement.prototype.showModal = function() {
-					this.setAttribute('open', '');
-					this.style.display = 'block';
-				};
-			}
-			if (!HTMLDialogElement.prototype.close) {
-				HTMLDialogElement.prototype.close = function() {
-					this.removeAttribute('open');
-					this.style.display = 'none';
-				};
-			}
-		}
-	}
-
 	setupEventListeners() {
-		// Close buttons
+		// Close buttons - use event delegation to avoid issues
 		this.closeButtons?.forEach(button => {
-			button.addEventListener('click', () => this.close());
+			button.addEventListener('click', (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				this.close();
+			});
 		});
 
-		// Backdrop click - clicking outside the dialog content
-		if (this.options.closeOnBackdrop) {
-			this.dialog?.addEventListener('click', (e) => {
-				// Get the dialog dimensions
-				const rect = this.dialog.getBoundingClientRect();
-				// Check if click was outside the dialog content (on the backdrop)
-				if (
-					e.clientX < rect.left ||
-					e.clientX > rect.right ||
-					e.clientY < rect.top ||
-					e.clientY > rect.bottom
-				) {
+		// Native backdrop click using light dismiss
+		if (this.options.closeOnBackdrop && this.dialog) {
+			// For native dialog, clicking the ::backdrop triggers a click event on the dialog
+			// We check if the click target is the dialog itself (not its children)
+			this.dialog.addEventListener('click', (e) => {
+				if (e.target === this.dialog) {
 					this.close();
 				}
 			});
 		}
 
-		// Escape key is handled natively by dialog element
-		// but we can add custom handling if needed
-		if (this.options.closeOnEscape) {
-			this.dialog?.addEventListener('cancel', (e) => {
+		// Handle ESC key using the native 'cancel' event
+		if (this.options.closeOnEscape && this.dialog) {
+			this.dialog.addEventListener('cancel', (e) => {
 				e.preventDefault();
 				this.close();
 			});
@@ -83,83 +58,47 @@ class Dialog {
 	open() {
 		if (!this.dialog) return;
 
-		console.log('Opening dialog...');
-
-		// Ensure dialog is visible before showing modal
-		this.dialog.style.display = 'block';
-		
-		// Small delay to ensure styles are applied
-		requestAnimationFrame(() => {
-			// Open dialog using native showModal which automatically handles backdrop
-			try {
-				if (typeof this.dialog.showModal === 'function') {
-					this.dialog.showModal();
-				} else {
-					this.dialog.setAttribute('open', '');
-				}
-			} catch (e) {
-				this.dialog.setAttribute('open', '');
-			}
-
-			// Animate if GSAP is available
-			if (this.options.animateWithGsap && typeof gsap !== 'undefined') {
-				gsap.from(this.dialog, {
-					scale: 0.9,
-					opacity: 0,
-					duration: 0.3,
-					ease: "back.out(1.7)"
-				});
-			}
-
-			// Prevent body scroll
+		try {
+			// Use native showModal - it handles everything including backdrop
+			this.dialog.showModal();
+			
+			// Prevent body scroll (native dialog should handle this but just in case)
 			document.body.style.overflow = 'hidden';
-
+			
 			// Callback
 			this.options.onOpen();
-		});
+		} catch (error) {
+			console.error('Error opening dialog:', error);
+			// Fallback for browsers without dialog support
+			this.dialog.setAttribute('open', '');
+			this.dialog.style.display = 'block';
+			document.body.style.overflow = 'hidden';
+			this.options.onOpen();
+		}
 	}
 
 	close() {
 		if (!this.dialog) return;
 
-		console.log('Closing dialog...');
-
-		const cleanup = () => {
-			try {
-				if (typeof this.dialog.close === 'function') {
-					this.dialog.close();
-				} else {
-					this.dialog.removeAttribute('open');
-					this.dialog.style.display = 'none';
-				}
-			} catch (e) {
-				this.dialog.removeAttribute('open');
-				this.dialog.style.display = 'none';
-			}
-
+		try {
+			// Use native close method - it properly handles all states
+			this.dialog.close();
+			
 			// Restore body scroll
 			document.body.style.overflow = '';
-
-			// Reset animation state if using GSAP
-			if (this.options.animateWithGsap && typeof gsap !== 'undefined') {
-				gsap.set(this.dialog, { scale: 1, opacity: 1 });
-			}
-
+			
+			// Ensure display is not stuck as block
+			this.dialog.style.display = '';
+			
 			// Callback
 			this.options.onClose();
-		};
-
-		// Animate if GSAP is available
-		if (this.options.animateWithGsap && typeof gsap !== 'undefined') {
-			gsap.to(this.dialog, {
-				scale: 0.9,
-				opacity: 0,
-				duration: 0.2,
-				ease: "power2.in",
-				onComplete: cleanup
-			});
-		} else {
-			cleanup();
+		} catch (error) {
+			console.error('Error closing dialog:', error);
+			// Fallback for browsers without dialog support
+			this.dialog.removeAttribute('open');
+			this.dialog.style.display = 'none';
+			document.body.style.overflow = '';
+			this.options.onClose();
 		}
 	}
 

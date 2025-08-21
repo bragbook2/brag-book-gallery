@@ -20,6 +20,7 @@ namespace BRAGBookGallery\Includes\Core;
 use BRAGBookGallery\Includes\Resources\Assets;
 use BRAGBookGallery\Includes\Extend\Templates;
 use BRAGBookGallery\Includes\Extend\Shortcodes;
+use BRAGBookGallery\Includes\Extend\Rewrite_Rules_Handler;
 use BRAGBookGallery\Includes\Admin\Settings_Manager;
 use BRAGBookGallery\Includes\SEO\On_Page;
 use BRAGBookGallery\Includes\SEO\Sitemap;
@@ -203,6 +204,9 @@ final class Setup {
 				callback: array( $this, 'admin_init' )
 			);
 		}
+		
+		// Add LiteSpeed cache exclusions
+		$this->setup_litespeed_exclusions();
 	}
 
 	/**
@@ -586,6 +590,73 @@ final class Setup {
 	}
 
 	/**
+	 * Setup LiteSpeed cache exclusions for AJAX and API endpoints.
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	private function setup_litespeed_exclusions(): void {
+		// Only proceed if LiteSpeed Cache is active
+		if ( ! defined( 'LSCWP_V' ) ) {
+			return;
+		}
+		
+		// Add AJAX actions to LiteSpeed no-cache list
+		add_filter( 'litespeed_cache_ajax_actions_no_cache', function( $actions ) {
+			$bragbook_actions = [
+				'brag_book_load_filtered_gallery',
+				'brag_book_gallery_load_case',
+				'load_case_details',
+				'brag_book_load_case_details_html',
+				'brag_book_load_more_cases',
+				'brag_book_load_filtered_cases',
+				'brag_book_gallery_clear_cache',
+				'brag_book_flush_rewrite_rules',
+			];
+			
+			return array_merge( $actions, $bragbook_actions );
+		} );
+		
+		// Exclude gallery pages from caching
+		add_action( 'init', function() {
+			if ( ! is_admin() ) {
+				// Check if we're on a gallery page
+				$current_url = $_SERVER['REQUEST_URI'] ?? '';
+				$gallery_slugs = get_option( 'brag_book_gallery_page_slug', [] );
+				
+				foreach ( (array) $gallery_slugs as $slug ) {
+					if ( ! empty( $slug ) && strpos( $current_url, $slug ) !== false ) {
+						// Tell LiteSpeed not to cache this page
+						do_action( 'litespeed_control_set_nocache', 'bragbook gallery page' );
+						break;
+					}
+				}
+			}
+		}, 1 );
+		
+		// Add query string exclusions
+		add_filter( 'litespeed_cache_qs_blacklist', function( $qs ) {
+			$bragbook_qs = [
+				'filter_procedure',
+				'procedure_title', 
+				'case_id',
+				'filter_category',
+				'favorites_section',
+			];
+			
+			return array_merge( $qs, $bragbook_qs );
+		} );
+		
+		// Disable cache for REST API endpoints
+		add_filter( 'litespeed_cache_rest_api_cache', function( $cache, $request_route ) {
+			if ( strpos( $request_route, 'brag-book-gallery' ) !== false ) {
+				return false;
+			}
+			return $cache;
+		}, 10, 2 );
+	}
+
+	/**
 	 * Plugin activation handler
 	 *
 	 * Runs when the plugin is activated.
@@ -614,8 +685,8 @@ final class Setup {
 		$this->set_default_options();
 
 		// Register rewrite rules and flush immediately.
-		// Rewrite rules are handled by Shortcodes class initialization
-		Shortcodes::custom_rewrite_rules();
+		// Rewrite rules are handled by Rewrite_Rules_Handler class
+		Rewrite_Rules_Handler::custom_rewrite_rules();
 		flush_rewrite_rules();
 
 		// Fire custom activation hook.

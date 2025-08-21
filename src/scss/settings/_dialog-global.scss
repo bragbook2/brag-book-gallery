@@ -1,0 +1,243 @@
+@charset "UTF-8";
+
+// -----------------------------------------------------------------------------
+// admin / dialog (global styles)
+// Dialog elements are appended to body, so they need global CSS variables
+// -----------------------------------------------------------------------------
+
+// Define CSS variables globally for dialogs
+.brag-book-gallery-dialog {
+	// Color variables
+	--slate-50: #f8fafc;
+	--slate-100: #f1f5f9;
+	--slate-200: #e2e8f0;
+	--slate-300: #cbd5e1;
+	--slate-400: #94a3b8;
+	--slate-500: #64748b;
+	--slate-600: #475569;
+	--slate-700: #334155;
+	--slate-800: #1e293b;
+	--slate-900: #0f172a;
+	
+	--green-500: #22c55e;
+	--red-50: #fef2f2;
+	--red-200: #fecaca;
+	--red-500: #ef4444;
+	--red-600: #dc2626;
+	--red-700: #b91c1c;
+	--red-900: #7f1d1d;
+	--amber-500: #f59e0b;
+	--blue-500: #3b82f6;
+	
+	// Spacing
+	--space-px: 1px;
+	--space-1: 0.25rem;
+	--space-2: 0.5rem;
+	--space-3: 0.75rem;
+	--space-4: 1rem;
+	--space-6: 1.5rem;
+	--space-8: 2rem;
+	--space-96: 24rem;
+	
+	// Typography
+	--text-sm: 0.875rem;
+	--text-lg: 1.125rem;
+	--text-2xl: 1.5rem;
+	--font-medium: 500;
+	--font-semibold: 600;
+	--leading-relaxed: 1.625;
+	
+	// Border radius
+	--rounded-md: 0.375rem;
+	--rounded-xl: 0.75rem;
+	--rounded-full: 9999px;
+	
+	// Shadows
+	--shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+	
+	// Transitions
+	--transition-colors: color, background-color, border-color, text-decoration-color, fill, stroke 150ms cubic-bezier(0.4, 0, 0.2, 1);
+	
+	// Dialog specific styles
+	padding: 0;
+	border: none;
+	border-radius: var(--rounded-xl);
+	box-shadow: var(--shadow-2xl);
+	max-inline-size: var(--space-96);
+	inline-size: 90vw;
+	backdrop-filter: blur(4px);
+
+	&::backdrop {
+		background: rgb(0 0 0 / 0.5);
+	}
+
+	&-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: var(--space-6);
+		border-block-end: var(--space-px) solid var(--slate-200);
+	}
+
+	&-title {
+		margin: 0;
+		font-size: var(--text-lg);
+		font-weight: var(--font-semibold);
+		color: var(--slate-900);
+	}
+
+	&-close {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		inline-size: var(--space-8);
+		block-size: var(--space-8);
+		background: transparent;
+		border: none;
+		border-radius: var(--rounded-md);
+		cursor: pointer;
+		transition: var(--transition-colors);
+		color: var(--slate-500);
+
+		&:hover {
+			background: var(--slate-100);
+			color: var(--slate-700);
+		}
+	}
+
+	&-content {
+		background: white;
+		border-radius: var(--rounded-xl);
+		overflow: hidden;
+	}
+
+	&-body {
+		padding: var(--space-6);
+		display: flex;
+		gap: var(--space-3);
+	}
+
+	&-icon {
+		flex-shrink: 0;
+
+		.dashicons {
+			font-size: var(--text-2xl);
+			inline-size: var(--text-2xl);
+			block-size: var(--text-2xl);
+		}
+	}
+
+	&-message {
+		flex: 1;
+		color: var(--slate-600);
+		line-height: var(--leading-relaxed);
+	}
+
+	&-footer {
+		display: flex;
+		justify-content: flex-end;
+		gap: var(--space-3);
+		padding: var(--space-4) var(--space-6);
+		background: var(--slate-50);
+		border-block-start: var(--space-px) solid var(--slate-200);
+	}
+
+	// Button styles for dialogs
+	.button {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: var(--space-2);
+		padding-inline: var(--space-4);
+		padding-block: var(--space-2);
+		font-size: var(--text-sm);
+		font-weight: var(--font-medium);
+		border-radius: var(--rounded-md);
+		transition: var(--transition-colors);
+		border: var(--space-px) solid transparent;
+		line-height: 1.25rem;
+		cursor: pointer;
+	}
+
+	.button-primary {
+		background: var(--slate-900);
+		color: white;
+		border-color: var(--slate-900);
+
+		&:hover {
+			background: var(--slate-800);
+			border-color: var(--slate-800);
+		}
+	}
+
+	.button-secondary {
+		background: white;
+		color: var(--slate-700);
+		border-color: var(--slate-300);
+
+		&:hover {
+			background: var(--slate-50);
+			border-color: var(--slate-400);
+			color: var(--slate-900);
+		}
+	}
+
+	.button-danger {
+		background: var(--red-600);
+		color: white;
+		border-color: var(--red-600);
+
+		&:hover {
+			background: var(--red-700);
+			border-color: var(--red-700);
+			color: white;
+		}
+
+		&:disabled {
+			background: var(--red-300);
+			border-color: var(--red-300);
+			cursor: not-allowed;
+		}
+	}
+
+	@media (max-width: 640px) {
+		max-inline-size: calc(100vw - var(--space-8));
+	}
+}
+
+/* Dialog variants */
+.brag-book-gallery-dialog-success .brag-book-gallery-dialog-icon .dashicons {
+	color: var(--green-500);
+}
+
+.brag-book-gallery-dialog-error .brag-book-gallery-dialog-icon .dashicons {
+	color: var(--red-500);
+}
+
+.brag-book-gallery-dialog-warning .brag-book-gallery-dialog-icon .dashicons {
+	color: var(--amber-500);
+}
+
+.brag-book-gallery-dialog-info .brag-book-gallery-dialog-icon .dashicons {
+	color: var(--blue-500);
+}
+
+.brag-book-gallery-dialog-danger {
+	.brag-book-gallery-dialog-header {
+		background: var(--red-50);
+		border-block-end-color: var(--red-200);
+	}
+	
+	.brag-book-gallery-dialog-title {
+		color: var(--red-900);
+	}
+	
+	.brag-book-gallery-dialog-icon .dashicons {
+		color: var(--red-600);
+	}
+	
+	.brag-book-gallery-dialog-footer {
+		background: var(--red-50);
+		border-block-start-color: var(--red-200);
+	}
+}

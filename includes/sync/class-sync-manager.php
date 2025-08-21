@@ -768,7 +768,8 @@ class Sync_Manager {
 	 */
 	private function get_current_api_token(): string {
 		// Get from plugin settings
-		return get_option( 'brag_book_gallery_api_token', '' );
+		$token = get_option( 'brag_book_gallery_api_token', '' );
+		return is_string( $token ) ? $token : '';
 	}
 
 	/**

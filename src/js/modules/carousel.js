@@ -114,13 +114,13 @@ class Carousel {
 			}
 
 			// Ensure heart button exists in actions container
-			if (!actionsContainer.querySelector('.brag-book-gallery-heart-btn')) {
-				const existingHeart = slide.querySelector('.brag-book-gallery-heart-btn');
+			if (!actionsContainer.querySelector('.brag-book-gallery-favorite-button')) {
+				const existingHeart = slide.querySelector('.brag-book-gallery-favorite-button');
 				if (existingHeart) {
 					actionsContainer.appendChild(existingHeart);
 				} else {
 					const heartBtn = document.createElement('button');
-					heartBtn.className = 'brag-book-gallery-heart-btn';
+					heartBtn.className = 'brag-book-gallery-favorite-button';
 					heartBtn.dataset.favorited = 'false';
 					heartBtn.dataset.itemId = slide.dataset.slide;
 					heartBtn.setAttribute('aria-label', 'Add to favorites');
@@ -134,11 +134,11 @@ class Carousel {
 			}
 
 			// Add share button if not present in actions container and sharing is enabled
-			if (!actionsContainer.querySelector('.brag-book-gallery-share-btn') &&
+			if (!actionsContainer.querySelector('.brag-book-gallery-share-button') &&
 			    typeof bragBookGalleryConfig !== 'undefined' &&
 			    bragBookGalleryConfig.enableSharing === 'yes') {
 				const shareBtn = document.createElement('button');
-				shareBtn.className = 'brag-book-gallery-share-btn';
+				shareBtn.className = 'brag-book-gallery-share-button';
 				shareBtn.dataset.itemId = slide.dataset.slide;
 				shareBtn.setAttribute('aria-label', 'Share this image');
 				shareBtn.innerHTML = `

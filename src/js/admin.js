@@ -13,8 +13,13 @@
 if (typeof window.BRAGbookAdmin === 'undefined') {
 	window.BRAGbookAdmin = class {
 		constructor() {
-			this.ajaxUrl = typeof brag_book_gallery_ajax !== 'undefined' ? brag_book_gallery_ajax.ajaxurl : '/wp-admin/admin-ajax.php';
-			this.nonce = typeof brag_book_gallery_ajax !== 'undefined' ? brag_book_gallery_ajax.nonce : '';
+			// Check for both possible object names since different pages may use different localizations
+			this.ajaxUrl = (typeof brag_book_gallery_admin !== 'undefined' && brag_book_gallery_admin.ajaxurl) 
+				? brag_book_gallery_admin.ajaxurl 
+				: (typeof brag_book_gallery_ajax !== 'undefined' ? brag_book_gallery_ajax.ajaxurl : '/wp-admin/admin-ajax.php');
+			this.nonce = (typeof brag_book_gallery_admin !== 'undefined' && brag_book_gallery_admin.nonce) 
+				? brag_book_gallery_admin.nonce 
+				: (typeof brag_book_gallery_ajax !== 'undefined' ? brag_book_gallery_ajax.nonce : '');
 			this.dialog = null;
 			this.init();
 		}
@@ -295,6 +300,7 @@ if (typeof window.BRAGbookAdmin === 'undefined') {
 			this.initApiLog();
 			this.initSystemInfo();
 			this.initDebugSettings();
+			this.initFactoryReset();
 		}
 
 		/**
@@ -782,7 +788,213 @@ if (typeof window.BRAGbookAdmin === 'undefined') {
 				throw new Error(`HTTP error! status: ${response.status}`);
 			}
 
-			return await response.json();
+			// Try to parse JSON response
+			const contentType = response.headers.get('content-type');
+			if (contentType && contentType.includes('application/json')) {
+				return await response.json();
+			} else {
+				// If not JSON, try to get text and parse it
+				const text = await response.text();
+				try {
+					return JSON.parse(text);
+				} catch (e) {
+					// If text contains HTML error, extract meaningful message
+					if (text.includes('<div') || text.includes('<!DOCTYPE')) {
+						console.error('Server returned HTML instead of JSON:', text);
+						throw new Error('Server returned an HTML error page. Please check PHP error logs.');
+					}
+					console.error('Invalid JSON response:', text);
+					throw new Error('Invalid server response format');
+				}
+			}
+		}
+
+		/**
+		 * Initialize factory reset functionality
+		 */
+		initFactoryReset() {
+			const resetButton = document.getElementById('brag-book-gallery-factory-reset');
+			
+			if (!resetButton) return;
+
+			resetButton.addEventListener('click', async (e) => {
+				e.preventDefault();
+
+				// Create confirmation dialog
+				const confirmDialog = document.createElement('dialog');
+				confirmDialog.className = 'brag-book-gallery-dialog brag-book-gallery-factory-reset-dialog';
+				confirmDialog.innerHTML = `
+					<div class="brag-book-gallery-dialog-content brag-book-gallery-dialog-danger">
+						<div class="brag-book-gallery-dialog-header">
+							<h3 class="brag-book-gallery-dialog-title">⚠️ Factory Reset Warning</h3>
+							<button type="button" class="brag-book-gallery-dialog-close" aria-label="Close">
+								<span class="dashicons dashicons-no-alt"></span>
+							</button>
+						</div>
+						<div class="brag-book-gallery-dialog-body">
+							<div class="brag-book-gallery-dialog-icon">
+								<span class="dashicons dashicons-warning"></span>
+							</div>
+							<div class="brag-book-gallery-dialog-message">
+								<p><strong>This will PERMANENTLY delete:</strong></p>
+								<ul style="text-align: left; margin: 10px 0;">
+									<li>All plugin settings and configurations</li>
+									<li>All cached data and transients</li>
+									<li>All API tokens and credentials</li>
+									<li>Custom database tables</li>
+									<li>All log files</li>
+								</ul>
+								<p><strong style="color: #dc3232;">This action CANNOT be undone!</strong></p>
+								<p>Are you absolutely sure you want to continue?</p>
+							</div>
+						</div>
+						<div class="brag-book-gallery-dialog-footer">
+							<button type="button" class="button button-secondary brag-book-gallery-dialog-cancel">Cancel</button>
+							<button type="button" class="button button-danger brag-book-gallery-dialog-confirm">Continue to Final Warning</button>
+						</div>
+					</div>
+				`;
+
+				document.body.appendChild(confirmDialog);
+				confirmDialog.showModal();
+
+				// Handle first confirmation
+				const firstConfirmBtn = confirmDialog.querySelector('.brag-book-gallery-dialog-confirm');
+				const firstCancelBtn = confirmDialog.querySelector('.brag-book-gallery-dialog-cancel');
+				const firstCloseBtn = confirmDialog.querySelector('.brag-book-gallery-dialog-close');
+
+				const closeFirstDialog = () => {
+					confirmDialog.close();
+					confirmDialog.remove();
+				};
+
+				firstCancelBtn.addEventListener('click', closeFirstDialog);
+				firstCloseBtn.addEventListener('click', closeFirstDialog);
+				
+				// Click outside to close
+				confirmDialog.addEventListener('click', (e) => {
+					if (e.target === confirmDialog) {
+						closeFirstDialog();
+					}
+				});
+
+				firstConfirmBtn.addEventListener('click', () => {
+					closeFirstDialog();
+
+					// Show final confirmation dialog
+					const finalDialog = document.createElement('dialog');
+					finalDialog.className = 'brag-book-gallery-dialog brag-book-gallery-factory-reset-dialog';
+					finalDialog.innerHTML = `
+						<div class="brag-book-gallery-dialog-content brag-book-gallery-dialog-danger">
+							<div class="brag-book-gallery-dialog-header">
+								<h3 class="brag-book-gallery-dialog-title">🛑 FINAL WARNING</h3>
+								<button type="button" class="brag-book-gallery-dialog-close" aria-label="Close">
+									<span class="dashicons dashicons-no-alt"></span>
+								</button>
+							</div>
+							<div class="brag-book-gallery-dialog-body">
+								<div class="brag-book-gallery-dialog-icon">
+									<span class="dashicons dashicons-dismiss"></span>
+								</div>
+								<div class="brag-book-gallery-dialog-message">
+									<p>You are about to <strong>completely reset</strong> the BRAG Book Gallery plugin.</p>
+									<p>Please confirm one more time that you want to proceed with the factory reset.</p>
+								</div>
+							</div>
+							<div class="brag-book-gallery-dialog-footer">
+								<button type="button" class="button button-secondary brag-book-gallery-dialog-cancel">Cancel</button>
+								<button type="button" class="button button-danger brag-book-gallery-dialog-reset">Yes, Factory Reset</button>
+							</div>
+						</div>
+					`;
+
+					document.body.appendChild(finalDialog);
+					finalDialog.showModal();
+
+					const finalResetBtn = finalDialog.querySelector('.brag-book-gallery-dialog-reset');
+					const finalCancelBtn = finalDialog.querySelector('.brag-book-gallery-dialog-cancel');
+					const finalCloseBtn = finalDialog.querySelector('.brag-book-gallery-dialog-close');
+
+					const closeFinalDialog = () => {
+						finalDialog.close();
+						finalDialog.remove();
+					};
+
+					finalCancelBtn.addEventListener('click', closeFinalDialog);
+					finalCloseBtn.addEventListener('click', closeFinalDialog);
+
+					// Click outside to close
+					finalDialog.addEventListener('click', (e) => {
+						if (e.target === finalDialog) {
+							closeFinalDialog();
+						}
+					});
+
+					// Handle actual reset
+					finalResetBtn.addEventListener('click', async () => {
+						closeFinalDialog();
+
+						// Disable button and show loading state
+						resetButton.disabled = true;
+						const originalText = resetButton.textContent;
+						resetButton.textContent = 'Resetting... Please wait...';
+
+						try {
+							// Get nonce from button data attribute if main nonce isn't available
+							const buttonNonce = resetButton.getAttribute('data-nonce');
+							const nonceToUse = this.nonce || buttonNonce || '';
+							
+							if (!nonceToUse) {
+								throw new Error('Security nonce not found. Please refresh the page and try again.');
+							}
+							
+							const response = await this.ajaxPost({
+								action: 'brag_book_gallery_factory_reset',
+								nonce: nonceToUse,
+								confirm: true
+							});
+
+							// Check if response is valid JSON
+							if (!response || typeof response !== 'object') {
+								throw new Error('Invalid server response. Please check error logs.');
+							}
+
+							if (response.success) {
+								// Show success dialog
+								this.showDialog(
+									response.data.message || 'Plugin has been successfully reset to factory defaults.',
+									'success',
+									'Factory Reset Complete'
+								);
+								
+								// Wait a moment then redirect
+								setTimeout(() => {
+									if (response.data.redirect) {
+										window.location.href = response.data.redirect;
+									} else {
+										window.location.reload();
+									}
+								}, 2000);
+							} else {
+								throw new Error(response.data?.message || response.data || 'Factory reset failed');
+							}
+						} catch (error) {
+							console.error('Factory reset error:', error);
+							
+							// Show error dialog
+							this.showDialog(
+								`Failed to reset plugin: ${error.message}`,
+								'error',
+								'Factory Reset Failed'
+							);
+							
+							// Re-enable button
+							resetButton.disabled = false;
+							resetButton.textContent = originalText;
+						}
+					});
+				});
+			});
 		}
 	}
 

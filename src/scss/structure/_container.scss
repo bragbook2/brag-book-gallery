@@ -7,4 +7,10 @@
 .brag-book-gallery-container {
 	display: flex;
 	min-height: 100vh;
+	position: relative;
+	
+	// Mobile layout
+	@media (max-width: 1023px) {
+		flex-direction: column;
+	}
 }

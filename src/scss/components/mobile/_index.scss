@@ -5,46 +5,63 @@
 // -----------------------------------------------------------------------------
 
 .brag-book-gallery-mobile-header {
-	display: flex;
+	display: none;
 	background: var(--wp--custom--brag-book-gallery--color--white);
 	padding: calc( 3 * var(--wp--custom--brag-book-gallery--spacer) ) calc( 4 * var(--wp--custom--brag-book-gallery--spacer) );
-	z-index: 999;
 	align-items: center;
 	gap: calc( 3 * var(--wp--custom--brag-book-gallery--spacer) );
 	box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,.05);
 
-	@media (min-width: 1024px) {
-		display: none;
+	@media (max-width: 1023px) {
+		display: flex;
+	}
+
+	@media (max-width: 480px) {
+		padding: calc( 2 * var(--wp--custom--brag-book-gallery--spacer) );
+		gap: calc( 2 * var(--wp--custom--brag-book-gallery--spacer) );
 	}
 }
 
 .brag-book-gallery-mobile-menu-toggle {
+	display: flex;
 	width: calc( 12 * var(--wp--custom--brag-book-gallery--spacer));
 	height: calc( 12 * var(--wp--custom--brag-book-gallery--spacer));
-	color: var(--wp--custom--brag-book-gallery--color--lighter-grey);
-	background:var(--wp--custom--brag-book-gallery--color--black);
-	border: 1px solid var(--wp--custom--brag-book-gallery--color--lighter-grey);
+	color: var(--wp--custom--brag-book-gallery--color--white);
+	background: var(--wp--custom--brag-book-gallery--color--black);
+	border: 1px solid var(--wp--custom--brag-book-gallery--color--black);
 	border-radius: var(--wp--custom--brag-book-gallery--rounded);
 	align-items: center;
 	justify-content: center;
 	cursor: pointer;
 	transition: var(--wp--custom--brag-book-gallery--transition);
 	flex-shrink: 0;
+	position: relative;
+	z-index: 1001;
 
 	svg {
-		width: calc( 4 * var(--wp--custom--brag-book-gallery--spacer) );
-		height: calc( 4 * var(--wp--custom--brag-book-gallery--spacer) );
-		stroke: var(--wp--custom--brag-book-gallery--color--grey);
+		width: calc( 6 * var(--wp--custom--brag-book-gallery--spacer) );
+		height: calc( 6 * var(--wp--custom--brag-book-gallery--spacer) );
+		fill: var(--wp--custom--brag-book-gallery--color--white);
+		stroke: none;
 		transition: var(--wp--custom--brag-book-gallery--transition);
 	}
 
 	&:hover {
-		border-color: var(--wp--custom--brag-book-gallery--color--black);
+		background: var(--wp--custom--brag-book-gallery--color--grey);
 		transform: scale(1.05)
 	}
 
-	&[data-menu-open=true] svg {
-		stroke: var(--wp--custom--brag-book-gallery--color--black);
+	&:focus {
+		outline: 2px solid var(--wp--custom--brag-book-gallery--color--black);
+		outline-offset: 2px;
+	}
+
+	&[data-menu-open=true] {
+		background: var(--wp--custom--brag-book-gallery--color--grey);
+
+		svg {
+			fill: var(--wp--custom--brag-book-gallery--color--white);
+		}
 	}
 }
 

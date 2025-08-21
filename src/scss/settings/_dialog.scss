@@ -4,6 +4,11 @@
 // admin / dialog
 // -----------------------------------------------------------------------------
 
+// Dialog styles need to be in global scope since dialog is appended to body
+:root {
+	// Keep empty, just for structure
+}
+
 .brag-book-gallery-dialog {
 	padding: 0;
 	border: none;
@@ -109,4 +114,24 @@
 
 .brag-book-gallery-dialog-info .brag-book-gallery-dialog-icon .dashicons {
 	color: var(--blue-500);
+}
+
+.brag-book-gallery-dialog-danger {
+	.brag-book-gallery-dialog-header {
+		background: var(--red-50);
+		border-block-end-color: var(--red-200);
+	}
+	
+	.brag-book-gallery-dialog-title {
+		color: var(--red-900);
+	}
+	
+	.brag-book-gallery-dialog-icon .dashicons {
+		color: var(--red-600);
+	}
+	
+	.brag-book-gallery-dialog-footer {
+		background: var(--red-50);
+		border-block-start-color: var(--red-200);
+	}
 }

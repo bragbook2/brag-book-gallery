@@ -113,8 +113,19 @@ class BRAGbookGalleryApp {
 		this.components.favoritesManager = new FavoritesManager({
 			onUpdate: (favorites) => {
 				console.log('Favorites updated:', favorites.size);
+				// Update the favorites count in the sidebar link
+				this.updateFavoritesCount(favorites.size);
 			}
 		});
+		
+		// Initialize the count on page load
+		if (this.components.favoritesManager) {
+			const initialCount = this.components.favoritesManager.getFavorites().size;
+			this.updateFavoritesCount(initialCount);
+		}
+		
+		// Add click handler for My Favorites button
+		this.initializeFavoritesButton();
 	}
 
 	initializeSearch() {
@@ -177,24 +188,22 @@ class BRAGbookGalleryApp {
 	}
 
 	initializeCaseLinks() {
-		// Temporarily disable JavaScript case link interception to use native WordPress page loading
-		// This allows case detail pages to load via WordPress rewrite rules instead of AJAX
-		// TODO: Re-enable dynamic loading once AJAX case details are working properly
-		
-		// Add click handlers to case links to load content dynamically
+		// Make entire case card clickable while preserving button functionality
 		document.addEventListener('click', (e) => {
-			const caseLink = e.target.closest('.brag-book-gallery-case-link');
-			if (caseLink) {
-				// Temporarily comment out preventDefault to allow normal page navigation
-				// e.preventDefault();
-				// const caseId = caseLink.dataset.caseId;
-				// const url = caseLink.href;
-
-				// if (caseId) {
-				// 	this.loadCaseDetails(caseId, url);
-				// }
+			// Check if click is on a case card but not on interactive elements
+			const caseCard = e.target.closest('.brag-book-gallery-case-card');
+			if (caseCard && !e.target.closest('button') && !e.target.closest('details')) {
+				// Find the case link within the card
+				const caseLink = caseCard.querySelector('.brag-book-gallery-case-link');
+				if (caseLink && caseLink.href) {
+					// Navigate to the case page
+					window.location.href = caseLink.href;
+				}
 			}
 		});
+		
+		// Initialize case detail view thumbnails
+		this.initializeCaseDetailThumbnails();
 
 		// Handle browser back/forward navigation
 		window.addEventListener('popstate', (e) => {
@@ -503,6 +512,80 @@ class BRAGbookGalleryApp {
 				messageContent.textContent = '';
 			}
 		}
+	}
+
+	initializeCaseDetailThumbnails() {
+		// Use event delegation for better reliability
+		document.addEventListener('click', (e) => {
+			const thumbnail = e.target.closest('.brag-book-gallery-thumbnail-item');
+			if (!thumbnail) return;
+			
+			const mainContainer = document.querySelector('.brag-book-gallery-main-image-container');
+			if (!mainContainer) return;
+			
+			const thumbnails = document.querySelectorAll('.brag-book-gallery-thumbnail-item');
+			if (!thumbnails.length) return;
+			
+			// Remove active class from all thumbnails
+			thumbnails.forEach(t => t.classList.remove('active'));
+			// Add active class to clicked thumbnail
+			thumbnail.classList.add('active');
+			
+			// Get image URL from thumbnail data attributes
+			const processedUrl = thumbnail.dataset.processedUrl;
+			const imageIndex = thumbnail.dataset.imageIndex;
+			
+			// Update main container data attribute
+			mainContainer.dataset.imageIndex = imageIndex;
+			
+			// Build new HTML for main image
+			let newContent = '';
+			
+			if (processedUrl) {
+				const existingButton = mainContainer.querySelector('.brag-book-gallery-favorite-button');
+				const caseId = existingButton ? existingButton.dataset.itemId.replace('_main', '') : '';
+				
+				newContent = `
+					<div class="brag-book-gallery-main-single">
+						<img src="${processedUrl}" alt="Case Image" loading="eager">
+						<div class="brag-book-gallery-item-actions">
+							<button class="brag-book-gallery-favorite-button" data-favorited="false" data-item-id="${caseId}_main" aria-label="Add to favorites">
+								<svg fill="rgba(255, 255, 255, 0.5)" stroke="white" stroke-width="2" viewBox="0 0 24 24">
+									<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+								</svg>
+							</button>
+				`;
+				
+				// Check if sharing is enabled
+				if (typeof bragBookGalleryConfig !== 'undefined' && bragBookGalleryConfig.enableSharing === 'yes') {
+					newContent += `
+							<button class="brag-book-gallery-share-button" data-item-id="${caseId}_main" aria-label="Share this image">
+								<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor">
+									<path d="M672.22-100q-44.91 0-76.26-31.41-31.34-31.41-31.34-76.28 0-6 4.15-29.16L284.31-404.31q-14.46 15-34.36 23.5t-42.64 8.5q-44.71 0-76.01-31.54Q100-435.39 100-480q0-44.61 31.3-76.15 31.3-31.54 76.01-31.54 22.74 0 42.64 8.5 19.9 8.5 34.36 23.5l284.46-167.08q-2.38-7.38-3.27-14.46-.88-7.08-.88-15.08 0-44.87 31.43-76.28Q627.49-860 672.4-860t76.25 31.44Q780-797.13 780-752.22q0 44.91-31.41 76.26-31.41 31.34-76.28 31.34-22.85 0-42.5-8.69Q610.15-662 595.69-677L311.23-509.54q2.38 7.39 3.27 14.46.88 7.08.88 15.08t-.88 15.08q-.89 7.07-3.27 14.46L595.69-283q14.46-15 34.12-23.69 19.65-8.69 42.5-8.69 44.87 0 76.28 31.43Q780-252.51 780-207.6t-31.44 76.25Q717.13-100 672.22-100Zm.09-60q20.27 0 33.98-13.71Q720-187.42 720-207.69q0-20.27-13.71-33.98-13.71-13.72-33.98-13.72-20.27 0-33.98 13.72-13.72 13.71-13.72 33.98 0 20.27 13.72 33.98Q652.04-160 672.31-160Zm-465-272.31q20.43 0 34.25-13.71 13.83-13.71 13.83-33.98 0-20.27-13.83-33.98-13.82-13.71-34.25-13.71-20.11 0-33.71 13.71Q160-500.27 160-480q0 20.27 13.6 33.98 13.6 13.71 33.71 13.71Zm465-272.3q20.27 0 33.98-13.72Q720-732.04 720-752.31q0-20.27-13.71-33.98Q692.58-800 672.31-800q-20.27 0-33.98 13.71-13.72 13.71-13.72 33.98 0 20.27 13.72 33.98 13.71 13.72 33.98 13.72Zm0 496.92ZM207.69-480Zm464.62-272.31Z"/>
+								</svg>
+							</button>
+					`;
+				}
+				
+				newContent += `
+						</div>
+					</div>
+				`;
+			}
+			
+			// Update main container content
+			mainContainer.innerHTML = newContent;
+			
+			// Re-initialize any event handlers for the new buttons
+			if (window.bragBookGalleryApp && window.bragBookGalleryApp.components) {
+				if (window.bragBookGalleryApp.components.favoritesManager) {
+					window.bragBookGalleryApp.components.favoritesManager.initializeFavoriteButtons();
+				}
+				if (window.bragBookGalleryApp.components.shareManager) {
+					window.bragBookGalleryApp.components.shareManager.initializeShareButtons();
+				}
+			}
+		});
 	}
 
 	// Helper method to show notifications (fallback)
@@ -1025,6 +1108,275 @@ class BRAGbookGalleryApp {
 			})
 			.catch(error => {
 				console.error('Error reloading gallery:', error);
+			});
+		}
+	}
+
+	updateFavoritesCount(count) {
+		// Update all favorites count elements
+		const countElements = document.querySelectorAll('[data-favorites-count]');
+		countElements.forEach(element => {
+			element.textContent = `(${count})`;
+		});
+	}
+
+	initializeFavoritesButton() {
+		const favoritesBtn = document.querySelector('[data-action="show-favorites"]');
+		if (!favoritesBtn) return;
+
+		favoritesBtn.addEventListener('click', (e) => {
+			e.preventDefault();
+			this.toggleFavoritesView();
+		});
+	}
+
+	toggleFavoritesView() {
+		const favoritesBtn = document.querySelector('[data-action="show-favorites"]');
+		const isActive = favoritesBtn?.classList.contains('active');
+		
+		if (isActive) {
+			// Return to normal gallery view
+			this.showAllCases();
+			favoritesBtn.classList.remove('active');
+		} else {
+			// Show only favorited cases
+			this.showFavoritesOnly();
+			favoritesBtn?.classList.add('active');
+		}
+	}
+
+	showFavoritesOnly() {
+		const favorites = this.components.favoritesManager.getFavorites();
+		const galleryContent = document.getElementById('gallery-content');
+		
+		if (!galleryContent) return;
+
+		// If no favorites, show empty state
+		if (favorites.size === 0) {
+			this.showFavoritesEmptyState();
+			return;
+		}
+
+		// Get favorite case IDs (extract numeric ID from "case-12345" format)
+		const caseIds = Array.from(favorites).map(id => {
+			const match = id.match(/case-(\d+)/);
+			return match ? match[1] : null;
+		}).filter(Boolean);
+
+		// Filter cases to show only favorites
+		const allCases = window.bragBookGalleryData?.allCasesData?.data || [];
+		const favoritedCases = allCases.filter(caseItem => {
+			return caseIds.includes(String(caseItem.id));
+		});
+
+		// Clear current content
+		const sectionsContainer = galleryContent.querySelector('#gallery-sections');
+		const casesGrid = galleryContent.querySelector('.brag-book-gallery-cases-grid');
+		
+		// Hide carousel sections if visible
+		if (sectionsContainer) {
+			sectionsContainer.style.display = 'none';
+		}
+
+		// Show favorites in cases grid
+		if (casesGrid) {
+			// Clear existing cases
+			casesGrid.innerHTML = '';
+			
+			// Add header
+			const header = document.createElement('div');
+			header.className = 'brag-book-gallery-favorites-header';
+			header.innerHTML = `
+				<h2>My Favorite Cases</h2>
+				<p>You have ${favoritedCases.length} favorited cases</p>
+			`;
+			casesGrid.parentElement.insertBefore(header, casesGrid);
+
+			// Render favorited cases
+			favoritedCases.forEach(caseData => {
+				const caseCard = this.createCaseCard(caseData);
+				casesGrid.insertAdjacentHTML('beforeend', caseCard);
+			});
+
+			// Reinitialize components for new cards
+			this.reinitializeGalleryComponents();
+		} else {
+			// Create new grid if doesn't exist
+			this.createFavoritesGrid(favoritedCases);
+		}
+
+		// Clear any active filters
+		if (this.components.filterSystem) {
+			this.components.filterSystem.clearAllFilters();
+		}
+	}
+
+	showAllCases() {
+		// Reload the gallery to show all cases
+		const galleryContent = document.getElementById('gallery-content');
+		const sectionsContainer = galleryContent?.querySelector('#gallery-sections');
+		
+		// Show carousel sections again
+		if (sectionsContainer) {
+			sectionsContainer.style.display = '';
+		}
+
+		// Remove favorites header if exists
+		const favoritesHeader = galleryContent?.querySelector('.brag-book-gallery-favorites-header');
+		if (favoritesHeader) {
+			favoritesHeader.remove();
+		}
+
+		// Trigger a gallery reload
+		if (this.components.filterSystem) {
+			this.components.filterSystem.clearAllFilters();
+			this.components.filterSystem.loadInitialCases();
+		}
+	}
+
+	showFavoritesEmptyState() {
+		const galleryContent = document.getElementById('gallery-content');
+		if (!galleryContent) return;
+
+		// Hide carousel sections
+		const sectionsContainer = galleryContent.querySelector('#gallery-sections');
+		if (sectionsContainer) {
+			sectionsContainer.style.display = 'none';
+		}
+
+		// Clear cases grid
+		const casesGrid = galleryContent.querySelector('.brag-book-gallery-cases-grid');
+		if (casesGrid) {
+			casesGrid.innerHTML = '';
+			
+			// Add empty state
+			const emptyState = document.createElement('div');
+			emptyState.className = 'brag-book-gallery-favorites-empty-state';
+			emptyState.innerHTML = `
+				<svg class="empty-icon" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+				</svg>
+				<h2>No favorites yet</h2>
+				<p>Start browsing the gallery and click the heart icon on cases you love to save them here.</p>
+				<button class="brag-book-gallery-button" onclick="document.querySelector('[data-action=\\'show-favorites\\']').click()">
+					Browse Gallery
+				</button>
+			`;
+			casesGrid.parentElement.insertBefore(emptyState, casesGrid);
+		}
+	}
+
+	createFavoritesGrid(favoritedCases) {
+		const galleryContent = document.getElementById('gallery-content');
+		if (!galleryContent) return;
+
+		// Create container
+		const container = document.createElement('div');
+		container.className = 'brag-book-gallery-favorites-view';
+		container.innerHTML = `
+			<div class="brag-book-gallery-favorites-header">
+				<h2>My Favorite Cases</h2>
+				<p>You have ${favoritedCases.length} favorited cases</p>
+			</div>
+			<div class="brag-book-gallery-cases-grid"></div>
+		`;
+
+		// Clear content and add favorites view
+		galleryContent.innerHTML = '';
+		galleryContent.appendChild(container);
+
+		const grid = container.querySelector('.brag-book-gallery-cases-grid');
+
+		// Render cases
+		favoritedCases.forEach(caseData => {
+			const caseCard = this.createCaseCard(caseData);
+			grid.insertAdjacentHTML('beforeend', caseCard);
+		});
+
+		// Reinitialize components
+		this.reinitializeGalleryComponents();
+	}
+
+	createCaseCard(caseData) {
+		const caseId = caseData.id;
+		const gallerySlug = window.bragBookGalleryData?.gallerySlug || 'before-after';
+		
+		// Get the current procedure context from the URL or use case technique as fallback
+		let procedureSlug = 'case';
+		let procedureDisplayName = 'Case';
+		
+		// Try to get procedure from current URL pattern
+		const currentPath = window.location.pathname;
+		const galleryPattern = new RegExp(`/${gallerySlug}/([^/]+)`);
+		const match = currentPath.match(galleryPattern);
+		
+		if (match && match[1]) {
+			// Use the procedure from the URL (e.g., 'facelift' from /before-after/facelift/)
+			procedureSlug = match[1];
+			// Convert slug to display name (e.g., 'facelift' -> 'Facelift')
+			procedureDisplayName = procedureSlug
+				.split('-')
+				.map(word => word.charAt(0).toUpperCase() + word.slice(1))
+				.join(' ');
+		} else if (caseData.technique) {
+			// Fallback to case technique if no URL context
+			procedureSlug = caseData.technique.toLowerCase().replace(/\s+/g, '-');
+			procedureDisplayName = caseData.technique;
+		}
+		
+		const caseUrl = '/' + gallerySlug + '/' + procedureSlug + '/' + caseId;
+		
+		// Get the first processed image
+		let imageUrl = '';
+		if (caseData.photoSets && caseData.photoSets.length > 0) {
+			imageUrl = caseData.photoSets[0].postProcessedImageLocation || '';
+		}
+
+		const isFavorited = this.components.favoritesManager.getFavorites().has(`case-${caseId}`);
+
+		return `
+			<div class="brag-book-gallery-case-card" data-case-id="${caseId}">
+				<div class="brag-book-gallery-image-container brag-book-gallery-single-image">
+					<div class="brag-book-gallery-skeleton-loader" style="display:none;"></div>
+					<div class="brag-book-gallery-item-actions">
+						<button class="brag-book-gallery-favorite-button" data-favorited="${isFavorited}" data-item-id="case-${caseId}" aria-label="${isFavorited ? 'Remove from' : 'Add to'} favorites">
+							<svg fill="${isFavorited ? 'red' : 'rgba(255, 255, 255, 0.5)'}" stroke="white" stroke-width="2" viewBox="0 0 24 24">
+								<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+							</svg>
+						</button>
+					</div>
+					<a href="${caseUrl}" class="brag-book-gallery-case-link" data-case-id="${caseId}">
+						<picture class="brag-book-gallery-picture">
+							<img src="${imageUrl}" alt="Case ${caseId}" loading="lazy" data-image-type="single">
+						</picture>
+					</a>
+				</div>
+				<div class="brag-book-gallery-case-summary">
+					<div class="brag-book-gallery-case-summary-left">
+						<span class="brag-book-gallery-procedure-name">${procedureDisplayName}</span>
+						<span class="brag-book-gallery-case-number">Case #${caseId}</span>
+					</div>
+					<div class="brag-book-gallery-case-summary-right">
+						${caseData.age ? `<span class="brag-book-gallery-age">${caseData.age} yrs</span>` : ''}
+						${caseData.gender ? `<span class="brag-book-gallery-gender">${caseData.gender}</span>` : ''}
+					</div>
+				</div>
+			</div>
+		`;
+	}
+
+	reinitializeGalleryComponents() {
+		// Reinitialize case links
+		this.initializeCaseLinks();
+		
+		// Reinitialize favorites buttons
+		if (this.components.favoritesManager) {
+			// Re-setup event listeners for new favorite buttons
+			document.querySelectorAll('[data-favorited]').forEach(button => {
+				// The FavoritesManager already has event delegation, so we just need to ensure proper state
+				const itemId = button.dataset.itemId;
+				const isFavorited = this.components.favoritesManager.getFavorites().has(itemId);
+				button.dataset.favorited = isFavorited.toString();
 			});
 		}
 	}
