@@ -1,11 +1,10 @@
 /**
  * Dialog Component
- * Reusable dialog/modal component with backdrop support
+ * Reusable dialog/modal component using native dialog element
  */
 class Dialog {
 	constructor(dialogId, options = {}) {
 		this.dialog = document.getElementById(dialogId);
-		this.backdrop = document.getElementById(options.backdropId || 'dialogBackdrop');
 		// Look for any close button with data-action containing "close"
 		this.closeButtons = this.dialog?.querySelectorAll('[data-action*="close"]');
 
@@ -54,23 +53,29 @@ class Dialog {
 			button.addEventListener('click', () => this.close());
 		});
 
-		// Backdrop click
+		// Backdrop click - clicking outside the dialog content
 		if (this.options.closeOnBackdrop) {
 			this.dialog?.addEventListener('click', (e) => {
-				if (e.target === this.dialog) {
+				// Get the dialog dimensions
+				const rect = this.dialog.getBoundingClientRect();
+				// Check if click was outside the dialog content (on the backdrop)
+				if (
+					e.clientX < rect.left ||
+					e.clientX > rect.right ||
+					e.clientY < rect.top ||
+					e.clientY > rect.bottom
+				) {
 					this.close();
 				}
 			});
-
-			this.backdrop?.addEventListener('click', () => this.close());
 		}
 
-		// Escape key
+		// Escape key is handled natively by dialog element
+		// but we can add custom handling if needed
 		if (this.options.closeOnEscape) {
-			document.addEventListener('keydown', (e) => {
-				if (e.key === 'Escape' && this.isOpen()) {
-					this.close();
-				}
+			this.dialog?.addEventListener('cancel', (e) => {
+				e.preventDefault();
+				this.close();
 			});
 		}
 	}
@@ -80,39 +85,38 @@ class Dialog {
 
 		console.log('Opening dialog...');
 
-		// Show backdrop
-		if (this.backdrop) {
-			this.backdrop.classList.add('active');
-		}
-
-		// Open dialog
-		try {
-			if (typeof this.dialog.showModal === 'function') {
-				this.dialog.showModal();
-			} else {
+		// Ensure dialog is visible before showing modal
+		this.dialog.style.display = 'block';
+		
+		// Small delay to ensure styles are applied
+		requestAnimationFrame(() => {
+			// Open dialog using native showModal which automatically handles backdrop
+			try {
+				if (typeof this.dialog.showModal === 'function') {
+					this.dialog.showModal();
+				} else {
+					this.dialog.setAttribute('open', '');
+				}
+			} catch (e) {
 				this.dialog.setAttribute('open', '');
-				this.dialog.style.display = 'block';
 			}
-		} catch (e) {
-			this.dialog.setAttribute('open', '');
-			this.dialog.style.display = 'block';
-		}
 
-		// Animate if GSAP is available
-		if (this.options.animateWithGsap && typeof gsap !== 'undefined') {
-			gsap.from(this.dialog, {
-				scale: 0.9,
-				opacity: 0,
-				duration: 0.3,
-				ease: "back.out(1.7)"
-			});
-		}
+			// Animate if GSAP is available
+			if (this.options.animateWithGsap && typeof gsap !== 'undefined') {
+				gsap.from(this.dialog, {
+					scale: 0.9,
+					opacity: 0,
+					duration: 0.3,
+					ease: "back.out(1.7)"
+				});
+			}
 
-		// Prevent body scroll
-		document.body.style.overflow = 'hidden';
+			// Prevent body scroll
+			document.body.style.overflow = 'hidden';
 
-		// Callback
-		this.options.onOpen();
+			// Callback
+			this.options.onOpen();
+		});
 	}
 
 	close() {
@@ -131,11 +135,6 @@ class Dialog {
 			} catch (e) {
 				this.dialog.removeAttribute('open');
 				this.dialog.style.display = 'none';
-			}
-
-			// Hide backdrop
-			if (this.backdrop) {
-				this.backdrop.classList.remove('active');
 			}
 
 			// Restore body scroll
