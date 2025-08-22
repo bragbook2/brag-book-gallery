@@ -10,6 +10,18 @@
 			max-width: initial;
 		}
 	}
+
+	.cell {
+		width: 100% !important;
+	}
+
+	li {
+		padding-inline: 0;
+
+		&::before {
+			display: none !important;
+		}
+	}
 }
 
 .brag-book-gallery-wrapper,
