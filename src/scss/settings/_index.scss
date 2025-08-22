@@ -11,13 +11,16 @@
 @use 'alerts-notices';
 @use 'badge';
 @use 'buttons';
+@use 'cache-management';
 @use 'cards';
 @use 'dashboard';
 @use 'debug';
+@use 'debug-tools';
 @use 'dialog';
 @use 'forms';
 @use 'log';
 @use 'notice';
+@use 'rewrite-debug';
 @use 'section';
 @use 'seo';
 @use 'status';

@@ -150,6 +150,11 @@ class Settings_Api extends Settings_Base {
 		$this->render_header();
 		?>
 
+		<!-- Custom Notices Section -->
+		<div class="brag-book-gallery-notices">
+			<?php $this->render_custom_notices(); ?>
+		</div>
+
 		<form method="post" action="" id="brag-book-gallery-api-settings-form">
 			<?php wp_nonce_field( 'brag_book_gallery_api_settings', 'brag_book_gallery_api_nonce' ); ?>
 			<input type="hidden" name="brag_book_gallery_api_form_submitted" value="1" />
@@ -770,12 +775,13 @@ class Settings_Api extends Settings_Base {
 						status.innerHTML = '<span class="dashicons dashicons-yes-alt api-status-success"></span> <?php esc_html_e( "Valid & Saved", "brag-book-gallery" ); ?>';
 						// Show success message
 						if (data.data?.message) {
-							showDialog(
+							await showDialog(
 								'<?php esc_html_e( "Success", "brag-book-gallery" ); ?>',
 								data.data.message,
 								'success'
 							);
-							// Don't reload automatically - let user see the result
+							// Refresh the page to update menu items
+							window.location.reload();
 						}
 					} else {
 						status.innerHTML = '<span class="dashicons dashicons-warning api-status-error"></span> <?php esc_html_e( "Invalid", "brag-book-gallery" ); ?>';
@@ -1140,15 +1146,28 @@ class Settings_Api extends Settings_Base {
 			wp_send_json_error( __( 'Slug is required.', 'brag-book-gallery' ) );
 		}
 
+		// Get current gallery slug
+		$current_gallery_slug = get_option( 'brag_book_gallery_page_slug', '' );
+		
 		// Check if slug exists as a post or page
 		$exists = get_page_by_path( $slug, OBJECT, array( 'post', 'page' ) );
+		
+		// Determine the appropriate message
+		if ( $exists ) {
+			// Check if this is the current gallery slug
+			if ( $slug === $current_gallery_slug ) {
+				$message = __( 'This slug is the active gallery.', 'brag-book-gallery' );
+			} else {
+				$message = __( 'This slug is already in use.', 'brag-book-gallery' );
+			}
+		} else {
+			$message = __( 'This slug is available.', 'brag-book-gallery' );
+		}
 
 		wp_send_json_success( array(
 			'exists'    => (bool) $exists,  // JavaScript expects 'exists' property
 			'available' => ! $exists,
-			'message'   => $exists
-				? __( 'This slug is already in use.', 'brag-book-gallery' )
-				: __( 'This slug is available.', 'brag-book-gallery' ),
+			'message'   => $message,
 		) );
 	}
 

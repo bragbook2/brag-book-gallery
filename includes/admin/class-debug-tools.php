@@ -80,12 +80,16 @@ class Debug_Tools {
 		require_once __DIR__ . '/debug-tools/class-rewrite-debug.php';
 		require_once __DIR__ . '/debug-tools/class-rewrite-fix.php';
 		require_once __DIR__ . '/debug-tools/class-rewrite-flush.php';
+		require_once __DIR__ . '/debug-tools/class-cache-management.php';
+		require_once __DIR__ . '/debug-tools/class-system-info.php';
 
 		// Initialize tools
-		$this->tools['gallery-checker'] = new Debug_Tools\Gallery_Checker();
-		$this->tools['rewrite-debug']   = new Debug_Tools\Rewrite_Debug();
-		$this->tools['rewrite-fix']     = new Debug_Tools\Rewrite_Fix();
-		$this->tools['rewrite-flush']   = new Debug_Tools\Rewrite_Flush();
+		$this->tools['gallery-checker']   = new Debug_Tools\Gallery_Checker();
+		$this->tools['rewrite-debug']     = new Debug_Tools\Rewrite_Debug();
+		$this->tools['rewrite-fix']       = new Debug_Tools\Rewrite_Fix();
+		$this->tools['rewrite-flush']     = new Debug_Tools\Rewrite_Flush();
+		$this->tools['cache-management']  = new Debug_Tools\Cache_Management();
+		$this->tools['system-info']       = new Debug_Tools\System_Info();
 	}
 
 

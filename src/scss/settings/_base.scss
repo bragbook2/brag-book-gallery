@@ -4,6 +4,16 @@
 // admin / base
 // -----------------------------------------------------------------------------
 
+// Custom notices section
+.brag-book-gallery-notices {
+	margin: 0 0 20px 0;
+	
+	.notice {
+		margin: 5px 0;
+		max-width: none;
+	}
+}
+
 .brag-book-gallery-admin-wrap {
 
 	/* Slate (Primary neutrals) */

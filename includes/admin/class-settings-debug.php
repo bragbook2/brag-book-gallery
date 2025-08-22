@@ -177,37 +177,6 @@ class Settings_Debug extends Settings_Base {
 				<?php $this->render_debug_logs(); ?>
 			</div>
 
-			<!-- Cache Management -->
-			<div class="brag-book-gallery-section">
-				<h2><?php esc_html_e( 'Cache Management', 'brag-book-gallery' ); ?></h2>
-				<form method="post">
-					<?php wp_nonce_field( 'brag_book_gallery_debug_action', 'debug_nonce' ); ?>
-					<table class="form-table brag-book-gallery-form-table">
-						<tr>
-							<th scope="row"><?php esc_html_e( 'API Cache', 'brag-book-gallery' ); ?></th>
-							<td>
-								<?php
-								global $wpdb;
-								$cache_count = $wpdb->get_var(
-									"SELECT COUNT(*) FROM {$wpdb->options}
-									WHERE option_name LIKE '_transient_brag_book_gallery_%'"
-								);
-								printf(
-									/* translators: %d: number of cached items */
-									esc_html( _n( '%d cached item', '%d cached items', $cache_count, 'brag-book-gallery' ) ),
-									$cache_count
-								);
-								?>
-								<p>
-									<button type="submit" name="clear_cache" class="button button-secondary">
-										<?php esc_html_e( 'Clear All Cache', 'brag-book-gallery' ); ?>
-									</button>
-								</p>
-							</td>
-						</tr>
-					</table>
-				</form>
-			</div>
 
 			<!-- Database Information -->
 			<div class="brag-book-gallery-section">
@@ -1072,12 +1041,7 @@ class Settings_Debug extends Settings_Base {
 			]
 		);
 
-		wp_enqueue_style(
-			'brag-book-debug-tools',
-			$plugin_dir_url . 'assets/css/debug-tools.css',
-			[],
-			'1.0.0'
-		);
+		// Debug tools styles are now included in brag-book-gallery-admin.css
 		
 		// Add inline script to handle tab navigation properly
 		wp_add_inline_script( 'brag-book-debug-tools', "
@@ -1206,19 +1170,38 @@ class Settings_Debug extends Settings_Base {
 
 		<script>
 		jQuery(document).ready(function($) {
-			// Tab switching
-			$('.brag-book-gallery-tab-link').on('click', function(e) {
+			// Tab switching - only for debug tool tabs, not main navigation
+			$('.brag-book-debug-tab-link').on('click', function(e) {
 				e.preventDefault();
-				var target = $(this).attr('href');
+				var href = $(this).attr('href');
+				var target;
 				
-				// Update active tab
-				$('.brag-book-gallery-tab-item').removeClass('active');
-				$(this).parent('.brag-book-gallery-tab-item').addClass('active');
+				// Extract the target ID from the href
+				if (href.startsWith('#')) {
+					target = href;
+				} else if (href.includes('#')) {
+					target = '#' + href.split('#')[1];
+				} else {
+					// If no hash in href, use data-tab-target attribute
+					var dataTarget = $(this).data('tab-target');
+					if (dataTarget) {
+						target = '#' + dataTarget;
+					} else {
+						return; // No valid target found
+					}
+				}
+				
+				// Update active tab (only debug tabs)
+				$('.brag-book-debug-tab-item').removeClass('active');
+				$(this).parent('.brag-book-debug-tab-item').addClass('active');
 				
 				// Update active panel
-				$('.tool-panel').removeClass('active');
-				$(target).addClass('active');
+				$('.tool-panel').removeClass('active').hide();
+				$(target).addClass('active').show();
 			});
+			
+			// Don't interfere with main navigation tabs - they should work normally
+			// Main nav tabs use full URLs and page navigation, not JavaScript tab switching
 		});
 		</script>
 		<?php
@@ -1274,6 +1257,25 @@ class Settings_Debug extends Settings_Base {
 				'brag_book_gallery_activation_time',
 				'brag_book_gallery_last_sync',
 			];
+
+			// Delete the gallery page if it exists
+			$gallery_page_id = get_option( 'brag_book_gallery_page_id' );
+			if ( $gallery_page_id ) {
+				// Force delete the page (bypass trash)
+				wp_delete_post( $gallery_page_id, true );
+			}
+			
+			// Also check for any pages with the gallery shortcode and optionally delete them
+			$pages_with_shortcode = $wpdb->get_col(
+				"SELECT ID FROM {$wpdb->posts} 
+				WHERE post_content LIKE '%[brag_book_gallery%' 
+				AND post_type = 'page'"
+			);
+			
+			// Delete all pages containing the gallery shortcode
+			foreach ( $pages_with_shortcode as $page_id ) {
+				wp_delete_post( $page_id, true );
+			}
 
 			// Delete all plugin options
 			foreach ( $plugin_options as $option ) {
@@ -1335,7 +1337,7 @@ class Settings_Debug extends Settings_Base {
 			ob_end_clean();
 			wp_send_json_success( [
 				'message' => __( 'Plugin has been successfully reset to factory defaults. The page will reload.', 'brag-book-gallery' ),
-				'redirect' => admin_url( 'admin.php?page=brag-book-gallery&reset=success' )
+				'redirect' => admin_url( 'admin.php?page=brag-book-gallery-settings&reset=success' )
 			] );
 
 		} catch ( \Exception $e ) {

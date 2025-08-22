@@ -71,6 +71,34 @@ class Settings_General extends Settings_Base {
 		$this->page_title = __( 'General Settings', 'brag-book-gallery' );
 		$this->menu_title = __( 'General', 'brag-book-gallery' );
 
+		// Enqueue WordPress code editor for CSS with full features
+		$editor_settings = false;
+		if ( function_exists( 'wp_enqueue_code_editor' ) ) {
+			// Enqueue code editor and settings for CSS
+			$editor_settings = wp_enqueue_code_editor( array(
+				'type' => 'text/css',
+				'codemirror' => array(
+					'indentUnit' => 4,
+					'tabSize' => 4,
+					'lineNumbers' => true,
+					'lineWrapping' => false,
+					'autoCloseBrackets' => true,
+					'matchBrackets' => true,
+					'lint' => true,
+					'gutters' => array( 'CodeMirror-lint-markers', 'CodeMirror-linenumbers' ),
+					'styleActiveLine' => true,
+					'mode' => 'css',
+				),
+			) );
+			
+			// Ensure CSS linting is available
+			if ( $editor_settings !== false ) {
+				// The wp_enqueue_code_editor automatically loads needed scripts
+				wp_enqueue_script( 'wp-theme-plugin-editor' );
+				wp_enqueue_style( 'wp-codemirror' );
+			}
+		}
+
 		// Handle form submission
 		if ( isset( $_POST['submit'] ) && $this->save_settings( 'brag_book_gallery_general_settings', 'brag_book_gallery_general_nonce' ) ) {
 			$this->save_general_settings();
@@ -78,6 +106,11 @@ class Settings_General extends Settings_Base {
 
 		$this->render_header();
 		?>
+
+		<!-- Custom Notices Section -->
+		<div class="brag-book-gallery-notices">
+			<?php $this->render_custom_notices(); ?>
+		</div>
 
 		<!-- General Settings Form -->
 		<div class="brag-book-gallery-section">
@@ -372,14 +405,36 @@ class Settings_General extends Settings_Base {
 							<?php
 							$custom_css = get_option( 'brag_book_gallery_custom_css', '' );
 							?>
-							<textarea id="brag_book_gallery_custom_css"
-									  name="brag_book_gallery_custom_css"
-									  rows="10"
-									  cols="50"
-									  class="large-text code"><?php echo esc_textarea( $custom_css ); ?></textarea>
+							<div id="css-editor-container" style="position: relative; max-width: 800px;">
+								<textarea id="brag_book_gallery_custom_css"
+										  name="brag_book_gallery_custom_css"
+										  rows="15"
+										  cols="50"
+										  class="large-text code"
+										  style="width: 100%;"
+										  placeholder="/* Your custom CSS here */
+.brag-book-gallery {
+    /* Custom styles */
+}"><?php echo esc_textarea( $custom_css ); ?></textarea>
+								<div id="css-error-message" style="display: none; margin-top: 10px; padding: 10px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; color: #856404;">
+									<strong><?php esc_html_e( 'CSS Warning:', 'brag-book-gallery' ); ?></strong>
+									<span id="css-error-text"></span>
+								</div>
+							</div>
 							<p class="description">
-								<?php esc_html_e( 'Add custom CSS styles for the gallery. This CSS will be applied to all gallery pages.', 'brag-book-gallery' ); ?>
+								<?php esc_html_e( 'Add custom CSS styles for the gallery. This CSS will be applied to all pages with gallery shortcodes. Common selectors: .brag-book-gallery, .brag-book-gallery-item, .brag-book-gallery-filter', 'brag-book-gallery' ); ?>
 							</p>
+							<div style="margin-top: 10px;">
+								<button type="button" id="validate-css-btn" class="button button-secondary">
+									<?php esc_html_e( 'Validate CSS', 'brag-book-gallery' ); ?>
+								</button>
+								<button type="button" id="format-css-btn" class="button button-secondary">
+									<?php esc_html_e( 'Format CSS', 'brag-book-gallery' ); ?>
+								</button>
+								<button type="button" id="minify-css-btn" class="button button-secondary">
+									<?php esc_html_e( 'Minify CSS', 'brag-book-gallery' ); ?>
+								</button>
+							</div>
 						</td>
 					</tr>
 
@@ -437,6 +492,217 @@ class Settings_General extends Settings_Base {
 				<?php submit_button( __( 'Save Settings', 'brag-book-gallery' ) ); ?>
 			</form>
 		</div>
+		
+		<?php if ( $editor_settings !== false ) : ?>
+		<script type="text/javascript">
+		// Enhanced CSS Editor with WordPress CodeMirror
+		jQuery(document).ready(function($) {
+			'use strict';
+
+			const cssTextarea = document.getElementById('brag_book_gallery_custom_css');
+			const errorMessage = document.getElementById('css-error-message');
+			const errorText = document.getElementById('css-error-text');
+			let cssEditor = null;
+			
+			// Initialize WordPress CodeMirror with CSS linting
+			if (typeof wp !== 'undefined' && wp.codeEditor && cssTextarea) {
+				const editorSettings = <?php echo wp_json_encode( $editor_settings ); ?>;
+				const editor = wp.codeEditor.initialize(cssTextarea, editorSettings);
+				cssEditor = editor.codemirror;
+				
+				// Add custom error handling for lint messages
+				cssEditor.on('change', function(cm) {
+					// WordPress CodeMirror automatically updates the textarea
+					// Check for lint errors
+					const lintErrors = cm.state.lint ? cm.state.lint.marked : [];
+					if (lintErrors && lintErrors.length > 0) {
+						const errors = lintErrors.map(err => err.message || 'CSS Error').slice(0, 3);
+						errorText.textContent = errors.join('; ');
+						errorMessage.style.display = 'block';
+					} else {
+						errorMessage.style.display = 'none';
+					}
+				});
+			}
+			
+			// Helper function to get CSS value
+			function getCSSValue() {
+				return cssEditor ? cssEditor.getValue() : cssTextarea.value;
+			}
+			
+			// Helper function to set CSS value
+			function setCSSValue(value) {
+				if (cssEditor) {
+					cssEditor.setValue(value);
+				} else {
+					cssTextarea.value = value;
+				}
+			}
+
+			// Basic CSS validation
+			function validateCSS(css) {
+				const errors = [];
+				
+				// Check for unclosed brackets
+				const openBrackets = (css.match(/{/g) || []).length;
+				const closeBrackets = (css.match(/}/g) || []).length;
+				if (openBrackets !== closeBrackets) {
+					errors.push('Unmatched brackets: ' + openBrackets + ' { vs ' + closeBrackets + ' }');
+				}
+
+				// Check for unclosed comments
+				const commentStarts = (css.match(/\/\*/g) || []).length;
+				const commentEnds = (css.match(/\*\//g) || []).length;
+				if (commentStarts !== commentEnds) {
+					errors.push('Unclosed comment blocks');
+				}
+
+				// Check for missing semicolons (basic check)
+				const lines = css.split('\n');
+				let inComment = false;
+				lines.forEach((line, index) => {
+					if (line.includes('/*')) inComment = true;
+					if (line.includes('*/')) inComment = false;
+					
+					if (!inComment && line.includes(':') && !line.includes(';') && !line.includes('{')) {
+						const trimmed = line.trim();
+						if (trimmed && !trimmed.endsWith('{') && !trimmed.startsWith('@')) {
+							errors.push('Line ' + (index + 1) + ' might be missing a semicolon');
+						}
+					}
+				});
+
+				// Check for potentially malicious content
+				if (css.match(/<script|javascript:|expression\s*\(|@import/i)) {
+					errors.push('Potentially unsafe CSS detected');
+				}
+
+				return errors;
+			}
+
+			// Validate CSS button - Use CodeMirror's built-in linting
+			if (document.getElementById('validate-css-btn')) {
+				document.getElementById('validate-css-btn').addEventListener('click', function() {
+					if (cssEditor) {
+						// Trigger CodeMirror's lint update
+						cssEditor.performLint();
+						const lintErrors = cssEditor.state.lint ? cssEditor.state.lint.marked : [];
+						if (lintErrors && lintErrors.length > 0) {
+							const errors = lintErrors.map(err => err.message || 'CSS Error');
+							errorText.textContent = errors.join('; ');
+							errorMessage.style.display = 'block';
+						} else {
+							errorMessage.style.display = 'none';
+							alert('<?php esc_html_e( 'CSS validation passed! No errors found.', 'brag-book-gallery' ); ?>');
+						}
+					} else {
+						// Fallback validation
+						const errors = validateCSS(getCSSValue());
+						if (errors.length > 0) {
+							errorText.textContent = errors.join('; ');
+							errorMessage.style.display = 'block';
+						} else {
+							errorMessage.style.display = 'none';
+							alert('<?php esc_html_e( 'CSS validation passed!', 'brag-book-gallery' ); ?>');
+						}
+					}
+				});
+			}
+
+			// Format CSS
+			if (document.getElementById('format-css-btn')) {
+				document.getElementById('format-css-btn').addEventListener('click', function() {
+					let css = getCSSValue();
+					
+					// Basic formatting
+					css = css.replace(/\s*{\s*/g, ' {\n    ');
+					css = css.replace(/;\s*/g, ';\n    ');
+					css = css.replace(/\s*}\s*/g, '\n}\n');
+					css = css.replace(/}\n{/g, '}\n\n{');
+					css = css.replace(/\n\s*\n\s*\n/g, '\n\n');
+					
+					// Clean up extra spaces
+					css = css.replace(/    }/g, '}');
+					css = css.trim();
+					
+					setCSSValue(css);
+				});
+			}
+
+			// Minify CSS
+			if (document.getElementById('minify-css-btn')) {
+				document.getElementById('minify-css-btn').addEventListener('click', function() {
+					let css = getCSSValue();
+					
+					// Remove comments
+					css = css.replace(/\/\*[\s\S]*?\*\//g, '');
+					// Remove unnecessary whitespace
+					css = css.replace(/\s+/g, ' ');
+					css = css.replace(/\s*{\s*/g, '{');
+					css = css.replace(/\s*}\s*/g, '}');
+					css = css.replace(/\s*;\s*/g, ';');
+					css = css.replace(/\s*:\s*/g, ':');
+					css = css.replace(/\s*,\s*/g, ',');
+					css = css.trim();
+					
+					setCSSValue(css);
+				});
+			}
+
+			// Auto-validate on input (with debounce)
+			let validateTimeout;
+			if (cssTextarea) {
+				cssTextarea.addEventListener('input', function() {
+					clearTimeout(validateTimeout);
+					validateTimeout = setTimeout(() => {
+						const errors = validateCSS(getCSSValue());
+						if (errors.length > 0) {
+							errorText.textContent = errors.join('; ');
+							errorMessage.style.display = 'block';
+						} else {
+							errorMessage.style.display = 'none';
+						}
+					}, 1000);
+				});
+			}
+
+			// Add tab support in textarea (only if CodeMirror is not active)
+			if (!cssEditor && cssTextarea) {
+				cssTextarea.addEventListener('keydown', function(e) {
+					if (e.key === 'Tab') {
+						e.preventDefault();
+						const start = this.selectionStart;
+						const end = this.selectionEnd;
+						const value = this.value;
+						this.value = value.substring(0, start) + '    ' + value.substring(end);
+						this.selectionStart = this.selectionEnd = start + 4;
+					}
+				});
+			}
+		});
+		</script>
+		<?php else : ?>
+		<script type="text/javascript">
+		// Fallback for when CodeMirror is not available
+		jQuery(document).ready(function($) {
+			// Add basic tab support
+			const cssTextarea = document.getElementById('brag_book_gallery_custom_css');
+			if (cssTextarea) {
+				cssTextarea.addEventListener('keydown', function(e) {
+					if (e.key === 'Tab') {
+						e.preventDefault();
+						const start = this.selectionStart;
+						const end = this.selectionEnd;
+						const value = this.value;
+						this.value = value.substring(0, start) + '    ' + value.substring(end);
+						this.selectionStart = this.selectionEnd = start + 4;
+					}
+				});
+			}
+		});
+		</script>
+		<?php endif; ?>
+		
 		<?php
 		$this->render_footer();
 	}
@@ -485,9 +751,14 @@ class Settings_General extends Settings_Base {
 		$minify_assets = isset( $_POST['brag_book_gallery_minify_assets'] ) ? sanitize_text_field( $_POST['brag_book_gallery_minify_assets'] ) : 'no';
 		update_option( 'brag_book_gallery_minify_assets', $minify_assets );
 
-		// Advanced Settings
-		$custom_css = isset( $_POST['brag_book_gallery_custom_css'] ) ? wp_strip_all_tags( $_POST['brag_book_gallery_custom_css'] ) : '';
-		update_option( 'brag_book_gallery_custom_css', $custom_css );
+		// Advanced Settings - Custom CSS with sanitization
+		if ( isset( $_POST['brag_book_gallery_custom_css'] ) ) {
+			// Sanitize CSS while preserving valid CSS syntax
+			$custom_css = wp_strip_all_tags( $_POST['brag_book_gallery_custom_css'] );
+			// Remove any potential XSS vectors while keeping CSS intact
+			$custom_css = str_replace( array( '<script', '</script', '<style', '</style', 'javascript:', 'expression(' ), '', $custom_css );
+			update_option( 'brag_book_gallery_custom_css', $custom_css );
+		}
 
 		$enable_debug = isset( $_POST['brag_book_gallery_enable_debug'] ) ? sanitize_text_field( $_POST['brag_book_gallery_enable_debug'] ) : 'no';
 		update_option( 'brag_book_gallery_enable_debug', $enable_debug );

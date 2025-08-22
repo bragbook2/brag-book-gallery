@@ -161,7 +161,7 @@ class Settings_Manager {
 		$this->settings_pages['dashboard']    = new Settings_Dashboard();
 		$this->settings_pages['general']      = new Settings_General();
 		$this->settings_pages['mode']         = new Settings_Mode();
-		$this->settings_pages['javascript']   = new Settings_JavaScript();
+		$this->settings_pages['default']      = new Settings_Default();
 		$this->settings_pages['local']        = new Settings_Local();
 		
 		// Only create Settings_Api if it doesn't exist (it may have been created for AJAX registration)

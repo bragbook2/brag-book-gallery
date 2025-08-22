@@ -59,8 +59,9 @@ class DebugTools {
         const tabContainer = document.querySelector('.brag-book-debug-tools');
         if (tabContainer) {
             tabContainer.addEventListener('click', (e) => {
-                const link = e.target.closest('.brag-book-debug-tab-link, .brag-book-gallery-tab-link, .nav-tab');
-                if (link && link.closest('.brag-book-debug-tools')) {
+                // Only handle clicks on debug tab links within the debug tools container
+                const link = e.target.closest('.brag-book-debug-tab-link');
+                if (link) {
                     e.stopImmediatePropagation(); // Stop other handlers
                     e.preventDefault();
                     e.stopPropagation();
@@ -68,6 +69,14 @@ class DebugTools {
                 }
             }, true); // Use capture phase
         }
+        
+        // Don't interfere with main navigation tabs - let them work normally
+        const mainNavTabs = document.querySelectorAll('.brag-book-gallery-tabs .brag-book-gallery-tab-link');
+        mainNavTabs.forEach(tab => {
+            // Remove any event handlers that might have been added by debug tools
+            const newTab = tab.cloneNode(true);
+            tab.parentNode.replaceChild(newTab, tab);
+        });
 
         // Setup tool-specific handlers
         this.setupGalleryChecker();
@@ -85,8 +94,8 @@ class DebugTools {
             // Set tab as active
             const parentLi = systemInfoTab.closest('.brag-book-debug-tab-item');
             if (parentLi) {
-                // Remove active from all tabs
-                document.querySelectorAll('.brag-book-debug-tab-item').forEach(item => {
+                // Remove active from all debug tabs only
+                document.querySelectorAll('.brag-book-debug-tools .brag-book-debug-tab-item').forEach(item => {
                     item.classList.remove('active');
                 });
                 parentLi.classList.add('active');
@@ -100,16 +109,10 @@ class DebugTools {
             systemInfoPanel.classList.add('active');
             systemInfoPanel.style.display = 'block';
         }
-        
-        // Also ensure main debug tab stays active in the main navigation
-        const mainDebugTab = document.querySelector('.brag-book-gallery-nav-tabs .nav-tab[href*="brag-book-gallery-debug"]');
-        if (mainDebugTab) {
-            mainDebugTab.classList.add('nav-tab-active');
-        }
     }
 
     handleTabSwitch(e, link) {
-        // Prevent default and stop propagation already done in setupEventListeners
+        // This method now only handles debug tool tabs, not main navigation
         
         // First try data-tab-target attribute, then fall back to href
         let targetId = link.getAttribute('data-tab-target');
@@ -127,22 +130,7 @@ class DebugTools {
             }
         }
         
-        // Preserve main navigation active state
-        const mainDebugTab = document.querySelector('.brag-book-gallery-nav-tabs .nav-tab[href*="brag-book-gallery-debug"]');
-        if (mainDebugTab) {
-            // Ensure main debug tab stays active
-            mainDebugTab.classList.add('nav-tab-active');
-        }
-        
-        // Update active tab for nav-tab style (only within debug tools)
-        document.querySelectorAll('.brag-book-debug-tools .nav-tab').forEach(tab => {
-            tab.classList.remove('nav-tab-active');
-        });
-        if (link.classList.contains('nav-tab')) {
-            link.classList.add('nav-tab-active');
-        }
-        
-        // Update active tab for brag-book-gallery-tab style (only within debug tools)
+        // Only update debug tool tabs (not main navigation)
         document.querySelectorAll('.brag-book-debug-tools .brag-book-debug-tab-item').forEach(item => {
             item.classList.remove('active');
         });
@@ -151,8 +139,8 @@ class DebugTools {
             parentLi.classList.add('active');
         }
         
-        // Update active panel - handle both tool-panel and tab-panel
-        document.querySelectorAll('.brag-book-debug-tools .tool-panel, .brag-book-debug-tools .tab-panel').forEach(panel => {
+        // Update active panel - only within debug tools
+        document.querySelectorAll('.brag-book-debug-tools .tool-panel').forEach(panel => {
             panel.classList.remove('active');
             panel.style.display = 'none';
         });

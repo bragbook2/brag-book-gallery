@@ -839,6 +839,7 @@ if (typeof window.BRAGbookAdmin === 'undefined') {
 								<p><strong>This will PERMANENTLY delete:</strong></p>
 								<ul style="text-align: left; margin: 10px 0;">
 									<li>All plugin settings and configurations</li>
+									<li>All pages containing the [brag_book_gallery] shortcode</li>
 									<li>All cached data and transients</li>
 									<li>All API tokens and credentials</li>
 									<li>Custom database tables</li>

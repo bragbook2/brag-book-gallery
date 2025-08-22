@@ -77,7 +77,18 @@ The plugin follows a modular architecture with clear separation of concerns:
 
 **Admin** (`includes/admin/`):
 - `Settings_Manager`: Centralized settings management
-- `Settings_*`: Individual settings pages (API, API Test, Debug, Help, JavaScript, Mode, Local, Dashboard, Consultation, etc.)
+- `Settings_*`: Individual settings pages:
+  - `Settings_General`: General settings with Custom CSS editor (WordPress CodeMirror integration)
+  - `Settings_API`: API configuration
+  - `Settings_API_Test`: API testing interface
+  - `Settings_Debug`: Debug options
+  - `Settings_Help`: Help documentation
+  - `Settings_JavaScript`: JavaScript settings
+  - `Settings_Mode`: Mode selection
+  - `Settings_Local`: Local mode settings
+  - `Settings_Default`: Default mode settings (Custom CSS section removed)
+  - `Settings_Dashboard`: Dashboard overview
+  - `Settings_Consultation`: Consultation form settings
 - `Menu`: Admin menu registration
 - `Tabs`: Settings page tab management
 - `Debug_Tools`: Debugging utilities with specialized debug tools
@@ -93,12 +104,12 @@ The plugin follows a modular architecture with clear separation of concerns:
   - `Trait_Render_Helper`: Rendering helper methods
 
 **Frontend Extensions** (`includes/extend/`):
-- `Shortcodes`: Main shortcode coordinator with rewrite rules
+- `Shortcodes`: Main shortcode coordinator with rewrite rules (includes `render_cases_grid` method)
 - `Gallery_Shortcode_Handler`: Gallery display shortcode
 - `Cases_Shortcode_Handler`: Individual case display
 - `Carousel_Shortcode_Handler`: Carousel functionality
 - `Ajax_Handlers`: AJAX request processing
-- `Asset_Manager`: Asset loading optimization
+- `Asset_Manager`: Asset loading optimization with custom CSS injection (prevents duplicate output)
 - `Cache_Manager`: Transient cache management
 - `Data_Fetcher`: API data retrieval
 - `HTML_Renderer`: HTML generation utilities
@@ -170,12 +181,14 @@ The plugin follows a modular architecture with clear separation of concerns:
 - Filters include: Age, Gender, Ethnicity, Height, Weight
 - When filters are applied, ALL matching cases are loaded (even if not initially visible)
 - Filter options are generated from the complete dataset
+- Multi-select filtering with AND logic between filter types
 
 ### Caching Strategy
 - API responses cached using WordPress transients
 - Cache duration: 1 hour (production) / 1 minute (debug mode)
 - Clear cache methods:
   - Admin button in JavaScript Settings page
+  - Debug Tools → Cache Management for granular control
   - WP-CLI: `wp transient delete --all`
 
 ### AJAX Endpoints
@@ -188,6 +201,110 @@ The plugin follows a modular architecture with clear separation of concerns:
 - `brag_book_simple_case_handler`: Handle simple case operations
 - `brag_book_flush_rewrite_rules`: Flush WordPress rewrite rules
 
+## Shortcodes
+
+### Main Gallery
+```
+[brag_book_gallery]
+```
+- Displays full gallery with sidebar filters
+- Optional: `website_property_id` parameter to override global setting
+
+### Carousel
+```
+[brag_book_carousel procedure="arm-lift" limit="5"]
+```
+- Parameters: 
+  - `procedure`: Procedure slug to filter by
+  - `procedure_id`: Procedure ID (alternative to slug)
+  - `member_id`: Filter by specific member/doctor
+  - `limit`: Number of items (default: 10)
+  - `show_controls`: Navigation arrows (true/false, default: true)
+  - `show_pagination`: Dots pagination (true/false, default: true)
+  - `autoplay`: Auto-advance (true/false, default: false)
+  - `autoplay_delay`: Delay in ms (default: 3000)
+- Supports procedure slug to ID conversion via sidebar data
+- Autoplay is disabled by default for better UX
+
+### Legacy Carousel (Backwards Compatible)
+```
+[bragbook_carousel_shortcode procedure="arm-lift" limit="5" title="0" details="0"]
+```
+- Automatically mapped to new format
+- `title="0"` → `show_controls="false"`
+- `details="0"` → `show_pagination="false"`
+
+### Cases Grid
+```
+[brag_book_gallery_cases]
+```
+- Displays cases in grid layout without sidebar
+
+### Single Case
+```
+[brag_book_gallery_case case_id="12345"]
+```
+- Displays single case with all details
+
+## Recent Updates (v3.0.0)
+
+### Admin Interface
+- **Comprehensive Help Section**: Complete setup guide, troubleshooting with color-coded severity, FAQs, and system info
+- **Debug Tools Suite**: 
+  - Gallery Checker with card-based configuration display
+  - Rewrite Debug with modern table styling  
+  - Cache Management with individual item deletion and API cache integration
+  - System Info with copy/download functionality
+  - Rewrite Flush with card-based status display
+- **Settings Organization**: 
+  - Tabs for General, API, JavaScript, Consultation, Mode, Debug, Help
+  - Custom notice placement system for better UX
+  - Tailwind-inspired table designs without gradients
+- **Enhanced UX**: 
+  - Factory reset with HTML5 dialog confirmation
+  - Toggle controls for features
+  - Modern card-based layouts for status displays
+  - HTML5 dialog elements replacing browser confirm/alert
+  - Improved checkbox visibility in tables
+- **Plugin Integration**: Settings link in plugin row actions on plugins page
+
+### Frontend Features
+- **Carousel Improvements**: 
+  - HTML output matches exact design specifications
+  - Autoplay disabled by default
+  - Supports legacy shortcode format
+  - Procedure slug to ID conversion
+  - Single favorite button with proper styling
+- **Gallery Enhancements**:
+  - Progressive loading with "Load More" button
+  - Multi-select filtering with badge display
+  - Nudity warning with blur effect and proceed button
+  - Favorites functionality integrated
+  - Mobile-responsive with hamburger menu
+- **Code Quality**:
+  - jQuery conflicts resolved in admin area
+  - Vanilla JavaScript for admin tabs and dialogs
+  - HTML5 semantic markup (<article> for case cards)
+  - Accessibility improvements (ARIA labels, roles)
+  - ES6+ JavaScript with promises for dialog handling
+
+### Technical Improvements
+- Automatic gallery page detection and deletion during factory reset
+- Rewrite rules management with debug tools
+- API token and Website Property ID validation
+- Poppins font option with admin toggle
+- WordPress coding standards compliance
+- PHP 8.2 match expressions for cleaner code
+- Fixed factory reset redirect to correct settings page
+- Custom notice rendering system for controlled placement
+- **Custom CSS Management**:
+  - WordPress CodeMirror editor integration with line numbers and syntax highlighting
+  - Real-time CSS validation and linting
+  - CSS formatting and minification tools
+  - Prevention of duplicate CSS output across shortcodes
+  - Centralized CSS injection via Asset_Manager class
+  - Security sanitization to prevent XSS attacks
+
 ## Important Considerations
 
 - Plugin requires PHP 8.2+ and WordPress 6.8+
@@ -197,15 +314,21 @@ The plugin follows a modular architecture with clear separation of concerns:
 - Plugin updates are handled via GitHub repository (`bragbook2/brag-book-gallery`)
 - All button styling should be in CSS files, not inline
 - API returns 10 cases per page, requiring pagination for larger datasets
+- Carousel autoplay is disabled by default for better UX
+- Debug mode provides additional logging and shorter cache times
+- Custom CSS is stored in `brag_book_gallery_custom_css` option and injected once per page
+- All shortcodes properly enqueue their assets including custom CSS
+- WordPress CodeMirror editor provides syntax highlighting and CSS validation
 
 ## Debug and Development Tools
 
 ### Debug Tools Available
-- Gallery page checker to validate gallery setup
-- Rewrite rules debugging and fixing utilities
-- Query variable forcing for troubleshooting
-- Cache clearing and management tools
-- Admin settings with debug mode toggles
+- **Gallery Checker**: Validates gallery page setup and configuration
+- **Rewrite Debug**: Analyzes and displays active rewrite rules
+- **Rewrite Fix**: Automatically fixes common rewrite issues
+- **Cache Management**: View and delete individual cache items
+- **System Info**: Display and export system information
+- **Flush Rules**: Regenerate WordPress rewrite rules
 
 ### Development Environment
 - Node.js 18+ and npm 9+ required for frontend builds

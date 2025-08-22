@@ -119,7 +119,7 @@ class Tabs {
 		$this->tab_configs['settings'] = $this->get_main_settings_tabs();
 
 		// Mode-specific tabs
-		$this->tab_configs['javascript'] = $this->get_javascript_tabs();
+		$this->tab_configs['default'] = $this->get_default_tabs();
 		$this->tab_configs['local'] = $this->get_local_tabs();
 
 		// API tabs
@@ -171,9 +171,9 @@ class Tabs {
 
 			// Add mode-specific settings tab
 			if ( $this->plugin_state['current_mode'] === 'javascript' ) {
-				$tabs['javascript'] = array(
-					'title' => __( 'JavaScript', 'brag-book-gallery' ),
-					'url' => admin_url( 'admin.php?page=brag-book-gallery-javascript' ),
+				$tabs['default'] = array(
+					'title' => __( 'Default', 'brag-book-gallery' ),
+					'url' => admin_url( 'admin.php?page=brag-book-gallery-default' ),
 					'icon' => '',
 					'visible' => true,
 				);
@@ -222,30 +222,30 @@ class Tabs {
 	}
 
 	/**
-	 * Get JavaScript mode tabs
+	 * Get Default mode tabs
 	 *
-	 * Returns tab configuration for JavaScript mode settings.
+	 * Returns tab configuration for default mode settings.
 	 *
 	 * @since 3.0.0
 	 * @return array Tab configuration
 	 */
-	private function get_javascript_tabs(): array {
+	private function get_default_tabs(): array {
 		return array(
 			'display' => array(
 				'title' => __( 'Display Settings', 'brag-book-gallery' ),
-				'url' => admin_url( 'admin.php?page=brag-book-gallery-javascript&tab=display' ),
+				'url' => admin_url( 'admin.php?page=brag-book-gallery-default&tab=display' ),
 				'icon' => 'dashicons-layout',
 				'visible' => true,
 			),
 			'performance' => array(
 				'title' => __( 'Performance', 'brag-book-gallery' ),
-				'url' => admin_url( 'admin.php?page=brag-book-gallery-javascript&tab=performance' ),
+				'url' => admin_url( 'admin.php?page=brag-book-gallery-default&tab=performance' ),
 				'icon' => 'dashicons-performance',
 				'visible' => true,
 			),
 			'advanced' => array(
 				'title' => __( 'Advanced', 'brag-book-gallery' ),
-				'url' => admin_url( 'admin.php?page=brag-book-gallery-javascript&tab=advanced' ),
+				'url' => admin_url( 'admin.php?page=brag-book-gallery-default&tab=advanced' ),
 				'icon' => 'dashicons-admin-generic',
 				'visible' => true,
 			),

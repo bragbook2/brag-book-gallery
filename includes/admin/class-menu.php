@@ -244,22 +244,22 @@ class Menu {
 				'condition'   => true,
 			);
 
-			// JavaScript Settings (JavaScript mode only).
+			// Default Settings (Default/JavaScript mode only).
 			if ( $this->plugin_state['current_mode'] === 'javascript' ) {
-				$this->menu_config['submenus']['javascript'] = array(
+				$this->menu_config['submenus']['default'] = array(
 					'parent_slug' => 'brag-book-gallery-settings',
 					'page_title'  => __(
-						'JavaScript Settings',
+						'Default Settings',
 						'brag-book-gallery'
 					),
 					'menu_title'  => __(
-						'JavaScript',
+						'Default',
 						'brag-book-gallery'
 					),
 					'capability'  => 'manage_options',
-					'menu_slug'   => 'brag-book-gallery-javascript',
+					'menu_slug'   => 'brag-book-gallery-default',
 					'callback'    => array(
-						$this->settings_pages['javascript'],
+						$this->settings_pages['default'],
 						'render'
 					),
 					'condition'   => true,
