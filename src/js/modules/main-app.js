@@ -188,16 +188,40 @@ class BRAGbookGalleryApp {
 	}
 
 	initializeCaseLinks() {
-		// Make entire case card clickable while preserving button functionality
+		// Handle clicks on case links with AJAX loading
 		document.addEventListener('click', (e) => {
-			// Check if click is on a case card but not on interactive elements
+			// Check if click is on a case link
+			const caseLink = e.target.closest('.brag-book-gallery-case-link');
+			if (caseLink) {
+				e.preventDefault();
+				e.stopPropagation();
+				
+				// Get case ID and procedure IDs from the link
+				const caseId = caseLink.dataset.caseId;
+				const procedureIds = caseLink.dataset.procedureIds;
+				
+				if (caseId) {
+					console.log('Loading case:', caseId, 'with procedure IDs:', procedureIds);
+					// Load case details via AJAX
+					this.loadCaseDetails(caseId, caseLink.href, true, procedureIds);
+				}
+				return;
+			}
+			
+			// Check if click is on a case card but not on interactive elements (fallback)
 			const caseCard = e.target.closest('.brag-book-gallery-case-card');
 			if (caseCard && !e.target.closest('button') && !e.target.closest('details')) {
 				// Find the case link within the card
-				const caseLink = caseCard.querySelector('.brag-book-gallery-case-link');
-				if (caseLink && caseLink.href) {
-					// Navigate to the case page
-					window.location.href = caseLink.href;
+				const caseLinkInCard = caseCard.querySelector('.brag-book-gallery-case-link');
+				if (caseLinkInCard && caseLinkInCard.href) {
+					e.preventDefault();
+					const caseId = caseLinkInCard.dataset.caseId;
+					const procedureIds = caseLinkInCard.dataset.procedureIds || caseCard.dataset.procedureIds;
+					
+					if (caseId) {
+						console.log('Loading case from card:', caseId, 'with procedure IDs:', procedureIds);
+						this.loadCaseDetails(caseId, caseLinkInCard.href, true, procedureIds);
+					}
 				}
 			}
 		});
@@ -217,14 +241,23 @@ class BRAGbookGalleryApp {
 		});
 	}
 
-	async loadCaseDetails(caseId, url, updateHistory = true) {
+	async loadCaseDetails(caseId, url, updateHistory = true, procedureIds = null) {
 		const galleryContent = document.getElementById('gallery-content');
 		if (!galleryContent) {
 			console.error('Gallery content container not found');
 			return;
 		}
 
-		console.log('Loading case details for:', caseId);
+		// If procedureIds not provided, try to get from the case card
+		if (!procedureIds) {
+			const caseCard = document.querySelector(`.brag-book-gallery-case-card[data-case-id="${caseId}"]`);
+			if (caseCard && caseCard.dataset.procedureIds) {
+				procedureIds = caseCard.dataset.procedureIds;
+				console.log('Got procedure IDs from case card:', procedureIds);
+			}
+		}
+
+		console.log('Loading case details for:', caseId, 'with procedure IDs:', procedureIds);
 
 		// Show loading state
 		galleryContent.innerHTML = '<div class="brag-book-gallery-loading">Loading case details...</div>';
@@ -243,17 +276,25 @@ class BRAGbookGalleryApp {
 
 			console.log('Making AJAX request to:', bragBookGalleryConfig.ajaxUrl);
 
+			// Prepare request parameters - use the HTML version
+			const requestParams = {
+				action: 'brag_book_load_case_details_html',
+				case_id: caseId,
+				nonce: bragBookGalleryConfig.nonce || ''
+			};
+
+			// Add procedure IDs if available
+			if (procedureIds) {
+				requestParams.procedure_ids = procedureIds;
+			}
+
 			// Make AJAX request to load case details
 			const response = await fetch(bragBookGalleryConfig.ajaxUrl, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/x-www-form-urlencoded',
 				},
-				body: new URLSearchParams({
-					action: 'brag_book_gallery_load_case',
-					case_id: caseId,
-					nonce: bragBookGalleryConfig.nonce || ''
-				})
+				body: new URLSearchParams(requestParams)
 			});
 
 			console.log('Response status:', response.status);
@@ -265,11 +306,14 @@ class BRAGbookGalleryApp {
 			const data = await response.json();
 			console.log('Response data:', data);
 
-			if (data.success && data.data) {
-				this.displayCaseDetails(data.data);
+			if (data.success && data.data && data.data.html) {
+				// Display the HTML directly from the server
+				galleryContent.innerHTML = data.data.html;
+				// Re-initialize any necessary event handlers for the new content
+				this.initializeCaseDetailThumbnails();
 			} else {
 				console.error('API Error:', data);
-				throw new Error(data.data?.message || data.message || 'Failed to load case details');
+				throw new Error(data.data?.message || data.data || data.message || 'Failed to load case details');
 			}
 		} catch (error) {
 			console.error('Error loading case details:', error);

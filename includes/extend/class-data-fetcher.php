@@ -237,15 +237,24 @@ class Data_Fetcher {
 	 * @since 3.0.0
 	 * @param string $api_token API token.
 	 * @param string $website_property_id Website property ID.
+	 * @param array  $procedure_ids Optional procedure IDs to filter by.
 	 * @return array All cases data.
 	 */
-	public static function get_all_cases_for_filtering( string $api_token, string $website_property_id ): array {
-		// Check cache first
-		$cache_key = Cache_Manager::get_all_cases_cache_key( $api_token, $website_property_id );
+	public static function get_all_cases_for_filtering( string $api_token, string $website_property_id, array $procedure_ids = [] ): array {
+		// Check cache first - include procedure IDs in cache key
+		if ( ! empty( $procedure_ids ) ) {
+			$cache_key = 'brag_book_filtered_cases_' . md5( $api_token . $website_property_id . implode( ',', $procedure_ids ) );
+		} else {
+			$cache_key = Cache_Manager::get_all_cases_cache_key( $api_token, $website_property_id );
+		}
 		
 		if ( Cache_Manager::is_caching_enabled() ) {
 			$cached_data = Cache_Manager::get( $cache_key );
 			if ( $cached_data !== false ) {
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+					error_log( 'BRAGBook: Using cached data for cases' );
+					error_log( 'BRAGBook: Cached data has ' . ( isset( $cached_data['data'] ) ? count( $cached_data['data'] ) : 0 ) . ' cases' );
+				}
 				return $cached_data;
 			}
 		}
@@ -259,6 +268,20 @@ class Data_Fetcher {
 				'websitePropertyIds' => [ intval( $website_property_id ) ],
 				'count' => 1, // Start with page 1
 			];
+			
+			// Add procedure IDs if provided
+			if ( ! empty( $procedure_ids ) ) {
+				$filter_body['procedureIds'] = array_map( 'intval', $procedure_ids );
+			}
+			
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'BRAGBook: Fetching cases for filtering' );
+				error_log( 'BRAGBook: API Token: ' . substr( $api_token, 0, 10 ) . '...' );
+				error_log( 'BRAGBook: Website Property ID: ' . $website_property_id );
+				if ( ! empty( $procedure_ids ) ) {
+					error_log( 'BRAGBook: Procedure IDs: ' . implode( ', ', $procedure_ids ) );
+				}
+			}
 
 			$all_cases = [];
 			$page = 1;
@@ -274,6 +297,10 @@ class Data_Fetcher {
 					$page_data = json_decode( $response, true );
 
 					if ( is_array( $page_data ) && ! empty( $page_data['data'] ) ) {
+						if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+							error_log( 'BRAGBook: Page ' . $page . ' returned ' . count( $page_data['data'] ) . ' cases' );
+						}
+						
 						$all_cases = array_merge( $all_cases, $page_data['data'] );
 
 						// If we got less than 10 cases, we've reached the end
@@ -283,9 +310,15 @@ class Data_Fetcher {
 
 						$page++;
 					} else {
+						if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+							error_log( 'BRAGBook: Page ' . $page . ' returned no data or invalid format' );
+						}
 						break;
 					}
 				} else {
+					if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+						error_log( 'BRAGBook: Page ' . $page . ' request failed' );
+					}
 					break;
 				}
 			}

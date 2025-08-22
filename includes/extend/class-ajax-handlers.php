@@ -232,11 +232,18 @@ class Ajax_Handlers {
 				return;
 			}
 
-			// Fetch filtered cases from API
+			// Parse procedure IDs if provided
+			$procedure_ids_array = [];
+			if ( ! empty( $procedure_ids ) ) {
+				$procedure_ids_array = array_map( 'intval', explode( ',', $procedure_ids ) );
+			}
+			
+			// Fetch filtered cases from API - pass procedure IDs to filter at API level
 			try {
 				$gallery_data = Data_Fetcher::get_all_cases_for_filtering( 
 					$api_token, 
-					$website_property_id 
+					$website_property_id,
+					$procedure_ids_array 
 				);
 			} catch ( \Exception $api_error ) {
 				wp_send_json_error( [
@@ -257,25 +264,58 @@ class Ajax_Handlers {
 				] );
 				return;
 			}
+			
+			// Debug: Log first case structure to understand API response
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG && ! empty( $gallery_data['data'][0] ) ) {
+				$first_case = $gallery_data['data'][0];
+				error_log( 'First case structure:' );
+				error_log( '  ID: ' . ( $first_case['id'] ?? 'not set' ) );
+				error_log( '  Has procedures array: ' . ( isset( $first_case['procedures'] ) ? 'yes' : 'no' ) );
+				error_log( '  Has procedureIds array: ' . ( isset( $first_case['procedureIds'] ) ? 'yes' : 'no' ) );
+				if ( isset( $first_case['procedures'] ) && is_array( $first_case['procedures'] ) ) {
+					error_log( '  Procedures count: ' . count( $first_case['procedures'] ) );
+					if ( count( $first_case['procedures'] ) > 0 ) {
+						error_log( '  First procedure: ' . json_encode( $first_case['procedures'][0] ) );
+					}
+				}
+				if ( isset( $first_case['procedureIds'] ) && is_array( $first_case['procedureIds'] ) ) {
+					error_log( '  ProcedureIds: ' . json_encode( $first_case['procedureIds'] ) );
+				}
+			}
 
-			// Filter cases based on procedure IDs or procedure name
+			// Since we're now passing procedure IDs to the API, we should get filtered results directly
+			// Only do additional filtering if necessary
 			$filtered_cases = [];
 			
-			// Debug log for HALO Laser
-			if ( stripos( $procedure_name, 'halo' ) !== false && defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( 'HALO Laser Filter Debug:' );
+			// Debug log for procedure filtering
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'Procedure Filter Debug:' );
 				error_log( '  Procedure name: ' . $procedure_name );
 				error_log( '  Procedure IDs: ' . $procedure_ids );
-				error_log( '  Total cases to filter: ' . count( $gallery_data['data'] ?? [] ) );
+				error_log( '  Total cases from API: ' . count( $gallery_data['data'] ?? [] ) );
 			}
 			
-			if ( ! empty( $procedure_ids ) ) {
-				$ids_array = array_map( 'intval', explode( ',', $procedure_ids ) );
+			// If we passed procedure IDs to the API, the results should already be filtered
+			// Just use the data as-is
+			if ( ! empty( $procedure_ids_array ) ) {
+				$filtered_cases = $gallery_data['data'] ?? [];
 				
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+					error_log( '  Using API-filtered results: ' . count( $filtered_cases ) . ' cases' );
+				}
+			} else if ( ! empty( $procedure_name ) ) {
+				// Fallback: filter by procedure name if no IDs provided
 				foreach ( $gallery_data['data'] as $case ) {
 					if ( ! empty( $case['procedures'] ) && is_array( $case['procedures'] ) ) {
 						foreach ( $case['procedures'] as $procedure ) {
-							if ( isset( $procedure['id'] ) && in_array( intval( $procedure['id'] ), $ids_array, true ) ) {
+							// Check if procedure name matches (case-insensitive)
+							$case_procedure_name = $procedure['name'] ?? '';
+							$case_procedure_slug = sanitize_title( $procedure['slugName'] ?? $case_procedure_name );
+							$filter_procedure_slug = sanitize_title( $procedure_name );
+							
+							if ( strcasecmp( $case_procedure_name, $procedure_name ) === 0 || 
+								 strcasecmp( $case_procedure_slug, $filter_procedure_slug ) === 0 ||
+								 stripos( $case_procedure_name, $procedure_name ) !== false ) {
 								$filtered_cases[] = $case;
 								break;
 							}
@@ -283,33 +323,15 @@ class Ajax_Handlers {
 					}
 				}
 			} else {
-				// If no procedure IDs, try to filter by procedure name as fallback
-				if ( ! empty( $procedure_name ) ) {
-					foreach ( $gallery_data['data'] as $case ) {
-						if ( ! empty( $case['procedures'] ) && is_array( $case['procedures'] ) ) {
-							foreach ( $case['procedures'] as $procedure ) {
-								// Check if procedure name matches (case-insensitive)
-								$case_procedure_name = $procedure['name'] ?? '';
-								$case_procedure_slug = sanitize_title( $procedure['slugName'] ?? $case_procedure_name );
-								$filter_procedure_slug = sanitize_title( $procedure_name );
-								
-								if ( strcasecmp( $case_procedure_name, $procedure_name ) === 0 || 
-									 strcasecmp( $case_procedure_slug, $filter_procedure_slug ) === 0 ||
-									 stripos( $case_procedure_name, $procedure_name ) !== false ) {
-									$filtered_cases[] = $case;
-									
-									// Debug log for HALO Laser matches
-									if ( stripos( $procedure_name, 'halo' ) !== false && defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-										error_log( '  Found HALO case: ' . $case['id'] . ' with procedure: ' . $case_procedure_name );
-									}
-									break;
-								}
-							}
-						}
-					}
-				} else {
-					// If no procedure IDs and no procedure name, return all cases
-					$filtered_cases = $gallery_data['data'];
+				// If no procedure IDs and no procedure name, return all cases
+				$filtered_cases = $gallery_data['data'] ?? [];
+			}
+
+			// Debug log the filter results
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( '  Total filtered cases found: ' . count( $filtered_cases ) );
+				if ( count( $filtered_cases ) > 0 ) {
+					error_log( '  First few case IDs: ' . implode( ', ', array_slice( array_column( $filtered_cases, 'id' ), 0, 5 ) ) );
 				}
 			}
 
@@ -454,6 +476,11 @@ class Ajax_Handlers {
 							error_log( 'Error rendering case card: ' . $render_error->getMessage() );
 						}
 					}
+				} else {
+					// Show message when no cases found
+					$html .= '<div class="brag-book-gallery-no-results">';
+					$html .= '<p>' . esc_html__( 'No cases found for this procedure.', 'brag-book-gallery' ) . '</p>';
+					$html .= '</div>';
 				}
 
 				$html .= '</div>'; // Close cases grid
@@ -536,6 +563,17 @@ class Ajax_Handlers {
 			] );
 		}
 
+		// Get procedure IDs if provided
+		$procedure_ids = [];
+		if ( isset( $_POST['procedure_ids'] ) && ! empty( $_POST['procedure_ids'] ) ) {
+			$ids_string = sanitize_text_field( wp_unslash( $_POST['procedure_ids'] ) );
+			$procedure_ids = array_map( 'intval', explode( ',', $ids_string ) );
+			
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'BRAGBook Gallery: Received procedure IDs: ' . json_encode( $procedure_ids ) );
+			}
+		}
+
 		// Debug: Log the case ID being requested
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 			error_log( 'BRAGBook Gallery: ajax_load_case_details called for case ID: ' . $case_id );
@@ -567,10 +605,19 @@ class Ajax_Handlers {
 				continue;
 			}
 
-			// Try to fetch case details
-			$response = $endpoints->bb_get_case_by_number( $token, (int) $property_id, $case_id );
+			// Debug: Log the request details
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'BRAGBook Gallery: Fetching case ' . $case_id . ' with token index ' . $index . ' and property ID ' . $property_id );
+			}
+
+			// Try to fetch case details - pass the procedure IDs from the request
+			$response = $endpoints->bb_get_case_by_number( $token, (int) $property_id, $case_id, $procedure_ids );
 
 			if ( ! empty( $response ) && is_array( $response ) ) {
+				// Debug: Log successful response
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+					error_log( 'BRAGBook Gallery: Successfully fetched case ' . $case_id . ' - Case ID in response: ' . ( $response['id'] ?? 'N/A' ) );
+				}
 				$case_data = $response;
 				break;
 			} else {
@@ -600,12 +647,13 @@ class Ajax_Handlers {
 				
 				// Search for the case in the results
 				foreach ( $response['cases'] as $case ) {
-					if ( isset( $case['caseNumber'] ) && $case['caseNumber'] === $case_id ) {
+					// Try matching by caseNumber field first
+					if ( isset( $case['caseNumber'] ) && (string) $case['caseNumber'] === (string) $case_id ) {
 						$case_data = $case;
 						break;
 					}
-					// Also try matching by ID field as backup
-					if ( isset( $case['id'] ) && $case['id'] === $case_id ) {
+					// Also try matching by ID field as backup (convert to string for comparison)
+					if ( isset( $case['id'] ) && (string) $case['id'] === (string) $case_id ) {
 						$case_data = $case;
 						break;
 					}
@@ -652,6 +700,17 @@ class Ajax_Handlers {
 			return;
 		}
 
+		// Get procedure IDs if provided
+		$procedure_ids = [];
+		if ( isset( $_POST['procedure_ids'] ) && ! empty( $_POST['procedure_ids'] ) ) {
+			$ids_string = sanitize_text_field( wp_unslash( $_POST['procedure_ids'] ) );
+			$procedure_ids = array_map( 'intval', explode( ',', $ids_string ) );
+			
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'BRAGBook Gallery HTML: Received procedure IDs: ' . json_encode( $procedure_ids ) );
+			}
+		}
+
 		// Get API configuration
 		$api_tokens = get_option( 'brag_book_gallery_api_token', [] );
 		$website_property_ids = get_option( 'brag_book_gallery_website_property_id', [] );
@@ -664,8 +723,9 @@ class Ajax_Handlers {
 		$api_token = $api_tokens[0];
 		$website_property_id = intval( $website_property_ids[0] );
 
-		// Try to get case from cached data or fresh fetch
-		$case_data = self::find_case_by_id( $case_id, $api_token, $website_property_id );
+		// Use the bb_get_case_by_number method with procedure IDs
+		$endpoints = new Endpoints();
+		$case_data = $endpoints->bb_get_case_by_number( $api_token, $website_property_id, $case_id, $procedure_ids );
 
 		if ( ! empty( $case_data ) && is_array( $case_data ) ) {
 			// Generate HTML for case details using HTML_Renderer class method
