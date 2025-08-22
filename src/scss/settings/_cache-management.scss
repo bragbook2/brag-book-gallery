@@ -1,0 +1,415 @@
+@charset "UTF-8";
+
+// -----------------------------------------------------------------------------
+// admin / cache-management
+// -----------------------------------------------------------------------------
+
+// Cache management specific styles
+.tool-panel,
+.brag-book-debug-tools {
+	// Cache statistics box
+	.cache-stats {
+		background: #f0f0f1;
+		padding: 15px;
+		border-radius: 4px;
+		margin: 20px 0;
+
+		h4 {
+			margin-top: 0;
+		}
+
+		ul {
+			margin: 0;
+		}
+	}
+
+	// Cache actions container
+	.cache-actions {
+		margin: 20px 0;
+
+		// SVG icons in buttons
+		svg {
+			vertical-align: middle;
+			margin-right: 4px;
+		}
+	}
+
+	// Cache action status
+	#cache-action-status {
+		margin-left: 10px;
+		display: inline-block;
+
+		// Status message types
+		.cache-status-success {
+			color: #46b450;
+			font-weight: 500;
+		}
+
+		.cache-status-error {
+			color: #d63638;
+			font-weight: 500;
+		}
+		
+		.cache-status-info {
+			color: #2271b1;
+			font-weight: 500;
+		}
+	}
+	
+	// HTML5 Dialog Styles
+	dialog.cache-dialog {
+		padding: 0;
+		border: none;
+		border-radius: 8px;
+		box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+		max-width: 500px;
+		width: 90%;
+		
+		&::backdrop {
+			background: rgba(0, 0, 0, 0.5);
+			backdrop-filter: blur(3px);
+		}
+		
+		form {
+			padding: 20px;
+			margin: 0;
+		}
+		
+		h3 {
+			margin: 0 0 15px 0;
+			color: #1d2327;
+			font-size: 18px;
+			font-weight: 600;
+		}
+		
+		p {
+			margin: 0 0 20px 0;
+			color: #50575e;
+			line-height: 1.5;
+		}
+		
+		.dialog-buttons {
+			display: flex;
+			gap: 10px;
+			justify-content: flex-end;
+			margin-top: 20px;
+			padding-top: 15px;
+			border-top: 1px solid #dcdcde;
+			
+			button {
+				margin: 0;
+			}
+		}
+		
+		// Cache data dialog specific styles
+		&.cache-data-dialog {
+			max-width: 800px;
+			
+			.modal-actions {
+				display: flex;
+				gap: 10px;
+				margin-bottom: 15px;
+			}
+			
+			pre {
+				background: #f0f0f1;
+				padding: 15px;
+				border-radius: 4px;
+				overflow: auto;
+				max-height: 400px;
+				margin: 0;
+				font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+				font-size: 12px;
+				line-height: 1.4;
+			}
+		}
+	}
+
+	// Modern table wrapper
+	.cache-table-wrapper {
+		margin: 20px 0;
+		background: #fff;
+		border-radius: 8px;
+		box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+		overflow: hidden;
+	}
+	
+	// Cache table with Tailwind-inspired styles
+	.cache-items-table {
+		width: 100%;
+		border-collapse: collapse;
+		font-size: 14px;
+		
+		// Table header
+		thead {
+			background: #f9fafb;
+			border-bottom: 1px solid #e5e7eb;
+			
+			th {
+				padding: 12px 16px;
+				text-align: left;
+				font-weight: 600;
+				font-size: 12px;
+				text-transform: uppercase;
+				letter-spacing: 0.05em;
+				color: #6b7280;
+				
+				&.checkbox-column {
+					width: 40px;
+					padding: 12px 12px 12px 16px;
+				}
+				
+				&.key-column {
+					min-width: 250px;
+				}
+				
+				&.type-column {
+					width: 100px;
+				}
+				
+				&.size-column {
+					width: 100px;
+				}
+				
+				&.expiration-column {
+					width: 180px;
+				}
+				
+				&.actions-column {
+					width: 180px;
+					text-align: center;
+				}
+			}
+		}
+		
+		// Table body
+		tbody {
+			tr.cache-row {
+				border-bottom: 1px solid #f3f4f6;
+				transition: background-color 0.15s ease;
+				
+				&:hover {
+					background-color: #f9fafb;
+				}
+				
+				&:last-child {
+					border-bottom: none;
+				}
+				
+				td {
+					padding: 16px;
+					vertical-align: middle;
+					
+					&.checkbox-column {
+						padding: 16px 12px 16px 16px;
+					}
+					
+					&.key-column {
+						.cache-key-wrapper {
+							.cache-key-name {
+								font-weight: 600;
+								color: #1f2937;
+								margin-bottom: 2px;
+							}
+							
+							.cache-key-full {
+								font-size: 12px;
+								color: #9ca3af;
+								font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
+								word-break: break-all;
+							}
+						}
+					}
+					
+					&.type-column {
+						.cache-type-badge {
+							display: inline-block;
+							padding: 4px 10px;
+							background: #eff6ff;
+							color: #1e40af;
+							border-radius: 6px;
+							font-size: 12px;
+							font-weight: 500;
+						}
+					}
+					
+					&.size-column {
+						.cache-size {
+							color: #6b7280;
+							font-weight: 500;
+						}
+					}
+					
+					&.expiration-column {
+						.cache-expiration-wrapper {
+							.cache-time-remaining {
+								display: block;
+								color: #059669;
+								font-weight: 500;
+								margin-bottom: 2px;
+							}
+							
+							.cache-expiration-date {
+								display: block;
+								font-size: 12px;
+								color: #9ca3af;
+							}
+						}
+						
+						.cache-status-expired {
+							display: inline-block;
+							padding: 4px 10px;
+							background: #fef2f2;
+							color: #dc2626;
+							border-radius: 6px;
+							font-size: 12px;
+							font-weight: 500;
+						}
+						
+						.cache-status-permanent {
+							display: inline-block;
+							padding: 4px 10px;
+							background: #f0f9ff;
+							color: #0284c7;
+							border-radius: 6px;
+							font-size: 12px;
+							font-weight: 500;
+						}
+					}
+					
+					&.actions-column {
+						.cache-actions-wrapper {
+							display: flex;
+							gap: 8px;
+							justify-content: center;
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	// Modern checkbox styles
+	.cache-checkbox {
+		width: 18px;
+		height: 18px;
+		border: 2px solid #d1d5db;
+		border-radius: 4px;
+		background: white;
+		cursor: pointer;
+		transition: all 0.15s ease;
+		appearance: none;
+		-webkit-appearance: none;
+		position: relative;
+		
+		&:hover {
+			border-color: #9ca3af;
+		}
+		
+		&:checked {
+			background: #3b82f6;
+			border-color: #3b82f6;
+			
+			&::after {
+				content: '';
+				position: absolute;
+				left: 1px;
+				top: -1px;
+				width: 12px;
+				height: 12px;
+				background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='white'%3e%3cpath fill-rule='evenodd' d='M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z' clip-rule='evenodd'/%3e%3c/svg%3e");
+				background-size: 100%;
+				background-position: center;
+				background-repeat: no-repeat;
+			}
+		}
+		
+		&:focus {
+			outline: 2px solid transparent;
+			outline-offset: 2px;
+			box-shadow: 0 0 0 2px white, 0 0 0 4px #3b82f6;
+		}
+	}
+	
+	// Modern button styles for cache actions
+	.cache-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		padding: 6px 12px;
+		font-size: 13px;
+		font-weight: 500;
+		border-radius: 6px;
+		border: 1px solid transparent;
+		cursor: pointer;
+		transition: all 0.15s ease;
+		
+		svg {
+			flex-shrink: 0;
+		}
+		
+		&.cache-btn-view {
+			background: white;
+			color: #4b5563;
+			border-color: #d1d5db;
+			
+			&:hover {
+				background: #f9fafb;
+				border-color: #9ca3af;
+				color: #1f2937;
+			}
+			
+			&:active {
+				background: #f3f4f6;
+			}
+		}
+		
+		&.cache-btn-delete {
+			background: white;
+			color: #ef4444;
+			border-color: #fecaca;
+			
+			&:hover {
+				background: #fef2f2;
+				border-color: #fca5a5;
+				color: #dc2626;
+			}
+			
+			&:active {
+				background: #fee2e2;
+			}
+		}
+		
+		&:disabled {
+			opacity: 0.5;
+			cursor: not-allowed;
+			
+			&:hover {
+				background: white;
+				border-color: #d1d5db;
+				color: #4b5563;
+			}
+		}
+	}
+
+	// Danger button style
+	.button-danger {
+		background: #d63638 !important;
+		border-color: #d63638 !important;
+		color: white !important;
+
+		&:hover {
+			background: #c13133 !important;
+			border-color: #c13133 !important;
+		}
+
+		&:disabled {
+			background: #f0f0f1 !important;
+			border-color: #dcdcde !important;
+			color: #a7aaad !important;
+			cursor: not-allowed;
+		}
+	}
+}
+
+// Old modal styles removed - now using HTML5 dialog elements

@@ -2,11 +2,16 @@
 /**
  * Rewrite Fix Tool
  *
- * Provides tools to fix rewrite rules issues on live sites
+ * Provides tools to fix rewrite rules issues on live sites using modern PHP 8.2 features
+ * and ES6 JavaScript for enhanced debugging capabilities.
  *
- * @package BragBookGallery
- * @since 3.0.0
+ * @package    BragBookGallery
+ * @subpackage Admin\Debug_Tools
+ * @since      3.0.0
+ * @version    3.0.0
  */
+
+declare( strict_types=1 );
 
 namespace BragBookGallery\Admin\Debug_Tools;
 
@@ -18,15 +23,19 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Rewrite Fix class
  *
+ * Provides comprehensive rewrite rule fixing and debugging tools with modern PHP 8.2 features.
+ *
  * @since 3.0.0
  */
-class Rewrite_Fix {
+final class Rewrite_Fix {
 
 	/**
-	 * Get checkmark SVG icon
+	 * Get checkmark SVG icon for visual feedback.
+	 *
+	 * @since 3.0.0
 	 *
 	 * @param bool $success Whether this is a success (true) or error (false) icon.
-	 * @return string SVG HTML.
+	 * @return string SVG HTML markup for the icon.
 	 */
 	private function get_check_icon( bool $success = true ): string {
 		if ( $success ) {
@@ -39,16 +48,23 @@ class Rewrite_Fix {
 	}
 
 	/**
-	 * Get warning SVG icon
+	 * Get warning SVG icon for informational feedback.
 	 *
-	 * @return string SVG HTML.
+	 * @since 3.0.0
+	 *
+	 * @return string SVG HTML markup for the warning icon.
 	 */
 	private function get_warning_icon(): string {
 		return '<svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="#ff9800" style="vertical-align: middle; margin-right: 5px;"><path d="M480-280q17 0 28.5-11.5T520-320q0-17-11.5-28.5T480-360q-17 0-28.5 11.5T440-320q0 17 11.5 28.5T480-280Zm-40-160h80v-240h-80v240Zm40 360q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Z"/></svg>';
 	}
 
 	/**
-	 * Render the fix tool interface
+	 * Render the comprehensive fix tool interface.
+	 *
+	 * Displays a complete interface for diagnosing and fixing rewrite rule issues
+	 * with server environment checks, .htaccess validation, and automated fixes.
+	 *
+	 * @since 3.0.0
 	 *
 	 * @return void
 	 */
@@ -64,7 +80,7 @@ class Rewrite_Fix {
 
 			<div class="tool-section">
 				<h3><?php esc_html_e( '2. .htaccess Status', 'brag-book-gallery' ); ?></h3>
-				<button class="button" id="check-htaccess">
+				<button type="button" class="button" id="check-htaccess">
 					<?php esc_html_e( 'Check .htaccess', 'brag-book-gallery' ); ?>
 				</button>
 				<div id="htaccess-status"></div>
@@ -77,7 +93,7 @@ class Rewrite_Fix {
 
 			<div class="tool-section">
 				<h3><?php esc_html_e( '4. Rewrite Rules Status', 'brag-book-gallery' ); ?></h3>
-				<button class="button" id="check-rules-status">
+				<button type="button" class="button" id="check-rules-status">
 					<?php esc_html_e( 'Check Rules Status', 'brag-book-gallery' ); ?>
 				</button>
 				<div id="rules-status"></div>
@@ -90,7 +106,7 @@ class Rewrite_Fix {
 
 			<div class="tool-section">
 				<h3><?php esc_html_e( '6. Fix Actions', 'brag-book-gallery' ); ?></h3>
-				<button class="button button-primary" id="apply-fixes">
+				<button type="button" class="button button-primary" id="apply-fixes">
 					<?php esc_html_e( 'Apply All Fixes', 'brag-book-gallery' ); ?>
 				</button>
 				<div id="fix-result"></div>
@@ -105,51 +121,91 @@ class Rewrite_Fix {
 	}
 
 	/**
-	 * Render server information
+	 * Render comprehensive server environment information.
+	 *
+	 * Displays server software, PHP version, WordPress details, and hosting-specific
+	 * information that may affect rewrite rule functionality.
+	 *
+	 * @since 3.0.0
 	 *
 	 * @return void
 	 */
 	private function render_server_info(): void {
 		?>
-		<table class="widefat">
-			<tbody>
-				<tr>
-					<th><?php esc_html_e( 'Server Software', 'brag-book-gallery' ); ?></th>
-					<td><?php echo esc_html( $_SERVER['SERVER_SOFTWARE'] ?? 'Unknown' ); ?></td>
-				</tr>
-				<tr>
-					<th><?php esc_html_e( 'PHP Version', 'brag-book-gallery' ); ?></th>
-					<td><?php echo esc_html( phpversion() ); ?></td>
-				</tr>
-				<tr>
-					<th><?php esc_html_e( 'WordPress Version', 'brag-book-gallery' ); ?></th>
-					<td><?php echo esc_html( get_bloginfo( 'version' ) ); ?></td>
-				</tr>
-				<tr>
-					<th><?php esc_html_e( 'Permalink Structure', 'brag-book-gallery' ); ?></th>
-					<td><?php echo esc_html( get_option( 'permalink_structure' ) ?: 'Plain' ); ?></td>
-				</tr>
-				<tr>
-					<th><?php esc_html_e( 'Home URL', 'brag-book-gallery' ); ?></th>
-					<td><?php echo esc_url( home_url() ); ?></td>
-				</tr>
-				<tr>
-					<th><?php esc_html_e( 'Site URL', 'brag-book-gallery' ); ?></th>
-					<td><?php echo esc_url( site_url() ); ?></td>
-				</tr>
-				<?php if ( defined( 'WPE_APIKEY' ) ) : ?>
-				<tr>
-					<th><?php esc_html_e( 'Hosting', 'brag-book-gallery' ); ?></th>
-					<td style="color: orange;">WP Engine Detected - Some restrictions may apply</td>
-				</tr>
-				<?php endif; ?>
-			</tbody>
-		</table>
+		<div class="rewrite-table-wrapper">
+			<table class="rewrite-table server-info-table">
+				<tbody>
+					<tr class="table-row">
+						<th class="setting-label">
+							<span class="label-text"><?php esc_html_e( 'Server Software', 'brag-book-gallery' ); ?></span>
+						</th>
+						<td class="setting-value">
+							<span class="value-text"><?php echo esc_html( $_SERVER['SERVER_SOFTWARE'] ?? 'Unknown' ); ?></span>
+						</td>
+					</tr>
+					<tr class="table-row">
+						<th class="setting-label">
+							<span class="label-text"><?php esc_html_e( 'PHP Version', 'brag-book-gallery' ); ?></span>
+						</th>
+						<td class="setting-value">
+							<span class="value-text"><?php echo esc_html( phpversion() ); ?></span>
+						</td>
+					</tr>
+					<tr class="table-row">
+						<th class="setting-label">
+							<span class="label-text"><?php esc_html_e( 'WordPress Version', 'brag-book-gallery' ); ?></span>
+						</th>
+						<td class="setting-value">
+							<span class="value-text"><?php echo esc_html( get_bloginfo( 'version' ) ); ?></span>
+						</td>
+					</tr>
+					<tr class="table-row">
+						<th class="setting-label">
+							<span class="label-text"><?php esc_html_e( 'Permalink Structure', 'brag-book-gallery' ); ?></span>
+						</th>
+						<td class="setting-value">
+							<span class="value-text"><?php echo esc_html( get_option( 'permalink_structure' ) ?: 'Plain' ); ?></span>
+						</td>
+					</tr>
+					<tr class="table-row">
+						<th class="setting-label">
+							<span class="label-text"><?php esc_html_e( 'Home URL', 'brag-book-gallery' ); ?></span>
+						</th>
+						<td class="setting-value">
+							<span class="value-text"><?php echo esc_url( home_url() ); ?></span>
+						</td>
+					</tr>
+					<tr class="table-row">
+						<th class="setting-label">
+							<span class="label-text"><?php esc_html_e( 'Site URL', 'brag-book-gallery' ); ?></span>
+						</th>
+						<td class="setting-value">
+							<span class="value-text"><?php echo esc_url( site_url() ); ?></span>
+						</td>
+					</tr>
+					<?php if ( defined( 'WPE_APIKEY' ) ) : ?>
+					<tr class="table-row">
+						<th class="setting-label">
+							<span class="label-text"><?php esc_html_e( 'Hosting', 'brag-book-gallery' ); ?></span>
+						</th>
+						<td class="setting-value">
+							<span class="value-text" style="color: orange;">WP Engine Detected - Some restrictions may apply</span>
+						</td>
+					</tr>
+					<?php endif; ?>
+				</tbody>
+			</table>
+		</div>
 		<?php
 	}
 
 	/**
-	 * Render gallery configuration
+	 * Render gallery configuration status.
+	 *
+	 * Displays current gallery slug configuration, page status, and shortcode validation
+	 * to help diagnose configuration-related rewrite issues.
+	 *
+	 * @since 3.0.0
 	 *
 	 * @return void
 	 */
@@ -158,45 +214,64 @@ class Rewrite_Fix {
 		$brag_book_gallery_page_slug = \BRAGBookGallery\Includes\Core\Slug_Helper::get_first_gallery_page_slug();
 		$brag_book_gallery_page_id = get_option( 'brag_book_gallery_page_id' );
 		?>
-		<table class="widefat">
-			<tbody>
-				<tr>
-					<th><?php esc_html_e( 'Combine Gallery Slug', 'brag-book-gallery' ); ?></th>
-					<td><?php echo esc_html( $brag_book_gallery_page_slug ?: '(not set)' ); ?></td>
-				</tr>
-				<tr>
-					<th><?php esc_html_e( 'Combine Gallery Page ID', 'brag-book-gallery' ); ?></th>
-					<td><?php echo esc_html( $brag_book_gallery_page_id ?: '(not set)' ); ?></td>
-				</tr>
-				<?php if ( $brag_book_gallery_page_slug ) : ?>
-				<?php 
-				// Handle both string and array formats
-				$slug_to_check = is_array( $brag_book_gallery_page_slug ) ? reset( $brag_book_gallery_page_slug ) : $brag_book_gallery_page_slug;
-				$page = get_page_by_path( $slug_to_check ); 
-				?>
-				<tr>
-					<th><?php esc_html_e( 'Page Status', 'brag-book-gallery' ); ?></th>
-					<td>
-						<?php if ( $page ) : ?>
-							<span style="color: green;"><?php echo $this->get_check_icon( true ); ?>Page exists</span>
-							<?php if ( strpos( $page->post_content, '[brag_book_gallery' ) !== false ) : ?>
-								<span style="color: green;"><?php echo $this->get_check_icon( true ); ?>Contains shortcode</span>
-							<?php else : ?>
-								<span style="color: red;"><?php echo $this->get_check_icon( false ); ?>Missing shortcode</span>
-							<?php endif; ?>
-						<?php else : ?>
-							<span style="color: red;"><?php echo $this->get_check_icon( false ); ?>Page not found</span>
-						<?php endif; ?>
-					</td>
-				</tr>
-				<?php endif; ?>
-			</tbody>
-		</table>
+		<div class="rewrite-table-wrapper">
+			<table class="rewrite-table gallery-config-table">
+				<tbody>
+					<tr class="table-row">
+						<th class="setting-label">
+							<span class="label-text"><?php esc_html_e( 'Combine Gallery Slug', 'brag-book-gallery' ); ?></span>
+						</th>
+						<td class="setting-value">
+							<span class="value-text"><?php echo esc_html( $brag_book_gallery_page_slug ?: '(not set)' ); ?></span>
+						</td>
+					</tr>
+					<tr class="table-row">
+						<th class="setting-label">
+							<span class="label-text"><?php esc_html_e( 'Combine Gallery Page ID', 'brag-book-gallery' ); ?></span>
+						</th>
+						<td class="setting-value">
+							<span class="value-text"><?php echo esc_html( $brag_book_gallery_page_id ?: '(not set)' ); ?></span>
+						</td>
+					</tr>
+					<?php if ( $brag_book_gallery_page_slug ) : ?>
+					<?php 
+					// Handle both string and array formats
+					$slug_to_check = is_array( $brag_book_gallery_page_slug ) ? reset( $brag_book_gallery_page_slug ) : $brag_book_gallery_page_slug;
+					$page = get_page_by_path( $slug_to_check ); 
+					?>
+					<tr class="table-row">
+						<th class="setting-label">
+							<span class="label-text"><?php esc_html_e( 'Page Status', 'brag-book-gallery' ); ?></span>
+						</th>
+						<td class="setting-value">
+							<span class="value-text">
+								<?php if ( $page ) : ?>
+									<span style="color: green;"><?php echo $this->get_check_icon( true ); ?>Page exists</span>
+									<?php if ( strpos( $page->post_content, '[brag_book_gallery' ) !== false ) : ?>
+										<span style="color: green;"><?php echo $this->get_check_icon( true ); ?>Contains shortcode</span>
+									<?php else : ?>
+										<span style="color: red;"><?php echo $this->get_check_icon( false ); ?>Missing shortcode</span>
+									<?php endif; ?>
+								<?php else : ?>
+									<span style="color: red;"><?php echo $this->get_check_icon( false ); ?>Page not found</span>
+								<?php endif; ?>
+							</span>
+						</td>
+					</tr>
+					<?php endif; ?>
+				</tbody>
+			</table>
+		</div>
 		<?php
 	}
 
 	/**
-	 * Render test URLs
+	 * Render test URLs for validation.
+	 *
+	 * Generates sample URLs based on current gallery configuration to help
+	 * users test rewrite rule functionality after fixes are applied.
+	 *
+	 * @since 3.0.0
 	 *
 	 * @return void
 	 */
@@ -231,7 +306,12 @@ class Rewrite_Fix {
 	}
 
 	/**
-	 * Render manual instructions
+	 * Render manual fix instructions for different server environments.
+	 *
+	 * Provides server-specific manual instructions for Apache, Nginx, WP Engine,
+	 * and general troubleshooting steps when automated fixes are insufficient.
+	 *
+	 * @since 3.0.0
 	 *
 	 * @return void
 	 */
@@ -272,41 +352,210 @@ location ~ ^/<?php echo esc_html( $brag_book_gallery_page_slug ); ?>/([^/]+)/?$ 
 				<li><?php esc_html_e( 'Ensure permalink structure is not "Plain"', 'brag-book-gallery' ); ?></li>
 			</ol>
 		</div>
+		
+		<script>
+		document.addEventListener('DOMContentLoaded', () => {
+			/**
+			 * Modern AJAX request handler using fetch API with async/await.
+			 *
+			 * @param {Object} data - Request data to send
+			 * @param {Function} onSuccess - Success callback
+			 * @param {Function} onError - Error callback
+			 * @param {Function} onComplete - Complete callback
+			 * @returns {Promise<void>}
+			 */
+			const ajaxRequest = async (data, onSuccess, onError, onComplete) => {
+				try {
+					const formData = new FormData();
+					Object.entries(data).forEach(([key, value]) => {
+						formData.append(key, value);
+					});
+					
+					const response = await fetch(ajaxurl, {
+						method: 'POST',
+						credentials: 'same-origin',
+						body: formData
+					});
+					
+					const result = await response.json();
+					
+					if (onSuccess) onSuccess(result);
+				} catch (error) {
+					console.error('AJAX request failed:', error);
+					if (onError) onError(error);
+				} finally {
+					if (onComplete) onComplete();
+				}
+			};
+			
+			/**
+			 * Handle button state during operations.
+			 *
+			 * @param {HTMLButtonElement} button - Button element to manage
+			 * @param {boolean} isLoading - Whether button is in loading state
+			 * @param {string} loadingText - Text to show during loading
+			 */
+			const handleButtonState = (button, isLoading, loadingText = 'Processing...') => {
+				if (isLoading) {
+					button.disabled = true;
+					button.dataset.originalText = button.textContent;
+					button.textContent = loadingText;
+				} else {
+					button.disabled = false;
+					button.textContent = button.dataset.originalText || button.textContent;
+				}
+			};
+			
+			/**
+			 * Display results in target element with proper styling.
+			 *
+			 * @param {HTMLElement} target - Target element for results
+			 * @param {string} content - Content to display
+			 * @param {string} type - Result type ('success', 'error', 'info')
+			 */
+			const displayResult = (target, content, type = 'info') => {
+				if (!target) return;
+				
+				const cssClass = {
+					success: 'notice notice-success',
+					error: 'notice notice-error',
+					info: 'notice notice-info'
+				}[type] || 'notice notice-info';
+				
+				target.innerHTML = `<div class="${cssClass}"><p>${content}</p></div>`;
+			};
+			
+			// Event Handlers
+			const checkHtaccessBtn = document.getElementById('check-htaccess');
+			const checkRulesBtn = document.getElementById('check-rules-status');
+			const applyFixesBtn = document.getElementById('apply-fixes');
+			
+			const htaccessResult = document.getElementById('htaccess-status');
+			const rulesResult = document.getElementById('rules-status');
+			const fixResult = document.getElementById('fix-result');
+			
+			// Check .htaccess handler
+			if (checkHtaccessBtn) {
+				checkHtaccessBtn.addEventListener('click', async () => {
+					handleButtonState(checkHtaccessBtn, true, 'Checking...');
+					displayResult(htaccessResult, 'Checking .htaccess file...', 'info');
+					
+					await ajaxRequest(
+						{
+							action: 'brag_book_debug_tool',
+							nonce: '<?php echo esc_js( wp_create_nonce( 'brag_book_debug_tools' ) ); ?>',
+							tool: 'rewrite-fix',
+							tool_action: 'check_htaccess'
+						},
+						(response) => {
+							if (response.success) {
+								htaccessResult.innerHTML = response.data;
+							} else {
+								displayResult(htaccessResult, `Error: ${response.data}`, 'error');
+							}
+						},
+						() => displayResult(htaccessResult, 'Failed to check .htaccess. Please try again.', 'error'),
+						() => handleButtonState(checkHtaccessBtn, false)
+					);
+				});
+			}
+			
+			// Check rules status handler
+			if (checkRulesBtn) {
+				checkRulesBtn.addEventListener('click', async () => {
+					handleButtonState(checkRulesBtn, true, 'Checking...');
+					displayResult(rulesResult, 'Checking rewrite rules status...', 'info');
+					
+					await ajaxRequest(
+						{
+							action: 'brag_book_debug_tool',
+							nonce: '<?php echo esc_js( wp_create_nonce( 'brag_book_debug_tools' ) ); ?>',
+							tool: 'rewrite-fix',
+							tool_action: 'check_rules'
+						},
+						(response) => {
+							if (response.success) {
+								rulesResult.innerHTML = response.data;
+							} else {
+								displayResult(rulesResult, `Error: ${response.data}`, 'error');
+							}
+						},
+						() => displayResult(rulesResult, 'Failed to check rules. Please try again.', 'error'),
+						() => handleButtonState(checkRulesBtn, false)
+					);
+				});
+			}
+			
+			// Apply fixes handler
+			if (applyFixesBtn) {
+				applyFixesBtn.addEventListener('click', async () => {
+					if (!confirm('<?php echo esc_js( __( 'This will attempt to fix rewrite rule issues. Continue?', 'brag-book-gallery' ) ); ?>')) {
+						return;
+					}
+					
+					handleButtonState(applyFixesBtn, true, 'Applying fixes...');
+					displayResult(fixResult, 'Applying all fixes...', 'info');
+					
+					await ajaxRequest(
+						{
+							action: 'brag_book_debug_tool',
+							nonce: '<?php echo esc_js( wp_create_nonce( 'brag_book_debug_tools' ) ); ?>',
+							tool: 'rewrite-fix',
+							tool_action: 'apply_fixes'
+						},
+						(response) => {
+							if (response.success) {
+								displayResult(fixResult, response.data, 'success');
+							} else {
+								displayResult(fixResult, `Error: ${response.data}`, 'error');
+							}
+						},
+						() => displayResult(fixResult, 'Failed to apply fixes. Please try again.', 'error'),
+						() => handleButtonState(applyFixesBtn, false)
+					);
+				});
+			}
+		});
+		</script>
 		<?php
 	}
 
 	/**
-	 * Execute tool actions via AJAX
+	 * Execute tool actions via AJAX with modern error handling.
 	 *
-	 * @param string $action Action to execute.
-	 * @param array  $data   Request data.
-	 * @return mixed
+	 * Handles various debugging and fixing actions including .htaccess validation,
+	 * rewrite rules checking, and automated fix application.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @param string $action The specific action to execute.
+	 * @param array  $data   Additional request data and parameters.
+	 * @return string|array The result of the executed action.
+	 * @throws \Exception When an invalid action is provided.
 	 */
-	public function execute( string $action, array $data ) {
-		switch ( $action ) {
-			case 'check_htaccess':
-				return $this->check_htaccess();
-
-			case 'check_rules':
-				return $this->check_rules();
-
-			case 'apply_fixes':
-				return $this->apply_fixes();
-
-			default:
-				throw new \Exception( 'Invalid action' );
-		}
+	public function execute( string $action, array $data ): string|array {
+		return match ( $action ) {
+			'check_htaccess' => $this->check_htaccess(),
+			'check_rules' => $this->check_rules(),
+			'apply_fixes' => $this->apply_fixes(),
+			default => throw new \Exception( sprintf( 'Invalid action: %s', esc_html( $action ) ) )
+		};
 	}
 
 	/**
-	 * Check .htaccess status
+	 * Check .htaccess file status and configuration.
 	 *
-	 * @return string
+	 * Performs comprehensive .htaccess validation including file existence,
+	 * writability, WordPress rules presence, and mod_rewrite detection.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @return string HTML-formatted status report.
 	 */
 	private function check_htaccess(): string {
 		$output = '<div class="htaccess-check">';
 
-		// WP Engine doesn't use .htaccess
+		// WP Engine uses different rewrite handling
 		if ( defined( 'WPE_APIKEY' ) ) {
 			$output .= '<p style="color: orange;">' . $this->get_warning_icon() . 'WP Engine detected - .htaccess is not used. Rewrite rules are handled differently.</p>';
 			return $output . '</div>';
@@ -317,8 +566,8 @@ location ~ ^/<?php echo esc_html( $brag_book_gallery_page_slug ); ?>/([^/]+)/?$ 
 		if ( file_exists( $htaccess_path ) ) {
 			$output .= '<p style="color: green;">' . $this->get_check_icon( true ) . '.htaccess file exists</p>';
 
-			$htaccess_content = file_get_contents( $htaccess_path );
-			if ( strpos( $htaccess_content, 'BEGIN WordPress' ) !== false ) {
+			$htaccess_content = file_get_contents( $htaccess_path ) ?: '';
+			if ( str_contains( $htaccess_content, 'BEGIN WordPress' ) ) {
 				$output .= '<p style="color: green;">' . $this->get_check_icon( true ) . 'WordPress rules found in .htaccess</p>';
 			} else {
 				$output .= '<p style="color: red;">' . $this->get_check_icon( false ) . 'WordPress rules NOT found in .htaccess</p>';
@@ -341,8 +590,8 @@ location ~ ^/<?php echo esc_html( $brag_book_gallery_page_slug ); ?>/([^/]+)/?$ 
 			$output .= '<p>WordPress needs this file for custom URLs when using Apache.</p>';
 		}
 
-		// Check mod_rewrite
-		if ( stripos( $_SERVER['SERVER_SOFTWARE'] ?? '', 'apache' ) !== false ) {
+		// Check Apache-specific features
+		if ( str_contains( strtolower( $_SERVER['SERVER_SOFTWARE'] ?? '' ), 'apache' ) ) {
 			$output .= '<h4>Apache Checks:</h4>';
 			if ( function_exists( 'apache_get_modules' ) ) {
 				$modules = apache_get_modules();
@@ -361,9 +610,14 @@ location ~ ^/<?php echo esc_html( $brag_book_gallery_page_slug ); ?>/([^/]+)/?$ 
 	}
 
 	/**
-	 * Check rewrite rules status
+	 * Check rewrite rules status and gallery-specific rules.
 	 *
-	 * @return string
+	 * Analyzes current WordPress rewrite rules, validates gallery-specific rules,
+	 * and provides detailed rule inspection for debugging purposes.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @return string HTML-formatted rules analysis report.
 	 */
 	private function check_rules(): string {
 		global $wp_rewrite;
@@ -384,7 +638,7 @@ location ~ ^/<?php echo esc_html( $brag_book_gallery_page_slug ); ?>/([^/]+)/?$ 
 			$output .= '<pre style="background: #f5f5f5; padding: 10px; overflow: auto; max-height: 300px;">';
 
 			foreach ( $rules as $pattern => $query ) {
-				if ( $brag_book_gallery_page_slug && strpos( $pattern, $brag_book_gallery_page_slug ) !== false ) {
+				if ( $brag_book_gallery_page_slug && str_contains( $pattern, $brag_book_gallery_page_slug ) ) {
 					$output .= htmlspecialchars( $pattern ) . "\n    => " . htmlspecialchars( $query ) . "\n\n";
 					$found_gallery_rules = true;
 				}
@@ -402,9 +656,14 @@ location ~ ^/<?php echo esc_html( $brag_book_gallery_page_slug ); ?>/([^/]+)/?$ 
 	}
 
 	/**
-	 * Apply fixes
+	 * Apply comprehensive rewrite rule fixes.
 	 *
-	 * @return string
+	 * Executes a series of automated fixes including query variable registration,
+	 * custom rewrite rule addition, rules flushing, and .htaccess updates.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @return string HTML-formatted fix results report.
 	 */
 	private function apply_fixes(): string {
 		$results = [];
@@ -427,10 +686,11 @@ location ~ ^/<?php echo esc_html( $brag_book_gallery_page_slug ); ?>/([^/]+)/?$ 
 		flush_rewrite_rules( true );
 		$results[] = $this->get_check_icon( true ) . 'Rewrite rules flushed';
 
-		// 4. Update .htaccess if needed (not on WP Engine)
+		// 4. Update .htaccess if needed (not applicable on WP Engine)
 		if ( ! defined( 'WPE_APIKEY' ) ) {
 			$htaccess_path = ABSPATH . '.htaccess';
-			if ( ! file_exists( $htaccess_path ) || ! strpos( file_get_contents( $htaccess_path ), 'BEGIN WordPress' ) ) {
+			$htaccess_content = file_exists( $htaccess_path ) ? file_get_contents( $htaccess_path ) : '';
+			if ( ! file_exists( $htaccess_path ) || ! str_contains( $htaccess_content ?: '', 'BEGIN WordPress' ) ) {
 				if ( function_exists( 'save_mod_rewrite_rules' ) ) {
 					save_mod_rewrite_rules();
 					$results[] = $this->get_check_icon( true ) . '.htaccess updated';

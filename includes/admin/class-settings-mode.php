@@ -37,7 +37,7 @@ if ( ! defined( 'WPINC' ) ) {
  * - Configuration backup and restoration
  * - Data migration status tracking
  *
- * **JavaScript Mode Management:**
+ * **Default Mode Management:**
  * - Real-time API connectivity validation
  * - Performance optimization settings
  * - Virtual URL configuration
@@ -138,7 +138,7 @@ class Settings_Mode extends Settings_Base {
 									<label style="display: block; margin-bottom: 20px;">
 										<input type="radio" name="gallery_mode" value="javascript"
 											<?php checked( $current_mode, 'javascript' ); ?>>
-										<strong><?php esc_html_e( 'JavaScript Mode', 'brag-book-gallery' ); ?></strong>
+										<strong><?php esc_html_e( 'Default Mode', 'brag-book-gallery' ); ?></strong>
 										<p class="description" style="margin-left: 24px; margin-top: 5px;">
 											<?php esc_html_e( 'Dynamic API-driven content. Best for real-time updates and minimal database usage.', 'brag-book-gallery' ); ?>
 										</p>
@@ -168,7 +168,7 @@ class Settings_Mode extends Settings_Base {
 						</button>
 						<?php if ( $current_mode === 'javascript' ) : ?>
 							<span class="description" style="display: inline-block; margin-left: 10px; line-height: 30px;">
-								<?php esc_html_e( 'JavaScript Mode is currently active', 'brag-book-gallery' ); ?>
+								<?php esc_html_e( 'Default Mode is currently active', 'brag-book-gallery' ); ?>
 							</span>
 						<?php endif; ?>
 					</div>
@@ -308,14 +308,14 @@ class Settings_Mode extends Settings_Base {
 						</div>
 					</form>
 				<?php elseif ( $current_mode === 'javascript' ) : ?>
-					<!-- JavaScript Mode Settings Info -->
+					<!-- Default Mode Settings Info -->
 					<div class="brag-book-gallery-notice brag-book-gallery-notice--info inline">
 						<p>
-							<?php esc_html_e( 'JavaScript mode uses real-time API connections. Configure API settings to manage your connection.', 'brag-book-gallery' ); ?>
+							<?php esc_html_e( 'Default mode uses real-time API connections. Configure API settings to manage your connection.', 'brag-book-gallery' ); ?>
 						</p>
 						<p>
-							<a href="<?php echo esc_url( admin_url( 'admin.php?page=brag-book-gallery-javascript' ) ); ?>" class="button">
-								<?php esc_html_e( 'JavaScript Settings', 'brag-book-gallery' ); ?>
+							<a href="<?php echo esc_url( admin_url( 'admin.php?page=brag-book-gallery-default' ) ); ?>" class="button">
+								<?php esc_html_e( 'Default Settings', 'brag-book-gallery' ); ?>
 							</a>
 							<a href="<?php echo esc_url( admin_url( 'admin.php?page=brag-book-gallery-api-settings' ) ); ?>" class="button">
 								<?php esc_html_e( 'API Settings', 'brag-book-gallery' ); ?>
@@ -333,7 +333,7 @@ class Settings_Mode extends Settings_Base {
 					<div class="brag-book-gallery-notice brag-book-gallery-notice--warning inline">
 						<p>
 							<strong><?php esc_html_e( 'Warning:', 'brag-book-gallery' ); ?></strong>
-							<?php esc_html_e( 'Switching to JavaScript mode will not delete your local content, but galleries will load from the API instead.', 'brag-book-gallery' ); ?>
+							<?php esc_html_e( 'Switching to default mode will not delete your local content, but galleries will load from the API instead.', 'brag-book-gallery' ); ?>
 						</p>
 					</div>
 				<?php else : ?>

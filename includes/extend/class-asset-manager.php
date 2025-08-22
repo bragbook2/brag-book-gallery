@@ -38,6 +38,13 @@ final class Asset_Manager {
 	private const GSAP_VERSION = '3.12.2';
 
 	/**
+	 * Flag to track if custom CSS has been added.
+	 *
+	 * @var bool
+	 */
+	private static $custom_css_added = false;
+
+	/**
 	 * Enqueue gallery assets.
 	 *
 	 * @since 3.0.0
@@ -55,6 +62,9 @@ final class Asset_Manager {
 			deps: [],
 			ver: $version
 		);
+
+		// Add custom CSS only once
+		self::add_custom_css( 'brag-book-gallery-main' );
 
 		// Enqueue GSAP library
 		wp_enqueue_script(
@@ -96,6 +106,9 @@ final class Asset_Manager {
 			deps: [],
 			ver: $version
 		);
+
+		// Add custom CSS only once
+		self::add_custom_css( 'brag-book-gallery-main' );
 	}
 
 	/**
@@ -116,6 +129,11 @@ final class Asset_Manager {
 			deps: [],
 			ver: $version
 		);
+
+		// Add custom CSS only if main gallery styles aren't loaded
+		if ( ! wp_style_is( 'brag-book-gallery-main', 'enqueued' ) ) {
+			self::add_custom_css( 'brag-book-carousel' );
+		}
 
 		// Enqueue GSAP library if not already loaded
 		if ( ! wp_script_is( 'gsap', 'enqueued' ) ) {
@@ -239,5 +257,25 @@ final class Asset_Manager {
 	 */
 	public static function get_asset_version( string $file_path ): string {
 		return file_exists( $file_path ) ? (string) filemtime( $file_path ) : self::VERSION;
+	}
+
+	/**
+	 * Add custom CSS to a style handle (only once).
+	 *
+	 * @since 3.0.0
+	 * @param string $handle Style handle to attach CSS to.
+	 * @return void
+	 */
+	private static function add_custom_css( string $handle ): void {
+		// Only add custom CSS once per page load
+		if ( self::$custom_css_added ) {
+			return;
+		}
+
+		$custom_css = get_option( 'brag_book_gallery_custom_css', '' );
+		if ( ! empty( $custom_css ) ) {
+			wp_add_inline_style( $handle, $custom_css );
+			self::$custom_css_added = true;
+		}
 	}
 }

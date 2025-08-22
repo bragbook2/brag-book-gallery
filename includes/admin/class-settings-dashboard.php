@@ -71,16 +71,6 @@ class Settings_Dashboard extends Settings_Base {
 		$this->page_title = __( 'Dashboard', 'brag-book-gallery' );
 		$this->menu_title = __( 'Dashboard', 'brag-book-gallery' );
 
-		// Check if coming from a factory reset
-		if ( isset( $_GET['reset'] ) && $_GET['reset'] === 'success' ) {
-			?>
-			<div class="notice notice-success is-dismissible">
-				<p><strong><?php esc_html_e( 'Factory Reset Complete!', 'brag-book-gallery' ); ?></strong></p>
-				<p><?php esc_html_e( 'The plugin has been successfully reset to factory defaults. Please configure your settings to get started.', 'brag-book-gallery' ); ?></p>
-			</div>
-			<?php
-		}
-
 		// Get plugin metadata
 		$plugin_data = get_plugin_data( WP_PLUGIN_DIR . '/brag-book-gallery/brag-book-gallery.php' );
 		$version = isset( $plugin_data['Version'] ) ? $plugin_data['Version'] : '3.0.0';
@@ -96,6 +86,11 @@ class Settings_Dashboard extends Settings_Base {
 
 		$this->render_header();
 		?>
+
+		<!-- Custom Notices Section -->
+		<div class="brag-book-gallery-notices">
+			<?php $this->render_custom_notices(); ?>
+		</div>
 
 		<!-- Welcome Section -->
 		<section class="brag-book-gallery-welcome-hero">
@@ -494,5 +489,23 @@ class Settings_Dashboard extends Settings_Base {
 			'total' => $total,
 			'percentage' => $percentage,
 		);
+	}
+	
+	/**
+	 * Render custom notices in a specific location
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	protected function render_custom_notices(): void {
+		// Check if coming from a factory reset
+		if ( isset( $_GET['reset'] ) && 'success' === $_GET['reset'] ) {
+			?>
+			<div class="notice notice-success is-dismissible">
+				<p><strong><?php esc_html_e( 'Factory Reset Complete!', 'brag-book-gallery' ); ?></strong></p>
+				<p><?php esc_html_e( 'All plugin settings have been reset to their default values.', 'brag-book-gallery' ); ?></p>
+			</div>
+			<?php
+		}
 	}
 }

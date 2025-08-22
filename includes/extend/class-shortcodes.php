@@ -1013,6 +1013,9 @@ final class Shortcodes {
 		// Get carousel data from API
 		$carousel_data = Data_Fetcher::get_carousel_data_from_api( $config );
 
+		// Enqueue carousel assets (includes custom CSS)
+		Asset_Manager::enqueue_carousel_assets();
+
 		// Localize script data
 		Asset_Manager::localize_carousel_script( $config );
 
@@ -1536,8 +1539,58 @@ final class Shortcodes {
 			intval( $atts['page'] )
 		);
 
+		// Enqueue cases assets (includes custom CSS)
+		Asset_Manager::enqueue_cases_assets();
+
 		// Render cases grid
 		return self::render_cases_grid( $cases_data, $atts, $filter_procedure );
+	}
+
+	/**
+	 * Render cases grid
+	 *
+	 * @param array $cases_data Cases data from API.
+	 * @param array $atts Shortcode attributes.
+	 * @param string $filter_procedure Procedure filter if any.
+	 * @return string HTML output.
+	 * @since 3.0.0
+	 */
+	private static function render_cases_grid( array $cases_data, array $atts, string $filter_procedure = '' ): string {
+		if ( empty( $cases_data ) || empty( $cases_data['data'] ) ) {
+			return '<p class="brag-book-gallery-cases-no-data">' . 
+				   esc_html__( 'No cases found.', 'brag-book-gallery' ) . 
+				   '</p>';
+		}
+
+		$cases = $cases_data['data'];
+		$columns = intval( $atts['columns'] ) ?: 3;
+		$show_details = filter_var( $atts['show_details'], FILTER_VALIDATE_BOOLEAN );
+		
+		// Start output
+		$output = '<div class="brag-book-gallery-cases-grid columns-' . esc_attr( $columns ) . '">';
+		
+		// Get image display mode setting
+		$image_display_mode = get_option( 'brag_book_gallery_image_display_mode', 'single' );
+		
+		foreach ( $cases as $case ) {
+			// Render each case card
+			$output .= self::render_ajax_gallery_case_card( 
+				$case, 
+				$image_display_mode,
+				false,
+				$filter_procedure 
+			);
+		}
+		
+		$output .= '</div>';
+
+		// Add pagination if available
+		if ( ! empty( $cases_data['pagination'] ) ) {
+			$base_path = get_site_url() . '/' . get_option( 'brag_book_gallery_page_slug', 'gallery' )[0];
+			$output .= self::render_pagination( $cases_data['pagination'], $base_path, $filter_procedure );
+		}
+
+		return $output;
 	}
 
 	/**

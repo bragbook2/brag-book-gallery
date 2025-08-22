@@ -442,13 +442,23 @@ abstract class Settings_Base {
 	}
 
 	/**
-	 * Check if in JavaScript mode
+	 * Check if in JavaScript mode (legacy - redirects to default mode)
 	 *
 	 * @since 3.0.0
-	 * @return bool True if in JavaScript mode.
+	 * @return bool True if in JavaScript/default mode.
 	 */
 	protected function is_javascript_mode(): bool {
 		return $this->get_current_mode() === 'javascript';
+	}
+
+	/**
+	 * Check if in default mode
+	 *
+	 * @since 3.0.0
+	 * @return bool True if in default mode.
+	 */
+	protected function is_default_mode(): bool {
+		return $this->get_current_mode() === 'javascript'; // 'javascript' is the internal name for default mode
 	}
 
 	/**
@@ -459,5 +469,26 @@ abstract class Settings_Base {
 	 */
 	protected function is_local_mode(): bool {
 		return $this->get_current_mode() === 'local';
+	}
+	
+	/**
+	 * Render custom notices in a specific location
+	 *
+	 * Can be overridden by child classes to display custom notices.
+	 * By default, checks for factory reset success messages.
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	protected function render_custom_notices(): void {
+		// Check if coming from a factory reset
+		if ( isset( $_GET['reset'] ) && 'success' === $_GET['reset'] ) {
+			?>
+			<div class="notice notice-success is-dismissible">
+				<p><strong><?php esc_html_e( 'Factory Reset Complete!', 'brag-book-gallery' ); ?></strong></p>
+				<p><?php esc_html_e( 'All plugin settings have been reset to their default values.', 'brag-book-gallery' ); ?></p>
+			</div>
+			<?php
+		}
 	}
 }
