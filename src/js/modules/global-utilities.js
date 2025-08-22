@@ -871,11 +871,20 @@ window.syncImageHeights = function(img) {
 };
 
 // Load case details into gallery content
-window.loadCaseDetails = function(caseId, procedureId, procedureSlug) {
+window.loadCaseDetails = function(caseId, procedureId, procedureSlug, procedureIds) {
 	const galleryContent = document.getElementById('gallery-content');
 	if (!galleryContent) {
 		console.error('Gallery content container not found');
 		return;
+	}
+
+	// If procedureIds not provided, try to get from the case card
+	if (!procedureIds) {
+		const caseCard = document.querySelector(`.brag-book-gallery-case-card[data-case-id="${caseId}"]`);
+		if (caseCard && caseCard.dataset.procedureIds) {
+			procedureIds = caseCard.dataset.procedureIds;
+			console.log('Got procedure IDs from case card:', procedureIds);
+		}
 	}
 
 	// Show loading state
@@ -922,6 +931,11 @@ window.loadCaseDetails = function(caseId, procedureId, procedureSlug) {
 	// Add procedure ID if provided
 	if (procedureId) {
 		requestParams.procedure_id = procedureId;
+	}
+
+	// Add procedure IDs if provided (for API request)
+	if (procedureIds) {
+		requestParams.procedure_ids = procedureIds;
 	}
 
 	// Make AJAX request to load case details
@@ -1142,8 +1156,18 @@ document.addEventListener('DOMContentLoaded', function() {
 		if (wrapper && wrapper.dataset.initialCaseId) {
 			const caseId = wrapper.dataset.initialCaseId;
 			const procedureSlug = window.location.pathname.split('/').filter(s => s)[1] || '';
-			console.log('Auto-loading case on page load:', caseId, 'for procedure:', procedureSlug);
-			window.loadCaseDetails(caseId, '', procedureSlug);
+			
+			// Try to find the case card to get procedure IDs
+			let procedureIds = '';
+			setTimeout(() => {
+				const caseCard = document.querySelector(`.brag-book-gallery-case-card[data-case-id="${caseId}"]`);
+				if (caseCard && caseCard.dataset.procedureIds) {
+					procedureIds = caseCard.dataset.procedureIds;
+				}
+				
+				console.log('Auto-loading case on page load:', caseId, 'for procedure:', procedureSlug, 'with procedure IDs:', procedureIds);
+				window.loadCaseDetails(caseId, '', procedureSlug, procedureIds);
+			}, 200);
 		}
 	}, 100);
 });

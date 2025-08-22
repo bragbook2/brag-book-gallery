@@ -1663,7 +1663,13 @@ final class Shortcodes {
 			$case_id      = $first_detail['caseId'] ?? '';
 		}
 
-		$html .= '<article class="brag-book-gallery-case-card" ' . $data_attrs . ' data-case-id="' . esc_attr( $case_id ) . '">';
+		// Get procedure IDs for this case
+		$procedure_ids = '';
+		if ( ! empty( $case['procedureIds'] ) && is_array( $case['procedureIds'] ) ) {
+			$procedure_ids = implode( ',', array_map( 'intval', $case['procedureIds'] ) );
+		}
+
+		$html .= '<article class="brag-book-gallery-case-card" ' . $data_attrs . ' data-case-id="' . esc_attr( $case_id ) . '" data-procedure-ids="' . esc_attr( $procedure_ids ) . '">';
 
 		// Get case URL for linking - prioritize procedure context from AJAX filter
 		$filter_procedure = get_query_var( 'filter_procedure', '' );
@@ -1749,7 +1755,7 @@ final class Shortcodes {
 					$html .= '</div>';
 				}
 
-				$html .= '<a href="' . esc_url( $case_url ) . '" class="brag-book-gallery-case-link" data-case-id="' . esc_attr( $case_id ) . '">';
+				$html .= '<a href="' . esc_url( $case_url ) . '" class="brag-book-gallery-case-link" data-case-id="' . esc_attr( $case_id ) . '" data-procedure-ids="' . esc_attr( $procedure_ids ) . '">';
 				$html .= '<picture class="brag-book-gallery-picture">';
 				$html .= '<img src="' . esc_url( $single_image ) . '" ';
 				$html .= 'alt="Case ' . esc_attr( $case_id ) . '" ';
@@ -1766,7 +1772,7 @@ final class Shortcodes {
 			} else {
 				// Fallback to placeholder if no single image
 				$html .= '<div class="brag-book-gallery-case-image-placeholder">';
-				$html .= '<a href="' . esc_url( $case_url ) . '" class="brag-book-gallery-case-link" data-case-id="' . esc_attr( $case_id ) . '">';
+				$html .= '<a href="' . esc_url( $case_url ) . '" class="brag-book-gallery-case-link" data-case-id="' . esc_attr( $case_id ) . '" data-procedure-ids="' . esc_attr( $procedure_ids ) . '">';
 				$html .= '<span>No image available</span>';
 				$html .= '</a>';
 				$html .= '</div>';
@@ -1789,7 +1795,7 @@ final class Shortcodes {
 					$html .= '<div class="brag-book-gallery-image-container">';
 					$html .= '<div class="brag-book-gallery-skeleton-loader"></div>';
 					$html .= '<div class="brag-book-gallery-case-image-label">Before</div>';
-					$html .= '<a href="' . esc_url( $case_url ) . '" class="brag-book-gallery-case-link" data-case-id="' . esc_attr( $case_id ) . '">';
+					$html .= '<a href="' . esc_url( $case_url ) . '" class="brag-book-gallery-case-link" data-case-id="' . esc_attr( $case_id ) . '" data-procedure-ids="' . esc_attr( $procedure_ids ) . '">';
 					$html .= '<picture class="brag-book-gallery-picture">';
 					$html .= '<img src="' . esc_url( $before_image ) . '" ';
 					$html .= 'alt="Before - Case ' . esc_attr( $case_id ) . '" ';
@@ -1838,7 +1844,7 @@ final class Shortcodes {
 
 					$html .= '</div>';
 
-					$html .= '<a href="' . esc_url( $case_url ) . '" class="brag-book-gallery-case-link" data-case-id="' . esc_attr( $case_id ) . '">';
+					$html .= '<a href="' . esc_url( $case_url ) . '" class="brag-book-gallery-case-link" data-case-id="' . esc_attr( $case_id ) . '" data-procedure-ids="' . esc_attr( $procedure_ids ) . '">';
 					$html .= '<picture class="brag-book-gallery-picture">';
 					$html .= '<img src="' . esc_url( $after_image ) . '" ';
 					$html .= 'alt="After - Case ' . esc_attr( $case_id ) . '" ';

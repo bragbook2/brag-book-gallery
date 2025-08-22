@@ -466,20 +466,26 @@ class Endpoints {
 
 		// Log the request details for debugging
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			error_log( 'Case API Request Details:' );
-			error_log( 'Endpoint: ' . $endpoint );
-			error_log( 'Full URL: ' . Setup::get_api_url() . $endpoint );
-			error_log( 'Token: ' . substr( $api_token, 0, 10 ) . '...' );
-			error_log( 'Property ID: ' . $website_property_id );
-			error_log( 'Case Number: ' . $case_number );
+			error_log( 'BRAGBook Gallery: Case API Request Details:' );
+			error_log( '  Endpoint: ' . $endpoint );
+			error_log( '  Full URL: ' . Setup::get_api_url() . $endpoint );
+			error_log( '  Token: ' . substr( $api_token, 0, 10 ) . '...' );
+			error_log( '  Property ID: ' . $website_property_id );
+			error_log( '  Case Number: ' . $case_number );
+			error_log( '  Procedure IDs: ' . json_encode( $procedure_ids ) );
 		}
 
 		// Try both request formats - first with arrays (like pagination endpoint)
+		// For single case endpoint, we don't need to send procedureIds
 		$request_body = [
 			'apiTokens' => [ $api_token ],
 			'websitePropertyIds' => [ (int) $website_property_id ],
-			'procedureIds' => array_map( 'intval', $procedure_ids ),
 		];
+		
+		// Only add procedureIds if they were explicitly provided
+		if ( ! empty( $procedure_ids ) ) {
+			$request_body['procedureIds'] = array_map( 'intval', $procedure_ids );
+		}
 
 		// Make API request to get specific case
 		$response = $this->make_api_request(
@@ -520,11 +526,20 @@ class Endpoints {
 
 		// Log the response for debugging
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			error_log( 'Case API Response status: ' . ( ! empty( $data ) ? 'Has data' : 'Empty' ) );
+			error_log( 'BRAGBook Gallery: Case API Response status: ' . ( ! empty( $data ) ? 'Has data' : 'Empty' ) );
 			if ( ! empty( $data ) ) {
-				error_log( 'Case API Response keys: ' . implode( ', ', array_keys( $data ) ) );
+				error_log( '  Response keys: ' . implode( ', ', array_keys( $data ) ) );
+				if ( isset( $data['success'] ) ) {
+					error_log( '  Success flag: ' . ( $data['success'] ? 'true' : 'false' ) );
+				}
 				if ( isset( $data['data'] ) ) {
-					error_log( 'Case API Response data count: ' . ( is_array( $data['data'] ) ? count( $data['data'] ) : 'not array' ) );
+					error_log( '  Data type: ' . gettype( $data['data'] ) );
+					if ( is_array( $data['data'] ) ) {
+						error_log( '  Data count: ' . count( $data['data'] ) );
+						if ( ! empty( $data['data'][0] ) && isset( $data['data'][0]['id'] ) ) {
+							error_log( '  First case ID: ' . $data['data'][0]['id'] );
+						}
+					}
 				}
 			}
 		}
