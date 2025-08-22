@@ -255,7 +255,7 @@ h3.brag-book-gallery-case-title {
 	gap: calc( 4 * var(--wp--custom--brag-book-gallery--spacer) );
 	align-items: center;
 	list-style: none;
-	margin: 0;
+	margin: 0 !important;
 	padding: 0;
 }
 
@@ -263,7 +263,7 @@ h3.brag-book-gallery-case-title {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	padding: calc( 2 * var(--wp--custom--brag-book-gallery--spacer) ) calc( 3 * var(--wp--custom--brag-book-gallery--spacer) );
+	padding: calc( 2 * var(--wp--custom--brag-book-gallery--spacer) ) calc( 3 * var(--wp--custom--brag-book-gallery--spacer) ) !important;
 	background: var(--wp--custom--brag-book-gallery--color--white);
 	color: var(--wp--custom--brag-book-gallery--color--black);
 	text-decoration: none;
