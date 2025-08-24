@@ -31,14 +31,14 @@ class Ajax_Handlers {
 	private static function set_no_cache_headers(): void {
 		// Prevent all caching
 		nocache_headers();
-		
+
 		// Additional headers for LiteSpeed and other caching systems
 		header( 'X-LiteSpeed-Cache-Control: no-cache' );
 		header( 'Cache-Control: no-cache, no-store, must-revalidate, max-age=0' );
 		header( 'Pragma: no-cache' );
 		header( 'Expires: Wed, 11 Jan 1984 05:00:00 GMT' );
 		header( 'X-Accel-Expires: 0' );
-		
+
 		// Disable LiteSpeed caching for this response
 		if ( defined( 'LSCWP_V' ) ) {
 			do_action( 'litespeed_control_set_nocache', 'bragbook ajax request' );
@@ -80,6 +80,14 @@ class Ajax_Handlers {
 
 		// Rewrite rules
 		add_action( 'wp_ajax_brag_book_flush_rewrite_rules', [ __CLASS__, 'ajax_flush_rewrite_rules' ] );
+
+		// Favorites
+		add_action( 'wp_ajax_brag_book_add_favorite', [ __CLASS__, 'ajax_add_favorite' ] );
+		add_action( 'wp_ajax_nopriv_brag_book_add_favorite', [ __CLASS__, 'ajax_add_favorite' ] );
+		add_action( 'wp_ajax_brag_book_get_favorites_list', [ __CLASS__, 'ajax_get_favorites_list' ] );
+		add_action( 'wp_ajax_nopriv_brag_book_get_favorites_list', [ __CLASS__, 'ajax_get_favorites_list' ] );
+		add_action( 'wp_ajax_brag_book_load_local_favorites', [ __CLASS__, 'ajax_load_local_favorites' ] );
+		add_action( 'wp_ajax_nopriv_brag_book_load_local_favorites', [ __CLASS__, 'ajax_load_local_favorites' ] );
 	}
 
 	/**
@@ -111,7 +119,7 @@ class Ajax_Handlers {
 					flush_rewrite_rules( true );
 					$message = 'Hard flush completed successfully. Rewrite rules and .htaccess updated.';
 					break;
-					
+
 				case 'with_registration':
 					// Re-register custom rules first
 					Rewrite_Rules_Handler::custom_rewrite_rules();
@@ -119,12 +127,12 @@ class Ajax_Handlers {
 					flush_rewrite_rules( false );
 					$message = 'Rules re-registered and flushed successfully.';
 					break;
-					
+
 				case 'verify':
 					global $wp_rewrite;
 					$rules = $wp_rewrite->wp_rewrite_rules();
 					$gallery_rules_count = 0;
-					
+
 					if ( ! empty( $rules ) ) {
 						foreach ( $rules as $pattern => $query ) {
 							if ( strpos( $query, 'procedure_title' ) !== false ||
@@ -133,14 +141,14 @@ class Ajax_Handlers {
 							}
 						}
 					}
-					
-					$message = sprintf( 
+
+					$message = sprintf(
 						'Verification complete. Found %d total rules, %d gallery-specific rules.',
 						count( $rules ),
 						$gallery_rules_count
 					);
 					break;
-					
+
 				case 'standard':
 				default:
 					// Standard flush
@@ -174,11 +182,11 @@ class Ajax_Handlers {
 	public static function ajax_load_filtered_gallery(): void {
 		// Set no-cache headers first
 		self::set_no_cache_headers();
-		
+
 		// Simple test response - uncomment to test if handler is reached
 		// wp_send_json_success( [ 'html' => '<div class="brag-book-gallery-test">AJAX handler is working! Received action: ' . ($_POST['action'] ?? 'none') . '</div>', 'count' => 0 ] );
 		// return;
-		
+
 		// Wrap everything in try-catch to capture any errors
 		try {
 			// Debug: Log that we reached the handler
@@ -186,7 +194,7 @@ class Ajax_Handlers {
 				error_log( 'BRAGBook Gallery: ajax_load_filtered_gallery called' );
 				error_log( 'POST data: ' . print_r( $_POST, true ) );
 			}
-			
+
 			// Verify nonce
 			if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'brag_book_gallery_nonce' ) ) {
 				wp_send_json_error( [
@@ -198,7 +206,7 @@ class Ajax_Handlers {
 				] );
 				return;
 			}
-			
+
 			// Get filter parameters
 			$procedure_name = isset( $_POST['procedure_name'] ) ? sanitize_text_field( wp_unslash( $_POST['procedure_name'] ) ) : '';
 			$procedure_ids = isset( $_POST['procedure_ids'] ) ? sanitize_text_field( wp_unslash( $_POST['procedure_ids'] ) ) : '';
@@ -211,16 +219,16 @@ class Ajax_Handlers {
 			// Get API configuration directly from options
 			$api_tokens = get_option( 'brag_book_gallery_api_token', [] );
 			$website_property_ids = get_option( 'brag_book_gallery_website_property_id', [] );
-			
+
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 				error_log( 'API Tokens: ' . print_r( $api_tokens, true ) );
 				error_log( 'Website Property IDs: ' . print_r( $website_property_ids, true ) );
 			}
-			
+
 			// Get the first configured API token and property ID
 			$api_token = ! empty( $api_tokens[0] ) ? $api_tokens[0] : '';
 			$website_property_id = ! empty( $website_property_ids[0] ) ? $website_property_ids[0] : '';
-			
+
 			if ( empty( $api_token ) || empty( $website_property_id ) ) {
 				wp_send_json_error( [
 					'message' => __( 'API configuration missing. Please configure the BRAGBook API settings.', 'brag-book-gallery' ),
@@ -237,13 +245,13 @@ class Ajax_Handlers {
 			if ( ! empty( $procedure_ids ) ) {
 				$procedure_ids_array = array_map( 'intval', explode( ',', $procedure_ids ) );
 			}
-			
+
 			// Fetch filtered cases from API - pass procedure IDs to filter at API level
 			try {
-				$gallery_data = Data_Fetcher::get_all_cases_for_filtering( 
-					$api_token, 
+				$gallery_data = Data_Fetcher::get_all_cases_for_filtering(
+					$api_token,
 					$website_property_id,
-					$procedure_ids_array 
+					$procedure_ids_array
 				);
 			} catch ( \Exception $api_error ) {
 				wp_send_json_error( [
@@ -264,7 +272,7 @@ class Ajax_Handlers {
 				] );
 				return;
 			}
-			
+
 			// Debug: Log first case structure to understand API response
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG && ! empty( $gallery_data['data'][0] ) ) {
 				$first_case = $gallery_data['data'][0];
@@ -286,7 +294,7 @@ class Ajax_Handlers {
 			// Since we're now passing procedure IDs to the API, we should get filtered results directly
 			// Only do additional filtering if necessary
 			$filtered_cases = [];
-			
+
 			// Debug log for procedure filtering
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 				error_log( 'Procedure Filter Debug:' );
@@ -294,12 +302,12 @@ class Ajax_Handlers {
 				error_log( '  Procedure IDs: ' . $procedure_ids );
 				error_log( '  Total cases from API: ' . count( $gallery_data['data'] ?? [] ) );
 			}
-			
+
 			// If we passed procedure IDs to the API, the results should already be filtered
 			// Just use the data as-is
 			if ( ! empty( $procedure_ids_array ) ) {
 				$filtered_cases = $gallery_data['data'] ?? [];
-				
+
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 					error_log( '  Using API-filtered results: ' . count( $filtered_cases ) . ' cases' );
 				}
@@ -312,8 +320,8 @@ class Ajax_Handlers {
 							$case_procedure_name = $procedure['name'] ?? '';
 							$case_procedure_slug = sanitize_title( $procedure['slugName'] ?? $case_procedure_name );
 							$filter_procedure_slug = sanitize_title( $procedure_name );
-							
-							if ( strcasecmp( $case_procedure_name, $procedure_name ) === 0 || 
+
+							if ( strcasecmp( $case_procedure_name, $procedure_name ) === 0 ||
 								 strcasecmp( $case_procedure_slug, $filter_procedure_slug ) === 0 ||
 								 stripos( $case_procedure_name, $procedure_name ) !== false ) {
 								$filtered_cases[] = $case;
@@ -340,23 +348,23 @@ class Ajax_Handlers {
 			try {
 				foreach ( $filtered_cases as $case ) {
 					$transformed_case = $case;
-					
+
 					// Extract main image from photoSets
 					$transformed_case['mainImageUrl'] = '';
 					if ( ! empty( $case['photoSets'] ) && is_array( $case['photoSets'] ) ) {
 						$first_photoset = reset( $case['photoSets'] );
-						$transformed_case['mainImageUrl'] = $first_photoset['postProcessedImageLocation'] ?? 
-															 $first_photoset['beforeLocationUrl'] ?? 
+						$transformed_case['mainImageUrl'] = $first_photoset['postProcessedImageLocation'] ??
+															 $first_photoset['beforeLocationUrl'] ??
 															 $first_photoset['afterLocationUrl1'] ?? '';
 					}
-					
+
 					// Extract procedure title
 					$transformed_case['procedureTitle'] = __( 'Unknown Procedure', 'brag-book-gallery' );
 					if ( ! empty( $case['procedures'] ) && is_array( $case['procedures'] ) ) {
 						$first_procedure = reset( $case['procedures'] );
 						$transformed_case['procedureTitle'] = $first_procedure['name'] ?? __( 'Unknown Procedure', 'brag-book-gallery' );
 					}
-					
+
 					// Only add cases that have at least an image or valid data
 					if ( ! empty( $transformed_case['mainImageUrl'] ) || ! empty( $case['id'] ) ) {
 						$transformed_cases[] = $transformed_case;
@@ -465,7 +473,7 @@ class Ajax_Handlers {
 				// Loop through cases and render them
 				if ( ! empty( $transformed_cases ) ) {
 					$image_display_mode = get_option( 'brag_book_gallery_image_display_mode', 'single' );
-					
+
 					foreach ( $transformed_cases as $case ) {
 						// Use reflection to access the render_ajax_gallery_case_card method
 						try {
@@ -487,7 +495,7 @@ class Ajax_Handlers {
 
 				// Get items per page from settings
 				$items_per_page = absint( get_option( 'brag_book_gallery_items_per_page', '10' ) );
-				
+
 				// Add Load More button if there are enough cases
 				if ( count( $transformed_cases ) >= $items_per_page ) {
 					$html .= '<div class="brag-book-gallery-load-more-container">';
@@ -504,13 +512,13 @@ class Ajax_Handlers {
 
 				// Add JavaScript for grid control and filters
 				$html .= self::generate_filtered_gallery_scripts( $transformed_cases, $procedure_ids );
-			
+
 			wp_send_json_success( [
 				'html' => $html,
 				'totalCount' => count( $transformed_cases ),
 				'procedureName' => $procedure_name,
 			] );
-			
+
 			} catch ( \Exception $html_error ) {
 				wp_send_json_error( [
 					'message' => __( 'Failed to generate gallery HTML.', 'brag-book-gallery' ),
@@ -518,14 +526,14 @@ class Ajax_Handlers {
 				] );
 				return;
 			}
-		
+
 		} catch ( \Throwable $e ) {
 			// Catch any error including fatal errors
 			error_log( 'BRAGBook Gallery AJAX Error (Throwable): ' . $e->getMessage() );
 			error_log( 'Error Type: ' . get_class( $e ) );
 			error_log( 'File: ' . $e->getFile() . ' Line: ' . $e->getLine() );
 			error_log( 'Stack trace: ' . $e->getTraceAsString() );
-			
+
 			wp_send_json_error( [
 				'message' => __( 'An error occurred while loading the filtered gallery.', 'brag-book-gallery' ),
 				'error' => $e->getMessage(),
@@ -568,7 +576,7 @@ class Ajax_Handlers {
 		if ( isset( $_POST['procedure_ids'] ) && ! empty( $_POST['procedure_ids'] ) ) {
 			$ids_string = sanitize_text_field( wp_unslash( $_POST['procedure_ids'] ) );
 			$procedure_ids = array_map( 'intval', explode( ',', $ids_string ) );
-			
+
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 				error_log( 'BRAGBook Gallery: Received procedure IDs: ' . json_encode( $procedure_ids ) );
 			}
@@ -611,7 +619,7 @@ class Ajax_Handlers {
 			}
 
 			// Try to fetch case details - pass the procedure IDs from the request
-			$response = $endpoints->bb_get_case_by_number( $token, (int) $property_id, $case_id, $procedure_ids );
+			$response = $endpoints->get_case_by_number( $token, (int) $property_id, $case_id, $procedure_ids );
 
 			if ( ! empty( $response ) && is_array( $response ) ) {
 				// Debug: Log successful response
@@ -633,7 +641,7 @@ class Ajax_Handlers {
 				'count' => 100,
 			];
 
-			$response = $endpoints->bb_get_pagination_data( $filter_body );
+			$response = $endpoints->get_pagination_data( $filter_body );
 
 			if ( ! empty( $response['cases'] ) && is_array( $response['cases'] ) ) {
 				// Debug: Log available case numbers for comparison
@@ -644,7 +652,7 @@ class Ajax_Handlers {
 					error_log( 'BRAGBook Gallery: Available case numbers in fallback search: ' . implode(', ', $available_cases) );
 					error_log( 'BRAGBook Gallery: Looking for case ID: ' . $case_id );
 				}
-				
+
 				// Search for the case in the results
 				foreach ( $response['cases'] as $case ) {
 					// Try matching by caseNumber field first
@@ -664,7 +672,7 @@ class Ajax_Handlers {
 		if ( empty( $case_data ) ) {
 			// Always log this error for debugging (even without WP_DEBUG)
 			error_log( 'BRAGBook Gallery: Case not found - Case ID: ' . $case_id . ' - Error messages: ' . implode( ', ', $error_messages ) );
-			
+
 			wp_send_json_error( [
 				'message' => __( 'Case not found.', 'brag-book-gallery' ),
 				'case_id' => $case_id,
@@ -705,7 +713,7 @@ class Ajax_Handlers {
 		if ( isset( $_POST['procedure_ids'] ) && ! empty( $_POST['procedure_ids'] ) ) {
 			$ids_string = sanitize_text_field( wp_unslash( $_POST['procedure_ids'] ) );
 			$procedure_ids = array_map( 'intval', explode( ',', $ids_string ) );
-			
+
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 				error_log( 'BRAGBook Gallery HTML: Received procedure IDs: ' . json_encode( $procedure_ids ) );
 			}
@@ -723,9 +731,9 @@ class Ajax_Handlers {
 		$api_token = $api_tokens[0];
 		$website_property_id = intval( $website_property_ids[0] );
 
-		// Use the bb_get_case_by_number method with procedure IDs
+		// Use the get_case_by_number method with procedure IDs
 		$endpoints = new Endpoints();
-		$case_data = $endpoints->bb_get_case_by_number( $api_token, $website_property_id, $case_id, $procedure_ids );
+		$case_data = $endpoints->get_case_by_number( $api_token, $website_property_id, $case_id, $procedure_ids );
 
 		if ( ! empty( $case_data ) && is_array( $case_data ) ) {
 			// Generate HTML for case details using HTML_Renderer class method
@@ -896,7 +904,7 @@ class Ajax_Handlers {
 	public static function ajax_load_more_cases(): void {
 		// Set no-cache headers first
 		self::set_no_cache_headers();
-		
+
 		// Verify nonce
 		if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'brag_book_gallery_nonce' ) ) {
 			wp_send_json_error( [
@@ -908,7 +916,7 @@ class Ajax_Handlers {
 		$start_page = isset( $_POST['start_page'] ) ? intval( $_POST['start_page'] ) : 2;
 		$procedure_ids = isset( $_POST['procedure_ids'] ) ? array_map( 'intval', explode( ',', sanitize_text_field( wp_unslash( $_POST['procedure_ids'] ) ) ) ) : [];
 		$has_nudity = isset( $_POST['has_nudity'] ) && $_POST['has_nudity'] === '1';
-		
+
 		// Get already loaded case IDs to prevent duplicates
 		$loaded_case_ids = isset( $_POST['loaded_ids'] ) ? array_map( 'trim', explode( ',', sanitize_text_field( wp_unslash( $_POST['loaded_ids'] ) ) ) ) : [];
 
@@ -939,7 +947,7 @@ class Ajax_Handlers {
 			$has_more = false;
 			$filter_body['count'] = $start_page; // 'count' is the page number in this API
 
-			$response = $endpoints->bb_get_pagination_data( $filter_body );
+			$response = $endpoints->get_pagination_data( $filter_body );
 
 			if ( ! empty( $response ) ) {
 				$page_data = json_decode( $response, true );
@@ -952,15 +960,15 @@ class Ajax_Handlers {
 							$all_cases[] = $case;
 						}
 					}
-					
+
 					$new_cases_count = count( $page_data['data'] );
-					
+
 					// Check if there might be more pages
 					if ( $new_cases_count >= $cases_per_page ) {
 						// Check if next page has data
 						$next_page = $start_page + 1;
 						$filter_body['count'] = $next_page;
-						$check_response = $endpoints->bb_get_pagination_data( $filter_body );
+						$check_response = $endpoints->get_pagination_data( $filter_body );
 						if ( ! empty( $check_response ) ) {
 							$check_data = json_decode( $check_response, true );
 							if ( is_array( $check_data ) && ! empty( $check_data['data'] ) ) {
@@ -986,7 +994,7 @@ class Ajax_Handlers {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 				error_log( 'Load More Results: Cases loaded: ' . count( $all_cases ) . ', Has more: ' . ( $has_more ? 'true' : 'false' ) );
 			}
-			
+
 			wp_send_json_success( [
 				'html' => $html,
 				'casesLoaded' => count( $all_cases ),
@@ -1010,7 +1018,7 @@ class Ajax_Handlers {
 	public static function ajax_load_filtered_cases(): void {
 		// Set no-cache headers first
 		self::set_no_cache_headers();
-		
+
 		// Get case IDs from request
 		$case_ids_str = isset( $_POST['case_ids'] ) ? sanitize_text_field( wp_unslash( $_POST['case_ids'] ) ) : '';
 
@@ -1126,7 +1134,7 @@ class Ajax_Handlers {
 			'limit' => 100,
 		];
 
-		$response = $endpoints->bb_get_pagination_data( $filter_body );
+		$response = $endpoints->get_pagination_data( $filter_body );
 
 		if ( ! empty( $response ) ) {
 			$response_data = json_decode( $response, true );
@@ -1342,7 +1350,415 @@ class Ajax_Handlers {
 				}
 			});
 		</script>';
-		
+
 		return $script;
 	}
+
+	/**
+	 * AJAX handler to add a case to favorites.
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	public static function ajax_add_favorite(): void {
+		// Set no-cache headers
+		self::set_no_cache_headers();
+
+		// Verify nonce
+		if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'brag_book_gallery_nonce' ) ) {
+			wp_send_json_error( [
+				'message' => __( 'Security check failed.', 'brag-book-gallery' ),
+			] );
+		}
+
+		// Get form data
+		$email = isset( $_POST['email'] ) ? sanitize_email( wp_unslash( $_POST['email'] ) ) : '';
+		$phone = isset( $_POST['phone'] ) ? sanitize_text_field( wp_unslash( $_POST['phone'] ) ) : '';
+		$name = isset( $_POST['name'] ) ? sanitize_text_field( wp_unslash( $_POST['name'] ) ) : '';
+		$case_id = isset( $_POST['case_id'] ) ? sanitize_text_field( wp_unslash( $_POST['case_id'] ) ) : '';
+
+		// Validate required fields
+		if ( empty( $email ) || empty( $phone ) || empty( $name ) ) {
+			wp_send_json_error( [
+				'message' => __( 'Please fill in all required fields.', 'brag-book-gallery' ),
+			] );
+		}
+
+		// Validate email
+		if ( ! is_email( $email ) ) {
+			wp_send_json_error( [
+				'message' => __( 'Please enter a valid email address.', 'brag-book-gallery' ),
+			] );
+		}
+
+		// Get API configuration
+		$api_tokens = get_option( 'brag_book_gallery_api_token', [] );
+		$website_property_ids = get_option( 'brag_book_gallery_website_property_id', [] );
+
+		if ( empty( $api_tokens ) || empty( $website_property_ids ) ) {
+			wp_send_json_error( [
+				'message' => __( 'API configuration missing.', 'brag-book-gallery' ),
+			] );
+		}
+
+		try {
+			// Call the Endpoints class to submit favorite
+			$endpoints = new Endpoints();
+			
+			// Debug logging
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'BRAGBook Favorites: Submitting with data:' );
+				error_log( '  Email: ' . $email );
+				error_log( '  Phone: ' . $phone );
+				error_log( '  Name: ' . $name );
+				error_log( '  Case ID: ' . $case_id );
+				error_log( '  API Tokens: ' . print_r( $api_tokens, true ) );
+				error_log( '  Website IDs: ' . print_r( $website_property_ids, true ) );
+			}
+			
+			$response = $endpoints->get_favorite_data(
+				$api_tokens,
+				$website_property_ids,
+				$email,
+				$phone,
+				$name,
+				$case_id
+			);
+
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'BRAGBook Favorites: API Response: ' . ( $response ? substr( $response, 0, 500 ) : 'NULL' ) );
+			}
+
+			if ( ! empty( $response ) ) {
+				$data = json_decode( $response, true );
+				
+				// Check if the API call was successful
+				if ( isset( $data['success'] ) && $data['success'] === true ) {
+					wp_send_json_success( [
+						'message' => __( 'Successfully added to favorites! We will contact you soon.', 'brag-book-gallery' ),
+						'data' => $data,
+					] );
+				} else {
+					// API returned an error or success was false
+					$error_message = __( 'Failed to add to favorites. Please try again.', 'brag-book-gallery' );
+					if ( isset( $data['message'] ) ) {
+						$error_message = $data['message'];
+					} elseif ( isset( $data['error'] ) ) {
+						$error_message = $data['error'];
+					}
+					
+					wp_send_json_error( [
+						'message' => $error_message,
+						'debug' => WP_DEBUG ? $data : null,
+					] );
+				}
+			} else {
+				// No response from API
+				wp_send_json_error( [
+					'message' => __( 'Unable to connect to the favorites service. Please try again later.', 'brag-book-gallery' ),
+					'debug' => WP_DEBUG ? 'Empty response from API' : null,
+				] );
+			}
+
+		} catch ( \Exception $e ) {
+			wp_send_json_error( [
+				'message' => __( 'An error occurred while adding to favorites. Please try again.', 'brag-book-gallery' ),
+				'debug' => WP_DEBUG ? $e->getMessage() : null,
+			] );
+		}
+	}
+
+	/**
+	 * AJAX handler to get user's favorites list.
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	public static function ajax_get_favorites_list(): void {
+		// Set no-cache headers
+		self::set_no_cache_headers();
+
+		// Verify nonce
+		if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'brag_book_gallery_nonce' ) ) {
+			wp_send_json_error( [
+				'message' => __( 'Security check failed.', 'brag-book-gallery' ),
+			] );
+		}
+
+		// Get email
+		$email = isset( $_POST['email'] ) ? sanitize_email( wp_unslash( $_POST['email'] ) ) : '';
+
+		// Validate email
+		if ( empty( $email ) || ! is_email( $email ) ) {
+			wp_send_json_error( [
+				'message' => __( 'Please provide a valid email address.', 'brag-book-gallery' ),
+			] );
+		}
+
+		// Get API configuration
+		$api_tokens = get_option( 'brag_book_gallery_api_token', [] );
+		$website_property_ids = get_option( 'brag_book_gallery_website_property_id', [] );
+
+		if ( empty( $api_tokens ) || empty( $website_property_ids ) ) {
+			wp_send_json_error( [
+				'message' => __( 'API configuration missing.', 'brag-book-gallery' ),
+			] );
+		}
+
+		try {
+			// Get favorites list from API
+			$endpoints = new Endpoints();
+			$response = $endpoints->get_favorite_list_data(
+				$api_tokens,
+				$website_property_ids,
+				$email
+			);
+
+			if ( ! empty( $response ) ) {
+				$data = json_decode( $response, true );
+				
+				// Check if we have a successful response with favorites
+				if ( isset( $data['success'] ) && $data['success'] === true && ! empty( $data['favorites'] ) ) {
+					// Extract user info from the first favorite entry if available
+					$user_info = [];
+					if ( ! empty( $data['favorites'][0] ) ) {
+						$first_favorite = $data['favorites'][0];
+						if ( isset( $first_favorite['name'] ) ) {
+							$user_info['name'] = $first_favorite['name'];
+						}
+						if ( isset( $first_favorite['phone'] ) ) {
+							$user_info['phone'] = $first_favorite['phone'];
+						}
+						// Email is already known from the request
+						$user_info['email'] = $email;
+					}
+					
+					// Extract cases from all favorites entries and deduplicate by case ID
+					$all_cases = [];
+					$seen_case_ids = [];
+					
+					foreach ( $data['favorites'] as $favorite ) {
+						if ( isset( $favorite['cases'] ) && is_array( $favorite['cases'] ) ) {
+							foreach ( $favorite['cases'] as $case ) {
+								// Get the case ID
+								$case_id = $case['id'] ?? $case['caseId'] ?? '';
+								
+								// Only add if we haven't seen this case ID before
+								if ( ! empty( $case_id ) && ! in_array( $case_id, $seen_case_ids ) ) {
+									$all_cases[] = $case;
+									$seen_case_ids[] = $case_id;
+								}
+							}
+						}
+					}
+					
+					if ( ! empty( $all_cases ) ) {
+						// Use HTML_Renderer to create case cards
+						$html = HTML_Renderer::render_favorites_view( $all_cases );
+						
+						$response_data = [
+							'cases' => $all_cases,
+							'html' => $html,
+							'count' => count( $all_cases ),
+						];
+						
+						// Include user info if we have it
+						if ( ! empty( $user_info ) ) {
+							$response_data['user_info'] = $user_info;
+						}
+						
+						wp_send_json_success( $response_data );
+					} else {
+						// No cases found in favorites
+						wp_send_json_success( [
+							'cases' => [],
+							'html' => '<div class="brag-book-gallery-favorites-empty">
+								<svg class="empty-icon" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+									<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+								</svg>
+								<h2>No favorites yet</h2>
+								<p>Start browsing the gallery and click the heart icon on cases you love to save them here.</p>
+							</div>',
+							'count' => 0,
+							'message' => __( 'No cases found in your favorites.', 'brag-book-gallery' ),
+						] );
+					}
+				} else {
+					// No favorites found or API error
+					wp_send_json_success( [
+						'cases' => [],
+						'html' => '<div class="brag-book-gallery-favorites-empty">
+							<svg class="empty-icon" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+								<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+							</svg>
+							<h2>No favorites found</h2>
+							<p>No favorites found for this email address.</p>
+						</div>',
+						'count' => 0,
+						'message' => __( 'No favorites found for this email.', 'brag-book-gallery' ),
+					] );
+				}
+			} else {
+				wp_send_json_error( [
+					'message' => __( 'Unable to retrieve favorites. Please try again later.', 'brag-book-gallery' ),
+				] );
+			}
+
+		} catch ( \Exception $e ) {
+			wp_send_json_error( [
+				'message' => __( 'An error occurred while retrieving favorites.', 'brag-book-gallery' ),
+				'debug' => WP_DEBUG ? $e->getMessage() : null,
+			] );
+		}
+	}
+
+	/**
+	 * AJAX handler to load localStorage favorites.
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	public static function ajax_load_local_favorites(): void {
+		// Set no-cache headers
+		self::set_no_cache_headers();
+
+		// Verify nonce
+		if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'brag_book_gallery_nonce' ) ) {
+			wp_send_json_error( [
+				'message' => __( 'Security check failed.', 'brag-book-gallery' ),
+			] );
+		}
+
+		// Get case IDs from localStorage
+		$case_ids = isset( $_POST['case_ids'] ) ? sanitize_text_field( wp_unslash( $_POST['case_ids'] ) ) : '';
+
+		if ( empty( $case_ids ) ) {
+			// Return empty favorites view
+			wp_send_json_success( [
+				'html' => '<div class="brag-book-gallery-favorites-empty">
+					<svg class="empty-icon" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+					</svg>
+					<h2>No favorites yet</h2>
+					<p>Start browsing the gallery and click the heart icon on cases you love to save them here.</p>
+				</div>',
+				'count' => 0,
+			] );
+		}
+
+		// Parse case IDs
+		$ids = array_map( 'trim', explode( ',', $case_ids ) );
+		$ids = array_filter( $ids );
+
+		if ( empty( $ids ) ) {
+			wp_send_json_success( [
+				'html' => '<div class="brag-book-gallery-favorites-empty">No valid case IDs found.</div>',
+				'count' => 0,
+			] );
+		}
+
+		// Get API configuration
+		$api_tokens = get_option( 'brag_book_gallery_api_token', [] );
+		$website_property_ids = get_option( 'brag_book_gallery_website_property_id', [] );
+
+		if ( empty( $api_tokens ) || empty( $website_property_ids ) ) {
+			wp_send_json_error( [
+				'message' => __( 'API configuration missing.', 'brag-book-gallery' ),
+			] );
+		}
+
+		// Fetch individual case details from API
+		$endpoints = new Endpoints();
+		$favorite_cases = [];
+		$debug_info = [];
+
+		foreach ( $ids as $case_id ) {
+			if ( empty( $case_id ) ) {
+				continue;
+			}
+
+			// Get case details from API
+			$response = $endpoints->get_case_details( $case_id );
+			
+			if ( ! empty( $response ) ) {
+				$case_data = json_decode( $response, true );
+				
+				// Debug: Log what we got
+				$debug_info[] = [
+					'case_id' => $case_id,
+					'has_response' => ! empty( $response ),
+					'has_success' => isset( $case_data['success'] ),
+					'success_value' => $case_data['success'] ?? null,
+					'has_data' => isset( $case_data['data'] ),
+					'has_id' => isset( $case_data['id'] ),
+					'response_preview' => substr( $response, 0, 200 ),
+				];
+				
+				// Check if we have valid case data
+				if ( isset( $case_data['success'] ) && $case_data['success'] === true && ! empty( $case_data['data'] ) ) {
+					$favorite_cases[] = $case_data['data'];
+				} elseif ( isset( $case_data['id'] ) ) {
+					// Direct case object without wrapper
+					$favorite_cases[] = $case_data;
+				} elseif ( ! empty( $case_data ) && is_array( $case_data ) ) {
+					// Try to use the response as-is if it looks like case data
+					$favorite_cases[] = $case_data;
+				}
+			} else {
+				// Get actual API configuration for debugging
+				$mode = get_option( 'brag_book_gallery_mode', 'local' );
+				$api_token_option = get_option( 'brag_book_gallery_api_token', [] );
+				$website_property_id_option = get_option( 'brag_book_gallery_website_property_id', [] );
+				
+				$debug_info[] = [
+					'case_id' => $case_id,
+					'has_response' => false,
+					'error' => 'No response from API',
+					'api_token_set' => ! empty( $api_tokens ),
+					'website_id_set' => ! empty( $website_property_ids ),
+					'mode' => $mode,
+					'api_token_length' => strlen( $api_token_option[ $mode ] ?? '' ),
+					'website_id_value' => $website_property_id_option[ $mode ] ?? 'not set',
+					'api_endpoint' => get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' ),
+				];
+			}
+		}
+
+		if ( empty( $favorite_cases ) ) {
+			// Include debug info in the response if WP_DEBUG is enabled
+			$debug_html = '';
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				$debug_html = '<div class="debug-info" style="margin-top: 20px; padding: 10px; background: #f0f0f0; font-size: 12px;">';
+				$debug_html .= '<strong>Debug Info:</strong><br>';
+				$debug_html .= 'Case IDs requested: ' . implode( ', ', $ids ) . '<br>';
+				$debug_html .= 'API responses: <pre>' . esc_html( print_r( $debug_info, true ) ) . '</pre>';
+				$debug_html .= '</div>';
+			}
+			
+			wp_send_json_success( [
+				'html' => '<div class="brag-book-gallery-favorites-empty">No matching cases found.' . $debug_html . '</div>',
+				'count' => 0,
+				'debug' => $debug_info,
+			] );
+		}
+
+		// Generate HTML using the renderer
+		$html = '<div class="brag-book-gallery-favorites-view">';
+		$html .= '<div class="brag-book-gallery-favorites-header">';
+		$html .= '<h2>My Favorite Cases</h2>';
+		$html .= '<p>You have ' . count( $favorite_cases ) . ' favorited ' . ( count( $favorite_cases ) === 1 ? 'case' : 'cases' ) . '</p>';
+		$html .= '</div>';
+		$html .= '<div class="brag-book-gallery-cases-grid">';
+		$html .= HTML_Renderer::render_favorites_view( $favorite_cases );
+		$html .= '</div>';
+		$html .= '</div>';
+
+		wp_send_json_success( [
+			'html' => $html,
+			'cases' => $favorite_cases,
+			'count' => count( $favorite_cases ),
+			'debug' => defined( 'WP_DEBUG' ) && WP_DEBUG ? $debug_info : null,
+		] );
+	}
+
 }

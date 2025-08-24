@@ -87,7 +87,7 @@ Several endpoints are used directly in other classes rather than through the cen
 
 ### 3. ✅ RESOLVED Issues
 - **`/api/plugin/views`** - Now implemented in main Endpoints class as `track_case_view()` method
-- **Legacy `/api/plugin/cases/` endpoint** - Replaced with `bb_get_case_data()` method using the combine endpoint
+- **Legacy `/api/plugin/cases/` endpoint** - Replaced with `get_case_data()` method using the combine endpoint
 
 ## Recommendations
 
@@ -102,12 +102,12 @@ Several endpoints are used directly in other classes rather than through the cen
    );
    ```
 
-2. **Implement Missing Endpoints**: 
+2. **Implement Missing Endpoints**:
    - Add implementation for `/api/plugin/optimize-image` if it's meant to be handled server-side
 
-3. **✅ Completed Updates**: 
+3. **✅ Completed Updates**:
    - ✅ Added `/api/plugin/views` to main endpoints class as `track_case_view()` method
-   - ✅ Migrated from legacy `/api/plugin/cases/` to `/api/plugin/combine/cases` via `bb_get_case_data()`
+   - ✅ Migrated from legacy `/api/plugin/cases/` to `/api/plugin/combine/cases` via `get_case_data()`
    - ✅ Updated all templates and shortcodes to use centralized Endpoints class
 
 5. **Documentation Sync**: Ensure all implemented endpoints are documented and all documented endpoints are either implemented or marked as external-only.

@@ -8,7 +8,7 @@
  * @since   3.0.0
  */
 
-declare(strict_types=1);
+declare( strict_types=1 );
 
 namespace BRAGBookGallery\Includes\Extend;
 
@@ -47,32 +47,33 @@ final class HTML_Renderer {
 	/**
 	 * Format procedure display name with proper casing and formatting.
 	 *
-	 * @since 3.0.0
 	 * @param string $procedure_name The procedure name to format.
+	 *
 	 * @return string Formatted procedure name.
+	 * @since 3.0.0
 	 */
 	public static function format_procedure_display_name( string $procedure_name ): string {
 		// Handle known special cases
 		$special_cases = [
-			'ipl bbl laser' => 'IPL / BBL Laser',
-			'ipl/bbl laser' => 'IPL / BBL Laser',
-			'ipl-bbl-laser' => 'IPL / BBL Laser',
-			'co2 laser' => 'CO2 Laser',
-			'co2-laser' => 'CO2 Laser',
-			'halo laser' => 'HALO Laser',
-			'halo-laser' => 'HALO Laser',
-			'bbl laser' => 'BBL Laser',
-			'bbl-laser' => 'BBL Laser',
-			'ipl laser' => 'IPL Laser',
-			'ipl-laser' => 'IPL Laser',
-			'rf microneedling' => 'RF Microneedling',
-			'rf-microneedling' => 'RF Microneedling',
-			'prp therapy' => 'PRP Therapy',
-			'prp-therapy' => 'PRP Therapy',
-			'pdo threads' => 'PDO Threads',
-			'pdo-threads' => 'PDO Threads',
-			'lower lid canthoplasty' => 'Lower Lid (Canthoplasty)',
-			'lower-lid-canthoplasty' => 'Lower Lid (Canthoplasty)',
+			'ipl bbl laser'           => 'IPL / BBL Laser',
+			'ipl/bbl laser'           => 'IPL / BBL Laser',
+			'ipl-bbl-laser'           => 'IPL / BBL Laser',
+			'co2 laser'               => 'CO2 Laser',
+			'co2-laser'               => 'CO2 Laser',
+			'halo laser'              => 'HALO Laser',
+			'halo-laser'              => 'HALO Laser',
+			'bbl laser'               => 'BBL Laser',
+			'bbl-laser'               => 'BBL Laser',
+			'ipl laser'               => 'IPL Laser',
+			'ipl-laser'               => 'IPL Laser',
+			'rf microneedling'        => 'RF Microneedling',
+			'rf-microneedling'        => 'RF Microneedling',
+			'prp therapy'             => 'PRP Therapy',
+			'prp-therapy'             => 'PRP Therapy',
+			'pdo threads'             => 'PDO Threads',
+			'pdo-threads'             => 'PDO Threads',
+			'lower lid canthoplasty'  => 'Lower Lid (Canthoplasty)',
+			'lower-lid-canthoplasty'  => 'Lower Lid (Canthoplasty)',
 			'upper lid ptosis repair' => 'Upper Lid (Ptosis Repair)',
 			'upper-lid-ptosis-repair' => 'Upper Lid (Ptosis Repair)',
 		];
@@ -86,8 +87,9 @@ final class HTML_Renderer {
 		// Check if the name already contains parentheses and preserve them
 		if ( preg_match( '/^(.+?)\s*\((.+?)\)/', $procedure_name, $matches ) ) {
 			// Already has parentheses, ensure proper capitalization
-			$main_part = ucwords( strtolower( trim( $matches[1] ) ) );
+			$main_part   = ucwords( strtolower( trim( $matches[1] ) ) );
 			$parens_part = ucwords( strtolower( trim( $matches[2] ) ) );
+
 			return $main_part . ' (' . $parens_part . ')';
 		}
 
@@ -95,10 +97,12 @@ final class HTML_Renderer {
 		if ( strpos( $procedure_name, '-' ) !== false ) {
 			// Check if it might be a procedure that should have parentheses
 			if ( preg_match( '/^(lower|upper)[-\s]lid[-\s](.+)$/i', $procedure_name, $matches ) ) {
-				$lid_part = ucwords( strtolower( $matches[1] ) ) . ' Lid';
+				$lid_part       = ucwords( strtolower( $matches[1] ) ) . ' Lid';
 				$procedure_part = ucwords( str_replace( '-', ' ', $matches[2] ) );
+
 				return $lid_part . ' (' . $procedure_part . ')';
 			}
+
 			return ucwords( str_replace( '-', ' ', $procedure_name ) );
 		}
 
@@ -114,10 +118,11 @@ final class HTML_Renderer {
 	/**
 	 * Limit words in a text string.
 	 *
-	 * @since 3.0.0
-	 * @param mixed $text       Text to limit.
-	 * @param int   $word_limit Maximum word count.
+	 * @param mixed $text Text to limit.
+	 * @param int $word_limit Maximum word count.
+	 *
 	 * @return string Limited text.
+	 * @since 3.0.0
 	 */
 	public static function limit_words( mixed $text, int $word_limit = self::DEFAULT_WORD_LIMIT ): string {
 		// Convert to string and sanitize
@@ -134,7 +139,7 @@ final class HTML_Renderer {
 		}
 
 		// Split words and limit count
-		$words = preg_split( '/\s+/', $text, -1, PREG_SPLIT_NO_EMPTY );
+		$words = preg_split( '/\s+/', $text, - 1, PREG_SPLIT_NO_EMPTY );
 
 		if ( ! is_array( $words ) || count( $words ) <= $word_limit ) {
 			return $text;
@@ -146,9 +151,10 @@ final class HTML_Renderer {
 	/**
 	 * Generate filters HTML from sidebar data.
 	 *
-	 * @since 3.0.0
 	 * @param array $sidebar_data Sidebar data from API.
+	 *
 	 * @return string Filters HTML.
+	 * @since 3.0.0
 	 */
 	public static function generate_filters_from_sidebar( array $sidebar_data ): string {
 		$html = '';
@@ -158,6 +164,7 @@ final class HTML_Renderer {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 				error_log( 'BRAG book Gallery: No sidebar data, using default filters' );
 			}
+
 			return self::generate_default_filters();
 		}
 
@@ -172,8 +179,8 @@ final class HTML_Renderer {
 			}
 
 			$category_name = sanitize_text_field( $category_data['name'] );
-			$procedures = $category_data['procedures'];
-			$total_cases = absint( $category_data['totalCase'] ?? 0 );
+			$procedures    = $category_data['procedures'];
+			$total_cases   = absint( $category_data['totalCase'] ?? 0 );
 
 			// Skip if no procedures
 			if ( empty( $procedures ) || ! is_array( $procedures ) ) {
@@ -213,15 +220,15 @@ final class HTML_Renderer {
 			// Add procedures as filter options
 			foreach ( $procedures as $procedure ) {
 				$raw_procedure_name = sanitize_text_field( $procedure['name'] ?? '' );
-				$procedure_name = self::format_procedure_display_name( $raw_procedure_name );
-				$procedure_slug = sanitize_title( $procedure['slugName'] ?? $raw_procedure_name );
-				$case_count = absint( $procedure['totalCase'] ?? 0 );
-				$procedure_ids = $procedure['ids'] ?? array();
+				$procedure_name     = self::format_procedure_display_name( $raw_procedure_name );
+				$procedure_slug     = sanitize_title( $procedure['slugName'] ?? $raw_procedure_name );
+				$case_count         = absint( $procedure['totalCase'] ?? 0 );
+				$procedure_ids      = $procedure['ids'] ?? array();
 
 				// Debug: Log procedure details for HALO Laser and Liposuction
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG &&
-					( stripos( $procedure_name, 'liposuction' ) !== false ||
-					  stripos( $procedure_name, 'halo' ) !== false ) ) {
+					 ( stripos( $procedure_name, 'liposuction' ) !== false ||
+					   stripos( $procedure_name, 'halo' ) !== false ) ) {
 					error_log( 'Sidebar procedure debug - ' . $procedure_name . ':' );
 					error_log( '  Procedure IDs: ' . print_r( $procedure_ids, true ) );
 					error_log( '  Case count: ' . $case_count );
@@ -230,7 +237,7 @@ final class HTML_Renderer {
 
 				// Ensure procedure IDs are properly sanitized
 				if ( is_array( $procedure_ids ) ) {
-					$procedure_ids = array_map( 'absint', $procedure_ids );
+					$procedure_ids    = array_map( 'absint', $procedure_ids );
 					$procedure_id_str = implode( ',', $procedure_ids );
 				} else {
 					$procedure_id_str = '';
@@ -242,8 +249,8 @@ final class HTML_Renderer {
 
 				// Get current page URL and append filter path (procedure only, no category)
 				$current_url = get_permalink();
-				$base_path = parse_url( $current_url, PHP_URL_PATH ) ?: '';
-				$filter_url = rtrim( $base_path, '/' ) . '/' . $procedure_slug;
+				$base_path   = parse_url( $current_url, PHP_URL_PATH ) ?: '';
+				$filter_url  = rtrim( $base_path, '/' ) . '/' . $procedure_slug;
 
 				// Wrap in a li for semantic list
 				$html .= '<li class="brag-book-gallery-nav-list-submenu__item">';
@@ -288,8 +295,8 @@ final class HTML_Renderer {
 	/**
 	 * Generate default filters when no sidebar data is available.
 	 *
-	 * @since 3.0.0
 	 * @return string Generated HTML for default filters.
+	 * @since 3.0.0
 	 */
 	public static function generate_default_filters(): string {
 		$html = '';
@@ -332,11 +339,12 @@ final class HTML_Renderer {
 	/**
 	 * Generate placeholder carousel items.
 	 *
-	 * @since 3.0.0
-	 * @param int    $start Starting index.
-	 * @param int    $limit Number of items to generate.
+	 * @param int $start Starting index.
+	 * @param int $limit Number of items to generate.
 	 * @param string $procedure_slug Procedure slug for filtering.
+	 *
 	 * @return string Placeholder carousel HTML.
+	 * @since 3.0.0
 	 */
 	private static function generate_placeholder_carousel_items(
 		int $start = self::DEFAULT_START_INDEX,
@@ -346,7 +354,7 @@ final class HTML_Renderer {
 		$items_html = '';
 		$plugin_url = Setup::get_plugin_url();
 
-		for ( $i = $start; $i < ( $start + $limit ); $i++ ) {
+		for ( $i = $start; $i < ( $start + $limit ); $i ++ ) {
 			$items_html .= sprintf(
 				'<div class="brag-book-gallery-item placeholder-item" data-index="%d" data-procedure="%s">
 					<div class="brag-book-gallery-image-container">
@@ -366,12 +374,13 @@ final class HTML_Renderer {
 	/**
 	 * Generate single carousel item HTML.
 	 *
-	 * @since 3.0.0
-	 * @param array  $case Case data.
-	 * @param int    $index Item index.
+	 * @param array $case Case data.
+	 * @param int $index Item index.
 	 * @param string $base_path Base URL path.
-	 * @param bool   $has_nudity Whether content has nudity.
+	 * @param bool $has_nudity Whether content has nudity.
+	 *
 	 * @return string Carousel item HTML.
+	 * @since 3.0.0
 	 */
 	public static function generate_single_carousel_item(
 		array $case,
@@ -379,10 +388,10 @@ final class HTML_Renderer {
 		string $base_path,
 		bool $has_nudity = false
 	): string {
-		$case_id = $case['id'] ?? '';
+		$case_id         = $case['id'] ?? '';
 		$procedure_title = $case['procedureTitle'] ?? __( 'Unknown Procedure', 'brag-book-gallery' );
-		$procedure_slug = sanitize_title( $procedure_title );
-		$image_url = $case['mainImageUrl'] ?? '';
+		$procedure_slug  = sanitize_title( $procedure_title );
+		$image_url       = $case['mainImageUrl'] ?? '';
 
 		ob_start();
 		?>
@@ -407,24 +416,23 @@ final class HTML_Renderer {
 	}
 
 
-
-
 	/**
 	 * Generate carousel items from data.
 	 *
-	 * @since 3.0.0
 	 * @param array $items Carousel items data.
+	 *
 	 * @return string Carousel items HTML.
+	 * @since 3.0.0
 	 */
 	public static function generate_carousel_items_from_data( array $items ): string {
-		$items_html = '';
+		$items_html  = '';
 		$slide_index = 0;
 
 		foreach ( $items as $case ) {
 			if ( ! empty( $case['photos'] ) && is_array( $case['photos'] ) ) {
 				foreach ( $case['photos'] as $photo ) {
 					$items_html .= self::generate_carousel_slide_from_photo( $photo, $case, $slide_index );
-					$slide_index++;
+					$slide_index ++;
 				}
 			}
 		}
@@ -435,18 +443,19 @@ final class HTML_Renderer {
 	/**
 	 * Generate carousel slide from photo data.
 	 *
-	 * @since 3.0.0
 	 * @param array $photo Photo data.
 	 * @param array $case Case data.
-	 * @param int   $slide_index Slide index.
+	 * @param int $slide_index Slide index.
+	 *
 	 * @return string Slide HTML.
+	 * @since 3.0.0
 	 */
 	public static function generate_carousel_slide_from_photo( array $photo, array $case, int $slide_index ): string {
 		$photo_id = $photo['id'] ?? '';
 		// Handle different image URL field names based on API response format
 		$image_url = $photo['postProcessedImageLocation'] ?? $photo['url'] ?? $photo['originalBeforeLocation'] ?? '';
-		$case_id = $case['id'] ?? '';
-		
+		$case_id   = $case['id'] ?? '';
+
 		// Extract procedure title from details HTML or use direct field
 		$procedure_title = '';
 		if ( ! empty( $case['procedureTitle'] ) ) {
@@ -457,12 +466,12 @@ final class HTML_Renderer {
 				$procedure_title = trim( $matches[1] );
 			}
 		}
-		
+
 		// Default alt text based on procedure or generic
-		$alt_text = ! empty( $procedure_title ) 
+		$alt_text = ! empty( $procedure_title )
 			? $procedure_title . ' before and after result'
 			: 'Body procedure before and after result';
-		
+
 		// Check if SEO alt text is provided
 		if ( ! empty( $photo['seoAltText'] ) ) {
 			$alt_text = $photo['seoAltText'];
@@ -470,48 +479,52 @@ final class HTML_Renderer {
 
 		// Check for nudity flag in photo data
 		$has_nudity = ! empty( $photo['hasNudity'] ) || ! empty( $photo['nudity'] );
-		
+
 		// Generate unique slide ID using case and photo IDs
 		$slide_id = 'bd-' . $slide_index;
 		if ( ! empty( $case_id ) && ! empty( $photo_id ) ) {
 			$slide_id = $case_id . '-' . $photo_id;
 		}
-		
+
 		// Count total slides from photos array
 		$total_slides = count( $case['photos'] ?? [] );
 
 		ob_start();
 		?>
-		<div class="brag-book-gallery-carousel-item" 
-			 data-slide="<?php echo esc_attr( $slide_id ); ?>" 
-			 role="group" 
-			 aria-roledescription="slide" 
+		<div class="brag-book-gallery-carousel-item"
+			 data-slide="<?php echo esc_attr( $slide_id ); ?>"
+			 role="group"
+			 aria-roledescription="slide"
 			 aria-label="<?php echo esc_attr( sprintf( 'Slide %d of %d', $slide_index + 1, $total_slides ) ); ?>">
 			<?php if ( $has_nudity ) : ?>
 				<div class="brag-book-gallery-nudity-warning">
 					<div class="brag-book-gallery-nudity-warning-content">
 						<h4 class="brag-book-gallery-nudity-warning-title"><?php esc_html_e( 'WARNING: Contains Nudity', 'brag-book-gallery' ); ?></h4>
 						<p class="brag-book-gallery-nudity-warning-caption"><?php esc_html_e( 'If you are offended by such material or are under 18 years of age. Please do not proceed.', 'brag-book-gallery' ); ?></p>
-						<button class="brag-book-gallery-nudity-warning-button" type="button"><?php esc_html_e( 'Proceed', 'brag-book-gallery' ); ?></button>
+						<button class="brag-book-gallery-nudity-warning-button"
+								type="button"><?php esc_html_e( 'Proceed', 'brag-book-gallery' ); ?></button>
 					</div>
 				</div>
 			<?php endif; ?>
 			<picture class="brag-book-gallery-carousel-image">
-				<source srcset="<?php echo esc_url( $image_url ); ?>" type="image/jpeg">
-				<img src="<?php echo esc_url( $image_url ); ?>" 
-					 alt="<?php echo esc_attr( $alt_text ); ?>" 
+				<source srcset="<?php echo esc_url( $image_url ); ?>"
+						type="image/jpeg">
+				<img src="<?php echo esc_url( $image_url ); ?>"
+					 alt="<?php echo esc_attr( $alt_text ); ?>"
 					 loading="lazy"
 					 <?php if ( $has_nudity ) : ?>class="brag-book-gallery-nudity-blur"<?php endif; ?>
 					 width="400"
 					 height="300">
 			</picture>
 			<div class="brag-book-gallery-item-actions">
-				<button class="brag-book-gallery-favorite-button" 
-						data-favorited="false" 
+				<button class="brag-book-gallery-favorite-button"
+						data-favorited="false"
 						data-item-id="<?php echo esc_attr( 'case-' . $case_id ); ?>"
 						aria-label="<?php esc_attr_e( 'Add to favorites', 'brag-book-gallery' ); ?>">
-					<svg fill="rgba(255, 255, 255, 0.5)" stroke="white" stroke-width="2" viewBox="0 0 24 24">
-						<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+					<svg fill="rgba(255, 255, 255, 0.5)" stroke="white"
+						 stroke-width="2" viewBox="0 0 24 24">
+						<path
+							d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
 					</svg>
 				</button>
 			</div>
@@ -523,14 +536,16 @@ final class HTML_Renderer {
 	/**
 	 * Generate carousel image with custom alt text.
 	 *
-	 * @since 3.0.0
 	 * @param string $image_url Image URL.
-	 * @param bool   $has_nudity Whether image has nudity.
+	 * @param bool $has_nudity Whether image has nudity.
 	 * @param string $alt_text Alt text for image.
+	 *
 	 * @return string Image HTML.
+	 * @since 3.0.0
 	 */
 	private static function generate_carousel_image_with_alt( string $image_url, bool $has_nudity, string $alt_text ): string {
 		$blur_class = $has_nudity ? ' brag-book-carousel-nudity-blur' : '';
+
 		return sprintf(
 			'<picture class="brag-book-carousel-image%s">
 				<img src="%s" alt="%s" loading="lazy" />
@@ -544,8 +559,8 @@ final class HTML_Renderer {
 	/**
 	 * Generate nudity warning overlay.
 	 *
-	 * @since 3.0.0
 	 * @return string Generated HTML for nudity warning.
+	 * @since 3.0.0
 	 */
 	public static function generate_nudity_warning(): string {
 		return sprintf(
@@ -562,13 +577,15 @@ final class HTML_Renderer {
 	/**
 	 * Generate carousel image element.
 	 *
-	 * @since 3.0.0
 	 * @param string $image_url Image URL.
-	 * @param bool   $has_nudity Whether image contains nudity.
+	 * @param bool $has_nudity Whether image contains nudity.
+	 *
 	 * @return string Generated HTML for image.
+	 * @since 3.0.0
 	 */
 	public static function generate_carousel_image( string $image_url, bool $has_nudity ): string {
 		$blur_class = $has_nudity ? ' brag-book-carousel-nudity-blur' : '';
+
 		return sprintf(
 			'<picture class="brag-book-carousel-image%s">
 				<img src="%s" alt="%s" loading="lazy" />
@@ -582,9 +599,10 @@ final class HTML_Renderer {
 	/**
 	 * Generate item action buttons.
 	 *
-	 * @since 3.0.0
 	 * @param string $item_id Item identifier.
+	 *
 	 * @return string Generated HTML for action buttons.
+	 * @since 3.0.0
 	 */
 	public static function generate_item_actions( string $item_id ): string {
 		return sprintf(
@@ -615,21 +633,110 @@ final class HTML_Renderer {
 	/**
 	 * Render case details HTML.
 	 *
-	 * @since 3.0.0
 	 * @param array $case_data Case data array.
+	 *
 	 * @return string Rendered HTML.
+	 * @since 3.0.0
 	 */
 	public static function render_case_details_html( array $case_data ): string {
 		$html = '<div class="brag-book-gallery-case-detail-view">';
 
+		// Debug: Log the case data structure
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( 'Case data keys: ' . implode( ', ', array_keys( $case_data ) ) );
+			if ( isset( $case_data['procedures'] ) ) {
+				error_log( 'Procedures data: ' . print_r( $case_data['procedures'], true ) );
+			}
+			if ( isset( $case_data['procedureIds'] ) ) {
+				error_log( 'Procedure IDs: ' . print_r( $case_data['procedureIds'], true ) );
+			}
+		}
+
 		// Get procedure name and case ID
 		$procedure_name = '';
 		$procedure_slug = '';
+
+		// Check if we have procedures data (might be 'procedures' or 'procedureIds')
+		$procedure_ids = [];
+
+		// First check for 'procedures' array with objects
 		if ( ! empty( $case_data['procedures'] ) && is_array( $case_data['procedures'] ) ) {
 			$first_procedure = reset( $case_data['procedures'] );
-			$procedure_name = $first_procedure['name'] ?? '';
-			$procedure_slug = sanitize_title( $procedure_name );
+
+			// Check if we have a name directly (shouldn't happen with case detail endpoint)
+			if ( ! empty( $first_procedure['name'] ) ) {
+				$raw_procedure_name = $first_procedure['name'];
+				$procedure_name     = self::format_procedure_display_name( $raw_procedure_name );
+				$procedure_slug     = sanitize_title( $raw_procedure_name );
+			}
+			// Otherwise, we have procedure IDs and need to look them up
+			elseif ( ! empty( $first_procedure['id'] ) ) {
+				$procedure_ids[] = intval( $first_procedure['id'] );
+			}
 		}
+		// Also check for 'procedureIds' array (API might return this format)
+		elseif ( ! empty( $case_data['procedureIds'] ) && is_array( $case_data['procedureIds'] ) ) {
+			$procedure_ids = array_map( 'intval', $case_data['procedureIds'] );
+		}
+
+		// If we have procedure IDs but no name yet, look them up
+		if ( empty( $procedure_name ) && ! empty( $procedure_ids ) ) {
+			// Get API configuration
+			$api_tokens = get_option( 'brag_book_gallery_api_token', [] );
+			$api_token  = ! empty( $api_tokens[0] ) ? $api_tokens[0] : '';
+
+			if ( ! empty( $api_token ) ) {
+				// Get sidebar data which contains procedure mappings
+				$sidebar_data = Data_Fetcher::get_sidebar_data( $api_token );
+
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+					error_log( 'Looking for procedure ID: ' . $procedure_ids[0] );
+					error_log( 'Sidebar data available: ' . ( ! empty( $sidebar_data['data'] ) ? 'Yes' : 'No' ) );
+				}
+
+				// Search for the procedure name by ID
+				if ( ! empty( $sidebar_data['data'] ) ) {
+					$procedure_id = $procedure_ids[0]; // Use first procedure ID
+					$found = false;
+
+					foreach ( $sidebar_data['data'] as $category ) {
+						if ( ! empty( $category['procedures'] ) ) {
+							foreach ( $category['procedures'] as $proc ) {
+								// Debug each procedure
+								if ( defined( 'WP_DEBUG' ) && WP_DEBUG && ! empty( $proc['ids'] ) ) {
+									error_log( 'Checking procedure "' . ( $proc['name'] ?? 'Unknown' ) . '" with IDs: ' . implode( ', ', $proc['ids'] ) );
+								}
+
+								// Check if this procedure's IDs array contains our ID
+								if ( ! empty( $proc['ids'] ) && in_array( $procedure_id, $proc['ids'] ) ) {
+									$raw_procedure_name = $proc['name'] ?? '';
+									$procedure_name     = self::format_procedure_display_name( $raw_procedure_name );
+									$procedure_slug     = sanitize_title( $proc['slugName'] ?? $raw_procedure_name );
+									$found = true;
+
+									if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+										error_log( 'Found procedure! Name: ' . $raw_procedure_name );
+									}
+
+									break 2; // Break out of both loops
+								}
+							}
+						}
+					}
+
+					if ( defined( 'WP_DEBUG' ) && WP_DEBUG && ! $found ) {
+						error_log( 'Procedure ID ' . $procedure_id . ' not found in sidebar data' );
+					}
+				}
+			}
+
+			// If we still don't have a name, use a fallback
+			if ( empty( $procedure_name ) && ! empty( $procedure_ids[0] ) ) {
+				$procedure_name = 'Procedure #' . $procedure_ids[0];
+				$procedure_slug = 'procedure-' . $procedure_ids[0];
+			}
+		}
+
 		$case_id = $case_data['id'] ?? '';
 
 		// Get gallery page slug from settings
@@ -650,12 +757,12 @@ final class HTML_Renderer {
 
 		// Case header with title
 		$html .= '<div class="brag-book-gallery-brag-book-gallery-case-header">';
-		$html .= '<h1 class="brag-book-gallery-case-title">';
-		$html .= esc_html( $procedure_name );
+		$html .= '<h2 class="brag-book-gallery-case-title">';
+		$html .= '<strong>' . esc_html( $procedure_name ) . '</strong>';
 		if ( ! empty( $case_id ) ) {
 			$html .= ' <span class="case-id">#' . esc_html( $case_id ) . '</span>';
 		}
-		$html .= '</h1>';
+		$html .= '</h2>';
 		$html .= '</div>';
 		$html .= '</div>';
 
@@ -672,7 +779,7 @@ final class HTML_Renderer {
 			$html .= '<div class="brag-book-gallery-case-main-viewer">';
 
 			// Display first image as main by default
-			$first_photo = reset( $case_data['photoSets'] );
+			$first_photo    = reset( $case_data['photoSets'] );
 			$main_image_url = ! empty( $first_photo['postProcessedImageLocation'] ) ? $first_photo['postProcessedImageLocation'] : '';
 
 			// Main image display - single processed image
@@ -857,6 +964,143 @@ final class HTML_Renderer {
 		$html .= '</div>'; // End case-details-section
 		$html .= '</div>'; // End brag-book-gallery-case-content
 		$html .= '</div>'; // End main container
+
+		return $html;
+	}
+
+	/**
+	 * Render favorites view with case cards.
+	 *
+	 * @since 3.0.0
+	 * @param array $cases Array of case data from the API.
+	 * @return string HTML output.
+	 */
+	public static function render_favorites_view( array $cases ): string {
+		// Build the HTML using the same structure as ajax_load_filtered_gallery
+		$html = '<div class="brag-book-filtered-results">';
+
+		// Add H2 header for favorites
+		$html .= sprintf(
+			'<h2 class="brag-book-gallery-content-title"><strong>%s</strong> %s</h2>',
+			esc_html__( 'My Favorites', 'brag-book-gallery' ),
+			esc_html__( 'Gallery', 'brag-book-gallery' )
+		);
+		
+		// Add user email info if available
+		$html .= '<p class="brag-book-gallery-favorites-user"></p>';
+
+		// Add controls container for grid selector
+		$html .= '<div class="brag-book-gallery-controls">';
+
+		// Left side container (empty for favorites, but maintains layout consistency)
+		$html .= '<div class="brag-book-gallery-controls-left">';
+		
+		// Add count display
+		$count = count( $cases );
+		$html .= '<div class="brag-book-gallery-active-filters">';
+		$html .= '<span class="brag-book-gallery-count">' . sprintf( _n( '%d favorite', '%d favorites', $count, 'brag-book-gallery' ), $count ) . '</span>';
+		$html .= '</div>';
+		
+		$html .= '</div>'; // Close left controls
+
+		// Get default columns from settings
+		$default_columns = get_option( 'brag_book_gallery_columns', '3' );
+		$column2_active = ( $default_columns === '2' ) ? ' active' : '';
+		$column3_active = ( $default_columns === '3' ) ? ' active' : '';
+
+		// Grid layout selector (on the right)
+		$html .= sprintf(
+			'<div class="brag-book-gallery-grid-selector">
+				<span class="brag-book-gallery-grid-label">%s</span>
+				<div class="brag-book-gallery-grid-buttons">
+					<button class="brag-book-gallery-grid-btn%s" data-columns="2" onclick="updateGridLayout(2)" aria-label="%s">
+						<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><rect x="1" y="1" width="6" height="6"/><rect x="9" y="1" width="6" height="6"/><rect x="1" y="9" width="6" height="6"/><rect x="9" y="9" width="6" height="6"/></svg>
+						<span class="sr-only">%s</span>
+					</button>
+					<button class="brag-book-gallery-grid-btn%s" data-columns="3" onclick="updateGridLayout(3)" aria-label="%s">
+						<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><rect x="1" y="1" width="4" height="4"/><rect x="6" y="1" width="4" height="4"/><rect x="11" y="1" width="4" height="4"/><rect x="1" y="6" width="4" height="4"/><rect x="6" y="6" width="4" height="4"/><rect x="11" y="6" width="4" height="4"/><rect x="1" y="11" width="4" height="4"/><rect x="6" y="11" width="4" height="4"/><rect x="11" y="11" width="4" height="4"/></svg>
+						<span class="sr-only">%s</span>
+					</button>
+				</div>
+			</div>',
+			esc_html__( 'View:', 'brag-book-gallery' ),
+			esc_attr( $column2_active ),
+			esc_attr__( 'View in 2 columns', 'brag-book-gallery' ),
+			esc_html__( '2 Columns', 'brag-book-gallery' ),
+			esc_attr( $column3_active ),
+			esc_attr__( 'View in 3 columns', 'brag-book-gallery' ),
+			esc_html__( '3 Columns', 'brag-book-gallery' )
+		);
+
+		$html .= '</div>'; // Close controls container
+
+		// Start cases grid with CSS Grid layout
+		$html .= sprintf( '<div class="brag-book-gallery-case-grid" data-columns="%s">', esc_attr( $default_columns ) );
+
+		if ( empty( $cases ) ) {
+			// Show message when no favorites found
+			$html .= '<div class="brag-book-gallery-no-results">';
+			$html .= '<p>' . esc_html__( 'No favorites found. Start adding your favorite cases to see them here!', 'brag-book-gallery' ) . '</p>';
+			$html .= '</div>';
+		} else {
+			// Get image display mode
+			$image_display_mode = get_option( 'brag_book_gallery_image_display_mode', 'single' );
+			
+			// Transform and render each case using the same method as filtered gallery
+			foreach ( $cases as $case ) {
+				// Transform case data to match what render_ajax_gallery_case_card expects
+				$transformed_case = $case;
+				
+				// Extract main image from photoSets
+				$transformed_case['mainImageUrl'] = '';
+				if ( ! empty( $case['photoSets'] ) && is_array( $case['photoSets'] ) ) {
+					$first_photoset = reset( $case['photoSets'] );
+					$transformed_case['mainImageUrl'] = $first_photoset['postProcessedImageLocation'] ??
+														 $first_photoset['beforeLocationUrl'] ??
+														 $first_photoset['afterLocationUrl1'] ?? '';
+				}
+				
+				// Extract procedure title
+				$transformed_case['procedureTitle'] = __( 'Unknown Procedure', 'brag-book-gallery' );
+				if ( ! empty( $case['procedures'] ) && is_array( $case['procedures'] ) ) {
+					$first_procedure = reset( $case['procedures'] );
+					$transformed_case['procedureTitle'] = $first_procedure['name'] ?? __( 'Unknown Procedure', 'brag-book-gallery' );
+				}
+				
+				// Use reflection to access the private render_ajax_gallery_case_card method from Shortcodes class
+				try {
+					$shortcodes_class = 'BRAGBookGallery\Includes\Extend\Shortcodes';
+					$method = new \ReflectionMethod( $shortcodes_class, 'render_ajax_gallery_case_card' );
+					$method->setAccessible( true );
+					
+					// Render the case card with favorites context
+					$html .= $method->invoke( null, $transformed_case, $image_display_mode, false, 'favorites' );
+				} catch ( \Exception $render_error ) {
+					// Fallback to simple rendering if reflection fails
+					error_log( 'Error rendering favorite case card: ' . $render_error->getMessage() );
+					
+					// Simple fallback rendering
+					$case_id = $case['id'] ?? $case['caseId'] ?? '';
+					if ( ! empty( $case_id ) ) {
+						$html .= '<article class="brag-book-gallery-case-card" data-case-id="' . esc_attr( $case_id ) . '">';
+						$html .= '<div class="brag-book-gallery-case-images">';
+						
+						if ( ! empty( $transformed_case['mainImageUrl'] ) ) {
+							$html .= '<img src="' . esc_url( $transformed_case['mainImageUrl'] ) . '" alt="Case" loading="lazy">';
+						}
+						
+						$html .= '</div>';
+						$html .= '<div class="brag-book-gallery-case-info">';
+						$html .= '<h3>' . esc_html( $transformed_case['procedureTitle'] ) . '</h3>';
+						$html .= '</div>';
+						$html .= '</article>';
+					}
+				}
+			}
+		}
+
+		$html .= '</div>'; // Close cases grid
+		$html .= '</div>'; // Close filtered-results
 
 		return $html;
 	}

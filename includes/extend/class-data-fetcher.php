@@ -99,10 +99,10 @@ class Data_Fetcher {
 		int $page = 1
 	): array {
 		// Create cache key
-		$cache_key = Cache_Manager::get_cases_cache_key( 
-			$api_token, 
-			$website_property_id, 
-			$procedure_ids 
+		$cache_key = Cache_Manager::get_cases_cache_key(
+			$api_token,
+			$website_property_id,
+			$procedure_ids
 		);
 
 		// Check cache unless bypassed
@@ -142,7 +142,7 @@ class Data_Fetcher {
 			}
 
 			// Fetch first page
-			$response = $endpoints->bb_get_pagination_data( $filter_body );
+			$response = $endpoints->get_pagination_data( $filter_body );
 
 			if ( empty( $response ) ) {
 				return [];
@@ -166,7 +166,7 @@ class Data_Fetcher {
 				$current_page = $pages_fetched + 1;
 				$filter_body['count'] = $current_page;
 
-				$response = $endpoints->bb_get_pagination_data( $filter_body );
+				$response = $endpoints->get_pagination_data( $filter_body );
 
 				if ( ! empty( $response ) ) {
 					$page_data = json_decode( $response, true );
@@ -181,11 +181,11 @@ class Data_Fetcher {
 							$actual_total = count( $all_cases );
 						} elseif ( $pages_fetched >= $initial_pages && $new_cases_count == $cases_per_page ) {
 							$more_available = true;
-							$actual_total = self::count_remaining_cases( 
-								$endpoints, 
-								$filter_body, 
-								$pages_fetched, 
-								count( $all_cases ) 
+							$actual_total = self::count_remaining_cases(
+								$endpoints,
+								$filter_body,
+								$pages_fetched,
+								count( $all_cases )
 							);
 						}
 					} else {
@@ -247,7 +247,7 @@ class Data_Fetcher {
 		} else {
 			$cache_key = Cache_Manager::get_all_cases_cache_key( $api_token, $website_property_id );
 		}
-		
+
 		if ( Cache_Manager::is_caching_enabled() ) {
 			$cached_data = Cache_Manager::get( $cache_key );
 			if ( $cached_data !== false ) {
@@ -268,12 +268,12 @@ class Data_Fetcher {
 				'websitePropertyIds' => [ intval( $website_property_id ) ],
 				'count' => 1, // Start with page 1
 			];
-			
+
 			// Add procedure IDs if provided
 			if ( ! empty( $procedure_ids ) ) {
 				$filter_body['procedureIds'] = array_map( 'intval', $procedure_ids );
 			}
-			
+
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 				error_log( 'BRAGBook: Fetching cases for filtering' );
 				error_log( 'BRAGBook: API Token: ' . substr( $api_token, 0, 10 ) . '...' );
@@ -291,7 +291,7 @@ class Data_Fetcher {
 			while ( $page <= $max_pages ) {
 				$filter_body['count'] = $page;
 
-				$response = $endpoints->bb_get_pagination_data( $filter_body );
+				$response = $endpoints->get_pagination_data( $filter_body );
 
 				if ( ! empty( $response ) ) {
 					$page_data = json_decode( $response, true );
@@ -300,7 +300,7 @@ class Data_Fetcher {
 						if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 							error_log( 'BRAGBook: Page ' . $page . ' returned ' . count( $page_data['data'] ) . ' cases' );
 						}
-						
+
 						$all_cases = array_merge( $all_cases, $page_data['data'] );
 
 						// If we got less than 10 cases, we've reached the end
@@ -549,11 +549,11 @@ class Data_Fetcher {
 	 * @param int       $current_total Current total cases.
 	 * @return int Total number of cases.
 	 */
-	private static function count_remaining_cases( 
-		Endpoints $endpoints, 
-		array $filter_body, 
-		int $pages_fetched, 
-		int $current_total 
+	private static function count_remaining_cases(
+		Endpoints $endpoints,
+		array $filter_body,
+		int $pages_fetched,
+		int $current_total
 	): int {
 		$actual_total = $current_total;
 		$temp_page = $pages_fetched + 1;
@@ -561,14 +561,14 @@ class Data_Fetcher {
 
 		while ( $temp_page <= $max_pages ) {
 			$filter_body['count'] = $temp_page;
-			$count_response = $endpoints->bb_get_pagination_data( $filter_body );
-			
+			$count_response = $endpoints->get_pagination_data( $filter_body );
+
 			if ( ! empty( $count_response ) ) {
 				$count_data = json_decode( $count_response, true );
 				if ( is_array( $count_data ) && ! empty( $count_data['data'] ) ) {
 					$count_cases = count( $count_data['data'] );
 					$actual_total += $count_cases;
-					
+
 					if ( $count_cases < 10 ) { // Less than full page
 						break;
 					}

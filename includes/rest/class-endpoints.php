@@ -77,72 +77,11 @@ class Endpoints {
 		'sidebar'          => '/api/plugin/combine/sidebar',
 		'cases'            => '/api/plugin/combine/cases',
 		'case_detail'      => '/api/plugin/combine/cases/%s',
-		'filters'          => '/api/plugin/combine/filters',
-		'tracker'          => '/api/plugin/tracker',
 		'sitemap'          => '/api/plugin/sitemap',
 		'consultations'    => '/api/plugin/consultations',
+		'tracker'          => '/api/plugin/tracker',
+		'views'            => '/api/plugin/views',
 	);
-
-	/**
-	 * Get filter data from API
-	 *
-	 * Retrieves available filter options based on provided API tokens,
-	 * procedure IDs, and website property IDs.
-	 *
-	 * @since 3.0.0
-	 *
-	 * @param string $api_tokens           Comma-separated API tokens
-	 * @param string $procedure_ids        Comma-separated procedure IDs
-	 * @param string $website_property_ids Comma-separated website property IDs
-	 *
-	 * @return string|null JSON response string on success, null on failure
-	 */
-	public function bb_get_filter_data(
-		string $api_tokens,
-		string $procedure_ids,
-		string $website_property_ids
-	): ?string {
-
-		// Parse and validate input data.
-		$tokens = $this->parse_comma_separated( $api_tokens );
-
-		// Convert procedure IDs and website property IDs to integers.
-		$procedures = array_map(
-			'intval',
-			$this->parse_comma_separated( $procedure_ids )
-		);
-
-		// Convert website property IDs to integers.
-		$properties = array_map(
-			'intval',
-			$this->parse_comma_separated( $website_property_ids )
-		);
-
-		// Validate required data.
-		if ( empty( $tokens ) || empty( $procedures ) || empty( $properties ) ) {
-			$this->send_json_error(
-				esc_html__(
-					'Missing required parameters for filter data',
-					'brag-book-gallery'
-				)
-			);
-			return null;
-		}
-
-		// Prepare request body
-		$body = array(
-			'apiTokens'          => $tokens,
-			'procedureIds'       => $procedures,
-			'websitePropertyIds' => $properties,
-		);
-
-		// Make API request.
-		return $this->make_api_request(
-			self::API_ENDPOINTS['filters'],
-			$body,
-			'POST'
-		);
-	}
 
 	/**
 	 * Send plugin version tracking data
@@ -196,7 +135,7 @@ class Endpoints {
 	 *
 	 * @return string|null JSON response on success, null on failure
 	 */
-	public function bb_get_case_data(
+	public function get_case_data(
 		int|string $case_id,
 		string $seo_suffix_url,
 		string|array $api_token,
@@ -245,6 +184,86 @@ class Endpoints {
 	}
 
 	/**
+	 * Get single case details by ID.
+	 *
+	 * @since 3.0.0
+	 * @param string $case_id The case ID.
+	 * @return string|null Response body on success, null on failure.
+	 */
+	public function get_case_details( string $case_id ): ?string {
+		// Get current mode
+		$mode = get_option( 'brag_book_gallery_mode', 'local' );
+		
+		// Get API configuration directly from options (not from passed arrays)
+		$api_token_option = get_option( 'brag_book_gallery_api_token', [] );
+		$website_property_id_option = get_option( 'brag_book_gallery_website_property_id', [] );
+		
+		$api_token = $api_token_option[ $mode ] ?? '';
+		$website_property_id = $website_property_id_option[ $mode ] ?? '';
+		
+		if ( empty( $api_token ) || empty( $website_property_id ) ) {
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'BRAG Book Gallery: Missing API token or website property ID for mode: ' . $mode );
+			}
+			return null;
+		}
+		
+		// Get the API base URL from settings
+		$api_base_url = get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' );
+		
+		// Build API URL with case ID
+		$api_url = sprintf( 
+			'%s%s', 
+			$api_base_url, 
+			sprintf( self::API_ENDPOINTS['case_detail'], $case_id )
+		);
+		
+		// Add query parameters
+		$api_url = add_query_arg(
+			[
+				'apiToken' => $api_token,
+				'websitePropertyId' => $website_property_id,
+			],
+			$api_url
+		);
+		
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( 'BRAG Book Gallery: Fetching case ' . $case_id . ' from: ' . $api_url );
+			error_log( 'BRAG Book Gallery: API Token length: ' . strlen( $api_token ) );
+			error_log( 'BRAG Book Gallery: Website Property ID: ' . $website_property_id );
+		}
+		
+		// Make API request
+		$response = wp_remote_get(
+			$api_url,
+			[
+				'timeout' => self::API_TIMEOUT,
+				'headers' => [
+					'Accept' => 'application/json',
+				],
+			]
+		);
+		
+		if ( is_wp_error( $response ) ) {
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'BRAG Book Gallery: API error for case ' . $case_id . ': ' . $response->get_error_message() );
+			}
+			return null;
+		}
+		
+		$response_code = wp_remote_retrieve_response_code( $response );
+		if ( $response_code !== 200 ) {
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'BRAG Book Gallery: API returned status ' . $response_code . ' for case ' . $case_id );
+				error_log( 'Response body: ' . wp_remote_retrieve_body( $response ) );
+			}
+			return null;
+		}
+		
+		return wp_remote_retrieve_body( $response );
+	}
+
+	/**
 	 * Add case to favorites
 	 *
 	 * Saves a case to the user's favorites list along with their
@@ -261,7 +280,7 @@ class Endpoints {
 	 *
 	 * @return string|null JSON response on success, null on failure
 	 */
-	public function bb_get_favorite_data(
+	public function get_favorite_data(
 		array $api_tokens,
 		array $website_prop_ids,
 		string $email,
@@ -308,7 +327,7 @@ class Endpoints {
 			'email'              => $email,
 			'phone'              => $phone,
 			'name'               => $name,
-			'caseId'             => $case_id,
+			'caseId'             => intval( $case_id ), // API expects caseId as a number
 		);
 
 		// Make API request (don't cache favorites operations).
@@ -334,7 +353,7 @@ class Endpoints {
 	 *
 	 * @return string|null JSON response on success, null on failure
 	 */
-	public function bb_get_favorite_list_data(
+	public function get_favorite_list_data(
 		array $api_tokens,
 		array $website_ids,
 		string $email
@@ -389,7 +408,7 @@ class Endpoints {
 	 *
 	 * @return string|null JSON response on success, null on failure
 	 */
-	public function bb_get_pagination_data( array $filter_body ): ?string {
+	public function get_pagination_data( array $filter_body ): ?string {
 
 		// Validate filter body structure.
 		if ( empty( $filter_body ) ) {
@@ -455,7 +474,7 @@ class Endpoints {
 	 * @param array $procedure_ids Optional procedure IDs for filtering
 	 * @return array|null Case data on success, null on failure
 	 */
-	public function bb_get_case_by_number(
+	public function get_case_by_number(
 		string $api_token,
 		int $website_property_id,
 		string $case_number,
@@ -481,7 +500,7 @@ class Endpoints {
 			'apiTokens' => [ $api_token ],
 			'websitePropertyIds' => [ (int) $website_property_id ],
 		];
-		
+
 		// Only add procedureIds if they were explicitly provided
 		if ( ! empty( $procedure_ids ) ) {
 			$request_body['procedureIds'] = array_map( 'intval', $procedure_ids );
@@ -560,7 +579,7 @@ class Endpoints {
 		if ( isset( $data['data'] ) && is_array( $data['data'] ) && ! empty( $data['data'] ) ) {
 			// Return the first case from data array even without success flag
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( 'bb_get_case_by_number: Found data array without success flag' );
+				error_log( 'get_case_by_number: Found data array without success flag' );
 			}
 			return $data['data'][0];
 		}
@@ -753,7 +772,7 @@ class Endpoints {
 	 *
 	 * @return array|WP_Error Response array or WP_Error on failure
 	 */
-	private function request_with_retry( string $url, array $args ) {
+	private function request_with_retry( string $url, array $args ): WP_Error|array {
 		$attempts = 0;
 		$last_error = null;
 
@@ -1072,7 +1091,7 @@ class Endpoints {
 			'limit'            => absint( $options['limit'] ) ?: 10,
 			'apiToken'         => $token,
 		];
-		
+
 		// Only add procedureId if it's actually provided and valid
 		if ( ! empty( $options['procedureId'] ) && $options['procedureId'] !== null ) {
 			$query_params['procedureId'] = absint( $options['procedureId'] );

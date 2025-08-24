@@ -117,22 +117,38 @@ class BRAGbookGalleryApp {
 				this.updateFavoritesCount(favorites.size);
 			}
 		});
-		
+
 		// Initialize the count on page load
 		if (this.components.favoritesManager) {
 			const initialCount = this.components.favoritesManager.getFavorites().size;
 			this.updateFavoritesCount(initialCount);
 		}
-		
+
 		// Add click handler for My Favorites button
 		this.initializeFavoritesButton();
+
+		// Listen for favorites updates to refresh My Favorites page if it's active
+		window.addEventListener('favoritesUpdated', (event) => {
+			// Check if we're on the My Favorites page
+			const currentPath = window.location.pathname;
+			const gallerySlug = window.bragBookGalleryConfig?.gallerySlug || 'before-after';
+			const favoritesPath = `/${gallerySlug}/myfavorites`;
+
+			if (currentPath === favoritesPath || currentPath.includes('myfavorites')) {
+				console.log('Favorites updated while on My Favorites page, refreshing...');
+				// Small delay to ensure localStorage is updated
+				setTimeout(() => {
+					this.showFavoritesOnly();
+				}, 100);
+			}
+		});
 	}
 
 	initializeSearch() {
 		// Initialize all search wrappers (both desktop and mobile)
 		const searchWrappers = document.querySelectorAll('.brag-book-gallery-search-wrapper');
 		this.components.searchAutocompletes = [];
-		
+
 		searchWrappers.forEach((searchWrapper) => {
 			const searchInstance = new SearchAutocomplete(searchWrapper, {
 				minChars: 1,
@@ -195,11 +211,11 @@ class BRAGbookGalleryApp {
 			if (caseLink) {
 				e.preventDefault();
 				e.stopPropagation();
-				
+
 				// Get case ID and procedure IDs from the link
 				const caseId = caseLink.dataset.caseId;
 				const procedureIds = caseLink.dataset.procedureIds;
-				
+
 				if (caseId) {
 					console.log('Loading case:', caseId, 'with procedure IDs:', procedureIds);
 					// Load case details via AJAX
@@ -207,7 +223,7 @@ class BRAGbookGalleryApp {
 				}
 				return;
 			}
-			
+
 			// Check if click is on a case card but not on interactive elements (fallback)
 			const caseCard = e.target.closest('.brag-book-gallery-case-card');
 			if (caseCard && !e.target.closest('button') && !e.target.closest('details')) {
@@ -217,7 +233,7 @@ class BRAGbookGalleryApp {
 					e.preventDefault();
 					const caseId = caseLinkInCard.dataset.caseId;
 					const procedureIds = caseLinkInCard.dataset.procedureIds || caseCard.dataset.procedureIds;
-					
+
 					if (caseId) {
 						console.log('Loading case from card:', caseId, 'with procedure IDs:', procedureIds);
 						this.loadCaseDetails(caseId, caseLinkInCard.href, true, procedureIds);
@@ -225,7 +241,7 @@ class BRAGbookGalleryApp {
 				}
 			}
 		});
-		
+
 		// Initialize case detail view thumbnails
 		this.initializeCaseDetailThumbnails();
 
@@ -563,32 +579,32 @@ class BRAGbookGalleryApp {
 		document.addEventListener('click', (e) => {
 			const thumbnail = e.target.closest('.brag-book-gallery-thumbnail-item');
 			if (!thumbnail) return;
-			
+
 			const mainContainer = document.querySelector('.brag-book-gallery-main-image-container');
 			if (!mainContainer) return;
-			
+
 			const thumbnails = document.querySelectorAll('.brag-book-gallery-thumbnail-item');
 			if (!thumbnails.length) return;
-			
+
 			// Remove active class from all thumbnails
 			thumbnails.forEach(t => t.classList.remove('active'));
 			// Add active class to clicked thumbnail
 			thumbnail.classList.add('active');
-			
+
 			// Get image URL from thumbnail data attributes
 			const processedUrl = thumbnail.dataset.processedUrl;
 			const imageIndex = thumbnail.dataset.imageIndex;
-			
+
 			// Update main container data attribute
 			mainContainer.dataset.imageIndex = imageIndex;
-			
+
 			// Build new HTML for main image
 			let newContent = '';
-			
+
 			if (processedUrl) {
 				const existingButton = mainContainer.querySelector('.brag-book-gallery-favorite-button');
 				const caseId = existingButton ? existingButton.dataset.itemId.replace('_main', '') : '';
-				
+
 				newContent = `
 					<div class="brag-book-gallery-main-single">
 						<img src="${processedUrl}" alt="Case Image" loading="eager">
@@ -599,7 +615,7 @@ class BRAGbookGalleryApp {
 								</svg>
 							</button>
 				`;
-				
+
 				// Check if sharing is enabled
 				if (typeof bragBookGalleryConfig !== 'undefined' && bragBookGalleryConfig.enableSharing === 'yes') {
 					newContent += `
@@ -610,16 +626,16 @@ class BRAGbookGalleryApp {
 							</button>
 					`;
 				}
-				
+
 				newContent += `
 						</div>
 					</div>
 				`;
 			}
-			
+
 			// Update main container content
 			mainContainer.innerHTML = newContent;
-			
+
 			// Re-initialize any event handlers for the new buttons
 			if (window.bragBookGalleryApp && window.bragBookGalleryApp.components) {
 				if (window.bragBookGalleryApp.components.favoritesManager) {
@@ -682,11 +698,11 @@ class BRAGbookGalleryApp {
 		const setupClearAllHandler = () => {
 			const clearAllButton = document.getElementById('brag-book-gallery-clear-all');
 			console.log('Clear All button found:', clearAllButton);
-			
+
 			if (clearAllButton) {
 				// Remove any existing listeners
 				clearAllButton.removeEventListener('click', this.handleClearAll);
-				
+
 				// Add new listener
 				clearAllButton.addEventListener('click', this.handleClearAll.bind(this));
 				console.log('Clear All button event listener attached');
@@ -719,7 +735,7 @@ class BRAGbookGalleryApp {
 	handleClearAll(e) {
 		e.preventDefault();
 		console.log('Clear All button clicked - handling...');
-		
+
 		// Clear demographic filter checkboxes
 		console.log('Clearing demographic filter checkboxes');
 		this.clearDemographicFilters();
@@ -740,7 +756,7 @@ class BRAGbookGalleryApp {
 
 		// Monitor demographic filter checkboxes for changes
 		this.monitorDemographicFilters();
-		
+
 		// Add global delegated event handler for badge remove buttons
 		document.addEventListener('click', (e) => {
 			// Check if the clicked element is a remove button or inside one
@@ -749,15 +765,15 @@ class BRAGbookGalleryApp {
 				console.log('Global handler: Badge remove button clicked!');
 				e.preventDefault();
 				e.stopPropagation();
-				
+
 				// Get the parent badge element
 				const badge = removeButton.closest('.brag-book-gallery-filter-badge');
 				if (badge) {
 					const category = badge.getAttribute('data-filter-category');
 					const value = badge.getAttribute('data-filter-value');
-					
+
 					console.log('Global handler: Removing filter', { category, value });
-					
+
 					if (category && value) {
 						this.removeDemographicFilter(category, value);
 					}
@@ -770,13 +786,13 @@ class BRAGbookGalleryApp {
 	 * Monitor demographic filter checkboxes and update badges
 	 */
 	monitorDemographicFilters() {
-		
+
 		// Override console.log to capture filter logs and extract data
 		const originalConsoleLog = console.log;
 		console.log = (...args) => {
 			// Call original console.log first
 			originalConsoleLog.apply(console, args);
-			
+
 			// Check if this is an "Active filters" log message
 			if (args.length >= 2 && args[0] === 'Active filters:' && typeof args[1] === 'object') {
 				this.updateDemographicBadges(args[1]);
@@ -787,7 +803,7 @@ class BRAGbookGalleryApp {
 		document.addEventListener('change', (e) => {
 			if (e.target.type === 'checkbox' && e.target.closest('.brag-book-gallery-filter-group')) {
 				console.log('Checkbox changed - target:', e.target);
-				
+
 				// Manually build activeFilters from checked checkboxes
 				setTimeout(() => {
 					const activeFilters = this.buildActiveFiltersFromDOM();
@@ -802,7 +818,7 @@ class BRAGbookGalleryApp {
 		setInterval(() => {
 			const currentState = this.buildActiveFiltersFromDOM();
 			const currentStateStr = JSON.stringify(currentState);
-			
+
 			if (currentStateStr !== lastFilterState) {
 				console.log('Detected filter change via periodic check:', currentState);
 				this.updateDemographicBadges(currentState);
@@ -825,17 +841,17 @@ class BRAGbookGalleryApp {
 
 		// Find all checked filter checkboxes
 		const checkboxes = document.querySelectorAll('.brag-book-gallery-filter-group input[type="checkbox"]:checked');
-		
+
 		checkboxes.forEach(checkbox => {
 			// Try to determine category from parent elements or data attributes
 			const filterGroup = checkbox.closest('.brag-book-gallery-filter-group');
 			const filterSummary = filterGroup?.querySelector('summary');
 			const groupText = filterSummary?.textContent?.toLowerCase() || '';
-			
+
 			// Get the filter value from label text
 			const label = checkbox.nextElementSibling;
 			const filterValue = label?.textContent?.trim() || checkbox.value || '';
-			
+
 			// Categorize based on group text or filter value
 			if (groupText.includes('age') || filterValue.includes('-')) {
 				activeFilters.age.push(filterValue);
@@ -859,7 +875,7 @@ class BRAGbookGalleryApp {
 	updateDemographicBadges(activeFilters) {
 		const badgesContainer = document.getElementById('brag-book-gallery-filter-badges');
 		const clearAllButton = document.getElementById('brag-book-gallery-clear-all');
-		
+
 		if (!badgesContainer || !clearAllButton) return;
 
 		// Clear existing badges
@@ -886,7 +902,7 @@ class BRAGbookGalleryApp {
 		// Check if there are any active filters (demographic or procedure)
 		const procedureBadges = badgesContainer.querySelectorAll('[data-filter-key]');
 		const hasAnyActiveFilters = hasActiveFilters || procedureBadges.length > 0;
-		
+
 		// Show/hide clear all button based on any active filters
 		clearAllButton.style.display = hasAnyActiveFilters ? 'inline-block' : 'none';
 	}
@@ -903,7 +919,7 @@ class BRAGbookGalleryApp {
 		// Format display text - but store the original value
 		let displayText = '';
 		let originalValue = value; // Keep the original value for matching
-		
+
 		switch(category) {
 			case 'age':
 				displayText = `Age: ${value}`;
@@ -986,32 +1002,32 @@ class BRAGbookGalleryApp {
 	 */
 	removeDemographicFilter(category, value) {
 		console.log(`Removing demographic filter: ${category} = ${value}`);
-		
+
 		// Find the checkbox directly using the data-filter-type attribute and value
 		let targetCheckbox = null;
-		
+
 		// Based on the HTML structure, checkboxes have data-filter-type attribute
 		// and the value attribute matches what we're looking for
 		const selector = `input[type="checkbox"][data-filter-type="${category}"][value="${value}"]`;
 		console.log('Looking for checkbox with selector:', selector);
-		
+
 		targetCheckbox = document.querySelector(selector);
-		
+
 		// If not found, try without quotes or with different case
 		if (!targetCheckbox) {
 			// Try to find any checkbox with the matching value in the category
 			const checkboxes = document.querySelectorAll(`input[type="checkbox"][data-filter-type="${category}"]`);
 			console.log(`Found ${checkboxes.length} checkboxes with data-filter-type="${category}"`);
-			
+
 			checkboxes.forEach(checkbox => {
 				const checkboxValue = checkbox.value;
 				const label = checkbox.nextElementSibling;
 				const labelText = label?.textContent?.trim() || '';
-				
+
 				console.log(`Checking: value="${checkboxValue}", label="${labelText}", looking for="${value}"`);
-				
+
 				// Match the value exactly or case-insensitively
-				if (checkboxValue === value || 
+				if (checkboxValue === value ||
 					checkboxValue.toLowerCase() === value.toLowerCase() ||
 					labelText === value ||
 					labelText.toLowerCase() === value.toLowerCase()) {
@@ -1020,43 +1036,43 @@ class BRAGbookGalleryApp {
 				}
 			});
 		}
-		
+
 		// If still not found, try a broader search
 		if (!targetCheckbox) {
 			console.log('Trying broader search...');
 			// Look for checkboxes by ID pattern (e.g., procedure-filter-age-18-24)
 			const idPattern = `procedure-filter-${category}-${value}`.toLowerCase().replace(/\s+/g, '-');
 			targetCheckbox = document.getElementById(idPattern);
-			
+
 			if (targetCheckbox) {
 				console.log('Found checkbox by ID pattern:', idPattern);
 			}
 		}
-		
+
 		if (targetCheckbox) {
 			console.log('Unchecking checkbox:', targetCheckbox);
 			targetCheckbox.checked = false;
-			
+
 			// Trigger change event to update the filter system
 			const changeEvent = new Event('change', { bubbles: true });
 			targetCheckbox.dispatchEvent(changeEvent);
-			
+
 			// Also trigger input event as some handlers might listen to it
 			const inputEvent = new Event('input', { bubbles: true });
 			targetCheckbox.dispatchEvent(inputEvent);
-			
+
 			// Also manually trigger the filter update
 			setTimeout(() => {
 				const activeFilters = this.buildActiveFiltersFromDOM();
 				this.updateDemographicBadges(activeFilters);
-				
+
 				// Trigger any global filter update functions
 				if (typeof window.applyDemographicFilters === 'function') {
 					console.log('Calling applyDemographicFilters');
 					window.applyDemographicFilters();
 				}
 			}, 100);
-			
+
 			// Remove the badge immediately from DOM
 			const badge = document.querySelector(`.brag-book-gallery-filter-badge[data-filter-category="${category}"][data-filter-value="${value}"]`);
 			if (badge) {
@@ -1065,7 +1081,7 @@ class BRAGbookGalleryApp {
 			}
 		} else {
 			console.warn(`Could not find checkbox for ${category}: ${value}`);
-			
+
 			// Log all available checkboxes for debugging
 			console.log('Available checkboxes with data-filter-type:');
 			const allCheckboxes = document.querySelectorAll('input[type="checkbox"][data-filter-type]');
@@ -1080,20 +1096,20 @@ class BRAGbookGalleryApp {
 	 */
 	clearDemographicFilters() {
 		console.log('Starting to clear demographic filters...');
-		
+
 		// Find all checked checkboxes in filter groups with multiple selector patterns
 		const selectors = [
 			'.brag-book-gallery-filter-group input[type="checkbox"]:checked',
 			'input[type="checkbox"][data-filter-category]:checked',
 			'.brag-book-gallery-filter-option input[type="checkbox"]:checked'
 		];
-		
+
 		let totalCleared = 0;
-		
+
 		selectors.forEach(selector => {
 			const checkboxes = document.querySelectorAll(selector);
 			console.log(`Found ${checkboxes.length} checked checkboxes with selector: ${selector}`);
-			
+
 			checkboxes.forEach((checkbox) => {
 				console.log('Unchecking checkbox:', checkbox);
 				checkbox.checked = false;
@@ -1101,7 +1117,7 @@ class BRAGbookGalleryApp {
 				totalCleared++;
 			});
 		});
-		
+
 		console.log(`Total checkboxes cleared: ${totalCleared}`);
 
 		// Also try to trigger any global filter clear functions
@@ -1129,7 +1145,7 @@ class BRAGbookGalleryApp {
 	reloadGalleryContent() {
 		// Find the filtered gallery container
 		const filteredGallery = document.querySelector('.brag-book-gallery-filtered-results');
-		
+
 		if (filteredGallery) {
 			// Trigger AJAX reload with no filters
 			const formData = new FormData();
@@ -1173,7 +1189,7 @@ class BRAGbookGalleryApp {
 			btn.addEventListener('click', (e) => {
 				e.preventDefault();
 				e.stopPropagation();
-				
+
 				// If this is the favorites link in sidebar, always show favorites (don't toggle)
 				if (btn.classList.contains('brag-book-gallery-favorites-link')) {
 					this.showFavoritesView();
@@ -1189,21 +1205,21 @@ class BRAGbookGalleryApp {
 		// Always show favorites (used by sidebar link)
 		const favoritesBtns = document.querySelectorAll('[data-action="show-favorites"]');
 		favoritesBtns.forEach(btn => btn.classList.add('active'));
-		
+
 		// Update URL to reflect favorites view
 		if (window.history && window.history.pushState) {
-			const gallerySlug = window.bragBookGalleryData?.gallerySlug || 'before-after';
+			const gallerySlug = window.bragBookGalleryConfig?.gallerySlug || 'before-after';
 			const favoritesUrl = `/${gallerySlug}/myfavorites`;
 			window.history.pushState({ view: 'favorites' }, '', favoritesUrl);
 		}
-		
+
 		this.showFavoritesOnly();
 	}
 
 	toggleFavoritesView() {
 		const favoritesBtn = document.querySelector('[data-action="show-favorites"]:not(.brag-book-gallery-favorites-link)');
 		const isActive = favoritesBtn?.classList.contains('active');
-		
+
 		if (isActive) {
 			// Return to normal gallery view
 			this.showAllCases();
@@ -1220,81 +1236,314 @@ class BRAGbookGalleryApp {
 	}
 
 	showFavoritesOnly() {
-		const favorites = this.components.favoritesManager.getFavorites();
 		const galleryContent = document.getElementById('gallery-content');
-		
+
 		if (!galleryContent) return;
-
-		// Add favorites header if not already present
-		let favoritesHeader = galleryContent.querySelector('.brag-book-gallery-favorites-header');
-		if (!favoritesHeader) {
-			favoritesHeader = document.createElement('div');
-			favoritesHeader.className = 'brag-book-gallery-favorites-header';
-			favoritesHeader.innerHTML = `
-				<h2 class="brag-book-gallery-content-title">
-					<strong>My Favorites</strong> Collection
-				</h2>
-				<p class="brag-book-gallery-favorites-description">
-					Your saved before & after cases
-				</p>
-			`;
-			// Insert at the beginning of gallery content
-			galleryContent.insertBefore(favoritesHeader, galleryContent.firstChild);
-		}
-
-		// If no favorites, show empty state
-		if (favorites.size === 0) {
-			this.showFavoritesEmptyState();
-			return;
-		}
-
-		// Get favorite case IDs (extract numeric ID from "case-12345" format)
-		const caseIds = Array.from(favorites).map(id => {
-			const match = id.match(/case-(\d+)/);
-			return match ? match[1] : null;
-		}).filter(Boolean);
-
-		// Filter cases to show only favorites
-		const allCases = window.bragBookGalleryData?.allCasesData?.data || [];
-		const favoritedCases = allCases.filter(caseItem => {
-			return caseIds.includes(String(caseItem.id));
-		});
 
 		// Clear current content
 		const sectionsContainer = galleryContent.querySelector('#gallery-sections');
-		const casesGrid = galleryContent.querySelector('.brag-book-gallery-cases-grid');
-		
-		// Hide carousel sections if visible
 		if (sectionsContainer) {
 			sectionsContainer.style.display = 'none';
 		}
 
-		// Show favorites in cases grid
-		if (casesGrid) {
-			// Clear existing cases
-			casesGrid.innerHTML = '';
-			
-			// Add header
-			const header = document.createElement('div');
-			header.className = 'brag-book-gallery-favorites-header';
-			header.innerHTML = `
-				<h2>My Favorite Cases</h2>
-				<p>You have ${favoritedCases.length} favorited cases</p>
-			`;
-			casesGrid.parentElement.insertBefore(header, casesGrid);
-
-			// Render favorited cases
-			favoritedCases.forEach(caseData => {
-				const caseCard = this.createCaseCard(caseData);
-				casesGrid.insertAdjacentHTML('beforeend', caseCard);
-			});
-
-			// Reinitialize components for new cards
-			this.reinitializeGalleryComponents();
-		} else {
-			// Create new grid if doesn't exist
-			this.createFavoritesGrid(favoritedCases);
+		// Get user info from localStorage
+		const userInfoKey = 'brag-book-user-info';
+		let userInfo = null;
+		try {
+			const stored = localStorage.getItem(userInfoKey);
+			if (stored) {
+				userInfo = JSON.parse(stored);
+			}
+		} catch (e) {
+			console.error('Failed to load user info:', e);
 		}
+
+		// If no user info, show a form to enter email
+		if (!userInfo || !userInfo.email) {
+			galleryContent.innerHTML = `
+				<div class="brag-book-gallery-favorites-wrapper">
+					<div class="brag-book-gallery-favorites-container">
+						<h1 class="brag-book-gallery-favorites-title">My Favorite Cases</h1>
+						<div class="brag-book-gallery-favorites-form-wrapper">
+							<p>Please enter your email to view your saved favorites:</p>
+							<form class="brag-book-gallery-favorites-lookup-form" id="favorites-email-form">
+								<div class="brag-book-gallery-form-group">
+									<input
+										type="email"
+										name="email"
+										class="brag-book-gallery-form-input"
+										placeholder="Enter your email address"
+										required
+									>
+									<button type="submit" class="brag-book-gallery-form-submit brag-book-gallery-button">
+										View Favorites
+									</button>
+								</div>
+							</form>
+						</div>
+					</div>
+				</div>
+			`;
+
+			// Setup form handler
+			const form = document.getElementById('favorites-email-form');
+			if (form) {
+				form.addEventListener('submit', (e) => {
+					e.preventDefault();
+					const formData = new FormData(form);
+					const email = formData.get('email');
+
+					// Save to localStorage
+					const newUserInfo = { email: email };
+					localStorage.setItem(userInfoKey, JSON.stringify(newUserInfo));
+
+					// Reload favorites with the email
+					this.showFavoritesOnly();
+				});
+			}
+			return;
+		}
+
+		// Show loading state
+		galleryContent.innerHTML = `
+			<div class="brag-book-gallery-loading">
+				<div class="brag-book-gallery-spinner"></div>
+				<p>Loading your favorites...</p>
+			</div>
+		`;
+
+		// Make AJAX request with email from localStorage
+		const ajaxUrl = window.bragBookGalleryConfig?.ajaxUrl || '/wp-admin/admin-ajax.php';
+		const nonce = window.bragBookGalleryConfig?.nonce || '';
+
+		console.log('Loading favorites for email:', userInfo.email);
+
+		// Load from API
+		fetch(ajaxUrl, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/x-www-form-urlencoded',
+			},
+			body: new URLSearchParams({
+				action: 'brag_book_get_favorites_list',
+				email: userInfo.email,
+				nonce: nonce
+			})
+		})
+		.then(response => response.json())
+		.then(data => {
+			// Debug logging
+			console.log('AJAX Response:', data);
+
+			if (data.success && data.data) {
+				// Update user info from API response if it includes name and phone
+				if (data.data.user_info || (data.data.name && data.data.phone)) {
+					const apiUserInfo = data.data.user_info || {
+						email: userInfo.email,
+						name: data.data.name || '',
+						phone: data.data.phone || ''
+					};
+
+					// Update localStorage with complete user info
+					if (apiUserInfo.name || apiUserInfo.phone) {
+						const updatedUserInfo = {
+							email: userInfo.email,
+							name: apiUserInfo.name || userInfo.name || '',
+							phone: apiUserInfo.phone || userInfo.phone || ''
+						};
+						localStorage.setItem(userInfoKey, JSON.stringify(updatedUserInfo));
+						console.log('Updated user info from API:', updatedUserInfo);
+
+						// Update the local userInfo variable
+						userInfo = updatedUserInfo;
+					}
+				}
+
+				// Handle favorites - NEVER delete localStorage, only add to it
+				if (data.data.cases && Array.isArray(data.data.cases)) {
+					// Check if brag-book-favorites exists in localStorage
+					let existingFavorites = [];
+					const storedFavorites = localStorage.getItem('brag-book-favorites');
+
+					if (storedFavorites) {
+						// If it exists, parse it
+						try {
+							existingFavorites = JSON.parse(storedFavorites);
+							console.log('Existing localStorage favorites:', existingFavorites);
+						} catch (e) {
+							console.error('Error parsing existing favorites:', e);
+							existingFavorites = [];
+						}
+					}
+
+					// Create a Set with existing favorites to avoid duplicates
+					const favoritesSet = new Set(existingFavorites);
+
+					// Add case IDs from API response to the Set
+					data.data.cases.forEach(caseItem => {
+						const caseId = caseItem.id || caseItem.caseId || '';
+						if (caseId) {
+							favoritesSet.add(String(caseId));
+						}
+					});
+
+					// Convert back to array and save to localStorage
+					const updatedFavorites = Array.from(favoritesSet);
+					localStorage.setItem('brag-book-favorites', JSON.stringify(updatedFavorites));
+					console.log('Updated localStorage favorites (merged):', updatedFavorites);
+
+					// Update favorites manager if it exists
+					if (this.favoritesManager) {
+						this.favoritesManager.favorites = new Set(updatedFavorites);
+						// Trigger UI update to reflect the synced favorites
+						this.favoritesManager.updateUI();
+					}
+
+					// Update favorites count in navigation
+					const countElements = document.querySelectorAll('[data-favorites-count]');
+					countElements.forEach(element => {
+						element.textContent = `(${updatedFavorites.length})`;
+						// Ensure it's visible
+						if (element.style) {
+							element.style.opacity = '1';
+						}
+					});
+				} else {
+					// No cases in response, but ensure localStorage has empty array if nothing exists
+					if (!localStorage.getItem('brag-book-favorites')) {
+						localStorage.setItem('brag-book-favorites', JSON.stringify([]));
+						console.log('Initialized empty favorites in localStorage');
+					}
+
+					// Update favorites count to 0
+					const countElements = document.querySelectorAll('[data-favorites-count]');
+					countElements.forEach(element => {
+						element.textContent = '(0)';
+						if (element.style) {
+							element.style.opacity = '1';
+						}
+					});
+
+					// Update favorites manager if it exists
+					if (this.favoritesManager) {
+						this.favoritesManager.favorites = new Set();
+						this.favoritesManager.updateUI();
+					}
+				}
+
+				if (data.data.html) {
+					// Display the favorites HTML
+					galleryContent.innerHTML = `
+						<div class="brag-book-gallery-favorites-wrapper">
+							<div class="brag-book-gallery-favorites-container">
+								<div class="brag-book-gallery-favorites-view">
+									${data.data.html}
+								</div>
+							</div>
+						</div>
+					`;
+
+					// Add user email to the rendered content
+					const userEmailElement = galleryContent.querySelector('.brag-book-gallery-favorites-user');
+					if (userEmailElement) {
+						userEmailElement.textContent = `Showing favorites for: ${userInfo.email}`;
+					}
+					
+					// Reinitialize components for the new content first
+					this.reinitializeGalleryComponents();
+
+					// Update favorite button states after rendering - use ALL favorites from localStorage
+					// Small delay to ensure DOM is ready
+					setTimeout(() => {
+						const allFavorites = localStorage.getItem('brag-book-favorites');
+						if (allFavorites) {
+							try {
+								const favoriteIds = JSON.parse(allFavorites);
+								console.log('Updating favorite button states for IDs:', favoriteIds);
+
+								favoriteIds.forEach(favId => {
+									// Find all favorite buttons for this case and mark them as favorited
+									// Try multiple selector patterns to catch all variations
+									const selectors = [
+										`[data-item-id="${favId}"]`,
+										`[data-case-id="${favId}"]`,
+										`[data-item-id="case-${favId}"]`,
+										`[data-item-id="${favId}_main"]`
+									];
+
+									selectors.forEach(selector => {
+										const buttons = document.querySelectorAll(selector);
+										buttons.forEach(button => {
+											if (button.dataset.favorited !== undefined) {
+												button.dataset.favorited = 'true';
+												console.log('Marked as favorite:', selector);
+											}
+										});
+									});
+								});
+							} catch (e) {
+								console.error('Error updating favorite button states:', e);
+							}
+						}
+					}, 100);
+				} else if (typeof data.data === 'string') {
+					// Direct HTML response
+					galleryContent.innerHTML = data.data;
+				} else {
+					// Empty or no cases - ensure localStorage is initialized
+					if (!localStorage.getItem('brag-book-favorites')) {
+						localStorage.setItem('brag-book-favorites', JSON.stringify([]));
+						console.log('Initialized empty favorites in localStorage');
+					}
+
+					galleryContent.innerHTML = `
+						<div class="brag-book-gallery-favorites-wrapper">
+							<div class="brag-book-gallery-favorites-container">
+								<div class="brag-book-filtered-results">
+									<h2 class="brag-book-gallery-content-title"><strong>My Favorites</strong> Gallery</h2>
+									<p class="brag-book-gallery-favorites-user">Showing favorites for: ${userInfo.email}</p>
+									<div class="brag-book-gallery-favorites-empty">
+										<svg class="empty-icon" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+											<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+										</svg>
+										<h3>No favorites yet</h3>
+										<p>Start browsing the gallery and click the heart icon on cases you love to save them here.</p>
+									</div>
+								</div>
+							</div>
+						</div>
+					`;
+				}
+			} else {
+				// Show error message - ensure localStorage is initialized even on error
+				if (!localStorage.getItem('brag-book-favorites')) {
+					localStorage.setItem('brag-book-favorites', JSON.stringify([]));
+					console.log('Initialized empty favorites in localStorage on error');
+				}
+
+				galleryContent.innerHTML = `
+					<div class="brag-book-gallery-favorites-empty">
+						<svg class="empty-icon" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+							<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+						</svg>
+						<h2>No favorites found</h2>
+						<p>${data.data?.message || 'Unable to load favorites. Please try again.'}</p>
+					</div>
+				`;
+			}
+		})
+		.catch(error => {
+			console.error('Error loading favorites:', error);
+			galleryContent.innerHTML = `
+				<div class="brag-book-gallery-favorites-empty">
+					<svg class="empty-icon" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+					</svg>
+					<h2>Error loading favorites</h2>
+					<p>An error occurred while loading your favorites. Please try again.</p>
+				</div>
+			`;
+		});
 
 		// Clear any active filters
 		if (this.components.filterSystem) {
@@ -1306,7 +1555,7 @@ class BRAGbookGalleryApp {
 		// Reload the gallery to show all cases
 		const galleryContent = document.getElementById('gallery-content');
 		const sectionsContainer = galleryContent?.querySelector('#gallery-sections');
-		
+
 		// Show carousel sections again
 		if (sectionsContainer) {
 			sectionsContainer.style.display = '';
@@ -1339,7 +1588,7 @@ class BRAGbookGalleryApp {
 		const casesGrid = galleryContent.querySelector('.brag-book-gallery-cases-grid');
 		if (casesGrid) {
 			casesGrid.innerHTML = '';
-			
+
 			// Add empty state
 			const emptyState = document.createElement('div');
 			emptyState.className = 'brag-book-gallery-favorites-empty-state';
@@ -1357,50 +1606,20 @@ class BRAGbookGalleryApp {
 		}
 	}
 
-	createFavoritesGrid(favoritedCases) {
-		const galleryContent = document.getElementById('gallery-content');
-		if (!galleryContent) return;
-
-		// Create container
-		const container = document.createElement('div');
-		container.className = 'brag-book-gallery-favorites-view';
-		container.innerHTML = `
-			<div class="brag-book-gallery-favorites-header">
-				<h2>My Favorite Cases</h2>
-				<p>You have ${favoritedCases.length} favorited cases</p>
-			</div>
-			<div class="brag-book-gallery-cases-grid"></div>
-		`;
-
-		// Clear content and add favorites view
-		galleryContent.innerHTML = '';
-		galleryContent.appendChild(container);
-
-		const grid = container.querySelector('.brag-book-gallery-cases-grid');
-
-		// Render cases
-		favoritedCases.forEach(caseData => {
-			const caseCard = this.createCaseCard(caseData);
-			grid.insertAdjacentHTML('beforeend', caseCard);
-		});
-
-		// Reinitialize components
-		this.reinitializeGalleryComponents();
-	}
 
 	createCaseCard(caseData) {
 		const caseId = caseData.id;
-		const gallerySlug = window.bragBookGalleryData?.gallerySlug || 'before-after';
-		
+		const gallerySlug = window.bragBookGalleryConfig?.gallerySlug || 'before-after';
+
 		// Get the current procedure context from the URL or use case technique as fallback
 		let procedureSlug = 'case';
 		let procedureDisplayName = 'Case';
-		
+
 		// Try to get procedure from current URL pattern
 		const currentPath = window.location.pathname;
 		const galleryPattern = new RegExp(`/${gallerySlug}/([^/]+)`);
 		const match = currentPath.match(galleryPattern);
-		
+
 		if (match && match[1]) {
 			// Use the procedure from the URL (e.g., 'facelift' from /before-after/facelift/)
 			procedureSlug = match[1];
@@ -1414,9 +1633,9 @@ class BRAGbookGalleryApp {
 			procedureSlug = caseData.technique.toLowerCase().replace(/\s+/g, '-');
 			procedureDisplayName = caseData.technique;
 		}
-		
+
 		const caseUrl = '/' + gallerySlug + '/' + procedureSlug + '/' + caseId;
-		
+
 		// Get the first processed image
 		let imageUrl = '';
 		if (caseData.photoSets && caseData.photoSets.length > 0) {
@@ -1459,7 +1678,7 @@ class BRAGbookGalleryApp {
 	reinitializeGalleryComponents() {
 		// Reinitialize case links
 		this.initializeCaseLinks();
-		
+
 		// Reinitialize favorites buttons
 		if (this.components.favoritesManager) {
 			// Re-setup event listeners for new favorite buttons
