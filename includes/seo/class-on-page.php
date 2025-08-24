@@ -168,7 +168,7 @@ class On_Page {
 	private function get_seo_configuration(): array {
 		// Use helper to get the first slug
 		$page_slug = \BRAGBookGallery\Includes\Core\Slug_Helper::get_first_gallery_page_slug( '' );
-		
+
 		return array(
 			'brag_book_gallery_page_slug'    => $page_slug,
 			'brag_book_gallery_page_id' => (int) get_option(
@@ -387,7 +387,7 @@ class On_Page {
 			$procedure_data = $this->get_procedure_data_from_sidebar( $api_tokens, $procedure_slug, true );
 			$procedure_ids  = $procedure_data['bb_procedure_id'] ?? [];
 
-			$data = $this->api_handler->bb_get_case_data(
+			$data = $this->api_handler->get_case_data(
 				$case_id ?? 0,
 				$seo_suffix ?? '',
 				$api_tokens,
@@ -415,7 +415,7 @@ class On_Page {
 			$data          = get_transient( $transient_key );
 
 			if ( false === $data ) {
-				$data = $this->api_handler->bb_get_case_data(
+				$data = $this->api_handler->get_case_data(
 					$case_id ?? 0,
 					$seo_suffix ?? '',
 					$api_token,

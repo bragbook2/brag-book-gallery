@@ -64,8 +64,18 @@ class FavoritesManager {
 	}
 
 	toggleFavorite(button) {
-		const itemId = button.dataset.itemId;
+		let itemId = button.dataset.itemId || button.dataset.caseId || '';
 		const isFavorited = button.dataset.favorited === 'true';
+
+		// Extract numeric ID from values like "case-12345" or "case_12345_main"
+		if (itemId) {
+			const matches = itemId.match(/(\d+)/);
+			if (matches) {
+				itemId = matches[1];
+			}
+		}
+
+		console.log('Toggle favorite:', { itemId, isFavorited, original: button.dataset.itemId });
 
 		// If removing favorite, just remove it
 		if (isFavorited) {
@@ -73,24 +83,47 @@ class FavoritesManager {
 			return;
 		}
 
-		// If adding favorite and no user info, show dialog first
-		if (!this.userInfo && !this.hasShownDialog) {
+		// If no item ID, can't add favorite
+		if (!itemId) {
+			console.error('No item ID found on button:', button);
+			return;
+		}
+
+		// Check for user info in localStorage if we don't have it
+		if (!this.userInfo || !this.userInfo.email) {
+			this.loadUserInfo();
+		}
+
+		// If we have user info, submit to API directly
+		if (this.userInfo && this.userInfo.email) {
+			// Add to local favorites first
+			this.addFavorite(itemId, button);
+			// Submit to API
+			this.submitFavoriteToAPI(itemId);
+		} else {
+			// No user info - show dialog to collect it
 			this.lastAddedFavorite = itemId;
 			this.lastAddedButton = button;
 			// Add the favorite first so it shows in the dialog
 			this.addFavorite(itemId, button);
 			this.favoritesDialog.open();
 			this.hasShownDialog = true;
-			return;
 		}
-
-		// Add favorite
-		this.addFavorite(itemId, button);
 	}
 
 	addFavorite(itemId, button) {
-		// Animate heart
-		button.dataset.favorited = 'true';
+		// Update the clicked button
+		if (button) {
+			button.dataset.favorited = 'true';
+		}
+		
+		// Also update any other buttons for the same item
+		const allButtons = document.querySelectorAll(`[data-item-id="${itemId}"], [data-case-id="${itemId}"]`);
+		allButtons.forEach(btn => {
+			if (btn.dataset.favorited !== undefined) {
+				btn.dataset.favorited = 'true';
+			}
+		});
 
 		// Add to favorites set
 		this.favorites.add(itemId);
@@ -109,13 +142,21 @@ class FavoritesManager {
 	}
 
 	removeFavorite(itemId, button) {
-		// Find button if not provided
+		// Find buttons if not provided - check both data-item-id and data-case-id
 		if (!button) {
-			button = document.querySelector(`[data-item-id="${itemId}"][data-favorited="true"]`);
-		}
-
-		if (button) {
+			const buttons = document.querySelectorAll(`[data-item-id="${itemId}"][data-favorited="true"], [data-case-id="${itemId}"][data-favorited="true"]`);
+			buttons.forEach(btn => {
+				btn.dataset.favorited = 'false';
+			});
+		} else {
 			button.dataset.favorited = 'false';
+			// Also update any other buttons for the same item
+			const otherButtons = document.querySelectorAll(`[data-item-id="${itemId}"], [data-case-id="${itemId}"]`);
+			otherButtons.forEach(btn => {
+				if (btn !== button && btn.dataset.favorited !== undefined) {
+					btn.dataset.favorited = 'false';
+				}
+			});
 		}
 
 		// Remove from favorites set
@@ -134,30 +175,164 @@ class FavoritesManager {
 		}));
 	}
 
+	submitFavoriteToAPI(caseId) {
+		// Create form data with user info and case ID
+		const formData = new FormData();
+		formData.append('action', 'brag_book_add_favorite');
+		formData.append('nonce', window.bragBookGalleryConfig?.nonce || '');
+		formData.append('case_id', caseId);
+		formData.append('email', this.userInfo.email || '');
+		formData.append('phone', this.userInfo.phone || '');
+		formData.append('name', this.userInfo.name || '');
+
+		console.log('Submitting favorite to API:', {
+			caseId: caseId,
+			email: this.userInfo.email,
+			name: this.userInfo.name
+		});
+
+		// Submit to API
+		fetch(window.bragBookGalleryConfig?.ajaxUrl || '/wp-admin/admin-ajax.php', {
+			method: 'POST',
+			body: formData
+		})
+		.then(response => response.json())
+		.then(response => {
+			console.log('API Response:', response);
+			if (response.success) {
+				// Show success notification
+				this.showSuccessNotification('Added to favorites!');
+			} else {
+				// Show error notification
+				console.error('Failed to save favorite:', response.data?.message);
+				// You might want to show an error notification here
+			}
+		})
+		.catch(error => {
+			console.error('Error submitting favorite:', error);
+		});
+	}
+
 	handleFavoritesFormSubmit(form) {
 		const formData = new FormData(form);
 		const data = Object.fromEntries(formData.entries());
 
-		// Save user info
-		this.userInfo = data;
-		if (this.options.persistToStorage) {
-			this.saveUserInfo();
+		// Add case ID if we have a pending favorite
+		if (this.lastAddedFavorite) {
+			formData.append('case_id', this.lastAddedFavorite);
 		}
 
-		// Add the pending favorite
-		if (this.lastAddedFavorite && this.lastAddedButton) {
-			this.addFavorite(this.lastAddedFavorite, this.lastAddedButton);
-			this.lastAddedFavorite = null;
-			this.lastAddedButton = null;
+		// Add action and nonce for WordPress AJAX
+		formData.append('action', 'brag_book_add_favorite');
+		formData.append('nonce', window.bragBookGalleryConfig?.nonce || '');
+		
+		// Debug logging
+		console.log('Submitting to:', window.bragBookGalleryConfig?.ajaxUrl || '/wp-admin/admin-ajax.php');
+		console.log('Form data:', {
+			action: 'brag_book_add_favorite',
+			nonce: window.bragBookGalleryConfig?.nonce || 'no-nonce',
+			email: data.email,
+			phone: data.phone,
+			name: data.name,
+			case_id: this.lastAddedFavorite || 'no-case-id'
+		});
+
+		// Show loading state in form
+		const submitButton = form.querySelector('button[type="submit"]');
+		const originalText = submitButton ? submitButton.textContent : '';
+		if (submitButton) {
+			submitButton.disabled = true;
+			submitButton.textContent = 'Submitting...';
 		}
 
-		// Close dialog
-		this.favoritesDialog.close();
+		// Clear any previous error messages
+		const existingError = form.querySelector('.brag-book-gallery-form-error');
+		const existingSuccess = form.querySelector('.brag-book-gallery-form-success');
+		if (existingError) existingError.remove();
+		if (existingSuccess) existingSuccess.remove();
 
-		// Show success message
-		this.showSuccessNotification('Your information has been saved. Keep adding favorites!');
+		// Submit via AJAX
+		fetch(window.bragBookGalleryConfig?.ajaxUrl || '/wp-admin/admin-ajax.php', {
+			method: 'POST',
+			body: formData
+		})
+		.then(response => {
+			console.log('Response status:', response.status);
+			if (!response.ok) {
+				throw new Error(`HTTP error! status: ${response.status}`);
+			}
+			return response.json();
+		})
+		.then(response => {
+			console.log('Response data:', response);
+			if (response.success) {
+				// Save user info locally AND to localStorage
+				this.userInfo = data;
+				if (this.options.persistToStorage) {
+					this.saveUserInfo();
+				}
+				
+				// Also save to localStorage for future sessions
+				try {
+					localStorage.setItem(this.options.userInfoKey, JSON.stringify(data));
+				} catch (e) {
+					console.error('Failed to save user info to localStorage:', e);
+				}
 
-		console.log('User info saved:', data);
+				// Show success message in form
+				const successDiv = document.createElement('div');
+				successDiv.className = 'brag-book-gallery-form-success';
+				successDiv.textContent = response.data.message || 'Your information has been saved. Keep adding favorites!';
+				form.appendChild(successDiv);
+
+				// Close dialog after a short delay
+				setTimeout(() => {
+					this.favoritesDialog.close();
+					// Clear the form
+					form.reset();
+					if (successDiv) successDiv.remove();
+				}, 2000);
+
+				// Show success notification
+				this.showSuccessNotification(response.data.message || 'Your information has been saved. Keep adding favorites!');
+
+				// Clear pending favorite
+				this.lastAddedFavorite = null;
+				this.lastAddedButton = null;
+			} else {
+				// Show error message in form
+				const errorDiv = document.createElement('div');
+				errorDiv.className = 'brag-book-gallery-form-error';
+				errorDiv.textContent = response.data.message || 'Failed to save. Please try again.';
+				form.appendChild(errorDiv);
+
+				// If there was an error, remove the favorite that was added
+				if (this.lastAddedFavorite && this.lastAddedButton) {
+					this.removeFavorite(this.lastAddedFavorite, this.lastAddedButton);
+				}
+			}
+		})
+		.catch(error => {
+			console.error('Error submitting favorites form:', error);
+			
+			// Show error message in form
+			const errorDiv = document.createElement('div');
+			errorDiv.className = 'brag-book-gallery-form-error';
+			errorDiv.textContent = 'An error occurred. Please try again.';
+			form.appendChild(errorDiv);
+
+			// If there was an error, remove the favorite that was added
+			if (this.lastAddedFavorite && this.lastAddedButton) {
+				this.removeFavorite(this.lastAddedFavorite, this.lastAddedButton);
+			}
+		})
+		.finally(() => {
+			// Reset button state
+			if (submitButton) {
+				submitButton.disabled = false;
+				submitButton.textContent = originalText;
+			}
+		});
 	}
 
 	showSuccessNotification(message) {
@@ -254,11 +429,11 @@ class FavoritesManager {
 	}
 
 	updateUI() {
-		// Update count
-		const countElement = document.querySelector('[data-favorites-count]');
+		// Update count - get ALL elements with data-favorites-count
+		const countElements = document.querySelectorAll('[data-favorites-count]');
 		const count = this.favorites.size;
 
-		if (countElement) {
+		countElements.forEach(countElement => {
 			if (typeof gsap !== 'undefined') {
 				gsap.to(countElement, {
 					opacity: 0,
@@ -271,7 +446,7 @@ class FavoritesManager {
 			} else {
 				countElement.textContent = `(${count})`;
 			}
-		}
+		});
 
 		// Update favorites grid in sidebar
 		this.updateFavoritesDisplay();
@@ -284,12 +459,15 @@ class FavoritesManager {
 				const items = JSON.parse(stored);
 				this.favorites = new Set(items);
 
-				// Update button states
+				// Update button states for all matching elements
 				items.forEach(itemId => {
-					const button = document.querySelector(`[data-item-id="${itemId}"]`);
-					if (button) {
-						button.dataset.favorited = 'true';
-					}
+					// Find buttons by both data-item-id and data-case-id
+					const buttons = document.querySelectorAll(`[data-item-id="${itemId}"], [data-case-id="${itemId}"]`);
+					buttons.forEach(button => {
+						if (button.dataset.favorited !== undefined) {
+							button.dataset.favorited = 'true';
+						}
+					});
 				});
 			}
 		} catch (e) {

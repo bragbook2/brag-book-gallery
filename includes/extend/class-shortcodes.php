@@ -16,6 +16,7 @@ use BRAGBookGallery\Includes\Core\Slug_Helper;
 use BRAGBookGallery\Includes\Extend\Asset_Manager;
 use BRAGBookGallery\Includes\Extend\Data_Fetcher;
 use BRAGBookGallery\Includes\Extend\HTML_Renderer;
+use BRAGBookGallery\Includes\Resources\Assets;
 use WP_Post;
 
 /**
@@ -65,6 +66,7 @@ final class Shortcodes {
 			'brag_book_carousel'      => 'carousel_shortcode',
 			'brag_book_gallery_cases' => 'cases_shortcode',
 			'brag_book_gallery_case'  => 'case_details_shortcode',
+			'brag_book_favorites'     => 'favorites_shortcode',
 		];
 
 		foreach ( $shortcodes as $tag => $callback ) {
@@ -104,6 +106,7 @@ final class Shortcodes {
 				'brag_book_carousel',
 				'brag_book_gallery_cases',
 				'brag_book_gallery_case',
+				'brag_book_favorites',
 			];
 			
 			foreach ( $gallery_shortcodes as $shortcode ) {
@@ -887,6 +890,7 @@ final class Shortcodes {
 						form below and we'll send your favorited images.</p>
 					<form class="brag-book-gallery-favorites-form"
 						  data-form="favorites">
+						<div class="brag-book-gallery-form-notification" style="display: none;"></div>
 						<div class="brag-book-gallery-form-group">
 							<label class="brag-book-gallery-form-label"
 								   for="fav-name">Full Name *</label>
@@ -2322,336 +2326,229 @@ final class Shortcodes {
 	 * @since 3.0.0
 	 */
 	private static function render_favorites_page( array $atts ): string {
-		// Validate configuration
-		$validation = self::validate_gallery_configuration( $atts );
-		if ( $validation['error'] ) {
-			return sprintf(
-				'<p class="brag-book-gallery-error">%s</p>',
-				esc_html( $validation['message'] )
-			);
-		}
+		// Use the new favorites shortcode which handles API-based favorites
+		return self::favorites_shortcode( $atts );
+	}
 
-		$config = $validation['config'];
-
-		// Enqueue required assets
-		Asset_Manager::enqueue_gallery_assets();
-
-		// Get sidebar data for procedures
-		$sidebar_data = Data_Fetcher::get_sidebar_data( $config['api_token'] );
-
-		// Fetch all cases for filtering
-		$all_cases_data = Data_Fetcher::get_all_cases_for_filtering( $config['api_token'], $config['website_property_id'] );
-
-		// Localize script data
-		Asset_Manager::localize_gallery_script( $config, $sidebar_data, $all_cases_data );
-
-		// Get gallery slug for back link
-		$gallery_slug = get_option( 'brag_book_gallery_page_slug', 'before-after' );
-		if ( is_array( $gallery_slug ) ) {
-			$gallery_slug = ! empty( $gallery_slug[0] ) ? $gallery_slug[0] : 'before-after';
-		}
-		$base_path = '/' . ltrim( $gallery_slug, '/' );
-
-		// Start output buffering
+	/**
+	 * Render consultation form styles.
+	 *
+	 * @since 3.0.0
+	 * @return string CSS styles.
+	 */
+	private static function render_consultation_styles(): string {
 		ob_start();
 		?>
-		<div class="brag-book-gallery-favorites-page" data-favorites-mode="true">
-			<div class="brag-book-gallery-page-header">
-				<a href="<?php echo esc_url( $base_path ); ?>" class="brag-book-gallery-back-link">
-					&larr; Back to Gallery
-				</a>
-				<h1>My Favorite Cases</h1>
-				<p class="brag-book-gallery-favorites-description">
-					Your favorited cases are saved locally in your browser and will persist across visits.
-				</p>
-			</div>
-
-			<div class="brag-book-gallery-favorites-container">
-				<div class="brag-book-gallery-favorites-empty" id="favorites-empty-message" style="display:none;">
-					<svg class="empty-icon" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-						<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-					</svg>
-					<h2>No favorites yet</h2>
-					<p>Start browsing the gallery and click the heart icon on cases you love to save them here.</p>
-					<a href="<?php echo esc_url( $base_path ); ?>" class="brag-book-gallery-button">Browse Gallery</a>
-				</div>
-
-				<div class="brag-book-gallery-favorites-grid" id="favorites-cases-grid" style="display:none;">
-					<!-- Favorited cases will be loaded here via JavaScript -->
-				</div>
-
-				<div class="brag-book-gallery-loading" id="favorites-loading">
-					<div class="brag-book-gallery-spinner"></div>
-					<p>Loading your favorites...</p>
-				</div>
-			</div>
-		</div>
-
-		<script>
-		document.addEventListener('DOMContentLoaded', function() {
-			// Load favorited cases from localStorage
-			const storageKey = 'brag-book-favorites';
-			const favoritesData = localStorage.getItem(storageKey);
-			const loadingEl = document.getElementById('favorites-loading');
-			const emptyEl = document.getElementById('favorites-empty-message');
-			const gridEl = document.getElementById('favorites-cases-grid');
-
-			if (!favoritesData || favoritesData === '[]') {
-				// No favorites
-				loadingEl.style.display = 'none';
-				emptyEl.style.display = 'block';
-				return;
-			}
-
-			try {
-				const favoriteIds = JSON.parse(favoritesData);
-				
-				if (!favoriteIds || favoriteIds.length === 0) {
-					loadingEl.style.display = 'none';
-					emptyEl.style.display = 'block';
-					return;
-				}
-
-				// Extract case IDs from the stored favorite IDs (format: "case-12345")
-				const caseIds = favoriteIds.map(id => {
-					const match = id.match(/case-(\d+)/);
-					return match ? match[1] : null;
-				}).filter(Boolean);
-
-				if (caseIds.length === 0) {
-					loadingEl.style.display = 'none';
-					emptyEl.style.display = 'block';
-					return;
-				}
-
-				// Get all cases data from localized script
-				if (typeof window.bragBookGalleryData !== 'undefined' && window.bragBookGalleryData.allCasesData) {
-					const allCases = window.bragBookGalleryData.allCasesData.data || [];
-					
-					// Filter to only favorited cases
-					const favoritedCases = allCases.filter(caseItem => {
-						return caseIds.includes(String(caseItem.id));
-					});
-
-					if (favoritedCases.length === 0) {
-						loadingEl.style.display = 'none';
-						emptyEl.style.display = 'block';
-						return;
-					}
-
-					// Render the favorited cases
-					renderFavoriteCases(favoritedCases);
-					loadingEl.style.display = 'none';
-					gridEl.style.display = 'grid';
-				} else {
-					// Fallback: Load cases via AJAX
-					loadFavoriteCasesViaAjax(caseIds);
-				}
-			} catch (error) {
-				console.error('Error loading favorites:', error);
-				loadingEl.style.display = 'none';
-				emptyEl.style.display = 'block';
-			}
-
-			function renderFavoriteCases(cases) {
-				const gridEl = document.getElementById('favorites-cases-grid');
-				gridEl.innerHTML = '';
-
-				cases.forEach(caseData => {
-					// Create case card HTML similar to the gallery
-					const caseCard = createCaseCard(caseData);
-					gridEl.insertAdjacentHTML('beforeend', caseCard);
-				});
-
-				// Initialize case links and favorite buttons
-				if (typeof window.BragBookGallery !== 'undefined' && window.BragBookGallery.initializeCaseLinks) {
-					window.BragBookGallery.initializeCaseLinks();
-				}
-				if (typeof window.BragBookGallery !== 'undefined' && window.BragBookGallery.initializeFavorites) {
-					window.BragBookGallery.initializeFavorites();
-				}
-			}
-
-			function createCaseCard(caseData) {
-				const caseId = caseData.id;
-				const gallerySlug = '<?php echo esc_js( $gallery_slug ); ?>';
-				const procedureSlug = caseData.technique ? caseData.technique.toLowerCase().replace(/\s+/g, '-') : 'case';
-				const caseUrl = '/' + gallerySlug + '/' + procedureSlug + '/' + caseId;
-				
-				// Get the first processed image
-				let imageUrl = '';
-				if (caseData.photoSets && caseData.photoSets.length > 0) {
-					imageUrl = caseData.photoSets[0].postProcessedImageLocation || '';
-				}
-
-				return `
-					<article class="brag-book-gallery-case-card" data-case-id="${caseId}">
-						<div class="brag-book-gallery-image-container brag-book-gallery-single-image">
-							<div class="brag-book-gallery-skeleton-loader" style="display:none;"></div>
-							<div class="brag-book-gallery-item-actions">
-								<button class="brag-book-gallery-favorite-button" data-favorited="true" data-item-id="case-${caseId}" aria-label="Remove from favorites">
-									<svg fill="red" stroke="white" stroke-width="2" viewBox="0 0 24 24">
-										<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-									</svg>
-								</button>
-							</div>
-							<a href="${caseUrl}" class="brag-book-gallery-case-link" data-case-id="${caseId}">
-								<picture class="brag-book-gallery-picture">
-									<img src="${imageUrl}" alt="Case ${caseId}" loading="lazy" data-image-type="single">
-								</picture>
-							</a>
-						</div>
-						<div class="brag-book-gallery-case-summary">
-							<div class="brag-book-gallery-case-summary-left">
-								<span class="brag-book-gallery-procedure-name">${caseData.technique || 'Procedure'}</span>
-								<span class="brag-book-gallery-case-number">Case #${caseId}</span>
-							</div>
-							<div class="brag-book-gallery-case-summary-right">
-								${caseData.age ? `<span class="brag-book-gallery-age">${caseData.age} yrs</span>` : ''}
-								${caseData.gender ? `<span class="brag-book-gallery-gender">${caseData.gender}</span>` : ''}
-							</div>
-						</div>
-					</article>
-				`;
-			}
-
-			function loadFavoriteCasesViaAjax(caseIds) {
-				// Make AJAX request to load specific cases
-				fetch(window.bragBookGalleryData.ajaxUrl, {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/x-www-form-urlencoded',
-					},
-					body: new URLSearchParams({
-						action: 'brag_book_load_filtered_cases',
-						case_ids: caseIds.join(','),
-						nonce: window.bragBookGalleryData.nonce
-					})
-				})
-				.then(response => response.json())
-				.then(data => {
-					const loadingEl = document.getElementById('favorites-loading');
-					const emptyEl = document.getElementById('favorites-empty-message');
-					const gridEl = document.getElementById('favorites-cases-grid');
-
-					if (data.success && data.data && data.data.length > 0) {
-						renderFavoriteCases(data.data);
-						loadingEl.style.display = 'none';
-						gridEl.style.display = 'grid';
-					} else {
-						loadingEl.style.display = 'none';
-						emptyEl.style.display = 'block';
-					}
-				})
-				.catch(error => {
-					console.error('Error loading favorite cases:', error);
-					document.getElementById('favorites-loading').style.display = 'none';
-					document.getElementById('favorites-empty-message').style.display = 'block';
-				});
-			}
-
-			// Listen for favorites updates
-			window.addEventListener('favoritesUpdated', function(event) {
-				// Reload the page when favorites are updated
-				if (document.querySelector('.brag-book-gallery-favorites-page')) {
-					location.reload();
-				}
-			});
-		});
-		</script>
-
 		<style>
-		.brag-book-gallery-favorites-page {
-			padding: 2rem 0;
+		.brag-book-gallery-consultation-form {
+			max-width: 600px;
+			margin: 2rem auto;
+			padding: 2rem;
+			background: #f9f9f9;
+			border-radius: 8px;
 		}
 
-		.brag-book-gallery-page-header {
-			margin-bottom: 2rem;
+		.brag-book-gallery-consultation-form h2 {
+			margin-top: 0;
+			margin-bottom: 1.5rem;
+			font-size: 1.5rem;
 		}
 
-		.brag-book-gallery-page-header h1 {
-			margin: 1rem 0 0.5rem;
-			font-size: 2rem;
+		.brag-book-gallery-consultation-form .form-group {
+			margin-bottom: 1.5rem;
 		}
 
-		.brag-book-gallery-favorites-description {
-			color: #666;
-			margin-bottom: 2rem;
+		.brag-book-gallery-consultation-form label {
+			display: block;
+			margin-bottom: 0.5rem;
+			font-weight: bold;
 		}
 
-		.brag-book-gallery-back-link {
-			display: inline-flex;
-			align-items: center;
-			color: #333;
-			text-decoration: none;
-			margin-bottom: 1rem;
+		.brag-book-gallery-consultation-form input[type="text"],
+		.brag-book-gallery-consultation-form input[type="email"],
+		.brag-book-gallery-consultation-form input[type="tel"],
+		.brag-book-gallery-consultation-form select,
+		.brag-book-gallery-consultation-form textarea {
+			width: 100%;
+			padding: 0.75rem;
+			border: 1px solid #ddd;
+			border-radius: 4px;
+			font-size: 1rem;
 		}
 
-		.brag-book-gallery-back-link:hover {
-			text-decoration: underline;
+		.brag-book-gallery-consultation-form textarea {
+			min-height: 120px;
+			resize: vertical;
 		}
 
-		.brag-book-gallery-favorites-empty {
-			text-align: center;
-			padding: 4rem 2rem;
-		}
-
-		.brag-book-gallery-favorites-empty .empty-icon {
-			color: #ddd;
-			margin-bottom: 1rem;
-		}
-
-		.brag-book-gallery-favorites-empty h2 {
-			margin: 1rem 0;
-			color: #666;
-		}
-
-		.brag-book-gallery-favorites-empty p {
-			color: #999;
-			margin-bottom: 2rem;
-		}
-
-		.brag-book-gallery-favorites-empty .brag-book-gallery-button {
-			display: inline-block;
-			padding: 0.75rem 1.5rem;
+		.brag-book-gallery-consultation-form button {
 			background: #333;
 			color: white;
-			text-decoration: none;
+			padding: 0.75rem 2rem;
+			border: none;
 			border-radius: 4px;
+			font-size: 1rem;
+			cursor: pointer;
+			transition: background-color 0.3s;
 		}
 
-		.brag-book-gallery-favorites-empty .brag-book-gallery-button:hover {
+		.brag-book-gallery-consultation-form button:hover {
 			background: #555;
 		}
 
-		.brag-book-gallery-favorites-grid {
-			display: grid;
-			grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-			gap: 1.5rem;
+		.brag-book-gallery-consultation-form .form-message {
+			padding: 1rem;
+			margin-bottom: 1rem;
+			border-radius: 4px;
 		}
 
-		.brag-book-gallery-loading {
-			text-align: center;
-			padding: 3rem;
+		.brag-book-gallery-consultation-form .form-success {
+			background: #d4edda;
+			color: #155724;
+			border: 1px solid #c3e6cb;
 		}
 
-		.brag-book-gallery-spinner {
-			width: 40px;
-			height: 40px;
-			border: 4px solid #f3f3f3;
-			border-top: 4px solid #333;
-			border-radius: 50%;
-			animation: spin 1s linear infinite;
-			margin: 0 auto 1rem;
-		}
-
-		@keyframes spin {
-			0% { transform: rotate(0deg); }
-			100% { transform: rotate(360deg); }
+		.brag-book-gallery-consultation-form .form-error {
+			background: #f8d7da;
+			color: #721c24;
+			border: 1px solid #f5c6cb;
 		}
 		</style>
 		<?php
 		return ob_get_clean();
+	}
+
+	/**
+	 * Favorites shortcode handler.
+	 *
+	 * Displays user's favorited cases.
+	 *
+	 * @since 3.0.0
+	 * @param array $atts Shortcode attributes.
+	 * @return string HTML output.
+	 */
+	public static function favorites_shortcode( $atts ): string {
+		// Extract shortcode attributes
+		$atts = shortcode_atts(
+			[
+				'email' => '', // User can provide email or it will use a form
+			],
+			$atts,
+			'brag_book_favorites'
+		);
+
+		// Enqueue necessary scripts and styles
+		$assets = new Assets();
+		$assets->enqueue_frontend_assets();
+
+		// Get API configuration
+		$api_tokens = get_option( 'brag_book_gallery_api_token', [] );
+		$website_property_ids = get_option( 'brag_book_gallery_website_property_id', [] );
+
+		if ( empty( $api_tokens ) || empty( $website_property_ids ) ) {
+			return '<div class="brag-book-gallery-error">Please configure the plugin API settings.</div>';
+		}
+
+		// Start building the HTML
+		$html = '<div class="brag-book-gallery-favorites-wrapper">';
+		$html .= '<div class="brag-book-gallery-favorites-container">';
+		
+		// Add title
+		$html .= '<h2 class="brag-book-gallery-favorites-title">My Favorites</h2>';
+		
+		// Add email input form if no email provided
+		if ( empty( $atts['email'] ) ) {
+			$html .= '<div class="brag-book-gallery-favorites-form-wrapper">';
+			$html .= '<p class="brag-book-gallery-favorites-description">Enter your email to view your saved favorites:</p>';
+			$html .= '<form class="brag-book-gallery-favorites-lookup-form" data-form="favorites-lookup">';
+			$html .= '<div class="brag-book-gallery-form-group">';
+			$html .= '<input type="email" class="brag-book-gallery-form-input" name="email" placeholder="Your email address" required>';
+			$html .= '<button type="submit" class="brag-book-gallery-form-submit">View My Favorites</button>';
+			$html .= '</div>';
+			$html .= '</form>';
+			$html .= '</div>';
+		}
+
+		// Container for favorites display
+		$html .= '<div class="brag-book-gallery-favorites-view" id="favorites-view" style="display: none;">';
+		$html .= '<div class="brag-book-gallery-favorites-loading" style="display: none;">Loading your favorites...</div>';
+		$html .= '<div class="brag-book-gallery-favorites-empty" style="display: none;">You haven\'t saved any favorites yet.</div>';
+		$html .= '<div class="brag-book-gallery-case-grid brag-book-gallery-favorites-grid" id="favorites-grid"></div>';
+		$html .= '</div>';
+
+		$html .= '</div>';
+		$html .= '</div>';
+
+		// Add JavaScript to handle the form and load favorites
+		$html .= '<script>
+		document.addEventListener("DOMContentLoaded", function() {
+			const favoritesForm = document.querySelector("[data-form=\"favorites-lookup\"]");
+			const favoritesView = document.getElementById("favorites-view");
+			const favoritesGrid = document.getElementById("favorites-grid");
+			const loadingDiv = document.querySelector(".brag-book-gallery-favorites-loading");
+			const emptyDiv = document.querySelector(".brag-book-gallery-favorites-empty");
+			
+			// Auto-load if email is provided
+			const providedEmail = "' . esc_js( $atts['email'] ) . '";
+			if (providedEmail) {
+				loadFavorites(providedEmail);
+			}
+			
+			// Handle form submission
+			if (favoritesForm) {
+				favoritesForm.addEventListener("submit", function(e) {
+					e.preventDefault();
+					const formData = new FormData(favoritesForm);
+					const email = formData.get("email");
+					if (email) {
+						loadFavorites(email);
+					}
+				});
+			}
+			
+			function loadFavorites(email) {
+				// Show loading state
+				favoritesView.style.display = "block";
+				loadingDiv.style.display = "block";
+				emptyDiv.style.display = "none";
+				favoritesGrid.style.display = "none";
+				favoritesGrid.innerHTML = "";
+				
+				// Prepare request data
+				const requestData = new FormData();
+				requestData.append("action", "brag_book_get_favorites_list");
+				requestData.append("nonce", window.bragBookGalleryConfig?.nonce || "");
+				requestData.append("email", email);
+				
+				// Make AJAX request
+				fetch(window.bragBookGalleryConfig?.ajaxUrl || "/wp-admin/admin-ajax.php", {
+					method: "POST",
+					body: requestData
+				})
+				.then(response => response.json())
+				.then(response => {
+					loadingDiv.style.display = "none";
+					
+					if (response.success && response.data.cases && response.data.cases.length > 0) {
+						// Display the cases
+						favoritesGrid.innerHTML = response.data.html;
+						favoritesGrid.style.display = "grid";
+					} else {
+						// No favorites found
+						emptyDiv.style.display = "block";
+					}
+				})
+				.catch(error => {
+					console.error("Error loading favorites:", error);
+					loadingDiv.style.display = "none";
+					emptyDiv.textContent = "An error occurred while loading your favorites. Please try again.";
+					emptyDiv.style.display = "block";
+				});
+			}
+		});
+		</script>';
+
+		return $html;
 	}
 
 
