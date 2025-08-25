@@ -2,7 +2,7 @@
 	"name": "bragbook/gallery",
 	"description": "BRAGBook Gallery WordPress Plugin - Display medical/cosmetic procedure galleries",
 	"type": "wordpress-plugin",
-	"version": "3.0.3",
+	"version": "3.0.4",
 	"license": "GPL-2.0-or-later",
 	"authors": [
 		{

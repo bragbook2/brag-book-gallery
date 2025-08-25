@@ -334,6 +334,23 @@ class BRAGbookGalleryApp {
 			if (data.success && data.data && data.data.html) {
 				// Display the HTML directly from the server
 				galleryContent.innerHTML = data.data.html;
+				
+				// Update page title and meta description if SEO data is provided
+				if (data.data.seo) {
+					if (data.data.seo.title) {
+						document.title = data.data.seo.title;
+					}
+					if (data.data.seo.description) {
+						let metaDescription = document.querySelector('meta[name="description"]');
+						if (!metaDescription) {
+							metaDescription = document.createElement('meta');
+							metaDescription.name = 'description';
+							document.head.appendChild(metaDescription);
+						}
+						metaDescription.content = data.data.seo.description;
+					}
+				}
+				
 				// Re-initialize any necessary event handlers for the new content
 				this.initializeCaseDetailThumbnails();
 			} else {

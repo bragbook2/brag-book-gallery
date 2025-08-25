@@ -17,8 +17,7 @@
 .brag-book-gallery-search-input,
 .brag-book-gallery-mobile-search-input {
 	width: 100%;
-	padding-block: var(--wp--custom--brag-book-gallery--spacer--md,12px) !important;
-	padding-inline: calc( 10 * var(--wp--custom--brag-book-gallery--spacer,4px) ) var(--wp--custom--brag-book-gallery--spacer--lg,16px) !important;
+	padding: var(--wp--custom--brag-book-gallery--spacer--md,12px) var(--wp--custom--brag-book-gallery--spacer--lg,16px) var(--wp--custom--brag-book-gallery--spacer--md,12px) calc( 10 * var(--wp--custom--brag-book-gallery--spacer,4px) ) !important;
 	background: var(--wp--custom--brag-book-gallery--color--white,#FFF) !important;
 	border: 0 solid var(--wp--custom--brag-book-gallery--color--lighter-grey) !important;
 	box-shadow: 0 0 0 0.125rem var(--wp--custom--brag-book-gallery--color--lighter-grey);

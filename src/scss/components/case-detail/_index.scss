@@ -7,11 +7,8 @@
 
 	.brag-book-gallery-case-images-layout {
 		display: flex;
+		flex-direction: column;
 		gap: var(--wp--custom--brag-book-gallery--spacer--2xl,24px);
-
-		@media (max-width: 768px) {
-			flex-direction: column;
-		}
 	}
 
 	// Main viewer - large image display
@@ -57,41 +54,33 @@
 		width: 100%;
 		max-width: 100%;
 		flex-shrink: 0;
-
-		@media (min-width: 768px) {
-			max-inline-size: 320px;
-		}
 	}
 
 	.brag-book-gallery-thumbnails-grid {
 		display: flex;
-		flex-direction: column;
-		gap: 0.75rem;
-
-		@media (max-width: 768px) {
-			flex-direction: row;
-			overflow-x: auto;
-			padding-bottom: 0.5rem;
-		}
+		gap: var(--wp--custom--brag-book-gallery--spacer--sm);
+		flex-direction: row;
+		overflow-x: auto;
+		padding-bottom: 0.5rem;
 	}
 
 	.brag-book-gallery-thumbnail-item {
 		cursor: pointer;
-		border: 2px solid transparent;
-		border-radius: 4px;
+		border-radius: var(--wp--custom--brag-book-gallery--rounded);
 		overflow: hidden;
-		transition: all 0.2s ease;
+		transition: var(--wp--custom--brag-book-gallery--transition);
 		background: #f5f5f5;
 
 		&:hover {
-			border-color: #ccc;
-			transform: translateY(-2px);
-			box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+			box-shadow: var(--wp--custom--brag-book-gallery--shadow-lg);
 		}
 
 		&.active {
-			border-color: #333;
-			box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+			box-shadow: var(--wp--custom--brag-book-gallery--shadow-lg);
+		}
+
+		&:focus {
+			outline: none;
 		}
 
 		img {
@@ -110,10 +99,6 @@
 		display: grid;
 		gap: var(--wp--custom--brag-book-gallery--spacer--2xl,24px);
 		grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-
-		@media (min-width: 1024px) {
-			max-inline-size: calc( 100% - ( 320px + ( 8 * var(--wp--custom--brag-book-gallery--spacer,4px) ) ) );
-		}
 	}
 
 	.case-detail-card {
@@ -154,6 +139,7 @@
 
 	.brag-book-gallery-info-value {
 		font-size: var(--wp--custom--brag-book-gallery--text-sm);
+		font-weight: var(--wp--custom--brag-book-gallery--font-weight--regular);
 	}
 
 	.brag-book-gallery-procedure-badges-list {

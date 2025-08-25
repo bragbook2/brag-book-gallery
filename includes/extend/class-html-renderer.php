@@ -635,10 +635,10 @@ final class HTML_Renderer {
 	 *
 	 * @param array $case_data Case data array.
 	 *
-	 * @return string Rendered HTML.
+	 * @return array Array with 'html' and 'seo' keys.
 	 * @since 3.0.0
 	 */
-	public static function render_case_details_html( array $case_data ): string {
+	public static function render_case_details_html( array $case_data ): array {
 		$html = '<div class="brag-book-gallery-case-detail-view">';
 
 		// Debug: Log the case data structure
@@ -738,6 +738,27 @@ final class HTML_Renderer {
 		}
 
 		$case_id = $case_data['id'] ?? '';
+		
+		// Extract SEO fields from caseDetails array if available
+		$seo_headline = '';
+		$seo_page_title = '';
+		$seo_page_description = '';
+		$seo_suffix_url = '';
+		
+		if ( ! empty( $case_data['caseDetails'] ) && is_array( $case_data['caseDetails'] ) ) {
+			$first_detail = reset( $case_data['caseDetails'] );
+			
+			// If main ID is empty, fall back to caseDetails ID
+			if ( empty( $case_id ) ) {
+				$case_id = $first_detail['caseId'] ?? '';
+			}
+			
+			// Extract SEO fields
+			$seo_headline = ! empty( $first_detail['seoHeadline'] ) ? $first_detail['seoHeadline'] : '';
+			$seo_page_title = ! empty( $first_detail['seoPageTitle'] ) ? $first_detail['seoPageTitle'] : '';
+			$seo_page_description = ! empty( $first_detail['seoPageDescription'] ) ? $first_detail['seoPageDescription'] : '';
+			$seo_suffix_url = ! empty( $first_detail['seoSuffixUrl'] ) ? $first_detail['seoSuffixUrl'] : '';
+		}
 
 		// Get gallery page slug from settings
 		$gallery_slug = get_option( 'brag_book_gallery_page_slug', 'before-after' );
@@ -755,12 +776,16 @@ final class HTML_Renderer {
 		$html .= '<a href="' . esc_url( $base_path ) . '" class="brag-book-gallery-back-link">← Back to Gallery</a>';
 		$html .= '</div>';
 
-		// Case header with title
+		// Case header with title - use seoHeadline if available, otherwise use procedure name
 		$html .= '<div class="brag-book-gallery-brag-book-gallery-case-header">';
 		$html .= '<h2 class="brag-book-gallery-content-title">';
-		$html .= '<strong>' . esc_html( $procedure_name ) . '</strong>';
-		if ( ! empty( $case_id ) ) {
-			$html .= ' <span class="case-id">#' . esc_html( $case_id ) . '</span>';
+		if ( ! empty( $seo_headline ) ) {
+			$html .= esc_html( $seo_headline );
+		} else {
+			$html .= '<strong>' . esc_html( $procedure_name ) . '</strong>';
+			if ( ! empty( $case_id ) ) {
+				$html .= ' <span class="case-id">#' . esc_html( $case_id ) . '</span>';
+			}
 		}
 		$html .= '</h2>';
 		$html .= '</div>';
@@ -781,13 +806,22 @@ final class HTML_Renderer {
 			// Display first image as main by default
 			$first_photo    = reset( $case_data['photoSets'] );
 			$main_image_url = ! empty( $first_photo['postProcessedImageLocation'] ) ? $first_photo['postProcessedImageLocation'] : '';
+			
+			// Get seoAltText if available
+			$seo_alt_text = null;
+			if ( isset( $first_photo['seoAltText'] ) && $first_photo['seoAltText'] !== null ) {
+				$seo_alt_text = $first_photo['seoAltText'];
+			}
+			
+			// Use seoAltText if available, otherwise use procedure name and case number
+			$main_alt_text = $seo_alt_text !== null ? $seo_alt_text : $procedure_name . ' - Case ' . $case_id;
 
 			// Main image display - single processed image
 			$html .= '<div class="brag-book-gallery-main-image-container" data-image-index="0">';
 
 			if ( $main_image_url ) {
 				$html .= '<div class="brag-book-gallery-main-single">';
-				$html .= '<img src="' . esc_url( $main_image_url ) . '" alt="' . esc_attr( $procedure_name . ' - Case ' . $case_id ) . '" loading="eager">';
+				$html .= '<img src="' . esc_url( $main_image_url ) . '" alt="' . esc_attr( $main_alt_text ) . '" loading="eager">';
 
 				// Action buttons on main image
 				$html .= '<div class="brag-book-gallery-item-actions">';
@@ -965,7 +999,14 @@ final class HTML_Renderer {
 		$html .= '</div>'; // End brag-book-gallery-case-content
 		$html .= '</div>'; // End main container
 
-		return $html;
+		// Return both HTML and SEO data
+		return [
+			'html' => $html,
+			'seo' => [
+				'title' => ! empty( $seo_page_title ) ? $seo_page_title : $procedure_name . ' - Case #' . $case_id,
+				'description' => ! empty( $seo_page_description ) ? $seo_page_description : 'View before and after photos for ' . $procedure_name . ' case #' . $case_id,
+			],
+		];
 	}
 
 	/**

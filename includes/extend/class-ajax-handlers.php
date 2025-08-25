@@ -605,39 +605,46 @@ class Ajax_Handlers {
 			] );
 		}
 
-		// Initialize endpoints
-		$endpoints = new Endpoints();
-
 		// Get case details from API
 		$case_data = null;
 		$error_messages = array();
 
-		// Try to get case details using the caseNumber endpoint
-		foreach ( $api_tokens as $index => $token ) {
-			$property_id = $website_property_ids[ $index ] ?? null;
+		// First, try using our helper function which handles both numeric IDs and SEO suffixes
+		if ( ! empty( $api_tokens[0] ) && ! empty( $website_property_ids[0] ) ) {
+			$case_data = self::find_case_by_id( $case_id, $api_tokens[0], intval( $website_property_ids[0] ) );
+		}
 
-			if ( ! $property_id ) {
-				$error_messages[] = 'Missing property ID for token index ' . $index;
-				continue;
-			}
+		// If not found and case_id is numeric, try the direct API method with procedure IDs
+		if ( empty( $case_data ) && is_numeric( $case_id ) ) {
+			$endpoints = new Endpoints();
+			
+			// Try to get case details using the caseNumber endpoint
+			foreach ( $api_tokens as $index => $token ) {
+				$property_id = $website_property_ids[ $index ] ?? null;
 
-			// Debug: Log the request details
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( 'BRAGBook Gallery: Fetching case ' . $case_id . ' with token index ' . $index . ' and property ID ' . $property_id );
-			}
-
-			// Try to fetch case details - pass the procedure IDs from the request
-			$response = $endpoints->get_case_by_number( $token, (int) $property_id, $case_id, $procedure_ids );
-
-			if ( ! empty( $response ) && is_array( $response ) ) {
-				// Debug: Log successful response
-				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-					error_log( 'BRAGBook Gallery: Successfully fetched case ' . $case_id . ' - Case ID in response: ' . ( $response['id'] ?? 'N/A' ) );
+				if ( ! $property_id ) {
+					$error_messages[] = 'Missing property ID for token index ' . $index;
+					continue;
 				}
-				$case_data = $response;
-				break;
-			} else {
-				$error_messages[] = 'Failed to fetch from token index ' . $index;
+
+				// Debug: Log the request details
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+					error_log( 'BRAGBook Gallery: Fetching case ' . $case_id . ' with token index ' . $index . ' and property ID ' . $property_id );
+				}
+
+				// Try to fetch case details - pass the procedure IDs from the request
+				$response = $endpoints->get_case_by_number( $token, (int) $property_id, $case_id, $procedure_ids );
+
+				if ( ! empty( $response ) && is_array( $response ) ) {
+					// Debug: Log successful response
+					if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+						error_log( 'BRAGBook Gallery: Successfully fetched case ' . $case_id . ' - Case ID in response: ' . ( $response['id'] ?? 'N/A' ) );
+					}
+					$case_data = $response;
+					break;
+				} else {
+					$error_messages[] = 'Failed to fetch from token index ' . $index;
+				}
 			}
 		}
 
@@ -739,17 +746,23 @@ class Ajax_Handlers {
 		$api_token = $api_tokens[0];
 		$website_property_id = intval( $website_property_ids[0] );
 
-		// Use the get_case_by_number method with procedure IDs
-		$endpoints = new Endpoints();
-		$case_data = $endpoints->get_case_by_number( $api_token, $website_property_id, $case_id, $procedure_ids );
+		// First, try to find the case using our helper function which handles both numeric IDs and SEO suffixes
+		$case_data = self::find_case_by_id( $case_id, $api_token, $website_property_id );
+
+		// If not found and we have procedure IDs, try the direct API method with numeric ID only
+		if ( empty( $case_data ) && ! empty( $procedure_ids ) && is_numeric( $case_id ) ) {
+			$endpoints = new Endpoints();
+			$case_data = $endpoints->get_case_by_number( $api_token, $website_property_id, $case_id, $procedure_ids );
+		}
 
 		if ( ! empty( $case_data ) && is_array( $case_data ) ) {
-			// Generate HTML for case details using HTML_Renderer class method
-			$html = HTML_Renderer::render_case_details_html( $case_data );
+			// Generate HTML and SEO data for case details using HTML_Renderer class method
+			$result = HTML_Renderer::render_case_details_html( $case_data );
 
 			wp_send_json_success( [
-				'html' => $html,
+				'html' => $result['html'],
 				'case_id' => $case_id,
+				'seo' => $result['seo'],
 			] );
 			return;
 		}
@@ -794,12 +807,13 @@ class Ajax_Handlers {
 		$case_data = self::find_case_by_id( $case_id, $api_token, $website_property_id );
 
 		if ( ! empty( $case_data ) && is_array( $case_data ) ) {
-			// Generate HTML for case details using HTML_Renderer class method
-			$html = HTML_Renderer::render_case_details_html( $case_data );
+			// Generate HTML and SEO data for case details using HTML_Renderer class method
+			$result = HTML_Renderer::render_case_details_html( $case_data );
 
 			wp_send_json_success( [
-				'html' => $html,
+				'html' => $result['html'],
 				'case_id' => $case_id,
+				'seo' => $result['seo'],
 			] );
 			return;
 		}
@@ -1124,16 +1138,55 @@ class Ajax_Handlers {
 	 * @return array|null Case data or null if not found.
 	 */
 	private static function find_case_by_id( string $case_id, string $api_token, int $website_property_id ): ?array {
+		// Debug logging
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( 'find_case_by_id: Looking for case: ' . $case_id );
+		}
+		
 		// First, try to get the case from cached data
 		$cache_key = 'brag_book_all_cases_' . md5( $api_token . $website_property_id );
 		$cached_data = get_transient( $cache_key );
 		$case_data = null;
 
+		// Check if case_id is numeric (traditional ID) or alphanumeric (SEO suffix)
+		$is_numeric_id = is_numeric( $case_id );
+		
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( 'find_case_by_id: Is numeric ID? ' . ( $is_numeric_id ? 'Yes' : 'No' ) );
+		}
+
 		if ( $cached_data && isset( $cached_data['data'] ) && is_array( $cached_data['data'] ) ) {
 			// Search for the case in cached data
 			foreach ( $cached_data['data'] as $case ) {
-				if ( isset( $case['id'] ) && strval( $case['id'] ) === strval( $case_id ) ) {
+				// First, try by numeric ID if the identifier is numeric
+				if ( $is_numeric_id ) {
+					if ( isset( $case['id'] ) && strval( $case['id'] ) === strval( $case_id ) ) {
+						if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+							error_log( 'find_case_by_id: Found case by numeric ID in cache' );
+						}
+						return $case;
+					}
+				}
+				
+				// Always also check by SEO suffix URL (even for numeric-looking identifiers)
+				// Check at root level first
+				if ( isset( $case['seoSuffixUrl'] ) && $case['seoSuffixUrl'] === $case_id ) {
+					if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+						error_log( 'find_case_by_id: Found case by SEO suffix at root level in cache' );
+					}
 					return $case;
+				}
+				
+				// Then check in caseDetails array
+				if ( isset( $case['caseDetails'] ) && is_array( $case['caseDetails'] ) ) {
+					foreach ( $case['caseDetails'] as $detail ) {
+						if ( isset( $detail['seoSuffixUrl'] ) && $detail['seoSuffixUrl'] === $case_id ) {
+							if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+								error_log( 'find_case_by_id: Found case by SEO suffix in caseDetails in cache' );
+							}
+							return $case;
+						}
+					}
 				}
 			}
 		}
@@ -1143,8 +1196,35 @@ class Ajax_Handlers {
 
 		if ( ! empty( $all_cases['data'] ) ) {
 			foreach ( $all_cases['data'] as $case ) {
-				if ( isset( $case['id'] ) && strval( $case['id'] ) === strval( $case_id ) ) {
+				// First, try by numeric ID if the identifier is numeric
+				if ( $is_numeric_id ) {
+					if ( isset( $case['id'] ) && strval( $case['id'] ) === strval( $case_id ) ) {
+						if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+							error_log( 'find_case_by_id: Found case by numeric ID from API' );
+						}
+						return $case;
+					}
+				}
+				
+				// Always also check by SEO suffix URL (even for numeric-looking identifiers)
+				// Check at root level first
+				if ( isset( $case['seoSuffixUrl'] ) && $case['seoSuffixUrl'] === $case_id ) {
+					if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+						error_log( 'find_case_by_id: Found case by SEO suffix at root level from API' );
+					}
 					return $case;
+				}
+				
+				// Then check in caseDetails array
+				if ( isset( $case['caseDetails'] ) && is_array( $case['caseDetails'] ) ) {
+					foreach ( $case['caseDetails'] as $detail ) {
+						if ( isset( $detail['seoSuffixUrl'] ) && $detail['seoSuffixUrl'] === $case_id ) {
+							if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+								error_log( 'find_case_by_id: Found case by SEO suffix in caseDetails from API' );
+							}
+							return $case;
+						}
+					}
 				}
 			}
 		}
@@ -1165,8 +1245,35 @@ class Ajax_Handlers {
 
 			if ( ! empty( $response_data['data'] ) ) {
 				foreach ( $response_data['data'] as $case ) {
-					if ( isset( $case['id'] ) && strval( $case['id'] ) === strval( $case_id ) ) {
+					// First, try by numeric ID if the identifier is numeric
+					if ( $is_numeric_id ) {
+						if ( isset( $case['id'] ) && strval( $case['id'] ) === strval( $case_id ) ) {
+							if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+								error_log( 'find_case_by_id: Found case by numeric ID in last resort' );
+							}
+							return $case;
+						}
+					}
+					
+					// Always also check by SEO suffix URL (even for numeric-looking identifiers)
+					// Check at root level first
+					if ( isset( $case['seoSuffixUrl'] ) && $case['seoSuffixUrl'] === $case_id ) {
+						if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+							error_log( 'find_case_by_id: Found case by SEO suffix at root level in last resort' );
+						}
 						return $case;
+					}
+					
+					// Then check in caseDetails array
+					if ( isset( $case['caseDetails'] ) && is_array( $case['caseDetails'] ) ) {
+						foreach ( $case['caseDetails'] as $detail ) {
+							if ( isset( $detail['seoSuffixUrl'] ) && $detail['seoSuffixUrl'] === $case_id ) {
+								if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+									error_log( 'find_case_by_id: Found case by SEO suffix in caseDetails in last resort' );
+								}
+								return $case;
+							}
+						}
 					}
 				}
 			}
