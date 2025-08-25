@@ -84,8 +84,23 @@ class Settings_Default extends Settings_Base {
 		$landing_text            = get_option( 'brag_book_gallery_landing_page_text', $default_landing_text );
 		// Use helper to get the first slug (handles array/string formats)
 		$slug            = \BRAGBookGallery\Includes\Core\Slug_Helper::get_first_gallery_page_slug( '' );
-		$seo_title       = get_option( 'brag_book_gallery_seo_page_title', '' );
-		$seo_description = get_option( 'brag_book_gallery_seo_page_description', '' );
+		
+		// Get SEO options (handle array format from API settings)
+		$seo_title_option = get_option( 'brag_book_gallery_seo_page_title', '' );
+		$seo_title = '';
+		if ( is_array( $seo_title_option ) ) {
+			$seo_title = ! empty( $seo_title_option[0] ) ? (string) $seo_title_option[0] : '';
+		} else {
+			$seo_title = (string) $seo_title_option;
+		}
+		
+		$seo_desc_option = get_option( 'brag_book_gallery_seo_page_description', '' );
+		$seo_description = '';
+		if ( is_array( $seo_desc_option ) ) {
+			$seo_description = ! empty( $seo_desc_option[0] ) ? (string) $seo_desc_option[0] : '';
+		} else {
+			$seo_description = (string) $seo_desc_option;
+		}
 		$ajax_timeout            = get_option( 'brag_book_gallery_ajax_timeout', 30 );
 		$cache_duration          = get_option( 'brag_book_gallery_cache_duration', 300 );
 		$lazy_load              = get_option( 'brag_book_gallery_lazy_load', 'yes' );
@@ -231,13 +246,13 @@ class Settings_Default extends Settings_Base {
 
 				<tr>
 					<th scope="row">
-						<label for="seo_description">
+						<label for="brag_book_gallery_seo_description">
 							<?php esc_html_e( 'SEO Meta Description', 'brag-book-gallery' ); ?>
 						</label>
 					</th>
 					<td>
-						<textarea id="seo_description"
-						          name="seo_description"
+						<textarea id="brag_book_gallery_seo_description"
+						          name="brag_book_gallery_seo_description"
 						          rows="3"
 						          class="large-text"
 						          maxlength="160"><?php echo esc_textarea( $seo_description ); ?></textarea>
@@ -801,9 +816,12 @@ class Settings_Default extends Settings_Base {
 					$page_id = wp_insert_post( $page_data );
 
 					if ( ! is_wp_error( $page_id ) ) {
-						// Add SEO meta fields if they exist
-						$seo_title = get_option( 'brag_book_gallery_seo_page_title', '' );
-						$seo_description = get_option( 'brag_book_gallery_seo_page_description', '' );
+						// Add SEO meta fields if they exist (handle array format)
+						$seo_title_option = get_option( 'brag_book_gallery_seo_page_title', '' );
+						$seo_title = is_array( $seo_title_option ) && ! empty( $seo_title_option[0] ) ? $seo_title_option[0] : $seo_title_option;
+						
+						$seo_desc_option = get_option( 'brag_book_gallery_seo_page_description', '' );
+						$seo_description = is_array( $seo_desc_option ) && ! empty( $seo_desc_option[0] ) ? $seo_desc_option[0] : $seo_desc_option;
 
 						if ( ! empty( $seo_title ) ) {
 							update_post_meta( $page_id, '_yoast_wpseo_title', $seo_title );

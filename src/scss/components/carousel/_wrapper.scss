@@ -7,4 +7,11 @@
 .brag-book-gallery-carousel-wrapper {
 	position: relative;
 	margin-block: var(--wp--custom--brag-book-gallery--spacer--2xl,24px);
+	overflow: hidden;
+	
+	// Inner container for the track
+	.brag-book-gallery-carousel-container {
+		overflow: hidden;
+		position: relative;
+	}
 }
