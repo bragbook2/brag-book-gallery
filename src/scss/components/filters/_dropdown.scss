@@ -22,7 +22,7 @@
 		border: 1px solid var(--wp--custom--brag-book-gallery--color--light-grey);
 		border-radius: var(--wp--custom--brag-book-gallery--rounded);
 		font-size: var(--wp--custom--brag-book-gallery--text-sm);
-		line-height: 1.25rem;
+		line-height: var(--wp--custom--brag-book-gallery--xl);
 		cursor: pointer;
 		transition: var(--wp--custom--brag-book-gallery--transition);
 		box-shadow: 0 1px 2px 0 rgba(0,0,0,.05);
@@ -95,7 +95,7 @@
 
 		// When details is open
 		details[open] & {
-			max-height: 32rem;
+			max-height: 512px;
 			opacity: 1;
 			transform: translateY(0) scale(1);
 			visibility: visible;
@@ -103,8 +103,8 @@
 		}
 
 		@media (min-width:1024px) {
-			min-width: 20rem;
-			max-width: 24rem;
+			min-width: 320px;
+			max-width: 384px;
 		}
 	}
 }

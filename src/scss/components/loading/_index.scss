@@ -4,17 +4,17 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	padding: 3rem;
-	font-size: 1rem;
+	padding: 48px;
+	font-size: var(--wp--custom--brag-book-gallery--spacer-lg);
 	color: var(--wp--custom--brag-book-gallery--color--grey)
 }
 
 .brag-book-gallery-loading::before {
 	content: "";
 	display: inline-block;
-	width: 1.5rem;
-	height: 1.5rem;
-	margin-right: .75rem;
+	width: var(--wp--custom--brag-book-gallery--spacer-2xl);
+	height: var(--wp--custom--brag-book-gallery--spacer-2xl);
+	margin-right: var(--wp--custom--brag-book-gallery--spacer-md);
 	border: 3px solid var(--wp--custom--brag-book-gallery--color--light-grey);
 	border-top-color: var(--wp--custom--brag-book-gallery--color--grey);
 	border-radius: 50%;

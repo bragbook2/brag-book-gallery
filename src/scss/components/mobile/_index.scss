@@ -10,7 +10,7 @@
 	padding: var(--wp--custom--brag-book-gallery--spacer) 0;
 	align-items: center;
 	gap: var(--wp--custom--brag-book-gallery--spacer--sm,8px);
-	box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,.05);
+	box-shadow: 0 2px var(--wp--custom--brag-book-gallery--spacer) rgba(0,0,0,.05);
 
 	@media (max-width: 1279px) {
 		display: flex;

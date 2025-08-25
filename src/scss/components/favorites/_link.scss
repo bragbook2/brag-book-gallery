@@ -7,7 +7,7 @@
 .brag-book-gallery-favorites-link {
 	display: flex;
 	align-items: center;
-	gap: 0.5rem;
+	gap: var(--wp--custom--brag-book-gallery--spacer-sm);
 	width: 100%;
 	padding: calc(3 * var(--wp--custom--brag-book-gallery--spacer,4px)) calc(4 * var(--wp--custom--brag-book-gallery--spacer,4px));
 	background: var(--wp--custom--brag-book-gallery--color--white,#FFF);

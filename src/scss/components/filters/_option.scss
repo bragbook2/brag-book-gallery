@@ -90,8 +90,8 @@
 
 	label {
 		flex: 1;
-		font-size: .875rem;
-		line-height: 1.25rem;
+		font-size: var(--wp--custom--brag-book-gallery--text-sm);
+		line-height: var(--wp--custom--brag-book-gallery--xl);
 		color: #4b5563;
 		cursor: pointer;
 		user-select: none;

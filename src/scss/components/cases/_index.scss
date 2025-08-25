@@ -12,7 +12,7 @@
 .brag-book-gallery-case-images {
 	width: 100%;
 	display: flex;
-	gap: .125rem;
+	gap: var(--wp--custom--brag-book-gallery--spacer);
 	overflow: hidden
 }
 

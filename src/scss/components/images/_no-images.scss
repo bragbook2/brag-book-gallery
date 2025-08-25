@@ -5,10 +5,10 @@
 // -----------------------------------------------------------------------------
 
 .no-images {
-	padding: 2rem;
+	padding: var(--wp--custom--brag-book-gallery--spacer-4xl);
 	text-align: center;
 	color: var(--wp--custom--brag-book-gallery--color--grey);
 	background: var(--wp--custom--brag-book-gallery--color--lightest-grey);
 	border-radius: 8px;
-	margin: 2rem 0
+	margin: var(--wp--custom--brag-book-gallery--spacer-4xl) 0
 }

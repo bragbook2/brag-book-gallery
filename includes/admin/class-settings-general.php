@@ -56,7 +56,7 @@ class Settings_General extends Settings_Base {
 	 * @return void
 	 */
 	protected function init(): void {
-		$this->page_slug  = 'brag-book-gallery-settings';
+		$this->page_slug  = 'brag-book-gallery-general';
 		// Don't translate here - translations happen in render method
 	}
 

@@ -7,7 +7,7 @@
 .brag-book-gallery-dialog {
 	padding: 0;
 	border: none;
-	border-radius: .75rem;
+	border-radius: var(--wp--custom--brag-book-gallery--spacer-md);
 	box-shadow: var(--shadow-xl);
 	max-width: 500px;
 	width: 90%;
@@ -51,15 +51,14 @@
 }
 
 .brag-book-gallery-dialog-content {
-	padding: 2rem
+	padding: var(--wp--custom--brag-book-gallery--spacer--2xl);
 }
 
 .brag-book-gallery-dialog-header {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	margin-bottom: 1rem;
-	padding-bottom: 1rem
+	margin-bottom: var(--wp--custom--brag-book-gallery--spacer--lg);
 }
 
 .brag-book-gallery-dialog-logo {
@@ -103,8 +102,8 @@
 }
 
 .brag-book-gallery-dialog-description {
-	font-size: .875rem;
+	font-size: var(--wp--custom--brag-book-gallery--text-sm);
 	line-height: 1.5;
 	color: var(--wp--custom--brag-book-gallery--color--grey);
-	margin-bottom: 1.5rem
+	margin-bottom: var(--wp--custom--brag-book-gallery--spacer-2xl)
 }

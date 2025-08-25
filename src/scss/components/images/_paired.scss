@@ -19,8 +19,8 @@
 
 	h3,
 	&-title {
-		margin: 0 0 1rem 0;
-		font-size: 1rem;
+		margin: 0 0 var(--wp--custom--brag-book-gallery--spacer-lg) 0;
+		font-size: var(--wp--custom--brag-book-gallery--spacer-lg);
 		text-transform: uppercase;
 		letter-spacing: .05em;
 		color: var(--wp--custom--brag-book-gallery--color--grey)
@@ -46,8 +46,8 @@
 	.image-caption {
 		grid-column: 1/-1;
 		text-align: center;
-		margin-top: .5rem;
-		font-size: .875rem;
+		margin-top: var(--wp--custom--brag-book-gallery--spacer-sm);
+		font-size: var(--wp--custom--brag-book-gallery--text-sm);
 		color: var(--wp--custom--brag-book-gallery--color--grey);
 		font-style: italic
 	}

@@ -20,7 +20,7 @@ details[open] .brag-book-gallery-filter-dropdown__toggle.has-active-filters {
 .brag-book-gallery-filter-content {
 	flex: 1;
 	overflow-y: auto;
-	max-height: 28rem
+	max-height: 480px;
 }
 
 .brag-book-gallery-filter-group {
@@ -40,9 +40,9 @@ details[open] .brag-book-gallery-filter-dropdown__toggle.has-active-filters {
 	list-style: none;
 	display: flex;
 	align-items: center;
-	gap: .5rem;
-	padding: .875rem 1rem;
-	font-size: .875rem;
+	gap: var(--wp--custom--brag-book-gallery--spacer-sm);
+	padding: var(--wp--custom--brag-book-gallery--spacer-md) var(--wp--custom--brag-book-gallery--spacer-lg);
+	font-size: var(--wp--custom--brag-book-gallery--text-sm);
 	font-weight: 600;
 	color: #111827;
 	cursor: pointer;
@@ -63,7 +63,7 @@ details[open] .brag-book-gallery-filter-dropdown__toggle.has-active-filters {
 
 
 .brag-book-gallery-filter-group-content {
-	padding: .5rem 1rem 1rem 1rem;
+	padding: var(--wp--custom--brag-book-gallery--spacer-sm) var(--wp--custom--brag-book-gallery--spacer-lg) var(--wp--custom--brag-book-gallery--spacer-lg) var(--wp--custom--brag-book-gallery--spacer-lg);
 	list-style: none;
 	margin: 0
 }
@@ -72,7 +72,7 @@ details[open] .brag-book-gallery-filter-dropdown__toggle.has-active-filters {
 .brag-book-gallery-active-filters {
 	display: flex;
 	align-items: center;
-	gap: .75rem;
+	gap: var(--wp--custom--brag-book-gallery--spacer-md);
 	flex-wrap: wrap;
 	margin: 0;
 }
@@ -129,8 +129,8 @@ details[open] .brag-book-gallery-filter-dropdown__toggle.has-active-filters {
 	display: inline-flex;
 	align-items: center;
 	background-color: transparent;
-	border-radius: .375rem;
-	color: #1E4AE9;
+	border-radius: var(--wp--custom--brag-book-gallery--rounded);
+	color: var(--wp--custom--brag-book-gallery--color--black);
 	font-size: var(--wp--custom--brag-book-gallery--text-sm);
 	cursor: pointer;
 	text-decoration: none;

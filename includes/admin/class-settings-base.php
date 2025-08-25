@@ -250,6 +250,7 @@ abstract class Settings_Base {
 			'brag-book-gallery-general'        => 'general',
 			'brag-book-gallery-mode'           => 'mode',
 			'brag-book-gallery-javascript'     => 'javascript',
+			'brag-book-gallery-default'        => 'default',
 			'brag-book-gallery-local'          => 'local',
 			'brag-book-gallery-api-settings'   => 'api',
 			'brag-book-gallery-api-test'       => 'api_test',
