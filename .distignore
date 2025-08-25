@@ -35,7 +35,10 @@ README.md
 CHANGELOG.md
 CONTRIBUTING.md
 CLAUDE.md
+RELEASE.md
+.claude
 docs/
+api-details/
 
 # Version control
 .git/
@@ -58,6 +61,13 @@ bitbucket-pipelines.yml
 *~
 .DS_Store
 Thumbs.db
+
+# Configuration files
+.npmrc
+.prettierignore
+.prettierrc
+.stylelintrc.json
+.wp-env.json
 
 # Build artifacts
 .distignore
@@ -89,6 +99,8 @@ yarn-error.log*
 
 # Development scripts
 scripts/
+build.sh
+release.sh
 
 # Test coverage
 coverage/
@@ -99,3 +111,4 @@ coverage/
 .env.local
 .env.*.local
 config.local.php
+.prettierrc.js

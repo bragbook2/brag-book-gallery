@@ -437,7 +437,7 @@ class Menu {
 			WP_Filesystem();
 		}
 
-		$svg_path = dirname( __DIR__, 2 ) . '/assets/images/brag-book-gallery-emblem.svg';
+		$svg_path = dirname( __DIR__, 2 ) . '/assets/images/brag-book-emblem.svg';
 
 		if ( $wp_filesystem && $wp_filesystem->exists( $svg_path ) ) {
 			$svg_content = $wp_filesystem->get_contents( $svg_path );
