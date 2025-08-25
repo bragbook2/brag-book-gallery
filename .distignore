@@ -5,6 +5,9 @@ node_modules/
 src/
 tests/
 vendor/
+TODO.md
+*.log
+*.map
 
 # Build configuration
 .babelrc
