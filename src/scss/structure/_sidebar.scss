@@ -67,11 +67,12 @@
 		border: none;
 		cursor: pointer;
 		transition: var(--wp--custom--brag-book-gallery--transition);
+		padding: 0;
 
 		svg {
 			width: calc( 5 * var(--wp--custom--brag-book-gallery--spacer,4px) );
 			height: calc( 5 * var(--wp--custom--brag-book-gallery--spacer,4px) );
-			stroke: var(--wp--custom--brag-book-gallery--color--grey)
+			stroke: var(--wp--custom--brag-book-gallery--color--black);
 		}
 
 		&:focus {
