@@ -207,12 +207,18 @@ final class Updater {
 			return false;
 		}
 
-		$required_fields = ['tag_name', 'zipball_url', 'published_at', 'body'];
+		$required_fields = ['tag_name', 'published_at', 'body'];
 		foreach ($required_fields as $field) {
 			if (!isset($data[$field])) {
 				$this->log_error("Missing required field in GitHub response: {$field}");
 				return false;
 			}
+		}
+
+		// Check for release assets
+		if (empty($data['assets']) || !is_array($data['assets'])) {
+			$this->log_error('No release assets found');
+			return false;
 		}
 
 		return true;
@@ -280,6 +286,25 @@ final class Updater {
 	}
 
 	/**
+	 * Get download URL from release assets
+	 */
+	private function get_download_url(): string {
+		if (!isset($this->github_response['assets']) || !is_array($this->github_response['assets'])) {
+			return '';
+		}
+
+		// Look for brag-book-gallery.zip in assets
+		foreach ($this->github_response['assets'] as $asset) {
+			if (isset($asset['name']) && $asset['name'] === 'brag-book-gallery.zip') {
+				return $asset['browser_download_url'] ?? '';
+			}
+		}
+
+		// Fallback to zipball_url if no asset found
+		return $this->github_response['zipball_url'] ?? '';
+	}
+
+	/**
 	 * Prepare update data for WordPress
 	 */
 	private function prepare_update_data(string $slug): array {
@@ -289,7 +314,7 @@ final class Updater {
 			'plugin' => $this->basename,
 			'new_version' => $this->github_version,
 			'url' => $this->plugin['PluginURI'] ?? '',
-			'package' => $this->github_response['zipball_url'] ?? '',
+			'package' => $this->get_download_url(),
 			'icons' => $this->get_plugin_icons(),
 			'banners' => $this->get_plugin_banners(),
 			'banners_rtl' => [],
@@ -303,7 +328,7 @@ final class Updater {
 	 * Get plugin icons
 	 */
 	private function get_plugin_icons(): array {
-		$default_icon = plugins_url('assets/images/brag-book-gallery-emblem.svg', $this->file);
+		$default_icon = plugins_url('assets/images/brag-book-emblem.svg', $this->file);
 
 		return [
 			'1x' => $default_icon,
@@ -369,7 +394,7 @@ final class Updater {
 			'changelog' => $this->format_changelog($this->github_response['body'] ?? ''),
 		];
 
-		$info->download_link = $this->github_response['zipball_url'] ?? '';
+		$info->download_link = $this->get_download_url();
 		$info->trunk = $info->download_link;
 		$info->last_updated = $this->github_response['published_at'] ?? '';
 		$info->added = $this->github_response['created_at'] ?? $info->last_updated;
