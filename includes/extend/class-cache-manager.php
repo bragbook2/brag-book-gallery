@@ -180,14 +180,18 @@ class Cache_Manager {
 	 * @param string $api_token API token.
 	 * @param string $website_property_id Website property ID.
 	 * @param int    $limit Carousel limit.
+	 * @param string $procedure_id Procedure ID or slug (optional).
+	 * @param string $member_id Member ID (optional).
 	 * @return string Cache key.
 	 */
 	public static function get_carousel_cache_key( 
 		string $api_token, 
 		string $website_property_id, 
-		int $limit 
+		int $limit,
+		string $procedure_id = '',
+		string $member_id = ''
 	): string {
-		return 'brag_book_carousel_' . md5( $api_token . $website_property_id . $limit );
+		return 'brag_book_carousel_' . md5( $api_token . $website_property_id . $limit . $procedure_id . $member_id );
 	}
 
 	/**

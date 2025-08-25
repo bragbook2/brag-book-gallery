@@ -1206,6 +1206,24 @@ class Settings_Api extends Settings_Base {
 			wp_send_json_error( $page_id->get_error_message() );
 		}
 
+		// Add SEO meta fields if they exist
+		$seo_title = get_option( 'brag_book_gallery_seo_page_title', '' );
+		$seo_description = get_option( 'brag_book_gallery_seo_page_description', '' );
+		
+		if ( ! empty( $seo_title ) ) {
+			update_post_meta( $page_id, '_yoast_wpseo_title', $seo_title );
+			update_post_meta( $page_id, '_aioseo_title', $seo_title );
+			update_post_meta( $page_id, '_seopress_titles_title', $seo_title );
+			update_post_meta( $page_id, '_rank_math_title', $seo_title );
+		}
+		
+		if ( ! empty( $seo_description ) ) {
+			update_post_meta( $page_id, '_yoast_wpseo_metadesc', $seo_description );
+			update_post_meta( $page_id, '_aioseo_description', $seo_description );
+			update_post_meta( $page_id, '_seopress_titles_desc', $seo_description );
+			update_post_meta( $page_id, '_rank_math_description', $seo_description );
+		}
+
 		// Save the slug to the options
 		$page_slugs = get_option( 'brag_book_gallery_page_slug', array() );
 		if ( ! is_array( $page_slugs ) ) {
@@ -1213,6 +1231,9 @@ class Settings_Api extends Settings_Base {
 		}
 		$page_slugs[] = $slug;
 		update_option( 'brag_book_gallery_page_slug', $page_slugs );
+
+		// Flush rewrite rules after creating gallery page
+		flush_rewrite_rules();
 
 		wp_send_json_success( array(
 			'page_id'   => $page_id,

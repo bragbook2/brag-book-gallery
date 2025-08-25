@@ -495,8 +495,8 @@ class FilterSystem {
 	 */
 	updateFilterBadges() {
 		console.log('updateFilterBadges called, activeFilters size:', this.activeFilters.size);
-		const badgesContainer = document.getElementById('brag-book-gallery-filter-badges');
-		const clearAllButton = document.getElementById('brag-book-gallery-clear-all');
+		const badgesContainer = document.querySelector('[data-action="filter-badges"]');
+		const clearAllButton = document.querySelector('[data-action="clear-filters"]');
 		
 		console.log('Badges container found:', !!badgesContainer);
 		console.log('Clear all button found:', !!clearAllButton);

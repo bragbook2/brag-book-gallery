@@ -21,11 +21,11 @@
 		height: auto;
 		overflow: visible;
 		background: var(--wp--custom--brag-book-gallery--color--black);
-		color: var(--wp--custom--brag-book-gallery--color--white);
-		padding: calc( 2 * var(--wp--custom--brag-book-gallery--spacer) ) calc( 4 * var(--wp--custom--brag-book-gallery--spacer) );
+		color: var(--wp--custom--brag-book-gallery--color--white,#FFF);
+		padding: var(--wp--custom--brag-book-gallery--spacer--sm, 8px ) var(--wp--custom--brag-book-gallery--spacer--lg,16px);
 		text-decoration: none;
 		font-weight: var(--wp--custom--brag-book-gallery--font-weight--semibold);
-		outline: 0.125rem solid var(--wp--custom--brag-book-gallery--color--white);
+		outline: 0.125rem solid var(--wp--custom--brag-book-gallery--color--white,#FFF);
 		outline-offset: 0.125rem;
 	}
 }

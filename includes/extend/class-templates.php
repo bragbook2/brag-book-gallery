@@ -54,7 +54,7 @@ final class Templates {
 	 * @since 3.0.0
 	 * @var string|null
 	 */
-	private static ?string $combine_slug_cache = null;
+	private static ?string $slug_cache = null;
 
 	/**
 	 * Constructor
@@ -134,7 +134,7 @@ final class Templates {
 	private static function is_gallery_page( string $page_slug ): bool {
 
 		// Check if it's a combined gallery page.
-		if ( self::is_combine_gallery_page( $page_slug ) ) {
+		if ( self::is_combined_gallery_page( $page_slug ) ) {
 			return true;
 		}
 
@@ -150,12 +150,12 @@ final class Templates {
 	 * @param string $page_slug The page slug to check.
 	 * @return bool True if this is a combined gallery page.
 	 */
-	private static function is_combine_gallery_page( string $page_slug ): bool {
+	private static function is_combined_gallery_page( string $page_slug ): bool {
 
 		// Get the combined gallery slug from options.
-		$combine_slug = self::get_brag_book_gallery_page_slug();
+		$slug = self::get_brag_book_gallery_page_slug();
 
-		return ! empty( $combine_slug ) && $combine_slug === $page_slug;
+		return ! empty( $slug ) && $slug === $page_slug;
 	}
 
 	/**
@@ -203,12 +203,12 @@ final class Templates {
 	 * @return string The combined gallery slug, or empty string if not set.
 	 */
 	private static function get_brag_book_gallery_page_slug(): string {
-		if ( self::$combine_slug_cache === null ) {
+		if ( self::$slug_cache === null ) {
 			$slug = get_option( 'brag_book_gallery_page_slug', '' );
-			self::$combine_slug_cache = is_string( $slug ) ? $slug : '';
+			self::$slug_cache = is_string( $slug ) ? $slug : '';
 		}
 
-		return self::$combine_slug_cache;
+		return self::$slug_cache;
 	}
 
 	/**
@@ -237,7 +237,7 @@ final class Templates {
 	 */
 	public static function clear_cache(): void {
 		self::$gallery_slugs_cache = null;
-		self::$combine_slug_cache = null;
+		self::$slug_cache = null;
 	}
 
 	/**
@@ -262,9 +262,9 @@ final class Templates {
 		}
 
 		// Get ID for combined gallery page
-		$combine_slug = self::get_brag_book_gallery_page_slug();
-		if ( ! empty( $combine_slug ) ) {
-			$page = get_page_by_path( $combine_slug );
+		$slug = self::get_brag_book_gallery_page_slug();
+		if ( ! empty( $slug ) ) {
+			$page = get_page_by_path( $slug );
 			if ( $page instanceof WP_Post ) {
 				$page_ids[] = $page->ID;
 			}
@@ -343,7 +343,7 @@ final class Templates {
 	 *
 	 * @return array{
 	 *     gallery_slugs: array<string>,
-	 *     combine_slug: string,
+	 *     slug: string,
 	 *     template_path: string,
 	 *     template_exists: bool,
 	 *     current_page_slug: string,
@@ -355,7 +355,7 @@ final class Templates {
 
 		return [
 			'gallery_slugs' => self::get_gallery_slugs(),
-			'combine_slug' => self::get_brag_book_gallery_page_slug(),
+			'slug' => self::get_brag_book_gallery_page_slug(),
 			'template_path' => self::get_custom_template_path(),
 			'template_exists' => self::template_exists(),
 			'current_page_slug' => $current_slug,

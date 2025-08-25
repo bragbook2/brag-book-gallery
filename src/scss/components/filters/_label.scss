@@ -1,0 +1,37 @@
+@charset "UTF-8";
+
+// -----------------------------------------------------------------------------
+// components / filters / label
+// -----------------------------------------------------------------------------
+
+.brag-book-gallery-filter-label {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	color: var(--wp--custom--brag-book-gallery--color--black);
+	background-color: var(--wp--custom--brag-book-gallery--color-white) !important;
+	gap: var(--wp--custom--brag-book-gallery--spacer--lg,16px);
+	padding: var(--wp--custom--brag-book-gallery--spacer--lg,16px);
+	border-bottom: 1px solid var(--wp--custom--brag-book-gallery--color--lightest-grey);
+	font-weight: var(--wp--custom--brag-book-gallery--font-weight--semibold);
+
+	&__name {
+		color: currentColor;
+		font-size: var(--wp--custom--brag-book-gallery--text-xs);
+		line-height: 1;
+	}
+
+	&__arrow {
+		flex-shrink: 0;
+		transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
+		color: currentColor;
+
+		.brag-book-gallery-filter[open] {
+			transform: rotate(180deg)
+		}
+	}
+
+	&:focus {
+		outline: none;
+	}
+}

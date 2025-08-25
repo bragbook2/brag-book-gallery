@@ -566,6 +566,24 @@ class Gallery_Checker {
 			return $page_id->get_error_message();
 		}
 
+		// Add SEO meta fields if they exist
+		$seo_title = get_option( 'brag_book_gallery_seo_page_title', '' );
+		$seo_description = get_option( 'brag_book_gallery_seo_page_description', '' );
+		
+		if ( ! empty( $seo_title ) ) {
+			update_post_meta( $page_id, '_yoast_wpseo_title', $seo_title );
+			update_post_meta( $page_id, '_aioseo_title', $seo_title );
+			update_post_meta( $page_id, '_seopress_titles_title', $seo_title );
+			update_post_meta( $page_id, '_rank_math_title', $seo_title );
+		}
+		
+		if ( ! empty( $seo_description ) ) {
+			update_post_meta( $page_id, '_yoast_wpseo_metadesc', $seo_description );
+			update_post_meta( $page_id, '_aioseo_description', $seo_description );
+			update_post_meta( $page_id, '_seopress_titles_desc', $seo_description );
+			update_post_meta( $page_id, '_rank_math_description', $seo_description );
+		}
+
 		// Update options using Slug_Helper
 		\BRAGBookGallery\Includes\Core\Slug_Helper::set_primary_slug( $page_slug );
 		update_option( 'brag_book_gallery_page_id', $page_id );

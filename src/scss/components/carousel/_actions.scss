@@ -6,10 +6,10 @@
 
 .brag-book-gallery-item-actions {
 	position: absolute;
-	top: calc( 3 * var(--wp--custom--brag-book-gallery--spacer) );
-	right: calc( 3 * var(--wp--custom--brag-book-gallery--spacer) );
+	top: var(--wp--custom--brag-book-gallery--spacer--md,12px);
+	right: var(--wp--custom--brag-book-gallery--spacer--md,12px);
 	display: flex;
-	gap: calc( 2 * var(--wp--custom--brag-book-gallery--spacer) );
+	gap: var(--wp--custom--brag-book-gallery--spacer--sm, 8px );
 	transition: var(--wp--custom--brag-book-gallery--transition);
 	pointer-events: none;
 	z-index: 10;

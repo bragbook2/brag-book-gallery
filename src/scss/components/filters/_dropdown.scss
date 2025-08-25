@@ -1,0 +1,112 @@
+@charset "UTF-8";
+
+// -----------------------------------------------------------------------------
+// components / filters / dropdown
+// -----------------------------------------------------------------------------
+
+.brag-book-gallery-filter-dropdown {
+	position: relative;
+
+	&[style*="display: none"] {
+		display: none !important
+	}
+
+	&__toggle {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--wp--custom--brag-book-gallery--spacer--sm,8px);
+		padding-block: var(--wp--custom--brag-book-gallery--spacer--sm,8px);
+		padding-inline: var(--wp--custom--brag-book-gallery--spacer--lg,16px);
+		background-color: var(--wp--custom--brag-book-gallery--color--white,#FFF);
+		color: var(--wp--custom--brag-book-gallery--color--grey);
+		border: 1px solid var(--wp--custom--brag-book-gallery--color--light-grey);
+		border-radius: var(--wp--custom--brag-book-gallery--rounded);
+		font-size: var(--wp--custom--brag-book-gallery--text-sm);
+		line-height: 1.25rem;
+		cursor: pointer;
+		transition: var(--wp--custom--brag-book-gallery--transition);
+		box-shadow: 0 1px 2px 0 rgba(0,0,0,.05);
+		user-select: none;
+		list-style: none;
+
+		svg {
+			width: var(--wp--custom--brag-book-gallery--spacer--lg,16px);
+			height: var(--wp--custom--brag-book-gallery--spacer--lg,16px);
+		}
+
+		span {
+			font-weight: var(--wp--custom--brag-book-gallery--font-weight--regular);
+		}
+
+		&::-webkit-details-marker {
+			display: none
+		}
+
+		&:hover {
+			color: var(--wp--custom--brag-book-gallery--color--black);
+			background-color: var(--wp--custom--brag-book-gallery--color--lighter-grey);
+			border-color: var(--wp--custom--brag-book-gallery--color--light-grey);
+			box-shadow: var(--wp--custom--brag-book-gallery--shadow-lg);
+		}
+
+		&:focus {
+			outline: 2px solid rgba(0,0,0,0);
+			outline-offset: 2px;
+			box-shadow: 0 0 0 2px var(--wp--custom--brag-book-gallery--white),0 0 0 4px currentColor;
+		}
+
+		details[open] & {
+			background-color: var(--wp--custom--brag-book-gallery--color--black);
+			color: var(--wp--custom--brag-book-gallery--color--white);
+			border-color: var(--wp--custom--brag-book-gallery--color--black);
+		}
+
+		&.has-active-filters {
+			background-color: #fef3c7;
+			color: #92400e;
+			border-color: #fde68a;
+
+			&:hover {
+				background-color: #fde68a;
+				border-color: #fbbf24
+			}
+		}
+	}
+
+	&__panel {
+		position: absolute;
+		top: calc( 100% + var(--wp--custom--brag-book-gallery--spacer--sm,8px) );
+		left: 0;
+		background-color: var(--wp--custom--brag-book-gallery--color--white,#FFF);
+		border: 1px solid var(--wp--custom--brag-book-gallery--color--light-grey);
+		border-radius: var(--wp--custom--brag-book-gallery--rounded);
+		box-shadow: var(--wp--custom--brag-book-gallery--shadow-xl);
+		z-index: 50;
+		min-width: 272px;
+		max-height: 0;
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+		opacity: 0;
+		transform: translateY(-10px) scale(0.95);
+		transition: var(--wp--custom--brag-book-gallery--transition);
+		transform-origin: top left;
+		visibility: hidden;
+
+		// When details is open
+		details[open] & {
+			max-height: 32rem;
+			opacity: 1;
+			transform: translateY(0) scale(1);
+			visibility: visible;
+			animation: slideDown 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+		}
+
+		@media (min-width:1024px) {
+			min-width: 20rem;
+			max-width: 24rem;
+		}
+	}
+}
+
+

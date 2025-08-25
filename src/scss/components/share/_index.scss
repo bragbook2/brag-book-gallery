@@ -17,7 +17,7 @@
 }
 
 .brag-book-gallery-share-option:hover {
-	background: var(--wp--custom--brag-book-gallery--color--white);
+	background: var(--wp--custom--brag-book-gallery--color--white,#FFF);
 	border-color: var(--wp--custom--brag-book-gallery--color--black);
 	transform: translateY(-2px);
 	box-shadow: var(--shadow-md)
@@ -70,7 +70,7 @@
 	left: 50%;
 	transform: translateX(-50%);
 	background: var(--wp--custom--brag-book-gallery--color--black);
-	color: var(--wp--custom--brag-book-gallery--color--white);
+	color: var(--wp--custom--brag-book-gallery--color--white,#FFF);
 	padding: .75rem 1.5rem;
 	border-radius: 2rem;
 	display: flex;
@@ -91,7 +91,7 @@
 .brag-book-gallery-share-success-icon {
 	width: 18px;
 	height: 18px;
-	stroke: var(--wp--custom--brag-book-gallery--color--white);
+	stroke: var(--wp--custom--brag-book-gallery--color--white,#FFF);
 	stroke-width: 3
 }
 

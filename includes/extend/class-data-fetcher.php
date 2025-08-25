@@ -357,7 +357,9 @@ class Data_Fetcher {
 		$cache_key = Cache_Manager::get_carousel_cache_key(
 			$config['api_token'],
 			$config['website_property_id'] ?? '',
-			$config['limit'] ?? 10
+			$config['limit'] ?? 10,
+			(string) ( $config['procedure_id'] ?? '' ),
+			(string) ( $config['member_id'] ?? '' )
 		);
 
 		if ( Cache_Manager::is_caching_enabled() ) {
@@ -412,6 +414,34 @@ class Data_Fetcher {
 			if ( ! empty( $category['procedures'] ) ) {
 				foreach ( $category['procedures'] as $procedure ) {
 					if ( sanitize_title( $procedure['name'] ) === $slug ) {
+						return $procedure;
+					}
+				}
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Find procedure by ID in sidebar data.
+	 *
+	 * @since 3.0.0
+	 * @param array $sidebar_data The sidebar data to search.
+	 * @param int $procedure_id The procedure ID to find.
+	 * @return array|null The procedure data if found, null otherwise.
+	 */
+	public static function find_procedure_by_id( array $sidebar_data, int $procedure_id ): ?array {
+		foreach ( $sidebar_data as $category ) {
+			if ( ! empty( $category['procedures'] ) ) {
+				foreach ( $category['procedures'] as $procedure ) {
+					// Check if this procedure contains the ID we're looking for
+					if ( ! empty( $procedure['ids'] ) && is_array( $procedure['ids'] ) ) {
+						if ( in_array( $procedure_id, $procedure['ids'], true ) ) {
+							return $procedure;
+						}
+					}
+					// Also check direct ID match if present
+					if ( ! empty( $procedure['id'] ) && $procedure['id'] === $procedure_id ) {
 						return $procedure;
 					}
 				}

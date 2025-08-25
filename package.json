@@ -20,7 +20,18 @@
 		"lint:js": "eslint src/js/**/*.js",
 		"lint:css": "stylelint src/scss/**/*.scss",
 		"format:js": "prettier --write src/js/**/*.js",
-		"clean": "rm -rf assets/js/* assets/css/*"
+		"clean": "rm -rf assets/js/* assets/css/*",
+		"prebuild:plugin": "npm run clean && npm run build",
+		"build:plugin": "npm run package",
+		"package": "npm run package:prepare && npm run package:zip",
+		"package:prepare": "rsync -av --exclude-from=.distignore ./ dist/brag-book-gallery/",
+		"package:zip": "cd dist && zip -r brag-book-gallery.zip brag-book-gallery/ && cd ..",
+		"clean:dist": "rm -rf dist/",
+		"release": "npm run clean:dist && npm run prebuild:plugin && npm run build:plugin && echo 'Plugin package created: dist/brag-book-gallery.zip'",
+		"version:patch": "npm version patch --no-git-tag-version",
+		"version:minor": "npm version minor --no-git-tag-version",
+		"version:major": "npm version major --no-git-tag-version",
+		"github:release": "./release.sh"
 	},
 	"devDependencies": {
 		"@babel/core": "^7.23.0",

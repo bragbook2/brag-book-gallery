@@ -195,12 +195,12 @@ class On_Page {
 				option: 'brag_book_gallery_seo_page_description',
 				default_value: array()
 			),
-			'combine_seo_title'       => (string) get_option(
-				option: 'brag_book_gallery_combine_seo_page_title',
+			'brag_book_gallery_seo_title'       => (string) get_option(
+				option: 'brag_book_gallery_seo_page_title',
 				default_value: ''
 			),
-			'combine_seo_description' => (string) get_option(
-				option: 'brag_book_gallery_combine_seo_page_description',
+			'brag_book_gallery_seo_description' => (string) get_option(
+				option: 'brag_book_gallery_seo_page_description',
 				default_value: ''
 			),
 		);
@@ -257,9 +257,9 @@ class On_Page {
 
 		if ( $first_segment === $config['brag_book_gallery_page_slug'] ) {
 			return [
-				'bb_title'          => $config['combine_seo_title'],
-				'bb_description'    => $config['combine_seo_description'],
-				'bb_procedure_name' => ''
+				'title'          => $config['brag_book_gallery_seo_title'],
+				'description'    => $config['brag_book_gallery_seo_description'],
+				'procedure_name' => ''
 			];
 		}
 
@@ -267,17 +267,17 @@ class On_Page {
 		foreach ( $config['gallery_slugs'] as $index => $slug ) {
 			if ( $slug === $first_segment ) {
 				return [
-					'bb_title'          => $config['seo_titles'][ $index ] ?? '',
-					'bb_description'    => $config['seo_descriptions'][ $index ] ?? '',
-					'bb_procedure_name' => ''
+					'title'          => $config['seo_titles'][ $index ] ?? '',
+					'description'    => $config['seo_descriptions'][ $index ] ?? '',
+					'procedure_name' => ''
 				];
 			}
 		}
 
 		return [
-			'bb_title'          => '',
-			'bb_description'    => '',
-			'bb_procedure_name' => ''
+			'title'          => '',
+			'description'    => '',
+			'procedure_name' => ''
 		];
 	}
 
@@ -704,7 +704,7 @@ class On_Page {
 		);
 
 		// Ensure all IDs are integers.
-		$combine_gallery_page_id = (int) get_option(
+		$gallery_page_id = (int) get_option(
 			option: 'brag_book_gallery_page_id',
 			default_value: 0
 		);
@@ -716,7 +716,7 @@ class On_Page {
 		$current_slug = $current_post->post_name ?? '';
 
 		return in_array( $current_page_id, $stored_pages_ids, true )
-		       || $current_page_id === $combine_gallery_page_id
+		       || $current_page_id === $gallery_page_id
 		       || in_array( $current_slug, $brag_book_gallery_page_slugs, true );
 	}
 

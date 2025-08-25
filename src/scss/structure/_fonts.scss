@@ -40,7 +40,7 @@
 // Apply Poppins font to gallery wrapper when enabled
 .brag-book-gallery-wrapper:not(.disable-custom-font) {
 	font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
-	
+
 	// Ensure all child elements inherit the font
 	* {
 		font-family: inherit;
@@ -50,7 +50,7 @@
 // Also apply to body when on gallery pages (if enabled)
 body.brag-book-gallery-page:not(.disable-custom-font) {
 	.brag-book-gallery-wrapper,
-	.brag-book-gallery-case-details,
+	.brag-book-gallery-case-card-details,
 	.brag-book-gallery-consultation-form,
 	.brag-book-gallery-favorites-page {
 		font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;

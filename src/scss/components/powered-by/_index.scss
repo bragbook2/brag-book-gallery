@@ -12,7 +12,7 @@
 	color: var(--wp--custom--brag-book-gallery--color--light-grey);
 	text-decoration: none;
 	transition: var(--wp--custom--brag-book-gallery--transition);
-	margin-block: calc( 4 * var(--wp--custom--brag-book-gallery--spacer) );
+	margin-block: var(--wp--custom--brag-book-gallery--spacer--lg,16px);
 
 	&:hover {
 		color: var(--wp--custom--brag-book-gallery--color--grey);

@@ -254,3 +254,8 @@ flycheck_*.el
 .projectile
 .dir-locals.el
 /network-security.data
+# Build artifacts
+dist/
+*.zip
+brag-book-gallery-*.zip
+/api-details/

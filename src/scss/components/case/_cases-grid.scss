@@ -1,0 +1,63 @@
+@charset "UTF-8";
+
+// -----------------------------------------------------------------------------
+// components / case / cases grid
+// -----------------------------------------------------------------------------
+
+.brag-book-gallery-cases-grid {
+	display: grid;
+	grid-template-columns: 1fr; // Mobile: 1 column
+	gap: 20px;
+	margin-top: 20px;
+	transition: gap 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+
+	// Small screens
+	@media (min-width: 576px) {
+		grid-template-columns: repeat(2, 1fr); // 2 columns
+	}
+
+	// Tablets
+	@media (min-width: 768px) {
+		grid-template-columns: repeat(2, 1fr); // Keep 2 columns at 768px
+		
+		&[data-columns="3"] {
+			grid-template-columns: repeat(2, 1fr); // Force 2 columns even if data-columns="3"
+		}
+	}
+
+	// Desktop
+	@media (min-width: 1280px) {
+		&[data-columns="3"] {
+			grid-template-columns: repeat(3, 1fr); // Allow 3 columns only at 1280px+
+		}
+	}
+
+	&.grid-animating {
+		> * {
+			transition: width 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+		}
+	}
+
+	&:not(.grid-initialized) {
+		.brag-book-gallery-case-card {
+			opacity: 0;
+			animation: fadeIn 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+
+			@for $i from 1 through 30 {
+				&:nth-child(#{$i}) {
+					animation-delay: #{$i * 0.02}s;
+				}
+			}
+		}
+	}
+}
+
+// Initial page load animation - simple fade in
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}

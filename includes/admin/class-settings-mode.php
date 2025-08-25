@@ -124,6 +124,46 @@ class Settings_Mode extends Settings_Base {
 				</div>
 			</div>
 
+			<!-- SEO Plugin Detection -->
+			<div class="brag-book-gallery-section">
+				<h2><?php esc_html_e( 'SEO Integration', 'brag-book-gallery' ); ?></h2>
+				<?php
+				// Get SEO plugin info from the SEO Manager
+				$setup = \BRAGBookGallery\Includes\Core\Setup::get_instance();
+				$seo_manager = $setup->get_service( 'seo_manager' );
+				$seo_info = array();
+				
+				if ( $seo_manager && method_exists( $seo_manager, 'get_active_seo_plugin_info' ) ) {
+					$seo_info = $seo_manager->get_active_seo_plugin_info();
+				}
+				
+				if ( ! empty( $seo_info ) && $seo_info['active'] ) {
+					?>
+					<div class="brag-book-gallery-notice brag-book-gallery-notice--success inline">
+						<p>
+							<strong><?php esc_html_e( 'Active SEO Plugin:', 'brag-book-gallery' ); ?></strong>
+							<?php echo esc_html( $seo_info['name'] ); ?>
+						</p>
+						<p class="description">
+							<?php esc_html_e( 'BRAGBook Gallery is integrated with your SEO plugin for optimized meta tags and structured data.', 'brag-book-gallery' ); ?>
+						</p>
+					</div>
+					<?php
+				} else {
+					?>
+					<div class="brag-book-gallery-notice brag-book-gallery-notice--warning inline">
+						<p>
+							<strong><?php esc_html_e( 'No SEO Plugin Detected', 'brag-book-gallery' ); ?></strong>
+						</p>
+						<p class="description">
+							<?php esc_html_e( 'Consider installing an SEO plugin like Yoast SEO, RankMath, or All in One SEO for better search engine optimization.', 'brag-book-gallery' ); ?>
+						</p>
+					</div>
+					<?php
+				}
+				?>
+			</div>
+
 			<!-- Mode Switcher -->
 			<div class="brag-book-gallery-section">
 				<h2><?php esc_html_e( 'Switch Mode', 'brag-book-gallery' ); ?></h2>

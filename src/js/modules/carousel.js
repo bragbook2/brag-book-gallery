@@ -82,7 +82,7 @@ class Carousel {
 
 					const link = document.createElement('a');
 					link.href = caseUrl;
-					link.className = 'brag-book-gallery-case-link';
+					link.className = 'brag-book-gallery-card-case-link';
 					link.dataset.caseId = caseId;
 
 					const img = document.createElement('img');

@@ -171,6 +171,7 @@ final class Asset_Manager {
 				'pluginUrl' => $plugin_url,
 				'gallerySlug' => get_option( 'brag_book_gallery_page_slug', 'gallery' ),
 				'enableSharing' => get_option( 'brag_book_gallery_enable_sharing', 'no' ),
+				'infiniteScroll' => get_option( 'brag_book_gallery_infinite_scroll', 'no' ),
 				'sidebarData' => $sidebar_data,
 				'completeDataset' => ! empty( $all_cases_data['data'] ) ? array_map( function( $case ) {
 					return [
