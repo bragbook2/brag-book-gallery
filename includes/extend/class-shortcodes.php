@@ -833,7 +833,8 @@ final class Shortcodes {
 									  placeholder="Tell us about your goals and how we can help..."></textarea>
 						</div>
 						<button type="submit"
-								class="brag-book-gallery-form-submit">Submit
+								class="brag-book-gallery-button brag-book-gallery-button--full"
+								data-action="form-submit">Submit
 							Request
 						</button>
 					</form>
@@ -924,7 +925,8 @@ final class Shortcodes {
 								   data-phone-format="true">
 						</div>
 						<button type="submit"
-								class="brag-book-gallery-form-submit">Submit
+								class="brag-book-gallery-button brag-book-gallery-button--full"
+								data-action="form-submit">Submit
 						</button>
 					</form>
 				</div>
@@ -2498,7 +2500,7 @@ final class Shortcodes {
 			$html .= '<form class="brag-book-gallery-favorites-lookup-form" data-form="favorites-lookup">';
 			$html .= '<div class="brag-book-gallery-form-group">';
 			$html .= '<input type="email" class="brag-book-gallery-form-input" name="email" placeholder="Your email address" required>';
-			$html .= '<button type="submit" class="brag-book-gallery-form-submit">View My Favorites</button>';
+			$html .= '<button type="submit" class="brag-book-gallery-button brag-book-gallery-button--full" data-action="form-submit">View My Favorites</button>';
 			$html .= '</div>';
 			$html .= '</form>';
 			$html .= '</div>';
