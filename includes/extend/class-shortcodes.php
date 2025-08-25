@@ -1024,9 +1024,6 @@ final class Shortcodes {
 		// Get carousel data from API
 		$carousel_data = Data_Fetcher::get_carousel_data_from_api( $config );
 
-		// Enqueue carousel assets (includes custom CSS)
-		Asset_Manager::enqueue_carousel_assets();
-
 		// Localize script data
 		Asset_Manager::localize_carousel_script( $config );
 

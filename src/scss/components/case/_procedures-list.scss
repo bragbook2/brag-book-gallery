@@ -10,7 +10,7 @@
 	gap: var(--wp--custom--brag-book-gallery--spacer,4px);
 	list-style: none;
 	margin: 0 !important;
-	padding: 0;
+	padding: 0 !important;
 
 	&__item {
 		display: inline-flex;

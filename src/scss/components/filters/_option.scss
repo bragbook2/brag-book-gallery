@@ -5,8 +5,8 @@
 // -----------------------------------------------------------------------------
 
 .brag-book-gallery-filter-options {
-	padding: 0;
-	margin: 0;
+	padding: 0 !important;
+	margin: 0 !important;
 	list-style: none;
 	max-height: 0;
 	overflow: hidden;
@@ -34,9 +34,9 @@
 .brag-book-gallery-filter-option {
 	display: flex;
 	align-items: center;
-	padding-block: var(--wp--custom--brag-book-gallery--spacer--md,12px);
-	padding-inline: var(--wp--custom--brag-book-gallery--spacer--lg,16px) !important;
 	list-style: none;
+	padding: var(--wp--custom--brag-book-gallery--spacer--md,12px) var(--wp--custom--brag-book-gallery--spacer--lg,16px) !important;
+	margin: 0 !important;
 
 	&:hover {
 		background-color: rgba(0,0,0,0);
