@@ -21,7 +21,7 @@ access_log
 node_modules/
 vendor/
 composer.lock
-package-lock.json
+# package-lock.json (needed for GitHub Actions)
 yarn.lock
 pnpm-lock.yaml
 
