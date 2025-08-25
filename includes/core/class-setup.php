@@ -165,6 +165,13 @@ final class Setup {
 			array( $this, 'init' ),
 			self::INIT_PRIORITY
 		);
+		
+		// Initialize updater after plugins are loaded.
+		add_action(
+			'plugins_loaded',
+			array( $this, 'init_updater' ),
+			10
+		);
 
 		// Asset loading hooks.
 		add_action(
@@ -290,6 +297,25 @@ final class Setup {
 
 		// Fire custom action for extensions.
 		do_action( 'brag_book_gallery_init', $this );
+	}
+
+	/**
+	 * Initialize the updater for GitHub releases
+	 *
+	 * Sets up the plugin updater to check for new versions
+	 * from the GitHub repository.
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	public function init_updater(): void {
+		if ( ! isset( $this->services['updater'] ) ) {
+			$this->services['updater'] = new Updater(
+				self::get_plugin_file(),
+				'bragbook2',
+				'brag-book-gallery'
+			);
+		}
 	}
 
 	/**
