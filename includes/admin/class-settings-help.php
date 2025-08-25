@@ -87,7 +87,7 @@ class Settings_Help extends Settings_Base {
 						<li>
 							<strong><?php esc_html_e( 'Get Your API Credentials', 'brag-book-gallery' ); ?></strong>
 							<ul style="list-style: disc; margin-left: 20px; margin-top: 5px;">
-								<li><?php esc_html_e( 'Log into your BRAGBook account at', 'brag-book-gallery' ); ?> <a href="https://app.bragbookgallery.com" target="_blank">app.bragbookgallery.com</a></li>
+								<li><?php esc_html_e( 'Log into your BRAG book account at', 'brag-book-gallery' ); ?> <a href="https://app.bragbookgallery.com" target="_blank">app.bragbookgallery.com</a></li>
 								<li><?php esc_html_e( 'Navigate to Settings → API', 'brag-book-gallery' ); ?></li>
 								<li><?php esc_html_e( 'Copy your API Token and Website Property ID', 'brag-book-gallery' ); ?></li>
 							</ul>
@@ -257,7 +257,7 @@ location ~ ^/gallery/([^/]+)/? {
 							<strong><?php esc_html_e( 'API Credentials', 'brag-book-gallery' ); ?></strong>
 							<ul style="list-style: disc; margin-left: 20px;">
 								<li><?php esc_html_e( 'Verify API Token is correct in', 'brag-book-gallery' ); ?> <a href="<?php echo esc_url( admin_url( 'admin.php?page=brag-book-gallery-settings&tab=api' ) ); ?>"><?php esc_html_e( 'API Settings', 'brag-book-gallery' ); ?></a></li>
-								<li><?php esc_html_e( 'Confirm Website Property ID matches your BRAGBook account', 'brag-book-gallery' ); ?></li>
+								<li><?php esc_html_e( 'Confirm Website Property ID matches your BRAG book account', 'brag-book-gallery' ); ?></li>
 							</ul>
 						</li>
 						<li>
@@ -284,7 +284,7 @@ location ~ ^/gallery/([^/]+)/? {
 					<ul style="list-style: disc; margin-left: 20px;">
 						<li><?php esc_html_e( 'Enable caching in JavaScript Settings (1 hour recommended)', 'brag-book-gallery' ); ?></li>
 						<li><?php esc_html_e( 'Use progressive loading (loads 10 cases initially)', 'brag-book-gallery' ); ?></li>
-						<li><?php esc_html_e( 'Optimize images in your BRAGBook account before uploading', 'brag-book-gallery' ); ?></li>
+						<li><?php esc_html_e( 'Optimize images in your BRAG book account before uploading', 'brag-book-gallery' ); ?></li>
 						<li><?php esc_html_e( 'Consider using a CDN like Cloudflare', 'brag-book-gallery' ); ?></li>
 						<li><?php esc_html_e( 'Enable lazy loading for images (enabled by default)', 'brag-book-gallery' ); ?></li>
 					</ul>
@@ -317,7 +317,7 @@ location ~ ^/gallery/([^/]+)/? {
 
 				<div class="brag-book-gallery-faq">
 					<h3><?php esc_html_e( 'Q: What\'s the difference between JavaScript and Local mode?', 'brag-book-gallery' ); ?></h3>
-					<p><?php esc_html_e( 'A: JavaScript mode (recommended) loads data directly from the BRAGBook API and stays in sync. Local mode imports cases into your WordPress database for offline access but requires manual syncing.', 'brag-book-gallery' ); ?></p>
+					<p><?php esc_html_e( 'A: JavaScript mode (recommended) loads data directly from the BRAG book API and stays in sync. Local mode imports cases into your WordPress database for offline access but requires manual syncing.', 'brag-book-gallery' ); ?></p>
 				</div>
 
 				<div class="brag-book-gallery-faq">
@@ -347,10 +347,10 @@ location ~ ^/gallery/([^/]+)/? {
 					</div>
 
 					<div class="brag-book-gallery-card">
-						<h3><span class="dashicons dashicons-admin-site"></span> <?php esc_html_e( 'BRAGBook Account', 'brag-book-gallery' ); ?></h3>
+						<h3><span class="dashicons dashicons-admin-site"></span> <?php esc_html_e( 'BRAG book Account', 'brag-book-gallery' ); ?></h3>
 						<p><?php esc_html_e( 'Manage your cases and settings', 'brag-book-gallery' ); ?></p>
 						<a href="https://app.bragbookgallery.com" target="_blank" class="button button-secondary">
-							<?php esc_html_e( 'Login to BRAGBook', 'brag-book-gallery' ); ?>
+							<?php esc_html_e( 'Login to BRAG book', 'brag-book-gallery' ); ?>
 						</a>
 					</div>
 				</div>

@@ -1,6 +1,6 @@
-# BRAGBook Gallery Release Process
+# BRAG book Gallery Release Process
 
-This document explains how to create releases for the BRAGBook Gallery plugin using GitHub CLI.
+This document explains how to create releases for the BRAG book Gallery plugin using GitHub Actions automation.
 
 ## How the Auto-Update System Works
 
@@ -8,14 +8,15 @@ The plugin includes an updater class (`includes/core/class-updater.php`) that:
 - Checks the GitHub repository `bragbook2/brag-book-gallery` for new releases
 - Compares versions with the currently installed plugin
 - Allows updates directly from the WordPress admin panel
+- Downloads the `brag-book-gallery.zip` file automatically created by GitHub Actions
 
 ## Prerequisites
 
 1. **GitHub Repository Access**: Push access to `bragbook2/brag-book-gallery`
-2. **GitHub CLI**: Install from https://cli.github.com/
-3. **Node.js & NPM**: For building assets
+2. **Git**: Command line git installed and configured
+3. **GitHub Actions**: Already configured in `.github/workflows/release.yml`
 
-## Standard Release Process Using GitHub CLI
+## Standard Release Process Using GitHub Actions
 
 ### Step 1: Update Version Numbers
 
@@ -28,13 +29,7 @@ Update version in these files:
 "version": "X.X.X"
 ```
 
-### Step 2: Build Assets (if needed)
-
-```bash
-npm run build
-```
-
-### Step 3: Commit Changes
+### Step 2: Commit Changes
 
 ```bash
 git add .
@@ -45,66 +40,49 @@ git commit -m "Release version X.X.X
 - Another change"
 ```
 
-### Step 4: Create Git Tag
+### Step 3: Push to Main Branch
 
 ```bash
-# Use semantic versioning without 'v' prefix
-git tag -a X.X.X -m "Version X.X.X - Brief description"
-```
-
-### Step 5: Push to Remote
-
-```bash
-# Push commits
 git push origin main
-
-# Push tag
-git push origin X.X.X
 ```
 
-### Step 6: Create GitHub Release
+### Step 4: Create and Push Tag (Triggers Release)
 
 ```bash
-gh release create X.X.X --title "BRAGBook Gallery vX.X.X" --notes "$(cat <<'EOF'
-## Version X.X.X
+# Create tag with 'v' prefix (required for GitHub Actions)
+git tag vX.X.X
 
-### Changes
-- Feature or change description
-- Another change
-- Another change
-
-### Bug Fixes
-- Fixed issue description
-- Another fix
-
-### Details
-Additional information about this release.
-EOF
-)"
+# Push tag - this triggers the GitHub Actions workflow
+git push origin vX.X.X
 ```
+
+### What Happens Next (Automated)
+
+Once you push the tag, GitHub Actions automatically:
+1. **Builds production assets** - Runs `npm run build`
+2. **Creates distribution** - Removes dev files, source files, tests
+3. **Generates zip file** - Creates `brag-book-gallery.zip`
+4. **Creates GitHub release** - With formatted release notes
+5. **Attaches zip file** - Adds the plugin zip as a release asset
+
+The release will be available at:
+`https://github.com/bragbook2/brag-book-gallery/releases/tag/vX.X.X`
 
 ## Release Standards
 
 ### Version Format
-- **Tag**: Use numbers only (e.g., `3.0.5`)
-- **Title**: Include 'v' prefix (e.g., `BRAGBook Gallery v3.0.5`)
+- **Tag**: Must use 'v' prefix (e.g., `v3.0.5`) to trigger GitHub Actions
+- **Title**: Automatically set to `BRAG book Gallery vX.X.X` by workflow
 
-### Release Notes Template
-```markdown
-## Version X.X.X
+### Release Notes
 
-### Changes
-- New features or modifications
+The GitHub Actions workflow automatically generates release notes with:
+- Installation instructions
+- Update notes about auto-updates
+- Compatibility requirements
+- Link to full changelog
 
-### Bug Fixes  
-- Resolved issues
-
-### Breaking Changes
-- Incompatible changes (if any)
-
-### Details
-Migration instructions or additional context
-```
+To customize release notes, edit `.github/workflows/release.yml` before tagging.
 
 ## Version Numbering
 
@@ -181,10 +159,12 @@ To test if auto-updates work:
 
 ## Important Notes
 
-1. **GitHub API Rate Limits**: The updater caches API responses for 1 hour to avoid rate limits
-2. **Private Repositories**: If the repository becomes private, you'll need to add an access token
-3. **Asset Names**: The release must include a `brag-book-gallery.zip` file
-4. **Version Consistency**: Ensure version numbers match across all files
+1. **GitHub Actions Required**: The automated process requires the workflow file at `.github/workflows/release.yml`
+2. **Tag Format**: Must use 'v' prefix (e.g., `v3.0.7`) to trigger the workflow
+3. **Automatic Zip Creation**: GitHub Actions creates `brag-book-gallery.zip` automatically
+4. **Version Consistency**: Ensure version numbers match in `brag-book-gallery.php` and `package.json`
+5. **GitHub API Rate Limits**: The updater caches API responses for 1 hour
+6. **Build Process**: Assets are built automatically - no need to run `npm run build` locally
 
 ## Support
 
@@ -198,32 +178,58 @@ For issues with the release process:
 ## Quick Release Commands
 
 ```bash
-# Complete release process using GitHub CLI
-# 1. Update version in files
-# 2. Build assets
-npm run build
-
-# 3. Commit, tag, and release
+# Complete release process (example for version 3.0.8)
+# 1. Update version in files (brag-book-gallery.php and package.json)
+# 2. Commit changes
 git add .
-git commit -m "Release version 3.0.6"
-git tag -a 3.0.6 -m "Version 3.0.6"
+git commit -m "Release version 3.0.8"
+
+# 3. Push and create release
 git push origin main
-git push origin 3.0.6
-gh release create 3.0.6 --title "BRAGBook Gallery v3.0.6" --notes "Release notes here"
+git tag v3.0.8
+git push origin v3.0.8
+
+# GitHub Actions will now automatically:
+# - Build production assets
+# - Create brag-book-gallery.zip
+# - Create the GitHub release
+# - Attach the zip file
 ```
 
 ## Fixing Duplicate or Incorrect Releases
 
 ```bash
-# Delete duplicate releases
-gh release delete X.X.X --yes
+# Delete release and tag from GitHub
+gh release delete vX.X.X --yes
+git push origin --delete vX.X.X
 
-# Delete and recreate tag
-git push origin --delete X.X.X
-git tag -d X.X.X
-git tag -a X.X.X -m "Version X.X.X"
-git push origin X.X.X
+# Delete local tag
+git tag -d vX.X.X
 
-# Create clean release
-gh release create X.X.X --title "BRAGBook Gallery vX.X.X" --notes "..."
+# Recreate and push tag (this triggers workflow again)
+git tag vX.X.X
+git push origin vX.X.X
+```
+
+## Manual Release (Without GitHub Actions)
+
+If GitHub Actions is unavailable, you can create a release manually:
+
+```bash
+# 1. Build assets locally
+npm install
+npm run build
+
+# 2. Create zip file
+mkdir -p dist/brag-book-gallery
+rsync -av --exclude-from=.distignore ./ dist/brag-book-gallery/
+cd dist
+zip -r ../brag-book-gallery.zip brag-book-gallery/
+cd ..
+
+# 3. Create release with GitHub CLI
+gh release create vX.X.X \
+  --title "BRAG book Gallery vX.X.X" \
+  --notes "Release notes here" \
+  brag-book-gallery.zip
 ```
