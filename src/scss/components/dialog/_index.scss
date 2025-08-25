@@ -17,7 +17,7 @@
 	transform: translate(-50%, -50%);
 	margin: 0;
 	z-index: 1100;
-	background: var(--wp--custom--brag-book-gallery--color--white);
+	background: var(--wp--custom--brag-book-gallery--color--white,#FFF);
 	opacity: 1;
 	visibility: visible;
 

@@ -3,6 +3,13 @@
 @use 'link';
 @use 'view';
 
+.brag-book-gallery-case-navigation {
+	display: inline-flex;
+	color: var(--wp--custom--brag-book-gallery--color--black) !important;
+	font-size: var(--wp--custom--brag-book-gallery--text-sm) !important;
+	margin-block-end: var(--wp--custom--brag-book-gallery--spacer--sm,8px);
+}
+
 .brag-book-gallery-favorites-list {
 	padding: .75rem;
 	max-height: 400px;
@@ -47,7 +54,7 @@
 	right: .25rem;
 	width: 20px;
 	height: 20px;
-	background: var(--wp--custom--brag-book-gallery--color--white);
+	background: var(--wp--custom--brag-book-gallery--color--white,#FFF);
 	border: 1px solid var(--wp--custom--brag-book-gallery--color--light-grey);
 	border-radius: 50%;
 	display: flex;
@@ -65,7 +72,7 @@
 .brag-book-gallery-favorites-item-remove:hover {
 	background: var(--wp--custom--brag-book-gallery--color--black);
 	border-color: var(--wp--custom--brag-book-gallery--color--black);
-	color: var(--wp--custom--brag-book-gallery--color--white)
+	color: var(--wp--custom--brag-book-gallery--color--white,#FFF)
 }
 
 .brag-book-gallery-favorites-empty {
@@ -136,7 +143,7 @@
 	.brag-book-gallery-form-group {
 		display: flex;
 		flex-direction: column;
-		gap: calc( 2 * var(--wp--custom--brag-book-gallery--spacer) );
+		gap: var(--wp--custom--brag-book-gallery--spacer--sm, 8px );
 
 		@media (max-width: 640px) {
 			flex-direction: column;
@@ -182,7 +189,7 @@
 // Case cards in favorites view
 .brag-book-gallery-favorites-grid {
 	.brag-book-gallery-case-card {
-		background: var(--wp--custom--brag-book-gallery--color--white);
+		background: var(--wp--custom--brag-book-gallery--color--white,#FFF);
 		border-radius: .75rem;
 		overflow: hidden;
 		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
@@ -235,13 +242,7 @@
 		padding: 1rem;
 	}
 
-	.brag-book-gallery-case-title {
-		font-size: 1.125rem;
-		margin: 0 0 0.5rem;
-		color: var(--wp--custom--brag-book-gallery--color--black);
-	}
-
-	.brag-book-gallery-case-details {
+	.brag-book-gallery-case-card-details {
 		font-size: 0.875rem;
 		color: var(--wp--custom--brag-book-gallery--color--grey);
 		margin: 0;

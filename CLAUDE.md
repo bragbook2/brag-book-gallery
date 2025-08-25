@@ -246,6 +246,27 @@ The plugin follows a modular architecture with clear separation of concerns:
 ```
 - Displays single case with all details
 
+### Favorites
+```
+[brag_book_favorites]
+```
+- Displays user's favorited cases
+- Uses localStorage for persistent favorites
+- Email capture form for new users
+- Syncs with API for server-side storage
+
+## Favorites Page Implementation
+
+The favorites page (`/gallery-slug/myfavorites/`) uses the main gallery shortcode with special handling:
+
+1. **URL Routing**: Rewrite rules map `/myfavorites/` to the gallery page with `favorites_page=1` query var
+2. **Detection**: Main gallery shortcode detects the `favorites_page` query var
+3. **Rendering**: Gallery renders normally but adds `data-favorites-page="true"` attribute
+4. **JavaScript**: Main app detects this attribute and automatically calls `showFavoritesOnly()`
+5. **Display**: Shows either email capture form or favorites based on localStorage user info
+
+This approach ensures consistent layout and functionality with the main gallery while displaying favorites content.
+
 ## Recent Updates (v3.0.0)
 
 ### Admin Interface
@@ -279,8 +300,9 @@ The plugin follows a modular architecture with clear separation of concerns:
   - Progressive loading with "Load More" button
   - Multi-select filtering with badge display
   - Nudity warning with blur effect and proceed button
-  - Favorites functionality integrated
+  - Favorites functionality integrated with localStorage and API sync
   - Mobile-responsive with hamburger menu
+  - Favorites page automatically displays user's saved cases
 - **Code Quality**:
   - jQuery conflicts resolved in admin area
   - Vanilla JavaScript for admin tabs and dialogs

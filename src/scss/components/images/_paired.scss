@@ -1,0 +1,56 @@
+@charset "UTF-8";
+
+// -----------------------------------------------------------------------------
+// components / images / index
+// -----------------------------------------------------------------------------
+
+.brag-book-gallery-case-image-pair {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: var(--wp--custom--brag-book-gallery--spacer--sm);
+	background: var(--wp--custom--brag-book-gallery--color--lightest-grey);
+	padding: var(--wp--custom--brag-book-gallery--spacer--2xl);
+	border-radius: var(--wp--custom--brag-book-gallery--rounded);
+
+	.before-image,
+	.after-image {
+		text-align: center;
+	}
+
+	h3,
+	&-title {
+		margin: 0 0 1rem 0;
+		font-size: 1rem;
+		text-transform: uppercase;
+		letter-spacing: .05em;
+		color: var(--wp--custom--brag-book-gallery--color--grey)
+	}
+
+	img {
+		width: 100%;
+		height: auto;
+		border-radius: 4px;
+		box-shadow: 0 2px 8px rgba(0,0,0,.1)
+	}
+
+	.processed-image {
+		grid-column: 1/-1;
+		text-align: center;
+
+		img {
+			max-width: 100%;
+			height: auto
+		}
+	}
+
+	.image-caption {
+		grid-column: 1/-1;
+		text-align: center;
+		margin-top: .5rem;
+		font-size: .875rem;
+		color: var(--wp--custom--brag-book-gallery--color--grey);
+		font-style: italic
+	}
+}
+
+

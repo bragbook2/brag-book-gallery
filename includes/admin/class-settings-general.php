@@ -165,6 +165,56 @@ class Settings_General extends Settings_Base {
 
 					<tr>
 						<th scope="row">
+							<label for="brag_book_gallery_infinite_scroll" class="brag-book-toggle-label">
+								<?php esc_html_e( 'Enable Infinite Scroll', 'brag-book-gallery' ); ?>
+							</label>
+						</th>
+						<td>
+							<?php
+							$infinite_scroll = get_option( 'brag_book_gallery_infinite_scroll', 'no' );
+							?>
+							<label class="brag-book-toggle-switch">
+								<input type="hidden" name="brag_book_gallery_infinite_scroll" value="no" />
+								<input type="checkbox"
+									   id="brag_book_gallery_infinite_scroll"
+									   name="brag_book_gallery_infinite_scroll"
+									   value="yes"
+									   <?php checked( $infinite_scroll, 'yes' ); ?> />
+								<span class="brag-book-toggle-slider"></span>
+							</label>
+							<p class="description">
+								<?php esc_html_e( 'Automatically load more cases when scrolling near the bottom of the page. When disabled, users must click the "Load More" button.', 'brag-book-gallery' ); ?>
+							</p>
+						</td>
+					</tr>
+
+					<tr>
+						<th scope="row">
+							<label for="brag_book_gallery_image_display_mode" class="brag-book-toggle-label">
+								<?php esc_html_e( 'Before & After Mode', 'brag-book-gallery' ); ?>
+							</label>
+						</th>
+						<td>
+							<?php
+							$image_display_mode = get_option( 'brag_book_gallery_image_display_mode', 'single' );
+							?>
+							<label class="brag-book-toggle-switch">
+								<input type="hidden" name="brag_book_gallery_image_display_mode" value="single" />
+								<input type="checkbox"
+									   id="brag_book_gallery_image_display_mode"
+									   name="brag_book_gallery_image_display_mode"
+									   value="before_after"
+									   <?php checked( $image_display_mode, 'before_after' ); ?> />
+								<span class="brag-book-toggle-slider"></span>
+							</label>
+							<p class="description">
+								<?php esc_html_e( 'When enabled, shows before and after comparison images. When disabled, shows a single post-processed image.', 'brag-book-gallery' ); ?>
+							</p>
+						</td>
+					</tr>
+
+					<tr>
+						<th scope="row">
 							<label for="brag_book_gallery_enable_sharing" class="brag-book-toggle-label">
 								<?php esc_html_e( 'Enable Sharing', 'brag-book-gallery' ); ?>
 							</label>
@@ -720,6 +770,12 @@ class Settings_General extends Settings_Base {
 
 		$items_per_page = isset( $_POST['brag_book_gallery_items_per_page'] ) ? absint( $_POST['brag_book_gallery_items_per_page'] ) : 10;
 		update_option( 'brag_book_gallery_items_per_page', $items_per_page );
+
+		$infinite_scroll = isset( $_POST['brag_book_gallery_infinite_scroll'] ) ? sanitize_text_field( $_POST['brag_book_gallery_infinite_scroll'] ) : 'no';
+		update_option( 'brag_book_gallery_infinite_scroll', $infinite_scroll );
+
+		$image_display_mode = isset( $_POST['brag_book_gallery_image_display_mode'] ) && $_POST['brag_book_gallery_image_display_mode'] === 'before_after' ? 'before_after' : 'single';
+		update_option( 'brag_book_gallery_image_display_mode', $image_display_mode );
 
 		$enable_sharing = isset( $_POST['brag_book_gallery_enable_sharing'] ) ? sanitize_text_field( $_POST['brag_book_gallery_enable_sharing'] ) : 'no';
 		update_option( 'brag_book_gallery_enable_sharing', $enable_sharing );

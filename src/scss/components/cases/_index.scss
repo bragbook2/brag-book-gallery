@@ -6,7 +6,7 @@
 
 .brag-book-gallery-case-images {
 	display: grid;
-	gap: calc( 8 * var(--wp--custom--brag-book-gallery--spacer) );
+	gap: calc( 8 * var(--wp--custom--brag-book-gallery--spacer,4px) );
 }
 
 .brag-book-gallery-case-images {
@@ -18,9 +18,4 @@
 
 .brag-book-gallery-case-images.single-image {
 	display: block
-}
-
-.brag-book-gallery-procedure-name {
-	font-size: var(--wp--custom--brag-book-gallery--text-base);
-	line-height: 1.25;
 }

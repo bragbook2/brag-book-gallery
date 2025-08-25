@@ -293,7 +293,7 @@ final class Sitemap {
 			default_value: array()
 		);
 
-		$combine_slug = get_option(
+		$slug = get_option(
 			option: 'brag_book_gallery_brag_book_gallery_page_slug',
 			default_value: ''
 		);
@@ -329,7 +329,7 @@ final class Sitemap {
 		}
 
 		// Add combine gallery URLs if configured
-		if ( ! empty( $combine_slug ) ) {
+		if ( ! empty( $slug ) ) {
 			foreach ( $sitemap_data as $org_data ) {
 				if ( ! is_array( $org_data ) ) {
 					continue;
@@ -340,7 +340,7 @@ final class Sitemap {
 						continue;
 					}
 
-					$full_url = home_url( '/' . $combine_slug . $url_data->url );
+					$full_url = home_url( '/' . $slug . $url_data->url );
 					$last_modified = $url_data->updatedAt ?? current_time( 'c' );
 
 					$full_url = esc_url( $full_url );

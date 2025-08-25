@@ -509,8 +509,8 @@ class Assets {
 		}
 
 		// Check for combined gallery page
-		$combine_slug = get_option( 'brag_book_gallery_brag_book_gallery_page_slug', '' );
-		if ( ! empty( $combine_slug ) && str_starts_with( $current_path, $combine_slug ) ) {
+		$slug = get_option( 'brag_book_gallery_brag_book_gallery_page_slug', '' );
+		if ( ! empty( $slug ) && str_starts_with( $current_path, $slug ) ) {
 			return true;
 		}
 

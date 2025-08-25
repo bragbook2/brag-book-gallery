@@ -404,7 +404,7 @@ final class HTML_Renderer {
 					<?php echo self::generate_nudity_warning(); ?>
 				<?php endif; ?>
 				<a href="<?php echo esc_url( "{$base_path}/{$procedure_slug}/{$case_id}/" ); ?>"
-				   class="brag-book-gallery-case-link"
+				   class="brag-book-gallery-card-case-link"
 				   aria-label="<?php printf( esc_attr__( 'View case %s for %s', 'brag-book-gallery' ), esc_attr( $case_id ), esc_attr( $procedure_title ) ); ?>">
 					<?php echo self::generate_carousel_image( $image_url, $has_nudity ); ?>
 				</a>
@@ -757,7 +757,7 @@ final class HTML_Renderer {
 
 		// Case header with title
 		$html .= '<div class="brag-book-gallery-brag-book-gallery-case-header">';
-		$html .= '<h2 class="brag-book-gallery-case-title">';
+		$html .= '<h2 class="brag-book-gallery-content-title">';
 		$html .= '<strong>' . esc_html( $procedure_name ) . '</strong>';
 		if ( ! empty( $case_id ) ) {
 			$html .= ' <span class="case-id">#' . esc_html( $case_id ) . '</span>';
@@ -845,8 +845,8 @@ final class HTML_Renderer {
 		$html .= '</div>'; // Close images-section
 
 		// Details section - now below images in a card layout
-		$html .= '<div class="brag-book-gallery-case-details-section">';
-		$html .= '<div class="brag-book-gallery-case-details-grid">';
+		$html .= '<div class="brag-book-gallery-case-card-details-section">';
+		$html .= '<div class="brag-book-gallery-case-card-details-grid">';
 
 		// Procedures performed card
 		if ( ! empty( $case_data['procedures'] ) && is_array( $case_data['procedures'] ) ) {
@@ -960,7 +960,7 @@ final class HTML_Renderer {
 			$html .= '</div>';
 		}
 
-		$html .= '</div>'; // End brag-book-gallery-case-details-grid
+		$html .= '</div>'; // End brag-book-gallery-case-card-details-grid
 		$html .= '</div>'; // End case-details-section
 		$html .= '</div>'; // End brag-book-gallery-case-content
 		$html .= '</div>'; // End main container
@@ -979,13 +979,24 @@ final class HTML_Renderer {
 		// Build the HTML using the same structure as ajax_load_filtered_gallery
 		$html = '<div class="brag-book-filtered-results">';
 
-		// Add H2 header for favorites
-		$html .= sprintf(
-			'<h2 class="brag-book-gallery-content-title"><strong>%s</strong> %s</h2>',
-			esc_html__( 'My Favorites', 'brag-book-gallery' ),
-			esc_html__( 'Gallery', 'brag-book-gallery' )
-		);
-		
+		// Add SVG logo for favorites
+		$html .= '<svg class="brag-book-gallery-favorites-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 180">
+			<path fill="#ff595c" d="M85.5,124.6l40-84.7h16.2v104.9h-12.8V60.7l-39.8,84.1h-7.2L42.2,59.7v85.1h-12.8V39.9h16.8l39.3,84.7Z"></path>
+			<path fill="#ff595c" d="M186.2,131.1l25-62.4h12.9l-32.6,80.1c-2.6,6.3-5.2,11.4-7.9,15.3-2.7,3.8-5.7,6.6-9.1,8.3-3.3,1.7-7.4,2.6-12.2,2.6s-3.4,0-4.9-.4c-1.5-.2-2.9-.6-4.2-.9v-10.6c1.3.2,2.7.4,4.2.6,1.4.2,2.9.3,4.5.3,3.9,0,7.2-1.3,9.8-3.9,2.6-2.6,5.3-7.2,8.1-13.9l-32.4-77.3h13.4l25.4,62.4v-.2Z"></path>
+			<path fill="#121827" d="M303.1,39.9v11.2h-60.4v35.6h55.2v11.2h-55.2v46.9h-12.8V39.9h73.2,0Z"></path>
+			<path fill="#121827" d="M344.1,67.2c11.6,0,20.2,2.9,25.9,8.7,5.7,5.8,8.5,14.9,8.5,27.4v41.5h-7.9l-2.4-23.7c-2.7,7.8-7.2,13.9-13.7,18.4-6.4,4.5-14,6.8-22.8,6.8s-9.2-.9-12.8-2.8c-3.6-1.9-6.5-4.4-8.5-7.5s-3-6.5-3-10,1.3-8.7,3.9-12.5,6.7-7.1,12.4-9.9c5.7-2.8,13-4.7,22.1-5.8l20-2.5c-.8-6.2-2.9-10.7-6.4-13.4s-8.6-4-15.2-4-12.3,1.4-15.7,4.3c-3.3,2.9-5.6,6.8-6.8,11.8h-12.6c1.1-7.8,4.5-14.2,10.2-19.3,5.8-5.1,14-7.6,24.9-7.6h-.1ZM335,135.5c5.8,0,11.1-1.4,15.8-4.2,4.7-2.8,8.4-6.5,11.2-11.2,2.8-4.7,4.2-9.9,4.2-15.7l-15.4,1.9c-7.9,1-14,2.3-18.5,4.2-4.5,1.8-7.7,3.9-9.6,6.3-1.9,2.3-2.8,4.8-2.9,7.4,0,3.2,1.1,5.9,3.7,8.1s6.4,3.3,11.6,3.3h-.1Z"></path>
+			<path fill="#121827" d="M419.7,127l25-58.4h13.1l-33.4,76.2h-9.8l-33.2-76.2h13.2l25,58.4h.1Z"></path>
+			<path fill="#121827" d="M495.7,146.3c-7.9,0-14.7-1.6-20.4-4.7-5.8-3.1-10.2-7.5-13.3-13.3s-4.7-12.5-4.7-20.3v-2.6c0-7.8,1.6-14.6,4.7-20.3,3.1-5.7,7.6-10.1,13.3-13.2,5.8-3.1,12.6-4.7,20.4-4.7s14.6,1.6,20.4,4.7c5.8,3.1,10.2,7.5,13.3,13.2s4.7,12.5,4.7,20.3v2.6c0,7.8-1.6,14.5-4.7,20.3-3.1,5.8-7.5,10.2-13.3,13.3s-12.6,4.7-20.4,4.7ZM495.7,135.5c8.3,0,14.8-2.4,19.3-7.1,4.5-4.8,6.8-12,6.8-21.6s-2.3-16.9-6.8-21.6c-4.5-4.8-10.9-7.1-19.3-7.1s-14.8,2.4-19.3,7.1c-4.5,4.7-6.8,11.9-6.8,21.6s2.3,16.9,6.8,21.6,10.9,7.1,19.3,7.1Z"></path>
+			<path fill="#121827" d="M579.5,67.2c2.2,0,4,0,5.5.4,1.5.2,2.7.5,3.7.8v12.1c-1.4-.2-2.9-.3-4.5-.4-1.6,0-3.4,0-5.5,0-7.2,0-12.8,2.6-16.8,7.8s-6,13.9-6,26.1v31h-12.2v-76.2h7.9l2.3,22.1c2.1-8.3,5.4-14.4,10-18,4.6-3.7,9.8-5.5,15.6-5.5h0Z"></path>
+			<path fill="#121827" d="M607.6,144.8h-12.2v-76.2h12.2v76.2Z"></path>
+			<path fill="#121827" d="M670,68.7v10.8h-27.2v40.5c0,5.5,1.1,9.4,3.4,11.9,2.3,2.4,5.8,3.7,10.5,3.7s5.1,0,7.2-.4c2.1-.3,4.2-.6,6.2-1v10.6c-1.6.4-3.5.7-5.5,1-2.1.3-4.7.4-7.8.4-17.4,0-26.2-8.4-26.2-25.3v-41.5h-15.7v-10.8h16l4-22.6h7.9v22.6h27.2,0Z"></path>
+			<path fill="#121827" d="M749.7,102.9c0,2.8-.2,5.3-.6,7.5h-62.2c.7,8.5,3.2,14.9,7.6,19,4.4,4.1,10.5,6.2,18.3,6.2s8.8-.7,11.9-2.1c3-1.4,5.4-3.3,7.1-5.5,1.7-2.3,3.1-4.8,4-7.5h12.5c-.9,4.5-2.7,8.7-5.5,12.7s-6.6,7.2-11.6,9.6c-4.9,2.4-11.2,3.6-18.8,3.6s-14.5-1.6-20.2-4.7c-5.7-3.1-10.1-7.5-13.2-13.3-3.1-5.8-4.7-12.5-4.7-20.3v-2.6c0-7.8,1.6-14.6,4.7-20.3,3.1-5.7,7.6-10.1,13.4-13.2,5.8-3.1,12.6-4.7,20.5-4.7s14.1,1.5,19.5,4.5c5.5,3,9.7,7.1,12.7,12.4,3,5.3,4.5,11.6,4.5,18.8h0ZM712.9,78c-7.6,0-13.6,1.9-18,5.6-4.4,3.7-7,9.4-7.9,17h50.3c-.6-7.5-3-13.1-7.1-16.9-4.2-3.8-9.9-5.7-17.3-5.7h0Z"></path>
+			<path fill="#121827" d="M753.3,119.4h12.5c1.1,5,3.4,8.9,7,11.8,3.7,2.9,9.8,4.3,18.4,4.3s10.1-.5,13.4-1.6c3.3-1.1,5.7-2.5,7.1-4.3,1.4-1.7,2.2-3.5,2.2-5.3s-.6-4.2-1.7-5.8c-1.2-1.6-3.5-2.9-7-4s-8.9-2-16-2.8c-9-1.1-16-2.5-20.9-4.5-4.9-1.9-8.3-4.3-10.1-7.2s-2.8-6.2-2.8-9.9,1.2-7.8,3.7-11.2c2.4-3.4,6.1-6.2,11.1-8.4,4.9-2.2,11.2-3.3,18.8-3.3s14.3,1.2,19.3,3.5,8.9,5.5,11.6,9.6c2.7,4,4.3,8.6,4.8,13.8h-12.5c-.9-5.1-3-9-6.3-11.9s-9-4.3-16.8-4.3-13.4,1.2-16.5,3.5c-3.2,2.3-4.7,5-4.7,7.8s.6,3.9,1.8,5.5c1.2,1.5,3.6,2.9,7.3,4,3.7,1.2,9.2,2.2,16.7,3,8.8,1,15.6,2.4,20.3,4.5,4.8,2,8,4.5,9.9,7.3,1.8,2.9,2.7,6.1,2.7,9.8s-1.3,7.7-3.8,11.2-6.3,6.4-11.5,8.5c-5.2,2.2-11.8,3.2-19.8,3.2s-15.5-1.1-20.9-3.4c-5.4-2.3-9.4-5.5-12.1-9.5-2.7-4-4.4-8.7-5-13.9h-.2Z"></path>
+			<path fill="#121827" d="M849.8,22.7v2.4h-6.1v20.1h-2.9v-20.1h-6.1v-2.4h15.2-.1Z"></path>
+			<path fill="#121827" d="M876.2,22.8v22.3h-2.9v-16.6l-7.4,16.6h-2.1l-7.4-16.7v16.7h-2.9v-22.3h3.2l8.3,18.4,8.3-18.4h3.1-.2Z"></path>
+			<path fill="#ff595c" d="M614.2,19c-2.4-.6-4.8-.3-6.9.9-2.2,1.2-4.1,3.1-5.6,5.2-.2.3-.4.6-.5.9-2.3-3.9-6.6-7.6-11.3-7.2-4.4.4-8.2,3.6-9.1,7.9-1.1,5,2.1,9.6,5.1,13.3,2.8,3.3,5.9,6.3,9,9.3,1.9,1.8,3.9,3.6,5.9,5.3h0c0,0,.2.1.3.1s.2,0,.3-.1c1.7-1.4,3.3-2.9,4.9-4.3,3.2-2.9,6.3-5.9,9.1-9.1,3.1-3.5,6.6-7.9,6.3-12.9-.3-4.3-3.4-8.1-7.6-9.2h0Z"></path>
+		</svg>';
+
 		// Add user email info if available
 		$html .= '<p class="brag-book-gallery-favorites-user"></p>';
 
@@ -994,13 +1005,13 @@ final class HTML_Renderer {
 
 		// Left side container (empty for favorites, but maintains layout consistency)
 		$html .= '<div class="brag-book-gallery-controls-left">';
-		
+
 		// Add count display
 		$count = count( $cases );
 		$html .= '<div class="brag-book-gallery-active-filters">';
-		$html .= '<span class="brag-book-gallery-count">' . sprintf( _n( '%d favorite', '%d favorites', $count, 'brag-book-gallery' ), $count ) . '</span>';
+		$html .= '<span class="brag-book-gallery-favorite-count">' . sprintf( _n( '%d favorite', '%d favorites', $count, 'brag-book-gallery' ), $count ) . '</span>';
 		$html .= '</div>';
-		
+
 		$html .= '</div>'; // Close left controls
 
 		// Get default columns from settings
@@ -1034,8 +1045,8 @@ final class HTML_Renderer {
 
 		$html .= '</div>'; // Close controls container
 
-		// Start cases grid with CSS Grid layout
-		$html .= sprintf( '<div class="brag-book-gallery-case-grid" data-columns="%s">', esc_attr( $default_columns ) );
+		// Start cases grid with masonry layout for variable heights
+		$html .= sprintf( '<div class="brag-book-gallery-case-grid masonry-layout" data-columns="%s">', esc_attr( $default_columns ) );
 
 		if ( empty( $cases ) ) {
 			// Show message when no favorites found
@@ -1045,12 +1056,12 @@ final class HTML_Renderer {
 		} else {
 			// Get image display mode
 			$image_display_mode = get_option( 'brag_book_gallery_image_display_mode', 'single' );
-			
+
 			// Transform and render each case using the same method as filtered gallery
 			foreach ( $cases as $case ) {
 				// Transform case data to match what render_ajax_gallery_case_card expects
 				$transformed_case = $case;
-				
+
 				// Extract main image from photoSets
 				$transformed_case['mainImageUrl'] = '';
 				if ( ! empty( $case['photoSets'] ) && is_array( $case['photoSets'] ) ) {
@@ -1059,36 +1070,68 @@ final class HTML_Renderer {
 														 $first_photoset['beforeLocationUrl'] ??
 														 $first_photoset['afterLocationUrl1'] ?? '';
 				}
-				
+
 				// Extract procedure title
 				$transformed_case['procedureTitle'] = __( 'Unknown Procedure', 'brag-book-gallery' );
+				
+				// Check if we have procedures array with names
 				if ( ! empty( $case['procedures'] ) && is_array( $case['procedures'] ) ) {
 					$first_procedure = reset( $case['procedures'] );
 					$transformed_case['procedureTitle'] = $first_procedure['name'] ?? __( 'Unknown Procedure', 'brag-book-gallery' );
 				}
-				
+				// Check if we have procedureIds array and look up the names
+				elseif ( ! empty( $case['procedureIds'] ) && is_array( $case['procedureIds'] ) ) {
+					// Get API token for sidebar data lookup
+					$api_token = get_option( 'brag_book_gallery_api_token' );
+					if ( is_array( $api_token ) && ! empty( $api_token[0] ) ) {
+						$api_token = $api_token[0];
+					}
+					
+					// Get sidebar data to look up procedure names
+					$sidebar_data = Data_Fetcher::get_sidebar_data( $api_token );
+					
+					if ( ! empty( $sidebar_data['data'] ) && ! empty( $case['procedureIds'][0] ) ) {
+						$procedure_info = Data_Fetcher::find_procedure_by_id( $sidebar_data['data'], intval( $case['procedureIds'][0] ) );
+						if ( $procedure_info && ! empty( $procedure_info['name'] ) ) {
+							$transformed_case['procedureTitle'] = $procedure_info['name'];
+							
+							// Also add the procedures array for consistency
+							$procedures = [];
+							foreach ( $case['procedureIds'] as $procedure_id ) {
+								$proc_info = Data_Fetcher::find_procedure_by_id( $sidebar_data['data'], intval( $procedure_id ) );
+								if ( $proc_info && ! empty( $proc_info['name'] ) ) {
+									$procedures[] = ['name' => $proc_info['name'], 'id' => $procedure_id];
+								}
+							}
+							if ( ! empty( $procedures ) ) {
+								$transformed_case['procedures'] = $procedures;
+							}
+						}
+					}
+				}
+
 				// Use reflection to access the private render_ajax_gallery_case_card method from Shortcodes class
 				try {
 					$shortcodes_class = 'BRAGBookGallery\Includes\Extend\Shortcodes';
 					$method = new \ReflectionMethod( $shortcodes_class, 'render_ajax_gallery_case_card' );
 					$method->setAccessible( true );
-					
-					// Render the case card with favorites context
-					$html .= $method->invoke( null, $transformed_case, $image_display_mode, false, 'favorites' );
+
+					// Render the case card without procedure context to allow proper procedure name lookup
+					$html .= $method->invoke( null, $transformed_case, $image_display_mode, false, '' );
 				} catch ( \Exception $render_error ) {
 					// Fallback to simple rendering if reflection fails
 					error_log( 'Error rendering favorite case card: ' . $render_error->getMessage() );
-					
+
 					// Simple fallback rendering
 					$case_id = $case['id'] ?? $case['caseId'] ?? '';
 					if ( ! empty( $case_id ) ) {
 						$html .= '<article class="brag-book-gallery-case-card" data-case-id="' . esc_attr( $case_id ) . '">';
 						$html .= '<div class="brag-book-gallery-case-images">';
-						
+
 						if ( ! empty( $transformed_case['mainImageUrl'] ) ) {
 							$html .= '<img src="' . esc_url( $transformed_case['mainImageUrl'] ) . '" alt="Case" loading="lazy">';
 						}
-						
+
 						$html .= '</div>';
 						$html .= '<div class="brag-book-gallery-case-info">';
 						$html .= '<h3>' . esc_html( $transformed_case['procedureTitle'] ) . '</h3>';

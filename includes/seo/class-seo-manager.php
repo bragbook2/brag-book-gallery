@@ -24,7 +24,6 @@ if ( ! defined( 'WPINC' ) ) {
  * Class SEO_Manager
  *
  * Manages SEO optimization for gallery pages including titles, descriptions, and structured data
- *
  * @since 3.0.0
  */
 final class SEO_Manager {
@@ -44,7 +43,7 @@ final class SEO_Manager {
 	 * @since 3.0.0
 	 * @var array<string, array>
 	 */
-	private readonly array $supported_plugins;
+	private array $supported_plugins;
 
 	/**
 	 * Current SEO plugin
@@ -62,6 +61,7 @@ final class SEO_Manager {
 	public function __construct() {
 		$this->supported_plugins = array(
 			'yoast'    => array(
+				'name'    => 'Yoast SEO',
 				'class'   => 'WPSEO_Options',
 				'file'    => 'wordpress-seo/wp-seo.php',
 				'filters' => array(
@@ -74,6 +74,7 @@ final class SEO_Manager {
 				),
 			),
 			'aioseo'   => array(
+				'name'    => 'All in One SEO',
 				'class'   => 'AIOSEO\\Plugin\\AIOSEO',
 				'file'    => 'all-in-one-seo-pack/all_in_one_seo_pack.php',
 				'filters' => array(
@@ -83,6 +84,7 @@ final class SEO_Manager {
 				),
 			),
 			'rankmath' => array(
+				'name'    => 'Rank Math SEO',
 				'class'   => 'RankMath',
 				'file'    => 'seo-by-rank-math/rank-math.php',
 				'filters' => array(
@@ -215,7 +217,7 @@ final class SEO_Manager {
 		);
 
 		// Sanitize stored pages to ensure they are strings.
-		$combine_page_id = get_option(
+		$page_id = get_option(
 			option: 'brag_book_gallery_page_id',
 			default_value: ''
 		);
@@ -229,7 +231,7 @@ final class SEO_Manager {
 		}
 
 		// Check if current page is the combine gallery page
-		return ! empty( $combine_page_id ) && (int) $combine_page_id === $current_page_id;
+		return ! empty( $page_id ) && (int) $page_id === $current_page_id;
 	}
 
 	/**
@@ -259,13 +261,13 @@ final class SEO_Manager {
 		$page_slug    = $current_page ? $current_page->post_name : '';
 
 		// Check if this is the combine gallery page.
-		$combine_slug       = get_option(
+		$slug       = get_option(
 			option: 'brag_book_gallery_brag_book_gallery_page_slug',
 			default_value: ''
 		);
 
 		// Sanitize combine slug to ensure it's a string.
-		$is_combine_gallery = $page_slug === $combine_slug;
+		$is_gallery = $page_slug === $slug;
 
 		// Default SEO data
 		$seo_data = array(
@@ -275,19 +277,19 @@ final class SEO_Manager {
 			'page_type'      => 'gallery_home',
 			'procedure_name' => '',
 			'case_number'    => '',
-			'is_combine'     => $is_combine_gallery,
+			'is_combine'     => $is_gallery,
 		);
 
 		// Get base page SEO settings.
-		if ( $is_combine_gallery ) {
+		if ( $is_gallery ) {
 
 			$seo_data['title']       = get_option(
-				option: 'brag_book_gallery_combine_seo_page_title',
+				option: 'brag_book_gallery_seo_page_title',
 				default_value: ''
 			);
 
 			$seo_data['description'] = get_option(
-				option: 'brag_book_gallery_combine_seo_page_description',
+				option: 'brag_book_gallery_seo_page_description',
 				default_value: ''
 			);
 		} else {
@@ -338,7 +340,7 @@ final class SEO_Manager {
 			} else {
 				// Procedure-specific page.
 				$procedure_slug = $second_part;
-				$procedure_data = $this->get_procedure_data( $procedure_slug, $is_combine_gallery );
+				$procedure_data = $this->get_procedure_data( $procedure_slug, $is_gallery );
 
 				if ( $procedure_data ) {
 					$seo_data['procedure_name'] = $procedure_data['name'];
@@ -350,15 +352,15 @@ final class SEO_Manager {
 						$case_data       = $this->get_case_seo_data(
 							$case_id_or_slug,
 							$procedure_data,
-							$is_combine_gallery
+							$is_gallery
 						);
 
 						if ( $case_data ) {
 							$seo_data['page_type']   = 'case_detail';
 							$seo_data['case_number'] = $case_data['case_number'];
 
-							$seo_data['title'] = ! empty( $case_data['seo_title'] )
-								? $case_data['seo_title'] . ' - ' . $site_title
+							$seo_data['title'] = ! empty( $case_data['brag_book_gallery_seo_title'] )
+								? $case_data['brag_book_gallery_seo_title'] . ' - ' . $site_title
 								: sprintf(
 									/* translators: 1: procedure name, 2: case number, 3: site title */
 									esc_html__(
@@ -370,8 +372,8 @@ final class SEO_Manager {
 									$site_title
 								);
 
-							$seo_data['description'] = ! empty( $case_data['seo_description'] )
-								? $case_data['seo_description']
+							$seo_data['description'] = ! empty( $case_data['brag_book_gallery_seo_description'] )
+								? $case_data['brag_book_gallery_seo_description']
 								: sprintf(
 									/* translators: 1: procedure name, 2: case number */
 									esc_html__(
@@ -575,8 +577,8 @@ final class SEO_Manager {
 		// Extract SEO data from case response.
 		$seo_case_data = [
 			'case_number'     => $this->get_case_number( $case_id_or_slug, $case_data ),
-			'seo_title'       => $case_data['caseDetails'][0]['seoPageTitle'] ?? '',
-			'seo_description' => $case_data['caseDetails'][0]['seoPageDescription'] ?? '',
+			'brag_book_gallery_seo_title'       => $case_data['caseDetails'][0]['seoPageTitle'] ?? '',
+			'brag_book_gallery_seo_description' => $case_data['caseDetails'][0]['seoPageDescription'] ?? '',
 		];
 
 		set_transient( $cache_key, $seo_case_data, HOUR_IN_SECONDS );
@@ -1010,5 +1012,32 @@ final class SEO_Manager {
 	 */
 	public function get_seo_data(): array {
 		return $this->seo_data;
+	}
+
+	/**
+	 * Get active SEO plugin information
+	 *
+	 * @return array SEO plugin information.
+	 * @since 3.0.0
+	 */
+	public function get_active_seo_plugin_info(): array {
+		$this->detect_active_seo_plugin();
+
+		if ( 'none' === $this->active_seo_plugin ) {
+			return array(
+				'active' => false,
+				'name'   => 'None',
+				'plugin' => 'none',
+			);
+		}
+
+		$plugin_info = $this->supported_plugins[ $this->active_seo_plugin ] ?? array();
+
+		return array(
+			'active' => true,
+			'name'   => $plugin_info['name'] ?? 'Unknown',
+			'plugin' => $this->active_seo_plugin,
+			'class'  => $plugin_info['class'] ?? '',
+		);
 	}
 }

@@ -65,14 +65,14 @@ class Query_Var_Forcer {
 		}
 
 		// Get request URI and parse path parts
-		$request_uri = isset( $_SERVER['REQUEST_URI'] ) 
+		$request_uri = isset( $_SERVER['REQUEST_URI'] )
 			? trim( sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ), '/' )
 			: '';
-			
+
 		if ( empty( $request_uri ) ) {
 			return;
 		}
-		
+
 		$path_parts = explode( '/', $request_uri );
 
 		// Check if first part matches a gallery slug
@@ -81,22 +81,22 @@ class Query_Var_Forcer {
 		}
 
 		$gallery_slugs = Slug_Helper::get_all_gallery_page_slugs();
-		
+
 		if ( ! in_array( $path_parts[0], $gallery_slugs, true ) ) {
 			return;
 		}
 
 		// We have a gallery page that's 404ing - force it!
 		$gallery_slug = $path_parts[0];
-		
+
 		// Find the page with this slug
 		$page = get_page_by_path( $gallery_slug );
-		
+
 		if ( ! $page ) {
 			// Page doesn't exist - check for gallery page ID option
-			$combine_page_id = get_option( 'brag_book_gallery_page_id' );
-			if ( $combine_page_id ) {
-				$page = get_post( (int) $combine_page_id );
+			$page_id = get_option( 'brag_book_gallery_page_id' );
+			if ( $page_id ) {
+				$page = get_post( (int) $page_id );
 			}
 		}
 
@@ -110,7 +110,7 @@ class Query_Var_Forcer {
 		$wp_query->is_singular = true;
 		$wp_query->queried_object = $page;
 		$wp_query->queried_object_id = $page->ID;
-		
+
 		// Set query vars based on URL structure using match expression
 		$query_var_result = match ( true ) {
 			isset( $path_parts[1], $path_parts[2] ) && is_numeric( $path_parts[2] ) => [
@@ -132,7 +132,7 @@ class Query_Var_Forcer {
 
 		// Force the page to load with 200 status
 		status_header( 200 );
-		
+
 		// Add debug notice for administrators
 		if ( current_user_can( 'manage_options' ) ) {
 			add_action( 'wp_footer', static function() use ( $gallery_slug, $path_parts ): void {
@@ -166,7 +166,7 @@ class Query_Var_Forcer {
 	public static function modify_request_vars( array $query_vars ): array {
 		// Get the request path
 		$request_path = $query_vars['pagename'] ?? '';
-		
+
 		if ( empty( $request_path ) && isset( $_SERVER['REQUEST_URI'] ) ) {
 			$request_uri = sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) );
 			$request_path = trim( (string) parse_url( $request_uri, PHP_URL_PATH ), '/' );
@@ -187,9 +187,9 @@ class Query_Var_Forcer {
 		// Find the page
 		$page = get_page_by_path( $path_parts[0] );
 		if ( ! $page ) {
-			$combine_page_id = get_option( 'brag_book_gallery_page_id' );
-			if ( $combine_page_id ) {
-				$page = get_post( (int) $combine_page_id );
+			$page_id = get_option( 'brag_book_gallery_page_id' );
+			if ( $page_id ) {
+				$page = get_post( (int) $page_id );
 			}
 		}
 
@@ -197,7 +197,7 @@ class Query_Var_Forcer {
 			// Set the page_id
 			$query_vars['page_id'] = $page->ID;
 			$query_vars['pagename'] = '';
-			
+
 			// Add custom query vars using match expression
 			$custom_vars = match ( true ) {
 				isset( $path_parts[1], $path_parts[2] ) && is_numeric( $path_parts[2] ) => [
@@ -232,10 +232,10 @@ class Query_Var_Forcer {
 			return;
 		}
 
-		$request_uri = isset( $_SERVER['REQUEST_URI'] ) 
+		$request_uri = isset( $_SERVER['REQUEST_URI'] )
 			? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) )
 			: '';
-			
+
 		$path_parts = explode( '/', trim( $request_uri, '/' ) );
 		$gallery_slugs = Slug_Helper::get_all_gallery_page_slugs();
 

@@ -5,36 +5,13 @@
 // -----------------------------------------------------------------------------
 
 .brag-book-gallery-main-content {
+	width: 100%;
 	flex: 1;
-	padding: calc( 4 * var(--wp--custom--brag-book-gallery--spacer) );
-	background: var(--wp--custom--brag-book-gallery--color--white);
+	background-color: var(--wp--custom--brag-book-gallery--color--white,#FFF);
+	padding-inline: 0;
+	padding-block: var(--wp--custom--brag-book-gallery--spacer--lg,16px);
 
-	h2 {
-		font-size: 2rem;
-		line-height: 1.25;
-		margin-block: 0 calc( 6 * var(--wp--custom--brag-book-gallery--spacer) );
-	}
-	
-	// Mobile adjustments
-	@media (max-width: 1023px) {
-		width: 100%;
-		margin-left: 0;
-	}
-	
-	@media (max-width: 480px) {
-		padding: calc( 2 * var(--wp--custom--brag-book-gallery--spacer) );
-		
-		h2 {
-			font-size: 1.5rem;
-			margin-block: 0 calc( 4 * var(--wp--custom--brag-book-gallery--spacer) );
-		}
-	}
-
-	@media (min-width: 960px) {
-		padding: calc( 6 * var(--wp--custom--brag-book-gallery--spacer) );
-
-		h2 {
-			font-size: 3rem;
-		}
+	@media (min-width: 1280px) {
+		padding-inline: var(--wp--custom--brag-book-gallery--spacer--lg,16px);
 	}
 }

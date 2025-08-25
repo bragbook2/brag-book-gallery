@@ -6,9 +6,15 @@ window.updateGridLayout = function(columns) {
 	const grid = document.querySelector('.brag-book-gallery-case-grid');
 	if (!grid) return;
 
-	// Update CSS Grid columns via data attribute and style
+	// Check if we're on desktop (grid buttons are only shown on desktop)
+	const isDesktop = window.innerWidth >= 1024;
+	if (!isDesktop) return; // Don't allow manual grid changes on mobile/tablet
+
+	// Mark grid as initialized to prevent initial animations from replaying
+	grid.classList.add('grid-initialized');
+
+	// Update grid columns immediately for smooth transition
 	grid.setAttribute('data-columns', columns);
-	grid.style.gridTemplateColumns = `repeat(${columns}, 1fr)`;
 
 	// Update active state on buttons
 	const buttons = document.querySelectorAll('.brag-book-gallery-grid-btn');
@@ -76,7 +82,11 @@ window.generateProcedureFilterOptions = function() {
 			weight: new Set()
 		};
 
-		// Process the complete dataset
+		// First pass: collect actual values to determine which ranges have data
+		const ageValues = [];
+		const heightValues = [];
+		const weightValues = [];
+
 		window.bragBookCompleteDataset.forEach(caseData => {
 			// Handle both data structures: mapped (age) and raw API (patientAge)
 			const age = caseData.age || caseData.patientAge;
@@ -85,43 +95,35 @@ window.generateProcedureFilterOptions = function() {
 			const height = caseData.height || caseData.patientHeight;
 			const weight = caseData.weight || caseData.patientWeight;
 
-			// Age ranges
-			if (age) {
-				const ageNum = parseInt(age);
-				if (ageNum < 25) filterData.age.add('18-24');
-				else if (ageNum < 35) filterData.age.add('25-34');
-				else if (ageNum < 45) filterData.age.add('35-44');
-				else if (ageNum < 55) filterData.age.add('45-54');
-				else if (ageNum < 65) filterData.age.add('55-64');
-				else filterData.age.add('65+');
-			}
-
-			// Gender
+			// Collect raw values
+			if (age) ageValues.push(parseInt(age));
 			if (gender) filterData.gender.add(gender);
-
-			// Ethnicity
 			if (ethnicity) filterData.ethnicity.add(ethnicity);
-
-			// Height ranges
-			if (height) {
-				const heightNum = parseInt(height);
-				if (heightNum < 60) filterData.height.add('Under 5\'0"');
-				else if (heightNum < 64) filterData.height.add('5\'0" - 5\'3"');
-				else if (heightNum < 68) filterData.height.add('5\'4" - 5\'7"');
-				else if (heightNum < 72) filterData.height.add('5\'8" - 5\'11"');
-				else filterData.height.add('6\'0" and above');
-			}
-
-			// Weight ranges
-			if (weight) {
-				const weightNum = parseInt(weight);
-				if (weightNum < 120) filterData.weight.add('Under 120 lbs');
-				else if (weightNum < 150) filterData.weight.add('120-149 lbs');
-				else if (weightNum < 180) filterData.weight.add('150-179 lbs');
-				else if (weightNum < 210) filterData.weight.add('180-209 lbs');
-				else filterData.weight.add('210+ lbs');
-			}
+			if (height) heightValues.push(parseInt(height));
+			if (weight) weightValues.push(parseInt(weight));
 		});
+
+		// Only add age ranges that have actual data
+		if (ageValues.some(age => age >= 18 && age < 25)) filterData.age.add('18-24');
+		if (ageValues.some(age => age >= 25 && age < 35)) filterData.age.add('25-34');
+		if (ageValues.some(age => age >= 35 && age < 45)) filterData.age.add('35-44');
+		if (ageValues.some(age => age >= 45 && age < 55)) filterData.age.add('45-54');
+		if (ageValues.some(age => age >= 55 && age < 65)) filterData.age.add('55-64');
+		if (ageValues.some(age => age >= 65)) filterData.age.add('65+');
+
+		// Only add height ranges that have actual data
+		if (heightValues.some(h => h < 60)) filterData.height.add('Under 5\'0"');
+		if (heightValues.some(h => h >= 60 && h < 64)) filterData.height.add('5\'0" - 5\'3"');
+		if (heightValues.some(h => h >= 64 && h < 68)) filterData.height.add('5\'4" - 5\'7"');
+		if (heightValues.some(h => h >= 68 && h < 72)) filterData.height.add('5\'8" - 5\'11"');
+		if (heightValues.some(h => h >= 72)) filterData.height.add('6\'0" and above');
+
+		// Only add weight ranges that have actual data
+		if (weightValues.some(w => w < 120)) filterData.weight.add('Under 120 lbs');
+		if (weightValues.some(w => w >= 120 && w < 150)) filterData.weight.add('120-149 lbs');
+		if (weightValues.some(w => w >= 150 && w < 180)) filterData.weight.add('150-179 lbs');
+		if (weightValues.some(w => w >= 180 && w < 210)) filterData.weight.add('180-209 lbs');
+		if (weightValues.some(w => w >= 210)) filterData.weight.add('210+ lbs');
 
 		// Now generate the filter HTML using the complete dataset
 		generateFilterHTML(container, filterData);
@@ -140,18 +142,15 @@ window.generateProcedureFilterOptions = function() {
 		weight: new Set()
 	};
 
-	// Collect unique values from all cards
+	// First pass: collect actual values to determine which ranges have data
+	const ageValues = [];
+	const heightValues = [];
+	const weightValues = [];
+
 	cards.forEach(card => {
-		// Age ranges
+		// Collect raw values
 		const age = card.dataset.age;
-		if (age) {
-			const ageNum = parseInt(age);
-			if (ageNum < 30) filterData.age.add('Under 30');
-			else if (ageNum < 40) filterData.age.add('30-39');
-			else if (ageNum < 50) filterData.age.add('40-49');
-			else if (ageNum < 60) filterData.age.add('50-59');
-			else filterData.age.add('60+');
-		}
+		if (age) ageValues.push(parseInt(age));
 
 		// Gender
 		if (card.dataset.gender) {
@@ -163,43 +162,54 @@ window.generateProcedureFilterOptions = function() {
 			filterData.ethnicity.add(card.dataset.ethnicity);
 		}
 
-		// Height ranges (assuming cm)
+		// Height
 		const height = card.dataset.height;
 		if (height) {
 			const heightNum = parseInt(height);
-			const unit = card.dataset.heightUnit || 'cm';
+			const unit = card.dataset.heightUnit || 'in';
+			// Convert to inches for consistent comparison
 			if (unit === 'cm') {
-				if (heightNum < 160) filterData.height.add('Under 160cm');
-				else if (heightNum < 170) filterData.height.add('160-169cm');
-				else if (heightNum < 180) filterData.height.add('170-179cm');
-				else filterData.height.add('180cm+');
+				heightValues.push(Math.round(heightNum / 2.54));
 			} else {
-				// Handle feet/inches if needed
-				filterData.height.add(card.dataset.heightFull);
+				heightValues.push(heightNum);
 			}
 		}
 
-		// Weight ranges (assuming lbs)
+		// Weight
 		const weight = card.dataset.weight;
 		if (weight) {
 			const weightNum = parseInt(weight);
 			const unit = card.dataset.weightUnit || 'lbs';
-			if (unit === 'lbs' || unit === 'lb') {
-				if (weightNum < 120) filterData.weight.add('Under 120 lbs');
-				else if (weightNum < 150) filterData.weight.add('120-149 lbs');
-				else if (weightNum < 180) filterData.weight.add('150-179 lbs');
-				else if (weightNum < 210) filterData.weight.add('180-209 lbs');
-				else filterData.weight.add('210+ lbs');
-			} else if (unit === 'kg') {
-				if (weightNum < 55) filterData.weight.add('Under 55kg');
-				else if (weightNum < 70) filterData.weight.add('55-69kg');
-				else if (weightNum < 85) filterData.weight.add('70-84kg');
-				else filterData.weight.add('85kg+');
+			// Convert to lbs for consistent comparison
+			if (unit === 'kg') {
+				weightValues.push(Math.round(weightNum * 2.205));
 			} else {
-				filterData.weight.add(card.dataset.weightFull);
+				weightValues.push(weightNum);
 			}
 		}
 	});
+
+	// Only add age ranges that have actual data
+	if (ageValues.some(age => age >= 18 && age < 25)) filterData.age.add('18-24');
+	if (ageValues.some(age => age >= 25 && age < 35)) filterData.age.add('25-34');
+	if (ageValues.some(age => age >= 35 && age < 45)) filterData.age.add('35-44');
+	if (ageValues.some(age => age >= 45 && age < 55)) filterData.age.add('45-54');
+	if (ageValues.some(age => age >= 55 && age < 65)) filterData.age.add('55-64');
+	if (ageValues.some(age => age >= 65)) filterData.age.add('65+');
+
+	// Only add height ranges that have actual data (in inches)
+	if (heightValues.some(h => h < 60)) filterData.height.add('Under 5\'0"');
+	if (heightValues.some(h => h >= 60 && h < 64)) filterData.height.add('5\'0" - 5\'3"');
+	if (heightValues.some(h => h >= 64 && h < 68)) filterData.height.add('5\'4" - 5\'7"');
+	if (heightValues.some(h => h >= 68 && h < 72)) filterData.height.add('5\'8" - 5\'11"');
+	if (heightValues.some(h => h >= 72)) filterData.height.add('6\'0" and above');
+
+	// Only add weight ranges that have actual data (in lbs)
+	if (weightValues.some(w => w < 120)) filterData.weight.add('Under 120 lbs');
+	if (weightValues.some(w => w >= 120 && w < 150)) filterData.weight.add('120-149 lbs');
+	if (weightValues.some(w => w >= 150 && w < 180)) filterData.weight.add('150-179 lbs');
+	if (weightValues.some(w => w >= 180 && w < 210)) filterData.weight.add('180-209 lbs');
+	if (weightValues.some(w => w >= 210)) filterData.weight.add('210+ lbs');
 
 	// Generate the filter HTML
 	generateFilterHTML(container, filterData);
@@ -216,8 +226,8 @@ window.generateFilterHTML = function(container, filterData) {
 	if (filterData.age.size > 0) {
 		html += '<details class="brag-book-gallery-filter">';
 		html += '<summary class="brag-book-gallery-filter-label">';
-		html += '<span>Age</span>';
-		html += '<svg class="brag-book-gallery-filter-arrow" width="16" height="16" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">';
+		html += '<span class="brag-book-gallery-filter-label__name">Age</span>';
+		html += '<svg class="brag-book-gallery-filter-label__arrow" width="16" height="16" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">';
 		html += '<path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>';
 		html += '</svg>';
 		html += '</summary>';
@@ -237,8 +247,8 @@ window.generateFilterHTML = function(container, filterData) {
 	if (filterData.gender.size > 0) {
 		html += '<details class="brag-book-gallery-filter">';
 		html += '<summary class="brag-book-gallery-filter-label">';
-		html += '<span>Gender</span>';
-		html += '<svg class="brag-book-gallery-filter-arrow" width="16" height="16" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">';
+		html += '<span class="brag-book-gallery-filter-label__name">Gender</span>';
+		html += '<svg class="brag-book-gallery-filter-label__arrow" width="16" height="16" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">';
 		html += '<path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>';
 		html += '</svg>';
 		html += '</summary>';
@@ -259,8 +269,8 @@ window.generateFilterHTML = function(container, filterData) {
 	if (filterData.ethnicity.size > 0) {
 		html += '<details class="brag-book-gallery-filter">';
 		html += '<summary class="brag-book-gallery-filter-label">';
-		html += '<span>Ethnicity</span>';
-		html += '<svg class="brag-book-gallery-filter-arrow" width="16" height="16" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">';
+		html += '<span class="brag-book-gallery-filter-label__name">Ethnicity</span>';
+		html += '<svg class="brag-book-gallery-filter-label__arrow" width="16" height="16" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">';
 		html += '<path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>';
 		html += '</svg>';
 		html += '</summary>';
@@ -281,8 +291,8 @@ window.generateFilterHTML = function(container, filterData) {
 	if (filterData.height.size > 0) {
 		html += '<details class="brag-book-gallery-filter">';
 		html += '<summary class="brag-book-gallery-filter-label">';
-		html += '<span>Height</span>';
-		html += '<svg class="brag-book-gallery-filter-arrow" width="16" height="16" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">';
+		html += '<span class="brag-book-gallery-filter-label__name">Height</span>';
+		html += '<svg class="brag-book-gallery-filter-label__arrow" width="16" height="16" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">';
 		html += '<path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>';
 		html += '</svg>';
 		html += '</summary>';
@@ -302,8 +312,8 @@ window.generateFilterHTML = function(container, filterData) {
 	if (filterData.weight.size > 0) {
 		html += '<details class="brag-book-gallery-filter">';
 		html += '<summary class="brag-book-gallery-filter-label">';
-		html += '<span>Weight</span>';
-		html += '<svg class="brag-book-gallery-filter-arrow" width="16" height="16" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">';
+		html += '<span class="brag-book-gallery-filter-label__name">Weight</span>';
+		html += '<svg class="brag-book-gallery-filter-label__arrow" width="16" height="16" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">';
 		html += '<path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>';
 		html += '</svg>';
 		html += '</summary>';
@@ -385,6 +395,14 @@ window.applyProcedureFilters = function() {
 
 		// Update count
 		updateFilteredCount(cards.length, cards.length);
+
+		// Show Load More button if it exists since no filters are active
+		const loadMoreBtn = document.querySelector('[data-action="load-more"]');
+		const loadMoreContainer = loadMoreBtn ? (loadMoreBtn.closest('.brag-book-gallery-load-more-container') || loadMoreBtn.parentElement) : null;
+		if (loadMoreContainer && loadMoreBtn.hasAttribute('data-start-page')) {
+			loadMoreContainer.style.display = '';
+		}
+
 		return;
 	}
 
@@ -621,9 +639,23 @@ window.applyProcedureFilters = function() {
 		if (details) {
 			details.open = false;
 			// Add visual indicator if filters are active
-			const toggle = details.querySelector('.brag-book-gallery-filter-toggle');
+			const toggle = details.querySelector('.brag-book-gallery-filter-dropdown__toggle');
 			if (toggle) {
 				toggle.classList.toggle('has-active-filters', hasActiveFilters);
+			}
+		}
+
+		// Hide Load More button when filters are active or no results found
+		const loadMoreBtn = document.querySelector('[data-action="load-more"]');
+		const loadMoreContainer = loadMoreBtn ? (loadMoreBtn.closest('.brag-book-gallery-load-more-container') || loadMoreBtn.parentElement) : null;
+		if (loadMoreContainer) {
+			if (hasActiveFilters || visibleCount === 0) {
+				loadMoreContainer.style.display = 'none';
+			} else {
+				// Show it back if filters are cleared and there are more results to load
+				if (loadMoreBtn.hasAttribute('data-start-page')) {
+					loadMoreContainer.style.display = '';
+				}
 			}
 		}
 	}
@@ -711,12 +743,19 @@ window.loadFilteredCases = function(matchingCaseIds) {
 		// All matching cases are already loaded, just update the count
 		updateFilteredCount(visibleCount, window.bragBookCompleteDataset ? window.bragBookCompleteDataset.length : allCards.length);
 	}
+
+	// Hide Load More button when filters are active since we're showing all matching results
+	const loadMoreBtn = document.querySelector('[data-action="load-more"]');
+	const loadMoreContainer = loadMoreBtn ? (loadMoreBtn.closest('.brag-book-gallery-load-more-container') || loadMoreBtn.parentElement) : null;
+	if (loadMoreContainer) {
+		loadMoreContainer.style.display = 'none';
+	}
 };
 
 // Helper function to update the filtered count display
 window.updateFilteredCount = function(shown, total) {
 	// Update the count label
-	const countLabel = document.querySelector('.brag-book-gallery-count-label') ||
+	const countLabel = document.querySelector('.brag-book-gallery-favorite-count-label') ||
 	                   document.querySelector('.cases-count');
 	if (countLabel) {
 		countLabel.textContent = `Showing ${shown} of ${total}`;
@@ -748,7 +787,7 @@ window.updateFilteredCount = function(shown, total) {
 // Clear all procedure filters
 window.clearProcedureFilters = function() {
 	console.log('Clearing all procedure filters');
-	
+
 	const checkboxes = document.querySelectorAll('.brag-book-gallery-filter-option input');
 	checkboxes.forEach(checkbox => {
 		checkbox.checked = false;
@@ -776,31 +815,31 @@ window.clearProcedureFilters = function() {
 	};
 
 	// Update toggle button state
-	const toggle = document.querySelector('.brag-book-gallery-filter-toggle');
+	const toggle = document.querySelector('.brag-book-gallery-filter-dropdown__toggle');
 	if (toggle) {
 		toggle.classList.remove('has-active-filters');
 	}
-	
+
 	// Clear all filter badges from the DOM
-	const badgesContainer = document.getElementById('brag-book-gallery-filter-badges');
+	const badgesContainer = document.querySelector('[data-action="filter-badges"]');
 	if (badgesContainer) {
 		console.log('Clearing filter badges container');
 		badgesContainer.innerHTML = '';
 	}
-	
+
 	// Also remove any individual badges that might exist elsewhere
 	const allBadges = document.querySelectorAll('.brag-book-gallery-filter-badge');
 	allBadges.forEach(badge => {
 		console.log('Removing badge:', badge);
 		badge.remove();
 	});
-	
+
 	// Hide the Clear All button since no filters are active
-	const clearAllButton = document.getElementById('brag-book-gallery-clear-all');
+	const clearAllButton = document.querySelector('[data-action="clear-filters"]');
 	if (clearAllButton) {
 		clearAllButton.style.display = 'none';
 	}
-	
+
 	// Trigger any app-level badge updates if the app instance exists
 	if (window.bragBookGalleryApp && typeof window.bragBookGalleryApp.updateDemographicBadges === 'function') {
 		console.log('Calling app updateDemographicBadges with empty filters');
@@ -812,7 +851,7 @@ window.clearProcedureFilters = function() {
 			weight: []
 		});
 	}
-	
+
 	// Also call the global update function if it exists
 	if (typeof window.updateDemographicFilterBadges === 'function') {
 		console.log('Calling global updateDemographicFilterBadges with empty filters');
@@ -823,6 +862,13 @@ window.clearProcedureFilters = function() {
 			height: [],
 			weight: []
 		});
+	}
+
+	// Show Load More button again if it exists and has more pages
+	const loadMoreBtn = document.querySelector('[data-action="load-more"]');
+	const loadMoreContainer = loadMoreBtn ? (loadMoreBtn.closest('.brag-book-gallery-load-more-container') || loadMoreBtn.parentElement) : null;
+	if (loadMoreContainer && loadMoreBtn && loadMoreBtn.hasAttribute('data-start-page')) {
+		loadMoreContainer.style.display = '';
 	}
 };
 
@@ -1042,7 +1088,7 @@ window.loadMoreCases = function(button) {
 				// Update button for next load
 				// Check if we actually loaded any new cases or if there are more to load
 				const newCasesLoaded = data.data.casesLoaded || 0;
-				
+
 				if (data.data.hasMore && newCasesLoaded > 0) {
 					// Increment page by 1 since we load 1 page at a time
 					button.setAttribute('data-start-page', parseInt(startPage) + 1);
@@ -1060,7 +1106,7 @@ window.loadMoreCases = function(button) {
 				// Update the count display - only if we found the container
 				if (container) {
 					// Try multiple possible selectors for the count label
-					const countLabel = document.querySelector('.brag-book-gallery-count-label') ||
+					const countLabel = document.querySelector('.brag-book-gallery-favorite-count-label') ||
 					                   document.querySelector('.cases-count') ||
 					                   document.querySelector('[class*="count-label"]');
 					if (countLabel) {
@@ -1124,6 +1170,68 @@ window.bragBookSetImageAspectRatio = function(img) {
 	}
 };
 
+// Infinite scroll functionality
+window.initInfiniteScroll = function() {
+	// Check if infinite scroll is enabled
+	const infiniteScrollEnabled = window.bragBookGalleryConfig?.infiniteScroll === 'yes';
+	if (!infiniteScrollEnabled) {
+		return;
+	}
+
+	let isLoading = false;
+	let scrollTimeout;
+
+	const handleScroll = () => {
+		// Clear previous timeout
+		clearTimeout(scrollTimeout);
+
+		// Debounce scroll events
+		scrollTimeout = setTimeout(() => {
+			// Don't trigger if already loading
+			if (isLoading) return;
+
+			// Find the Load More button using data-component attribute
+			const loadMoreButton = document.querySelector('[data-action="load-more"]');
+			if (!loadMoreButton || loadMoreButton.disabled || loadMoreButton.style.display === 'none') {
+				return;
+			}
+
+			// Check if button's container is hidden
+			const buttonContainer = loadMoreButton.closest('.brag-book-gallery-load-more-container');
+			if (buttonContainer && buttonContainer.style.display === 'none') {
+				return;
+			}
+
+			// Calculate scroll position
+			const scrollPosition = window.innerHeight + window.scrollY;
+			const documentHeight = document.documentElement.offsetHeight;
+			const triggerPoint = documentHeight - 800; // Trigger 800px before bottom
+
+			// Check if we've scrolled far enough
+			if (scrollPosition >= triggerPoint) {
+				isLoading = true;
+
+				// Trigger the load more function
+				loadMoreButton.click();
+
+				// Reset loading flag after a delay
+				setTimeout(() => {
+					isLoading = false;
+				}, 1000);
+			}
+		}, 100); // 100ms debounce
+	};
+
+	// Add scroll event listener
+	window.addEventListener('scroll', handleScroll, { passive: true });
+
+	// Also check on resize
+	window.addEventListener('resize', handleScroll, { passive: true });
+
+	// Store reference for cleanup if needed
+	window.infiniteScrollHandler = handleScroll;
+};
+
 // Initialize app when DOM is ready
 let nudityManager; // Make it globally accessible for reset
 let phoneFormatter; // Make it globally accessible
@@ -1133,11 +1241,40 @@ document.addEventListener('DOMContentLoaded', () => {
 	nudityManager = new NudityWarningManager();
 	phoneFormatter = new PhoneFormatter();
 
-	// Apply saved grid preference if available
-	const savedColumns = localStorage.getItem('bragbook-grid-columns');
-	if (savedColumns) {
-		window.updateGridLayout(parseInt(savedColumns));
+	// Mark grid as initialized after initial load animations
+	const grid = document.querySelector('.brag-book-gallery-case-grid');
+	if (grid) {
+		setTimeout(() => {
+			grid.classList.add('grid-initialized');
+		}, 1000); // Wait for initial animations to complete
+
+		// Apply saved grid preference if available and on desktop
+		const isDesktop = window.innerWidth >= 1024;
+		if (isDesktop) {
+			const savedColumns = localStorage.getItem('bragbook-grid-columns');
+			if (savedColumns) {
+				const columns = parseInt(savedColumns);
+				grid.setAttribute('data-columns', columns);
+
+				// Update button states
+				const buttons = document.querySelectorAll('.brag-book-gallery-grid-btn');
+				buttons.forEach(btn => {
+					const btnCols = parseInt(btn.dataset.columns);
+					if (btnCols === columns) {
+						btn.classList.add('active');
+					} else {
+						btn.classList.remove('active');
+					}
+				});
+			} else {
+				// Default to 3 columns on desktop
+				grid.setAttribute('data-columns', '3');
+			}
+		}
 	}
+
+	// Initialize infinite scroll if enabled
+	initInfiniteScroll();
 });
 
 // Initialize on page load
@@ -1156,7 +1293,7 @@ document.addEventListener('DOMContentLoaded', function() {
 		if (wrapper && wrapper.dataset.initialCaseId) {
 			const caseId = wrapper.dataset.initialCaseId;
 			const procedureSlug = window.location.pathname.split('/').filter(s => s)[1] || '';
-			
+
 			// Try to find the case card to get procedure IDs
 			let procedureIds = '';
 			setTimeout(() => {
@@ -1164,7 +1301,7 @@ document.addEventListener('DOMContentLoaded', function() {
 				if (caseCard && caseCard.dataset.procedureIds) {
 					procedureIds = caseCard.dataset.procedureIds;
 				}
-				
+
 				console.log('Auto-loading case on page load:', caseId, 'for procedure:', procedureSlug, 'with procedure IDs:', procedureIds);
 				window.loadCaseDetails(caseId, '', procedureSlug, procedureIds);
 			}, 200);
@@ -1186,7 +1323,7 @@ document.addEventListener('toggle', function(e) {
 // Close details when clicking outside
 document.addEventListener('click', function(e) {
 	const details = document.getElementById('procedure-filters-details');
-	const panel = document.querySelector('.brag-book-gallery-filter-panel');
+	const panel = document.querySelector('.brag-book-gallery-filter-dropdown__panel');
 
 	if (details && details.open && panel) {
 		if (!details.contains(e.target) && !panel.contains(e.target)) {

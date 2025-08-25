@@ -41,7 +41,7 @@
 .brag-book-gallery-log-tab-nav a.active {
 	color: var(--primary-DEFAULT);
 	border-block-end-color: var(--primary-DEFAULT);
-	background-color: var(--wp--custom--brag-book-gallery--color--white);
+	background-color: var(--wp--custom--brag-book-gallery--color--white,#FFF);
 }
 
 .brag-book-gallery-log-tab-content {

@@ -1,0 +1,139 @@
+name: Build and Release Plugin
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+      - '*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., 3.0.1)'
+        required: true
+        type: string
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Build assets
+      run: |
+        npm run clean
+        npm run build
+    
+    - name: Get version
+      id: get_version
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          VERSION="${{ github.event.inputs.version }}"
+        else
+          VERSION=${GITHUB_REF#refs/tags/}
+          VERSION=${VERSION#v}
+        fi
+        echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+        echo "Building version: $VERSION"
+    
+    - name: Update version in plugin files
+      run: |
+        VERSION="${{ steps.get_version.outputs.VERSION }}"
+        # Update version in main plugin file
+        sed -i "s/Version: .*/Version: $VERSION/" brag-book-gallery.php
+        # Update version in readme.txt if it exists
+        if [ -f "readme.txt" ]; then
+          sed -i "s/Stable tag: .*/Stable tag: $VERSION/" readme.txt
+        fi
+        # Update version in package.json
+        sed -i "s/\"version\": \".*\"/\"version\": \"$VERSION\"/" package.json
+    
+    - name: Create distribution
+      run: |
+        # Create dist directory
+        mkdir -p dist/brag-book-gallery
+        
+        # Copy files excluding those in .distignore
+        rsync -av --exclude-from=.distignore ./ dist/brag-book-gallery/
+        
+        # Remove any remaining dev files
+        find dist/brag-book-gallery -name "*.scss" -type f -delete
+        find dist/brag-book-gallery -name "*.map" -type f -delete
+        find dist/brag-book-gallery -name ".DS_Store" -type f -delete
+        find dist/brag-book-gallery -type d -name ".git" -exec rm -rf {} + 2>/dev/null || true
+        find dist/brag-book-gallery -type d -name "node_modules" -exec rm -rf {} + 2>/dev/null || true
+        find dist/brag-book-gallery -type d -name "src" -exec rm -rf {} + 2>/dev/null || true
+        find dist/brag-book-gallery -type d -name "tests" -exec rm -rf {} + 2>/dev/null || true
+        find dist/brag-book-gallery -type d -name ".github" -exec rm -rf {} + 2>/dev/null || true
+    
+    - name: Create plugin zip
+      run: |
+        cd dist
+        zip -r brag-book-gallery.zip brag-book-gallery/ -x "*.DS_Store" -x "*__MACOSX*"
+        mv brag-book-gallery.zip ../
+        cd ..
+    
+    - name: Create release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ steps.get_version.outputs.VERSION }}
+        release_name: BRAGBook Gallery v${{ steps.get_version.outputs.VERSION }}
+        body: |
+          ## 🎉 BRAGBook Gallery v${{ steps.get_version.outputs.VERSION }}
+          
+          ### Installation
+          1. Download `brag-book-gallery.zip` from the assets below
+          2. In WordPress admin, go to Plugins → Add New → Upload Plugin
+          3. Choose the downloaded zip file and click "Install Now"
+          4. Activate the plugin
+          
+          ### Update Notes
+          - The plugin will automatically check for updates from this repository
+          - You can update directly from your WordPress admin when new versions are available
+          
+          ### What's Changed
+          <!-- Add your release notes here -->
+          - Various improvements and bug fixes
+          
+          ### Compatibility
+          - WordPress: 6.0 or higher
+          - PHP: 8.2 or higher
+          
+          ---
+          
+          **Full Changelog**: https://github.com/${{ github.repository }}/compare/v3.0.0...v${{ steps.get_version.outputs.VERSION }}
+        draft: false
+        prerelease: false
+    
+    - name: Upload release asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./brag-book-gallery.zip
+        asset_name: brag-book-gallery.zip
+        asset_content_type: application/zip
+    
+    - name: Upload source code
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./dist/brag-book-gallery/brag-book-gallery.php
+        asset_name: brag-book-gallery.php
+        asset_content_type: text/plain

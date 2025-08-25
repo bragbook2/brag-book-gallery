@@ -78,18 +78,17 @@ class Settings_Default extends Settings_Base {
 			$this->save();
 		}
 
-		// Get current settings
-		$landing_text            = get_option( 'brag_book_gallery_landing_page_text', '' );
+		// Get current settings with default value
+		$default_landing_text = '<h2>Go ahead, browse our before & afters... visualize your possibilities.</h2>' . "\n" . 
+		                       '<p>Our gallery is full of our real patients. Keep in mind results vary.</p>';
+		$landing_text            = get_option( 'brag_book_gallery_landing_page_text', $default_landing_text );
 		// Use helper to get the first slug (handles array/string formats)
-		$combine_slug            = \BRAGBookGallery\Includes\Core\Slug_Helper::get_first_gallery_page_slug( '' );
-		$combine_seo_title       = get_option( 'brag_book_gallery_combine_seo_page_title', '' );
-		$combine_seo_description = get_option( 'brag_book_gallery_combine_seo_page_description', '' );
+		$slug            = \BRAGBookGallery\Includes\Core\Slug_Helper::get_first_gallery_page_slug( '' );
+		$seo_title       = get_option( 'brag_book_gallery_seo_page_title', '' );
+		$seo_description = get_option( 'brag_book_gallery_seo_page_description', '' );
 		$ajax_timeout            = get_option( 'brag_book_gallery_ajax_timeout', 30 );
 		$cache_duration          = get_option( 'brag_book_gallery_cache_duration', 300 );
 		$lazy_load              = get_option( 'brag_book_gallery_lazy_load', 'yes' );
-		$per_page               = get_option( 'brag_book_gallery_per_page', 12 );
-		$default_filter         = get_option( 'brag_book_gallery_default_filter', 'all' );
-		$image_display_mode     = get_option( 'brag_book_gallery_image_display_mode', 'single' );
 
 		$this->render_header();
 
@@ -115,7 +114,7 @@ class Settings_Default extends Settings_Base {
 				<table class="form-table brag-book-gallery-form-table" role="presentation">
 				<tr>
 					<th scope="row">
-						<label for="landing_page_text">
+						<label for="brag_book_gallery_landing_page_text">
 							<?php esc_html_e( 'Landing Page Text', 'brag-book-gallery' ); ?>
 						</label>
 					</th>
@@ -123,9 +122,9 @@ class Settings_Default extends Settings_Base {
 						<?php
 						wp_editor(
 							$landing_text,
-							'landing_page_text',
+							'brag_book_gallery_landing_page_text',
 							array(
-								'textarea_name' => 'landing_page_text',
+								'textarea_name' => 'brag_book_gallery_landing_page_text',
 								'textarea_rows' => 10,
 								'media_buttons' => true,
 								'teeny'         => false,
@@ -177,7 +176,7 @@ class Settings_Default extends Settings_Base {
 							<input type="text"
 							       id="brag_book_gallery_page_slug"
 							       name="brag_book_gallery_page_slug"
-							       value="<?php echo esc_attr( $combine_slug ); ?>"
+							       value="<?php echo esc_attr( $slug ); ?>"
 							       class="regular-text"
 							       placeholder="<?php esc_attr_e( 'e.g., gallery, portfolio, before-after', 'brag-book-gallery' ); ?>">
 							<button type="button"
@@ -207,15 +206,15 @@ class Settings_Default extends Settings_Base {
 				<table class="form-table brag-book-gallery-form-table" role="presentation">
 				<tr>
 					<th scope="row">
-						<label for="combine_seo_title">
+						<label for="brag_book_gallery_seo_title">
 							<?php esc_html_e( 'SEO Page Title', 'brag-book-gallery' ); ?>
 						</label>
 					</th>
 					<td>
 						<input type="text"
-						       id="combine_seo_title"
-						       name="combine_seo_title"
-						       value="<?php echo esc_attr( $combine_seo_title ); ?>"
+						       id="brag_book_gallery_seo_title"
+						       name="brag_book_gallery_seo_title"
+						       value="<?php echo esc_attr( $seo_title ); ?>"
 						       class="large-text"
 						       maxlength="60">
 						<div class="character-count">
@@ -232,16 +231,16 @@ class Settings_Default extends Settings_Base {
 
 				<tr>
 					<th scope="row">
-						<label for="combine_seo_description">
+						<label for="seo_description">
 							<?php esc_html_e( 'SEO Meta Description', 'brag-book-gallery' ); ?>
 						</label>
 					</th>
 					<td>
-						<textarea id="combine_seo_description"
-						          name="combine_seo_description"
+						<textarea id="seo_description"
+						          name="seo_description"
 						          rows="3"
 						          class="large-text"
-						          maxlength="160"><?php echo esc_textarea( $combine_seo_description ); ?></textarea>
+						          maxlength="160"><?php echo esc_textarea( $seo_description ); ?></textarea>
 						<div class="character-count">
 							<span id="desc-char-count">0</span> / 160 <?php esc_html_e( 'characters', 'brag-book-gallery' ); ?>
 							<span id="desc-char-warning" class="warning-text" style="display: none;">
@@ -261,20 +260,20 @@ class Settings_Default extends Settings_Base {
 					<div class="serp-preview">
 						<div class="serp-title" id="serp-title">
 							<?php
-							if ( ! empty( $combine_seo_title ) ) {
-								echo esc_html( $combine_seo_title );
+							if ( ! empty( $seo_title ) ) {
+								echo esc_html( $seo_title );
 							} else {
 								echo esc_html( get_bloginfo( 'name' ) . ' - Gallery' );
 							}
 							?>
 						</div>
 						<div class="serp-url">
-							<?php echo esc_url( home_url( '/' . ( $combine_slug ?: 'gallery' ) . '/' ) ); ?>
+							<?php echo esc_url( home_url( '/' . ( $slug ?: 'gallery' ) . '/' ) ); ?>
 						</div>
 						<div class="serp-description" id="serp-description">
 							<?php
-							if ( ! empty( $combine_seo_description ) ) {
-								echo esc_html( $combine_seo_description );
+							if ( ! empty( $seo_description ) ) {
+								echo esc_html( $seo_description );
 							} else {
 								echo esc_html( 'View our stunning gallery of before and after transformations. Browse through real patient results and see the amazing outcomes we achieve.' );
 							}
@@ -383,8 +382,8 @@ class Settings_Default extends Settings_Base {
 
 				// DOM element references
 				const elements = {
-					titleInput: document.getElementById('combine_seo_title'),
-					descInput: document.getElementById('combine_seo_description'),
+					titleInput: document.getElementById('brag_book_gallery_seo_title'),
+					descInput: document.getElementById('brag_book_gallery_seo_description'),
 					titleCount: document.getElementById('title-char-count'),
 					descCount: document.getElementById('desc-char-count'),
 					titleWarning: document.getElementById('title-char-warning'),
@@ -689,77 +688,6 @@ class Settings_Default extends Settings_Base {
 				</table>
 			</div>
 
-			<div class="brag-book-gallery-section">
-				<h2><?php esc_html_e( 'Display Settings', 'brag-book-gallery' ); ?></h2>
-				<table class="form-table brag-book-gallery-form-table" role="presentation">
-				<tr>
-					<th scope="row">
-						<label for="per_page">
-							<?php esc_html_e( 'Items Per Page', 'brag-book-gallery' ); ?>
-						</label>
-					</th>
-					<td>
-						<input type="number"
-						       id="per_page"
-						       name="per_page"
-						       value="<?php echo esc_attr( $per_page ); ?>"
-						       min="6"
-						       max="48"
-						       step="6"
-						       class="small-text">
-						<p class="description">
-							<?php esc_html_e( 'Number of gallery items to display per page.', 'brag-book-gallery' ); ?>
-						</p>
-					</td>
-				</tr>
-
-				<tr>
-					<th scope="row">
-						<label for="default_filter">
-							<?php esc_html_e( 'Default Filter', 'brag-book-gallery' ); ?>
-						</label>
-					</th>
-					<td>
-						<select id="default_filter" name="default_filter">
-							<option value="all" <?php selected( $default_filter, 'all' ); ?>>
-								<?php esc_html_e( 'All Categories', 'brag-book-gallery' ); ?>
-							</option>
-							<option value="popular" <?php selected( $default_filter, 'popular' ); ?>>
-								<?php esc_html_e( 'Popular', 'brag-book-gallery' ); ?>
-							</option>
-							<option value="recent" <?php selected( $default_filter, 'recent' ); ?>>
-								<?php esc_html_e( 'Most Recent', 'brag-book-gallery' ); ?>
-							</option>
-						</select>
-						<p class="description">
-							<?php esc_html_e( 'Default filter to apply when gallery loads.', 'brag-book-gallery' ); ?>
-						</p>
-					</td>
-				</tr>
-
-				<tr>
-					<th scope="row">
-						<?php esc_html_e( 'Before & After Mode', 'brag-book-gallery' ); ?>
-					</th>
-					<td>
-						<label class="brag-book-toggle-switch">
-							<input type="checkbox"
-								   id="brag_book_gallery_image_display_mode"
-								   name="image_display_mode"
-								   value="before_after"
-								   <?php checked( $image_display_mode, 'before_after' ); ?> />
-							<span class="brag-book-toggle-slider"></span>
-							<span class="brag-book-toggle-label">
-								<?php esc_html_e( 'Enable Before & After Images', 'brag-book-gallery' ); ?>
-							</span>
-						</label>
-						<p class="description">
-							<?php esc_html_e( 'When enabled, shows before and after comparison images. When disabled, shows a single post-processed image.', 'brag-book-gallery' ); ?>
-						</p>
-					</td>
-				</tr>
-				</table>
-			</div>
 
 
 			<div class="brag-book-gallery-actions">
@@ -833,9 +761,9 @@ class Settings_Default extends Settings_Base {
 		}
 
 		// Save landing page text
-		if ( isset( $_POST['landing_page_text'] ) ) {
+		if ( isset( $_POST['brag_book_gallery_landing_page_text'] ) ) {
 			// Clean escaped quotes from WYSIWYG editor before saving
-			$landing_text = $_POST['landing_page_text'];
+			$landing_text = $_POST['brag_book_gallery_landing_page_text'];
 			$landing_text = str_replace( '\"', '"', $landing_text );
 			$landing_text = str_replace( "\'", "'", $landing_text );
 			$landing_text = stripslashes( $landing_text );
@@ -873,6 +801,27 @@ class Settings_Default extends Settings_Base {
 					$page_id = wp_insert_post( $page_data );
 
 					if ( ! is_wp_error( $page_id ) ) {
+						// Add SEO meta fields if they exist
+						$seo_title = get_option( 'brag_book_gallery_seo_page_title', '' );
+						$seo_description = get_option( 'brag_book_gallery_seo_page_description', '' );
+
+						if ( ! empty( $seo_title ) ) {
+							update_post_meta( $page_id, '_yoast_wpseo_title', $seo_title );
+							update_post_meta( $page_id, '_aioseo_title', $seo_title );
+							update_post_meta( $page_id, '_seopress_titles_title', $seo_title );
+							update_post_meta( $page_id, '_rank_math_title', $seo_title );
+						}
+
+						if ( ! empty( $seo_description ) ) {
+							update_post_meta( $page_id, '_yoast_wpseo_metadesc', $seo_description );
+							update_post_meta( $page_id, '_aioseo_description', $seo_description );
+							update_post_meta( $page_id, '_seopress_titles_desc', $seo_description );
+							update_post_meta( $page_id, '_rank_math_description', $seo_description );
+						}
+
+						// Flush rewrite rules after creating gallery page
+						flush_rewrite_rules();
+
 						$this->add_notice(
 							sprintf(
 								__( 'Gallery page "%s" has been created successfully.', 'brag-book-gallery' ),
@@ -903,12 +852,12 @@ class Settings_Default extends Settings_Base {
 			}
 		}
 
-		if ( isset( $_POST['combine_seo_title'] ) ) {
-			update_option( 'brag_book_gallery_combine_seo_page_title', sanitize_text_field( $_POST['combine_seo_title'] ) );
+		if ( isset( $_POST['brag_book_gallery_seo_title'] ) ) {
+			update_option( 'brag_book_gallery_seo_page_title', sanitize_text_field( $_POST['brag_book_gallery_seo_title'] ) );
 		}
 
-		if ( isset( $_POST['combine_seo_description'] ) ) {
-			update_option( 'brag_book_gallery_combine_seo_page_description', sanitize_textarea_field( $_POST['combine_seo_description'] ) );
+		if ( isset( $_POST['brag_book_gallery_seo_description'] ) ) {
+			update_option( 'brag_book_gallery_seo_page_description', sanitize_textarea_field( $_POST['brag_book_gallery_seo_description'] ) );
 		}
 
 		// Save performance settings
@@ -923,22 +872,6 @@ class Settings_Default extends Settings_Base {
 		$lazy_load = isset( $_POST['lazy_load'] ) && $_POST['lazy_load'] === 'yes' ? 'yes' : 'no';
 		update_option( 'brag_book_gallery_lazy_load', $lazy_load );
 
-		// Save display settings
-		if ( isset( $_POST['per_page'] ) ) {
-			update_option( 'brag_book_gallery_per_page', absint( $_POST['per_page'] ) );
-		}
-
-		if ( isset( $_POST['default_filter'] ) ) {
-			$valid_filters = array( 'all', 'popular', 'recent' );
-			$filter = in_array( $_POST['default_filter'], $valid_filters, true )
-				? $_POST['default_filter']
-				: 'all';
-			update_option( 'brag_book_gallery_default_filter', $filter );
-		}
-
-		// Save image display mode
-		$image_mode = isset( $_POST['image_display_mode'] ) && $_POST['image_display_mode'] === 'before_after' ? 'before_after' : 'single';
-		update_option( 'brag_book_gallery_image_display_mode', $image_mode );
 
 		$this->add_notice( __( 'Default mode settings saved successfully.', 'brag-book-gallery' ) );
 		settings_errors( $this->page_slug );

@@ -1,27 +1,23 @@
 # A set of files you probably don't want in your WordPress.org distribution
+
+# Development files
+node_modules/
+src/
+tests/
+vendor/
+
+# Build configuration
 .babelrc
-.deployignore
-.distignore
-.editorconfig
-.eslintignore
-.eslintrc
-.git
-.gitignore
-.github
-.gitlab-ci.yml
-.travis.yml
-.DS_Store
-Thumbs.db
-behat.yml
-bitbucket-pipelines.yml
-bin
-.circleci/config.yml
+babel.config.js
+webpack.config.js
 composer.json
 composer.lock
-dependencies.yml
-Gruntfile.js
 package.json
 package-lock.json
+yarn.lock
+Gruntfile.js
+
+# Testing configuration
 phpunit.xml
 phpunit.xml.dist
 multisite.xml
@@ -30,13 +26,76 @@ multisite.xml.dist
 phpcs.xml
 .phpcs.xml.dist
 phpcs.xml.dist
+phpstan.neon
+phpstan.neon.dist
+behat.yml
+
+# Documentation (keep basic readme.txt for WordPress)
 README.md
-webpack.config.js
+CHANGELOG.md
+CONTRIBUTING.md
+CLAUDE.md
+docs/
+
+# Version control
+.git/
+.gitignore
+.gitattributes
+.github/
+.gitlab-ci.yml
+.travis.yml
+.circleci/
+bitbucket-pipelines.yml
+
+# Editor files
+.editorconfig
+.eslintignore
+.eslintrc
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+.distignore
+.deployignore
+bin/
+build/
+dist/
 wp-cli.local.yml
-yarn.lock
-tests
-vendor
-node_modules
+dependencies.yml
+
+# Temporary files
+*.log
 *.sql
 *.tar.gz
 *.zip
+*.tmp
+*.bak
+*.cache
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Source files (keep compiled assets)
+*.scss
+*.sass
+*.map
+*.ts
+*.tsx
+
+# Development scripts
+scripts/
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Local configuration
+.env
+.env.local
+.env.*.local
+config.local.php

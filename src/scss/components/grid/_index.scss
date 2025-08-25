@@ -5,24 +5,60 @@
 // -----------------------------------------------------------------------------
 
 .brag-book-gallery-case-grid {
-	--columns: auto-fit;
-
 	display: grid;
-	grid-template-columns: repeat(var(--columns), minmax(240px, 1fr));
-	gap: 2rem;
+	gap: 1.5rem;
+	// Mobile first responsive design
+	grid-template-columns: 1fr; // Mobile: 1 column
+	grid-auto-rows: auto; // Allow rows to size based on content
+	grid-auto-flow: dense; // Fill in gaps in the grid
+	align-items: start; // Align items to the top of their grid cell
 
-	@media(min-width: 768px) {
+	// Smooth transition for grid template changes
+	transition: grid-template-columns 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+
+	// Small screens (landscape phones)
+	@media (min-width: 576px) {
+		grid-template-columns: repeat(2, 1fr); // 2 columns
+		gap: 1.75rem;
+	}
+
+	// Tablets and up
+	@media (min-width: 768px) {
+		// Default to 2 columns on tablets
+		grid-template-columns: repeat(2, 1fr);
+		gap: 2rem;
+
+		// Allow manual override with data attribute
 		&[data-columns="2"] {
-			--columns: 2;
+			grid-template-columns: repeat(2, 1fr);
 		}
 
 		&[data-columns="3"] {
-			--columns: 3;
+			grid-template-columns: repeat(2, 1fr); // Keep 2 columns at 768px even if data-columns="3"
+		}
+	}
+
+	// Desktop (changed from 1024px to 1280px for 3 columns)
+	@media (min-width: 1280px) {
+		// Default to 3 columns on desktop
+		grid-template-columns: repeat(3, 1fr);
+
+		&[data-columns="2"] {
+			grid-template-columns: repeat(2, 1fr);
 		}
 
-		grid-template-columns:repeat(var(--columns), 1fr) !important;
+		&[data-columns="3"] {
+			grid-template-columns: repeat(3, 1fr);
+		}
+	}
+	
+	// Make case description/notes span full width
+	.brag-book-gallery-case-description,
+	.brag-book-gallery-case-notes {
+		grid-column: 1 / -1; // Span all columns
 	}
 }
+
 
 .brag-book-gallery-grid-label {
 	font-size: var(--wp--custom--brag-book-gallery--text-xs);
@@ -33,35 +69,35 @@
 .brag-book-gallery-grid-selector {
 	display: none;
 	align-items: center;
-	gap: calc( 3 * var(--wp--custom--brag-book-gallery--spacer) );
+	gap: var(--wp--custom--brag-book-gallery--spacer--md,12px);
 
-	@media (min-width: 1024px) {
+	@media (min-width: 1280px) {
 		display: flex;
 	}
 }
 
 .brag-book-gallery-grid-buttons {
 	display: flex;
-	gap: calc( 2 * var(--wp--custom--brag-book-gallery--spacer) );
+	gap: var(--wp--custom--brag-book-gallery--spacer--sm, 8px );
 }
 
 .brag-book-gallery-grid-btn {
 	display: inline-flex;
 	align-items: center;
-	gap: var(--wp--custom--brag-book-gallery--spacer);
-	padding: calc( 2 * var(--wp--custom--brag-book-gallery--spacer) );
+	gap: var(--wp--custom--brag-book-gallery--spacer,4px);
+	padding: var(--wp--custom--brag-book-gallery--spacer--sm, 8px );
 	background: var(--wp--custom--brag-book-gallery--color--lightest-grey);
 	color: var(--wp--custom--brag-book-gallery--color--grey);
 	border: 1px solid var(--gray-100);
-	border-radius: var(--wp--custom--brag-book-gallery--rounded);
+	border-radius: var(--wp--custom--brag-book-gallery--rounded,4px);
 	font-size: var(--wp--custom--brag-book-gallery--text-sm);
 	cursor: pointer;
 	transition: var(--wp--custom--brag-book-gallery--transition);
 	box-shadow: var(--wp--custom--brag-book-gallery--shadow-sm);
 
 	svg {
-		width: calc( 4 * var(--wp--custom--brag-book-gallery--spacer) );
-		height: calc( 4 * var(--wp--custom--brag-book-gallery--spacer) );
+		width: var(--wp--custom--brag-book-gallery--spacer--lg,16px);
+		height: var(--wp--custom--brag-book-gallery--spacer--lg,16px);
 	}
 
 	&:hover {
@@ -72,7 +108,7 @@
 
 	&.active {
 		background: var(--wp--custom--brag-book-gallery--color--black);
-		color: var(--wp--custom--brag-book-gallery--color--white);
+		color: var(--wp--custom--brag-book-gallery--color--white,#FFF);
 		border-color: var(--wp--custom--brag-book-gallery--color--black);
 		box-shadow: var(--wp--custom--brag-book-gallery--shadow-lg);
 	}

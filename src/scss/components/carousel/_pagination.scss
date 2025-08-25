@@ -8,6 +8,6 @@
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	gap: calc( 2 * var(--wp--custom--brag-book-gallery--spacer) );
-	margin-block-start: calc( 4 * var(--wp--custom--brag-book-gallery--spacer) );
+	gap: var(--wp--custom--brag-book-gallery--spacer--sm, 8px );
+	margin-block-start: var(--wp--custom--brag-book-gallery--spacer--lg,16px);
 }

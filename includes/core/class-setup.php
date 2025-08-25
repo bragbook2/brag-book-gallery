@@ -203,7 +203,7 @@ final class Setup {
 				'admin_init',
 				callback: array( $this, 'admin_init' )
 			);
-			
+
 			// Add plugin action links (Settings link on plugins page)
 			$plugin_basename = plugin_basename( self::get_plugin_file() );
 			add_filter(
@@ -211,7 +211,7 @@ final class Setup {
 				array( $this, 'add_plugin_action_links' )
 			);
 		}
-		
+
 		// Add LiteSpeed cache exclusions
 		$this->setup_litespeed_exclusions();
 	}
@@ -243,6 +243,9 @@ final class Setup {
 
 		// Initialize migration components.
 		$this->services['migration_manager'] = new Migration_Manager();
+
+		// Initialize SEO Manager (handles SEO optimization and plugin detection).
+		$this->services['seo_manager'] = new \BRAGBookGallery\Includes\SEO\SEO_Manager();
 
 		// Initialize admin settings manager (handles all settings pages).
 		$this->services['settings_manager'] = new Settings_Manager();
@@ -326,10 +329,10 @@ final class Setup {
 			esc_url( admin_url( 'admin.php?page=brag-book-gallery-settings' ) ),
 			esc_html__( 'Settings', 'brag-book-gallery' )
 		);
-		
+
 		// Add to beginning of links array
 		array_unshift( $links, $settings_link );
-		
+
 		return $links;
 	}
 
@@ -346,7 +349,7 @@ final class Setup {
 	private function setup_rewrite_rules(): void {
 		// Rewrite rules are handled by the Shortcodes class
 		// This method is kept for potential future manual flush operations
-		
+
 		// Flush rules if needed (check option flag).
 		if ( get_option( 'brag_book_gallery_flush_rewrite_rules' ) ) {
 			flush_rewrite_rules();
@@ -532,12 +535,12 @@ final class Setup {
 			default_value: array()
 		);
 
-		$combine_page_id = (int) get_option(
+		$page_id = (int) get_option(
 			'brag_book_gallery_page_id',
 			default_value: 0
 		);
 
-		return in_array( $page_id, $gallery_page_ids, true ) || $page_id === $combine_page_id;
+		return in_array( $page_id, $gallery_page_ids, true ) || $page_id === $page_id;
 	}
 
 	/**
@@ -630,7 +633,7 @@ final class Setup {
 		if ( ! defined( 'LSCWP_V' ) ) {
 			return;
 		}
-		
+
 		// Add AJAX actions to LiteSpeed no-cache list
 		add_filter( 'litespeed_cache_ajax_actions_no_cache', function( $actions ) {
 			$bragbook_actions = [
@@ -643,17 +646,17 @@ final class Setup {
 				'brag_book_gallery_clear_cache',
 				'brag_book_flush_rewrite_rules',
 			];
-			
+
 			return array_merge( $actions, $bragbook_actions );
 		} );
-		
+
 		// Exclude gallery pages from caching
 		add_action( 'init', function() {
 			if ( ! is_admin() ) {
 				// Check if we're on a gallery page
 				$current_url = $_SERVER['REQUEST_URI'] ?? '';
 				$gallery_slugs = get_option( 'brag_book_gallery_page_slug', [] );
-				
+
 				foreach ( (array) $gallery_slugs as $slug ) {
 					if ( ! empty( $slug ) && strpos( $current_url, $slug ) !== false ) {
 						// Tell LiteSpeed not to cache this page
@@ -663,20 +666,20 @@ final class Setup {
 				}
 			}
 		}, 1 );
-		
+
 		// Add query string exclusions
 		add_filter( 'litespeed_cache_qs_blacklist', function( $qs ) {
 			$bragbook_qs = [
 				'filter_procedure',
-				'procedure_title', 
+				'procedure_title',
 				'case_id',
 				'filter_category',
 				'favorites_section',
 			];
-			
+
 			return array_merge( $qs, $bragbook_qs );
 		} );
-		
+
 		// Disable cache for REST API endpoints
 		add_filter( 'litespeed_cache_rest_api_cache', function( $cache, $request_route ) {
 			if ( strpos( $request_route, 'brag-book-gallery' ) !== false ) {
@@ -754,7 +757,7 @@ final class Setup {
 		if ( isset( $this->services['database'] ) ) {
 			$this->services['database']->create_tables();
 		}
-		
+
 		do_action( 'brag_book_gallery_create_tables' );
 	}
 
