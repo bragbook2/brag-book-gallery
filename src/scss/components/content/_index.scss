@@ -9,6 +9,10 @@
 	line-height: 1.25;
 	margin-block: 0 var(--wp--custom--brag-book-gallery--spacer--md,12px) !important;
 
+	strong {
+		font-weight: var(--wp--custom--brag-book-gallery--font-weight--semibold);
+	}
+
 	@media (min-width: 768px) {
 		font-size: var(--wp--custom--brag-book-gallery--text-4xl) !important;
 	}
