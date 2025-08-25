@@ -7,7 +7,7 @@
 .brag-book-gallery-dialog {
 	padding: 0;
 	border: none;
-	border-radius: var(--wp--custom--brag-book-gallery--spacer-md);
+	border-radius: var(--wp--custom--brag-book-gallery--spacer--md);
 	box-shadow: var(--shadow-xl);
 	max-width: 500px;
 	width: 90%;
@@ -105,5 +105,5 @@
 	font-size: var(--wp--custom--brag-book-gallery--text-sm);
 	line-height: 1.5;
 	color: var(--wp--custom--brag-book-gallery--color--grey);
-	margin-bottom: var(--wp--custom--brag-book-gallery--spacer-2xl)
+	margin-bottom: var(--wp--custom--brag-book-gallery--spacer--2xl)
 }

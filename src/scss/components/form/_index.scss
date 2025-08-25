@@ -54,8 +54,8 @@
 }
 
 .brag-book-gallery-form-message {
-	padding: var(--wp--custom--brag-book-gallery--spacer-lg);
-	border-radius: var(--wp--custom--brag-book-gallery--spacer-sm);
+	padding: var(--wp--custom--brag-book-gallery--spacer--lg);
+	border-radius: var(--wp--custom--brag-book-gallery--spacer--sm);
 	margin-bottom: var(--wp--custom--brag-book-gallery--xl);
 	font-size: var(--wp--custom--brag-book-gallery--text-sm);
 	line-height: 1.5;
@@ -90,7 +90,7 @@
 	display: inline-block;
 	width: var(--wp--custom--brag-book-gallery--xl);
 	height: var(--wp--custom--brag-book-gallery--xl);
-	margin-right: var(--wp--custom--brag-book-gallery--spacer-sm);
+	margin-right: var(--wp--custom--brag-book-gallery--spacer--sm);
 	background-color: #22c55e;
 	color: #fff;
 	border-radius: 50%;
@@ -111,7 +111,7 @@
 	display: inline-block;
 	width: var(--wp--custom--brag-book-gallery--xl);
 	height: var(--wp--custom--brag-book-gallery--xl);
-	margin-right: var(--wp--custom--brag-book-gallery--spacer-sm);
+	margin-right: var(--wp--custom--brag-book-gallery--spacer--sm);
 	background-color: #ef4444;
 	color: #fff;
 	border-radius: 50%;
@@ -134,9 +134,9 @@
 // Success and error messages in favorites form
 .brag-book-gallery-form-success,
 .brag-book-gallery-form-error {
-	padding: var(--wp--custom--brag-book-gallery--spacer-md) var(--wp--custom--brag-book-gallery--spacer-lg);
+	padding: var(--wp--custom--brag-book-gallery--spacer--md) var(--wp--custom--brag-book-gallery--spacer--lg);
 	border-radius: var(--wp--custom--brag-book-gallery--rounded);
-	margin-top: var(--wp--custom--brag-book-gallery--spacer-lg);
+	margin-top: var(--wp--custom--brag-book-gallery--spacer--lg);
 	font-size: var(--wp--custom--brag-book-gallery--text-sm);
 	line-height: 1.5;
 	animation: slideDown 0.3s ease-out;

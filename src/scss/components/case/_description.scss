@@ -7,7 +7,7 @@
 .brag-book-gallery-case-description,
 .brag-book-gallery-case-notes {
 	background: var(--wp--custom--brag-book-gallery--color--white);
-	padding: var(--wp--custom--brag-book-gallery--spacer-2xl);
+	padding: var(--wp--custom--brag-book-gallery--spacer--2xl);
 	border: 1px solid var(--wp--custom--brag-book-gallery--color--lighter-grey);
 	border-radius: var(--wp--custom--brag-book-gallery--rounded, 4px);
 	box-shadow: var(--wp--custom--brag-book-gallery--shadow-sm);
@@ -18,7 +18,7 @@
 	}
 
 	h3 {
-		margin: 0 0 var(--wp--custom--brag-book-gallery--spacer-lg) 0;
+		margin: 0 0 var(--wp--custom--brag-book-gallery--spacer--lg) 0;
 		font-size: var(--wp--custom--brag-book-gallery--text-lg);
 		font-weight: var(--wp--custom--brag-book-gallery--font-weight--semibold);
 		color: var(--wp--custom--brag-book-gallery--color--black)

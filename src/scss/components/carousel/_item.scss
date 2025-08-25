@@ -8,7 +8,7 @@
 	flex: 0 0 auto;
 	width: calc(100% / 3 - (var(--wp--custom--brag-book-gallery--spacer--lg, 16px) * 2 / 3));
 	background: linear-gradient(135deg, var(--wp--custom--brag-book-gallery--color--lighter-grey) 0%, var(--wp--custom--brag-book-gallery--color--light-grey) 100%);
-	border-radius: var(--wp--custom--brag-book-gallery--spacer-sm);
+	border-radius: var(--wp--custom--brag-book-gallery--spacer--sm);
 	position: relative;
 	overflow: hidden;
 	cursor: pointer;
