@@ -91,9 +91,9 @@ jobs:
       uses: softprops/action-gh-release@v1
       with:
         tag_name: v${{ steps.get_version.outputs.VERSION }}
-        name: BRAGBook Gallery v${{ steps.get_version.outputs.VERSION }}
+        name: BRAG book Gallery v${{ steps.get_version.outputs.VERSION }}
         body: |
-          ## 🎉 BRAGBook Gallery v${{ steps.get_version.outputs.VERSION }}
+          ## 🎉 BRAG book Gallery v${{ steps.get_version.outputs.VERSION }}
           
           ### Installation
           1. Download `brag-book-gallery.zip` from the assets below

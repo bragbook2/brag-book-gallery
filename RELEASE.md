@@ -42,11 +42,7 @@ git commit -m "Release version X.X.X
 
 - Brief description of changes
 - Another change
-- Another change
-
-🤖 Generated with [Claude Code](https://claude.ai/code)
-
-Co-Authored-By: Claude <noreply@anthropic.com>"
+- Another change"
 ```
 
 ### Step 4: Create Git Tag
