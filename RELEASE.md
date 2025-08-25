@@ -1,6 +1,6 @@
 # BRAGBook Gallery Release Process
 
-This document explains how to create releases for the BRAGBook Gallery plugin that work with the built-in auto-updater.
+This document explains how to create releases for the BRAGBook Gallery plugin using GitHub CLI.
 
 ## How the Auto-Update System Works
 
@@ -12,65 +12,103 @@ The plugin includes an updater class (`includes/core/class-updater.php`) that:
 ## Prerequisites
 
 1. **GitHub Repository Access**: Push access to `bragbook2/brag-book-gallery`
-2. **GitHub CLI** (for manual releases): Install from https://cli.github.com/
+2. **GitHub CLI**: Install from https://cli.github.com/
 3. **Node.js & NPM**: For building assets
 
-## Release Methods
+## Standard Release Process Using GitHub CLI
 
-### Method 1: GitHub Actions (Automated) - Recommended
+### Step 1: Update Version Numbers
 
-1. **Update version** in the main plugin file:
-   ```php
-   // brag-book-gallery.php
-   * Version: 3.0.1
-   ```
+Update version in these files:
+```bash
+# brag-book-gallery.php - Plugin header
+* Version: X.X.X
 
-2. **Commit and push** your changes:
-   ```bash
-   git add .
-   git commit -m "Prepare release 3.0.1"
-   git push origin main
-   ```
+# package.json - NPM package
+"version": "X.X.X"
+```
 
-3. **Create and push a tag**:
-   ```bash
-   git tag v3.0.1
-   git push origin v3.0.1
-   ```
+### Step 2: Build Assets (if needed)
 
-   The GitHub Action will automatically:
-   - Build the plugin assets
-   - Create a distribution package
-   - Create a GitHub release
-   - Upload the plugin zip file
+```bash
+npm run build
+```
 
-### Method 2: Manual Release Script
+### Step 3: Commit Changes
 
-1. **Run the release script**:
-   ```bash
-   ./release.sh
-   ```
+```bash
+git add .
+git commit -m "Release version X.X.X
 
-2. **Follow the prompts**:
-   - Enter the new version number
-   - Add release notes
-   - The script will handle everything else
+- Brief description of changes
+- Another change
+- Another change
 
-### Method 3: Manual GitHub Release
+🤖 Generated with [Claude Code](https://claude.ai/code)
 
-1. **Build the plugin**:
-   ```bash
-   ./build.sh
-   # or
-   npm run release
-   ```
+Co-Authored-By: Claude <noreply@anthropic.com>"
+```
 
-2. **Create a GitHub release**:
-   - Go to https://github.com/bragbook2/brag-book-gallery/releases/new
-   - Create a tag: `v3.0.1`
-   - Title: `BRAGBook Gallery v3.0.1`
-   - Upload the `brag-book-gallery.zip` file
-   - Publish the release
+### Step 4: Create Git Tag
+
+```bash
+# Use semantic versioning without 'v' prefix
+git tag -a X.X.X -m "Version X.X.X - Brief description"
+```
+
+### Step 5: Push to Remote
+
+```bash
+# Push commits
+git push origin main
+
+# Push tag
+git push origin X.X.X
+```
+
+### Step 6: Create GitHub Release
+
+```bash
+gh release create X.X.X --title "BRAGBook Gallery vX.X.X" --notes "$(cat <<'EOF'
+## Version X.X.X
+
+### Changes
+- Feature or change description
+- Another change
+- Another change
+
+### Bug Fixes
+- Fixed issue description
+- Another fix
+
+### Details
+Additional information about this release.
+EOF
+)"
+```
+
+## Release Standards
+
+### Version Format
+- **Tag**: Use numbers only (e.g., `3.0.5`)
+- **Title**: Include 'v' prefix (e.g., `BRAGBook Gallery v3.0.5`)
+
+### Release Notes Template
+```markdown
+## Version X.X.X
+
+### Changes
+- New features or modifications
+
+### Bug Fixes  
+- Resolved issues
+
+### Breaking Changes
+- Incompatible changes (if any)
+
+### Details
+Migration instructions or additional context
+```
 
 ## Version Numbering
 
@@ -113,7 +151,12 @@ To test if auto-updates work:
 
 ### Updates Not Showing
 
-1. **Clear transients**:
+1. **Clear transients using WP-CLI**:
+   ```bash
+   wp transient delete --all
+   ```
+   
+   Or via SQL:
    ```sql
    DELETE FROM wp_options WHERE option_name LIKE '%_transient_%brag_book%';
    ```
@@ -159,16 +202,32 @@ For issues with the release process:
 ## Quick Release Commands
 
 ```bash
-# Full automated release (after updating version in files)
+# Complete release process using GitHub CLI
+# 1. Update version in files
+# 2. Build assets
+npm run build
+
+# 3. Commit, tag, and release
 git add .
-git commit -m "Release v3.0.1"
-git tag v3.0.1
-git push origin main --tags
+git commit -m "Release version 3.0.6"
+git tag -a 3.0.6 -m "Version 3.0.6"
+git push origin main
+git push origin 3.0.6
+gh release create 3.0.6 --title "BRAGBook Gallery v3.0.6" --notes "Release notes here"
+```
 
-# Manual release with script
-./release.sh
+## Fixing Duplicate or Incorrect Releases
 
-# Manual build only
-npm run release
-# Creates: dist/brag-book-gallery.zip
+```bash
+# Delete duplicate releases
+gh release delete X.X.X --yes
+
+# Delete and recreate tag
+git push origin --delete X.X.X
+git tag -d X.X.X
+git tag -a X.X.X -m "Version X.X.X"
+git push origin X.X.X
+
+# Create clean release
+gh release create X.X.X --title "BRAGBook Gallery vX.X.X" --notes "..."
 ```
