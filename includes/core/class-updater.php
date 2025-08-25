@@ -447,6 +447,22 @@ final class Updater {
 			return $response;
 		}
 
+		// SAFETY CHECK: Skip processing in development environments
+		// If we're in a git repository, don't move/delete anything
+		if ($this->is_development_environment()) {
+			$this->log_error('Skipping after_install in development environment');
+			
+			// Clear cache after update
+			$this->clear_cache();
+			
+			// Reactivate if it was active
+			if ($this->active) {
+				activate_plugin($this->basename);
+			}
+			
+			return $response;
+		}
+
 		if (!$wp_filesystem) {
 			require_once ABSPATH . 'wp-admin/includes/file.php';
 			WP_Filesystem();
@@ -456,11 +472,43 @@ final class Updater {
 		$plugins_dir = WP_PLUGIN_DIR;
 		$destination = trailingslashit($plugins_dir) . $plugin_slug;
 
+		// SAFETY CHECK: Don't process if destination already exists and contains our plugin
+		if ($wp_filesystem->exists($destination . '/brag-book-gallery.php')) {
+			// Plugin files already exist in the correct location
+			$this->log_error('Plugin files already exist in destination, skipping move');
+			
+			// Clear cache after update
+			$this->clear_cache();
+			
+			// Reactivate if it was active
+			if ($this->active) {
+				activate_plugin($this->basename);
+			}
+			
+			return $result;
+		}
+
 		// Find the extracted directory (GitHub adds a prefix)
 		$extracted_dir = $this->find_extracted_directory($result['destination']);
 
 		if (!$extracted_dir) {
+			$this->log_error('Could not find extracted directory');
 			return $response;
+		}
+
+		// SAFETY CHECK: Verify the extracted directory is not the same as destination
+		if (realpath($extracted_dir) === realpath($destination)) {
+			$this->log_error('Extracted directory is the same as destination, skipping move');
+			
+			// Clear cache after update
+			$this->clear_cache();
+			
+			// Reactivate if it was active
+			if ($this->active) {
+				activate_plugin($this->basename);
+			}
+			
+			return $result;
 		}
 
 		// Ensure we have proper permissions
@@ -468,16 +516,38 @@ final class Updater {
 			return new WP_Error('filesystem_error', 'Plugin directory is not writable');
 		}
 
+		// SAFETY: Only proceed if extracted_dir is in a temp location
+		$temp_dirs = [
+			sys_get_temp_dir(),
+			WP_CONTENT_DIR . '/upgrade',
+			WP_CONTENT_DIR . '/upgrade-temp-backup',
+		];
+		
+		$is_temp_location = false;
+		foreach ($temp_dirs as $temp_dir) {
+			if (strpos($extracted_dir, $temp_dir) === 0) {
+				$is_temp_location = true;
+				break;
+			}
+		}
+		
+		if (!$is_temp_location) {
+			$this->log_error('Extracted directory is not in a temporary location, skipping move for safety');
+			return $response;
+		}
+
 		// Move to correct location
 		if ($extracted_dir !== $destination) {
-			// Remove old directory if it exists
-			if ($wp_filesystem->exists($destination)) {
+			// Remove old directory if it exists (only if it's actually old)
+			if ($wp_filesystem->exists($destination) && !$wp_filesystem->exists($destination . '/brag-book-gallery.php')) {
 				$wp_filesystem->delete($destination, true);
 			}
 
 			// Move the extracted files
-			$wp_filesystem->move($extracted_dir, $destination);
-			$result['destination'] = $destination;
+			if ($wp_filesystem->exists($extracted_dir)) {
+				$wp_filesystem->move($extracted_dir, $destination);
+				$result['destination'] = $destination;
+			}
 		}
 
 		// Reactivate if it was active
@@ -489,6 +559,51 @@ final class Updater {
 		$this->clear_cache();
 
 		return $result;
+	}
+
+	/**
+	 * Check if we're in a development environment
+	 */
+	private function is_development_environment(): bool {
+		$plugin_dir = dirname($this->file);
+		
+		// Check for .git directory
+		if (file_exists($plugin_dir . '/.git')) {
+			return true;
+		}
+		
+		// Check for common development files
+		$dev_files = [
+			'/.gitignore',
+			'/composer.json',
+			'/package.json',
+			'/webpack.config.js',
+			'/CLAUDE.md',
+		];
+		
+		foreach ($dev_files as $dev_file) {
+			if (file_exists($plugin_dir . $dev_file)) {
+				return true;
+			}
+		}
+		
+		// Check if WP_DEBUG is enabled
+		if (defined('WP_DEBUG') && WP_DEBUG) {
+			return true;
+		}
+		
+		// Check for Local by Flywheel environment
+		if (defined('WP_LOCAL_DEV') && WP_LOCAL_DEV) {
+			return true;
+		}
+		
+		// Check if running on localhost
+		$is_localhost = in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1'], true);
+		if ($is_localhost) {
+			return true;
+		}
+		
+		return false;
 	}
 
 	/**
