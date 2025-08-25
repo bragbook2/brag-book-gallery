@@ -91,19 +91,34 @@ class Consultation {
 		// add_action(	'admin_menu', array( $this, 'register_admin_menu' ) );
 
 		// Register AJAX handlers.
-		add_action(	'wp_ajax_' . self::AJAX_PAGINATION, array( $this, 'handle_pagination_request' ) );
+		add_action( 'wp_ajax_' . self::AJAX_PAGINATION, array(
+			$this,
+			'handle_pagination_request'
+		) );
 
 		// Handle non-authenticated AJAX requests.
-		add_action(	'wp_ajax_nopriv_' . self::AJAX_PAGINATION, array( $this, 'handle_pagination_request' ) );
+		add_action( 'wp_ajax_nopriv_' . self::AJAX_PAGINATION, array(
+			$this,
+			'handle_pagination_request'
+		) );
 
 		// Form submission AJAX handlers.
-		add_action(	'wp_ajax_' . self::AJAX_SUBMISSION, array( $this, 'handle_form_submission' ));
+		add_action( 'wp_ajax_' . self::AJAX_SUBMISSION, array(
+			$this,
+			'handle_form_submission'
+		) );
 
 		// Handle non-authenticated form submissions.
-		add_action(	'wp_ajax_nopriv_' . self::AJAX_SUBMISSION, array( $this, 'handle_form_submission' ) );
+		add_action( 'wp_ajax_nopriv_' . self::AJAX_SUBMISSION, array(
+			$this,
+			'handle_form_submission'
+		) );
 
 		// Delete entry AJAX handler (admin only)
-		add_action( 'wp_ajax_' . self::AJAX_DELETE, array( $this, 'handle_delete_entry' ) );
+		add_action( 'wp_ajax_' . self::AJAX_DELETE, array(
+			$this,
+			'handle_delete_entry'
+		) );
 	}
 
 	/**
@@ -159,7 +174,7 @@ class Consultation {
 		if ( is_wp_error( $response ) ) {
 			wp_send_json_error(
 				sprintf(
-					/* translators: %s: Error message */
+				/* translators: %s: Error message */
 					esc_html__( 'API Error: %s', 'brag-book-gallery' ),
 					$response->get_error_message()
 				)
@@ -278,6 +293,7 @@ class Consultation {
 					'brag-book-gallery'
 				)
 			);
+
 			return;
 		}
 
@@ -296,6 +312,7 @@ class Consultation {
 					'brag-book-gallery'
 				)
 			);
+
 			return;
 		}
 
@@ -314,6 +331,7 @@ class Consultation {
 
 		if ( is_wp_error( $form_data ) ) {
 			wp_send_json_error( $form_data->get_error_message() );
+
 			return;
 		}
 
@@ -332,6 +350,7 @@ class Consultation {
 					'brag-book-gallery'
 				)
 			);
+
 			return;
 		}
 
@@ -412,7 +431,7 @@ class Consultation {
 				return new WP_Error(
 					'missing_field',
 					sprintf(
-						/* translators: %s: Field name */
+					/* translators: %s: Field name */
 						esc_html__(
 							'Required field missing: %s',
 							'brag-book-gallery'
@@ -472,6 +491,7 @@ class Consultation {
 		if ( empty( $api_tokens ) || empty( $website_property_ids ) ) {
 			error_log( 'Configuration check failed - tokens empty: ' . ( empty( $api_tokens ) ? 'yes' : 'no' ) );
 			error_log( 'Configuration check failed - property IDs empty: ' . ( empty( $website_property_ids ) ? 'yes' : 'no' ) );
+
 			return new WP_Error(
 				'missing_config',
 				esc_html__(
@@ -482,9 +502,9 @@ class Consultation {
 		}
 
 		return array(
-			'api_tokens'           => (array) $api_tokens,
-			'website_property_ids' => (array) $website_property_ids,
-			'gallery_pages'        => (array) get_option(
+			'api_tokens'                  => (array) $api_tokens,
+			'website_property_ids'        => (array) $website_property_ids,
+			'gallery_pages'               => (array) get_option(
 				option: 'bb_gallery_stored_pages',
 				default_value: array()
 			),
@@ -623,7 +643,7 @@ class Consultation {
 
 		$base_url = self::get_api_url();
 
-		$url      = sprintf(
+		$url = sprintf(
 			'%s/api/plugin/consultations?apiToken=%s&websitepropertyId=%s',
 			$base_url,
 			urlencode( $config['api_tokens'][ $index ] ),
@@ -736,7 +756,7 @@ class Consultation {
 		}
 
 		$response_code = wp_remote_retrieve_response_code( $response );
-		$body = wp_remote_retrieve_body( $response );
+		$body          = wp_remote_retrieve_body( $response );
 
 		error_log( 'API response code: ' . $response_code );
 		error_log( 'API response body: ' . $body );
@@ -924,7 +944,7 @@ class Consultation {
 			$date  = mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $post->post_date );
 
 			// Truncate long descriptions for better display
-			$description = $post->post_content;
+			$description      = $post->post_content;
 			$full_description = $description;
 			if ( strlen( $description ) > 150 ) {
 				$description = substr( $description, 0, 150 ) . '...';
@@ -1000,7 +1020,7 @@ class Consultation {
 		$html .= sprintf(
 			'<li class="selected">%s</li>',
 			sprintf(
-				/* translators: %d: Number of items */
+			/* translators: %d: Number of items */
 				esc_html(
 					_n(
 						'%d item',
@@ -1035,7 +1055,7 @@ class Consultation {
 		$html .= sprintf(
 			'<li class="selected">%s</li>',
 			sprintf(
-				/* translators: 1: Current page, 2: Total pages */
+			/* translators: 1: Current page, 2: Total pages */
 				esc_html__(
 					'%1$d of %2$d',
 					'brag-book-gallery'
@@ -1107,7 +1127,7 @@ class Consultation {
 	public function display_form_entries(): void {
 
 		// Generate nonce for security.
-		$nonce = wp_create_nonce( 'consultation_pagination_nonce' );
+		$nonce        = wp_create_nonce( 'consultation_pagination_nonce' );
 		$delete_nonce = wp_create_nonce( 'consultation_delete_nonce' );
 		?>
 		<div class="wrap brag-book-gallery-admin-wrap">
@@ -1117,7 +1137,7 @@ class Consultation {
 			<div class="brag-book-gallery-section">
 				<h2><?php esc_html_e( 'Consultation Entries', 'brag-book-gallery' ); ?></h2>
 				<script>
-					document.addEventListener('DOMContentLoaded', () => {
+					document.addEventListener( 'DOMContentLoaded', () => {
 						const ajaxurl = <?php echo wp_json_encode( admin_url( 'admin-ajax.php' ) ); ?>;
 						const nonce = <?php echo wp_json_encode( $nonce ); ?>;
 						const deleteNonce = <?php echo wp_json_encode( $delete_nonce ); ?>;
@@ -1127,7 +1147,7 @@ class Consultation {
 						 * @param {HTMLElement} element Element to fade in
 						 * @param {number} duration Duration in milliseconds
 						 */
-						const fadeIn = (element, duration = 400) => {
+						const fadeIn = ( element, duration = 400 ) => {
 							element.style.opacity = '0';
 							element.style.display = 'block';
 							element.style.transition = `opacity ${duration}ms`;
@@ -1142,38 +1162,38 @@ class Consultation {
 						 * Load consultation posts via AJAX
 						 * @param {number} page Page number to load
 						 */
-						const loadConsultationPosts = async (page) => {
-							const loadingDiv = document.querySelector('.bb_pag_loading');
-							const container = document.querySelector('.bb_universal_container');
-							const paginationNav = document.querySelector('.bb-pagination-nav');
+						const loadConsultationPosts = async ( page ) => {
+							const loadingDiv = document.querySelector( '.bb_pag_loading' );
+							const container = document.querySelector( '.bb_universal_container' );
+							const paginationNav = document.querySelector( '.bb-pagination-nav' );
 
 							// Show loading state
-							if (loadingDiv) {
+							if ( loadingDiv ) {
 								loadingDiv.style.display = 'block';
 							}
 
 							// Show loading message in table
-							if (container) {
+							if ( container ) {
 								container.innerHTML = '<tr><td colspan="5" style="text-align: center;">Loading...</td></tr>';
 							}
 
 							// Prepare form data
 							const formData = new FormData();
-							formData.append('page', page);
-							formData.append('nonce', nonce);
-							formData.append('action', '<?php echo esc_js( self::AJAX_PAGINATION ); ?>');
+							formData.append( 'page', page );
+							formData.append( 'nonce', nonce );
+							formData.append( 'action', '<?php echo esc_js( self::AJAX_PAGINATION ); ?>' );
 
 							try {
 								// Make AJAX request
-								const response = await fetch(ajaxurl, {
+								const response = await fetch( ajaxurl, {
 									method: 'POST',
 									body: formData,
 									credentials: 'same-origin'
-								});
+								} );
 
 								const data = await response.json();
 
-								if (data.success) {
+								if ( data.success ) {
 									// Update table content
 									container.innerHTML = data.data.message;
 									paginationNav.innerHTML = data.data.pagination;
@@ -1181,29 +1201,29 @@ class Consultation {
 									// Show error message
 									container.innerHTML = `<tr><td colspan="5">${data.data || 'Error loading data'}</td></tr>`;
 								}
-							} catch (error) {
+							} catch ( error ) {
 								// Handle fetch error
-								console.error('Error loading consultation entries:', error);
+								console.error( 'Error loading consultation entries:', error );
 								container.innerHTML = '<tr><td colspan="5">Failed to load consultation entries.</td></tr>';
 							} finally {
 								// Hide loading state
-								if (loadingDiv) {
+								if ( loadingDiv ) {
 									loadingDiv.style.display = 'none';
 								}
 							}
 						};
 
 						// Initial load
-						loadConsultationPosts(1);
+						loadConsultationPosts( 1 );
 
 						/**
 						 * Handle delete button clicks
 						 */
-						const handleDelete = async (button) => {
+						const handleDelete = async ( button ) => {
 							const postId = button.dataset.id;
 							const postName = button.dataset.name;
 
-							if (!confirm(`Are you sure you want to delete the consultation from "${postName}"? This action cannot be undone.`)) {
+							if ( !confirm( `Are you sure you want to delete the consultation from "${postName}"? This action cannot be undone.` ) ) {
 								return;
 							}
 
@@ -1212,38 +1232,38 @@ class Consultation {
 
 							try {
 								const formData = new FormData();
-								formData.append('action', 'delete_consultation_entry');
-								formData.append('nonce', deleteNonce);
-								formData.append('post_id', postId);
+								formData.append( 'action', 'delete_consultation_entry' );
+								formData.append( 'nonce', deleteNonce );
+								formData.append( 'post_id', postId );
 
-								const response = await fetch(ajaxurl, {
+								const response = await fetch( ajaxurl, {
 									method: 'POST',
 									body: formData
-								});
+								} );
 
 								const data = await response.json();
 
-								if (data.success) {
+								if ( data.success ) {
 									// Remove the row with fade out effect
-									const row = button.closest('tr');
+									const row = button.closest( 'tr' );
 									row.style.transition = 'opacity 0.3s';
 									row.style.opacity = '0';
-									setTimeout(() => {
+									setTimeout( () => {
 										row.remove();
 										// Check if table is empty
-										const tbody = document.querySelector('.bb_universal_container');
-										if (tbody && tbody.children.length === 0) {
+										const tbody = document.querySelector( '.bb_universal_container' );
+										if ( tbody && tbody.children.length === 0 ) {
 											tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px;">No consultation entries found.</td></tr>';
 										}
-									}, 300);
+									}, 300 );
 								} else {
-									alert(data.data || 'Failed to delete entry.');
+									alert( data.data || 'Failed to delete entry.' );
 									button.disabled = false;
 									button.innerHTML = '<span class="dashicons dashicons-trash"></span>';
 								}
-							} catch (error) {
-								console.error('Delete error:', error);
-								alert('An error occurred while deleting the entry.');
+							} catch ( error ) {
+								console.error( 'Delete error:', error );
+								alert( 'An error occurred while deleting the entry.' );
 								button.disabled = false;
 								button.innerHTML = '<span class="dashicons dashicons-trash"></span>';
 							}
@@ -1252,35 +1272,35 @@ class Consultation {
 						/**
 						 * Handle view details in modal dialog
 						 */
-						const handleViewDetails = (button) => {
-							const row = button.closest('tr');
+						const handleViewDetails = ( button ) => {
+							const row = button.closest( 'tr' );
 							const postId = button.dataset.id;
 
 							// Get entry details from the row
-							const name = row.querySelector('.consultation-name strong').textContent;
-							const email = row.querySelector('.consultation-email a').textContent;
-							const phone = row.querySelector('.consultation-phone a').textContent;
-							const date = row.querySelector('.consultation-date').textContent;
-							const fullDesc = row.querySelector('.description-full');
-							const contentDiv = row.querySelector('.description-content');
+							const name = row.querySelector( '.consultation-name strong' ).textContent;
+							const email = row.querySelector( '.consultation-email a' ).textContent;
+							const phone = row.querySelector( '.consultation-phone a' ).textContent;
+							const date = row.querySelector( '.consultation-date' ).textContent;
+							const fullDesc = row.querySelector( '.description-full' );
+							const contentDiv = row.querySelector( '.description-content' );
 							const message = fullDesc ? fullDesc.textContent : contentDiv.textContent;
 
 							// Check if dialog element is supported, otherwise use a div fallback
 							const supportsDialog = typeof HTMLDialogElement === 'function';
 
 							// Create or get the dialog
-							let dialog = document.getElementById('consultation-detail-dialog');
-							if (!dialog) {
-								if (supportsDialog) {
-									dialog = document.createElement('dialog');
+							let dialog = document.getElementById( 'consultation-detail-dialog' );
+							if ( !dialog ) {
+								if ( supportsDialog ) {
+									dialog = document.createElement( 'dialog' );
 								} else {
-									dialog = document.createElement('div');
-									dialog.setAttribute('role', 'dialog');
-									dialog.setAttribute('aria-modal', 'true');
+									dialog = document.createElement( 'div' );
+									dialog.setAttribute( 'role', 'dialog' );
+									dialog.setAttribute( 'aria-modal', 'true' );
 								}
 								dialog.id = 'consultation-detail-dialog';
 								dialog.className = 'consultation-dialog';
-								document.body.appendChild(dialog);
+								document.body.appendChild( dialog );
 							}
 
 							// Populate dialog content
@@ -1295,31 +1315,31 @@ class Consultation {
 									<div class="consultation-dialog-body">
 										<div class="detail-row">
 											<label>Name:</label>
-											<div class="detail-value"><strong>${escapeHtml(name)}</strong></div>
+											<div class="detail-value"><strong>${escapeHtml( name )}</strong></div>
 										</div>
 										<div class="detail-row">
 											<label>Email:</label>
 											<div class="detail-value">
-												<a href="mailto:${escapeHtml(email)}">${escapeHtml(email)}</a>
+												<a href="mailto:${escapeHtml( email )}">${escapeHtml( email )}</a>
 											</div>
 										</div>
 										<div class="detail-row">
 											<label>Phone:</label>
 											<div class="detail-value">
-												<a href="tel:${escapeHtml(phone)}">${escapeHtml(phone)}</a>
+												<a href="tel:${escapeHtml( phone )}">${escapeHtml( phone )}</a>
 											</div>
 										</div>
 										<div class="detail-row">
 											<label>Date Submitted:</label>
-											<div class="detail-value">${escapeHtml(date)}</div>
+											<div class="detail-value">${escapeHtml( date )}</div>
 										</div>
 										<div class="detail-row">
 											<label>Message:</label>
-											<div class="detail-value message-content">${escapeHtml(message)}</div>
+											<div class="detail-value message-content">${escapeHtml( message )}</div>
 										</div>
 									</div>
 									<div class="consultation-dialog-footer">
-										<button type="button" class="button button-primary reply-email" data-email="${escapeHtml(email)}">
+										<button type="button" class="button button-primary reply-email" data-email="${escapeHtml( email )}">
 											<span class="dashicons dashicons-email"></span> Reply via Email
 										</button>
 										<button type="button" class="button dialog-close-btn">Close</button>
@@ -1328,7 +1348,7 @@ class Consultation {
 							`;
 
 							// Show the dialog
-							if (supportsDialog && dialog.showModal) {
+							if ( supportsDialog && dialog.showModal ) {
 								dialog.showModal();
 							} else {
 								// Fallback for browsers that don't support dialog
@@ -1340,9 +1360,9 @@ class Consultation {
 								dialog.style.zIndex = '10000';
 
 								// Create backdrop
-								let backdrop = document.getElementById('consultation-backdrop');
-								if (!backdrop) {
-									backdrop = document.createElement('div');
+								let backdrop = document.getElementById( 'consultation-backdrop' );
+								if ( !backdrop ) {
+									backdrop = document.createElement( 'div' );
 									backdrop.id = 'consultation-backdrop';
 									backdrop.style.position = 'fixed';
 									backdrop.style.top = '0';
@@ -1352,7 +1372,7 @@ class Consultation {
 									backdrop.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
 									backdrop.style.backdropFilter = 'blur(2px)';
 									backdrop.style.zIndex = '9999';
-									document.body.appendChild(backdrop);
+									document.body.appendChild( backdrop );
 								} else {
 									backdrop.style.display = 'block';
 								}
@@ -1360,65 +1380,65 @@ class Consultation {
 
 							// Function to close the dialog
 							const closeDialog = () => {
-								if (supportsDialog && dialog.close) {
+								if ( supportsDialog && dialog.close ) {
 									dialog.close();
 								} else {
 									dialog.style.display = 'none';
-									const backdrop = document.getElementById('consultation-backdrop');
-									if (backdrop) {
+									const backdrop = document.getElementById( 'consultation-backdrop' );
+									if ( backdrop ) {
 										backdrop.style.display = 'none';
 									}
 								}
 							};
 
 							// Handle close button clicks
-							const closeButtons = dialog.querySelectorAll('.dialog-close, .dialog-close-btn');
-							closeButtons.forEach(btn => {
-								btn.addEventListener('click', closeDialog);
-							});
+							const closeButtons = dialog.querySelectorAll( '.dialog-close, .dialog-close-btn' );
+							closeButtons.forEach( btn => {
+								btn.addEventListener( 'click', closeDialog );
+							} );
 
 							// Handle reply email button
-							const replyBtn = dialog.querySelector('.reply-email');
-							if (replyBtn) {
-								replyBtn.addEventListener('click', () => {
+							const replyBtn = dialog.querySelector( '.reply-email' );
+							if ( replyBtn ) {
+								replyBtn.addEventListener( 'click', () => {
 									window.location.href = `mailto:${email}?subject=Re: Consultation Request from ${name}`;
-								});
+								} );
 							}
 
 							// Close dialog on outside click
-							dialog.addEventListener('click', (e) => {
-								if (e.target === dialog) {
+							dialog.addEventListener( 'click', ( e ) => {
+								if ( e.target === dialog ) {
 									closeDialog();
 								}
-							});
+							} );
 
 							// For backdrop click (fallback mode)
-							if (!supportsDialog) {
-								const backdrop = document.getElementById('consultation-backdrop');
-								if (backdrop) {
-									backdrop.addEventListener('click', closeDialog);
+							if ( !supportsDialog ) {
+								const backdrop = document.getElementById( 'consultation-backdrop' );
+								if ( backdrop ) {
+									backdrop.addEventListener( 'click', closeDialog );
 								}
 							}
 
 							// Close dialog on ESC key
-							if (supportsDialog) {
-								dialog.addEventListener('cancel', (e) => {
+							if ( supportsDialog ) {
+								dialog.addEventListener( 'cancel', ( e ) => {
 									e.preventDefault();
 									closeDialog();
-								});
+								} );
 							} else {
-								document.addEventListener('keydown', (e) => {
-									if (e.key === 'Escape' && dialog.style.display === 'block') {
+								document.addEventListener( 'keydown', ( e ) => {
+									if ( e.key === 'Escape' && dialog.style.display === 'block' ) {
 										closeDialog();
 									}
-								});
+								} );
 							}
 						};
 
 						/**
 						 * Escape HTML to prevent XSS
 						 */
-						const escapeHtml = (text) => {
+						const escapeHtml = ( text ) => {
 							const map = {
 								'&': '&amp;',
 								'<': '&lt;',
@@ -1426,46 +1446,48 @@ class Consultation {
 								'"': '&quot;',
 								"'": '&#039;'
 							};
-							return text.replace(/[&<>"']/g, m => map[m]);
+							return text.replace( /[&<>"']/g, m => map[m] );
 						};
 
 						// Handle pagination clicks using event delegation
-						document.addEventListener('click', (event) => {
+						document.addEventListener( 'click', ( event ) => {
 							// Check if clicked element is an active pagination button
-							const activeButton = event.target.closest('.bb-universal-pagination li.active');
+							const activeButton = event.target.closest( '.bb-universal-pagination li.active' );
 
-							if (activeButton) {
-								const page = parseInt(activeButton.getAttribute('p'), 10);
-								if (!isNaN(page)) {
-									loadConsultationPosts(page);
+							if ( activeButton ) {
+								const page = parseInt( activeButton.getAttribute( 'p' ), 10 );
+								if ( !isNaN( page ) ) {
+									loadConsultationPosts( page );
 								}
 							}
 
 							// Handle delete button clicks
-							const deleteBtn = event.target.closest('.delete-consultation');
-							if (deleteBtn) {
+							const deleteBtn = event.target.closest( '.delete-consultation' );
+							if ( deleteBtn ) {
 								event.preventDefault();
-								handleDelete(deleteBtn);
+								handleDelete( deleteBtn );
 							}
 
 							// Handle view details button clicks
-							const viewBtn = event.target.closest('.view-consultation');
-							if (viewBtn) {
+							const viewBtn = event.target.closest( '.view-consultation' );
+							if ( viewBtn ) {
 								event.preventDefault();
-								handleViewDetails(viewBtn);
+								handleViewDetails( viewBtn );
 							}
-						});
-					});
+						} );
+					} );
 				</script>
 
 				<style>
 					.consultation-row:hover {
 						background-color: #f0f8ff;
 					}
+
 					.consultation-actions {
 						white-space: nowrap;
 						text-align: center;
 					}
+
 					.consultation-actions .button {
 						margin: 0 2px;
 						padding: 4px 8px;
@@ -1474,73 +1496,94 @@ class Consultation {
 						align-items: center;
 						gap: 4px;
 					}
+
 					.consultation-actions .button-small {
 						font-size: 12px;
 					}
+
 					.consultation-actions .dashicons {
 						font-size: 16px;
 						width: 16px;
 						height: 16px;
 						line-height: 1;
 					}
+
 					.consultation-description {
 						max-width: 400px;
 					}
+
 					.description-content, .description-full {
 						word-wrap: break-word;
 						line-height: 1.6;
 						color: #555;
 					}
+
 					.consultation-email a, .consultation-phone a {
 						text-decoration: none;
 						color: #0073aa;
 						font-weight: 500;
 					}
+
 					.consultation-email a:hover, .consultation-phone a:hover {
 						text-decoration: underline;
 					}
+
 					.dashicons.spinning {
 						animation: spin 1s linear infinite;
 					}
+
 					@keyframes spin {
-						from { transform: rotate(0deg); }
-						to { transform: rotate(360deg); }
+						from {
+							transform: rotate(0deg);
+						}
+						to {
+							transform: rotate(360deg);
+						}
 					}
+
 					.wp-list-table.consultation-entries th {
 						font-weight: 600;
 						background: #f1f1f1;
 						color: #333;
 					}
+
 					.consultation-name strong {
 						color: #23282d;
 						font-size: 14px;
 					}
+
 					.consultation-date {
 						white-space: nowrap;
 						color: #666;
 					}
+
 					.view-consultation, .delete-consultation {
 						cursor: pointer;
 						transition: all 0.3s ease;
 					}
+
 					.delete-consultation:hover {
 						color: #dc3232 !important;
 						border-color: #dc3232 !important;
 						background: #fff !important;
 					}
+
 					.view-consultation:hover {
 						color: #0073aa !important;
 						border-color: #0073aa !important;
 						background: #fff !important;
 					}
+
 					.bb_pag_loading {
 						text-align: center;
 						padding: 20px;
 					}
+
 					.bb-pagination-nav {
 						margin-top: 20px;
 						text-align: center;
 					}
+
 					.consultation-entries tbody td {
 						padding: 12px 8px;
 						vertical-align: middle;
@@ -1780,7 +1823,7 @@ class Consultation {
 		$plugin_dir = dirname( path: __DIR__, levels: 2 );
 
 		// Construct the logo URL.
-		$logo_url  = plugins_url(
+		$logo_url = plugins_url(
 			path: 'assets/images/bragbook-logo.svg',
 			plugin: $plugin_dir . '/brag-book-gallery.php'
 		);

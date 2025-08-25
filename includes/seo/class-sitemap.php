@@ -52,7 +52,7 @@ final class Sitemap {
 	 * @since 3.0.0
 	 */
 	public function __construct() {
-		$this->sitemap_filename = 'brag-book-gallerysitemap.xml';
+		$this->sitemap_filename = 'brag-book-gallery-sitemap.xml';
 		$this->cache_duration = 6 * HOUR_IN_SECONDS; // 6 hours
 
 		$this->init_hooks();
@@ -66,16 +66,24 @@ final class Sitemap {
 	 */
 	private function init_hooks(): void {
 
+		// Check for sitemap request very early - before any output
+		add_action(
+			hook_name: 'init',
+			callback: array( $this, 'check_sitemap_request' ),
+			priority: 1
+		);
+
 		// Add rewrite rule for sitemap.
 		add_action(
 			hook_name: 'init',
-			callback: array( $this, 'add_sitemap_rewrite_rule' )
+			callback: array( $this, 'add_sitemap_rewrite_rule' ),
+			priority: 10
 		);
 
-		// Serve sitemap on request.
+		// Serve sitemap on request - using parse_request to avoid headers already sent
 		add_action(
-			hook_name: 'template_redirect',
-			callback: array( $this, 'serve_sitemap' )
+			hook_name: 'parse_request',
+			callback: array( $this, 'handle_sitemap_request' )
 		);
 
 		// Schedule sitemap generation and clearing cache.
@@ -117,6 +125,25 @@ final class Sitemap {
 	}
 
 	/**
+	 * Check for sitemap request very early
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	public function check_sitemap_request(): void {
+		$request_uri = $_SERVER['REQUEST_URI'] ?? '';
+		$sitemap_path = '/' . $this->sitemap_filename;
+		
+		// Check if this is a sitemap request
+		if ( strpos( $request_uri, $sitemap_path ) === false ) {
+			return;
+		}
+		
+		// We need to wait for WordPress to be ready, so register a high priority action
+		add_action( 'template_redirect', array( $this, 'serve_sitemap_immediately' ), 1 );
+	}
+	
+	/**
 	 * Add sitemap rewrite rule
 	 *
 	 * @since 3.0.0
@@ -139,34 +166,91 @@ final class Sitemap {
 	}
 
 	/**
-	 * Serve sitemap when requested
+	 * Handle sitemap request
 	 *
 	 * @since 3.0.0
+	 * @param \WP $wp WordPress environment instance.
 	 * @return void
 	 */
-	public function serve_sitemap(): void {
-		if ( ! get_query_var( query_var: 'brag_book_gallery_sitemap' ) ) {
+	public function handle_sitemap_request( \WP $wp ): void {
+		if ( ! isset( $wp->query_vars['brag_book_gallery_sitemap'] ) ) {
 			return;
 		}
 
 		$sitemap_content = $this->get_sitemap_content();
 
 		if ( empty( $sitemap_content ) ) {
-			status_header( code: 404 );
-			return;
+			status_header( 404 );
+			exit;
 		}
 
 		// Set appropriate headers
-		header( header: 'Content-Type: application/xml; charset=UTF-8' );
-		header( header: 'X-Robots-Tag: noindex' );
+		header( 'Content-Type: application/xml; charset=UTF-8' );
+		header( 'X-Robots-Tag: noindex' );
 
 		// Set caching headers
 		$cache_time = 6 * HOUR_IN_SECONDS;
-		header( header: 'Cache-Control: max-age=' . $cache_time );
-		header( header: 'Expires: ' . gmdate( format: 'D, d M Y H:i:s', timestamp: time() + $cache_time ) . ' GMT' );
+		header( 'Cache-Control: max-age=' . $cache_time );
+		header( 'Expires: ' . gmdate( 'D, d M Y H:i:s', time() + $cache_time ) . ' GMT' );
 
 		echo $sitemap_content; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 		exit;
+	}
+
+	/**
+	 * Serve sitemap immediately with output buffer handling
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	public function serve_sitemap_immediately(): void {
+		// Clean all output buffers to prevent headers already sent
+		while ( ob_get_level() ) {
+			ob_end_clean();
+		}
+		
+		// Start a new buffer to capture any errant output
+		ob_start();
+		
+		$sitemap_content = $this->get_sitemap_content();
+		
+		// Clean the buffer again in case get_sitemap_content produced output
+		ob_clean();
+		
+		if ( empty( $sitemap_content ) ) {
+			status_header( 404 );
+			exit;
+		}
+		
+		// Remove any potential whitespace or BOM
+		$sitemap_content = trim( $sitemap_content );
+		
+		// Set appropriate headers
+		header( 'Content-Type: application/xml; charset=UTF-8' );
+		header( 'X-Robots-Tag: noindex' );
+		
+		// Set caching headers
+		$cache_time = 6 * HOUR_IN_SECONDS;
+		header( 'Cache-Control: max-age=' . $cache_time );
+		header( 'Expires: ' . gmdate( 'D, d M Y H:i:s', time() + $cache_time ) . ' GMT' );
+		
+		// Output sitemap and exit
+		echo $sitemap_content;
+		exit;
+	}
+	
+	/**
+	 * Serve sitemap when requested (legacy method kept for compatibility)
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	public function serve_sitemap(): void {
+		if ( ! get_query_var( 'brag_book_gallery_sitemap' ) ) {
+			return;
+		}
+
+		$this->serve_sitemap_immediately();
 	}
 
 	/**
@@ -179,24 +263,27 @@ final class Sitemap {
 		$cache_key = 'brag_book_gallery_sitemap_content';
 		$cached_content = get_transient( $cache_key );
 
-		if ( false !== $cached_content ) {
+		if ( false !== $cached_content && ! empty( $cached_content ) ) {
 			return $cached_content;
 		}
 
 		$sitemap_data = $this->get_sitemap_data();
 
+		// If no API data, generate a basic sitemap with gallery page URL
 		if ( empty( $sitemap_data ) ) {
-			return '';
+			$xml = $this->build_basic_sitemap();
+		} else {
+			$xml = $this->build_sitemap_xml( $sitemap_data );
 		}
 
-		$xml = $this->build_sitemap_xml( $sitemap_data );
-
-		// Cache the sitemap content.
-		set_transient(
-			transient: $cache_key,
-			value: $xml,
-			expiration: $this->cache_duration
-		);
+		// Only cache if we have content
+		if ( ! empty( $xml ) ) {
+			set_transient(
+				transient: $cache_key,
+				value: $xml,
+				expiration: $this->cache_duration
+			);
+		}
 
 		return $xml;
 	}
@@ -271,6 +358,47 @@ final class Sitemap {
 	}
 
 	/**
+	 * Build basic sitemap when no API data available
+	 *
+	 * @since 3.0.0
+	 * @return string Basic XML sitemap content.
+	 */
+	private function build_basic_sitemap(): string {
+		$xml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
+		$xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
+		
+		// Get gallery mode and slug
+		$mode = get_option( 'brag_book_gallery_mode', 'default' );
+		$gallery_slug = get_option( 'brag_book_gallery_page_slug', 'gallery' );
+		
+		// Handle array or string slug
+		if ( is_array( $gallery_slug ) ) {
+			$gallery_slugs = $gallery_slug;
+		} else {
+			$gallery_slugs = array( $gallery_slug );
+		}
+		
+		// Add entry for each gallery page
+		foreach ( $gallery_slugs as $slug ) {
+			if ( empty( $slug ) ) {
+				continue;
+			}
+			
+			$gallery_url = home_url( '/' . $slug . '/' );
+			$xml .= '  <url>' . "\n";
+			$xml .= '    <loc>' . esc_url( $gallery_url ) . '</loc>' . "\n";
+			$xml .= '    <lastmod>' . gmdate( 'c' ) . '</lastmod>' . "\n";
+			$xml .= '    <changefreq>weekly</changefreq>' . "\n";
+			$xml .= '    <priority>0.8</priority>' . "\n";
+			$xml .= '  </url>' . "\n";
+		}
+		
+		$xml .= '</urlset>' . "\n";
+		
+		return $xml;
+	}
+	
+	/**
 	 * Build sitemap XML from data
 	 *
 	 * @since 3.0.0
@@ -288,48 +416,63 @@ final class Sitemap {
 		$xml .= 'http://www.google.com/schemas/sitemap-image/1.1 ';
 		$xml .= 'http://www.google.com/schemas/sitemap-image/1.1/sitemap-image.xsd">' . "\n";
 
-		$gallery_slugs = get_option(
-			option: 'brag_book_gallery_gallery_page_slug',
-			default_value: array()
-		);
-
-		$slug = get_option(
-			option: 'brag_book_gallery_brag_book_gallery_page_slug',
-			default_value: ''
-		);
-
-		foreach ( $sitemap_data as $index => $org_data ) {
-			if ( ! is_array( $org_data ) ) {
-				continue;
+		// Get gallery mode to determine how to handle slugs
+		$mode = get_option( 'brag_book_gallery_mode', 'default' );
+		
+		if ( $mode === 'local' ) {
+			// Local mode: Multiple galleries with array of slugs
+			$gallery_slugs = get_option(
+				option: 'brag_book_gallery_page_slug',
+				default_value: array()
+			);
+			
+			// Ensure it's an array
+			if ( ! is_array( $gallery_slugs ) ) {
+				$gallery_slugs = array( $gallery_slugs );
 			}
 
-			$page_slug = $gallery_slugs[ $index ] ?? '';
-
-			// Skip if no page slug found.
-			if ( empty( $page_slug ) ) {
-				continue;
-			}
-
-			foreach ( $org_data as $url_data ) {
-				if ( ! is_object( $url_data ) || empty( $url_data->url ) ) {
+			foreach ( $sitemap_data as $index => $org_data ) {
+				if ( ! is_array( $org_data ) ) {
 					continue;
 				}
 
-				$full_url = home_url( '/' . $page_slug . $url_data->url );
-				$last_modified = $url_data->updatedAt ?? current_time( 'c' );
+				$page_slug = $gallery_slugs[ $index ] ?? '';
 
-				// Validate and sanitize the URL
-				$full_url = esc_url( $full_url );
-				if ( empty( $full_url ) ) {
+				// Skip if no page slug found.
+				if ( empty( $page_slug ) ) {
 					continue;
 				}
 
-				$xml .= $this->build_url_entry( $full_url, $last_modified, $url_data );
-			}
-		}
+				foreach ( $org_data as $url_data ) {
+					if ( ! is_object( $url_data ) || empty( $url_data->url ) ) {
+						continue;
+					}
 
-		// Add combine gallery URLs if configured
-		if ( ! empty( $slug ) ) {
+					$full_url = home_url( '/' . $page_slug . $url_data->url );
+					$last_modified = $url_data->updatedAt ?? current_time( 'c' );
+
+					// Validate and sanitize the URL
+					$full_url = esc_url( $full_url );
+					if ( empty( $full_url ) ) {
+						continue;
+					}
+
+					$xml .= $this->build_url_entry( $full_url, $last_modified, $url_data );
+				}
+			}
+		} else {
+			// Default mode: Single gallery with string slug
+			$gallery_slug = get_option(
+				option: 'brag_book_gallery_page_slug',
+				default_value: 'gallery'
+			);
+			
+			// If it's an array, get the first element
+			if ( is_array( $gallery_slug ) ) {
+				$gallery_slug = ! empty( $gallery_slug ) ? reset( $gallery_slug ) : 'gallery';
+			}
+
+			// Process all data for the single gallery
 			foreach ( $sitemap_data as $org_data ) {
 				if ( ! is_array( $org_data ) ) {
 					continue;
@@ -340,7 +483,7 @@ final class Sitemap {
 						continue;
 					}
 
-					$full_url = home_url( '/' . $slug . $url_data->url );
+					$full_url = home_url( '/' . $gallery_slug . $url_data->url );
 					$last_modified = $url_data->updatedAt ?? current_time( 'c' );
 
 					$full_url = esc_url( $full_url );

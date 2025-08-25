@@ -105,7 +105,7 @@ class Settings_Manager {
 	private function init_hooks(): void {
 		// Register AJAX actions early - before admin_menu
 		add_action( 'init', array( $this, 'register_ajax_actions' ) );
-		
+
 		// Load settings pages and register menus after init to ensure translations are loaded
 		add_action( 'admin_menu', array( $this, 'initialize_settings_pages' ), 5 );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ) );
@@ -126,16 +126,10 @@ class Settings_Manager {
 	public function register_ajax_actions(): void {
 		// Only register AJAX actions if we haven't loaded pages yet
 		if ( empty( $this->settings_pages ) ) {
-			// Log AJAX registration for debugging
-			error_log( 'BRAG book Gallery: Registering AJAX actions early on init hook' );
-			
-			// Create minimal instances just for AJAX registration
+			// Create minimal instances just for AJAX registration.
 			$this->settings_pages['api'] = new Settings_Api();
 			$this->settings_pages['api_test'] = new Settings_Api_Test();
 			$this->settings_pages['debug'] = new Settings_Debug();
-			// Add other pages that have AJAX actions as needed
-			
-			error_log( 'BRAG book Gallery: Settings_Api, Settings_Api_Test, and Settings_Debug instances created for AJAX registration' );
 		}
 	}
 
@@ -163,22 +157,22 @@ class Settings_Manager {
 		$this->settings_pages['mode']         = new Settings_Mode();
 		$this->settings_pages['default']      = new Settings_Default();
 		$this->settings_pages['local']        = new Settings_Local();
-		
+
 		// Only create Settings_Api if it doesn't exist (it may have been created for AJAX registration)
 		if ( ! isset( $this->settings_pages['api'] ) ) {
 			$this->settings_pages['api'] = new Settings_Api();
 		}
-		
+
 		// Only create Settings_Api_Test if it doesn't exist (it may have been created for AJAX registration)
 		if ( ! isset( $this->settings_pages['api_test'] ) ) {
 			$this->settings_pages['api_test'] = new Settings_Api_Test();
 		}
-		
+
 		// Only create Settings_Debug if it doesn't exist (it may have been created for AJAX registration)
 		if ( ! isset( $this->settings_pages['debug'] ) ) {
 			$this->settings_pages['debug'] = new Settings_Debug();
 		}
-		
+
 		$this->settings_pages['consultation'] = new Settings_Consultation();
 		$this->settings_pages['help']         = new Settings_Help();
 

@@ -277,6 +277,7 @@ final class SEO_Manager {
 			'page_type'      => 'gallery_home',
 			'procedure_name' => '',
 			'case_number'    => '',
+			'total_cases'    => 0,
 			'is_combine'     => $is_gallery,
 		);
 
@@ -345,6 +346,7 @@ final class SEO_Manager {
 				if ( $procedure_data ) {
 					$seo_data['procedure_name'] = $procedure_data['name'];
 					$total_cases                = $procedure_data['total_cases'] ?? 0;
+					$seo_data['total_cases']    = $total_cases;
 
 					if ( count( $url_parts ) >= 3 ) {
 						// Case detail page.
@@ -880,77 +882,143 @@ final class SEO_Manager {
 			return;
 		}
 
+		// Build breadcrumb structure
+		$breadcrumb_items = array(
+			array(
+				'@type'    => 'ListItem',
+				'position' => 1,
+				'name'     => 'Home',
+				'item'     => home_url( '/' ),
+			),
+		);
+
+		$position = 2;
+
+		// Add gallery page to breadcrumb
+		if ( ! empty( $this->seo_data['canonical_url'] ) ) {
+			$gallery_url = home_url( '/' . trim( get_option( 'brag_book_gallery_page_slug', 'gallery' ), '/' ) . '/' );
+			
+			if ( $this->seo_data['page_type'] !== 'gallery_home' ) {
+				$breadcrumb_items[] = array(
+					'@type'    => 'ListItem',
+					'position' => $position++,
+					'name'     => 'Gallery',
+					'item'     => $gallery_url,
+				);
+			}
+
+			// Add procedure page to breadcrumb if applicable
+			if ( ! empty( $this->seo_data['procedure_name'] ) && $this->seo_data['page_type'] === 'case_detail' ) {
+				$procedure_url = rtrim( $gallery_url, '/' ) . '/' . sanitize_title( $this->seo_data['procedure_name'] ) . '/';
+				$breadcrumb_items[] = array(
+					'@type'    => 'ListItem',
+					'position' => $position++,
+					'name'     => $this->seo_data['procedure_name'],
+					'item'     => $procedure_url,
+				);
+			}
+
+			// Add current page to breadcrumb
+			if ( $this->seo_data['page_type'] !== 'gallery_home' ) {
+				$current_name = match ( $this->seo_data['page_type'] ) {
+					'case_list' => $this->seo_data['procedure_name'] . ' Gallery',
+					'case_detail' => 'Case ' . $this->seo_data['case_number'],
+					'consultation' => 'Consultation',
+					'favorites' => 'My Favorites',
+					default => 'Gallery',
+				};
+
+				$breadcrumb_items[] = array(
+					'@type'    => 'ListItem',
+					'position' => $position,
+					'name'     => $current_name,
+					'item'     => $this->seo_data['canonical_url'],
+				);
+			}
+		}
+
+		// Build main schema structure
 		$structured_data = array(
-			'@context'    => 'https://schema.org',
-			'@type'       => 'MedicalWebPage',
-			'name'        => $this->seo_data['title'],
-			'description' => $this->seo_data['description'],
-			'url'         => $this->seo_data['canonical_url'],
+			'@context' => 'https://schema.org',
 		);
 
 		switch ( $this->seo_data['page_type'] ) {
 			case 'case_detail':
-				$structured_data['mainEntity'] = array(
-					'@type' => 'MedicalProcedure',
-					'name'  => $this->seo_data['procedure_name'],
-					'image' => array(
-						'@type' => 'ImageGallery',
-						'name'  => sprintf(
-							/* translators: 1: procedure name, 2: case number */
-							esc_html__(
-								'%1$s Before and After Photos - Case %2$s',
-								'brag-book-gallery'
-							),
-							$this->seo_data['procedure_name'],
-							$this->seo_data['case_number']
-						),
-					),
+				// For individual case pages
+				$structured_data['@type'] = 'ImageGallery';
+				$structured_data['name'] = sprintf(
+					'%s Before & After Photos - Case %s',
+					$this->seo_data['procedure_name'],
+					$this->seo_data['case_number']
 				);
+				$structured_data['description'] = $this->seo_data['description'];
+				$structured_data['url'] = $this->seo_data['canonical_url'];
 				break;
 
 			case 'case_list':
-				$structured_data['mainEntity'] = array(
-					'@type' => 'ImageGallery',
-					'name'  => sprintf(
-						/* translators: %s: procedure name */
-						esc_html__(
-							'%s Before and After Gallery',
-							'brag-book-gallery'
-						),
-						$this->seo_data['procedure_name']
-					),
-					'about' => array(
-						'@type' => 'MedicalProcedure',
-						'name'  => $this->seo_data['procedure_name'],
-					),
+				// For procedure gallery pages
+				$total_cases = $this->seo_data['total_cases'] ?? 0;
+				$structured_data['@type'] = 'ImageGallery';
+				$structured_data['name'] = sprintf(
+					'%s Before & After Gallery',
+					$this->seo_data['procedure_name']
 				);
+				$structured_data['description'] = sprintf(
+					'Review %d %s before and after cases submitted by real doctors from our online gallery.',
+					$total_cases,
+					$this->seo_data['procedure_name']
+				);
+				$structured_data['url'] = $this->seo_data['canonical_url'];
+				$structured_data['numberOfItems'] = $total_cases;
 				break;
 
 			case 'consultation':
-				$structured_data['@type']      = 'ContactPage';
-				$structured_data['mainEntity'] = [
+				$structured_data['@type'] = 'ContactPage';
+				$structured_data['name'] = 'Request a Consultation';
+				$structured_data['description'] = $this->seo_data['description'];
+				$structured_data['url'] = $this->seo_data['canonical_url'];
+				$structured_data['mainEntity'] = array(
 					'@type'        => 'MedicalBusiness',
 					'name'         => get_bloginfo( 'name' ),
 					'contactPoint' => array(
 						'@type'       => 'ContactPoint',
 						'contactType' => 'consultation booking',
 					),
-				];
+				);
+				break;
+
+			case 'favorites':
+				$structured_data['@type'] = 'CollectionPage';
+				$structured_data['name'] = 'My Favorite Cases';
+				$structured_data['description'] = 'Your saved before and after cases from our gallery';
+				$structured_data['url'] = $this->seo_data['canonical_url'];
 				break;
 
 			default:
-				$structured_data['mainEntity'] = array(
-					'@type'       => 'ImageGallery',
-					'name'        => esc_html__(
-						'Before and After Gallery',
-						'brag-book-gallery'
-					),
-					'description' => esc_html__(
-						'Medical procedure before and after photo gallery',
-						'brag-book-gallery'
-					),
-				);
+				// For main gallery page
+				$structured_data['@type'] = 'ImageGallery';
+				$structured_data['name'] = 'Before & After Gallery';
+				$structured_data['description'] = 'Browse our comprehensive before and after photo gallery showcasing real patient results from cosmetic procedures.';
+				$structured_data['url'] = $this->seo_data['canonical_url'];
 				break;
+		}
+
+		// Add breadcrumb to all page types
+		if ( ! empty( $breadcrumb_items ) ) {
+			$structured_data['breadcrumb'] = array(
+				'@type'           => 'BreadcrumbList',
+				'itemListElement' => $breadcrumb_items,
+			);
+		}
+
+		// Add publisher/provider information
+		$site_name = get_bloginfo( 'name' );
+		if ( ! empty( $site_name ) ) {
+			$structured_data['publisher'] = array(
+				'@type' => 'Organization',
+				'name'  => $site_name,
+				'url'   => home_url( '/' ),
+			);
 		}
 
 		echo '<script type="application/ld+json">' . wp_json_encode( $structured_data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) . '</script>' . "\n";

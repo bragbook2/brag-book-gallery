@@ -44,21 +44,13 @@
 	&[data-direction="prev"] {
 		position: absolute;
 		left: 0;
-		transform: translate3d(0, -50%, 0);
-
-		@media (min-width:1024px) {
-			transform: translate3d(-50%, -50%, 0);
-		}
+		transform: translate3d(-50%, -50%, 0);
 	}
 
 	&[data-direction="next"] {
 		position: absolute;
 		right: 0;
-		transform: translate3d(0, -50%, 0);
-
-		@media (min-width:1024px) {
-			transform: translate3d(50%, -50%, 0);
-		}
+		transform: translate3d(50%, -50%, 0);
 	}
 }
 
