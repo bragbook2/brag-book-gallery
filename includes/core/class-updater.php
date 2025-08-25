@@ -320,7 +320,7 @@ final class Updater {
 			'banners_rtl' => [],
 			'tested' => $this->plugin['TestedUpTo'] ?? '',
 			'requires_php' => $this->plugin['RequiresPHP'] ?? '8.2',
-			'compatibility' => new stdClass(),
+			'compatibility' => new \stdClass(),
 		];
 	}
 
@@ -376,8 +376,8 @@ final class Updater {
 	/**
 	 * Prepare plugin information for popup
 	 */
-	private function prepare_plugin_info(): stdClass {
-		$info = new stdClass();
+	private function prepare_plugin_info(): \stdClass {
+		$info = new \stdClass();
 
 		$info->name = $this->plugin['Name'] ?? 'BRAG book Gallery';
 		$info->slug = dirname($this->basename);
