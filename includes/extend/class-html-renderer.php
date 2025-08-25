@@ -404,7 +404,7 @@ final class HTML_Renderer {
 					<?php echo self::generate_nudity_warning(); ?>
 				<?php endif; ?>
 				<a href="<?php echo esc_url( "{$base_path}/{$procedure_slug}/{$case_id}/" ); ?>"
-				   class="brag-book-gallery-card-case-link"
+				   class="brag-book-gallery-case-card-link"
 				   aria-label="<?php printf( esc_attr__( 'View case %s for %s', 'brag-book-gallery' ), esc_attr( $case_id ), esc_attr( $procedure_title ) ); ?>">
 					<?php echo self::generate_carousel_image( $image_url, $has_nudity ); ?>
 				</a>
@@ -461,14 +461,14 @@ final class HTML_Renderer {
 		if ( ! empty( $case_id ) ) {
 			// Get gallery page slug from settings (correct option name)
 			$gallery_slug_option = get_option( 'brag_book_gallery_page_slug', [] );
-			
+
 			// Handle both array and string formats
 			if ( is_array( $gallery_slug_option ) ) {
 				$gallery_slug = ! empty( $gallery_slug_option[0] ) ? $gallery_slug_option[0] : 'before-after';
 			} else {
 				$gallery_slug = ! empty( $gallery_slug_option ) ? $gallery_slug_option : 'before-after';
 			}
-			
+
 			// Use the procedure slug passed from the shortcode if available
 			// Otherwise try to determine it from the case data
 			if ( empty( $procedure_slug ) ) {
@@ -482,23 +482,23 @@ final class HTML_Renderer {
 						$procedure_slug = sanitize_title( $first_procedure['name'] );
 					}
 				}
-				
+
 				// Final fallback
 				if ( empty( $procedure_slug ) ) {
 					$procedure_slug = 'case';
 				}
 			}
-			
+
 			// Get SEO suffix URL from caseDetails array (based on actual API response structure)
 			$seo_suffix = '';
 			if ( ! empty( $case['caseDetails'] ) && is_array( $case['caseDetails'] ) ) {
 				$first_detail = reset( $case['caseDetails'] );
 				$seo_suffix = ! empty( $first_detail['seoSuffixUrl'] ) ? $first_detail['seoSuffixUrl'] : '';
 			}
-			
+
 			// Use SEO suffix if available, otherwise use case ID
 			$case_identifier = ! empty( $seo_suffix ) ? $seo_suffix : $case_id;
-			
+
 			// Build the URL
 			$case_url = home_url( '/' . $gallery_slug . '/' . $procedure_slug . '/' . $case_identifier );
 		}
@@ -531,7 +531,7 @@ final class HTML_Renderer {
 			 aria-roledescription="slide"
 			 aria-label="<?php echo esc_attr( sprintf( 'Slide %d of %d', $slide_index + 1, $total_slides ) ); ?>">
 			<?php if ( ! empty( $case_url ) ) : ?>
-				<a href="<?php echo esc_url( $case_url ); ?>" 
+				<a href="<?php echo esc_url( $case_url ); ?>"
 				   class="brag-book-gallery-carousel-link"
 				   aria-label="<?php echo esc_attr( 'View case details for ' . $alt_text ); ?>">
 			<?php endif; ?>
@@ -778,21 +778,21 @@ final class HTML_Renderer {
 		}
 
 		$case_id = $case_data['id'] ?? '';
-		
+
 		// Extract SEO fields from caseDetails array if available
 		$seo_headline = '';
 		$seo_page_title = '';
 		$seo_page_description = '';
 		$seo_suffix_url = '';
-		
+
 		if ( ! empty( $case_data['caseDetails'] ) && is_array( $case_data['caseDetails'] ) ) {
 			$first_detail = reset( $case_data['caseDetails'] );
-			
+
 			// If main ID is empty, fall back to caseDetails ID
 			if ( empty( $case_id ) ) {
 				$case_id = $first_detail['caseId'] ?? '';
 			}
-			
+
 			// Extract SEO fields
 			$seo_headline = ! empty( $first_detail['seoHeadline'] ) ? $first_detail['seoHeadline'] : '';
 			$seo_page_title = ! empty( $first_detail['seoPageTitle'] ) ? $first_detail['seoPageTitle'] : '';
@@ -846,13 +846,13 @@ final class HTML_Renderer {
 			// Display first image as main by default
 			$first_photo    = reset( $case_data['photoSets'] );
 			$main_image_url = ! empty( $first_photo['postProcessedImageLocation'] ) ? $first_photo['postProcessedImageLocation'] : '';
-			
+
 			// Get seoAltText if available
 			$seo_alt_text = null;
 			if ( isset( $first_photo['seoAltText'] ) && $first_photo['seoAltText'] !== null ) {
 				$seo_alt_text = $first_photo['seoAltText'];
 			}
-			
+
 			// Use seoAltText if available, otherwise use procedure name and case number
 			$main_alt_text = $seo_alt_text !== null ? $seo_alt_text : $procedure_name . ' - Case ' . $case_id;
 
@@ -1154,7 +1154,7 @@ final class HTML_Renderer {
 
 				// Extract procedure title
 				$transformed_case['procedureTitle'] = __( 'Unknown Procedure', 'brag-book-gallery' );
-				
+
 				// Check if we have procedures array with names
 				if ( ! empty( $case['procedures'] ) && is_array( $case['procedures'] ) ) {
 					$first_procedure = reset( $case['procedures'] );
@@ -1167,15 +1167,15 @@ final class HTML_Renderer {
 					if ( is_array( $api_token ) && ! empty( $api_token[0] ) ) {
 						$api_token = $api_token[0];
 					}
-					
+
 					// Get sidebar data to look up procedure names
 					$sidebar_data = Data_Fetcher::get_sidebar_data( $api_token );
-					
+
 					if ( ! empty( $sidebar_data['data'] ) && ! empty( $case['procedureIds'][0] ) ) {
 						$procedure_info = Data_Fetcher::find_procedure_by_id( $sidebar_data['data'], intval( $case['procedureIds'][0] ) );
 						if ( $procedure_info && ! empty( $procedure_info['name'] ) ) {
 							$transformed_case['procedureTitle'] = $procedure_info['name'];
-							
+
 							// Also add the procedures array for consistency
 							$procedures = [];
 							foreach ( $case['procedureIds'] as $procedure_id ) {

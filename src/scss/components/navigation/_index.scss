@@ -20,7 +20,9 @@
 	width: 100%;
 	border-radius: var(--wp--custom--brag-book-gallery--rounded,4px);
 
-	&:hover {
+	&:hover,
+	&:focus,
+	&:active{
 		color: var(--wp--custom--brag-book-gallery--color--black);
 		background: transparent;
 	}

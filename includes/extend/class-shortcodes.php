@@ -1319,7 +1319,7 @@ final class Shortcodes {
 				if ( $slide_count >= $max_slides ) {
 					break 2; // Break out of both loops
 				}
-				
+
 				$slide_index++;
 				$slide_count++;
 				$html_parts[] = HTML_Renderer::generate_carousel_slide_from_photo( $photo, $case, $slide_index, $procedure_slug );
@@ -1410,7 +1410,7 @@ final class Shortcodes {
 
 		if ( ! empty( $case_url ) ) {
 			$html .= sprintf(
-				'<a href="%s" class="brag-book-gallery-card-case-link" data-case-id="%s">',
+				'<a href="%s" class="brag-book-gallery-case-card-link" data-case-id="%s">',
 				esc_url( $case_url ),
 				esc_attr( $case_id )
 			);
@@ -1703,7 +1703,7 @@ final class Shortcodes {
 			$seo_page_title = ! empty( $first_detail['seoPageTitle'] ) ? $first_detail['seoPageTitle'] : '';
 			$seo_page_description = ! empty( $first_detail['seoPageDescription'] ) ? $first_detail['seoPageDescription'] : '';
 		}
-		
+
 		// Use seoSuffixUrl for URL if available, otherwise use case_id
 		$url_suffix = ! empty( $seo_suffix_url ) ? $seo_suffix_url : $case_id;
 
@@ -1804,7 +1804,7 @@ final class Shortcodes {
 
 				$html .= '</div>';
 
-				$html .= '<a href="' . esc_url( $case_url ) . '" class="brag-book-gallery-card-case-link" data-case-id="' . esc_attr( $case_id ) . '" data-procedure-ids="' . esc_attr( $procedure_ids ) . '">';
+				$html .= '<a href="' . esc_url( $case_url ) . '" class="brag-book-gallery-case-card-link" data-case-id="' . esc_attr( $case_id ) . '" data-procedure-ids="' . esc_attr( $procedure_ids ) . '">';
 				$html .= '<picture class="brag-book-gallery-picture">';
 				$html .= '<img src="' . esc_url( $single_image ) . '" ';
 				// Use seoAltText if available, otherwise use procedure name and case number
@@ -1823,7 +1823,7 @@ final class Shortcodes {
 			} else {
 				// Fallback to placeholder if no single image
 				$html .= '<div class="brag-book-gallery-case-image-placeholder">';
-				$html .= '<a href="' . esc_url( $case_url ) . '" class="brag-book-gallery-card-case-link" data-case-id="' . esc_attr( $case_id ) . '" data-procedure-ids="' . esc_attr( $procedure_ids ) . '">';
+				$html .= '<a href="' . esc_url( $case_url ) . '" class="brag-book-gallery-case-card-link" data-case-id="' . esc_attr( $case_id ) . '" data-procedure-ids="' . esc_attr( $procedure_ids ) . '">';
 				$html .= '<span>No image available</span>';
 				$html .= '</a>';
 				$html .= '</div>';
@@ -1836,7 +1836,7 @@ final class Shortcodes {
 				// Extract before and after images
 				$before_image = ! empty( $first_photoset['beforeLocationUrl'] ) ? $first_photoset['beforeLocationUrl'] : '';
 				$after_image  = ! empty( $first_photoset['afterLocationUrl1'] ) ? $first_photoset['afterLocationUrl1'] : '';
-				
+
 				// Get seoAltText if available
 				$seo_alt_text = null;
 				if ( isset( $first_photoset['seoAltText'] ) && $first_photoset['seoAltText'] !== null ) {
@@ -1852,7 +1852,7 @@ final class Shortcodes {
 					$html .= '<div class="brag-book-gallery-image-container">';
 					$html .= '<div class="brag-book-gallery-skeleton-loader"></div>';
 					$html .= '<div class="brag-book-gallery-case-image-label">Before</div>';
-					$html .= '<a href="' . esc_url( $case_url ) . '" class="brag-book-gallery-card-case-link" data-case-id="' . esc_attr( $case_id ) . '" data-procedure-ids="' . esc_attr( $procedure_ids ) . '">';
+					$html .= '<a href="' . esc_url( $case_url ) . '" class="brag-book-gallery-case-card-link" data-case-id="' . esc_attr( $case_id ) . '" data-procedure-ids="' . esc_attr( $procedure_ids ) . '">';
 					$html .= '<picture class="brag-book-gallery-picture">';
 					$html .= '<img src="' . esc_url( $before_image ) . '" ';
 					// Use seoAltText if available, otherwise use procedure name and case number
@@ -1903,7 +1903,7 @@ final class Shortcodes {
 
 					$html .= '</div>';
 
-					$html .= '<a href="' . esc_url( $case_url ) . '" class="brag-book-gallery-card-case-link" data-case-id="' . esc_attr( $case_id ) . '" data-procedure-ids="' . esc_attr( $procedure_ids ) . '">';
+					$html .= '<a href="' . esc_url( $case_url ) . '" class="brag-book-gallery-case-card-link" data-case-id="' . esc_attr( $case_id ) . '" data-procedure-ids="' . esc_attr( $procedure_ids ) . '">';
 					$html .= '<picture class="brag-book-gallery-picture">';
 					$html .= '<img src="' . esc_url( $after_image ) . '" ';
 					// Use seoAltText if available, otherwise use procedure name and case number

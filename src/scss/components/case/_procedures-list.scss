@@ -14,6 +14,7 @@
 
 	&__item {
 		display: inline-flex;
+		margin: 0 !important;
 		padding: var(--wp--custom--brag-book-gallery--spacer--sm, 8px ) var(--wp--custom--brag-book-gallery--spacer--md,12px) !important;
 		background: var(--wp--custom--brag-book-gallery--color--white,#FFF);
 		color: var(--wp--custom--brag-book-gallery--color--black);

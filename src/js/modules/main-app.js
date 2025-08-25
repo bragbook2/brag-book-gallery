@@ -216,7 +216,7 @@ class BRAGbookGalleryApp {
 		// Handle clicks on case links with AJAX loading
 		document.addEventListener('click', (e) => {
 			// Check if click is on a case link
-			const caseLink = e.target.closest('.brag-book-gallery-card-case-link');
+			const caseLink = e.target.closest('.brag-book-gallery-case-card-link');
 			if (caseLink) {
 				e.preventDefault();
 				e.stopPropagation();
@@ -237,7 +237,7 @@ class BRAGbookGalleryApp {
 			const caseCard = e.target.closest('.brag-book-gallery-case-card');
 			if (caseCard && !e.target.closest('button') && !e.target.closest('details')) {
 				// Find the case link within the card
-				const caseLinkInCard = caseCard.querySelector('.brag-book-gallery-card-case-link');
+				const caseLinkInCard = caseCard.querySelector('.brag-book-gallery-case-card-link');
 				if (caseLinkInCard && caseLinkInCard.href) {
 					e.preventDefault();
 					const caseId = caseLinkInCard.dataset.caseId;
@@ -334,7 +334,16 @@ class BRAGbookGalleryApp {
 			if (data.success && data.data && data.data.html) {
 				// Display the HTML directly from the server
 				galleryContent.innerHTML = data.data.html;
-				
+
+				// Scroll to top of gallery content area smoothly
+				const wrapper = document.querySelector('.brag-book-gallery-wrapper');
+				if (wrapper) {
+					wrapper.scrollIntoView({ behavior: 'smooth', block: 'start' });
+				} else {
+					// Fallback to scrolling to gallery content
+					galleryContent.scrollIntoView({ behavior: 'smooth', block: 'start' });
+				}
+
 				// Update page title and meta description if SEO data is provided
 				if (data.data.seo) {
 					if (data.data.seo.title) {
@@ -350,7 +359,7 @@ class BRAGbookGalleryApp {
 						metaDescription.content = data.data.seo.description;
 					}
 				}
-				
+
 				// Re-initialize any necessary event handlers for the new content
 				this.initializeCaseDetailThumbnails();
 			} else {
@@ -1711,7 +1720,7 @@ class BRAGbookGalleryApp {
 							</svg>
 						</button>
 					</div>
-					<a href="${caseUrl}" class="brag-book-gallery-card-case-link" data-case-id="${caseId}">
+					<a href="${caseUrl}" class="brag-book-gallery-case-card-link" data-case-id="${caseId}">
 						<picture class="brag-book-gallery-picture">
 							<img src="${imageUrl}" alt="Case ${caseId}" loading="lazy" data-image-type="single">
 						</picture>

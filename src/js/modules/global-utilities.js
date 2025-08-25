@@ -964,9 +964,6 @@ window.loadCaseDetails = function(caseId, procedureId, procedureSlug, procedureI
 		);
 	}
 
-	// Scroll to top of gallery content
-	galleryContent.scrollIntoView({ behavior: 'smooth' });
-
 	// Prepare request parameters
 	const requestParams = {
 		action: 'load_case_details',
@@ -996,6 +993,15 @@ window.loadCaseDetails = function(caseId, procedureId, procedureSlug, procedureI
 		.then(data => {
 			if (data.success) {
 				galleryContent.innerHTML = data.data.html;
+				
+				// Scroll to top of gallery content area smoothly after content loads
+				const wrapper = document.querySelector('.brag-book-gallery-wrapper');
+				if (wrapper) {
+					wrapper.scrollIntoView({ behavior: 'smooth', block: 'start' });
+				} else {
+					// Fallback to scrolling to gallery content
+					galleryContent.scrollIntoView({ behavior: 'smooth', block: 'start' });
+				}
 			} else {
 				galleryContent.innerHTML = '<div class="brag-book-gallery-error">Failed to load case details: ' + (data.data || 'Unknown error') + '</div>';
 			}

@@ -15,6 +15,12 @@
 		display: block;
 		text-decoration: none;
 		color: inherit;
+		margin: 0;
+		padding: 0;
+		border-radius: var(--wp--custom--brag-book-gallery--rounded);
+		box-shadow: var(--wp--custom--brag-book-gallery--shadow-lg);
+		overflow: hidden;
+		line-height: 1;
 
 		&:focus {
 			outline: none;
@@ -30,6 +36,7 @@
 		border: 1px solid var(--wp--custom--brag-book-gallery--color--lighter-grey);
 		border-radius: var(--wp--custom--brag-book-gallery--rounded,4px);
 		container-type: inline-size;
+		box-shadow: var(--wp--custom--brag-book-gallery--shadow-lg);
 
 		[open] & {
 			border-radius: 0 0 var(--wp--custom--brag-book-gallery--rounded,4px) var(--wp--custom--brag-book-gallery--rounded,4px);
