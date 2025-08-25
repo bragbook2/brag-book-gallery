@@ -88,12 +88,10 @@ jobs:
     
     - name: Create release
       id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: softprops/action-gh-release@v1
       with:
         tag_name: v${{ steps.get_version.outputs.VERSION }}
-        release_name: BRAGBook Gallery v${{ steps.get_version.outputs.VERSION }}
+        name: BRAGBook Gallery v${{ steps.get_version.outputs.VERSION }}
         body: |
           ## 🎉 BRAGBook Gallery v${{ steps.get_version.outputs.VERSION }}
           
@@ -118,25 +116,5 @@ jobs:
           ---
           
           **Full Changelog**: https://github.com/${{ github.repository }}/compare/v3.0.0...v${{ steps.get_version.outputs.VERSION }}
-        draft: false
-        prerelease: false
-    
-    - name: Upload release asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./brag-book-gallery.zip
-        asset_name: brag-book-gallery.zip
-        asset_content_type: application/zip
-    
-    - name: Upload source code
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./dist/brag-book-gallery/brag-book-gallery.php
-        asset_name: brag-book-gallery.php
-        asset_content_type: text/plain
+        files: |
+          brag-book-gallery.zip
