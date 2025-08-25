@@ -32,7 +32,7 @@
 
 			// Configuration options
 			this.options = {
-				autoPlay: options.autoPlay !== false,
+				autoPlay: options.autoPlay === true || options.autoPlay === 'true',
 				autoPlayInterval: parseInt(options.autoPlayInterval) || 5000,
 				showControls: options.showControls !== false,
 				showPagination: options.showPagination !== false,
@@ -113,13 +113,13 @@
 			const containerWidth = this.container.clientWidth;
 
 			if (containerWidth < 480) {
-				return 1;
+				return 1.5; // Show 1.5 images on mobile
 			} else if (containerWidth < 768) {
-				return 2;
+				return 2.5; // Show 2.5 images on tablet
 			} else if (containerWidth < 1024) {
-				return 3;
+				return 3; // Show 3 images on desktop
 			} else {
-				return 4;
+				return 3; // Show 3 images on large desktop
 			}
 		}
 
@@ -257,7 +257,7 @@
 		goToPrevious() {
 			if (this.isTransitioning) return;
 
-			const newIndex = this.currentIndex - this.options.itemsPerView;
+			const newIndex = this.currentIndex - Math.floor(this.options.itemsPerView);
 
 			if (newIndex < 0) {
 				if (this.options.loop) {
@@ -274,7 +274,7 @@
 		goToNext() {
 			if (this.isTransitioning) return;
 
-			const newIndex = this.currentIndex + this.options.itemsPerView;
+			const newIndex = this.currentIndex + Math.floor(this.options.itemsPerView);
 
 			if (newIndex > this.getMaxIndex()) {
 				if (this.options.loop) {
@@ -309,7 +309,7 @@
 		 * Get maximum index based on items per view
 		 */
 		getMaxIndex() {
-			return Math.max(0, this.items.length - this.options.itemsPerView);
+			return Math.max(0, this.items.length - Math.ceil(this.options.itemsPerView));
 		}
 
 		/**
@@ -360,7 +360,7 @@
 			if (!this.options.showPagination || this.dots.length === 0) return;
 
 			this.dots.forEach((dot, index) => {
-				const isActive = index === Math.floor(this.currentIndex / this.options.itemsPerView);
+				const isActive = index === Math.floor(this.currentIndex / Math.floor(this.options.itemsPerView));
 				dot.classList.toggle('active', isActive);
 			});
 		}
@@ -464,7 +464,7 @@
 
 			// Get options from data attributes
 			const options = {
-				autoPlay: container.dataset.autoPlay !== 'false',
+				autoPlay: container.dataset.autoPlay === 'true',
 				autoPlayInterval: parseInt(container.dataset.autoPlayInterval) || 5000,
 				showControls: container.dataset.showControls !== 'false',
 				showPagination: container.dataset.showPagination !== 'false',
@@ -518,7 +518,7 @@
 							Array.from(carousels).forEach(carousel => {
 								if (!carousel.classList.contains('carousel-initialized')) {
 									const options = {
-										autoPlay: carousel.dataset.autoPlay !== 'false',
+										autoPlay: carousel.dataset.autoPlay === 'true',
 										autoPlayInterval: parseInt(carousel.dataset.autoPlayInterval) || 5000,
 										showControls: carousel.dataset.showControls !== 'false',
 										showPagination: carousel.dataset.showPagination !== 'false',

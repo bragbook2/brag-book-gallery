@@ -33,7 +33,7 @@ final class Shortcodes {
 	 *
 	 * @var int
 	 */
-	private const DEFAULT_CAROUSEL_LIMIT = 10;
+	private const DEFAULT_CAROUSEL_LIMIT = 8;
 
 	/**
 	 * Default start index for carousel.
@@ -1122,20 +1122,23 @@ final class Shortcodes {
 
 		// Get procedure_id and member_id - only set if provided
 		$procedure_id = null;
+		$procedure_slug = '';
 		if ( ! empty( $atts['procedure_id'] ) ) {
 			// Check if it's numeric (ID) or string (slug)
 			if ( is_numeric( $atts['procedure_id'] ) ) {
 				$procedure_id = absint( $atts['procedure_id'] );
+				// We don't have the slug in this case, it will be determined from the API response
 			} else {
-				// It's a slug - convert it to an ID using sidebar data
+				// It's a slug - save it and convert to an ID using sidebar data
+				$procedure_slug = sanitize_title( $atts['procedure_id'] );
 				$procedure_id = self::get_procedure_id_from_slug(
-					$atts['procedure_id'],
+					$procedure_slug,
 					$atts['api_token'],
 					$atts['website_property_id']
 				);
 
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-					error_log( 'BRAG book Carousel: Converted slug "' . $atts['procedure_id'] . '" to ID: ' . ( $procedure_id ?: 'not found' ) );
+					error_log( 'BRAG book Carousel: Converted slug "' . $procedure_slug . '" to ID: ' . ( $procedure_id ?: 'not found' ) );
 				}
 			}
 		}
@@ -1149,6 +1152,7 @@ final class Shortcodes {
 				'limit'               => absint( $atts['limit'] ?? 0 ) ?: 10,
 				'start'               => absint( $atts['start'] ?? 0 ) ?: 1,
 				'procedure_id'        => $procedure_id,
+				'procedure_slug'      => $procedure_slug,
 				'member_id'           => $member_id,
 				'show_controls'       => filter_var( $atts['show_controls'] ?? true, FILTER_VALIDATE_BOOLEAN ),
 				'show_pagination'     => filter_var( $atts['show_pagination'] ?? true, FILTER_VALIDATE_BOOLEAN ),
@@ -1252,7 +1256,9 @@ final class Shortcodes {
 					<?php
 					// Use the local method which handles the correct data structure
 					// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- HTML is already escaped in method
-					echo self::generate_carousel_items_from_data( $carousel_data['data'] ?? $carousel_data );
+					$limit = absint( $config['limit'] ?? self::DEFAULT_CAROUSEL_LIMIT );
+					$procedure_slug = ! empty( $config['procedure_slug'] ) ? $config['procedure_slug'] : '';
+					echo self::generate_carousel_items_from_data( $carousel_data['data'] ?? $carousel_data, $limit, $procedure_slug );
 					?>
 				</div>
 
@@ -1289,13 +1295,14 @@ final class Shortcodes {
 	 * @return string Generated HTML for carousel items.
 	 * @since 3.0.0
 	 */
-	private static function generate_carousel_items_from_data( array $items ): string {
+	private static function generate_carousel_items_from_data( array $items, int $max_slides = 8, string $procedure_slug = '' ): string {
 		if ( empty( $items ) ) {
 			return '';
 		}
 
 		$html_parts  = [];
 		$slide_index = 0;
+		$slide_count = 0;
 
 		// Loop through each case
 		foreach ( $items as $case ) {
@@ -1308,8 +1315,14 @@ final class Shortcodes {
 			}
 
 			foreach ( $photo_sets as $photo ) {
+				// Stop if we've reached the maximum number of slides
+				if ( $slide_count >= $max_slides ) {
+					break 2; // Break out of both loops
+				}
+				
 				$slide_index++;
-				$html_parts[] = HTML_Renderer::generate_carousel_slide_from_photo( $photo, $case, $slide_index );
+				$slide_count++;
+				$html_parts[] = HTML_Renderer::generate_carousel_slide_from_photo( $photo, $case, $slide_index, $procedure_slug );
 			}
 		}
 

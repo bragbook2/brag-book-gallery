@@ -450,27 +450,61 @@ final class HTML_Renderer {
 	 * @return string Slide HTML.
 	 * @since 3.0.0
 	 */
-	public static function generate_carousel_slide_from_photo( array $photo, array $case, int $slide_index ): string {
+	public static function generate_carousel_slide_from_photo( array $photo, array $case, int $slide_index, string $procedure_slug = '' ): string {
 		$photo_id = $photo['id'] ?? '';
 		// Handle different image URL field names based on API response format
 		$image_url = $photo['postProcessedImageLocation'] ?? $photo['url'] ?? $photo['originalBeforeLocation'] ?? '';
 		$case_id   = $case['id'] ?? '';
 
-		// Extract procedure title from details HTML or use direct field
-		$procedure_title = '';
-		if ( ! empty( $case['procedureTitle'] ) ) {
-			$procedure_title = $case['procedureTitle'];
-		} elseif ( ! empty( $case['details'] ) ) {
-			// Try to extract from details HTML
-			if ( preg_match( '/<p>([^<]+)<\/p>/', $case['details'], $matches ) ) {
-				$procedure_title = trim( $matches[1] );
+		// Build case URL
+		$case_url = '';
+		if ( ! empty( $case_id ) ) {
+			// Get gallery page slug from settings (correct option name)
+			$gallery_slug_option = get_option( 'brag_book_gallery_page_slug', [] );
+			
+			// Handle both array and string formats
+			if ( is_array( $gallery_slug_option ) ) {
+				$gallery_slug = ! empty( $gallery_slug_option[0] ) ? $gallery_slug_option[0] : 'before-after';
+			} else {
+				$gallery_slug = ! empty( $gallery_slug_option ) ? $gallery_slug_option : 'before-after';
 			}
+			
+			// Use the procedure slug passed from the shortcode if available
+			// Otherwise try to determine it from the case data
+			if ( empty( $procedure_slug ) ) {
+				// Try to get procedure information from the case
+				if ( ! empty( $case['procedures'] ) && is_array( $case['procedures'] ) ) {
+					// Get the first procedure
+					$first_procedure = reset( $case['procedures'] );
+					if ( ! empty( $first_procedure['slugName'] ) ) {
+						$procedure_slug = $first_procedure['slugName'];
+					} elseif ( ! empty( $first_procedure['name'] ) ) {
+						$procedure_slug = sanitize_title( $first_procedure['name'] );
+					}
+				}
+				
+				// Final fallback
+				if ( empty( $procedure_slug ) ) {
+					$procedure_slug = 'case';
+				}
+			}
+			
+			// Get SEO suffix URL from caseDetails array (based on actual API response structure)
+			$seo_suffix = '';
+			if ( ! empty( $case['caseDetails'] ) && is_array( $case['caseDetails'] ) ) {
+				$first_detail = reset( $case['caseDetails'] );
+				$seo_suffix = ! empty( $first_detail['seoSuffixUrl'] ) ? $first_detail['seoSuffixUrl'] : '';
+			}
+			
+			// Use SEO suffix if available, otherwise use case ID
+			$case_identifier = ! empty( $seo_suffix ) ? $seo_suffix : $case_id;
+			
+			// Build the URL
+			$case_url = home_url( '/' . $gallery_slug . '/' . $procedure_slug . '/' . $case_identifier );
 		}
 
-		// Default alt text based on procedure or generic
-		$alt_text = ! empty( $procedure_title )
-			? $procedure_title . ' before and after result'
-			: 'Body procedure before and after result';
+		// Default alt text
+		$alt_text = 'Before and after procedure result';
 
 		// Check if SEO alt text is provided
 		if ( ! empty( $photo['seoAltText'] ) ) {
@@ -496,6 +530,11 @@ final class HTML_Renderer {
 			 role="group"
 			 aria-roledescription="slide"
 			 aria-label="<?php echo esc_attr( sprintf( 'Slide %d of %d', $slide_index + 1, $total_slides ) ); ?>">
+			<?php if ( ! empty( $case_url ) ) : ?>
+				<a href="<?php echo esc_url( $case_url ); ?>" 
+				   class="brag-book-gallery-carousel-link"
+				   aria-label="<?php echo esc_attr( 'View case details for ' . $alt_text ); ?>">
+			<?php endif; ?>
 			<?php if ( $has_nudity ) : ?>
 				<div class="brag-book-gallery-nudity-warning">
 					<div class="brag-book-gallery-nudity-warning-content">
@@ -512,10 +551,11 @@ final class HTML_Renderer {
 				<img src="<?php echo esc_url( $image_url ); ?>"
 					 alt="<?php echo esc_attr( $alt_text ); ?>"
 					 loading="lazy"
-					 <?php if ( $has_nudity ) : ?>class="brag-book-gallery-nudity-blur"<?php endif; ?>
-					 width="400"
-					 height="300">
+					 <?php if ( $has_nudity ) : ?>class="brag-book-gallery-nudity-blur"<?php endif; ?>>
 			</picture>
+			<?php if ( ! empty( $case_url ) ) : ?>
+				</a>
+			<?php endif; ?>
 			<div class="brag-book-gallery-item-actions">
 				<button class="brag-book-gallery-favorite-button"
 						data-favorited="false"

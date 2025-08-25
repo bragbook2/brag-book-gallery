@@ -45,19 +45,26 @@ final class Updater {
 		$this->repository = $repository;
 		$this->authorize_token = $token;
 
-		$this->set_plugin_properties();
+		// Defer plugin properties loading to avoid early translation loading
+		add_action('init', [$this, 'set_plugin_properties']);
 		$this->register_hooks();
 	}
 
 	/**
 	 * Set plugin properties from file data
 	 */
-	private function set_plugin_properties(): void {
+	public function set_plugin_properties(): void {
+		// Only load once
+		if ($this->plugin !== null) {
+			return;
+		}
+		
 		if (!function_exists('get_plugin_data')) {
 			require_once ABSPATH . 'wp-admin/includes/plugin.php';
 		}
 
-		$this->plugin = get_plugin_data($this->file);
+		// Load plugin data without translations to avoid early loading
+		$this->plugin = get_plugin_data($this->file, false, false);
 		$this->active = is_plugin_active($this->basename);
 	}
 
@@ -264,6 +271,9 @@ final class Updater {
 			return $transient;
 		}
 
+		// Ensure plugin data is loaded
+		$this->set_plugin_properties();
+		
 		$this->get_repository_info();
 
 		if (!$this->github_version || !$this->github_response) {
@@ -364,6 +374,9 @@ final class Updater {
 			return $result;
 		}
 
+		// Ensure plugin data is loaded
+		$this->set_plugin_properties();
+		
 		$this->get_repository_info();
 
 		if (!$this->github_response || !$this->github_version) {
