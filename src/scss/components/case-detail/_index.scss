@@ -117,8 +117,9 @@
 
 	.card-title {
 		margin: 0;
+		color: var(--wp--custom--brag-book-gallery--color--black);
 		font-size: var(--wp--custom--brag-book-gallery--text-lg);
-		font-weight: 600;
+		font-weight: var(--wp--custom--brag-book-gallery--font-weight--semibold);
 	}
 
 	.card-content {

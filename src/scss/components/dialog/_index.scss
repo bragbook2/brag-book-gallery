@@ -68,7 +68,7 @@
 }
 
 .brag-book-gallery-dialog-title {
-	font-size: var(--wp--custom--brag-book-gallery--text-2xl);
+	font-size: var(--wp--custom--brag-book-gallery--text-2xl) !important;
 	font-weight: var(--wp--custom--brag-book-gallery--font-weight--semibold);
 	color: var(--wp--custom--brag-book-gallery--color--black);
 	margin: 0 0 var(--wp--custom--brag-book-gallery--spacer--lg) 0
