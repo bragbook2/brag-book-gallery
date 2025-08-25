@@ -473,7 +473,7 @@ class BRAGbookGalleryApp {
 		console.log('Form submitted:', data);
 
 		// Get submit button and disable it during submission
-		const submitBtn = form.querySelector('.brag-book-gallery-form-submit');
+		const submitBtn = form.querySelector('[data-action="form-submit"]');
 		const originalBtnText = submitBtn ? submitBtn.textContent : '';
 
 		if (submitBtn) {
@@ -1299,7 +1299,7 @@ class BRAGbookGalleryApp {
 										placeholder="Enter your email address"
 										required
 									>
-									<button type="submit" class="brag-book-gallery-form-submit brag-book-gallery-button">
+									<button type="submit" class="brag-book-gallery-button brag-book-gallery-button--full" data-action="form-submit">
 										View Favorites
 									</button>
 								</div>

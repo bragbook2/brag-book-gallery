@@ -14,6 +14,7 @@
 	border-radius: var(--wp--custom--brag-book-gallery--rounded) !important;
 	font-size: var(--wp--custom--brag-book-gallery--text-base) !important;
 	transition: var(--wp--custom--brag-book-gallery--transition);
+	line-height: 1.25;
 	outline: none;
 	font-family: inherit;
 
@@ -46,26 +47,6 @@
 .brag-book-gallery-form-textarea {
 	min-height: 120px;
 	resize: vertical
-}
-
-.brag-book-gallery-form-submit {
-	width: 100%;
-	padding: 1rem 1.5rem;
-	background: var(--wp--custom--brag-book-gallery--color--black);
-	color: var(--wp--custom--brag-book-gallery--color--white,#FFF);
-	border: 2px solid var(--wp--custom--brag-book-gallery--color--black);
-	border-radius: .5rem;
-	font-size: .9375rem;
-	font-weight: 600;
-	cursor: pointer;
-	transition: var(--wp--custom--brag-book-gallery--transition)
-}
-
-
-.brag-book-gallery-form-submit:hover {
-	background: var(--wp--custom--brag-book-gallery--color--white,#FFF);
-	color: var(--wp--custom--brag-book-gallery--color--black);
-	box-shadow: var(--shadow-lg)
 }
 
 .brag-book-gallery-form-message.hidden {
