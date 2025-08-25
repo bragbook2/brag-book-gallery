@@ -373,6 +373,7 @@ final class Shortcodes {
 		$filter_procedure = get_query_var( 'filter_procedure', '' );
 		$procedure_title  = get_query_var( 'procedure_title', '' );
 		$case_id          = get_query_var( 'case_id', '' );
+		$case_suffix      = get_query_var( 'case_suffix', '' );
 		$favorites_page   = get_query_var( 'favorites_page', '' );
 
 		// Check if we're on the favorites page
@@ -390,12 +391,14 @@ final class Shortcodes {
 			error_log( 'filter_procedure: ' . $filter_procedure );
 			error_log( 'procedure_title: ' . $procedure_title );
 			error_log( 'case_id: ' . $case_id );
+			error_log( 'case_suffix: ' . $case_suffix );
 			error_log( 'Current URL: ' . ( $_SERVER['REQUEST_URI'] ?? 'N/A' ) );
 		}
 
 		// For case detail pages, we'll load the full gallery with the case details loaded via JavaScript
 		// This ensures the filters sidebar remains visible
-		$initial_case_id = ! empty( $case_id ) ? $case_id : '';
+		// Use case_suffix (which now contains both numeric IDs and SEO suffixes)
+		$initial_case_id = ! empty( $case_suffix ) ? $case_suffix : '';
 
 		// For procedure filtering, we'll pass it to the main gallery JavaScript
 		// The JavaScript will handle applying the filter on load
@@ -1480,6 +1483,7 @@ final class Shortcodes {
 		$filter_procedure = get_query_var( 'filter_procedure', '' );
 		$procedure_title  = get_query_var( 'procedure_title', '' );
 		$case_id          = get_query_var( 'case_id', '' );
+		$case_suffix      = get_query_var( 'case_suffix', '' );
 
 		// If we have procedure_title but not filter_procedure (case detail URL), use procedure_title for filtering
 		if ( empty( $filter_procedure ) && ! empty( $procedure_title ) ) {
@@ -1492,14 +1496,18 @@ final class Shortcodes {
 			error_log( 'filter_procedure: ' . $filter_procedure );
 			error_log( 'procedure_title: ' . $procedure_title );
 			error_log( 'case_id: ' . $case_id );
+			error_log( 'case_suffix: ' . $case_suffix );
 			error_log( 'API Token exists: ' . ( ! empty( $atts['api_token'] ) ? 'Yes' : 'No' ) );
 			error_log( 'Website Property ID: ' . $atts['website_property_id'] );
 			error_log( 'Current URL: ' . ( $_SERVER['REQUEST_URI'] ?? 'N/A' ) );
 		}
 
-		// If we have a case_id, show single case (now with proper API config)
-		if ( ! empty( $case_id ) ) {
-			return self::render_single_case( $case_id, $atts );
+		// Use case_suffix which now contains both numeric IDs and SEO suffixes
+		$case_identifier = ! empty( $case_suffix ) ? $case_suffix : '';
+
+		// If we have a case identifier, show single case (now with proper API config)
+		if ( ! empty( $case_identifier ) ) {
+			return self::render_single_case( $case_identifier, $atts );
 		}
 
 		// Validate required fields
@@ -1664,12 +1672,27 @@ final class Shortcodes {
 
 		// Get case ID using consistent logic - prefer main case ID for API compatibility
 		$case_id = $case['id'] ?? '';
+		$seo_suffix_url = '';
+		$seo_headline = '';
+		$seo_page_title = '';
+		$seo_page_description = '';
 
 		// If main ID is empty, fall back to caseDetails ID
-		if ( empty( $case_id ) && ! empty( $case['caseDetails'] ) && is_array( $case['caseDetails'] ) ) {
+		// Also extract SEO fields from caseDetails if available
+		if ( ! empty( $case['caseDetails'] ) && is_array( $case['caseDetails'] ) ) {
 			$first_detail = reset( $case['caseDetails'] );
-			$case_id      = $first_detail['caseId'] ?? '';
+			if ( empty( $case_id ) ) {
+				$case_id = $first_detail['caseId'] ?? '';
+			}
+			// Extract SEO fields
+			$seo_suffix_url = ! empty( $first_detail['seoSuffixUrl'] ) ? $first_detail['seoSuffixUrl'] : '';
+			$seo_headline = ! empty( $first_detail['seoHeadline'] ) ? $first_detail['seoHeadline'] : '';
+			$seo_page_title = ! empty( $first_detail['seoPageTitle'] ) ? $first_detail['seoPageTitle'] : '';
+			$seo_page_description = ! empty( $first_detail['seoPageDescription'] ) ? $first_detail['seoPageDescription'] : '';
 		}
+		
+		// Use seoSuffixUrl for URL if available, otherwise use case_id
+		$url_suffix = ! empty( $seo_suffix_url ) ? $seo_suffix_url : $case_id;
 
 		// Get procedure IDs for this case
 		$procedure_ids = '';
@@ -1724,15 +1747,20 @@ final class Shortcodes {
 		}
 
 		$gallery_slug = \BRAGBookGallery\Includes\Core\Slug_Helper::get_first_gallery_page_slug();
-		$case_url     = home_url( '/' . $gallery_slug . '/' . $procedure_slug . '/' . $case_id );
+		$case_url     = home_url( '/' . $gallery_slug . '/' . $procedure_slug . '/' . $url_suffix );
 
 		// Display images based on setting
 		if ( $image_display_mode === 'single' ) {
 			// Single image mode - use postProcessedImageLocation from photoSets
 			$single_image = '';
+			$seo_alt_text = null;
 			if ( ! empty( $case['photoSets'] ) && is_array( $case['photoSets'] ) ) {
 				$first_photoset = reset( $case['photoSets'] );
 				$single_image   = ! empty( $first_photoset['postProcessedImageLocation'] ) ? $first_photoset['postProcessedImageLocation'] : '';
+				// Get seoAltText if available
+				if ( isset( $first_photoset['seoAltText'] ) && $first_photoset['seoAltText'] !== null ) {
+					$seo_alt_text = $first_photoset['seoAltText'];
+				}
 			}
 
 			if ( $single_image ) {
@@ -1766,7 +1794,9 @@ final class Shortcodes {
 				$html .= '<a href="' . esc_url( $case_url ) . '" class="brag-book-gallery-card-case-link" data-case-id="' . esc_attr( $case_id ) . '" data-procedure-ids="' . esc_attr( $procedure_ids ) . '">';
 				$html .= '<picture class="brag-book-gallery-picture">';
 				$html .= '<img src="' . esc_url( $single_image ) . '" ';
-				$html .= 'alt="Case ' . esc_attr( $case_id ) . '" ';
+				// Use seoAltText if available, otherwise use procedure name and case number
+				$alt_text = $seo_alt_text !== null ? $seo_alt_text : $procedure_title . ' - Case ' . $case_id;
+				$html .= 'alt="' . esc_attr( $alt_text ) . '" ';
 				$html .= 'loading="lazy" ';
 				$html .= 'data-image-type="single" ';
 				$html .= 'data-image-url="' . esc_attr( $single_image ) . '" ';
@@ -1793,6 +1823,12 @@ final class Shortcodes {
 				// Extract before and after images
 				$before_image = ! empty( $first_photoset['beforeLocationUrl'] ) ? $first_photoset['beforeLocationUrl'] : '';
 				$after_image  = ! empty( $first_photoset['afterLocationUrl1'] ) ? $first_photoset['afterLocationUrl1'] : '';
+				
+				// Get seoAltText if available
+				$seo_alt_text = null;
+				if ( isset( $first_photoset['seoAltText'] ) && $first_photoset['seoAltText'] !== null ) {
+					$seo_alt_text = $first_photoset['seoAltText'];
+				}
 
 				// Display images side by side with synchronized heights
 				$html .= '<div class="brag-book-gallery-case-images before-after">';
@@ -1806,7 +1842,9 @@ final class Shortcodes {
 					$html .= '<a href="' . esc_url( $case_url ) . '" class="brag-book-gallery-card-case-link" data-case-id="' . esc_attr( $case_id ) . '" data-procedure-ids="' . esc_attr( $procedure_ids ) . '">';
 					$html .= '<picture class="brag-book-gallery-picture">';
 					$html .= '<img src="' . esc_url( $before_image ) . '" ';
-					$html .= 'alt="Before - Case ' . esc_attr( $case_id ) . '" ';
+					// Use seoAltText if available, otherwise use procedure name and case number
+					$before_alt = $seo_alt_text !== null ? $seo_alt_text . ' - Before' : 'Before - ' . $procedure_title . ' - Case ' . $case_id;
+					$html .= 'alt="' . esc_attr( $before_alt ) . '" ';
 					$html .= 'loading="lazy" ';
 					$html .= 'data-image-type="before" ';
 					$html .= $procedure_nudity ? 'class="brag-book-gallery-nudity-blur" ' : '';
@@ -1855,7 +1893,9 @@ final class Shortcodes {
 					$html .= '<a href="' . esc_url( $case_url ) . '" class="brag-book-gallery-card-case-link" data-case-id="' . esc_attr( $case_id ) . '" data-procedure-ids="' . esc_attr( $procedure_ids ) . '">';
 					$html .= '<picture class="brag-book-gallery-picture">';
 					$html .= '<img src="' . esc_url( $after_image ) . '" ';
-					$html .= 'alt="After - Case ' . esc_attr( $case_id ) . '" ';
+					// Use seoAltText if available, otherwise use procedure name and case number
+					$after_alt = $seo_alt_text !== null ? $seo_alt_text . ' - After' : 'After - ' . $procedure_title . ' - Case ' . $case_id;
+					$html .= 'alt="' . esc_attr( $after_alt ) . '" ';
 					$html .= 'loading="lazy" ';
 					$html .= 'data-image-type="after" ';
 					$html .= $procedure_nudity ? 'class="brag-book-gallery-nudity-blur" ' : '';
@@ -2298,7 +2338,8 @@ final class Shortcodes {
 
 		// If no case_id provided, try to get from URL
 		if ( empty( $atts['case_id'] ) ) {
-			$atts['case_id'] = get_query_var( 'case_id' );
+			// Get case_suffix which now contains both numeric IDs and SEO suffixes
+			$atts['case_id'] = get_query_var( 'case_suffix' );
 		}
 
 		if ( empty( $atts['case_id'] ) ) {

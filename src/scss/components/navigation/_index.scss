@@ -79,7 +79,7 @@
 	display: flex;
 	gap: var(--wp--custom--brag-book-gallery--spacer,4px);
 	font-size: var(--wp--custom--brag-book-gallery--text-sm);
-	padding: var(--wp--custom--brag-book-gallery--spacer--md,12px) var(--wp--custom--brag-book-gallery--spacer--lg,16px);
+	padding: var(--wp--custom--brag-book-gallery--spacer--sm,8px) var(--wp--custom--brag-book-gallery--spacer--lg,16px) !important;
 	text-decoration: none;
 	overflow: hidden;
 	font-weight: var(--wp--custom--brag-book-gallery--font-weight--regular) !important;

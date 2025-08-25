@@ -329,7 +329,7 @@ class Settings_Dashboard extends Settings_Base {
 		<?php endif; ?>
 
 		<!-- Resources Section -->
-		<div class="brag-book-gallery-section">
+		<div class="brag-book-gallery-section" style="display:none;">
 			<h2><?php esc_html_e( 'Resources', 'brag-book-gallery' ); ?></h2>
 			<div class="resources-grid">
 				<div class="resource-card">
@@ -437,16 +437,16 @@ class Settings_Dashboard extends Settings_Base {
 		} else if ( $current_mode === 'javascript' ) {
 			// For JavaScript mode, check if gallery page exists (page with shortcode)
 			global $wpdb;
-			
+
 			// First check for pages with the shortcode
-			$pages_with_shortcode = $wpdb->get_var( 
-				"SELECT COUNT(*) FROM {$wpdb->posts} 
-				WHERE post_content LIKE '%[brag_book_gallery%' 
-				AND post_status = 'publish' 
+			$pages_with_shortcode = $wpdb->get_var(
+				"SELECT COUNT(*) FROM {$wpdb->posts}
+				WHERE post_content LIKE '%[brag_book_gallery%'
+				AND post_status = 'publish'
 				AND post_type IN ('page', 'post')"
 			);
 			$has_gallery = $pages_with_shortcode > 0;
-			
+
 			// If no shortcode found, check if a page exists with the configured slug
 			if ( ! $has_gallery ) {
 				$gallery_slugs = get_option( 'brag_book_gallery_page_slug', array() );
@@ -471,10 +471,10 @@ class Settings_Dashboard extends Settings_Base {
 			'title' => __( 'Create Your First Gallery', 'brag-book-gallery' ),
 			'description' => __( 'Add your first before & after gallery to a page or post.', 'brag-book-gallery' ),
 			'completed' => $has_gallery,
-			'action_url' => $current_mode === 'local' 
+			'action_url' => $current_mode === 'local'
 				? admin_url( 'post-new.php?post_type=brag_gallery' )
 				: admin_url( 'admin.php?page=brag-book-gallery-help' ),
-			'action_text' => $current_mode === 'local' 
+			'action_text' => $current_mode === 'local'
 				? __( 'Create Gallery', 'brag-book-gallery' )
 				: __( 'View Guide', 'brag-book-gallery' ),
 		);
@@ -490,7 +490,7 @@ class Settings_Dashboard extends Settings_Base {
 			'percentage' => $percentage,
 		);
 	}
-	
+
 	/**
 	 * Render custom notices in a specific location
 	 *
