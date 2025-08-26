@@ -104,15 +104,15 @@ The plugin follows a modular architecture with clear separation of concerns:
   - `Trait_Render_Helper`: Rendering helper methods
 
 **Frontend Extensions** (`includes/extend/`):
-- `Shortcodes`: Main shortcode coordinator with rewrite rules (includes `render_cases_grid` method)
-- `Gallery_Shortcode_Handler`: Gallery display shortcode
+- `Shortcodes`: Main shortcode coordinator (delegates main gallery to Gallery_Shortcode_Handler)
+- `Gallery_Shortcode_Handler`: Main gallery display with full implementation (separated from Shortcodes class)
 - `Cases_Shortcode_Handler`: Individual case display
-- `Carousel_Shortcode_Handler`: Carousel functionality
-- `Ajax_Handlers`: AJAX request processing
+- `Carousel_Shortcode_Handler`: Carousel functionality with single-image-per-case display
+- `Ajax_Handlers`: AJAX request processing with carousel case cache support
 - `Asset_Manager`: Asset loading optimization with custom CSS injection (prevents duplicate output)
 - `Cache_Manager`: Transient cache management
-- `Data_Fetcher`: API data retrieval
-- `HTML_Renderer`: HTML generation utilities
+- `Data_Fetcher`: API data retrieval with carousel case caching by ID and seoSuffixUrl
+- `HTML_Renderer`: HTML generation utilities with adaptive case detail cards
 - `Rewrite_Rules_Handler`: URL rewrite management
 - `Templates`: Custom template handling
 
@@ -296,6 +296,8 @@ This approach ensures consistent layout and functionality with the main gallery 
   - Supports legacy shortcode format
   - Procedure slug to ID conversion
   - Single favorite button with proper styling
+  - Fixed to show one image per case for variety (prevents duplicate case images)
+  - Carousel case caching with seoSuffixUrl support for proper case lookups
 - **Gallery Enhancements**:
   - Progressive loading with "Load More" button
   - Multi-select filtering with badge display
@@ -303,12 +305,19 @@ This approach ensures consistent layout and functionality with the main gallery 
   - Favorites functionality integrated with localStorage and API sync
   - Mobile-responsive with hamburger menu
   - Favorites page automatically displays user's saved cases
+  - Refactored main gallery functionality to Gallery_Shortcode_Handler for separation of concerns
+- **Case View Improvements**:
+  - Adaptive card layout using flexbox for detail sections
+  - Case Notes section always displays full width
+  - Patient Information card hidden when empty
+  - Detail cards automatically size based on content (1-4 columns)
 - **Code Quality**:
   - jQuery conflicts resolved in admin area
   - Vanilla JavaScript for admin tabs and dialogs
   - HTML5 semantic markup (<article> for case cards)
   - Accessibility improvements (ARIA labels, roles)
   - ES6+ JavaScript with promises for dialog handling
+  - WordPress VIP coding standards compliance
 
 ### Technical Improvements
 - Automatic gallery page detection and deletion during factory reset

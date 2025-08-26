@@ -10,6 +10,10 @@ class FilterSystem {
 		this.activeFilters = new Map();
 		this.categories = new Map();
 		this.procedures = new Map();
+		
+		// Store original page SEO for restoration
+		this.originalTitle = document.title;
+		this.originalDescription = document.querySelector('meta[name="description"]')?.content || '';
 
 		this.options = {
 			mode: options.mode || 'javascript', // 'javascript' or 'navigation'
@@ -447,12 +451,23 @@ class FilterSystem {
 		// Get AJAX configuration
 		const ajaxUrl = window.bragBookGalleryConfig?.ajaxUrl || '/wp-admin/admin-ajax.php';
 		const nonce = window.bragBookGalleryConfig?.nonce || '';
+		
+		// Get the proper procedure display name from the active link
+		let procedureName = procedure;
+		const activeLink = document.querySelector(`.brag-book-gallery-nav-link[data-procedure="${procedure}"]`);
+		if (activeLink) {
+			const label = activeLink.querySelector('.brag-book-gallery-filter-option-label');
+			if (label) {
+				procedureName = label.textContent.trim();
+			}
+		}
 
 		// Prepare request data
 		const formData = new FormData();
 		formData.append('action', 'brag_book_load_filtered_gallery');
 		formData.append('nonce', nonce);
-		formData.append('procedure_name', procedure); // Changed from category_name to match PHP expectation
+		formData.append('procedure_name', procedureName); // Send display name for SEO
+		formData.append('procedure_slug', procedure); // Send slug for filtering
 		formData.append('procedure_ids', procedureIds || ''); // Send all procedure IDs
 		formData.append('procedure_id', procedureIds?.split(',')[0] || ''); // Keep backward compatibility
 		formData.append('has_nudity', hasNudity ? '1' : '0'); // Send nudity flag
@@ -466,6 +481,22 @@ class FilterSystem {
 			.then(result => {
 				if (result.success && result.data?.html) {
 					galleryContent.innerHTML = result.data.html;
+					
+					// Update page title and meta description if SEO data is provided
+					if (result.data.seo) {
+						if (result.data.seo.title) {
+							document.title = result.data.seo.title;
+						}
+						if (result.data.seo.description) {
+							let metaDescription = document.querySelector('meta[name="description"]');
+							if (!metaDescription) {
+								metaDescription = document.createElement('meta');
+								metaDescription.name = 'description';
+								document.head.appendChild(metaDescription);
+							}
+							metaDescription.content = result.data.seo.description;
+						}
+					}
 
 					// Re-initialize carousels if present
 					const carousels = galleryContent.querySelectorAll('.brag-book-gallery-carousel-wrapper');

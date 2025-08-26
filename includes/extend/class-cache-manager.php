@@ -36,32 +36,30 @@ class Cache_Manager {
 	public static function clear_all_cache(): array {
 		global $wpdb;
 
-		// Clear all BRAG book Gallery transients
-		$query = "
-			DELETE FROM {$wpdb->options}
-			WHERE option_name LIKE '%transient_brag_book_%'
-			OR option_name LIKE '%transient_timeout_brag_book_%'
-		";
+		$query = sprintf(
+			"DELETE FROM %s WHERE option_name LIKE '%%transient_brag_book_%%' OR option_name LIKE '%%transient_timeout_brag_book_%%'",
+			$wpdb->options
+		);
 
 		$deleted = $wpdb->query( $query );
 
-		if ( $deleted !== false ) {
-			$count = $deleted / 2; // Each transient has a timeout entry too
-
-			// Also clear object cache if available
-			if ( function_exists( 'wp_cache_flush' ) ) {
-				wp_cache_flush();
-			}
-
+		if ( false === $deleted ) {
 			return [
-				'success' => true,
-				'message' => sprintf( 'Cleared %d cache entries', $count ),
+				'success' => false,
+				'message' => 'Failed to clear cache',
 			];
 		}
 
+		$count = $deleted / 2; // Each transient has a timeout entry too
+
+		// Clear object cache if available
+		if ( function_exists( 'wp_cache_flush' ) ) {
+			wp_cache_flush();
+		}
+
 		return [
-			'success' => false,
-			'message' => 'Failed to clear cache',
+			'success' => true,
+			'message' => sprintf( 'Cleared %d cache entries', $count ),
 		];
 	}
 
@@ -72,8 +70,8 @@ class Cache_Manager {
 	 * @return int Cache duration in seconds.
 	 */
 	public static function get_cache_duration(): int {
-		return defined( 'WP_DEBUG' ) && WP_DEBUG 
-			? self::DEBUG_CACHE_DURATION 
+		return defined( 'WP_DEBUG' ) && WP_DEBUG
+			? self::DEBUG_CACHE_DURATION
 			: self::CACHE_DURATION;
 	}
 
@@ -87,7 +85,7 @@ class Cache_Manager {
 	 * @return bool True on success, false on failure.
 	 */
 	public static function set( string $key, $value, int $expiration = 0 ): bool {
-		if ( $expiration === 0 ) {
+		if ( 0 === $expiration ) {
 			$expiration = self::get_cache_duration();
 		}
 
@@ -124,7 +122,7 @@ class Cache_Manager {
 	 * @return string Cache key.
 	 */
 	public static function get_sidebar_cache_key( string $api_token ): string {
-		return 'brag_book_sidebar_' . md5( $api_token );
+		return sprintf( 'brag_book_sidebar_%s', md5( $api_token ) );
 	}
 
 	/**
@@ -137,11 +135,11 @@ class Cache_Manager {
 	 * @param int    $page Optional page number.
 	 * @return string Cache key.
 	 */
-	public static function get_cases_cache_key( 
-		string $api_token, 
-		string $website_property_id, 
-		array $procedure_ids = [], 
-		int $page = 1 
+	public static function get_cases_cache_key(
+		string $api_token,
+		string $website_property_id,
+		array $procedure_ids = [],
+		int $page = 1
 	): string {
 		$key_parts = [
 			'brag_book_cases',
@@ -155,7 +153,7 @@ class Cache_Manager {
 		}
 
 		if ( $page > 1 ) {
-			$key_parts[] = 'page_' . $page;
+			$key_parts[] = sprintf( 'page_%d', $page );
 		}
 
 		return implode( '_', $key_parts );
@@ -170,7 +168,7 @@ class Cache_Manager {
 	 * @return string Cache key.
 	 */
 	public static function get_all_cases_cache_key( string $api_token, string $website_property_id ): string {
-		return 'brag_book_all_cases_' . md5( $api_token . $website_property_id );
+		return sprintf( 'brag_book_all_cases_%s', md5( $api_token . $website_property_id ) );
 	}
 
 	/**
@@ -184,14 +182,15 @@ class Cache_Manager {
 	 * @param string $member_id Member ID (optional).
 	 * @return string Cache key.
 	 */
-	public static function get_carousel_cache_key( 
-		string $api_token, 
-		string $website_property_id, 
+	public static function get_carousel_cache_key(
+		string $api_token,
+		string $website_property_id,
 		int $limit,
 		string $procedure_id = '',
 		string $member_id = ''
 	): string {
-		return 'brag_book_carousel_' . md5( $api_token . $website_property_id . $limit . $procedure_id . $member_id );
+		$hash_string = $api_token . $website_property_id . $limit . $procedure_id . $member_id;
+		return sprintf( 'brag_book_carousel_%s', md5( $hash_string ) );
 	}
 
 	/**
@@ -201,7 +200,6 @@ class Cache_Manager {
 	 * @return bool True if caching is enabled.
 	 */
 	public static function is_caching_enabled(): bool {
-		// Allow disabling cache via filter
 		return apply_filters( 'brag_book_gallery_enable_cache', true );
 	}
 
@@ -215,19 +213,29 @@ class Cache_Manager {
 	public static function clear_cache_by_type( string $type = 'all' ): bool {
 		global $wpdb;
 
-		$pattern = match ( $type ) {
-			'sidebar' => '%transient_%brag_book_sidebar_%',
-			'cases' => '%transient_%brag_book_cases_%',
-			'carousel' => '%transient_%brag_book_carousel_%',
-			'all' => '%transient_%brag_book_%',
-			default => '%transient_%brag_book_%',
-		};
+		$pattern = self::get_cache_pattern_by_type( $type );
 
 		$query = $wpdb->prepare(
 			"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",
 			$pattern
 		);
 
-		return $wpdb->query( $query ) !== false;
+		return false !== $wpdb->query( $query );
+	}
+
+	/**
+	 * Get cache pattern by type.
+	 *
+	 * @since 3.0.0
+	 * @param string $type Cache type.
+	 * @return string Cache pattern for SQL LIKE query.
+	 */
+	private static function get_cache_pattern_by_type( string $type ): string {
+		return match ( $type ) {
+			'sidebar' => '%transient_%brag_book_sidebar_%',
+			'cases' => '%transient_%brag_book_cases_%',
+			'carousel' => '%transient_%brag_book_carousel_%',
+			default => '%transient_%brag_book_%',
+		};
 	}
 }

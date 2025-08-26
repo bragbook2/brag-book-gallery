@@ -388,6 +388,9 @@ class Data_Fetcher {
 				// Cache the result
 				if ( Cache_Manager::is_caching_enabled() && ! empty( $result ) ) {
 					Cache_Manager::set( $cache_key, $result );
+					
+					// Also cache individual carousel cases for lookup
+					self::cache_carousel_cases( $result, $config['api_token'] );
 				}
 
 				return $result;
@@ -399,6 +402,90 @@ class Data_Fetcher {
 		}
 
 		return [];
+	}
+
+	/**
+	 * Cache individual carousel cases for lookup.
+	 *
+	 * @since 3.0.0
+	 * @param array  $carousel_data Carousel data from API.
+	 * @param string $api_token API token for cache key.
+	 * @return void
+	 */
+	private static function cache_carousel_cases( array $carousel_data, string $api_token ): void {
+		if ( ! isset( $carousel_data['data'] ) || ! is_array( $carousel_data['data'] ) ) {
+			return;
+		}
+
+		foreach ( $carousel_data['data'] as $case ) {
+			if ( ! isset( $case['id'] ) ) {
+				continue;
+			}
+
+			// Cache by case ID
+			$case_cache_key = 'brag_book_carousel_case_' . md5( $api_token . '_' . $case['id'] );
+			set_transient( $case_cache_key, $case, 30 * MINUTE_IN_SECONDS );
+			
+			// Also cache by seoSuffixUrl if it exists
+			if ( ! empty( $case['caseDetails'] ) && is_array( $case['caseDetails'] ) ) {
+				foreach ( $case['caseDetails'] as $detail ) {
+					if ( ! empty( $detail['seoSuffixUrl'] ) ) {
+						$seo_cache_key = 'brag_book_carousel_case_' . md5( $api_token . '_' . $detail['seoSuffixUrl'] );
+						set_transient( $seo_cache_key, $case, 30 * MINUTE_IN_SECONDS );
+						
+						if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+							error_log( 'Cached carousel case by seoSuffixUrl: ' . $detail['seoSuffixUrl'] . ' for case ID: ' . $case['id'] );
+						}
+					}
+				}
+			}
+			
+			// Also check for seoSuffixUrl at root level
+			if ( ! empty( $case['seoSuffixUrl'] ) ) {
+				$seo_cache_key = 'brag_book_carousel_case_' . md5( $api_token . '_' . $case['seoSuffixUrl'] );
+				set_transient( $seo_cache_key, $case, 30 * MINUTE_IN_SECONDS );
+				
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+					error_log( 'Cached carousel case by root seoSuffixUrl: ' . $case['seoSuffixUrl'] . ' for case ID: ' . $case['id'] );
+				}
+			}
+			
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'Cached carousel case ID: ' . $case['id'] );
+			}
+		}
+	}
+
+	/**
+	 * Get carousel case from cache.
+	 *
+	 * @since 3.0.0
+	 * @param string $case_identifier Case ID or seoSuffixUrl to retrieve.
+	 * @param string $api_token API token for cache key.
+	 * @return array|null Case data or null if not found.
+	 */
+	public static function get_carousel_case_from_cache( string $case_identifier, string $api_token ): ?array {
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( 'Looking for carousel case with identifier: ' . $case_identifier );
+		}
+		
+		// Try to get from cache using the identifier (could be ID or seoSuffixUrl)
+		$case_cache_key = 'brag_book_carousel_case_' . md5( $api_token . '_' . $case_identifier );
+		$cached_case = get_transient( $case_cache_key );
+		
+		if ( $cached_case !== false ) {
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'Found carousel case in cache for identifier: ' . $case_identifier );
+				error_log( 'Carousel case data has ID: ' . ( $cached_case['id'] ?? 'N/A' ) );
+			}
+			return $cached_case;
+		}
+		
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( 'Carousel case NOT found in cache for identifier: ' . $case_identifier );
+		}
+		
+		return null;
 	}
 
 	/**

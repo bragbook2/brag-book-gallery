@@ -133,7 +133,7 @@ class Debug_Tools {
 	 * @param string $tool_name Tool identifier.
 	 * @return object|null
 	 */
-	public function get_tool( string $tool_name ) {
+	public function get_tool( string $tool_name ): ?object {
 		return $this->tools[ $tool_name ] ?? null;
 	}
 }

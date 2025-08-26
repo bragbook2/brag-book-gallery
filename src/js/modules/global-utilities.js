@@ -918,6 +918,12 @@ window.syncImageHeights = function(img) {
 
 // Load case details into gallery content
 window.loadCaseDetails = function(caseId, procedureId, procedureSlug, procedureIds) {
+	// For backwards compatibility, call the new function without procedure name
+	window.loadCaseDetailsWithName(caseId, procedureId, procedureSlug, '', procedureIds);
+};
+
+// Load case details with procedure name
+window.loadCaseDetailsWithName = function(caseId, procedureId, procedureSlug, procedureName, procedureIds) {
 	const galleryContent = document.getElementById('gallery-content');
 	if (!galleryContent) {
 		console.error('Gallery content container not found');
@@ -975,6 +981,16 @@ window.loadCaseDetails = function(caseId, procedureId, procedureSlug, procedureI
 	if (procedureId) {
 		requestParams.procedure_id = procedureId;
 	}
+	
+	// Add procedure slug if provided (for display context)
+	if (procedureSlug) {
+		requestParams.procedure_slug = procedureSlug;
+	}
+	
+	// Add procedure name if provided (for display)
+	if (procedureName) {
+		requestParams.procedure_name = procedureName;
+	}
 
 	// Add procedure IDs if provided (for API request)
 	if (procedureIds) {
@@ -1025,6 +1041,7 @@ window.loadMoreCases = function(button) {
 	// Get data from button attributes
 	const startPage = button.getAttribute('data-start-page');
 	const procedureIds = button.getAttribute('data-procedure-ids');
+	const procedureName = button.getAttribute('data-procedure-name') || '';
 
 	// Check if there's an active procedure filter with nudity
 	let hasNudity = false;
@@ -1048,6 +1065,7 @@ window.loadMoreCases = function(button) {
 	formData.append('nonce', nonce);
 	formData.append('start_page', startPage);
 	formData.append('procedure_ids', procedureIds);
+	formData.append('procedure_name', procedureName);
 	formData.append('has_nudity', hasNudity ? '1' : '0');
 	formData.append('loaded_ids', loadedIds.join(','));
 
@@ -1298,7 +1316,40 @@ document.addEventListener('DOMContentLoaded', function() {
 		const wrapper = document.querySelector('.brag-book-gallery-wrapper');
 		if (wrapper && wrapper.dataset.initialCaseId) {
 			const caseId = wrapper.dataset.initialCaseId;
-			const procedureSlug = window.location.pathname.split('/').filter(s => s)[1] || '';
+			// Extract procedure slug from URL - it's the segment before the case ID
+			// URL format: /gallery/procedure-slug/case-id
+			const pathSegments = window.location.pathname.split('/').filter(s => s);
+			// Find the segment before the last one (case ID)
+			const procedureSlug = pathSegments.length > 2 ? pathSegments[pathSegments.length - 2] : '';
+			
+			// Try to get the procedure name from the sidebar data
+			let procedureName = '';
+			
+			// First try to get from active sidebar link (if it exists and is already marked active)
+			const activeLink = document.querySelector(`.brag-book-gallery-nav-link[data-procedure="${procedureSlug}"]`);
+			if (activeLink) {
+				const label = activeLink.querySelector('.brag-book-gallery-filter-option-label');
+				if (label) {
+					procedureName = label.textContent.trim();
+				}
+			}
+			
+			// If not found in DOM, lookup in sidebar data
+			if (!procedureName && window.bragBookGalleryConfig && window.bragBookGalleryConfig.sidebarData) {
+				const sidebarData = window.bragBookGalleryConfig.sidebarData;
+				// Search through categories for the procedure
+				for (const category of Object.values(sidebarData)) {
+					if (category.procedures) {
+						for (const procedure of category.procedures) {
+							if (procedure.slug === procedureSlug) {
+								procedureName = procedure.name;
+								break;
+							}
+						}
+					}
+					if (procedureName) break;
+				}
+			}
 
 			// Try to find the case card to get procedure IDs
 			let procedureIds = '';
@@ -1308,8 +1359,8 @@ document.addEventListener('DOMContentLoaded', function() {
 					procedureIds = caseCard.dataset.procedureIds;
 				}
 
-				console.log('Auto-loading case on page load:', caseId, 'for procedure:', procedureSlug, 'with procedure IDs:', procedureIds);
-				window.loadCaseDetails(caseId, '', procedureSlug, procedureIds);
+				console.log('Auto-loading case on page load:', caseId, 'for procedure:', procedureSlug, 'with name:', procedureName, 'and IDs:', procedureIds);
+				window.loadCaseDetailsWithName(caseId, '', procedureSlug, procedureName, procedureIds);
 			}, 200);
 		}
 	}, 100);
