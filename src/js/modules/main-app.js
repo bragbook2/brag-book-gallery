@@ -301,10 +301,46 @@ class BRAGbookGalleryApp {
 
 			console.log('Making AJAX request to:', bragBookGalleryConfig.ajaxUrl);
 
+			// Extract procedure slug from the URL
+			// URL format: /gallery/procedure-slug/case-id
+			const pathSegments = url ? new URL(url).pathname.split('/').filter(s => s) : window.location.pathname.split('/').filter(s => s);
+			const procedureSlug = pathSegments.length > 2 ? pathSegments[pathSegments.length - 2] : '';
+			
+			// Try to get the procedure name from the sidebar data
+			let procedureName = '';
+			
+			// First try to get from active sidebar link (if it exists and is already marked active)
+			const activeLink = document.querySelector(`.brag-book-gallery-nav-link[data-procedure="${procedureSlug}"]`);
+			if (activeLink) {
+				const label = activeLink.querySelector('.brag-book-gallery-filter-option-label');
+				if (label) {
+					procedureName = label.textContent.trim();
+				}
+			}
+			
+			// If not found in DOM, lookup in sidebar data
+			if (!procedureName && window.bragBookGalleryConfig && window.bragBookGalleryConfig.sidebarData) {
+				const sidebarData = window.bragBookGalleryConfig.sidebarData;
+				// Search through categories for the procedure
+				for (const category of Object.values(sidebarData)) {
+					if (category.procedures) {
+						for (const procedure of category.procedures) {
+							if (procedure.slug === procedureSlug) {
+								procedureName = procedure.name;
+								break;
+							}
+						}
+					}
+					if (procedureName) break;
+				}
+			}
+			
 			// Prepare request parameters - use the HTML version
 			const requestParams = {
 				action: 'brag_book_load_case_details_html',
 				case_id: caseId,
+				procedure_slug: procedureSlug,
+				procedure_name: procedureName,
 				nonce: bragBookGalleryConfig.nonce || ''
 			};
 

@@ -698,14 +698,16 @@ class Settings_Api extends Settings_Base {
 						window.location.reload();
 					} else {
 						btn.disabled = false;
+						const errorMessage = typeof data.data === 'string' ? data.data : (data.data?.message || '<?php esc_html_e( "Failed to remove connection.", "brag-book-gallery" ); ?>');
 						showDialog(
 							'<?php esc_html_e( "Error", "brag-book-gallery" ); ?>',
-							data.data || '<?php esc_html_e( "Failed to remove connection.", "brag-book-gallery" ); ?>',
+							errorMessage,
 							'error'
 						);
 					}
 				} catch (error) {
 					btn.disabled = false;
+					console.error('BRAG book Gallery: Remove connection error:', error);
 					showDialog(
 						'<?php esc_html_e( "Connection Error", "brag-book-gallery" ); ?>',
 						'<?php esc_html_e( "Failed to connect to the server. Please try again.", "brag-book-gallery" ); ?>',
@@ -1080,20 +1082,35 @@ class Settings_Api extends Settings_Base {
 			wp_send_json_error( __( 'Invalid connection index.', 'brag-book-gallery' ) );
 		}
 
-		// Get current options
+		// Get current options and ensure they're arrays
 		$api_tokens    = get_option( 'brag_book_gallery_api_token', array() );
 		$property_ids  = get_option( 'brag_book_gallery_website_property_id', array() );
 		$page_slugs    = get_option( 'brag_book_gallery_page_slug', array() );
 		$seo_titles    = get_option( 'brag_book_gallery_seo_page_title', array() );
 		$seo_descs     = get_option( 'brag_book_gallery_seo_page_description', array() );
 
+		// Ensure all options are arrays
+		$api_tokens    = is_array( $api_tokens ) ? $api_tokens : array();
+		$property_ids  = is_array( $property_ids ) ? $property_ids : array();
+		$page_slugs    = is_array( $page_slugs ) ? $page_slugs : ( empty( $page_slugs ) ? array() : array( $page_slugs ) );
+		$seo_titles    = is_array( $seo_titles ) ? $seo_titles : ( empty( $seo_titles ) ? array() : array( $seo_titles ) );
+		$seo_descs     = is_array( $seo_descs ) ? $seo_descs : ( empty( $seo_descs ) ? array() : array( $seo_descs ) );
+
 		// Remove the specific index
 		if ( isset( $api_tokens[ $index ] ) ) {
 			unset( $api_tokens[ $index ] );
 			unset( $property_ids[ $index ] );
-			unset( $page_slugs[ $index ] );
-			unset( $seo_titles[ $index ] );
-			unset( $seo_descs[ $index ] );
+			
+			// Only unset if the index exists in these arrays
+			if ( isset( $page_slugs[ $index ] ) ) {
+				unset( $page_slugs[ $index ] );
+			}
+			if ( isset( $seo_titles[ $index ] ) ) {
+				unset( $seo_titles[ $index ] );
+			}
+			if ( isset( $seo_descs[ $index ] ) ) {
+				unset( $seo_descs[ $index ] );
+			}
 
 			// Re-index arrays
 			$api_tokens   = array_values( $api_tokens );
@@ -1109,7 +1126,9 @@ class Settings_Api extends Settings_Base {
 			update_option( 'brag_book_gallery_seo_page_title', $seo_titles );
 			update_option( 'brag_book_gallery_seo_page_description', $seo_descs );
 
-			wp_send_json_success( __( 'API connection removed successfully.', 'brag-book-gallery' ) );
+			wp_send_json_success( array(
+				'message' => __( 'API connection removed successfully.', 'brag-book-gallery' ),
+			) );
 		} else {
 			wp_send_json_error( __( 'Connection not found.', 'brag-book-gallery' ) );
 		}

@@ -510,6 +510,7 @@ class Ajax_Handlers {
 					$html .= 'data-action="load-more" ';
 					$html .= 'data-start-page="2" ';
 					$html .= 'data-procedure-ids="' . esc_attr( $procedure_ids ) . '" ';
+					$html .= 'data-procedure-name="' . esc_attr( $procedure_name ) . '" ';
 					$html .= 'onclick="loadMoreCases(this)"' . $button_style . '>';
 					$html .= 'Load More';
 					$html .= '</button>';
@@ -521,10 +522,23 @@ class Ajax_Handlers {
 				// Add JavaScript for grid control and filters
 				$html .= self::generate_filtered_gallery_scripts( $transformed_cases, $procedure_ids );
 
+			// Generate SEO data for the filtered view
+			$seo_data = array();
+			if ( ! empty( $procedure_name ) ) {
+				// Get the proper display name from sidebar data if possible
+				$display_name = $procedure_name;
+				
+				// Generate title and description
+				$site_name = get_bloginfo( 'name' );
+				$seo_data['title'] = $display_name . ' Before & After Gallery | ' . $site_name;
+				$seo_data['description'] = 'View before and after photos of ' . $display_name . ' procedures. Browse our gallery to see real patient results.';
+			}
+
 			wp_send_json_success( [
 				'html' => $html,
 				'totalCount' => count( $transformed_cases ),
 				'procedureName' => $procedure_name,
+				'seo' => $seo_data,
 			] );
 
 			} catch ( \Exception $html_error ) {
@@ -717,6 +731,8 @@ class Ajax_Handlers {
 
 		$case_id = sanitize_text_field( $_POST['case_id'] ?? '' );
 		$procedure_id = sanitize_text_field( $_POST['procedure_id'] ?? '' );
+		$procedure_slug = sanitize_text_field( $_POST['procedure_slug'] ?? '' );
+		$procedure_name = sanitize_text_field( $_POST['procedure_name'] ?? '' );
 
 		if ( empty( $case_id ) ) {
 			wp_send_json_error( 'Case ID is required' );
@@ -757,7 +773,7 @@ class Ajax_Handlers {
 
 		if ( ! empty( $case_data ) && is_array( $case_data ) ) {
 			// Generate HTML and SEO data for case details using HTML_Renderer class method
-			$result = HTML_Renderer::render_case_details_html( $case_data );
+			$result = HTML_Renderer::render_case_details_html( $case_data, $procedure_slug, $procedure_name );
 
 			wp_send_json_success( [
 				'html' => $result['html'],
@@ -785,6 +801,8 @@ class Ajax_Handlers {
 		}
 
 		$case_id = sanitize_text_field( $_POST['case_id'] ?? '' );
+		$procedure_slug = sanitize_text_field( $_POST['procedure_slug'] ?? '' );
+		$procedure_name = sanitize_text_field( $_POST['procedure_name'] ?? '' );
 
 		if ( empty( $case_id ) ) {
 			wp_send_json_error( 'Case ID is required' );
@@ -808,7 +826,7 @@ class Ajax_Handlers {
 
 		if ( ! empty( $case_data ) && is_array( $case_data ) ) {
 			// Generate HTML and SEO data for case details using HTML_Renderer class method
-			$result = HTML_Renderer::render_case_details_html( $case_data );
+			$result = HTML_Renderer::render_case_details_html( $case_data, $procedure_slug, $procedure_name );
 
 			wp_send_json_success( [
 				'html' => $result['html'],
@@ -938,6 +956,7 @@ class Ajax_Handlers {
 		$start_page = isset( $_POST['start_page'] ) ? intval( $_POST['start_page'] ) : 2;
 		$procedure_ids = isset( $_POST['procedure_ids'] ) ? array_map( 'intval', explode( ',', sanitize_text_field( wp_unslash( $_POST['procedure_ids'] ) ) ) ) : [];
 		$has_nudity = isset( $_POST['has_nudity'] ) && $_POST['has_nudity'] === '1';
+		$procedure_name = isset( $_POST['procedure_name'] ) ? sanitize_text_field( wp_unslash( $_POST['procedure_name'] ) ) : '';
 
 		// Get already loaded case IDs to prevent duplicates
 		$loaded_case_ids = isset( $_POST['loaded_ids'] ) ? array_map( 'trim', explode( ',', sanitize_text_field( wp_unslash( $_POST['loaded_ids'] ) ) ) ) : [];
@@ -1010,7 +1029,7 @@ class Ajax_Handlers {
 				// Use reflection to access the private method from Shortcodes class
 				$method = new \ReflectionMethod( Shortcodes::class, 'render_ajax_gallery_case_card' );
 				$method->setAccessible( true );
-				$html .= $method->invoke( null, $case, $image_display_mode, $has_nudity, '' );
+				$html .= $method->invoke( null, $case, $image_display_mode, $has_nudity, $procedure_name );
 			}
 
 			// Log for debugging
@@ -1143,7 +1162,17 @@ class Ajax_Handlers {
 			error_log( 'find_case_by_id: Looking for case: ' . $case_id );
 		}
 		
-		// First, try to get the case from cached data
+		// First check if this is a carousel case in cache (case_id might be seoSuffixUrl)
+		$carousel_case = Data_Fetcher::get_carousel_case_from_cache( $case_id, $api_token );
+		if ( $carousel_case !== null ) {
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'find_case_by_id: Found case in carousel cache for identifier: ' . $case_id );
+				error_log( 'find_case_by_id: Actual case ID is: ' . ( $carousel_case['id'] ?? 'N/A' ) );
+			}
+			return $carousel_case;
+		}
+		
+		// Next, try to get the case from cached data
 		$cache_key = 'brag_book_all_cases_' . md5( $api_token . $website_property_id );
 		$cached_data = get_transient( $cache_key );
 		$case_data = null;
