@@ -244,8 +244,8 @@ class Menu {
 				'condition'   => true,
 			);
 
-			// Default Settings (Default/JavaScript mode only).
-			if ( $this->plugin_state['current_mode'] === 'javascript' ) {
+			// Default Settings (Default mode only).
+			if ( $this->plugin_state['current_mode'] === 'default' ) {
 				$this->menu_config['submenus']['default'] = array(
 					'parent_slug' => 'brag-book-gallery-settings',
 					'page_title'  => __(

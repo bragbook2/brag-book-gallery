@@ -1,5 +1,13 @@
 /**
  * BRAG book Admin JavaScript
+ * 
+ * Handles all WordPress admin interface functionality including:
+ * - Dynamic settings table management
+ * - Debug tools and logging
+ * - API validation and testing
+ * - Factory reset with confirmation dialogs
+ * - System information export/copy
+ * - HTML5 dialog modals with accessibility
  *
  * @package BRAGBook
  * @since   3.0.0
@@ -8,52 +16,63 @@
 'use strict';
 
 /**
- * BRAG book Admin Class
+ * BRAG book Admin Controller Class
+ * Manages all admin interface interactions and AJAX communications
  */
 if (typeof window.BRAGbookAdmin === 'undefined') {
 	window.BRAGbookAdmin = class {
+		/**
+		 * Initialize the admin interface controller
+		 */
 		constructor() {
-			// Check for both possible object names since different pages may use different localizations
+			// Configure AJAX endpoints - check multiple possible localization objects
 			this.ajaxUrl = (typeof brag_book_gallery_admin !== 'undefined' && brag_book_gallery_admin.ajaxurl) 
 				? brag_book_gallery_admin.ajaxurl 
 				: (typeof brag_book_gallery_ajax !== 'undefined' ? brag_book_gallery_ajax.ajaxurl : '/wp-admin/admin-ajax.php');
+			
+			// Configure security nonces - check multiple possible sources
 			this.nonce = (typeof brag_book_gallery_admin !== 'undefined' && brag_book_gallery_admin.nonce) 
 				? brag_book_gallery_admin.nonce 
 				: (typeof brag_book_gallery_ajax !== 'undefined' ? brag_book_gallery_ajax.nonce : '');
+			
+			// Dialog instance for user feedback
 			this.dialog = null;
+			
+			// Initialize all admin functionality
 			this.init();
 		}
 
 		/**
-		 * Initialize all admin functionality
+		 * Initialize all admin functionality in sequence
 		 */
 		init() {
-			// Create dialog element
+			// Create reusable dialog modal for user feedback
 			this.createDialog();
 
-			// Initialize different components
-			this.initDynamicTable();
-			this.initCombineGallery();
-			this.initDebugPage();
+			// Initialize admin components
+			this.initDynamicTable();      // Multi-page gallery settings table
+			this.initCombineGallery();    // Combined gallery creation UI
+			this.initDebugPage();         // Debug tools and logging interface
 			// this.initApiValidation(); // DISABLED - now handled by inline JS in settings page
 		}
 
 		/**
-		 * Create dialog element for messages
+		 * Create HTML5 dialog element for user feedback messages
+		 * Supports success, error, warning, and info message types
 		 */
 		createDialog() {
-			// Check if dialog already exists
+			// Avoid creating duplicate dialogs
 			if (document.getElementById('brag-book-gallery-dialog')) {
 				this.dialog = document.getElementById('brag-book-gallery-dialog');
 				return;
 			}
 
-			// Create dialog element
+			// Create native HTML5 dialog element
 			this.dialog = document.createElement('dialog');
 			this.dialog.id = 'brag-book-gallery-dialog';
 			this.dialog.className = 'brag-book-gallery-dialog';
 
-			// Create dialog content structure
+			// Create accessible dialog structure with header, body, and footer
 			this.dialog.innerHTML = `
             <div class="brag-book-gallery-dialog-content">
                 <div class="brag-book-gallery-dialog-header">
@@ -72,24 +91,25 @@ if (typeof window.BRAGbookAdmin === 'undefined') {
             </div>
         `;
 
-			// Add to body
+			// Add dialog to page DOM
 			document.body.appendChild(this.dialog);
 
-			// Add event listeners
+			// Set up dialog close handlers
 			const closeBtn = this.dialog.querySelector('.brag-book-gallery-dialog-close');
 			const okBtn = this.dialog.querySelector('.brag-book-gallery-dialog-ok');
 
+			// Close button and OK button handlers
 			closeBtn.addEventListener('click', () => this.closeDialog());
 			okBtn.addEventListener('click', () => this.closeDialog());
 
-			// Close on backdrop click
+			// Light dismiss - close when clicking backdrop
 			this.dialog.addEventListener('click', (e) => {
 				if (e.target === this.dialog) {
 					this.closeDialog();
 				}
 			});
 
-			// Close on Escape key
+			// Close on Escape key press
 			this.dialog.addEventListener('cancel', (e) => {
 				e.preventDefault();
 				this.closeDialog();
@@ -97,22 +117,24 @@ if (typeof window.BRAGbookAdmin === 'undefined') {
 		}
 
 		/**
-		 * Show dialog with message
-		 * @param {string} message - Message to display
-		 * @param {string} type - Message type (success, error, warning, info)
-		 * @param {string} title - Optional title
+		 * Display a message dialog with appropriate styling and icons
+		 * @param {string} message - HTML message content to display
+		 * @param {string} type - Message type: 'success', 'error', 'warning', 'info'
+		 * @param {string} title - Optional custom title (auto-generated based on type if empty)
 		 */
 		showDialog(message, type = 'info', title = '') {
+			// Ensure dialog exists before showing
 			if (!this.dialog) {
 				this.createDialog();
 			}
 
+			// Get dialog UI elements for customization
 			const titleEl = this.dialog.querySelector('.brag-book-gallery-dialog-title');
 			const iconEl = this.dialog.querySelector('.brag-book-gallery-dialog-icon');
 			const messageEl = this.dialog.querySelector('.brag-book-gallery-dialog-message');
 			const contentEl = this.dialog.querySelector('.brag-book-gallery-dialog-content');
 
-			// Set title
+			// Set dialog title (auto-generate if not provided)
 			if (!title) {
 				switch (type) {
 					case 'success':
@@ -130,51 +152,59 @@ if (typeof window.BRAGbookAdmin === 'undefined') {
 			}
 			titleEl.textContent = title;
 
-			// Set icon and color based on type
+			// Apply type-specific styling and icons
 			contentEl.className = `brag-book-gallery-dialog-content brag-book-gallery-dialog-${type}`;
 			switch (type) {
 				case 'success':
+					// Green checkmark for success messages
 					iconEl.innerHTML = '<span class="dashicons dashicons-yes-alt"></span>';
 					break;
 				case 'error':
+					// Red X for error messages
 					iconEl.innerHTML = '<span class="dashicons dashicons-dismiss"></span>';
 					break;
 				case 'warning':
+					// Yellow warning triangle
 					iconEl.innerHTML = '<span class="dashicons dashicons-warning"></span>';
 					break;
 				default:
+					// Blue info icon for general messages
 					iconEl.innerHTML = '<span class="dashicons dashicons-info"></span>';
 			}
 
-			// Set message
+			// Set message content (allows HTML)
 			messageEl.innerHTML = message;
 
-			// Show dialog
+			// Display dialog as modal (blocks background interaction)
 			this.dialog.showModal();
 		}
 
 		/**
-		 * Close dialog
+		 * Close the currently open dialog
 		 */
 		closeDialog() {
 			if (this.dialog) {
+				// Native dialog close method handles focus restoration
 				this.dialog.close();
 			}
 		}
 
 		/**
-		 * Initialize dynamic table functionality
+		 * Initialize dynamic settings table for multi-page gallery configuration
+		 * Allows adding/removing rows with API tokens, property IDs, and SEO settings
 		 */
 		initDynamicTable() {
 			const tableBody = document.querySelector("#dynamicTable tbody");
 			if (!tableBody) return;
 
-			// Helper functions
+			// Helper function to determine next row number for unique field names
 			const getLastRowNumber = () => {
 				const rows = [...tableBody.querySelectorAll("tr")];
 				return rows.reduce((max, row) => {
+					// Find input with page number in data-key attribute
 					const input = row.querySelector('input[data-key^="page_"]');
 					if (input) {
+						// Extract number from 'page_N' format
 						const num = parseInt(input.dataset.key.split('_')[1], 10);
 						return Math.max(max, num);
 					}
@@ -182,10 +212,12 @@ if (typeof window.BRAGbookAdmin === 'undefined') {
 				}, 0);
 			};
 
+			// Create table cell with input field for settings data
 			const createInputCell = (name, rowNumber) => {
 				const td = document.createElement("td");
 				const input = document.createElement("input");
 				input.type = "text";
+				// Set unique identifiers for WordPress settings array
 				input.setAttribute("data-key", `page_${rowNumber}`);
 				input.setAttribute("name", `${name}[page_${rowNumber}]`);
 				input.required = true;
@@ -193,14 +225,17 @@ if (typeof window.BRAGbookAdmin === 'undefined') {
 				return td;
 			};
 
+			// Create table cell with add/remove buttons for row management
 			const createButtonCell = () => {
 				const td = document.createElement("td");
 
+				// Remove row button
 				const removeBtn = document.createElement("button");
 				removeBtn.type = "button";
 				removeBtn.className = "button removeRow";
 				removeBtn.textContent = "Remove Row";
 
+				// Add row button (only shown on last row)
 				const addBtn = document.createElement("button");
 				addBtn.type = "button";
 				addBtn.className = "button addRow";
@@ -211,10 +246,12 @@ if (typeof window.BRAGbookAdmin === 'undefined') {
 				return td;
 			};
 
+			// Add new settings row to the dynamic table
 			const addRow = () => {
 				const newRowNumber = getLastRowNumber() + 1;
 				const row = document.createElement("tr");
 
+				// Create cells for all required settings fields
 				row.appendChild(createInputCell("brag_book_gallery_api_token", newRowNumber));
 				row.appendChild(createInputCell("brag_book_gallery_website_property_id", newRowNumber));
 				row.appendChild(createInputCell("brag_book_gallery_page_slug", newRowNumber));
@@ -222,16 +259,21 @@ if (typeof window.BRAGbookAdmin === 'undefined') {
 				row.appendChild(createInputCell("brag_book_gallery_seo_page_description", newRowNumber));
 				row.appendChild(createButtonCell());
 
+				// Add to table and update button visibility
 				tableBody.appendChild(row);
 				updateButtonVisibility();
 			};
 
+			// Remove settings row from the dynamic table
 			const removeRow = (row) => {
+				// Prevent removing the last row (always need at least one)
 				if (tableBody.rows.length <= 1) return;
 
+				// Get the row identifier for server-side deletion
 				const input = row.querySelector('input[data-key^="page_"]');
 				const remove_id = input ? input.dataset.key : '';
 
+				// Notify server to remove from database
 				if (remove_id) {
 					this.ajaxPost({
 						action: 'brag_book_gallery_setting_remove_row',
@@ -239,27 +281,33 @@ if (typeof window.BRAGbookAdmin === 'undefined') {
 					});
 				}
 
+				// Remove from DOM and update UI
 				row.remove();
 				updateButtonVisibility();
 			};
 
+			// Update add/remove button visibility based on table state
 			const updateButtonVisibility = () => {
 				const rows = tableBody.querySelectorAll("tr");
 				rows.forEach((row, index) => {
 					const addBtn = row.querySelector(".addRow");
 					const removeBtn = row.querySelector(".removeRow");
 
+					// Only show "Add" button on the last row
 					if (addBtn) addBtn.style.display = (index === rows.length - 1) ? "inline-block" : "none";
+					// Only show "Remove" button if more than one row exists
 					if (removeBtn) removeBtn.style.display = (rows.length > 1) ? "inline-block" : "none";
 				});
 			};
 
-			// Event delegation for dynamic table
+			// Use event delegation to handle dynamically created buttons
 			tableBody.addEventListener("click", (event) => {
 				const row = event.target.closest("tr");
+				// Handle add row button clicks
 				if (event.target.classList.contains("addRow")) {
 					addRow();
 				}
+				// Handle remove row button clicks
 				if (event.target.classList.contains("removeRow") && row) {
 					removeRow(row);
 				}
@@ -269,61 +317,71 @@ if (typeof window.BRAGbookAdmin === 'undefined') {
 		}
 
 		/**
-		 * Initialize combine gallery functionality
+		 * Initialize combined gallery creation UI
+		 * Manages the show/hide logic for the gallery slug input field
 		 */
 		initCombineGallery() {
 			const createBtn = document.getElementById("createCombineGallery");
 			const slugContainer = document.getElementById("slugFieldContainer");
 			const slugInput = document.querySelector(".combineGallerySlug");
 
+			// Exit if required elements aren't found
 			if (!createBtn || !slugContainer || !slugInput) return;
 
+			// Configure UI based on whether gallery already exists
 			if (slugInput.value === "") {
+				// No existing gallery - show create button
 				createBtn.style.display = "block";
 				slugContainer.style.display = "none";
 
+				// Toggle slug input field when create button is clicked
 				createBtn.addEventListener("click", () => {
 					slugContainer.style.display = (slugContainer.style.display === "none") ? "block" : "none";
 				});
 			} else {
+				// Existing gallery - show input field directly
 				createBtn.style.display = "none";
 				slugContainer.style.display = "block";
 			}
 		}
 
 		/**
-		 * Initialize debug page functionality
+		 * Initialize all debug page functionality including tabs, logs, and tools
 		 */
 		initDebugPage() {
-			this.initDebugTabs();
-			this.initErrorLog();
-			this.initApiLog();
-			this.initSystemInfo();
-			this.initDebugSettings();
-			this.initFactoryReset();
+			// Initialize debug interface components
+			this.initDebugTabs();      // Tab navigation system
+			this.initErrorLog();       // Error log viewer/management
+			this.initApiLog();         // API request log viewer
+			this.initSystemInfo();     // System information export
+			this.initDebugSettings();  // Debug mode toggles
+			this.initFactoryReset();   // Factory reset with confirmations
 		}
 
 		/**
-		 * Initialize debug page tabs
+		 * Initialize tab navigation for the debug page
+		 * Handles switching between error logs, API logs, system info, etc.
 		 */
 		initDebugTabs() {
 			const tabLinks = document.querySelectorAll('.brag-book-gallery-log-tab-nav a');
 			const tabContents = document.querySelectorAll('.brag-book-gallery-log-tab-content');
 
+			// Exit if no tabs found
 			if (tabLinks.length === 0) return;
 
+			// Set up click handlers for each tab link
 			tabLinks.forEach(link => {
 				link.addEventListener('click', (e) => {
 					e.preventDefault();
 
-					// Get target tab
+					// Get target tab identifier from data attribute
 					const targetTab = link.getAttribute('data-tab');
 
-					// Remove active classes
+					// Clear all active states
 					tabLinks.forEach(l => l.classList.remove('active'));
 					tabContents.forEach(c => c.classList.remove('active'));
 
-					// Add active class to clicked tab
+					// Activate clicked tab and its content
 					link.classList.add('active');
 					const targetContent = document.getElementById(targetTab + '-tab');
 					if (targetContent) {
@@ -334,33 +392,36 @@ if (typeof window.BRAGbookAdmin === 'undefined') {
 		}
 
 		/**
-		 * Initialize error log functionality
+		 * Initialize error log management functionality
+		 * Handles refresh, clear, and download operations for error logs
 		 */
 		initErrorLog() {
 			const refreshBtn = document.getElementById('brag-book-gallery-refresh-error-log');
 			const clearBtn = document.getElementById('brag-book-gallery-clear-error-log');
 			const downloadBtn = document.getElementById('brag-book-gallery-download-error-log');
-			const errorLogContent = document.getElementById('brag-book-gallery-error-log'); // Fixed ID
+			const errorLogContent = document.getElementById('brag-book-gallery-error-log');
 
+			// Set up refresh button functionality
 			if (refreshBtn && errorLogContent) {
 				refreshBtn.addEventListener('click', async () => {
-					// Disable button and show loading
+					// Show loading state and disable button to prevent multiple clicks
 					refreshBtn.disabled = true;
 					const originalContent = errorLogContent.textContent;
 					errorLogContent.innerHTML = '<span style="color: #666;">Loading...</span>';
 
 					try {
+						// Make AJAX request to fetch latest error log
 						const response = await this.ajaxPost({
 							action: 'brag_book_gallery_get_error_log',
 							nonce: this.nonce
 						});
 
 						if (response.success) {
+							// Update log content and show success message
 							errorLogContent.textContent = response.data.log || 'No errors logged yet.';
-							// Show success feedback
 							this.showDialog('Error log refreshed successfully.', 'success');
 						} else {
-							// Restore original content on error
+							// Restore original content on failure
 							errorLogContent.textContent = originalContent;
 							this.showDialog(
 								`Failed to load error log: ${response.data || 'Unknown error'}`,
@@ -368,11 +429,11 @@ if (typeof window.BRAGbookAdmin === 'undefined') {
 							);
 						}
 					} catch (error) {
-						// Restore original content on error
+						// Handle network or parsing errors
 						errorLogContent.textContent = originalContent;
 						this.showDialog(`Error loading log: ${error.message}`, 'error');
 					} finally {
-						// Re-enable button
+						// Always re-enable button when done
 						refreshBtn.disabled = false;
 					}
 				});
@@ -445,16 +506,22 @@ if (typeof window.BRAGbookAdmin === 'undefined') {
 				});
 			}
 
+			// Set up download button functionality
 			if (downloadBtn && errorLogContent) {
 				downloadBtn.addEventListener('click', () => {
+					// Create downloadable text file from log content
 					const logContent = errorLogContent.textContent;
 					const blob = new Blob([logContent], { type: 'text/plain' });
 					const url = window.URL.createObjectURL(blob);
+					
+					// Create temporary download link with date-stamped filename
 					const a = document.createElement('a');
 					a.href = url;
 					a.download = `brag-book-gallery-error-log-${new Date().toISOString().split('T')[0]}.txt`;
 					document.body.appendChild(a);
 					a.click();
+					
+					// Clean up temporary elements
 					document.body.removeChild(a);
 					window.URL.revokeObjectURL(url);
 				});
@@ -768,37 +835,42 @@ if (typeof window.BRAGbookAdmin === 'undefined') {
 
 
 		/**
-		 * Make AJAX POST request
-		 * @param {Object} data - Data to send
-		 * @returns {Promise} - Promise resolving to response
+		 * Make AJAX POST request to WordPress admin-ajax.php
+		 * Handles JSON parsing, error handling, and WordPress-specific response format
+		 * @param {Object} data - Data object to send (will be converted to FormData)
+		 * @returns {Promise<Object>} Promise resolving to parsed JSON response
 		 */
 		async ajaxPost(data) {
+			// Convert data object to FormData for WordPress compatibility
 			const formData = new FormData();
 			for (const key in data) {
 				formData.append(key, data[key]);
 			}
 
+			// Make fetch request to WordPress AJAX endpoint
 			const response = await fetch(this.ajaxUrl, {
 				method: 'POST',
-				credentials: 'same-origin',
+				credentials: 'same-origin', // Include WordPress authentication cookies
 				body: formData
 			});
 
+			// Check for HTTP errors
 			if (!response.ok) {
 				throw new Error(`HTTP error! status: ${response.status}`);
 			}
 
-			// Try to parse JSON response
+			// Parse response based on content type
 			const contentType = response.headers.get('content-type');
 			if (contentType && contentType.includes('application/json')) {
+				// Standard JSON response
 				return await response.json();
 			} else {
-				// If not JSON, try to get text and parse it
+				// Fallback: try to parse text as JSON (WordPress sometimes sends JSON with wrong content-type)
 				const text = await response.text();
 				try {
 					return JSON.parse(text);
 				} catch (e) {
-					// If text contains HTML error, extract meaningful message
+					// Handle common WordPress error responses
 					if (text.includes('<div') || text.includes('<!DOCTYPE')) {
 						console.error('Server returned HTML instead of JSON:', text);
 						throw new Error('Server returned an HTML error page. Please check PHP error logs.');
@@ -1001,13 +1073,18 @@ if (typeof window.BRAGbookAdmin === 'undefined') {
 
 }
 
-// Initialize when DOM is ready (only once)
+/**
+ * Auto-initialize admin interface when DOM is ready
+ * Prevents multiple instances and handles both loading states
+ */
 if (typeof window.bragBookAdminInstance === 'undefined') {
 	if (document.readyState === 'loading') {
+		// DOM still loading - wait for DOMContentLoaded event
 		document.addEventListener('DOMContentLoaded', () => {
 			window.bragBookAdminInstance = new window.BRAGbookAdmin();
 		});
 	} else {
+		// DOM already loaded - initialize immediately
 		window.bragBookAdminInstance = new window.BRAGbookAdmin();
 	}
 }

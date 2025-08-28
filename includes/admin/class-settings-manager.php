@@ -54,8 +54,8 @@ class Settings_Manager {
 	 *
 	 * Structure:
 	 * - 'general': General plugin settings and overview
-	 * - 'mode': Operating mode selection (JavaScript vs Local)
-	 * - 'javascript': JavaScript mode specific settings
+	 * - 'mode': Operating mode selection (Default vs Local)
+	 * - 'default': Default mode specific settings
 	 * - 'local': Local mode specific settings
 	 * - 'api': API connection and configuration settings
 	 * - 'api_test': API endpoint testing and diagnostics
@@ -303,15 +303,15 @@ class Settings_Manager {
 			);
 		}
 
-		// JavaScript Settings - only show if JavaScript mode is active AND API key is configured
-		if ( $has_api_key && $current_mode === 'javascript' ) {
+		// Default Settings - only show if Default mode is active AND API key is configured
+		if ( $has_api_key && $current_mode === 'default' ) {
 			add_submenu_page(
 				parent_slug: 'brag-book-gallery-settings',
-				page_title: esc_html__( 'JavaScript Mode Settings', 'brag-book-gallery' ),
-				menu_title: esc_html__( 'JavaScript Settings', 'brag-book-gallery' ),
+				page_title: esc_html__( 'Default Mode Settings', 'brag-book-gallery' ),
+				menu_title: esc_html__( 'Default Settings', 'brag-book-gallery' ),
 				capability: 'manage_options',
-				menu_slug: 'brag-book-gallery-javascript',
-				callback: array( $this->settings_pages['javascript'], 'render' )
+				menu_slug: 'brag-book-gallery-default',
+				callback: array( $this->settings_pages['default'], 'render' )
 			);
 		}
 

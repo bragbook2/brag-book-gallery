@@ -1,0 +1,443 @@
+@charset "UTF-8";
+
+// -----------------------------------------------------------------------------
+// Export/Import Dialog Styles
+// -----------------------------------------------------------------------------
+
+// Export/Import Dialog specific styles  
+// Use higher specificity to override any conflicting styles
+dialog#export-import-dialog.brag-book-gallery-dialog {
+	max-width: 700px;
+	width: 90%;
+	border: none;
+	border-radius: 8px;
+	padding: 0;
+	box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+	z-index: 100001; // Ensure dialog is on top
+	
+	&::backdrop {
+		background: rgba(0, 0, 0, 0.5);
+		backdrop-filter: blur(2px);
+		z-index: 100000;
+	}
+	
+	// Override any flexbox layouts from parent styles
+	* {
+		box-sizing: border-box;
+	}
+	
+	// Ensure no flex display on body
+	> * {
+		display: block !important;
+		flex: none !important;
+	}
+	
+	.brag-book-gallery-dialog-content {
+		display: flex;
+		flex-direction: column;
+		height: 100%;
+		max-height: 80vh;
+	}
+	
+	.brag-book-gallery-dialog-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 20px 24px;
+		border-bottom: 1px solid #e0e0e0;
+		background: #f8f9fa;
+		border-radius: 8px 8px 0 0;
+		
+		h2 {
+			margin: 0;
+			font-size: 20px;
+			font-weight: 600;
+			color: #1d2327;
+		}
+		
+		.dialog-close {
+			background: none;
+			border: none;
+			cursor: pointer;
+			padding: 4px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			border-radius: 4px;
+			transition: background 0.2s;
+			
+			&:hover {
+				background: rgba(0, 0, 0, 0.05);
+			}
+			
+			.dashicons {
+				font-size: 24px;
+				width: 24px;
+				height: 24px;
+				color: #646970;
+			}
+		}
+	}
+	
+	.brag-book-gallery-dialog-body {
+		flex: 1;
+		overflow-y: auto;
+		background: #fff;
+		display: block !important; // Override any flex from parent styles
+		width: 100%;
+		
+		// Completely reset any flexbox that might be inherited
+		display: block !important;
+		flex-direction: column !important;
+		flex: none !important;
+	}
+	
+	// Container for both tabs and panels - ensure vertical stack
+	.brag-book-gallery-dialog-body > * {
+		display: block !important;
+		width: 100% !important;
+		flex: none !important;
+		float: none !important;
+		position: relative !important;
+	}
+	
+	// Tabs styling - Horizontal layout
+	.brag-book-gallery-tabs {
+		display: block !important; // Ensure block display
+		width: 100%;
+		border-bottom: 1px solid #e0e0e0;
+		background: #f8f9fa;
+		margin: 0;
+		padding: 0;
+		position: relative !important;
+		float: none !important;
+		z-index: 10; // Ensure tabs are above content
+		
+		.brag-book-gallery-tab-list {
+			display: flex !important;
+			flex-direction: row !important; // Force horizontal layout
+			flex-wrap: nowrap !important;
+			margin: 0;
+			padding: 0;
+			list-style: none;
+			justify-content: flex-start; // Align tabs to the left
+			gap: 0; // Remove gap between items
+			width: 100%;
+			position: relative;
+			z-index: 11;
+		
+		}
+		
+		.brag-book-gallery-tab-item {
+			flex: 0 0 auto !important; // Don't stretch, maintain natural width
+			display: block !important;
+			position: relative;
+			z-index: 12;
+			
+			&.active .brag-book-gallery-tab-link {
+				background: #fff;
+				border-bottom: 3px solid #2271b1;
+				color: #2271b1;
+				position: relative;
+				z-index: 13;
+				
+				svg {
+					fill: #2271b1;
+				}
+			}
+		}
+		
+		.brag-book-gallery-tab-link {
+			display: inline-flex; // Change to inline-flex
+			align-items: center;
+			justify-content: center;
+			gap: 8px;
+			padding: 16px 24px;
+			text-decoration: none;
+			color: #646970;
+			font-weight: 500;
+			border-bottom: 3px solid transparent;
+			transition: all 0.2s;
+			background: transparent;
+			white-space: nowrap; // Prevent text wrapping
+			
+			svg {
+				width: 20px;
+				height: 20px;
+				fill: #646970;
+				transition: fill 0.2s;
+			}
+			
+			&:hover {
+				color: #2271b1;
+				background: rgba(34, 113, 177, 0.05);
+				
+				svg {
+					fill: #2271b1;
+				}
+			}
+			
+			&:focus {
+				outline: none;
+				box-shadow: 0 0 0 2px #2271b1;
+				border-radius: 3px;
+			}
+		}
+	}
+	
+	// Tab panels
+	.brag-book-gallery-tab-panels {
+		display: block !important; // Ensure block display
+		width: 100%;
+		padding: 24px;
+		background: #fff;
+		clear: both; // Clear any floats
+		position: relative;
+		z-index: 1; // Below tabs but above background
+		margin-top: 0; // No gap between tabs and content
+	}
+	
+	.brag-book-gallery-tab-panel {
+		display: none;
+		
+		&.active {
+			display: block;
+			animation: fadeIn 0.3s ease;
+		}
+	}
+	
+	// Export panel styles
+	.export-content {
+		.export-info {
+			margin-bottom: 24px;
+			
+			h3 {
+				margin: 0 0 16px;
+				font-size: 18px;
+				font-weight: 600;
+				color: #1d2327;
+			}
+			
+			p {
+				margin: 12px 0;
+				color: #50575e;
+			}
+			
+			ul {
+				margin: 12px 0;
+				padding-left: 24px;
+				
+				li {
+					margin: 8px 0;
+					color: #50575e;
+				}
+			}
+			
+			.description {
+				margin-top: 16px;
+				padding: 12px;
+				background: #f0f8ff;
+				border-left: 4px solid #2271b1;
+				border-radius: 4px;
+				font-size: 13px;
+				color: #2271b1;
+			}
+		}
+		
+		.export-action {
+			text-align: center;
+			padding: 20px 0;
+			
+			.button-large {
+				padding: 12px 24px;
+				font-size: 14px;
+				display: inline-flex;
+				align-items: center;
+				gap: 8px;
+				
+				svg {
+					width: 20px;
+					height: 20px;
+				}
+			}
+		}
+	}
+	
+	// Import panel styles
+	.import-content {
+		.import-info {
+			margin-bottom: 24px;
+			
+			h3 {
+				margin: 0 0 16px;
+				font-size: 18px;
+				font-weight: 600;
+				color: #1d2327;
+			}
+			
+			p {
+				margin: 12px 0;
+				color: #50575e;
+			}
+		}
+		
+		.import-action {
+			text-align: center;
+			padding: 20px 0;
+			
+			.button-large {
+				padding: 12px 24px;
+				font-size: 14px;
+				display: inline-flex;
+				align-items: center;
+				gap: 8px;
+				
+				svg {
+					width: 20px;
+					height: 20px;
+				}
+				
+				&:disabled {
+					opacity: 0.5;
+					cursor: not-allowed;
+				}
+			}
+		}
+	}
+	
+	// File upload styling
+	.file-upload-wrapper {
+		margin: 24px 0;
+		
+		.file-upload-input {
+			position: absolute;
+			opacity: 0;
+			pointer-events: none;
+		}
+		
+		.file-upload-label {
+			display: flex;
+			align-items: center;
+			gap: 12px;
+			padding: 16px;
+			border: 2px dashed #c3c4c7;
+			border-radius: 8px;
+			background: #f6f7f7;
+			cursor: pointer;
+			transition: all 0.3s;
+			
+			svg {
+				width: 32px;
+				height: 32px;
+				fill: #646970;
+				flex-shrink: 0;
+			}
+			
+			.file-label-text {
+				font-weight: 500;
+				color: #2271b1;
+				margin-right: auto;
+			}
+			
+			.file-name {
+				font-size: 13px;
+				color: #646970;
+				font-style: italic;
+			}
+			
+			&:hover {
+				border-color: #2271b1;
+				background: #f0f8ff;
+				
+				.file-label-text {
+					text-decoration: underline;
+				}
+			}
+			
+			&.has-file {
+				border-color: #00a32a;
+				background: #f0fdf4;
+				
+				.file-name {
+					color: #00a32a;
+					font-style: normal;
+					font-weight: 500;
+				}
+			}
+		}
+		
+		// When input is focused
+		.file-upload-input:focus + .file-upload-label {
+			outline: 2px solid #2271b1;
+			outline-offset: 2px;
+		}
+	}
+	
+	// Import warning
+	.import-warning {
+		margin: 20px 0;
+		
+		.warning-text {
+			display: flex;
+			align-items: flex-start;
+			gap: 10px;
+			padding: 12px;
+			background: #fcf0f1;
+			border-left: 4px solid #d63638;
+			border-radius: 4px;
+			margin: 0;
+			
+			svg {
+				width: 20px;
+				height: 20px;
+				flex-shrink: 0;
+				margin-top: 2px;
+			}
+			
+			strong {
+				color: #d63638;
+			}
+		}
+	}
+}
+
+// Animation
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+		transform: translateY(-10px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+// Responsive
+@media (max-width: 600px) {
+	#export-import-dialog {
+		&.brag-book-gallery-dialog {
+			width: 95%;
+			max-width: none;
+		}
+		
+		.brag-book-gallery-tab-link {
+			font-size: 14px;
+			padding: 12px 10px;
+			
+			svg {
+				width: 18px;
+				height: 18px;
+			}
+		}
+		
+		.file-upload-label {
+			flex-direction: column;
+			text-align: center;
+			
+			.file-label-text {
+				margin-right: 0;
+			}
+		}
+	}
+}

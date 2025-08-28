@@ -4,15 +4,73 @@
 // admin / toggle
 // -----------------------------------------------------------------------------
 
+// Toggle wrapper for consistent spacing
+.brag-book-gallery-toggle-wrapper {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+// Toggle label text styling
+.brag-book-gallery-toggle-label {
+	font-weight: 500;
+	color: #2c3338;
+	margin: 0;
+}
+
+// Main toggle container
+.brag-book-gallery-toggle {
+	position: relative;
+	display: inline-block;
+	width: 44px;
+	height: 24px;
+	cursor: pointer;
+	user-select: none;
+
+	input[type="checkbox"] {
+		position: absolute;
+		opacity: 0;
+		pointer-events: none;
+		width: 100%;
+		height: 100%;
+		margin: 0;
+
+		&:checked {
+			+ .brag-book-gallery-toggle-slider {
+				background-color: #2271b1;
+
+				&::before {
+					transform: translateX(20px);
+				}
+			}
+		}
+
+		&:focus-visible {
+			+ .brag-book-gallery-toggle-slider {
+				outline: 2px solid #2271b1;
+				outline-offset: 2px;
+			}
+		}
+
+		&:disabled {
+			+ .brag-book-gallery-toggle-slider {
+				opacity: 0.5;
+				cursor: not-allowed;
+			}
+		}
+	}
+}
+
+// Keep the original classes for backward compatibility
 .brag-book-toggle-label {
-	font-weight: var(--font-medium);
-	color: var(--slate-700);
+	font-weight: 500;
+	color: #2c3338;
 }
 
 .brag-book-toggle-switch {
 	display: flex;
 	align-items: center;
-	gap: var(--space-3);
+	gap: 12px;
 	cursor: pointer;
 	user-select: none;
 
@@ -23,7 +81,7 @@
 
 		&:checked {
 			+ .brag-book-toggle-slider {
-				background-color: var(--blue-500);
+				background-color: #2271b1;
 
 				&::before {
 					transform: translateX(20px);
@@ -31,9 +89,9 @@
 			}
 		}
 
-		&:focus {
+		&:focus-visible {
 			+ .brag-book-toggle-slider {
-				outline: 2px solid var(--blue-500);
+				outline: 2px solid #2271b1;
 				outline-offset: 2px;
 			}
 		}
@@ -47,15 +105,15 @@
 	}
 }
 
+.brag-book-gallery-toggle-slider,
 .brag-book-toggle-slider {
 	position: relative;
-	display: inline-block;
-	width: 44px;
-	height: 24px;
-	background-color: var(--slate-300);
+	display: block;
+	width: 100%;
+	height: 100%;
+	background-color: #ccc;
 	border-radius: 12px;
 	transition: background-color 0.2s ease;
-	cursor: pointer;
 
 	&::before {
 		content: '';

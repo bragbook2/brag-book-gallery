@@ -1,22 +1,30 @@
 import BRAGbookGalleryApp from './main-app.js';
 import { NudityWarningManager, PhoneFormatter } from './utilities.js';
 
-// Global functions for grid layout updates
+/**
+ * Global utility functions for the BRAG book Gallery
+ * Contains grid layout management, procedure filtering, case loading, and image handling
+ */
+
+/**
+ * Update the gallery grid column layout and save preference
+ * @param {number} columns - Number of columns to display (1-4)
+ */
 window.updateGridLayout = function(columns) {
 	const grid = document.querySelector('.brag-book-gallery-case-grid');
 	if (!grid) return;
 
-	// Check if we're on desktop (grid buttons are only shown on desktop)
+	// Only allow grid changes on desktop devices
 	const isDesktop = window.innerWidth >= 1024;
-	if (!isDesktop) return; // Don't allow manual grid changes on mobile/tablet
+	if (!isDesktop) return; // Mobile/tablet use responsive grid
 
-	// Mark grid as initialized to prevent initial animations from replaying
+	// Mark grid as initialized to prevent animation conflicts
 	grid.classList.add('grid-initialized');
 
-	// Update grid columns immediately for smooth transition
+	// Update grid columns data attribute for CSS grid changes
 	grid.setAttribute('data-columns', columns);
 
-	// Update active state on buttons
+	// Update button active states to reflect current selection
 	const buttons = document.querySelectorAll('.brag-book-gallery-grid-btn');
 	buttons.forEach(btn => {
 		const btnCols = parseInt(btn.dataset.columns);
@@ -27,20 +35,26 @@ window.updateGridLayout = function(columns) {
 		}
 	});
 
-	// Save preference to localStorage
+	// Persist user preference across sessions
 	localStorage.setItem('bragbook-grid-columns', columns);
 };
 
-// Global procedure filter state
+/**
+ * Global state for demographic procedure filters
+ * Stores arrays of selected filter values for each category
+ */
 window.bragBookProcedureFilters = {
-	age: [],
-	gender: [],
-	ethnicity: [],
-	height: [],
-	weight: []
+	age: [],      // Age ranges like '18-24', '25-34', etc.
+	gender: [],   // Gender values
+	ethnicity: [], // Ethnicity values
+	height: [],   // Height ranges
+	weight: []    // Weight ranges
 };
 
-// Initialize procedure filters on page load or after AJAX
+/**
+ * Initialize demographic procedure filters
+ * Called on page load and after AJAX content updates
+ */
 window.initializeProcedureFilters = function() {
 	const details = document.getElementById('procedure-filters-details');
 	console.log('Initializing procedure filters, details element:', details);
@@ -52,7 +66,10 @@ window.initializeProcedureFilters = function() {
 	}
 };
 
-// Generate procedure filter options based on available data
+/**
+ * Generate filter options HTML based on available case data
+ * Uses either complete dataset from config or falls back to DOM scanning
+ */
 window.generateProcedureFilterOptions = function() {
 	const container = document.getElementById('brag-book-gallery-filters');
 	if (!container) {
@@ -215,7 +232,11 @@ window.generateProcedureFilterOptions = function() {
 	generateFilterHTML(container, filterData);
 };
 
-// Separate function to generate filter HTML from filter data
+/**
+ * Generate the filter interface HTML from collected filter data
+ * @param {HTMLElement} container - Container to insert filter HTML
+ * @param {Object} filterData - Categorized filter options
+ */
 window.generateFilterHTML = function(container, filterData) {
 	console.log('generateFilterHTML called with:', filterData);
 
@@ -356,7 +377,10 @@ window.generateFilterHTML = function(container, filterData) {
 	}
 };
 
-// Apply procedure filters to cards
+/**
+ * Apply active demographic filters to case cards
+ * Handles both complete dataset filtering and DOM-based filtering
+ */
 window.applyProcedureFilters = function() {
 	console.log('Applying procedure filters...');
 	const checkboxes = document.querySelectorAll('.brag-book-gallery-filter-option input:checked');
@@ -397,7 +421,8 @@ window.applyProcedureFilters = function() {
 		updateFilteredCount(cards.length, cards.length);
 
 		// Show Load More button if it exists since no filters are active
-		const loadMoreBtn = document.querySelector('[data-action="load-more"]');
+		const loadMoreBtn = document.querySelector('button[onclick*="loadMoreCases"]') || 
+						   document.querySelector('.brag-book-gallery-load-more button');
 		const loadMoreContainer = loadMoreBtn ? (loadMoreBtn.closest('.brag-book-gallery-load-more-container') || loadMoreBtn.parentElement) : null;
 		if (loadMoreContainer && loadMoreBtn.hasAttribute('data-start-page')) {
 			loadMoreContainer.style.display = '';
@@ -646,7 +671,8 @@ window.applyProcedureFilters = function() {
 		}
 
 		// Hide Load More button when filters are active or no results found
-		const loadMoreBtn = document.querySelector('[data-action="load-more"]');
+		const loadMoreBtn = document.querySelector('button[onclick*="loadMoreCases"]') || 
+						   document.querySelector('.brag-book-gallery-load-more button');
 		const loadMoreContainer = loadMoreBtn ? (loadMoreBtn.closest('.brag-book-gallery-load-more-container') || loadMoreBtn.parentElement) : null;
 		if (loadMoreContainer) {
 			if (hasActiveFilters || visibleCount === 0) {
@@ -661,7 +687,10 @@ window.applyProcedureFilters = function() {
 	}
 };
 
-// Helper function to load filtered cases from the complete dataset
+/**
+ * Load specific cases from server when filtering with complete dataset
+ * @param {Array<string>} matchingCaseIds - Array of case IDs that match current filters
+ */
 window.loadFilteredCases = function(matchingCaseIds) {
 	// First, hide all current cards
 	const allCards = document.querySelectorAll('.brag-book-gallery-case-card[data-card="true"]');
@@ -745,14 +774,19 @@ window.loadFilteredCases = function(matchingCaseIds) {
 	}
 
 	// Hide Load More button when filters are active since we're showing all matching results
-	const loadMoreBtn = document.querySelector('[data-action="load-more"]');
+	const loadMoreBtn = document.querySelector('button[onclick*="loadMoreCases"]') || 
+					   document.querySelector('.brag-book-gallery-load-more button');
 	const loadMoreContainer = loadMoreBtn ? (loadMoreBtn.closest('.brag-book-gallery-load-more-container') || loadMoreBtn.parentElement) : null;
 	if (loadMoreContainer) {
 		loadMoreContainer.style.display = 'none';
 	}
 };
 
-// Helper function to update the filtered count display
+/**
+ * Update the display of filtered results count
+ * @param {number} shown - Number of cases currently visible
+ * @param {number} total - Total number of cases available
+ */
 window.updateFilteredCount = function(shown, total) {
 	// Update the count label
 	const countLabel = document.querySelector('.brag-book-gallery-favorite-count-label') ||
@@ -784,7 +818,9 @@ window.updateFilteredCount = function(shown, total) {
 	}
 };
 
-// Clear all procedure filters
+/**
+ * Clear all active demographic filters and show all cases
+ */
 window.clearProcedureFilters = function() {
 	console.log('Clearing all procedure filters');
 
@@ -865,14 +901,18 @@ window.clearProcedureFilters = function() {
 	}
 
 	// Show Load More button again if it exists and has more pages
-	const loadMoreBtn = document.querySelector('[data-action="load-more"]');
+	const loadMoreBtn = document.querySelector('button[onclick*="loadMoreCases"]') || 
+					   document.querySelector('.brag-book-gallery-load-more button');
 	const loadMoreContainer = loadMoreBtn ? (loadMoreBtn.closest('.brag-book-gallery-load-more-container') || loadMoreBtn.parentElement) : null;
 	if (loadMoreContainer && loadMoreBtn && loadMoreBtn.hasAttribute('data-start-page')) {
 		loadMoreContainer.style.display = '';
 	}
 };
 
-// Global function to sync image heights within a case
+/**
+ * Synchronize image heights within a case card for consistent display
+ * @param {HTMLImageElement} img - The image element that just loaded
+ */
 window.syncImageHeights = function(img) {
 	// Hide skeleton loader and show image
 	img.style.opacity = '1';
@@ -916,13 +956,26 @@ window.syncImageHeights = function(img) {
 	});
 };
 
-// Load case details into gallery content
+/**
+ * Load case details into gallery content (backward compatibility wrapper)
+ * @param {string} caseId - The case ID to load
+ * @param {string} procedureId - The procedure ID
+ * @param {string} procedureSlug - The procedure URL slug
+ * @param {string} procedureIds - Comma-separated procedure IDs
+ */
 window.loadCaseDetails = function(caseId, procedureId, procedureSlug, procedureIds) {
 	// For backwards compatibility, call the new function without procedure name
 	window.loadCaseDetailsWithName(caseId, procedureId, procedureSlug, '', procedureIds);
 };
 
-// Load case details with procedure name
+/**
+ * Load case details with full context including procedure name
+ * @param {string} caseId - The case ID to load
+ * @param {string} procedureId - The procedure ID
+ * @param {string} procedureSlug - The procedure URL slug
+ * @param {string} procedureName - Display name for the procedure
+ * @param {string} procedureIds - Comma-separated procedure IDs
+ */
 window.loadCaseDetailsWithName = function(caseId, procedureId, procedureSlug, procedureName, procedureIds) {
 	const galleryContent = document.getElementById('gallery-content');
 	if (!galleryContent) {
@@ -1194,7 +1247,10 @@ window.bragBookSetImageAspectRatio = function(img) {
 	}
 };
 
-// Infinite scroll functionality
+/**
+ * Initialize infinite scroll functionality for automatic content loading
+ * Triggers load more when user scrolls near bottom of page
+ */
 window.initInfiniteScroll = function() {
 	// Check if infinite scroll is enabled
 	const infiniteScrollEnabled = window.bragBookGalleryConfig?.infiniteScroll === 'yes';
@@ -1214,8 +1270,9 @@ window.initInfiniteScroll = function() {
 			// Don't trigger if already loading
 			if (isLoading) return;
 
-			// Find the Load More button using data-component attribute
-			const loadMoreButton = document.querySelector('[data-action="load-more"]');
+			// Find the Load More button - look for button with onclick="loadMoreCases(this)"
+			const loadMoreButton = document.querySelector('button[onclick*="loadMoreCases"]') || 
+								   document.querySelector('.brag-book-gallery-load-more button');
 			if (!loadMoreButton || loadMoreButton.disabled || loadMoreButton.style.display === 'none') {
 				return;
 			}
@@ -1256,9 +1313,11 @@ window.initInfiniteScroll = function() {
 	window.infiniteScrollHandler = handleScroll;
 };
 
-// Initialize app when DOM is ready
-let nudityManager; // Make it globally accessible for reset
-let phoneFormatter; // Make it globally accessible
+/**
+ * Global instances for utility managers
+ */
+let nudityManager; // Nudity warning manager instance
+let phoneFormatter; // Phone number formatter instance
 
 document.addEventListener('DOMContentLoaded', () => {
 	new BRAGbookGalleryApp();

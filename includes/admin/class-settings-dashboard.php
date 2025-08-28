@@ -233,12 +233,12 @@ class Settings_Dashboard extends Settings_Base {
 						</div>
 					</div>
 				<?php else : ?>
-					<?php if ( $current_mode === 'javascript' ) : ?>
+					<?php if ( $current_mode === 'default' ) : ?>
 						<div class="action-card">
 							<div class="action-card-content">
-								<h3><?php esc_html_e( 'JavaScript Settings', 'brag-book-gallery' ); ?></h3>
+								<h3><?php esc_html_e( 'Default Setup', 'brag-book-gallery' ); ?></h3>
 								<p><?php esc_html_e( 'Configure gallery display and performance settings.', 'brag-book-gallery' ); ?></p>
-								<a href="<?php echo esc_url( admin_url( 'admin.php?page=brag-book-gallery-javascript' ) ); ?>" class="button button-primary">
+								<a href="<?php echo esc_url( admin_url( 'admin.php?page=brag-book-gallery-default' ) ); ?>" class="button button-primary">
 									<?php esc_html_e( 'Configure', 'brag-book-gallery' ); ?>
 								</a>
 							</div>
@@ -387,10 +387,10 @@ class Settings_Dashboard extends Settings_Base {
 		// Step 2: Select Mode
 		$mode_manager = \BRAGBookGallery\Includes\Mode\Mode_Manager::get_instance();
 		$current_mode = $mode_manager->get_current_mode();
-		$mode_selected = $has_api && ( $current_mode === 'javascript' || $current_mode === 'local' );
+		$mode_selected = $has_api && ( $current_mode === 'default' || $current_mode === 'local' );
 		$steps[] = array(
 			'title' => __( 'Select Operating Mode', 'brag-book-gallery' ),
-			'description' => __( 'Choose between JavaScript or Local mode for your galleries.', 'brag-book-gallery' ),
+			'description' => __( 'Choose between Default or Local mode for your galleries.', 'brag-book-gallery' ),
 			'completed' => $mode_selected,
 			'action_url' => admin_url( 'admin.php?page=brag-book-gallery-mode' ),
 			'action_text' => __( 'Select Mode', 'brag-book-gallery' ),
@@ -400,7 +400,7 @@ class Settings_Dashboard extends Settings_Base {
 		// Step 3: Configure Gallery Settings
 		$mode_configured = false;
 		if ( $mode_selected ) {
-			if ( $current_mode === 'javascript' ) {
+			if ( $current_mode === 'default' ) {
 				// For JavaScript mode, check if gallery page slug is configured
 				$gallery_slugs = get_option( 'brag_book_gallery_page_slug', array() );
 				// Check if we have at least one non-empty slug
@@ -409,7 +409,7 @@ class Settings_Dashboard extends Settings_Base {
 				} else if ( is_string( $gallery_slugs ) ) {
 					$mode_configured = ! empty( $gallery_slugs );
 				}
-				$settings_url = admin_url( 'admin.php?page=brag-book-gallery-javascript' );
+				$settings_url = admin_url( 'admin.php?page=brag-book-gallery-default' );
 			} else {
 				// For Local mode, just check if mode is selected (local mode doesn't need additional config)
 				$mode_configured = true;
@@ -434,7 +434,7 @@ class Settings_Dashboard extends Settings_Base {
 		if ( $current_mode === 'local' ) {
 			$gallery_count = wp_count_posts( 'brag_gallery' );
 			$has_gallery = ( $gallery_count->publish ?? 0 ) > 0;
-		} else if ( $current_mode === 'javascript' ) {
+		} else if ( $current_mode === 'default' ) {
 			// For JavaScript mode, check if gallery page exists (page with shortcode)
 			global $wpdb;
 

@@ -1,8 +1,19 @@
 <?php
 /**
- * Image Sync
+ * Image Sync - Enterprise-grade image management system
  *
- * Handles importing and managing images from API to WordPress media library.
+ * Comprehensive image synchronization and optimization system for BRAGBook Gallery.
+ * Handles secure importing, validation, optimization, and management of images
+ * from external APIs to WordPress media library.
+ *
+ * Features:
+ * - Secure image downloading with validation
+ * - Automatic image optimization and compression
+ * - Duplicate detection and prevention
+ * - Batch processing capabilities
+ * - Performance monitoring and caching
+ * - WordPress VIP compliant architecture
+ * - Modern PHP 8.2+ features and type safety
  *
  * @package    BRAGBookGallery
  * @subpackage Includes\Sync
@@ -16,146 +27,262 @@ declare(strict_types=1);
 
 namespace BRAGBookGallery\Includes\Sync;
 
+use WP_Error;
+use Exception;
+
 // Prevent direct access
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
 /**
- * Image Sync Class
+ * Enterprise Image Synchronization System
  *
- * Manages the synchronization and optimization of images from API to local storage.
+ * Handles comprehensive image management operations:
+ *
+ * Core Responsibilities:
+ * - Import and validate images from external sources
+ * - Optimize images for web performance
+ * - Manage attachment metadata and associations
+ * - Detect and prevent duplicate imports
+ * - Batch process image operations
+ * - Monitor and report image statistics
  *
  * @since 3.0.0
  */
-class Image_Sync {
+final class Image_Sync {
 
 	/**
 	 * Maximum image file size (in bytes)
 	 *
 	 * @since 3.0.0
-	 * @var int
 	 */
 	private const MAX_FILE_SIZE = 10485760; // 10MB
 
 	/**
-	 * Allowed image types
+	 * Allowed image MIME types for security
 	 *
 	 * @since 3.0.0
-	 * @var array
 	 */
-	private const ALLOWED_TYPES = array( 'image/jpeg', 'image/png', 'image/webp', 'image/gif' );
+	private const ALLOWED_TYPES = [
+		'image/jpeg',
+		'image/png',
+		'image/webp',
+		'image/gif',
+	];
 
 	/**
 	 * Image quality for compression
 	 *
 	 * @since 3.0.0
-	 * @var int
 	 */
 	private const COMPRESSION_QUALITY = 85;
 
 	/**
-	 * Import images for a case
+	 * Cache duration constants
 	 *
 	 * @since 3.0.0
-	 * @param int   $post_id WordPress post ID.
-	 * @param array $case_data Case data from API.
-	 * @return array Result with success status and attachment IDs.
+	 */
+	private const CACHE_TTL_SHORT = 300;     // 5 minutes
+	private const CACHE_TTL_MEDIUM = 1800;   // 30 minutes
+	private const CACHE_TTL_LONG = 3600;     // 1 hour
+	private const CACHE_TTL_EXTENDED = 7200; // 2 hours
+
+	/**
+	 * Maximum retries for failed downloads
+	 *
+	 * @since 3.0.0
+	 */
+	private const MAX_DOWNLOAD_RETRIES = 3;
+
+	/**
+	 * Download timeout in seconds
+	 *
+	 * @since 3.0.0
+	 */
+	private const DOWNLOAD_TIMEOUT = 30;
+
+	/**
+	 * Performance metrics storage
+	 *
+	 * @since 3.0.0
+	 * @var array<string, mixed>
+	 */
+	private array $performance_metrics = [];
+
+	/**
+	 * Memory cache for optimization
+	 *
+	 * @since 3.0.0
+	 * @var array<string, mixed>
+	 */
+	private array $memory_cache = [];
+
+	/**
+	 * Error tracking for reporting
+	 *
+	 * @since 3.0.0
+	 * @var array<string, array<string, mixed>>
+	 */
+	private array $error_log = [];
+
+	/**
+	 * Import images for a case with comprehensive validation
+	 *
+	 * Processes and imports all images associated with a case from API data.
+	 * Handles before/after image sets with duplicate detection and optimization.
+	 *
+	 * @since 3.0.0
+	 * @param int                  $post_id WordPress post ID.
+	 * @param array<string, mixed> $case_data Case data from API.
+	 * @return array<string, mixed> Result with success status and attachment IDs.
 	 */
 	public function import_case_images( int $post_id, array $case_data ): array {
-		$results = array(
-			'success' => true,
-			'before_images' => array(),
-			'after_images' => array(),
-			'errors' => array(),
-		);
+		$start_time = microtime( true );
+		
+		$results = [
+			'success'       => true,
+			'before_images' => [],
+			'after_images'  => [],
+			'skipped'       => 0,
+			'errors'        => [],
+			'stats'         => [],
+		];
 
-		if ( empty( $case_data['photoSets'] ) || ! is_array( $case_data['photoSets'] ) ) {
-			return $results;
-		}
-
-		foreach ( $case_data['photoSets'] as $photo_set ) {
-			if ( empty( $photo_set['type'] ) || empty( $photo_set['photos'] ) ) {
-				continue;
+		try {
+			// Validate post exists
+			if ( ! get_post( $post_id ) ) {
+				throw new Exception( "Invalid post ID: {$post_id}" );
 			}
 
-			$set_type = $photo_set['type'];
-			$photos = $photo_set['photos'];
+			if ( empty( $case_data['photoSets'] ) || ! is_array( $case_data['photoSets'] ) ) {
+				return $results;
+			}
 
-			foreach ( $photos as $photo ) {
-				try {
-					$attachment_id = $this->import_single_image( $photo, $post_id, $set_type );
+			foreach ( $case_data['photoSets'] as $photo_set ) {
+				if ( empty( $photo_set['type'] ) || empty( $photo_set['photos'] ) ) {
+					continue;
+				}
 
-					if ( $attachment_id ) {
-						if ( $set_type === 'before' ) {
-							$results['before_images'][] = $attachment_id;
-						} elseif ( $set_type === 'after' ) {
-							$results['after_images'][] = $attachment_id;
+				$set_type = $this->validate_image_type( $photo_set['type'] );
+				$photos   = $photo_set['photos'];
+
+				foreach ( $photos as $photo ) {
+					try {
+						$attachment_id = $this->import_single_image( $photo, $post_id, $set_type );
+
+						if ( $attachment_id ) {
+							$result_key = match ( $set_type ) {
+								'before' => 'before_images',
+								'after'  => 'after_images',
+								default  => null,
+							};
+							
+							if ( $result_key ) {
+								$results[ $result_key ][] = $attachment_id;
+							}
+						} else {
+							$results['skipped']++;
 						}
+					} catch ( Exception $e ) {
+						$this->log_error( 'import_single', $e->getMessage() );
+						$results['errors'][] = $this->format_error_message( $photo, $e->getMessage() );
+						$results['success']  = false;
 					}
-				} catch ( \Exception $e ) {
-					$results['errors'][] = "Failed to import image: " . $e->getMessage();
-					$results['success'] = false;
 				}
 			}
-		}
 
-		// Update post meta with attachment IDs
-		if ( ! empty( $results['before_images'] ) ) {
-			update_post_meta( $post_id, '_brag_before_image_ids', $results['before_images'] );
-		}
+			// Update post meta with attachment IDs
+			if ( ! empty( $results['before_images'] ) ) {
+				update_post_meta( $post_id, '_brag_before_image_ids', $results['before_images'] );
+			}
 
-		if ( ! empty( $results['after_images'] ) ) {
-			update_post_meta( $post_id, '_brag_after_image_ids', $results['after_images'] );
+			if ( ! empty( $results['after_images'] ) ) {
+				update_post_meta( $post_id, '_brag_after_image_ids', $results['after_images'] );
+			}
+
+			// Track performance
+			$duration = microtime( true ) - $start_time;
+			$this->track_performance( 'import_case_images', $duration );
+			
+			$results['stats'] = [
+				'duration_seconds' => round( $duration, 2 ),
+				'total_processed'  => count( $results['before_images'] ) + count( $results['after_images'] ),
+				'memory_peak_mb'   => round( memory_get_peak_usage( true ) / 1048576, 2 ),
+			];
+
+		} catch ( Exception $e ) {
+			$this->log_error( 'import_case_images', $e->getMessage() );
+			$results['success'] = false;
+			$results['errors'][] = $e->getMessage();
 		}
 
 		return $results;
 	}
 
 	/**
-	 * Import multiple images from URLs
+	 * Import multiple images from URLs with batch processing
 	 *
 	 * @since 3.0.0
-	 * @param array $image_urls Array of image URLs.
-	 * @param int   $post_id Optional post ID to attach images to.
-	 * @return array Array of attachment IDs.
+	 * @param array<string> $image_urls Array of image URLs.
+	 * @param int           $post_id Optional post ID to attach images to.
+	 * @return array<int> Array of attachment IDs.
 	 */
 	public function import_images( array $image_urls, int $post_id = 0 ): array {
-		$attachment_ids = array();
+		$attachment_ids = [];
+		$start_time = microtime( true );
 
 		foreach ( $image_urls as $url ) {
-			if ( empty( $url ) ) {
+			if ( empty( $url ) || ! is_string( $url ) ) {
 				continue;
 			}
 
 			try {
+				// Check cache first
+				$cache_key = $this->get_url_cache_key( $url );
+				$cached_id = $this->get_cached_attachment_id( $cache_key );
+				
+				if ( $cached_id ) {
+					$attachment_ids[] = $cached_id;
+					continue;
+				}
+
 				$attachment_id = $this->sideload_image( $url, $post_id );
 
 				if ( $attachment_id ) {
 					$attachment_ids[] = $attachment_id;
+					$this->cache_attachment_id( $cache_key, $attachment_id );
 				}
-			} catch ( \Exception $e ) {
-				error_log( "BRAG book Gallery: Failed to import image {$url}: " . $e->getMessage() );
+			} catch ( Exception $e ) {
+				$this->log_error( 'import_images', "Failed to import {$url}: {$e->getMessage()}" );
 			}
 		}
 
+		$this->track_performance( 'import_images_batch', microtime( true ) - $start_time );
 		return $attachment_ids;
 	}
 
 	/**
-	 * Import and sideload single image
+	 * Import and sideload single image with validation
 	 *
 	 * @since 3.0.0
-	 * @param mixed $image_data Image data (URL string or array with metadata).
-	 * @param int   $post_id Post ID to attach image to.
+	 * @param mixed  $image_data Image data (URL string or array with metadata).
+	 * @param int    $post_id Post ID to attach image to.
 	 * @param string $image_type Type of image (before/after).
 	 * @return int|null Attachment ID or null on failure.
+	 * @throws Exception If image import fails.
 	 */
-	private function import_single_image( $image_data, int $post_id, string $image_type = '' ): ?int {
+	private function import_single_image( mixed $image_data, int $post_id, string $image_type = '' ): ?int {
 		// Extract URL from image data
 		$url = is_array( $image_data ) ? ( $image_data['url'] ?? '' ) : $image_data;
 
 		if ( empty( $url ) ) {
+			return null;
+		}
+
+		// Validate and sanitize URL
+		$url = $this->sanitize_url( $url );
+		if ( ! $url ) {
 			return null;
 		}
 
@@ -167,8 +294,8 @@ class Image_Sync {
 			return $existing_id;
 		}
 
-		// Sideload the image
-		$attachment_id = $this->sideload_image( $url, $post_id );
+		// Sideload the image with retries
+		$attachment_id = $this->sideload_image_with_retries( $url, $post_id );
 
 		if ( ! $attachment_id ) {
 			return null;
@@ -179,73 +306,92 @@ class Image_Sync {
 			$this->update_attachment_metadata( $attachment_id, $image_data, $image_type );
 		}
 
+		// Track successful import
+		$this->track_import_success( $attachment_id, $url );
+
 		return $attachment_id;
 	}
 
 	/**
-	 * Sideload image from URL
+	 * Sideload image from URL with security validation
 	 *
 	 * @since 3.0.0
 	 * @param string $url Image URL.
 	 * @param int    $post_id Optional post ID to attach to.
 	 * @return int|null Attachment ID or null on failure.
+	 * @throws Exception If sideload fails.
 	 */
 	public function sideload_image( string $url, int $post_id = 0 ): ?int {
+		$start_time = microtime( true );
+		
 		if ( ! function_exists( 'media_sideload_image' ) ) {
-			require_once( ABSPATH . 'wp-admin/includes/media.php' );
-			require_once( ABSPATH . 'wp-admin/includes/file.php' );
-			require_once( ABSPATH . 'wp-admin/includes/image.php' );
+			require_once ABSPATH . 'wp-admin/includes/media.php';
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+			require_once ABSPATH . 'wp-admin/includes/image.php';
 		}
 
-		// Validate URL
-		if ( ! filter_var( $url, FILTER_VALIDATE_URL ) ) {
-			throw new \Exception( "Invalid image URL: {$url}" );
+		try {
+			// Validate URL
+			if ( ! filter_var( $url, FILTER_VALIDATE_URL ) ) {
+				throw new Exception( "Invalid image URL: {$url}" );
+			}
+
+			// Security check for allowed domains
+			if ( ! $this->is_allowed_domain( $url ) ) {
+				throw new Exception( "URL from unauthorized domain: {$url}" );
+			}
+
+			// Check if image is accessible
+			if ( ! $this->is_image_accessible( $url ) ) {
+				throw new Exception( "Image not accessible: {$url}" );
+			}
+
+			// Get temporary file with timeout
+			$tmp = download_url( $url, self::DOWNLOAD_TIMEOUT );
+
+			if ( is_wp_error( $tmp ) ) {
+				throw new Exception( "Failed to download image: " . $tmp->get_error_message() );
+			}
+
+			// Validate image file
+			if ( ! $this->validate_image_file( $tmp ) ) {
+				@unlink( $tmp );
+				throw new Exception( "Invalid image file or security violation" );
+			}
+
+			// Prepare file array
+			$file_array = [
+				'name'     => $this->generate_filename_from_url( $url ),
+				'tmp_name' => $tmp,
+			];
+
+			// Handle the sideload
+			$attachment_id = media_handle_sideload( $file_array, $post_id );
+
+			// Clean up temp file
+			if ( file_exists( $tmp ) ) {
+				@unlink( $tmp );
+			}
+
+			if ( is_wp_error( $attachment_id ) ) {
+				throw new Exception( "Failed to sideload image: " . $attachment_id->get_error_message() );
+			}
+
+			// Store original URL as meta
+			update_post_meta( $attachment_id, '_brag_original_url', esc_url_raw( $url ) );
+			update_post_meta( $attachment_id, '_brag_imported_date', current_time( 'mysql' ) );
+			update_post_meta( $attachment_id, '_brag_import_source', 'api' );
+
+			// Optimize image
+			$this->optimize_image( $attachment_id );
+
+			$this->track_performance( 'sideload_image', microtime( true ) - $start_time );
+			return $attachment_id;
+			
+		} catch ( Exception $e ) {
+			$this->log_error( 'sideload_image', $e->getMessage() );
+			throw $e;
 		}
-
-		// Check if image is accessible
-		if ( ! $this->is_image_accessible( $url ) ) {
-			throw new \Exception( "Image not accessible: {$url}" );
-		}
-
-		// Get temporary file
-		$tmp = download_url( $url );
-
-		if ( is_wp_error( $tmp ) ) {
-			throw new \Exception( "Failed to download image: " . $tmp->get_error_message() );
-		}
-
-		// Validate image file
-		if ( ! $this->validate_image_file( $tmp ) ) {
-			unlink( $tmp );
-			throw new \Exception( "Invalid image file" );
-		}
-
-		// Prepare file array
-		$file_array = array(
-			'name' => $this->generate_filename_from_url( $url ),
-			'tmp_name' => $tmp,
-		);
-
-		// Handle the sideload
-		$attachment_id = media_handle_sideload( $file_array, $post_id );
-
-		// Clean up temp file
-		if ( file_exists( $tmp ) ) {
-			unlink( $tmp );
-		}
-
-		if ( is_wp_error( $attachment_id ) ) {
-			throw new \Exception( "Failed to sideload image: " . $attachment_id->get_error_message() );
-		}
-
-		// Store original URL as meta
-		update_post_meta( $attachment_id, '_brag_original_url', $url );
-		update_post_meta( $attachment_id, '_brag_imported_date', current_time( 'mysql' ) );
-
-		// Optimize image
-		$this->optimize_image( $attachment_id );
-
-		return $attachment_id;
 	}
 
 	/**
@@ -683,5 +829,231 @@ class Image_Sync {
 			'errors' => $errors,
 			'remaining' => count( $attachment_ids ) - $processed,
 		);
+	}
+
+	/**
+	 * Validate image type string
+	 *
+	 * @since 3.0.0
+	 * @param string $type Image type to validate.
+	 * @return string Validated image type.
+	 */
+	private function validate_image_type( string $type ): string {
+		$valid_types = [ 'before', 'after', 'other' ];
+		$type = strtolower( trim( $type ) );
+		
+		return in_array( $type, $valid_types, true ) ? $type : 'other';
+	}
+
+	/**
+	 * Format error message for display
+	 *
+	 * @since 3.0.0
+	 * @param mixed  $photo Photo data.
+	 * @param string $message Error message.
+	 * @return string Formatted error message.
+	 */
+	private function format_error_message( mixed $photo, string $message ): string {
+		$url = is_array( $photo ) ? ( $photo['url'] ?? 'unknown' ) : (string) $photo;
+		return sprintf( 'Failed to import %s: %s', $url, $message );
+	}
+
+	/**
+	 * Get cache key for URL
+	 *
+	 * @since 3.0.0
+	 * @param string $url Image URL.
+	 * @return string Cache key.
+	 */
+	private function get_url_cache_key( string $url ): string {
+		return 'brag_img_' . md5( $url );
+	}
+
+	/**
+	 * Get cached attachment ID
+	 *
+	 * @since 3.0.0
+	 * @param string $cache_key Cache key.
+	 * @return int|null Cached attachment ID or null.
+	 */
+	private function get_cached_attachment_id( string $cache_key ): ?int {
+		if ( isset( $this->memory_cache[ $cache_key ] ) ) {
+			return $this->memory_cache[ $cache_key ];
+		}
+		
+		$cached = get_transient( $cache_key );
+		return $cached ? (int) $cached : null;
+	}
+
+	/**
+	 * Cache attachment ID
+	 *
+	 * @since 3.0.0
+	 * @param string $cache_key Cache key.
+	 * @param int    $attachment_id Attachment ID to cache.
+	 */
+	private function cache_attachment_id( string $cache_key, int $attachment_id ): void {
+		$this->memory_cache[ $cache_key ] = $attachment_id;
+		set_transient( $cache_key, $attachment_id, self::CACHE_TTL_LONG );
+	}
+
+	/**
+	 * Sanitize and validate URL
+	 *
+	 * @since 3.0.0
+	 * @param string $url URL to sanitize.
+	 * @return string|null Sanitized URL or null if invalid.
+	 */
+	private function sanitize_url( string $url ): ?string {
+		$url = esc_url_raw( $url );
+		
+		if ( ! filter_var( $url, FILTER_VALIDATE_URL ) ) {
+			return null;
+		}
+		
+		// Ensure HTTPS for security
+		if ( strpos( $url, 'http://' ) === 0 ) {
+			$url = str_replace( 'http://', 'https://', $url );
+		}
+		
+		return $url;
+	}
+
+	/**
+	 * Check if URL domain is allowed
+	 *
+	 * @since 3.0.0
+	 * @param string $url URL to check.
+	 * @return bool True if allowed.
+	 */
+	private function is_allowed_domain( string $url ): bool {
+		$allowed_domains = apply_filters( 'brag_book_gallery_allowed_image_domains', [
+			'bragbook.com',
+			'bragbookplatform.com',
+			'cloudinary.com',
+			'amazonaws.com',
+		] );
+		
+		if ( empty( $allowed_domains ) ) {
+			return true; // No restrictions
+		}
+		
+		$parsed = wp_parse_url( $url );
+		$host = $parsed['host'] ?? '';
+		
+		foreach ( $allowed_domains as $domain ) {
+			if ( str_ends_with( $host, $domain ) ) {
+				return true;
+			}
+		}
+		
+		return false;
+	}
+
+	/**
+	 * Sideload image with retries
+	 *
+	 * @since 3.0.0
+	 * @param string $url Image URL.
+	 * @param int    $post_id Post ID to attach to.
+	 * @return int|null Attachment ID or null on failure.
+	 */
+	private function sideload_image_with_retries( string $url, int $post_id = 0 ): ?int {
+		$max_retries = self::MAX_DOWNLOAD_RETRIES;
+		$attempt = 0;
+		$last_error = null;
+		
+		while ( $attempt < $max_retries ) {
+			try {
+				return $this->sideload_image( $url, $post_id );
+			} catch ( Exception $e ) {
+				$last_error = $e;
+				$attempt++;
+				
+				if ( $attempt < $max_retries ) {
+					sleep( min( $attempt * 2, 10 ) ); // Exponential backoff
+				}
+			}
+		}
+		
+		if ( $last_error ) {
+			$this->log_error( 'sideload_retries', "Failed after {$max_retries} attempts: {$last_error->getMessage()}" );
+		}
+		
+		return null;
+	}
+
+	/**
+	 * Track successful import
+	 *
+	 * @since 3.0.0
+	 * @param int    $attachment_id Attachment ID.
+	 * @param string $url Original URL.
+	 */
+	private function track_import_success( int $attachment_id, string $url ): void {
+		update_post_meta( $attachment_id, '_brag_import_success', true );
+		update_post_meta( $attachment_id, '_brag_import_timestamp', time() );
+		
+		/**
+		 * Fires after successful image import.
+		 *
+		 * @since 3.0.0
+		 * @param int    $attachment_id The imported attachment ID.
+		 * @param string $url The original image URL.
+		 */
+		do_action( 'brag_book_gallery_image_imported', $attachment_id, $url );
+	}
+
+	/**
+	 * Log error message
+	 *
+	 * @since 3.0.0
+	 * @param string $context Error context.
+	 * @param string $message Error message.
+	 */
+	private function log_error( string $context, string $message ): void {
+		$this->error_log[ $context ][] = [
+			'time'    => current_time( 'mysql' ),
+			'message' => $message,
+		];
+		
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( "[BRAGBook Image Sync] {$context}: {$message}" );
+		}
+	}
+
+	/**
+	 * Track performance metrics
+	 *
+	 * @since 3.0.0
+	 * @param string $operation Operation name.
+	 * @param float  $duration Operation duration.
+	 */
+	private function track_performance( string $operation, float $duration ): void {
+		if ( ! isset( $this->performance_metrics[ $operation ] ) ) {
+			$this->performance_metrics[ $operation ] = [
+				'count'   => 0,
+				'total'   => 0,
+				'min'     => PHP_FLOAT_MAX,
+				'max'     => 0,
+			];
+		}
+		
+		$metrics = &$this->performance_metrics[ $operation ];
+		$metrics['count']++;
+		$metrics['total'] += $duration;
+		$metrics['min'] = min( $metrics['min'], $duration );
+		$metrics['max'] = max( $metrics['max'], $duration );
+		$metrics['average'] = $metrics['total'] / $metrics['count'];
+	}
+
+	/**
+	 * Get performance metrics
+	 *
+	 * @since 3.0.0
+	 * @return array<string, mixed> Performance metrics.
+	 */
+	public function get_performance_metrics(): array {
+		return $this->performance_metrics;
 	}
 }

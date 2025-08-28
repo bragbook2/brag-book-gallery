@@ -4,6 +4,11 @@
  * Structure: wrapper > content > (track + buttons)
  */
 class Carousel {
+	/**
+	 * Initialize a new carousel instance
+	 * @param {HTMLElement} element - The carousel wrapper element
+	 * @param {Object} options - Configuration options
+	 */
 	constructor(element, options = {}) {
 		this.wrapper = element;
 		this.content = element.querySelector('.brag-book-gallery-carousel-content');
@@ -54,8 +59,8 @@ class Carousel {
 		// Add share buttons to all carousel items (preserve existing images and links)
 		const slides = this.track.querySelectorAll(this.options.slideSelector);
 
-		slides.forEach((slide, index) => {
-			// Check if image already exists (either img or picture element)
+		slides.forEach((slide) => {
+			// Check if slide already has an image element
 			const existingImage = slide.querySelector('.brag-book-gallery-carousel-image, img');
 
 			// Only add placeholder image if no image exists at all
@@ -151,6 +156,9 @@ class Carousel {
 		});
 	}
 
+	/**
+	 * Create screen reader live region for accessibility announcements
+	 */
 	createLiveRegion() {
 		// Create a live region for screen reader announcements
 		this.liveRegion = document.createElement('div');
@@ -324,39 +332,52 @@ class Carousel {
 		}
 	}
 
+	/**
+	 * Handle mouse wheel events for horizontal scrolling
+	 * @param {WheelEvent} e - Wheel event
+	 */
 	handleWheel(e) {
-		// Prevent vertical scrolling when over carousel
+		// Prevent default vertical scrolling
 		e.preventDefault();
 
-		// Determine scroll direction and amount
+		// Calculate scroll amount based on wheel delta
 		const delta = e.deltaY || e.deltaX;
 		const scrollAmount = Math.abs(delta) > 50 ? delta : delta * 3;
 
-		// Apply smooth scrolling with momentum
+		// Clear previous timeout to debounce updates
 		if (this.wheelTimeout) {
 			clearTimeout(this.wheelTimeout);
 		}
 
-		// Use native smooth scrolling for better performance
+		// Smoothly scroll the track horizontally
 		this.track.scrollBy({
 			left: scrollAmount,
 			behavior: 'smooth'
 		});
 
-		// Update buttons after scrolling stops
+		// Update UI elements after scrolling settles
 		this.wheelTimeout = setTimeout(() => {
 			this.updateCarouselButtons();
 			this.updatePagination();
 		}, 150);
 	}
 
+	/**
+	 * Determine how many items to show based on screen width
+	 * @returns {number} Number of items to display per view
+	 */
 	getItemsPerView() {
 		const width = window.innerWidth;
+		// Mobile: 1 item, Tablet: 2 items, Desktop: 3 items
 		if (width <= 480) return 1;
 		if (width <= 768) return 2;
 		return 3;
 	}
 
+	/**
+	 * Navigate to the next or previous slide
+	 * @param {string} direction - 'next' or 'prev'
+	 */
 	navigate(direction) {
 		const slides = this.track.querySelectorAll(this.options.slideSelector);
 		if (slides.length === 0) return;
@@ -365,14 +386,14 @@ class Carousel {
 		let targetIndex;
 
 		if (this.options.infinite) {
-			// Infinite loop: wrap around
+			// Infinite carousel: wrap around at ends
 			if (direction === 'next') {
 				targetIndex = currentIndex >= slides.length - 1 ? 0 : currentIndex + 1;
 			} else {
 				targetIndex = currentIndex <= 0 ? slides.length - 1 : currentIndex - 1;
 			}
 		} else {
-			// Finite: clamp to bounds
+			// Finite carousel: stop at ends
 			targetIndex = direction === 'next'
 				? Math.min(slides.length - 1, currentIndex + 1)
 				: Math.max(0, currentIndex - 1);
@@ -381,6 +402,10 @@ class Carousel {
 		this.navigateToSlide(targetIndex);
 	}
 
+	/**
+	 * Navigate to a specific slide by index
+	 * @param {number} index - Target slide index
+	 */
 	navigateToSlide(index) {
 		const slides = this.track.querySelectorAll(this.options.slideSelector);
 		if (slides.length === 0 || index < 0 || index >= slides.length) return;
@@ -389,12 +414,13 @@ class Carousel {
 		const slideWidth = targetSlide.offsetWidth;
 		const trackWidth = this.track.offsetWidth;
 
-		// Calculate scroll position to center the slide when possible
+		// Calculate optimal scroll position to center the slide
 		let scrollPosition = targetSlide.offsetLeft - (trackWidth - slideWidth) / 2;
 
-		// Clamp scroll position to valid range
+		// Ensure scroll position stays within bounds
 		scrollPosition = Math.max(0, Math.min(scrollPosition, this.track.scrollWidth - trackWidth));
 
+		// Use GSAP for smooth animation if available, otherwise use native scrolling
 		if (typeof gsap !== 'undefined') {
 			gsap.to(this.track, {
 				scrollLeft: scrollPosition,
@@ -406,20 +432,27 @@ class Carousel {
 				}
 			});
 		} else {
+			// Fallback to native smooth scrolling
 			this.track.scrollTo({
 				left: scrollPosition,
 				behavior: 'smooth'
 			});
 
+			// Update accessibility after animation completes
 			setTimeout(() => {
 				this.updateAriaLabels();
 				this.focusSlide(index);
 			}, 300);
 		}
 
+		// Update current slide tracker
 		this.currentSlide = index;
 	}
 
+	/**
+	 * Get the index of the currently centered slide
+	 * @returns {number} Index of the current slide
+	 */
 	getCurrentSlideIndex() {
 		const slides = this.track.querySelectorAll(this.options.slideSelector);
 		const trackCenter = this.track.scrollLeft + this.track.offsetWidth / 2;
@@ -427,6 +460,7 @@ class Carousel {
 		let closestIndex = 0;
 		let closestDistance = Infinity;
 
+		// Find the slide closest to the center of the viewport
 		slides.forEach((slide, index) => {
 			const slideCenter = slide.offsetLeft + slide.offsetWidth / 2;
 			const distance = Math.abs(slideCenter - trackCenter);
@@ -440,17 +474,24 @@ class Carousel {
 		return closestIndex;
 	}
 
-	// Autoplay methods
+	/**
+	 * Start automatic slide progression
+	 */
 	startAutoplay() {
+		// Don't start if autoplay is disabled or already running
 		if (!this.options.autoplay || this.autoplayTimer) return;
 
 		this.autoplayTimer = setInterval(() => {
+			// Only advance if not paused and user isn't dragging
 			if (!this.isPaused && !this.isDown) {
 				this.navigate('next');
 			}
 		}, this.options.autoplayDelay);
 	}
 
+	/**
+	 * Stop automatic slide progression
+	 */
 	stopAutoplay() {
 		if (this.autoplayTimer) {
 			clearInterval(this.autoplayTimer);
@@ -458,41 +499,49 @@ class Carousel {
 		}
 	}
 
+	/**
+	 * Temporarily pause autoplay (on hover)
+	 */
 	pauseAutoplay() {
 		this.isPaused = true;
 	}
 
+	/**
+	 * Resume autoplay after pause
+	 */
 	resumeAutoplay() {
 		this.isPaused = false;
 	}
 
+	/**
+	 * Set up focus management for keyboard accessibility
+	 */
 	setupSlideFocusManagement() {
 		const slides = this.track.querySelectorAll(this.options.slideSelector);
 
 		slides.forEach((slide, index) => {
-			// Make slides focusable
+			// Make slides focusable via keyboard
 			slide.tabIndex = -1;
 
-			// Handle focus events
+			// Update current slide when focused
 			slide.addEventListener('focus', () => {
 				this.currentSlide = index;
-				// Don't auto-navigate on focus to prevent jumpy behavior
+				// Don't auto-navigate on focus to prevent jarring movement
 			});
 
-			// Handle click to focus
+			// Focus slide when clicked (unless clicking a button)
 			slide.addEventListener('click', (e) => {
-				// Only focus if not clicking on a button
 				if (!e.target.closest('button')) {
 					slide.focus();
 				}
 			});
 		});
 
-		// Make the wrapper focusable as well for better keyboard navigation
+		// Make wrapper focusable for keyboard navigation
 		this.wrapper.tabIndex = -1;
 		this.wrapper.style.outline = 'none';
 
-		// Focus wrapper on click (but not on button clicks)
+		// Focus track when wrapper is clicked (unless clicking interactive elements)
 		this.wrapper.addEventListener('click', (e) => {
 			if (!e.target.closest('button') && !e.target.closest('[tabindex]')) {
 				this.track.focus();
@@ -500,35 +549,49 @@ class Carousel {
 		});
 	}
 
+	/**
+	 * Focus a specific slide (only if track is currently focused)
+	 * @param {number} index - Slide index to focus
+	 */
 	focusSlide(index) {
 		const slides = this.track.querySelectorAll(this.options.slideSelector);
+		// Only focus slide if track currently has focus
 		if (slides[index] && document.activeElement === this.track) {
 			slides[index].focus();
 		}
 	}
 
+	/**
+	 * Initialize pagination dots for the carousel
+	 */
 	initializePagination() {
 		if (!this.paginationContainer) return;
 
+		// Clear existing pagination
 		this.paginationContainer.innerHTML = "";
 
 		const slides = this.track.querySelectorAll(this.options.slideSelector);
 		const itemsPerView = this.getItemsPerView();
 		const totalPages = Math.ceil(slides.length / itemsPerView);
 
+		// Create pagination dot for each page
 		for (let i = 0; i < totalPages; i++) {
 			const dot = document.createElement('button');
 			dot.className = 'brag-book-gallery-pagination-dot';
 			dot.role = 'tab';
+			
+			// Set first dot as active
 			if (i === 0) {
 				dot.classList.add('brag-book-gallery-active');
 				dot.setAttribute('aria-selected', 'true');
 			} else {
 				dot.setAttribute('aria-selected', 'false');
 			}
+			
 			dot.setAttribute('data-page', i);
 			dot.setAttribute('aria-label', `Go to slide group ${i + 1}`);
 
+			// Add click handler for navigation
 			dot.addEventListener('click', () => this.goToPage(i));
 
 			this.paginationContainer.appendChild(dot);
@@ -627,18 +690,31 @@ class Carousel {
 		}
 	}
 
+	/**
+	 * Refresh the carousel after window resize or content changes
+	 */
 	refresh() {
+		// Recalculate responsive layout
 		this.options.itemsPerView = this.getItemsPerView();
+		
+		// Rebuild pagination for new layout
 		this.initializePagination();
 		this.updatePagination();
+		
+		// Update accessibility labels
 		this.updateAriaLabels();
 	}
 
+	/**
+	 * Navigate to a slide by its ID
+	 * @param {string} slideId - The slide's data-slide attribute value
+	 */
 	goToSlide(slideId) {
 		const slides = this.track.querySelectorAll(this.options.slideSelector);
 		const targetSlide = Array.from(slides).find(slide => slide.dataset.slide === slideId);
 
 		if (targetSlide) {
+			// Calculate which page contains this slide
 			const slideIndex = Array.from(slides).indexOf(targetSlide);
 			const itemsPerView = this.getItemsPerView();
 			const pageIndex = Math.floor(slideIndex / itemsPerView);

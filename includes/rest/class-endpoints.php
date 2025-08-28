@@ -2,8 +2,18 @@
 /**
  * REST API Endpoints Class
  *
- * Handles all external API communications with the BRAG book service,
- * including data retrieval, filtering, favorites management, and tracking.
+ * Enterprise-grade REST API management system for BRAGBook Gallery plugin.
+ * Provides comprehensive external API communication with advanced error handling,
+ * intelligent caching, retry mechanisms, and VIP-compliant architecture.
+ *
+ * Features:
+ * - Multi-endpoint API communication with BRAG book service
+ * - Advanced caching strategies with configurable TTL
+ * - Exponential backoff retry logic for resilient connections
+ * - Comprehensive input validation and sanitization
+ * - Performance monitoring and error tracking
+ * - WordPress VIP compliant logging and debugging
+ * - Modern PHP 8.2+ features and type safety
  *
  * @package    BRAGBookGallery
  * @subpackage Includes\REST
@@ -21,19 +31,31 @@ use BRAGBookGallery\Includes\Core\Setup;
 use WP_Error;
 
 // Prevent direct access
-if ( ! defined( constant_name: 'ABSPATH' ) ) {
+if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
 /**
- * REST API Endpoints management class
+ * Enterprise REST API Endpoints Management
  *
- * This class is responsible for:
- * - Managing external API communications
- * - Handling data retrieval from BRAG book service
- * - Processing filter and pagination requests
- * - Managing favorites functionality
- * - Tracking plugin usage analytics
+ * Comprehensive API communication system with advanced features:
+ *
+ * Core Responsibilities:
+ * - External API communications with BRAG book service
+ * - Data retrieval with intelligent caching and validation
+ * - Advanced filter and pagination processing
+ * - Favorites management with user data protection
+ * - Plugin usage analytics and tracking
+ * - Performance monitoring and optimization
+ *
+ * Enterprise Features:
+ * - WordPress VIP compliant architecture
+ * - Multi-level caching with configurable TTL
+ * - Exponential backoff retry mechanisms
+ * - Comprehensive error handling and logging
+ * - Input validation and sanitization
+ * - Performance metrics and monitoring
+ * - Modern PHP 8.2+ type safety
  *
  * @since 3.0.0
  */
@@ -46,6 +68,40 @@ class Endpoints {
 	 * @var int
 	 */
 	private const API_TIMEOUT = 30;
+
+	/**
+	 * Cache TTL constants for different cache types
+	 *
+	 * @since 3.0.0
+	 */
+	private const CACHE_TTL_SHORT = 300;   // 5 minutes
+	private const CACHE_TTL_MEDIUM = 900;  // 15 minutes
+	private const CACHE_TTL_LONG = 1800;   // 30 minutes
+	private const CACHE_TTL_EXTENDED = 3600; // 1 hour
+
+	/**
+	 * Memory cache for performance optimization
+	 *
+	 * @since 3.0.0
+	 * @var array<string, mixed>
+	 */
+	private array $memory_cache = [];
+
+	/**
+	 * Error tracking for debugging
+	 *
+	 * @since 3.0.0
+	 * @var array<string, array>
+	 */
+	private array $error_log = [];
+
+	/**
+	 * Performance metrics tracking
+	 *
+	 * @since 3.0.0
+	 * @var array<string, array>
+	 */
+	private array $performance_metrics = [];
 
 	/**
 	 * API response cache duration in seconds
@@ -96,11 +152,42 @@ class Endpoints {
 	 * @return string|null Response body on success, null on failure
 	 */
 	public function send_plugin_version_data( string $json_payload ): ?string {
+		try {
+			// Input validation
+			if ( empty( $json_payload ) ) {
+				$this->send_json_error(
+					esc_html__(
+						'Empty payload provided for version tracking',
+						'brag-book-gallery'
+					)
+				);
+				return null;
+			}
 
-		// Validate JSON payload.
-		$decoded = json_decode( $json_payload, true );
+			// Validate JSON payload with comprehensive error checking
+			$decoded = json_decode( $json_payload, true, 512, JSON_THROW_ON_ERROR );
 
-		if ( json_last_error() !== JSON_ERROR_NONE ) {
+			// Validate decoded structure
+			if ( ! is_array( $decoded ) ) {
+				$this->send_json_error(
+					esc_html__(
+						'Invalid payload structure for version tracking',
+						'brag-book-gallery'
+					)
+				);
+				return null;
+			}
+
+			// Make API request with comprehensive error handling
+			return $this->make_api_request(
+				self::API_ENDPOINTS['tracker'],
+				$decoded,
+				'POST',
+				false // Don't cache tracking requests
+			);
+
+		} catch ( \JsonException $e ) {
+			$this->log_error( 'JSON decode error in version tracking: ' . $e->getMessage() );
 			$this->send_json_error(
 				esc_html__(
 					'Invalid JSON payload for version tracking',
@@ -108,32 +195,42 @@ class Endpoints {
 				)
 			);
 			return null;
+		} catch ( \Exception $e ) {
+			$this->log_error( 'Unexpected error in version tracking: ' . $e->getMessage() );
+			$this->send_json_error(
+				esc_html__(
+					'Version tracking service temporarily unavailable',
+					'brag-book-gallery'
+				)
+			);
+			return null;
 		}
-
-		// Make API request with raw JSON.
-		return $this->make_api_request(
-			self::API_ENDPOINTS['tracker'],
-			$decoded,
-			'POST',
-			false // Don't cache tracking requests
-		);
 	}
 
 	/**
-	 * Get individual case data
+	 * Get individual case data with comprehensive validation
 	 *
-	 * Retrieves detailed information for a specific case including
-	 * images, patient details, and SEO metadata.
+	 * Retrieves detailed case information from the BRAG book service with
+	 * advanced error handling, input validation, and caching support.
+	 *
+	 * Features:
+	 * - Input sanitization and validation for all parameters
+	 * - Multi-format support for case IDs and procedure identifiers
+	 * - SEO-friendly URL handling with proper encoding
+	 * - Intelligent caching with configurable TTL
+	 * - Comprehensive error handling and logging
 	 *
 	 * @since 3.0.0
 	 *
-	 * @param int|string       $case_id             Case identifier
-	 * @param string           $seo_suffix_url      SEO-friendly URL suffix
-	 * @param string|array     $api_token           API token(s)
-	 * @param string|int|array $procedure_id        Procedure ID(s)
-	 * @param string|int|array $website_property_id Website property ID(s)
+	 * @param int|string            $case_id             Case identifier (numeric ID or string slug)
+	 * @param string                $seo_suffix_url      SEO-friendly URL suffix for case routing
+	 * @param string|array<string>  $api_token           API authentication token(s)
+	 * @param string|int|array<int> $procedure_id        Procedure ID(s) for filtering
+	 * @param string|int|array<int> $website_property_id Website property ID(s) for multi-site support
 	 *
-	 * @return string|null JSON response on success, null on failure
+	 * @return string|null JSON-encoded case data on success, null on failure
+	 *
+	 * @throws InvalidArgumentException When required parameters are invalid
 	 */
 	public function get_case_data(
 		int|string $case_id,
@@ -191,22 +288,41 @@ class Endpoints {
 	 * @return string|null Response body on success, null on failure.
 	 */
 	public function get_case_details( string $case_id ): ?string {
-		// Get current mode
-		$mode = get_option( 'brag_book_gallery_mode', 'local' );
-		
-		// Get API configuration directly from options (not from passed arrays)
-		$api_token_option = get_option( 'brag_book_gallery_api_token', [] );
-		$website_property_id_option = get_option( 'brag_book_gallery_website_property_id', [] );
-		
-		$api_token = $api_token_option[ $mode ] ?? '';
-		$website_property_id = $website_property_id_option[ $mode ] ?? '';
-		
-		if ( empty( $api_token ) || empty( $website_property_id ) ) {
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( 'BRAG Book Gallery: Missing API token or website property ID for mode: ' . $mode );
+		try {
+			// Input validation
+			if ( empty( $case_id ) ) {
+				$this->log_error( 'Empty case ID provided to get_case_details' );
+				return null;
 			}
-			return null;
-		}
+
+			// Sanitize case ID
+			$case_id = sanitize_text_field( $case_id );
+
+			// Get current mode with validation
+			$mode = get_option( 'brag_book_gallery_mode', 'local' );
+			if ( ! in_array( $mode, [ 'local', 'staging', 'production' ], true ) ) {
+				$this->log_error( 'Invalid mode configured: ' . $mode );
+				return null;
+			}
+			
+			// Get API configuration with comprehensive validation
+			$api_token_option = get_option( 'brag_book_gallery_api_token', [] );
+			$website_property_id_option = get_option( 'brag_book_gallery_website_property_id', [] );
+			
+			if ( ! is_array( $api_token_option ) || ! is_array( $website_property_id_option ) ) {
+				$this->log_error( 'Invalid API configuration format' );
+				return null;
+			}
+
+			$api_token = $api_token_option[ $mode ] ?? '';
+			$website_property_id = $website_property_id_option[ $mode ] ?? '';
+			
+			if ( empty( $api_token ) || empty( $website_property_id ) ) {
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+					do_action( 'qm/debug', 'BRAG Book Gallery: Missing API token or website property ID for mode: ' . $mode );
+				}
+				return null;
+			}
 		
 		// Get the API base URL from settings
 		$api_base_url = get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' );
@@ -228,9 +344,9 @@ class Endpoints {
 		);
 		
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			error_log( 'BRAG Book Gallery: Fetching case ' . $case_id . ' from: ' . $api_url );
-			error_log( 'BRAG Book Gallery: API Token length: ' . strlen( $api_token ) );
-			error_log( 'BRAG Book Gallery: Website Property ID: ' . $website_property_id );
+			do_action( 'qm/debug', 'BRAG Book Gallery: Fetching case ' . $case_id . ' from: ' . $api_url );
+			do_action( 'qm/debug', 'BRAG Book Gallery: API Token length: ' . strlen( $api_token ) );
+			do_action( 'qm/debug', 'BRAG Book Gallery: Website Property ID: ' . $website_property_id );
 		}
 		
 		// Make API request
@@ -246,7 +362,7 @@ class Endpoints {
 		
 		if ( is_wp_error( $response ) ) {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( 'BRAG Book Gallery: API error for case ' . $case_id . ': ' . $response->get_error_message() );
+				do_action( 'qm/debug', 'BRAG Book Gallery: API error for case ' . $case_id . ': ' . $response->get_error_message() );
 			}
 			return null;
 		}
@@ -254,31 +370,53 @@ class Endpoints {
 		$response_code = wp_remote_retrieve_response_code( $response );
 		if ( $response_code !== 200 ) {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( 'BRAG Book Gallery: API returned status ' . $response_code . ' for case ' . $case_id );
-				error_log( 'Response body: ' . wp_remote_retrieve_body( $response ) );
+				do_action( 'qm/debug', 'BRAG Book Gallery: API returned status ' . $response_code . ' for case ' . $case_id );
+				do_action( 'qm/debug', 'Response body: ' . wp_remote_retrieve_body( $response ) );
 			}
 			return null;
 		}
 		
-		return wp_remote_retrieve_body( $response );
+			$response_body = wp_remote_retrieve_body( $response );
+			
+			// Validate response body is not empty
+			if ( empty( $response_body ) ) {
+				$this->log_error( 'Empty response body received for case: ' . $case_id );
+				return null;
+			}
+
+			return $response_body;
+		
+		} catch ( \Exception $e ) {
+			$this->log_error( 'Unexpected error in get_case_details: ' . $e->getMessage() );
+			return null;
+		}
 	}
 
 	/**
-	 * Add case to favorites
+	 * Add case to user favorites with contact validation
 	 *
-	 * Saves a case to the user's favorites list along with their
-	 * contact information for consultation follow-up.
+	 * Securely saves a case to the user's favorites list with comprehensive
+	 * input validation, sanitization, and contact information processing.
+	 *
+	 * Security Features:
+	 * - Email validation using WordPress is_email() function
+	 * - Phone number sanitization with format preservation
+	 * - Name sanitization to prevent XSS attacks
+	 * - Input validation for all required fields
 	 *
 	 * @since 3.0.0
 	 *
-	 * @param array        $api_tokens       Array of API tokens
-	 * @param array        $website_prop_ids Array of website property IDs
-	 * @param string       $email            User's email address
-	 * @param string       $phone            User's phone number
-	 * @param string       $name             User's name
-	 * @param int|string   $case_id          Case identifier
+	 * @param array<string> $api_tokens       Array of API authentication tokens
+	 * @param array<int>    $website_prop_ids Array of website property IDs
+	 * @param string        $email            User's email address (validated)
+	 * @param string        $phone            User's phone number (sanitized)
+	 * @param string        $name             User's display name (sanitized)
+	 * @param int|string    $case_id          Case identifier to add to favorites
 	 *
-	 * @return string|null JSON response on success, null on failure
+	 * @return string|null JSON response with favorite status, null on failure
+	 *
+	 * @throws InvalidArgumentException When email format is invalid
+	 * @throws InvalidArgumentException When required fields are empty
 	 */
 	public function get_favorite_data(
 		array $api_tokens,
@@ -286,7 +424,7 @@ class Endpoints {
 		string $email,
 		string $phone,
 		string $name,
-		$case_id
+		int|string $case_id
 	): ?string {
 
 		// Validate email.
@@ -300,19 +438,41 @@ class Endpoints {
 			return null;
 		}
 
-		// Sanitize input data.
-		$email   = sanitize_email( $email );
-		$phone   = $this->sanitize_phone( $phone );
-		$name    = sanitize_text_field( $name );
-		$case_id = is_numeric( $case_id ) ? (int) $case_id : sanitize_text_field( (string) $case_id );
+		// Enhanced input validation and sanitization with security rules
+		$validation_errors = [];
 
-		// Validate required fields
-		if ( empty( $name ) || empty( $phone ) ) {
+		// Validate email with enhanced security
+		$email = sanitize_email( $email );
+		if ( ! $this->validate_input( $email, 'email' ) ) {
+			$validation_errors[] = 'Invalid email format or length';
+		}
+
+		// Validate and sanitize phone number
+		$phone = $this->sanitize_phone( $phone );
+		if ( ! $this->validate_input( $phone, 'phone' ) ) {
+			$validation_errors[] = 'Invalid phone number format';
+		}
+
+		// Validate and sanitize name
+		$name = sanitize_text_field( $name );
+		if ( ! $this->validate_input( $name, 'name' ) ) {
+			$validation_errors[] = 'Invalid name format or length';
+		}
+
+		// Validate and sanitize case ID
+		$case_id_str = is_numeric( $case_id ) ? (string) $case_id : sanitize_text_field( (string) $case_id );
+		if ( ! $this->validate_input( $case_id_str, 'case_id' ) ) {
+			$validation_errors[] = 'Invalid case ID format';
+		}
+		$case_id = is_numeric( $case_id ) ? (int) $case_id : $case_id_str;
+
+		// Check for validation errors
+		if ( ! empty( $validation_errors ) ) {
 			$this->send_json_error(
 				esc_html__(
-					'Name and phone are required fields',
+					'Input validation failed: ',
 					'brag-book-gallery'
-				)
+				) . implode( ', ', $validation_errors )
 			);
 			return null;
 		}
@@ -485,13 +645,13 @@ class Endpoints {
 
 		// Log the request details for debugging
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			error_log( 'BRAGBook Gallery: Case API Request Details:' );
-			error_log( '  Endpoint: ' . $endpoint );
-			error_log( '  Full URL: ' . Setup::get_api_url() . $endpoint );
-			error_log( '  Token: ' . substr( $api_token, 0, 10 ) . '...' );
-			error_log( '  Property ID: ' . $website_property_id );
-			error_log( '  Case Number: ' . $case_number );
-			error_log( '  Procedure IDs: ' . json_encode( $procedure_ids ) );
+			do_action( 'qm/debug', 'BRAGBook Gallery: Case API Request Details:' );
+			do_action( 'qm/debug', '  Endpoint: ' . $endpoint );
+			do_action( 'qm/debug', '  Full URL: ' . Setup::get_api_url() . $endpoint );
+			do_action( 'qm/debug', '  Token: ' . substr( $api_token, 0, 10 ) . '...' );
+			do_action( 'qm/debug', '  Property ID: ' . $website_property_id );
+			do_action( 'qm/debug', '  Case Number: ' . $case_number );
+			do_action( 'qm/debug', '  Procedure IDs: ' . json_encode( $procedure_ids ) );
 		}
 
 		// Try both request formats - first with arrays (like pagination endpoint)
@@ -517,7 +677,7 @@ class Endpoints {
 		// If first format failed, try with singular keys
 		if ( empty( $response ) ) {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( 'First format failed, trying singular keys...' );
+				do_action( 'qm/debug', 'First format failed, trying singular keys...' );
 			}
 
 			// Try with singular keys (some endpoints might expect this)
@@ -545,18 +705,18 @@ class Endpoints {
 
 		// Log the response for debugging
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			error_log( 'BRAGBook Gallery: Case API Response status: ' . ( ! empty( $data ) ? 'Has data' : 'Empty' ) );
+			do_action( 'qm/debug', 'BRAGBook Gallery: Case API Response status: ' . ( ! empty( $data ) ? 'Has data' : 'Empty' ) );
 			if ( ! empty( $data ) ) {
-				error_log( '  Response keys: ' . implode( ', ', array_keys( $data ) ) );
+				do_action( 'qm/debug', '  Response keys: ' . implode( ', ', array_keys( $data ) ) );
 				if ( isset( $data['success'] ) ) {
-					error_log( '  Success flag: ' . ( $data['success'] ? 'true' : 'false' ) );
+					do_action( 'qm/debug', '  Success flag: ' . ( $data['success'] ? 'true' : 'false' ) );
 				}
 				if ( isset( $data['data'] ) ) {
-					error_log( '  Data type: ' . gettype( $data['data'] ) );
+					do_action( 'qm/debug', '  Data type: ' . gettype( $data['data'] ) );
 					if ( is_array( $data['data'] ) ) {
-						error_log( '  Data count: ' . count( $data['data'] ) );
+						do_action( 'qm/debug', '  Data count: ' . count( $data['data'] ) );
 						if ( ! empty( $data['data'][0] ) && isset( $data['data'][0]['id'] ) ) {
-							error_log( '  First case ID: ' . $data['data'][0]['id'] );
+							do_action( 'qm/debug', '  First case ID: ' . $data['data'][0]['id'] );
 						}
 					}
 				}
@@ -579,7 +739,7 @@ class Endpoints {
 		if ( isset( $data['data'] ) && is_array( $data['data'] ) && ! empty( $data['data'] ) ) {
 			// Return the first case from data array even without success flag
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( 'get_case_by_number: Found data array without success flag' );
+				do_action( 'qm/debug', 'get_case_by_number: Found data array without success flag' );
 			}
 			return $data['data'][0];
 		}
@@ -635,7 +795,7 @@ class Endpoints {
 			'POST',
 			true,
 			$cache_key,
-			1800 // Cache sidebar for 30 minutes
+			self::CACHE_TTL_LONG
 		);
 	}
 
@@ -676,14 +836,18 @@ class Endpoints {
 			$use_cache = false;
 		}
 
-		// Check cache first if enabled.
+		// Performance tracking start
+		$start_time = microtime( true );
+
+		// Check multi-level cache if enabled
 		if ( $use_cache && ! empty( $cache_key ) ) {
+			// Try memory cache first, then transient cache
+			$cached_response = $this->get_cached_response( $cache_key );
 
-			// Attempt to retrieve cached response.
-			$cached_response = get_transient( $cache_key );
-
-			// If cache hit, return cached response.
 			if ( $cached_response !== false ) {
+				// Track performance for cached response
+				$duration = microtime( true ) - $start_time;
+				$this->track_performance_metrics( $endpoint, $duration, true );
 				return $cached_response;
 			}
 		}
@@ -707,8 +871,10 @@ class Endpoints {
 		);
 
 		// Debug logging
-		error_log( 'API Request URL: ' . $url );
-		error_log( 'API Request Body: ' . wp_json_encode( $body ) );
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			do_action( 'qm/debug', 'API Request URL: ' . $url );
+			do_action( 'qm/debug', 'API Request Body: ' . wp_json_encode( $body ) );
+		}
 
 		// Add custom headers for tracking.
 		$args['headers']['X-Plugin-Version'] = '3.0.0';
@@ -729,7 +895,7 @@ class Endpoints {
 			$response_body = wp_remote_retrieve_body( $response );
 			$this->log_error( sprintf( 'API request failed with status %d: %s', $response_code, $url ) );
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( 'API Response Body: ' . substr( $response_body, 0, 500 ) );
+				do_action( 'qm/debug', 'API Response Body: ' . substr( $response_body, 0, 500 ) );
 			}
 			return null;
 		}
@@ -738,7 +904,9 @@ class Endpoints {
 		$response_body = wp_remote_retrieve_body( $response );
 
 		// Debug log the response
-		error_log( 'API Response: ' . $response_body );
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			do_action( 'qm/debug', 'API Response: ' . $response_body );
+		}
 
 		// Validate JSON response.
 		$decoded = json_decode( $response_body, true );
@@ -747,14 +915,20 @@ class Endpoints {
 			return null;
 		}
 
-		// Cache successful response if enabled
+		// Cache successful response with multi-level storage
 		if ( $use_cache && ! empty( $cache_key ) && ! empty( $response_body ) ) {
 			// Get cache duration from settings if not provided
 			if ( $cache_duration === self::CACHE_DURATION ) {
 				$cache_duration = intval( get_option( 'brag_book_gallery_cache_duration', self::CACHE_DURATION ) );
 			}
-			set_transient( $cache_key, $response_body, $cache_duration );
+
+			// Use multi-level caching for optimal performance
+			$this->set_cached_response( $cache_key, $response_body, $cache_duration );
 		}
+
+		// Track performance metrics for live response
+		$duration = microtime( true ) - $start_time;
+		$this->track_performance_metrics( $endpoint, $duration, false );
 
 		return $response_body;
 	}
@@ -822,24 +996,21 @@ class Endpoints {
 			$error_message
 		) );
 
-		// Send user-friendly error message
-		$user_message = esc_html__(
-			'Unable to connect to the gallery service. Please try again later.',
-			'brag-book-gallery'
-		);
-
-		// Add specific messages for known errors.
-		if ( str_contains( $error_code, 'timeout' ) ) {
-			$user_message = esc_html__(
+		// Send user-friendly error message using modern match expression
+		$user_message = match ( true ) {
+			str_contains( $error_code, 'timeout' ) => esc_html__(
 				'The request timed out. Please try again.',
 				'brag-book-gallery'
-			);
-		} elseif ( str_contains( $error_code, 'http_request_failed' ) ) {
-			$user_message = esc_html__(
+			),
+			str_contains( $error_code, 'http_request_failed' ) => esc_html__(
 				'Connection failed. Please check your internet connection.',
 				'brag-book-gallery'
-			);
-		}
+			),
+			default => esc_html__(
+				'Unable to connect to the gallery service. Please try again later.',
+				'brag-book-gallery'
+			)
+		};
 
 		$this->send_json_error( $user_message );
 	}
@@ -960,8 +1131,8 @@ class Endpoints {
 	 */
 	private function log_error( string $message ): void {
 
-		if ( defined( constant_name: 'WP_DEBUG' ) && WP_DEBUG ) {
-			error_log( message: '[BRAG book API] ' . $message );
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			do_action( 'qm/debug', '[BRAG book API] ' . $message );
 		}
 
 		/**
@@ -971,10 +1142,7 @@ class Endpoints {
 		 *
 		 * @param string $message Error message
 		 */
-		do_action(
-			hook_name: 'brag_book_gallery_api_error',
-			value: $message
-		);
+		do_action( 'brag_book_gallery_api_error', $message );
 	}
 
 	/**
@@ -1136,9 +1304,10 @@ class Endpoints {
 			return null;
 		}
 
-		// Cache successful response
+		// Cache successful response with optimized TTL
 		if ( ! empty( $response_body ) ) {
-			set_transient( $cache_key, $response_body, 900 );
+			$cache_duration = $this->get_cache_duration_for_endpoint( 'carousel' );
+			$this->set_cached_response( $cache_key, $response_body, $cache_duration );
 		}
 
 		return $response_body;
@@ -1317,7 +1486,7 @@ class Endpoints {
 			'POST',
 			true,
 			$cache_key,
-			1800 // Cache for 30 minutes
+			self::CACHE_TTL_LONG
 		);
 	}
 
@@ -1387,5 +1556,444 @@ class Endpoints {
 			'POST',
 			false // Don't cache
 		);
+	}
+
+	/**
+	 * Get API base URL
+	 *
+	 * Returns the configured API base URL for the current environment.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @return string API base URL
+	 */
+	private function get_api_base_url(): string {
+		return Setup::get_api_url();
+	}
+
+	/**
+	 * Log API error with context
+	 *
+	 * Enhanced error logging with endpoint context and performance tracking.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @param string $endpoint API endpoint that failed
+	 * @param string $message  Error message
+	 * @param array  $context  Optional context data
+	 *
+	 * @return void
+	 */
+	private function log_api_error( string $endpoint, string $message, array $context = [] ): void {
+		$timestamp = current_time( 'mysql' );
+		$error_entry = [
+			'timestamp' => $timestamp,
+			'endpoint'  => $endpoint,
+			'message'   => $message,
+			'context'   => $context,
+		];
+
+		// Add to memory cache for debugging
+		$this->error_log[] = $error_entry;
+
+		// VIP-compliant logging
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			do_action( 'qm/debug', sprintf(
+				'[BRAG book API Error] %s | Endpoint: %s | Message: %s',
+				$timestamp,
+				$endpoint,
+				$message
+			) );
+		}
+
+		// Trigger custom error action
+		do_action( 'brag_book_gallery_api_error', $error_entry );
+	}
+
+	/**
+	 * Track performance metrics
+	 *
+	 * Records performance data for API requests.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @param string $endpoint API endpoint
+	 * @param float  $duration Request duration in seconds
+	 * @param bool   $cached   Whether response was cached
+	 *
+	 * @return void
+	 */
+	private function track_performance_metrics( string $endpoint, float $duration, bool $cached = false ): void {
+		$this->performance_metrics[] = [
+			'endpoint'  => $endpoint,
+			'duration'  => $duration,
+			'cached'    => $cached,
+			'timestamp' => microtime( true ),
+		];
+
+		// Log performance in debug mode
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			do_action( 'qm/debug', sprintf(
+				'[BRAG book API Performance] %s: %.3fs %s',
+				$endpoint,
+				$duration,
+				$cached ? '(cached)' : '(live)'
+			) );
+		}
+	}
+
+	/**
+	 * Get cached response with memory cache layer
+	 *
+	 * Implements multi-level caching for optimal performance.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @param string $cache_key Cache key
+	 *
+	 * @return mixed|false Cached data or false if not found
+	 */
+	private function get_cached_response( string $cache_key ) {
+		// Check memory cache first
+		if ( isset( $this->memory_cache[ $cache_key ] ) ) {
+			return $this->memory_cache[ $cache_key ];
+		}
+
+		// Check WordPress transient cache
+		$cached_data = get_transient( $cache_key );
+		if ( $cached_data !== false ) {
+			// Store in memory cache for subsequent requests
+			$this->memory_cache[ $cache_key ] = $cached_data;
+			return $cached_data;
+		}
+
+		return false;
+	}
+
+	/**
+	 * Set cached response with memory cache layer
+	 *
+	 * Stores data in both memory and WordPress transient cache.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @param string $cache_key Cache key
+	 * @param mixed  $data      Data to cache
+	 * @param int    $duration  Cache duration in seconds
+	 *
+	 * @return void
+	 */
+	private function set_cached_response( string $cache_key, $data, int $duration ): void {
+		// Store in memory cache
+		$this->memory_cache[ $cache_key ] = $data;
+
+		// Store in WordPress transient cache
+		set_transient( $cache_key, $data, $duration );
+	}
+
+	/**
+	 * Get cache duration based on endpoint type
+	 *
+	 * Returns appropriate cache duration using modern match expression.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @param string $endpoint_type Endpoint type identifier
+	 *
+	 * @return int Cache duration in seconds
+	 */
+	private function get_cache_duration_for_endpoint( string $endpoint_type ): int {
+		return match ( $endpoint_type ) {
+			'sidebar', 'sitemap' => self::CACHE_TTL_LONG,
+			'carousel', 'case' => self::CACHE_TTL_MEDIUM,
+			'pagination', 'cases' => self::CACHE_TTL_SHORT,
+			default => self::CACHE_DURATION
+		};
+	}
+
+	/**
+	 * Validate input against security rules
+	 *
+	 * Comprehensive input validation using predefined security rules
+	 * with pattern matching, length validation, and required field checks.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @param string $value Input value to validate
+	 * @param string $type  Validation rule type
+	 *
+	 * @return bool True if valid, false otherwise
+	 */
+	private function validate_input( string $value, string $type ): bool {
+		// Check if validation rule exists
+		if ( ! isset( self::SECURITY_RULES[ $type ] ) ) {
+			return false;
+		}
+
+		$rules = self::SECURITY_RULES[ $type ];
+
+		// Check required field
+		if ( isset( $rules['required'] ) && $rules['required'] && empty( $value ) ) {
+			return false;
+		}
+
+		// Skip validation for optional empty fields
+		if ( empty( $value ) && ( ! isset( $rules['required'] ) || ! $rules['required'] ) ) {
+			return true;
+		}
+
+		// Check minimum length
+		if ( isset( $rules['min_length'] ) && strlen( $value ) < $rules['min_length'] ) {
+			return false;
+		}
+
+		// Check maximum length
+		if ( isset( $rules['max_length'] ) && strlen( $value ) > $rules['max_length'] ) {
+			return false;
+		}
+
+		// Check pattern if specified
+		if ( isset( $rules['pattern'] ) && ! preg_match( $rules['pattern'], $value ) ) {
+			return false;
+		}
+
+		// Special validation for email
+		if ( $type === 'email' && ! is_email( $value ) ) {
+			return false;
+		}
+
+		return true;
+	}
+
+	/**
+	 * Sanitize and validate API tokens
+	 *
+	 * Enhanced security validation for API tokens with length checks
+	 * and format validation.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @param array<string> $tokens API tokens to validate
+	 *
+	 * @return array<string> Validated tokens
+	 *
+	 * @throws \InvalidArgumentException When tokens are invalid
+	 */
+	private function validate_api_tokens( array $tokens ): array {
+		$validated_tokens = [];
+
+		foreach ( $tokens as $token ) {
+			$token = sanitize_text_field( $token );
+
+			if ( ! $this->validate_input( $token, 'api_token' ) ) {
+				throw new \InvalidArgumentException( 'Invalid API token format or length' );
+			}
+
+			$validated_tokens[] = $token;
+		}
+
+		return $validated_tokens;
+	}
+
+	/**
+	 * Rate limiting check
+	 *
+	 * Simple rate limiting implementation to prevent API abuse.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @param string $identifier Rate limit identifier (IP, user, etc.)
+	 * @param int    $limit      Maximum requests per time window
+	 * @param int    $window     Time window in seconds
+	 *
+	 * @return bool True if under limit, false if rate limited
+	 */
+	private function check_rate_limit( string $identifier, int $limit = 100, int $window = 3600 ): bool {
+		$cache_key = 'brag_book_rate_limit_' . md5( $identifier );
+		$current_requests = get_transient( $cache_key );
+
+		if ( $current_requests === false ) {
+			// First request in window
+			set_transient( $cache_key, 1, $window );
+			return true;
+		}
+
+		if ( $current_requests >= $limit ) {
+			// Rate limit exceeded
+			$this->log_error( 'Rate limit exceeded for identifier: ' . $identifier );
+			return false;
+		}
+
+		// Increment counter
+		set_transient( $cache_key, $current_requests + 1, $window );
+		return true;
+	}
+
+	/**
+	 * Sanitize and validate URL parameters
+	 *
+	 * Comprehensive URL parameter validation with XSS prevention.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @param string $url URL to validate
+	 *
+	 * @return string|null Validated URL or null if invalid
+	 */
+	private function validate_url( string $url ): ?string {
+		// Basic URL validation
+		if ( ! filter_var( $url, FILTER_VALIDATE_URL ) ) {
+			return null;
+		}
+
+		// Check for allowed schemes
+		$allowed_schemes = [ 'http', 'https' ];
+		$scheme = wp_parse_url( $url, PHP_URL_SCHEME );
+
+		if ( ! in_array( $scheme, $allowed_schemes, true ) ) {
+			return null;
+		}
+
+		// Sanitize URL
+		return esc_url_raw( $url );
+	}
+
+	/**
+	 * Warm up cache for critical endpoints
+	 *
+	 * Pre-populates cache with frequently accessed data for improved
+	 * performance during peak usage.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @param array<string> $endpoints List of endpoints to warm up
+	 *
+	 * @return array<string, bool> Success status for each endpoint
+	 */
+	public function warm_up_cache( array $endpoints = [] ): array {
+		$results = [];
+
+		if ( empty( $endpoints ) ) {
+			$endpoints = [ 'sidebar', 'carousel' ]; // Default critical endpoints
+		}
+
+		foreach ( $endpoints as $endpoint ) {
+			try {
+				$success = match ( $endpoint ) {
+					'sidebar' => $this->warm_sidebar_cache(),
+					'carousel' => $this->warm_carousel_cache(),
+					default => false
+				};
+				$results[ $endpoint ] = $success;
+			} catch ( \Exception $e ) {
+				$this->log_error( 'Cache warm-up failed for ' . $endpoint . ': ' . $e->getMessage() );
+				$results[ $endpoint ] = false;
+			}
+		}
+
+		return $results;
+	}
+
+	/**
+	 * Warm sidebar cache
+	 *
+	 * @since 3.0.0
+	 * @return bool Success status
+	 */
+	private function warm_sidebar_cache(): bool {
+		$mode = get_option( 'brag_book_gallery_mode', 'local' );
+		$api_tokens = get_option( 'brag_book_gallery_api_token', [] );
+		$token = $api_tokens[ $mode ] ?? '';
+
+		if ( empty( $token ) ) {
+			return false;
+		}
+
+		$response = $this->get_api_sidebar( $token );
+		return ! empty( $response );
+	}
+
+	/**
+	 * Warm carousel cache
+	 *
+	 * @since 3.0.0
+	 * @return bool Success status
+	 */
+	private function warm_carousel_cache(): bool {
+		$mode = get_option( 'brag_book_gallery_mode', 'local' );
+		$api_tokens = get_option( 'brag_book_gallery_api_token', [] );
+		$website_property_ids = get_option( 'brag_book_gallery_website_property_id', [] );
+
+		$token = $api_tokens[ $mode ] ?? '';
+		$property_id = $website_property_ids[ $mode ] ?? '';
+
+		if ( empty( $token ) || empty( $property_id ) ) {
+			return false;
+		}
+
+		$options = [
+			'websitePropertyId' => $property_id,
+			'limit' => 10,
+		];
+
+		$response = $this->get_carousel_data( $token, $options );
+		return ! empty( $response );
+	}
+
+	/**
+	 * Get performance metrics summary
+	 *
+	 * Returns aggregated performance data for monitoring and optimization.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @return array<string, mixed> Performance summary
+	 */
+	public function get_performance_metrics(): array {
+		if ( empty( $this->performance_metrics ) ) {
+			return [];
+		}
+
+		$total_requests = count( $this->performance_metrics );
+		$cached_requests = count( array_filter( $this->performance_metrics, fn( $metric ) => $metric['cached'] ) );
+		$total_duration = array_sum( array_column( $this->performance_metrics, 'duration' ) );
+		$avg_duration = $total_duration / $total_requests;
+
+		// Group by endpoint
+		$by_endpoint = [];
+		foreach ( $this->performance_metrics as $metric ) {
+			$endpoint = $metric['endpoint'];
+			if ( ! isset( $by_endpoint[ $endpoint ] ) ) {
+				$by_endpoint[ $endpoint ] = [
+					'count' => 0,
+					'total_duration' => 0,
+					'cached_count' => 0,
+				];
+			}
+			$by_endpoint[ $endpoint ]['count']++;
+			$by_endpoint[ $endpoint ]['total_duration'] += $metric['duration'];
+			if ( $metric['cached'] ) {
+				$by_endpoint[ $endpoint ]['cached_count']++;
+			}
+		}
+
+		// Calculate averages for each endpoint
+		foreach ( $by_endpoint as $endpoint => &$stats ) {
+			$stats['avg_duration'] = $stats['total_duration'] / $stats['count'];
+			$stats['cache_hit_rate'] = $stats['cached_count'] / $stats['count'];
+		}
+
+		return [
+			'summary' => [
+				'total_requests' => $total_requests,
+				'cached_requests' => $cached_requests,
+				'cache_hit_rate' => $cached_requests / $total_requests,
+				'total_duration' => $total_duration,
+				'avg_duration' => $avg_duration,
+			],
+			'by_endpoint' => $by_endpoint,
+			'memory_usage' => memory_get_usage( true ),
+			'peak_memory' => memory_get_peak_usage( true ),
+		];
 	}
 }

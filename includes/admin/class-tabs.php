@@ -170,7 +170,7 @@ class Tabs {
 			);
 
 			// Add mode-specific settings tab
-			if ( $this->plugin_state['current_mode'] === 'javascript' ) {
+			if ( $this->plugin_state['current_mode'] === 'default' ) {
 				$tabs['default'] = array(
 					'title' => __( 'Default', 'brag-book-gallery' ),
 					'url' => admin_url( 'admin.php?page=brag-book-gallery-default' ),

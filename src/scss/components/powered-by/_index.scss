@@ -4,20 +4,25 @@
 // components / powered-by / index
 // -----------------------------------------------------------------------------
 
-.brag-book-gallery-powered-by-link {
-	display: flex;
-	align-items: center;
-	justify-content: center;
+.brag-book-gallery-powered-by {
+	text-align: right;
 	font-size: var(--wp--custom--brag-book-gallery--text-sm);
-	color: var(--wp--custom--brag-book-gallery--color--light-grey);
-	text-decoration: none;
-	transition: var(--wp--custom--brag-book-gallery--transition);
-	margin-block: var(--wp--custom--brag-book-gallery--spacer--lg,16px);
+	color: var(--wp--custom--brag-book-gallery--color--grey);
 
-	&:hover {
-		color: var(--wp--custom--brag-book-gallery--color--grey);
-		text-decoration: underline
+	&-link {
+		color: var(--wp--custom--brag-book-gallery--color--black);
+		font-weight: var(--wp--custom--brag-book-gallery--font-weight--semibold);
+		font-size: var(--wp--custom--brag-book-gallery--text-sm);
+		text-decoration: none;
+		transition: var(--wp--custom--brag-book-gallery--transition);
+		margin-block: var(--wp--custom--brag-book-gallery--spacer--lg,16px);
+
+		&:hover {
+			text-decoration: underline
+		}
 	}
 }
+
+
 
 

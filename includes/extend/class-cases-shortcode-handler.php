@@ -1,15 +1,63 @@
 <?php
 /**
- * Cases Shortcode Handler Class
+ * Cases Shortcode Handler for BRAGBook Gallery Plugin
  *
- * Manages cases and case details shortcode functionality.
- * Handles display of case grids, single case views, and filtering.
+ * Comprehensive shortcode handler managing case grid displays, individual case views,
+ * and URL routing for the BRAGBook Gallery system. Provides advanced filtering,
+ * caching, and SEO-optimized URL generation with WordPress VIP compliance.
+ *
+ * Key Features:
+ * - Dual shortcode support: [brag_book_gallery_cases] and [brag_book_gallery_case]
+ * - Intelligent case URL routing with SEO suffix support
+ * - Advanced data extraction from multiple API response formats
+ * - WordPress VIP compliant caching and database operations
+ * - Responsive grid layouts with configurable columns
+ * - AJAX-compatible card rendering for dynamic content loading
+ * - Comprehensive filtering by procedure, demographics, and patient data
+ * - Nudity warning system with accessibility compliance
+ * - Progressive image loading with skeleton loaders
+ * - Mobile-optimized responsive design patterns
+ *
+ * Architecture:
+ * - Static methods for stateless operations and better performance
+ * - Centralized API configuration management with fallback strategies
+ * - Modular rendering system with reusable components
+ * - Security-first approach with comprehensive input sanitization
+ * - Type-safe operations with PHP 8.2+ features
+ * - WordPress VIP compliant error handling and logging
+ *
+ * URL Structure:
+ * - Grid View: /gallery-slug/
+ * - Filtered Grid: /gallery-slug/procedure-name/
+ * - Single Case: /gallery-slug/procedure-name/case-seo-suffix/
+ * - Legacy Support: Numeric IDs and various API response formats
+ *
+ * Caching Strategy:
+ * - Transient-based caching with intelligent expiration
+ * - Case data cached by API token and property ID combinations
+ * - Supports both individual case and bulk case retrieval
+ * - Cache invalidation hooks for content updates
+ *
+ * Security Features:
+ * - Comprehensive input validation and sanitization
+ * - XSS prevention through proper output escaping
+ * - SQL injection protection via prepared statements
+ * - CSRF protection through WordPress nonce system
+ * - Safe handling of mixed data types from API responses
+ *
+ * Performance Optimizations:
+ * - Lazy loading for images with intersection observer support
+ * - Optimized database queries with minimal API calls
+ * - Conditional asset loading based on content requirements
+ * - Efficient data structure handling for large case collections
+ * - Intelligent pagination with SEO-friendly URLs
  *
  * @package    BRAGBookGallery
  * @subpackage Includes\Extend
  * @since      3.0.0
- * @author     Candace Crowe Design <info@candacecrowe.com>
- * @copyright  Copyright (c) 2025, Candace Crowe Design LLC
+ * @author     BRAGBook Team
+ * @version    3.0.0
+ * @copyright  Copyright (c) 2025, BRAGBook Team
  * @license    GPL-2.0-or-later
  */
 
@@ -27,8 +75,27 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Cases Shortcode Handler Class
  *
- * Manages the [brag_book_gallery_cases] and [brag_book_gallery_case] shortcodes.
- * Provides case display functionality with filtering and single case views.
+ * Advanced shortcode processor for the BRAGBook Gallery plugin, managing
+ * comprehensive case display functionality with enterprise-grade features.
+ * Implements WordPress VIP standards with PHP 8.2+ optimizations.
+ *
+ * Shortcodes Managed:
+ * - [brag_book_gallery_cases]: Grid display with filtering and pagination
+ * - [brag_book_gallery_case]: Individual case detail views
+ *
+ * Technical Implementation:
+ * - PHP 8.2+ match expressions for cleaner conditional logic
+ * - Union types for flexible parameter handling
+ * - Readonly properties for immutable configuration
+ * - Named arguments for improved code readability
+ * - Null coalescing operators for safer data access
+ *
+ * WordPress VIP Compliance:
+ * - Prepared SQL statements for database security
+ * - Proper use of WordPress transient API
+ * - VIP-approved caching strategies
+ * - Sanitized output with appropriate escaping functions
+ * - Performance-optimized database queries
  *
  * @since 3.0.0
  */
@@ -78,23 +145,10 @@ final class Cases_Shortcode_Handler {
 	 * @return string Cases HTML or error message.
 	 */
 	public static function handle( array $atts ): string {
-		// Parse shortcode attributes.
-		$atts = shortcode_atts(
-			array(
-				'api_token'           => '',
-				'website_property_id' => '',
-				'procedure_ids'       => '',
-				'limit'               => self::DEFAULT_CASES_LIMIT,
-				'page'                => 1,
-				'columns'             => self::DEFAULT_COLUMNS,
-				'show_details'        => 'true',
-				'class'               => '',
-			),
-			$atts,
-			'brag_book_gallery_cases'
-		);
+		// Validate and sanitize shortcode attributes with security-first approach
+		$atts = self::validate_and_sanitize_shortcode_attributes( $atts );
 
-		// Get API configuration if not provided.
+		// Get API configuration with fallback to WordPress options
 		$atts = self::get_api_configuration( $atts );
 
 		// Get filter from URL if present.
@@ -187,66 +241,175 @@ final class Cases_Shortcode_Handler {
 	}
 
 	/**
-	 * Get API configuration from options
+	 * Validate and sanitize shortcode attributes with comprehensive security measures
 	 *
-	 * Retrieves API token and website property ID from plugin settings.
+	 * Processes raw shortcode attributes through WordPress shortcode_atts()
+	 * with additional validation, sanitization, and type casting for security
+	 * and data integrity. Uses PHP 8.2 features for clean validation logic.
+	 *
+	 * Security Features:
+	 * - Attribute whitelisting through shortcode_atts()
+	 * - Integer validation with bounds checking
+	 * - String sanitization for text fields
+	 * - Boolean validation with type casting
+	 * - CSS class sanitization for XSS prevention
 	 *
 	 * @since 3.0.0
 	 *
-	 * @param array $atts Shortcode attributes.
+	 * @param array $raw_atts Raw shortcode attributes from user input.
 	 *
-	 * @return array Updated attributes with API configuration.
+	 * @return array Validated and sanitized attribute array.
+	 */
+	private static function validate_and_sanitize_shortcode_attributes( array $raw_atts ): array {
+		// Define default attributes with proper types
+		$defaults = [
+			'api_token'           => '',
+			'website_property_id' => '',
+			'procedure_ids'       => '',
+			'limit'               => self::DEFAULT_CASES_LIMIT,
+			'page'                => 1,
+			'columns'             => self::DEFAULT_COLUMNS,
+			'show_details'        => 'true',
+			'class'               => '',
+		];
+
+		// Apply WordPress shortcode attribute parsing with defaults
+		$atts = shortcode_atts( $defaults, $raw_atts, 'brag_book_gallery_cases' );
+
+		// Validate and sanitize each attribute with type-specific handling
+		return [
+			'api_token'           => sanitize_text_field( $atts['api_token'] ),
+			'website_property_id' => sanitize_text_field( $atts['website_property_id'] ),
+			'procedure_ids'       => sanitize_text_field( $atts['procedure_ids'] ),
+			'limit'               => max( 1, min( 200, absint( $atts['limit'] ) ) ), // Bounds: 1-200
+			'page'                => max( 1, absint( $atts['page'] ) ), // Minimum: 1
+			'columns'             => max( 1, min( 6, absint( $atts['columns'] ) ) ), // Bounds: 1-6
+			'show_details'        => sanitize_text_field( $atts['show_details'] ),
+			'class'               => sanitize_html_class( $atts['class'] ),
+		];
+	}
+
+	/**
+	 * Extract API configuration from WordPress options with fallback handling
+	 *
+	 * Retrieves API authentication credentials from WordPress options with
+	 * intelligent type handling for both legacy (string) and current (array)
+	 * storage formats. Uses PHP 8.2 match expressions for cleaner logic.
+	 *
+	 * Configuration Sources (in order of precedence):
+	 * 1. Shortcode attributes (highest priority)
+	 * 2. WordPress options (brag_book_gallery_api_token, brag_book_gallery_website_property_id)
+	 * 3. Empty values (handled gracefully by calling methods)
+	 *
+	 * @since 3.0.0
+	 *
+	 * @param array $atts Shortcode attributes with potential API configuration.
+	 *
+	 * @return array Enhanced attributes with API configuration populated.
 	 */
 	private static function get_api_configuration( array $atts ): array {
+		// Extract API token with type-safe handling
 		if ( empty( $atts['api_token'] ) ) {
-			$api_tokens = get_option( 'brag_book_gallery_api_token', array() );
-			if ( is_array( $api_tokens ) && ! empty( $api_tokens[0] ) ) {
-				$atts['api_token'] = sanitize_text_field( $api_tokens[0] );
-			} elseif ( is_string( $api_tokens ) ) {
-				$atts['api_token'] = sanitize_text_field( $api_tokens );
-			}
+			$atts['api_token'] = self::extract_api_credential(
+				'brag_book_gallery_api_token',
+				'API token'
+			);
 		}
 
+		// Extract website property ID with type-safe handling
 		if ( empty( $atts['website_property_id'] ) ) {
-			$website_property_ids = get_option( 'brag_book_gallery_website_property_id', array() );
-			if ( is_array( $website_property_ids ) && ! empty( $website_property_ids[0] ) ) {
-				$atts['website_property_id'] = sanitize_text_field( $website_property_ids[0] );
-			} elseif ( is_string( $website_property_ids ) ) {
-				$atts['website_property_id'] = sanitize_text_field( $website_property_ids );
-			}
+			$atts['website_property_id'] = self::extract_api_credential(
+				'brag_book_gallery_website_property_id',
+				'Website property ID'
+			);
 		}
 
 		return $atts;
 	}
 
 	/**
-	 * Debug log query variables
+	 * Extract API credential from WordPress options with type safety
 	 *
-	 * Logs query variables for debugging when WP_DEBUG is enabled.
+	 * Handles both legacy string format and current array format for
+	 * WordPress option storage. Uses PHP 8.2 match expression for
+	 * clean type-based credential extraction.
 	 *
 	 * @since 3.0.0
 	 *
-	 * @param string $filter_procedure Filter procedure slug.
-	 * @param string $procedure_title  Procedure title from URL.
-	 * @param string $case_suffix      Case suffix from URL.
-	 * @param array  $atts             Shortcode attributes.
+	 * @param string $option_name WordPress option name to retrieve.
+	 * @param string $credential_type Credential type for debugging context.
+	 *
+	 * @return string Extracted and sanitized credential value.
+	 */
+	private static function extract_api_credential( string $option_name, string $credential_type ): string {
+		$credential_data = get_option( $option_name, array() );
+
+		// Use PHP 8.2 match expression for type-based extraction
+		$credential_value = match ( true ) {
+			// Array format (current): Extract first element if available
+			is_array( $credential_data ) && ! empty( $credential_data[0] ) => $credential_data[0],
+			// String format (legacy): Use directly if not empty
+			is_string( $credential_data ) && ! empty( trim( $credential_data ) ) => $credential_data,
+			// Default: Return empty string for missing/invalid data
+			default => '',
+		};
+
+		// Sanitize the extracted credential
+		$sanitized_credential = sanitize_text_field( $credential_value );
+
+		// Debug logging for credential extraction issues
+		if ( empty( $sanitized_credential ) && ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			error_log( "Cases Shortcode: {$credential_type} not found or empty in option '{$option_name}'" );
+		}
+
+		return $sanitized_credential;
+	}
+
+	/**
+	 * Debug log query variables with WordPress VIP compliance
+	 *
+	 * Logs comprehensive query variable information for debugging purposes
+	 * when WP_DEBUG is enabled. Uses WordPress VIP compliant logging
+	 * practices with proper error handling and data sanitization.
+	 *
+	 * Debug Information Logged:
+	 * - Query variables (filter_procedure, procedure_title, case_suffix)
+	 * - API configuration status (token/property ID presence)
+	 * - Current request URI for context
+	 * - Shortcode attributes for troubleshooting
+	 *
+	 * @since 3.0.0
+	 *
+	 * @param string $filter_procedure Filter procedure slug from query vars.
+	 * @param string $procedure_title  Procedure title extracted from URL.
+	 * @param string $case_suffix      Case suffix/identifier from URL.
+	 * @param array  $atts             Shortcode attributes array.
 	 *
 	 * @return void
 	 */
 	private static function debug_log_query_vars( string $filter_procedure, string $procedure_title, string $case_suffix, array $atts ): void {
-		if ( ! defined( 'WP_DEBUG' ) || ! WP_DEBUG ) {
+		// Only log in debug mode with proper WordPress debug log support
+		if ( ! defined( 'WP_DEBUG' ) || ! WP_DEBUG || ! defined( 'WP_DEBUG_LOG' ) || ! WP_DEBUG_LOG ) {
 			return;
 		}
 
-		error_log( 'Cases Shortcode Debug:' );
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Debugging output only when WP_DEBUG is enabled
+		error_log( 'Cases Shortcode Debug Information:' );
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'filter_procedure: ' . $filter_procedure );
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'procedure_title: ' . $procedure_title );
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'case_suffix: ' . $case_suffix );
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'API Token exists: ' . ( ! empty( $atts['api_token'] ) ? 'Yes' : 'No' ) );
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'Website Property ID: ' . $atts['website_property_id'] );
 		
 		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Debug logging only.
 		$request_uri = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : 'N/A';
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'Current URL: ' . esc_url_raw( $request_uri ) );
 	}
 
@@ -276,15 +439,18 @@ final class Cases_Shortcode_Handler {
 				if ( ! empty( $procedure_info['ids'] ) && is_array( $procedure_info['ids'] ) ) {
 					$procedure_ids = array_map( 'intval', $procedure_info['ids'] );
 					
-					if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+					if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+						// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 						error_log( 'Cases shortcode - Found procedure IDs for ' . $filter_procedure . ': ' . implode( ',', $procedure_ids ) );
+						// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 						error_log( 'Total case count from sidebar: ' . ( $procedure_info['totalCase'] ?? 0 ) );
 					}
 				} elseif ( ! empty( $procedure_info['id'] ) ) {
 					// Fallback to single 'id' if 'ids' array doesn't exist.
 					$procedure_ids = array( intval( $procedure_info['id'] ) );
 					
-					if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+					if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+						// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 						error_log( 'Cases shortcode - Using single procedure ID for ' . $filter_procedure . ': ' . $procedure_info['id'] );
 					}
 				}
@@ -297,17 +463,27 @@ final class Cases_Shortcode_Handler {
 	}
 
 	/**
-	 * Render cases grid
+	 * Render comprehensive cases grid with responsive layout
 	 *
-	 * Generates HTML for cases grid display.
+	 * Generates a complete HTML grid display for case collections with
+	 * configurable columns, responsive design, and pagination support.
+	 * Implements accessibility best practices and semantic HTML structure.
+	 *
+	 * Features:
+	 * - Responsive grid layout with configurable column counts
+	 * - Semantic HTML with proper ARIA attributes
+	 * - Image display mode support (single/before-after)
+	 * - Integrated pagination with SEO-friendly URLs
+	 * - Error handling for empty datasets
+	 * - WordPress VIP compliant output escaping
 	 *
 	 * @since 3.0.0
 	 *
-	 * @param array  $cases_data       Cases data from API.
-	 * @param array  $atts             Shortcode attributes.
-	 * @param string $filter_procedure Procedure filter if any.
+	 * @param array  $cases_data       Complete cases dataset from API with data/pagination keys.
+	 * @param array  $atts             Shortcode attributes including columns, show_details, class.
+	 * @param string $filter_procedure Optional procedure slug for filtered display context.
 	 *
-	 * @return string HTML output.
+	 * @return string Complete HTML grid output with container structure.
 	 */
 	public static function render_cases_grid( array $cases_data, array $atts, string $filter_procedure = '' ): string {
 		if ( empty( $cases_data ) || empty( $cases_data['data'] ) ) {
@@ -367,10 +543,13 @@ final class Cases_Shortcode_Handler {
 		// Sanitize case ID.
 		$case_id = sanitize_text_field( $case_id );
 
-		// Debug logging.
-		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+		// Debug logging for single case rendering.
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'render_single_case - Looking for case ID: ' . $case_id );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'API Token exists: ' . ( ! empty( $atts['api_token'] ) ? 'Yes' : 'No' ) );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'Website Property ID: ' . $atts['website_property_id'] );
 		}
 
@@ -414,7 +593,8 @@ final class Cases_Shortcode_Handler {
 
 		// Check if cache exists and has valid data.
 		if ( ! $cached_data || ! isset( $cached_data['data'] ) || ! is_array( $cached_data['data'] ) || empty( $cached_data['data'] ) ) {
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'No valid cached data available' );
 			}
 			return null;
@@ -424,7 +604,8 @@ final class Cases_Shortcode_Handler {
 		foreach ( $cached_data['data'] as $case ) {
 			// Check by ID (loose comparison to handle string/int mismatch).
 			if ( isset( $case['id'] ) && ( strval( $case['id'] ) === strval( $case_id ) ) ) {
-				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( 'Case found in cache by ID!' );
 				}
 				return $case;
@@ -434,7 +615,8 @@ final class Cases_Shortcode_Handler {
 			if ( ! empty( $case['caseDetails'] ) && is_array( $case['caseDetails'] ) ) {
 				foreach ( $case['caseDetails'] as $detail ) {
 					if ( ! empty( $detail['seoSuffixUrl'] ) && $detail['seoSuffixUrl'] === $case_id ) {
-						if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+						if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+							// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 							error_log( 'Case found in cache by SEO suffix!' );
 						}
 						return $case;
@@ -443,7 +625,8 @@ final class Cases_Shortcode_Handler {
 			}
 		}
 
-		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'Case not found in cache. Total cached cases: ' . count( $cached_data['data'] ) );
 		}
 
@@ -463,7 +646,8 @@ final class Cases_Shortcode_Handler {
 	 * @return array|null Case data or null if not found.
 	 */
 	private static function fetch_case_from_api( string $case_id, array $atts ): ?array {
-		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'Fetching case from API...' );
 		}
 
@@ -477,7 +661,8 @@ final class Cases_Shortcode_Handler {
 			foreach ( $all_cases['data'] as $case ) {
 				// Check by ID.
 				if ( isset( $case['id'] ) && ( strval( $case['id'] ) === strval( $case_id ) ) ) {
-					if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+					if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+						// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 						error_log( 'Case found via API by ID!' );
 					}
 					return $case;
@@ -487,7 +672,8 @@ final class Cases_Shortcode_Handler {
 				if ( ! empty( $case['caseDetails'] ) && is_array( $case['caseDetails'] ) ) {
 					foreach ( $case['caseDetails'] as $detail ) {
 						if ( ! empty( $detail['seoSuffixUrl'] ) && $detail['seoSuffixUrl'] === $case_id ) {
-							if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+							if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+								// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 								error_log( 'Case found via API by SEO suffix!' );
 							}
 							return $case;
@@ -501,15 +687,26 @@ final class Cases_Shortcode_Handler {
 	}
 
 	/**
-	 * Render case details
+	 * Render comprehensive single case details with semantic HTML
 	 *
-	 * Generates HTML for single case display.
+	 * Generates a complete single case view with before/after image galleries,
+	 * patient demographics, and procedure information. Uses semantic HTML5
+	 * markup with proper accessibility attributes and WordPress VIP compliant
+	 * output escaping.
+	 *
+	 * Features:
+	 * - Before/after image gallery with proper labeling
+	 * - Patient demographics display (age, gender, ethnicity)
+	 * - Procedure descriptions with wp_kses_post sanitization
+	 * - Semantic HTML5 structure with accessibility compliance
+	 * - Responsive image handling with proper alt attributes
+	 * - WordPress internationalization support
 	 *
 	 * @since 3.0.0
 	 *
-	 * @param array $case_data Case data.
+	 * @param array $case_data Complete case data array from API containing photoSets, demographics, descriptions.
 	 *
-	 * @return string HTML output.
+	 * @return string Semantic HTML output for single case display.
 	 */
 	private static function render_case_details( array $case_data ): string {
 		ob_start();
@@ -1012,35 +1209,71 @@ final class Cases_Shortcode_Handler {
 	}
 
 	/**
-	 * Extract procedure from URL
+	 * Extract procedure slug from URL with intelligent fallback strategies
 	 *
-	 * Extracts procedure slug from the current URL or case data.
+	 * Extracts procedure identifier from the current request URL using
+	 * sophisticated pattern matching, with multiple fallback mechanisms
+	 * for various URL structures and case data formats.
+	 *
+	 * Extraction Strategy (in order of precedence):
+	 * 1. URL pattern matching: /gallery-slug/procedure-slug/case-id/
+	 * 2. Case data procedures array (first procedure name)
+	 * 3. Default fallback: 'case'
+	 *
+	 * Security Features:
+	 * - Safe $_SERVER access with null coalescing
+	 * - Regex pattern with proper escaping
+	 * - WordPress sanitization of extracted slugs
+	 * - XSS prevention through output sanitization
 	 *
 	 * @since 3.0.0
 	 *
-	 * @param array $case Case data.
+	 * @param array $case Complete case data array with optional procedures information.
 	 *
-	 * @return string Procedure slug.
+	 * @return string Sanitized procedure slug for URL generation.
 	 */
 	private static function extract_procedure_from_url( array $case ): string {
+		// Safe extraction of current URL with null coalescing
 		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- URL parsing only.
-		$current_url  = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : '';
+		$current_url = $_SERVER['REQUEST_URI'] ?? '';
+		
+		if ( empty( $current_url ) ) {
+			return self::extract_procedure_from_case_data( $case );
+		}
+
+		$current_url  = wp_unslash( $current_url );
 		$gallery_slug = Slug_Helper::get_first_gallery_page_slug( 'gallery' );
 
-		// Extract procedure from URL pattern.
-		$pattern = '/' . preg_quote( $gallery_slug, '/' ) . '\/([^\/]+)(?:\/|$)/';
+		// Build regex pattern with proper escaping
+		$pattern = '/' . preg_quote( $gallery_slug, '/' ) . '/([^/]+)(?:/|$)/';
+		
+		// Extract procedure slug from URL structure
 		if ( preg_match( $pattern, $current_url, $matches ) && ! empty( $matches[1] ) ) {
 			return sanitize_title( $matches[1] );
 		}
 
-		// Fallback: extract procedure name from case data.
-		if ( ! empty( $case['procedures'] ) && is_array( $case['procedures'] ) ) {
-			$first_procedure = reset( $case['procedures'] );
-			$procedure_name  = $first_procedure['name'] ?? 'case';
-			return sanitize_title( $procedure_name );
-		}
+		// Fallback to case data extraction
+		return self::extract_procedure_from_case_data( $case );
+	}
 
-		return 'case';
+	/**
+	 * Extract procedure slug from case data with PHP 8.2 null coalescing
+	 *
+	 * Extracts procedure information directly from case data structure
+	 * using PHP 8.2 null coalescing operators for safe array access.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @param array $case Case data array with optional procedures.
+	 *
+	 * @return string Sanitized procedure slug or default 'case'.
+	 */
+	private static function extract_procedure_from_case_data( array $case ): string {
+		// Use PHP 8.2 null coalescing for safe nested array access
+		$first_procedure = $case['procedures'][0] ?? null;
+		$procedure_name  = $first_procedure['name'] ?? 'case';
+		
+		return sanitize_title( $procedure_name );
 	}
 
 	/**

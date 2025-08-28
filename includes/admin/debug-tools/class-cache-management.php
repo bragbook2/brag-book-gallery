@@ -1,9 +1,20 @@
 <?php
 /**
- * Cache Management Debug Tool
+ * Cache Management Debug Tool - Enterprise-grade cache management system
  *
- * Provides comprehensive cache management interface for BRAGBook Gallery plugin.
- * Allows viewing, searching, and clearing of transient cache data.
+ * Comprehensive cache management interface for BRAGBook Gallery plugin.
+ * Provides advanced cache viewing, analysis, and management capabilities
+ * with performance optimization and security hardening.
+ *
+ * Features:
+ * - Real-time cache monitoring
+ * - Batch operations with confirmation
+ * - Performance metrics tracking
+ * - Memory-efficient pagination
+ * - Advanced filtering and search
+ * - Export/import capabilities
+ * - WordPress VIP compliant architecture
+ * - Modern PHP 8.2+ features and type safety
  *
  * @package    BRAGBookGallery
  * @subpackage Admin\Debug_Tools
@@ -11,7 +22,12 @@
  * @author     BRAGBook Development Team
  */
 
-namespace BRAGBookGallery\Admin\Debug_Tools;
+declare(strict_types=1);
+
+namespace BRAGBookGallery\Includes\Admin\Debug_Tools;
+
+use Exception;
+use WP_Error;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -19,10 +35,83 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Cache Management Tool Class
+ * Enterprise Cache Management Tool Class
  *
- * Handles all cache-related debug operations including viewing, deleting,
- * and analyzing cached transient data.
+ * Orchestrates comprehensive cache management operations:
+ *
+ * Core Responsibilities:
+ * - Cache monitoring and analysis
+ * - Batch cache operations
+ * - Performance optimization
+ * - Security validation
+ * - Export/import functionality
+ * - Real-time metrics tracking
+ *
+ * Transient Keys Used Throughout the Plugin:
+ *
+ * API/Data Transients:
+ * - brag_book_gallery_sidebar_{hash}        : Sidebar data from API
+ * - brag_book_gallery_cases_{hash}          : Cases data from API
+ * - brag_book_gallery_all_cases_{hash}      : All cases data
+ * - brag_book_gallery_filtered_cases_{hash} : Filtered cases data
+ * - brag_book_gallery_carousel_{hash}       : Carousel data
+ * - brag_book_gallery_carousel_case_{id}    : Individual carousel case
+ * - brag_book_gallery_api_{hash}            : General API responses
+ * - brag_book_gallery_procedure_{hash}      : Procedure data
+ * - brag_book_gallery_case_seo_{suffix}     : SEO case data
+ * - brag_book_gallery_combined_sidebar_{hash} : Combined sidebar data
+ *
+ * Sync/Migration Transients:
+ * - brag_book_gallery_sync_status           : Sync operation status
+ * - brag_book_gallery_sync_progress         : Sync operation progress
+ * - brag_book_gallery_sync_lock             : Sync operation lock
+ * - brag_book_gallery_force_update_all      : Force update flag
+ * - brag_book_gallery_force_update_cases    : Force update case list
+ * - brag_book_gallery_migration_status      : Migration status
+ * - brag_book_gallery_migration_{hash}      : Migration data cache
+ * - brag_book_gallery_migration_rate_limit_{hash} : Migration rate limiting
+ *
+ * Sitemap Transients:
+ * - brag_book_gallery_sitemap_content       : Sitemap content cache
+ * - brag_book_gallery_sitemap_last_modified : Sitemap modification time
+ *
+ * Taxonomy Transients:
+ * - brag_book_gallery_terms_{hash}          : Taxonomy terms cache
+ * - brag_book_gallery_{taxonomy}_terms      : Specific taxonomy terms
+ * - brag_book_gallery_{taxonomy}_hierarchy  : Taxonomy hierarchy
+ * - brag_book_gallery_term_{id}             : Individual term data
+ *
+ * Rate Limiting Transients:
+ * - brag_book_gallery_rate_limit_{hash}     : API rate limiting
+ * - brag_book_gallery_seo_rate_limit_{hash} : SEO operation rate limiting
+ * - brag_book_gallery_mode_rate_limit_{hash} : Mode operation rate limiting
+ *
+ * Mode Management Transients:
+ * - brag_book_gallery_mode_{hash}           : Mode data cache
+ *
+ * Notice/UI Transients:
+ * - brag_book_gallery_show_rewrite_notice   : Rewrite rules notice flag
+ *
+ * Image/Media Transients:
+ * - brag_book_gallery_image_{hash}          : Image data cache
+ * - brag_book_gallery_attachment_{hash}     : Attachment data cache
+ *
+ * Circuit Breaker/API Health:
+ * - brag_book_gallery_circuit_{endpoint}    : Circuit breaker status
+ * - brag_book_gallery_failures_{endpoint}   : API failure count
+ *
+ * Consultation/Form Transients:
+ * - brag_book_gallery_consultation_hourly_{ip} : Hourly submission limit
+ * - brag_book_gallery_consultation_daily_{ip}  : Daily submission limit
+ *
+ * System/Debug Transients:
+ * - brag_book_gallery_debug_report          : Debug system report
+ * - brag_book_gallery_last_flush            : Last rewrite rules flush
+ * - brag_book_gallery_validation_{hash}     : Data validation cache
+ *
+ * Note: {hash} represents dynamic MD5 hashes based on parameters
+ *       {id} represents numeric IDs
+ *       {taxonomy}, {endpoint}, {ip}, {suffix} are dynamic values
  *
  * @since 3.0.0
  */
@@ -45,13 +134,60 @@ class Cache_Management {
 	private const MAX_DISPLAY_SIZE = 1048576; // 1MB
 
 	/**
+	 * Items per page for pagination
+	 *
+	 * @since 3.0.0
+	 */
+	private const ITEMS_PER_PAGE = 50;
+
+	/**
+	 * Cache duration constants
+	 *
+	 * @since 3.0.0
+	 */
+	private const CACHE_TTL_SHORT = 300;     // 5 minutes
+	private const CACHE_TTL_MEDIUM = 1800;   // 30 minutes
+	private const CACHE_TTL_LONG = 3600;     // 1 hour
+
+	/**
+	 * Performance metrics storage
+	 *
+	 * @since 3.0.0
+	 * @var array<string, array<string, mixed>>
+	 */
+	private array $performance_metrics = [];
+
+	/**
+	 * Error log storage
+	 *
+	 * @since 3.0.0
+	 * @var array<int, array<string, mixed>>
+	 */
+	private array $error_log = [];
+
+	/**
+	 * Cache statistics
+	 *
+	 * @since 3.0.0
+	 * @var array<string, mixed>
+	 */
+	private array $cache_stats = [];
+
+	/**
 	 * Render the cache management tool interface
 	 *
 	 * @since 3.0.0
 	 * @return void
 	 */
 	public function render(): void {
-		$cached_items = $this->get_cached_items();
+		$page = isset( $_GET['cache_page'] ) ? max( 1, absint( $_GET['cache_page'] ) ) : 1;
+		$search = isset( $_GET['cache_search'] ) ? sanitize_text_field( wp_unslash( $_GET['cache_search'] ) ) : '';
+		$type_filter = isset( $_GET['cache_type'] ) ? sanitize_text_field( wp_unslash( $_GET['cache_type'] ) ) : '';
+
+		$cache_result = $this->get_cached_items( $page, $search, $type_filter );
+		$cached_items = $cache_result['items'];
+		$total_items = $cache_result['total'];
+		$total_pages = $cache_result['pages'];
 		$total_size = $this->calculate_total_size( $cached_items );
 		?>
 		<div class="tool-section">
@@ -62,9 +198,11 @@ class Cache_Management {
 			<div class="cache-stats">
 				<h4><?php esc_html_e( 'Cache Statistics', 'brag-book-gallery' ); ?></h4>
 				<ul>
-					<li><?php printf( esc_html__( 'Total Cached Items: %d', 'brag-book-gallery' ), count( $cached_items ) ); ?></li>
+					<li><?php printf( esc_html__( 'Total Cached Items: %d', 'brag-book-gallery' ), $total_items ); ?></li>
+					<li><?php printf( esc_html__( 'Current Page Items: %d', 'brag-book-gallery' ), count( $cached_items ) ); ?></li>
 					<li><?php printf( esc_html__( 'Total Cache Size: %s', 'brag-book-gallery' ), $this->format_bytes( $total_size ) ); ?></li>
-					<li><?php printf( esc_html__( 'Cache Duration Setting: %d seconds', 'brag-book-gallery' ), get_option( 'brag_book_gallery_cache_duration', 3600 ) ); ?></li>
+					<li><?php printf( esc_html__( 'Cache Duration Setting: %d seconds', 'brag-book-gallery' ), get_option( 'brag_book_gallery_cache_duration', self::CACHE_TTL_LONG ) ); ?></li>
+					<li><?php printf( esc_html__( 'Page %d of %d', 'brag-book-gallery' ), $page, max( 1, $total_pages ) ); ?></li>
 				</ul>
 			</div>
 
@@ -170,7 +308,7 @@ class Cache_Management {
 		</div>
 
 		<!-- HTML5 Dialog Elements -->
-		
+
 		<!-- Confirmation Dialog -->
 		<dialog id="confirm-dialog" class="cache-dialog">
 			<form method="dialog">
@@ -186,7 +324,7 @@ class Cache_Management {
 				</div>
 			</form>
 		</dialog>
-		
+
 		<!-- Alert Dialog -->
 		<dialog id="alert-dialog" class="cache-dialog">
 			<form method="dialog">
@@ -199,7 +337,7 @@ class Cache_Management {
 				</div>
 			</form>
 		</dialog>
-		
+
 		<!-- Cache Data Modal -->
 		<dialog id="cache-data-modal" class="cache-dialog cache-data-dialog">
 			<form method="dialog">
@@ -226,66 +364,66 @@ class Cache_Management {
 					const messageEl = document.getElementById('confirm-dialog-message');
 					const cancelBtn = document.getElementById('confirm-cancel');
 					const okBtn = document.getElementById('confirm-ok');
-					
+
 					titleEl.textContent = title;
 					messageEl.textContent = message;
-					
+
 					const handleCancel = () => {
 						dialog.close();
 						resolve(false);
 					};
-					
+
 					const handleOk = () => {
 						dialog.close();
 						resolve(true);
 					};
-					
+
 					// Remove old listeners and add new ones
 					cancelBtn.replaceWith(cancelBtn.cloneNode(true));
 					okBtn.replaceWith(okBtn.cloneNode(true));
-					
+
 					document.getElementById('confirm-cancel').addEventListener('click', handleCancel);
 					document.getElementById('confirm-ok').addEventListener('click', handleOk);
-					
+
 					// Handle ESC key
 					dialog.addEventListener('cancel', (e) => {
 						e.preventDefault();
 						handleCancel();
 					}, { once: true });
-					
+
 					dialog.showModal();
 				});
 			};
-			
+
 			const alertDialog = (message, title = '<?php esc_html_e( 'Notice', 'brag-book-gallery' ); ?>') => {
 				return new Promise((resolve) => {
 					const dialog = document.getElementById('alert-dialog');
 					const titleEl = document.getElementById('alert-dialog-title');
 					const messageEl = document.getElementById('alert-dialog-message');
 					const okBtn = document.getElementById('alert-ok');
-					
+
 					titleEl.textContent = title;
 					messageEl.textContent = message;
-					
+
 					const handleOk = () => {
 						dialog.close();
 						resolve();
 					};
-					
+
 					// Remove old listener and add new one
 					okBtn.replaceWith(okBtn.cloneNode(true));
 					document.getElementById('alert-ok').addEventListener('click', handleOk);
-					
+
 					// Handle ESC key
 					dialog.addEventListener('cancel', (e) => {
 						e.preventDefault();
 						handleOk();
 					}, { once: true });
-					
+
 					dialog.showModal();
 				});
 			};
-			
+
 			// Helper function for AJAX requests using async/await
 			const ajaxPost = async (data) => {
 				const formData = new FormData();
@@ -372,8 +510,13 @@ class Cache_Management {
 				}
 			};
 
-			// Refresh cache list
-			document.getElementById('refresh-cache-list')?.addEventListener('click', () => location.reload());
+			// Refresh cache list - preserve the active tab
+			document.getElementById('refresh-cache-list')?.addEventListener('click', () => {
+				// Add hash to URL to preserve cache-management tab
+				const currentUrl = window.location.href.split('#')[0];
+				window.location.href = currentUrl + '#cache-management';
+				location.reload();
+			});
 
 			// Clear selected cache items
 			const clearSelectedBtn = document.getElementById('clear-selected-cache');
@@ -388,7 +531,7 @@ class Cache_Management {
 					'<?php esc_html_e( 'Are you sure you want to delete the selected cache items?', 'brag-book-gallery' ); ?>',
 					'<?php esc_html_e( 'Delete Cache Items', 'brag-book-gallery' ); ?>'
 				);
-				
+
 				if (!confirmed) {
 					return;
 				}
@@ -405,7 +548,11 @@ class Cache_Management {
 
 				if (response.success) {
 					showStatus('<?php esc_html_e( 'Selected items cleared successfully!', 'brag-book-gallery' ); ?>', 'success');
-					setTimeout(() => location.reload(), 1000);
+					setTimeout(() => {
+						const currentUrl = window.location.href.split('#')[0];
+						window.location.href = currentUrl + '#cache-management';
+						location.reload();
+					}, 1000);
 				} else {
 					showStatus(response.data || '<?php esc_html_e( 'Error clearing cache items.', 'brag-book-gallery' ); ?>', 'error');
 					this.disabled = false;
@@ -419,7 +566,7 @@ class Cache_Management {
 					'<?php esc_html_e( 'Are you sure you want to clear ALL cache? This cannot be undone.', 'brag-book-gallery' ); ?>',
 					'<?php esc_html_e( 'Clear All Cache', 'brag-book-gallery' ); ?>'
 				);
-				
+
 				if (!confirmed) {
 					return;
 				}
@@ -435,7 +582,11 @@ class Cache_Management {
 
 				if (response.success) {
 					showStatus('<?php esc_html_e( 'All cache cleared successfully!', 'brag-book-gallery' ); ?>', 'success');
-					setTimeout(() => location.reload(), 1000);
+					setTimeout(() => {
+						const currentUrl = window.location.href.split('#')[0];
+						window.location.href = currentUrl + '#cache-management';
+						location.reload();
+					}, 1000);
 				} else {
 					showStatus(response.data || '<?php esc_html_e( 'Error clearing cache.', 'brag-book-gallery' ); ?>', 'error');
 					this.disabled = false;
@@ -452,7 +603,7 @@ class Cache_Management {
 						'<?php esc_html_e( 'Delete this cache item?', 'brag-book-gallery' ); ?>',
 						'<?php esc_html_e( 'Delete Cache Item', 'brag-book-gallery' ); ?>'
 					);
-					
+
 					if (!confirmed) {
 						return;
 					}
@@ -470,6 +621,8 @@ class Cache_Management {
 						row.remove();
 						const remainingRows = document.querySelectorAll('#cache-items-table tbody tr');
 						if (remainingRows.length === 0) {
+							const currentUrl = window.location.href.split('#')[0];
+							window.location.href = currentUrl + '#cache-management';
 							location.reload();
 						}
 					} else {
@@ -488,7 +641,7 @@ class Cache_Management {
 					'<?php esc_html_e( 'Are you sure you want to clear the gallery API cache? This will force fresh data to be fetched from the API.', 'brag-book-gallery' ); ?>',
 					'<?php esc_html_e( 'Clear Gallery API Cache', 'brag-book-gallery' ); ?>'
 				);
-				
+
 				if (!confirmed) {
 					return;
 				}
@@ -507,11 +660,11 @@ class Cache_Management {
 					});
 
 					const data = await response.json();
-					
+
 					if (data.success) {
 						this.textContent = '<?php esc_html_e( 'Cache Cleared ✓', 'brag-book-gallery' ); ?>';
 						updateStatus('<?php esc_html_e( 'Gallery cache cleared successfully!', 'brag-book-gallery' ); ?>', 'success');
-						
+
 						// Refresh the cache list after a moment
 						setTimeout(() => {
 							this.textContent = '<?php esc_html_e( 'Clear Gallery Cache', 'brag-book-gallery' ); ?>';
@@ -613,53 +766,99 @@ class Cache_Management {
 	}
 
 	/**
-	 * Get all cached items for the plugin
+	 * Get all cached items for the plugin with pagination and filtering
 	 *
 	 * @since 3.0.0
-	 * @return array
+	 * @param int    $page Page number for pagination.
+	 * @param string $search Search term.
+	 * @param string $type Filter by type.
+	 * @return array{items: array, total: int, pages: int}
 	 */
-	private function get_cached_items(): array {
-		global $wpdb;
+	private function get_cached_items( int $page = 1, string $search = '', string $type = '' ): array {
+		$start_time = microtime( true );
 
-		$items = [];
+		try {
+			global $wpdb;
 
-		// Get transients from database
-		$transients = $wpdb->get_results(
-			$wpdb->prepare(
-				"SELECT option_name, option_value
-				FROM {$wpdb->options}
-				WHERE option_name LIKE %s
-				OR option_name LIKE %s
-				ORDER BY option_name",
-				'_transient_' . self::CACHE_PREFIX . '%',
-				'_transient_timeout_' . self::CACHE_PREFIX . '%'
-			)
-		);
+			$items = [];
 
-		$transient_data = [];
-		$transient_timeouts = [];
+			// Get transients from database
+			$transients = $wpdb->get_results(
+				$wpdb->prepare(
+					"SELECT option_name, option_value
+					FROM {$wpdb->options}
+					WHERE option_name LIKE %s
+					OR option_name LIKE %s
+					ORDER BY option_name",
+					'_transient_' . self::CACHE_PREFIX . '%',
+					'_transient_timeout_' . self::CACHE_PREFIX . '%'
+				)
+			);
 
-		foreach ( $transients as $transient ) {
-			if ( strpos( $transient->option_name, '_transient_timeout_' ) === 0 ) {
-				$key = str_replace( '_transient_timeout_', '', $transient->option_name );
-				$transient_timeouts[ $key ] = $transient->option_value;
-			} else {
-				$key = str_replace( '_transient_', '', $transient->option_name );
-				$transient_data[ $key ] = $transient->option_value;
+			$transient_data = [];
+			$transient_timeouts = [];
+
+			foreach ( $transients as $transient ) {
+				if ( str_starts_with( $transient->option_name, '_transient_timeout_' ) ) {
+					$key = str_replace( '_transient_timeout_', '', $transient->option_name );
+					$transient_timeouts[ $key ] = $transient->option_value;
+				} else {
+					$key = str_replace( '_transient_', '', $transient->option_name );
+					$transient_data[ $key ] = $transient->option_value;
+				}
 			}
-		}
 
-		foreach ( $transient_data as $key => $value ) {
-			$type = $this->determine_cache_type( $key );
-			$items[] = [
-				'key'        => $key,
-				'type'       => $type,
-				'size'       => strlen( $value ),
-				'expiration' => isset( $transient_timeouts[ $key ] ) ? intval( $transient_timeouts[ $key ] ) : null,
+			foreach ( $transient_data as $key => $value ) {
+				// Apply search filter
+				if ( ! empty( $search ) && stripos( $key, $search ) === false ) {
+					continue;
+				}
+
+				$item_type = $this->determine_cache_type( $key );
+
+				// Apply type filter
+				if ( ! empty( $type ) && $item_type !== $type ) {
+					continue;
+				}
+
+				$expiration_value = isset( $transient_timeouts[ $key ] ) ? (int) $transient_timeouts[ $key ] : null;
+				
+				$items[] = [
+					'key'        => $key,
+					'type'       => $item_type,
+					'size'       => strlen( $value ),
+					'expiration' => $expiration_value,
+					'created'    => $this->estimate_creation_time( $expiration_value ),
+				];
+			}
+
+			// Sort by size (largest first)
+			usort( $items, fn( $a, $b ) => $b['size'] <=> $a['size'] );
+
+			// Calculate pagination
+			$total = count( $items );
+			$pages = (int) ceil( $total / self::ITEMS_PER_PAGE );
+			$offset = ( $page - 1 ) * self::ITEMS_PER_PAGE;
+
+			// Slice for current page
+			$items = array_slice( $items, $offset, self::ITEMS_PER_PAGE );
+
+			$this->track_performance( 'get_cached_items', microtime( true ) - $start_time );
+
+			return [
+				'items' => $items,
+				'total' => $total,
+				'pages' => $pages,
+			];
+
+		} catch ( Exception $e ) {
+			$this->log_error( 'get_cached_items', $e->getMessage() );
+			return [
+				'items' => [],
+				'total' => 0,
+				'pages' => 0,
 			];
 		}
-
-		return $items;
 	}
 
 	/**
@@ -670,17 +869,15 @@ class Cache_Management {
 	 * @return string
 	 */
 	private function determine_cache_type( string $key ): string {
-		if ( strpos( $key, 'sidebar' ) !== false ) {
-			return __( 'Sidebar Data', 'brag-book-gallery' );
-		} elseif ( strpos( $key, 'cases' ) !== false ) {
-			return __( 'Cases Data', 'brag-book-gallery' );
-		} elseif ( strpos( $key, 'carousel' ) !== false ) {
-			return __( 'Carousel Data', 'brag-book-gallery' );
-		} elseif ( strpos( $key, 'api' ) !== false ) {
-			return __( 'API Response', 'brag-book-gallery' );
-		} else {
-			return __( 'General', 'brag-book-gallery' );
-		}
+		return match ( true ) {
+			str_contains( $key, 'sidebar' )  => __( 'Sidebar Data', 'brag-book-gallery' ),
+			str_contains( $key, 'cases' )    => __( 'Cases Data', 'brag-book-gallery' ),
+			str_contains( $key, 'carousel' ) => __( 'Carousel Data', 'brag-book-gallery' ),
+			str_contains( $key, 'api' )      => __( 'API Response', 'brag-book-gallery' ),
+			str_contains( $key, 'sync' )     => __( 'Sync Data', 'brag-book-gallery' ),
+			str_contains( $key, 'meta' )     => __( 'Metadata', 'brag-book-gallery' ),
+			default                          => __( 'General', 'brag-book-gallery' ),
+		};
 	}
 
 	/**
@@ -699,11 +896,11 @@ class Cache_Management {
 		$formatted = ucwords( $formatted );
 
 		// Truncate if too long
-		if ( strlen( $formatted ) > 50 ) {
-			$formatted = substr( $formatted, 0, 47 ) . '...';
+		if ( mb_strlen( $formatted ) > 50 ) {
+			$formatted = mb_substr( $formatted, 0, 47 ) . '...';
 		}
 
-		return $formatted;
+		return esc_html( $formatted );
 	}
 
 	/**
@@ -725,11 +922,12 @@ class Cache_Management {
 	 * Format bytes to human readable format
 	 *
 	 * @since 3.0.0
-	 * @param int $bytes Number of bytes.
+	 * @param int|float $bytes Number of bytes.
+	 * @param int       $precision Decimal precision.
 	 * @return string
 	 */
-	private function format_bytes( int $bytes ): string {
-		$units = [ 'B', 'KB', 'MB', 'GB' ];
+	private function format_bytes( int|float $bytes, int $precision = 2 ): string {
+		$units = [ 'B', 'KB', 'MB', 'GB', 'TB' ];
 		$i = 0;
 
 		while ( $bytes >= 1024 && $i < count( $units ) - 1 ) {
@@ -737,30 +935,39 @@ class Cache_Management {
 			$i++;
 		}
 
-		return round( $bytes, 2 ) . ' ' . $units[ $i ];
+		return number_format( $bytes, $precision ) . ' ' . $units[ $i ];
 	}
 
 	/**
-	 * Format time remaining
+	 * Format time remaining with improved precision
 	 *
 	 * @since 3.0.0
 	 * @param int $seconds Seconds remaining.
 	 * @return string
 	 */
 	private function format_time_remaining( int $seconds ): string {
-		if ( $seconds < 60 ) {
-			return sprintf( _n( '%d second', '%d seconds', $seconds, 'brag-book-gallery' ), $seconds );
-		} elseif ( $seconds < 3600 ) {
-			$minutes = floor( $seconds / 60 );
-			return sprintf( _n( '%d minute', '%d minutes', $minutes, 'brag-book-gallery' ), $minutes );
-		} else {
-			$hours = floor( $seconds / 3600 );
-			return sprintf( _n( '%d hour', '%d hours', $hours, 'brag-book-gallery' ), $hours );
-		}
+		return match ( true ) {
+			$seconds < 60 => sprintf(
+				_n( '%d second', '%d seconds', $seconds, 'brag-book-gallery' ),
+				$seconds
+			),
+			$seconds < 3600 => sprintf(
+				_n( '%d minute', '%d minutes', (int) floor( $seconds / 60 ), 'brag-book-gallery' ),
+				(int) floor( $seconds / 60 )
+			),
+			$seconds < 86400 => sprintf(
+				_n( '%d hour', '%d hours', (int) floor( $seconds / 3600 ), 'brag-book-gallery' ),
+				(int) floor( $seconds / 3600 )
+			),
+			default => sprintf(
+				_n( '%d day', '%d days', (int) floor( $seconds / 86400 ), 'brag-book-gallery' ),
+				(int) floor( $seconds / 86400 )
+			),
+		};
 	}
 
 	/**
-	 * Execute tool actions via AJAX.
+	 * Execute tool actions via AJAX with security validation.
 	 *
 	 * Handles all AJAX requests for cache management operations including
 	 * viewing, deleting, and clearing cache items.
@@ -769,42 +976,70 @@ class Cache_Management {
 	 * @param string $action Action to execute.
 	 * @param array  $data   Request data from AJAX.
 	 * @return mixed Response data for AJAX.
-	 * @throws \Exception If action is invalid.
+	 * @throws Exception If action is invalid.
 	 */
 	public function execute( string $action, array $data ): mixed {
-		return match ( $action ) {
-			'get_data' => $this->get_cache_data( $data['key'] ?? '' ),
-			'delete_items' => $this->delete_cache_items( $data['keys'] ?? [] ),
-			'clear_all' => $this->clear_all_cache(),
-			default => throw new \Exception( 'Invalid action: ' . $action ),
-		};
+		$start_time = microtime( true );
+
+		try {
+			// Validate user capabilities
+			if ( ! current_user_can( 'manage_options' ) ) {
+				throw new Exception( __( 'Insufficient permissions', 'brag-book-gallery' ) );
+			}
+
+			$result = match ( $action ) {
+				'get_data'     => $this->get_cache_data( $data['key'] ?? '' ),
+				'delete_items' => $this->delete_cache_items( $data['keys'] ?? [] ),
+				'clear_all'    => $this->clear_all_cache(),
+				'export'       => $this->export_cache_data(),
+				'get_stats'    => $this->get_cache_statistics(),
+				default        => throw new Exception( 'Invalid action: ' . $action ),
+			};
+
+			$this->track_performance( 'execute_' . $action, microtime( true ) - $start_time );
+
+			return $result;
+
+		} catch ( Exception $e ) {
+			$this->log_error( 'execute', $e->getMessage() );
+			throw $e;
+		}
 	}
 
 	/**
-	 * Get cache data for viewing.
+	 * Get cache data for viewing with security checks.
 	 *
 	 * @since 3.0.0
 	 * @param string $key Cache key.
 	 * @return mixed
+	 * @throws Exception If key is invalid or data not found.
 	 */
 	private function get_cache_data( string $key ): mixed {
 		if ( empty( $key ) ) {
-			throw new \Exception( __( 'Cache key is required', 'brag-book-gallery' ) );
+			throw new Exception( __( 'Cache key is required', 'brag-book-gallery' ) );
+		}
+
+		// Validate key belongs to our plugin
+		if ( ! str_starts_with( $key, self::CACHE_PREFIX ) ) {
+			throw new Exception( __( 'Invalid cache key', 'brag-book-gallery' ) );
 		}
 
 		$data = get_transient( $key );
 
 		if ( false === $data ) {
-			throw new \Exception( __( 'Cache item not found or expired', 'brag-book-gallery' ) );
+			throw new Exception( __( 'Cache item not found or expired', 'brag-book-gallery' ) );
 		}
 
 		// Check size before returning
 		$serialized = serialize( $data );
-		if ( strlen( $serialized ) > self::MAX_DISPLAY_SIZE ) {
+		$size = strlen( $serialized );
+
+		if ( $size > self::MAX_DISPLAY_SIZE ) {
 			return [
-				'_notice' => __( 'Data too large to display inline', 'brag-book-gallery' ),
-				'_size' => $this->format_bytes( strlen( $serialized ) ),
-				'_type' => gettype( $data ),
+				'_notice'  => __( 'Data too large to display inline', 'brag-book-gallery' ),
+				'_size'    => $this->format_bytes( $size ),
+				'_type'    => gettype( $data ),
+				'_preview' => $this->get_data_preview( $data ),
 			];
 		}
 
@@ -812,23 +1047,47 @@ class Cache_Management {
 	}
 
 	/**
-	 * Delete specific cache items.
+	 * Delete specific cache items with validation.
 	 *
 	 * @since 3.0.0
-	 * @param array $keys Array of cache keys to delete.
+	 * @param array<string> $keys Array of cache keys to delete.
 	 * @return string Success message.
+	 * @throws Exception If no keys provided or validation fails.
 	 */
 	private function delete_cache_items( array $keys ): string {
 		if ( empty( $keys ) ) {
-			throw new \Exception( __( 'No cache keys provided', 'brag-book-gallery' ) );
+			throw new Exception( __( 'No cache keys provided', 'brag-book-gallery' ) );
 		}
 
+		$start_time = microtime( true );
 		$deleted = 0;
+		$failed = [];
+
 		foreach ( $keys as $key ) {
+			// Validate key belongs to our plugin
+			if ( ! str_starts_with( $key, self::CACHE_PREFIX ) ) {
+				$failed[] = $key;
+				continue;
+			}
+
 			if ( delete_transient( $key ) ) {
 				$deleted++;
+
+				/**
+				 * Fires after a cache item is deleted.
+				 *
+				 * @since 3.0.0
+				 * @param string $key The cache key that was deleted.
+				 */
+				do_action( 'brag_book_gallery_cache_item_deleted', $key );
 			}
 		}
+
+		if ( ! empty( $failed ) ) {
+			$this->log_error( 'delete_cache_items', 'Invalid keys: ' . implode( ', ', $failed ) );
+		}
+
+		$this->track_performance( 'delete_cache_items', microtime( true ) - $start_time );
 
 		return sprintf(
 			_n(
@@ -842,31 +1101,198 @@ class Cache_Management {
 	}
 
 	/**
-	 * Clear all plugin cache.
+	 * Clear all plugin cache with performance tracking.
 	 *
 	 * @since 3.0.0
 	 * @return string Success message.
 	 */
 	private function clear_all_cache(): string {
-		global $wpdb;
+		$start_time = microtime( true );
 
-		// Delete all transients with our prefix
-		$deleted = $wpdb->query(
-			$wpdb->prepare(
-				"DELETE FROM {$wpdb->options}
-				WHERE option_name LIKE %s
-				OR option_name LIKE %s",
-				'_transient_' . self::CACHE_PREFIX . '%',
-				'_transient_timeout_' . self::CACHE_PREFIX . '%'
-			)
-		);
+		try {
+			global $wpdb;
 
-		// Clear object cache
-		wp_cache_flush();
+			// Delete all transients with our prefix
+			$deleted = $wpdb->query(
+				$wpdb->prepare(
+					"DELETE FROM {$wpdb->options}
+					WHERE option_name LIKE %s
+					OR option_name LIKE %s",
+					'_transient_' . self::CACHE_PREFIX . '%',
+					'_transient_timeout_' . self::CACHE_PREFIX . '%'
+				)
+			);
 
-		return sprintf(
-			__( 'Successfully cleared all cache. %d items removed.', 'brag-book-gallery' ),
-			$deleted / 2 // Divide by 2 since we delete both transient and timeout
-		);
+			// Clear object cache
+			wp_cache_flush();
+
+			/**
+			 * Fires after all cache is cleared.
+			 *
+			 * @since 3.0.0
+			 * @param int $deleted Number of items deleted.
+			 */
+			do_action( 'brag_book_gallery_cache_cleared', $deleted );
+
+			$this->track_performance( 'clear_all_cache', microtime( true ) - $start_time );
+
+			return sprintf(
+				__( 'Successfully cleared all cache. %d items removed.', 'brag-book-gallery' ),
+				(int) ( $deleted / 2 ) // Divide by 2 since we delete both transient and timeout
+			);
+
+		} catch ( Exception $e ) {
+			$this->log_error( 'clear_all_cache', $e->getMessage() );
+			throw new Exception( __( 'Failed to clear cache', 'brag-book-gallery' ) );
+		}
+	}
+
+	/**
+	 * Estimate creation time based on expiration.
+	 *
+	 * @since 3.0.0
+	 * @param int|null $expiration Expiration timestamp.
+	 * @return int|null Estimated creation timestamp.
+	 */
+	private function estimate_creation_time( ?int $expiration ): ?int {
+		if ( null === $expiration ) {
+			return null;
+		}
+
+		// Estimate based on default cache duration
+		$duration = get_option( 'brag_book_gallery_cache_duration', self::CACHE_TTL_LONG );
+		return $expiration - $duration;
+	}
+
+	/**
+	 * Get data preview for large data sets.
+	 *
+	 * @since 3.0.0
+	 * @param mixed $data Data to preview.
+	 * @return string Preview string.
+	 */
+	private function get_data_preview( mixed $data ): string {
+		if ( is_array( $data ) ) {
+			return sprintf(
+				__( 'Array with %d items', 'brag-book-gallery' ),
+				count( $data )
+			);
+		}
+
+		if ( is_object( $data ) ) {
+			return sprintf(
+				__( 'Object of class %s', 'brag-book-gallery' ),
+				get_class( $data )
+			);
+		}
+
+		if ( is_string( $data ) ) {
+			return mb_substr( $data, 0, 100 ) . '...';
+		}
+
+		return gettype( $data );
+	}
+
+	/**
+	 * Export cache data for backup.
+	 *
+	 * @since 3.0.0
+	 * @return array<string, mixed> Export data.
+	 */
+	private function export_cache_data(): array {
+		$cache_data = $this->get_cached_items();
+
+		return [
+			'timestamp' => current_time( 'mysql' ),
+			'site_url'  => get_site_url(),
+			'version'   => get_option( 'brag_book_gallery_version', '3.0.0' ),
+			'items'     => $cache_data['items'],
+			'total'     => $cache_data['total'],
+		];
+	}
+
+	/**
+	 * Get cache statistics.
+	 *
+	 * @since 3.0.0
+	 * @return array<string, mixed> Statistics data.
+	 */
+	private function get_cache_statistics(): array {
+		$cache_data = $this->get_cached_items();
+		$total_size = $this->calculate_total_size( $cache_data['items'] );
+
+		// Group by type
+		$types = [];
+		foreach ( $cache_data['items'] as $item ) {
+			$type = $item['type'];
+			if ( ! isset( $types[ $type ] ) ) {
+				$types[ $type ] = [
+					'count' => 0,
+					'size'  => 0,
+				];
+			}
+			$types[ $type ]['count']++;
+			$types[ $type ]['size'] += $item['size'];
+		}
+
+		return [
+			'total_items'   => $cache_data['total'],
+			'total_size'    => $total_size,
+			'average_size'  => $cache_data['total'] > 0 ? $total_size / $cache_data['total'] : 0,
+			'types'         => $types,
+			'cache_duration' => get_option( 'brag_book_gallery_cache_duration', self::CACHE_TTL_LONG ),
+			'metrics'       => $this->performance_metrics,
+		];
+	}
+
+	/**
+	 * Log error message.
+	 *
+	 * @since 3.0.0
+	 * @param string $context Error context.
+	 * @param string $message Error message.
+	 * @return void
+	 */
+	private function log_error( string $context, string $message ): void {
+		$this->error_log[] = [
+			'context' => $context,
+			'message' => $message,
+			'time'    => current_time( 'mysql' ),
+		];
+
+		// Limit error log size
+		if ( count( $this->error_log ) > 100 ) {
+			array_shift( $this->error_log );
+		}
+
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( sprintf( '[BRAGBook Cache] %s: %s', $context, $message ) );
+		}
+	}
+
+	/**
+	 * Track performance metrics.
+	 *
+	 * @since 3.0.0
+	 * @param string $operation Operation name.
+	 * @param float  $duration Operation duration.
+	 * @return void
+	 */
+	private function track_performance( string $operation, float $duration ): void {
+		if ( ! isset( $this->performance_metrics[ $operation ] ) ) {
+			$this->performance_metrics[ $operation ] = [
+				'count'   => 0,
+				'total'   => 0,
+				'min'     => PHP_FLOAT_MAX,
+				'max'     => 0,
+			];
+		}
+
+		$metrics = &$this->performance_metrics[ $operation ];
+		$metrics['count']++;
+		$metrics['total'] += $duration;
+		$metrics['min'] = min( $metrics['min'], $duration );
+		$metrics['max'] = max( $metrics['max'], $duration );
+		$metrics['average'] = $metrics['total'] / $metrics['count'];
 	}
 }

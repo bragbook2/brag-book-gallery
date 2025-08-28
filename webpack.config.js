@@ -7,8 +7,7 @@ const path = require('path');
 module.exports = {
 	entry: {
 		frontend: './src/js/frontend.js',
-		admin: './src/js/admin.js',
-		carousel: './src/js/carousel.js'
+		admin: './src/js/admin.js'
 	},
 	output: {
 		path: path.resolve(__dirname, 'assets/js'),
@@ -16,8 +15,7 @@ module.exports = {
 			// Map entry names to desired output filenames
 			const nameMap = {
 				frontend: 'brag-book-gallery.js',
-				admin: 'brag-book-gallery-admin.js',
-				carousel: 'brag-book-carousel.js'
+				admin: 'brag-book-gallery-admin.js'
 			};
 			return nameMap[pathData.chunk.name] || '[name].js';
 		}

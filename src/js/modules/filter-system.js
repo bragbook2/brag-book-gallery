@@ -1,52 +1,80 @@
 /**
  * Filter System Component
- * Manages expandable filter groups with animations
- * Supports both JS-based filtering and URL navigation modes
+ * Manages expandable filter groups with GSAP animations and URL routing
+ * Handles procedure filtering, browser history, and AJAX content loading
+ * Supports both JavaScript-based filtering and URL navigation modes
  */
 class FilterSystem {
+	/**
+	 * Initialize the filter system
+	 * @param {HTMLElement} container - The filter container element
+	 * @param {Object} options - Configuration options
+	 * @param {string} options.mode - Filter mode: 'javascript' or 'navigation' (default: 'javascript')
+	 * @param {string} options.baseUrl - Base URL for navigation (default: '/gallery')
+	 * @param {boolean} options.closeOthersOnOpen - Close other filters when opening one (default: true)
+	 * @param {Function} options.onFilterChange - Callback when filters change
+	 * @param {Function} options.onNavigate - Callback for URL navigation
+	 */
 	constructor(container, options = {}) {
+		// Core DOM elements and data structures
 		this.container = container;
 		this.filterHeaders = container?.querySelectorAll('.brag-book-gallery-nav-button');
-		this.activeFilters = new Map();
-		this.categories = new Map();
-		this.procedures = new Map();
+		this.activeFilters = new Map(); // Currently active filters
+		this.categories = new Map(); // Available filter categories
+		this.procedures = new Map(); // Available procedures by category
 		
-		// Store original page SEO for restoration
+		// Store original SEO data for restoration when clearing filters
 		this.originalTitle = document.title;
 		this.originalDescription = document.querySelector('meta[name="description"]')?.content || '';
 
+		// Configuration options with defaults
 		this.options = {
-			mode: options.mode || 'javascript', // 'javascript' or 'navigation'
-			baseUrl: options.baseUrl || '/gallery',
-			animateWithGsap: typeof gsap !== 'undefined',
-			closeOthersOnOpen: options.closeOthersOnOpen !== false,
-			onFilterChange: options.onFilterChange || (() => {}),
-			onNavigate: options.onNavigate || ((url) => { window.location.href = url; }),
+			mode: options.mode || 'javascript', // Filter mode
+			baseUrl: options.baseUrl || '/gallery', // Base URL for navigation
+			animateWithGsap: typeof gsap !== 'undefined', // Use GSAP if available
+			closeOthersOnOpen: options.closeOthersOnOpen !== false, // Accordion behavior
+			onFilterChange: options.onFilterChange || (() => {}), // Filter change callback
+			onNavigate: options.onNavigate || ((url) => { window.location.href = url; }), // Navigation callback
 			...options
 		};
 
+		// Initialize only if container exists
 		if (this.container) {
 			this.init();
 		}
 	}
 
+	/**
+	 * Initialize the filter system - index filters, set up events, and load initial state
+	 */
 	init() {
+		// Build internal filter index for fast lookups
 		this.indexFilters();
+		
+		// Set up all event handlers
 		this.setupEventListeners();
+		
+		// Load any existing filter state from URL
 		this.loadStateFromUrl();
 
-		// Initialize GSAP states if available
+		// Initialize GSAP animation states if available
 		if (this.options.animateWithGsap && typeof gsap !== 'undefined') {
+			// Set initial collapsed state for filter submenus
 			gsap.set(".brag-book-gallery-nav-list-submenu", { height: 0 });
 		}
 	}
 
+	/**
+	 * Build an index of all available filters for fast lookups
+	 */
 	indexFilters() {
-		// Index all categories and procedures
+		// Find all category groups in the filter container
 		const categoryGroups = this.container?.querySelectorAll('[data-category]');
 
+		// Process each category group
 		categoryGroups?.forEach(group => {
 			const category = group.dataset.category;
+			// Create category entry if it doesn't exist
 			if (!this.categories.has(category)) {
 				this.categories.set(category, {
 					name: category,
@@ -55,12 +83,13 @@ class FilterSystem {
 				});
 			}
 
-			// Index procedures within this category
+			// Index all procedure links within this category
 			const filterLinks = group.querySelectorAll('.brag-book-gallery-nav-link');
 			filterLinks.forEach(link => {
 				const procedure = link.dataset.procedure;
 				const category = link.dataset.category;
 
+				// Create procedure data if both procedure and category exist
 				if (procedure && category) {
 					const procedureData = {
 						id: procedure,
@@ -70,6 +99,7 @@ class FilterSystem {
 						link: link
 					};
 
+					// Store procedure data with composite key
 					this.procedures.set(`${category}:${procedure}`, procedureData);
 					this.categories.get(category).procedures.add(procedure);
 				}
@@ -77,12 +107,16 @@ class FilterSystem {
 		});
 	}
 
+	/**
+	 * Set up all event listeners for filter interactions and browser navigation
+	 */
 	setupEventListeners() {
+		// Filter header click handlers for expanding/collapsing filter groups
 		this.filterHeaders?.forEach(header => {
 			header.addEventListener('click', () => this.toggleFilter(header));
 		});
 
-		// Filter anchor links - Handle with AJAX to load into #gallery-content
+		// Procedure filter link handlers - intercept clicks to load content via AJAX
 		const filterLinks = this.container?.querySelectorAll('.brag-book-gallery-nav-link');
 		filterLinks?.forEach(link => {
 			link.addEventListener('click', (e) => {
@@ -91,41 +125,46 @@ class FilterSystem {
 			});
 		});
 
-		// Handle browser back/forward buttons
+		// Browser history navigation handler (back/forward buttons)
 		window.addEventListener('popstate', (e) => {
 			if (e.state && e.state.caseId) {
-				// Navigate to/from case detail
+				// Navigate to/from case detail view
 				window.loadCaseDetails(e.state.caseId, e.state.procedureId, e.state.procedureSlug);
 			} else if (e.state && e.state.category && e.state.procedure) {
-				// Reactivate the filter
+				// Restore filter state from browser history
 				this.reactivateFilter(e.state.category, e.state.procedure);
 				this.loadFilteredContent(e.state.category, e.state.procedure, e.state.procedureIds, e.state.hasNudity || false);
 			} else {
-				// Going back to base page - clear filters and reload
+				// Navigate back to base gallery page
 				this.clearAll();
 				window.location.reload();
 			}
 		});
 	}
 
+	/**
+	 * Toggle expansion/collapse of a filter group with animation
+	 * @param {HTMLElement} button - The filter header button that was clicked
+	 */
 	toggleFilter(button) {
 		const isExpanded = button.dataset.expanded === 'true';
-		const content = button.nextElementSibling;
+		const content = button.nextElementSibling; // The submenu content
 		const group = button.closest('.brag-book-gallery-nav-list__item');
 
-		// Close other filters if option is enabled
+		// Implement accordion behavior if enabled
 		if (!isExpanded && this.options.closeOthersOnOpen) {
 			this.closeOtherFilters(button);
 		}
 
-		// Toggle state
+		// Update expansion states
 		button.dataset.expanded = !isExpanded;
 		content.dataset.expanded = !isExpanded;
 		group.dataset.expanded = !isExpanded;
 
-		// Animate
+		// Animate the expansion/collapse
 		if (this.options.animateWithGsap && typeof gsap !== 'undefined') {
 			if (!isExpanded) {
+				// Expand with GSAP animation
 				gsap.to(content, {
 					height: "auto",
 					opacity: 1,
@@ -133,6 +172,7 @@ class FilterSystem {
 					ease: "power2.out"
 				});
 			} else {
+				// Collapse with GSAP animation
 				gsap.to(content, {
 					height: 0,
 					opacity: 0,
@@ -141,6 +181,7 @@ class FilterSystem {
 				});
 			}
 		} else {
+			// Fallback CSS animation
 			content.style.height = !isExpanded ? 'auto' : '0';
 			content.style.opacity = !isExpanded ? '1' : '0';
 		}
@@ -179,12 +220,17 @@ class FilterSystem {
 		});
 	}
 
+	/**
+	 * Handle click on a procedure filter link
+	 * @param {HTMLElement} link - The filter link that was clicked
+	 */
 	handleFilterClick(link) {
+		// Extract filter data from the clicked link
 		const category = link.dataset.category;
 		const procedure = link.dataset.procedure;
 		const procedureIds = link.dataset.procedureIds;
 		const count = parseInt(link.dataset.procedureCount || '0');
-		const hasNudity = link.dataset.nudity === 'true'; // Get nudity attribute
+		const hasNudity = link.dataset.nudity === 'true'; // Content warning flag
 
 		// Clear all active filters first
 		this.activeFilters.clear();
@@ -441,6 +487,13 @@ class FilterSystem {
 		this.options.mode = mode;
 	}
 
+	/**
+	 * Load filtered gallery content via AJAX
+	 * @param {string} category - The filter category
+	 * @param {string} procedure - The procedure slug
+	 * @param {string} procedureIds - Comma-separated procedure IDs
+	 * @param {boolean} hasNudity - Whether content has nudity warning
+	 */
 	loadFilteredContent(category, procedure, procedureIds, hasNudity = false) {
 		const galleryContent = document.getElementById('gallery-content');
 		if (!galleryContent) return;

@@ -1,8 +1,18 @@
 <?php
 /**
- * Data Mapper
+ * Data Mapper Class - Enterprise-grade API data mapping system
  *
- * Maps API data to WordPress post and term structures.
+ * Comprehensive data mapping system for BRAGBook Gallery plugin.
+ * Provides advanced API-to-WordPress data transformation with validation,
+ * security measures, and intelligent mapping strategies.
+ *
+ * Features:
+ * - Bidirectional data mapping (API to WordPress and vice versa)
+ * - Intelligent content generation from API data
+ * - Comprehensive data validation and sanitization
+ * - Change detection and sync optimization
+ * - WordPress VIP compliant architecture
+ * - Modern PHP 8.2+ features and type safety
  *
  * @package    BRAGBookGallery
  * @subpackage Includes\Sync
@@ -17,6 +27,8 @@ declare(strict_types=1);
 namespace BRAGBookGallery\Includes\Sync;
 
 use BRAGBookGallery\Includes\PostTypes\Gallery_Post_Type;
+use WP_Post;
+use WP_Term;
 
 // Prevent direct access
 if ( ! defined( 'ABSPATH' ) ) {
@@ -24,13 +36,64 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Data Mapper Class
+ * Enterprise Data Mapping System
  *
- * Handles the conversion of API data structures to WordPress data structures.
+ * Handles comprehensive data transformation between API and WordPress structures:
+ *
+ * Core Responsibilities:
+ * - Transform API case data to WordPress post structures
+ * - Map API categories to WordPress taxonomies
+ * - Generate intelligent content from structured data
+ * - Detect changes and optimize sync operations
+ * - Ensure data integrity and security
  *
  * @since 3.0.0
  */
-class Data_Mapper {
+final class Data_Mapper {
+
+	/**
+	 * Cache duration constants for different data types
+	 *
+	 * @since 3.0.0
+	 */
+	private const CACHE_TTL_SHORT = 300;     // 5 minutes - for frequently changing data
+	private const CACHE_TTL_MEDIUM = 1800;   // 30 minutes - for moderate change data
+	private const CACHE_TTL_LONG = 3600;     // 1 hour - for stable data
+	private const CACHE_TTL_EXTENDED = 7200; // 2 hours - for very stable data
+
+	/**
+	 * Maximum allowed string lengths for security
+	 *
+	 * @since 3.0.0
+	 */
+	private const MAX_TITLE_LENGTH = 200;
+	private const MAX_SLUG_LENGTH = 200;
+	private const MAX_EXCERPT_LENGTH = 500;
+	private const MAX_CONTENT_LENGTH = 50000;
+
+	/**
+	 * Performance metrics storage
+	 *
+	 * @since 3.0.0
+	 * @var array<string, mixed>
+	 */
+	private array $performance_metrics = [];
+
+	/**
+	 * Memory cache for frequently accessed data
+	 *
+	 * @since 3.0.0
+	 * @var array<string, mixed>
+	 */
+	private array $memory_cache = [];
+
+	/**
+	 * Validation errors tracking
+	 *
+	 * @since 3.0.0
+	 * @var array<string, array<string, mixed>>
+	 */
+	private array $validation_errors = [];
 
 	/**
 	 * Map API case data to WordPress post data
@@ -40,34 +103,61 @@ class Data_Mapper {
 	 * @return array|null WordPress post data or null on failure.
 	 */
 	public function api_to_post( array $api_data ): ?array {
-		if ( empty( $api_data['id'] ) ) {
+		$start_time = microtime( true );
+
+		try {
+			// Validate required data
+			if ( empty( $api_data['id'] ) ) {
+				$this->log_validation_error( 'api_to_post', 'Missing required ID field' );
+				return null;
+			}
+
+			// Sanitize and validate API data
+			$api_data = $this->sanitize_api_data( $api_data );
+
+			// Generate post components with caching
+			$title = $this->get_cached_or_generate(
+				"title_{$api_data['id']}",
+				fn() => $this->generate_post_title( $api_data ),
+				self::CACHE_TTL_MEDIUM
+			);
+
+			$content = $this->get_cached_or_generate(
+				"content_{$api_data['id']}",
+				fn() => $this->generate_post_content( $api_data ),
+				self::CACHE_TTL_MEDIUM
+			);
+
+			$excerpt = $this->get_cached_or_generate(
+				"excerpt_{$api_data['id']}",
+				fn() => $this->generate_post_excerpt( $api_data ),
+				self::CACHE_TTL_MEDIUM
+			);
+
+			$slug = $this->get_cached_or_generate(
+				"slug_{$api_data['id']}",
+				fn() => $this->generate_post_slug( $api_data ),
+				self::CACHE_TTL_LONG
+			);
+
+			$post_data = [
+				'post_type'    => Gallery_Post_Type::POST_TYPE,
+				'post_title'   => $title,
+				'post_content' => $content,
+				'post_excerpt' => $excerpt,
+				'post_name'    => $slug,
+				'post_status'  => $this->determine_post_status( $api_data ),
+				'post_author'  => $this->get_default_author_id(),
+				'meta_input'   => $this->map_meta_fields( $api_data ),
+			];
+
+			$this->track_performance( 'api_to_post', microtime( true ) - $start_time );
+			return $post_data;
+
+		} catch ( \Exception $e ) {
+			$this->log_error( 'api_to_post', $e->getMessage() );
 			return null;
 		}
-
-		// Generate post title
-		$title = $this->generate_post_title( $api_data );
-		
-		// Generate post content
-		$content = $this->generate_post_content( $api_data );
-		
-		// Generate post excerpt
-		$excerpt = $this->generate_post_excerpt( $api_data );
-		
-		// Generate post slug
-		$slug = $this->generate_post_slug( $api_data );
-
-		$post_data = array(
-			'post_type' => Gallery_Post_Type::POST_TYPE,
-			'post_title' => $title,
-			'post_content' => $content,
-			'post_excerpt' => $excerpt,
-			'post_name' => $slug,
-			'post_status' => $this->determine_post_status( $api_data ),
-			'post_author' => $this->get_default_author_id(),
-			'meta_input' => $this->map_meta_fields( $api_data ),
-		);
-
-		return $post_data;
 	}
 
 	/**
@@ -79,18 +169,33 @@ class Data_Mapper {
 	 * @return array|null WordPress post data or null on failure.
 	 */
 	public function api_to_post_update( array $api_data, int $post_id ): ?array {
-		$post_data = $this->api_to_post( $api_data );
-		
-		if ( ! $post_data ) {
+		$start_time = microtime( true );
+
+		try {
+			// Validate post exists
+			if ( ! get_post( $post_id ) ) {
+				$this->log_validation_error( 'api_to_post_update', "Post ID {$post_id} does not exist" );
+				return null;
+			}
+
+			$post_data = $this->api_to_post( $api_data );
+
+			if ( ! $post_data ) {
+				return null;
+			}
+
+			$post_data['ID'] = $post_id;
+
+			// Remove meta_input for updates - we'll handle meta separately
+			unset( $post_data['meta_input'] );
+
+			$this->track_performance( 'api_to_post_update', microtime( true ) - $start_time );
+			return $post_data;
+
+		} catch ( \Exception $e ) {
+			$this->log_error( 'api_to_post_update', $e->getMessage() );
 			return null;
 		}
-
-		$post_data['ID'] = $post_id;
-		
-		// Remove meta_input for updates - we'll handle meta separately
-		unset( $post_data['meta_input'] );
-
-		return $post_data;
 	}
 
 	/**
@@ -101,29 +206,47 @@ class Data_Mapper {
 	 * @return array|null WordPress term data or null on failure.
 	 */
 	public function api_to_term( array $api_data ): ?array {
-		if ( empty( $api_data['id'] ) || empty( $api_data['name'] ) ) {
+		$start_time = microtime( true );
+
+		try {
+			// Validate required fields
+			if ( empty( $api_data['id'] ) || empty( $api_data['name'] ) ) {
+				$this->log_validation_error( 'api_to_term', 'Missing required ID or name field' );
+				return null;
+			}
+
+			// Sanitize and validate term data
+			$term_data = [
+				'name'        => $this->sanitize_string( $api_data['name'], self::MAX_TITLE_LENGTH ),
+				'slug'        => $this->sanitize_slug( $api_data['slugName'] ?? $api_data['name'], self::MAX_SLUG_LENGTH ),
+				'description' => $this->sanitize_string( $api_data['description'] ?? '', self::MAX_EXCERPT_LENGTH ),
+			];
+
+			// Handle parent category with validation
+			if ( ! empty( $api_data['parentId'] ) ) {
+				$cache_key = "parent_term_{$api_data['parentId']}";
+
+				$parent_term = $this->get_cached_or_generate(
+					$cache_key,
+					fn() => $this->find_term_by_api_id(
+						$api_data['parentId'],
+						'brag_category_api_id'
+					),
+					self::CACHE_TTL_LONG
+				);
+
+				if ( $parent_term ) {
+					$term_data['parent'] = $parent_term->term_id;
+				}
+			}
+
+			$this->track_performance( 'api_to_term', microtime( true ) - $start_time );
+			return $term_data;
+
+		} catch ( \Exception $e ) {
+			$this->log_error( 'api_to_term', $e->getMessage() );
 			return null;
 		}
-
-		$term_data = array(
-			'name' => sanitize_text_field( $api_data['name'] ),
-			'slug' => sanitize_title( $api_data['slugName'] ?? $api_data['name'] ),
-			'description' => sanitize_textarea_field( $api_data['description'] ?? '' ),
-		);
-
-		// Handle parent category
-		if ( ! empty( $api_data['parentId'] ) ) {
-			$parent_term = $this->find_term_by_api_id( 
-				$api_data['parentId'], 
-				'brag_category_api_id' 
-			);
-			
-			if ( $parent_term ) {
-				$term_data['parent'] = $parent_term->term_id;
-			}
-		}
-
-		return $term_data;
 	}
 
 	/**
@@ -134,14 +257,38 @@ class Data_Mapper {
 	 * @param WP_Post $post Existing WordPress post.
 	 * @return bool True if update is needed.
 	 */
-	public function should_update( array $api_data, \WP_Post $post ): bool {
-		// Generate new sync hash
-		$new_hash = $this->generate_sync_hash( $api_data );
-		
-		// Get existing sync hash
-		$existing_hash = get_post_meta( $post->ID, '_brag_sync_hash', true );
-		
-		return $new_hash !== $existing_hash;
+	public function should_update( array $api_data, WP_Post $post ): bool {
+		try {
+			// Validate inputs
+			if ( empty( $api_data ) || ! $post instanceof WP_Post ) {
+				return false;
+			}
+
+			// Generate new sync hash with caching
+			$case_id = $api_data['id'] ?? 'unknown';
+			$cache_key = "sync_hash_{$case_id}";
+			$new_hash = $this->get_cached_or_generate(
+				$cache_key,
+				fn() => $this->generate_sync_hash( $api_data ),
+				self::CACHE_TTL_SHORT
+			);
+
+			// Get existing sync hash with validation
+			$existing_hash = get_post_meta( $post->ID, '_brag_sync_hash', true ) ?: '';
+
+			// Track change detection
+			$has_changed = $new_hash !== $existing_hash;
+
+			if ( $has_changed ) {
+				$this->log_debug( 'should_update', "Post {$post->ID} requires update" );
+			}
+
+			return $has_changed;
+
+		} catch ( \Exception $e ) {
+			$this->log_error( 'should_update', $e->getMessage() );
+			return false;
+		}
 	}
 
 	/**
@@ -154,35 +301,37 @@ class Data_Mapper {
 	private function generate_post_title( array $api_data ): string {
 		// Try to use provided title first
 		if ( ! empty( $api_data['title'] ) ) {
-			return sanitize_text_field( $api_data['title'] );
+			return $this->sanitize_string( $api_data['title'], self::MAX_TITLE_LENGTH );
 		}
 
 		// Generate title from procedure names
 		if ( ! empty( $api_data['procedures'] ) && is_array( $api_data['procedures'] ) ) {
-			$procedure_names = array();
-			
-			foreach ( $api_data['procedures'] as $procedure ) {
-				if ( ! empty( $procedure['name'] ) ) {
-					$procedure_names[] = $procedure['name'];
-				}
-			}
-			
+			$procedure_names = array_filter(
+				array_map(
+					fn( $procedure ) => $procedure['name'] ?? null,
+					$api_data['procedures']
+				)
+			);
+
 			if ( ! empty( $procedure_names ) ) {
 				$title = implode( ' + ', $procedure_names );
-				
-				// Add patient info if available
+
+				// Add patient info if available using match expression
 				if ( ! empty( $api_data['patient']['age'] ) ) {
-					$age = $api_data['patient']['age'];
-					$gender = $api_data['patient']['gender'] ?? '';
-					
-					if ( $gender ) {
-						$title .= " - {$age} Year Old " . ucfirst( $gender );
-					} else {
-						$title .= " - {$age} Years Old";
-					}
+					$age = (int) $api_data['patient']['age'];
+					$gender = strtolower( $api_data['patient']['gender'] ?? '' );
+
+					$patient_info = match( $gender ) {
+						'male'   => "{$age} Year Old Male",
+						'female' => "{$age} Year Old Female",
+						'other'  => "{$age} Year Old",
+						default  => "{$age} Years Old",
+					};
+
+					$title .= " - {$patient_info}";
 				}
-				
-				return sanitize_text_field( $title );
+
+				return $this->sanitize_string( $title, self::MAX_TITLE_LENGTH );
 			}
 		}
 
@@ -199,70 +348,55 @@ class Data_Mapper {
 	 * @return string Generated content.
 	 */
 	private function generate_post_content( array $api_data ): string {
-		$content = '';
+		$content_parts = [];
 
 		// Add case details if available
 		if ( ! empty( $api_data['details'] ) ) {
-			$content .= wpautop( wp_kses_post( $api_data['details'] ) );
+			$sanitized_details = $this->sanitize_html_content( $api_data['details'] );
+			$content_parts[] = wpautop( $sanitized_details );
 		}
 
-		// Add procedure information
+		// Add procedure information using modern array methods
 		if ( ! empty( $api_data['procedures'] ) && is_array( $api_data['procedures'] ) ) {
-			$content .= "<h3>Procedures</h3>\n<ul>\n";
-			
-			foreach ( $api_data['procedures'] as $procedure ) {
-				if ( ! empty( $procedure['name'] ) ) {
-					$content .= '<li>' . esc_html( $procedure['name'] );
-					
-					if ( ! empty( $procedure['technique'] ) ) {
-						$content .= ' (' . esc_html( $procedure['technique'] ) . ')';
-					}
-					
-					$content .= "</li>\n";
-				}
+			$procedure_items = array_filter(
+				array_map(
+					fn( $procedure ) => $this->format_procedure_item( $procedure ),
+					$api_data['procedures']
+				)
+			);
+
+			if ( ! empty( $procedure_items ) ) {
+				$content_parts[] = sprintf(
+					"<h3>%s</h3>\n<ul>\n%s</ul>\n",
+					esc_html__( 'Procedures', 'brag-book-gallery' ),
+					implode( "\n", $procedure_items )
+				);
 			}
-			
-			$content .= "</ul>\n";
 		}
 
 		// Add patient demographics if available
 		if ( ! empty( $api_data['patient'] ) ) {
-			$patient = $api_data['patient'];
-			$demographics = array();
-
-			if ( ! empty( $patient['age'] ) ) {
-				$demographics[] = 'Age: ' . esc_html( $patient['age'] );
-			}
-
-			if ( ! empty( $patient['gender'] ) ) {
-				$demographics[] = 'Gender: ' . esc_html( ucfirst( $patient['gender'] ) );
-			}
-
-			if ( ! empty( $patient['height'] ) ) {
-				$demographics[] = 'Height: ' . esc_html( $patient['height'] );
-			}
-
-			if ( ! empty( $patient['weight'] ) ) {
-				$demographics[] = 'Weight: ' . esc_html( $patient['weight'] );
-			}
-
-			if ( ! empty( $patient['ethnicity'] ) ) {
-				$demographics[] = 'Ethnicity: ' . esc_html( $patient['ethnicity'] );
-			}
+			$demographics = $this->format_patient_demographics( $api_data['patient'] );
 
 			if ( ! empty( $demographics ) ) {
-				$content .= "<h3>Patient Information</h3>\n";
-				$content .= '<p>' . implode( ' | ', $demographics ) . "</p>\n";
+				$content_parts[] = sprintf(
+					"<h3>%s</h3>\n<ul>\n%s</ul>\n",
+					esc_html__( 'Patient Information', 'brag-book-gallery' ),
+					implode( "\n", array_map( fn( $item ) => "<li>{$item}</li>", $demographics ) )
+				);
 			}
 		}
 
 		// Add timeline information if available
 		if ( ! empty( $api_data['timeline'] ) ) {
-			$content .= "<h3>Timeline</h3>\n";
-			$content .= '<p>' . wp_kses_post( $api_data['timeline'] ) . "</p>\n";
+			$content_parts[] = sprintf(
+				"<h3>%s</h3>\n<p>%s</p>\n",
+				esc_html__( 'Timeline', 'brag-book-gallery' ),
+				wp_kses_post( $api_data['timeline'] )
+			);
 		}
 
-		return $content;
+		return implode( "\n\n", $content_parts );
 	}
 
 	/**
@@ -275,13 +409,13 @@ class Data_Mapper {
 	private function generate_post_excerpt( array $api_data ): string {
 		// Use provided summary if available
 		if ( ! empty( $api_data['summary'] ) ) {
-			return sanitize_text_field( $api_data['summary'] );
+			return $this->sanitize_string( $api_data['summary'], self::MAX_EXCERPT_LENGTH );
 		}
 
 		// Generate from details
 		if ( ! empty( $api_data['details'] ) ) {
-			$details = strip_tags( $api_data['details'] );
-			return wp_trim_words( $details, 25 );
+			$details = wp_strip_all_tags( $api_data['details'] );
+			return wp_trim_words( $details, 25, '...' );
 		}
 
 		// Generate from procedure names and patient info
@@ -294,7 +428,7 @@ class Data_Mapper {
 					$procedure_names[] = $procedure['name'];
 				}
 			}
-			
+
 			if ( ! empty( $procedure_names ) ) {
 				$excerpt_parts[] = implode( ' and ', $procedure_names );
 			}
@@ -340,7 +474,7 @@ class Data_Mapper {
 		}
 
 		$slug = implode( '-', $slug_parts );
-		
+
 		// Ensure slug is not empty
 		if ( empty( $slug ) ) {
 			$slug = 'gallery-case-' . ( $api_data['id'] ?? uniqid() );
@@ -374,7 +508,7 @@ class Data_Mapper {
 			);
 
 			$api_status = strtolower( $api_data['status'] );
-			
+
 			if ( isset( $status_mapping[ $api_status ] ) ) {
 				return $status_mapping[ $api_status ];
 			}
@@ -391,15 +525,22 @@ class Data_Mapper {
 	 * @return int Default author ID.
 	 */
 	private function get_default_author_id(): int {
-		// Use admin user as default
-		$admin_users = get_users( array( 'role' => 'administrator', 'number' => 1 ) );
-		
-		if ( ! empty( $admin_users ) ) {
-			return $admin_users[0]->ID;
-		}
+		// Check cached value first
+		return (int) $this->get_cached_or_generate(
+			'default_author_id',
+			function() {
+				// Try to get first admin user
+				$admins = get_users( [
+					'role'    => 'administrator',
+					'number'  => 1,
+					'orderby' => 'ID',
+					'order'   => 'ASC',
+				] );
 
-		// Fallback to user ID 1
-		return 1;
+				return ! empty( $admins ) ? $admins[0]->ID : 1;
+			},
+			self::CACHE_TTL_EXTENDED
+		);
 	}
 
 	/**
@@ -426,7 +567,7 @@ class Data_Mapper {
 		// Map procedure details
 		if ( ! empty( $api_data['procedures'] ) ) {
 			$procedure_details = array();
-			
+
 			foreach ( $api_data['procedures'] as $procedure ) {
 				$procedure_details[] = array(
 					'id' => $procedure['id'] ?? 0,
@@ -436,7 +577,7 @@ class Data_Mapper {
 					'description' => $procedure['description'] ?? '',
 				);
 			}
-			
+
 			$meta_fields['_brag_procedure_details'] = wp_json_encode( $procedure_details );
 		}
 
@@ -452,7 +593,7 @@ class Data_Mapper {
 
 			foreach ( $api_data['photoSets'] as $photo_set ) {
 				$photos = $photo_set['photos'] ?? array();
-				
+
 				if ( $photo_set['type'] === 'before' ) {
 					$before_images = $this->map_image_data( $photos );
 				} elseif ( $photo_set['type'] === 'after' ) {
@@ -542,7 +683,7 @@ class Data_Mapper {
 	 * @param string $meta_key Meta key containing the API ID.
 	 * @return WP_Term|null Found term or null.
 	 */
-	private function find_term_by_api_id( int $api_id, string $meta_key ): ?\WP_Term {
+	private function find_term_by_api_id( int $api_id, string $meta_key ): ?WP_Term {
 		$terms = get_terms( array(
 			'taxonomy' => array( 'brag_category', 'brag_procedure' ),
 			'meta_key' => $meta_key,
@@ -583,9 +724,9 @@ class Data_Mapper {
 			'ul' => array( 'class' => array() ),
 			'ol' => array( 'class' => array() ),
 			'li' => array( 'class' => array() ),
-			'a' => array( 
-				'href' => array(), 
-				'title' => array(), 
+			'a' => array(
+				'href' => array(),
+				'title' => array(),
 				'class' => array(),
 				'target' => array(),
 				'rel' => array()
@@ -657,5 +798,286 @@ class Data_Mapper {
 		}
 
 		return true;
+	}
+
+	/**
+	 * Sanitize string with length limit
+	 *
+	 * @since 3.0.0
+	 * @param string $string String to sanitize.
+	 * @param int    $max_length Maximum allowed length.
+	 * @return string Sanitized string.
+	 */
+	private function sanitize_string( string $string, int $max_length ): string {
+		$sanitized = sanitize_text_field( $string );
+		return mb_substr( $sanitized, 0, $max_length );
+	}
+
+	/**
+	 * Sanitize slug with length limit
+	 *
+	 * @since 3.0.0
+	 * @param string $slug Slug to sanitize.
+	 * @param int    $max_length Maximum allowed length.
+	 * @return string Sanitized slug.
+	 */
+	private function sanitize_slug( string $slug, int $max_length ): string {
+		$sanitized = sanitize_title( $slug );
+		return mb_substr( $sanitized, 0, $max_length );
+	}
+
+	/**
+	 * Sanitize API data comprehensively
+	 *
+	 * @since 3.0.0
+	 * @param array $api_data Data to sanitize.
+	 * @return array Sanitized data.
+	 */
+	private function sanitize_api_data( array $api_data ): array {
+		$sanitized = [];
+
+		foreach ( $api_data as $key => $value ) {
+			$sanitized[ $key ] = match ( true ) {
+				is_array( $value )  => $this->sanitize_api_data( $value ),
+				is_string( $value ) => sanitize_text_field( $value ),
+				is_int( $value )    => absint( $value ),
+				is_bool( $value )   => (bool) $value,
+				default             => $value,
+			};
+		}
+
+		return $sanitized;
+	}
+
+	/**
+	 * Get cached data or generate new
+	 *
+	 * @since 3.0.0
+	 * @param string   $cache_key Cache key.
+	 * @param callable $generator Function to generate data.
+	 * @param int      $ttl Cache TTL in seconds.
+	 * @return mixed Cached or generated data.
+	 */
+	private function get_cached_or_generate( string $cache_key, callable $generator, int $ttl = self::CACHE_TTL_MEDIUM ) {
+		// Check memory cache first
+		if ( isset( $this->memory_cache[ $cache_key ] ) ) {
+			return $this->memory_cache[ $cache_key ];
+		}
+
+		// Check WordPress transient cache
+		$transient_key = 'brag_mapper_' . md5( $cache_key );
+		$cached = get_transient( $transient_key );
+
+		if ( false !== $cached ) {
+			$this->memory_cache[ $cache_key ] = $cached;
+			return $cached;
+		}
+
+		// Generate new data
+		$data = $generator();
+
+		// Store in both caches
+		$this->memory_cache[ $cache_key ] = $data;
+		set_transient( $transient_key, $data, $ttl );
+
+		return $data;
+	}
+
+	/**
+	 * Format procedure item for display
+	 *
+	 * @since 3.0.0
+	 * @param array $procedure Procedure data.
+	 * @return string|null Formatted procedure HTML or null.
+	 */
+	private function format_procedure_item( array $procedure ): ?string {
+		if ( empty( $procedure['name'] ) ) {
+			return null;
+		}
+
+		$item = '<li>' . esc_html( $procedure['name'] );
+
+		if ( ! empty( $procedure['technique'] ) ) {
+			$item .= ' <em>(' . esc_html( $procedure['technique'] ) . ')</em>';
+		}
+
+		if ( ! empty( $procedure['description'] ) ) {
+			$item .= '<br><small>' . esc_html( $procedure['description'] ) . '</small>';
+		}
+
+		$item .= '</li>';
+
+		return $item;
+	}
+
+	/**
+	 * Format patient demographics for display
+	 *
+	 * @since 3.0.0
+	 * @param array $patient Patient data.
+	 * @return array Formatted demographics.
+	 */
+	private function format_patient_demographics( array $patient ): array {
+		$demographics = [];
+
+		// Age and Gender
+		if ( ! empty( $patient['age'] ) ) {
+			$age_text = sprintf(
+				/* translators: %d: Patient age */
+				__( 'Age: %d years', 'brag-book-gallery' ),
+				(int) $patient['age']
+			);
+			$demographics[] = esc_html( $age_text );
+		}
+
+		if ( ! empty( $patient['gender'] ) ) {
+			$gender = ucfirst( strtolower( $patient['gender'] ) );
+			$demographics[] = sprintf(
+				/* translators: %s: Patient gender */
+				__( 'Gender: %s', 'brag-book-gallery' ),
+				esc_html( $gender )
+			);
+		}
+
+		// Physical attributes
+		if ( ! empty( $patient['height'] ) ) {
+			$demographics[] = sprintf(
+				/* translators: %s: Patient height */
+				__( 'Height: %s', 'brag-book-gallery' ),
+				esc_html( $patient['height'] )
+			);
+		}
+
+		if ( ! empty( $patient['weight'] ) ) {
+			$demographics[] = sprintf(
+				/* translators: %s: Patient weight */
+				__( 'Weight: %s', 'brag-book-gallery' ),
+				esc_html( $patient['weight'] )
+			);
+		}
+
+		if ( ! empty( $patient['ethnicity'] ) ) {
+			$demographics[] = sprintf(
+				/* translators: %s: Patient ethnicity */
+				__( 'Ethnicity: %s', 'brag-book-gallery' ),
+				esc_html( $patient['ethnicity'] )
+			);
+		}
+
+		return $demographics;
+	}
+
+	/**
+	 * Log validation error
+	 *
+	 * @since 3.0.0
+	 * @param string $context Error context.
+	 * @param string $message Error message.
+	 */
+	private function log_validation_error( string $context, string $message ): void {
+		$this->validation_errors[ $context ][] = [
+			'time'    => current_time( 'mysql' ),
+			'message' => $message,
+		];
+
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( "[BRAGBook Data Mapper] Validation Error in {$context}: {$message}" );
+		}
+	}
+
+	/**
+	 * Log general error
+	 *
+	 * @since 3.0.0
+	 * @param string $context Error context.
+	 * @param string $message Error message.
+	 */
+	private function log_error( string $context, string $message ): void {
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( "[BRAGBook Data Mapper] Error in {$context}: {$message}" );
+		}
+	}
+
+	/**
+	 * Log debug information
+	 *
+	 * @since 3.0.0
+	 * @param string $context Debug context.
+	 * @param string $message Debug message.
+	 */
+	private function log_debug( string $context, string $message ): void {
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+			error_log( "[BRAGBook Data Mapper] Debug in {$context}: {$message}" );
+		}
+	}
+
+	/**
+	 * Track performance metrics
+	 *
+	 * @since 3.0.0
+	 * @param string $operation Operation name.
+	 * @param float  $duration Operation duration in seconds.
+	 */
+	private function track_performance( string $operation, float $duration ): void {
+		if ( ! isset( $this->performance_metrics[ $operation ] ) ) {
+			$this->performance_metrics[ $operation ] = [
+				'count'    => 0,
+				'total'    => 0,
+				'min'      => PHP_FLOAT_MAX,
+				'max'      => 0,
+			];
+		}
+
+		$metrics = &$this->performance_metrics[ $operation ];
+		$metrics['count']++;
+		$metrics['total'] += $duration;
+		$metrics['min'] = min( $metrics['min'], $duration );
+		$metrics['max'] = max( $metrics['max'], $duration );
+		$metrics['average'] = $metrics['total'] / $metrics['count'];
+	}
+
+	/**
+	 * Sanitize patient data
+	 *
+	 * @since 3.0.0
+	 * @param array<string, mixed> $patient_data Patient data from API.
+	 * @return array<string, mixed> Sanitized patient data.
+	 */
+	private function sanitize_patient_data( array $patient_data ): array {
+		$sanitized = [];
+
+		// Sanitize each field appropriately
+		if ( isset( $patient_data['age'] ) ) {
+			$sanitized['age'] = absint( $patient_data['age'] );
+		}
+
+		if ( isset( $patient_data['gender'] ) ) {
+			$sanitized['gender'] = sanitize_text_field( $patient_data['gender'] );
+		}
+
+		if ( isset( $patient_data['height'] ) ) {
+			$sanitized['height'] = sanitize_text_field( $patient_data['height'] );
+		}
+
+		if ( isset( $patient_data['weight'] ) ) {
+			$sanitized['weight'] = sanitize_text_field( $patient_data['weight'] );
+		}
+
+		if ( isset( $patient_data['ethnicity'] ) ) {
+			$sanitized['ethnicity'] = sanitize_text_field( $patient_data['ethnicity'] );
+		}
+
+		if ( isset( $patient_data['bmi'] ) ) {
+			$sanitized['bmi'] = (float) $patient_data['bmi'];
+		}
+
+		// Add any additional custom fields
+		foreach ( $patient_data as $key => $value ) {
+			if ( ! isset( $sanitized[ $key ] ) ) {
+				$sanitized[ $key ] = is_string( $value ) ? sanitize_text_field( $value ) : $value;
+			}
+		}
+
+		return $sanitized;
 	}
 }
