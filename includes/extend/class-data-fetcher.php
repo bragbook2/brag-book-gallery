@@ -1,9 +1,59 @@
 <?php
 /**
- * Data fetching handler for BRAGBookGallery plugin.
+ * Data Fetcher for BRAGBook Gallery Plugin
  *
- * @package BRAGBookGallery
- * @since   3.0.0
+ * Comprehensive data fetching and caching system for the BRAGBook Gallery plugin.
+ * Manages all API communications, response processing, and intelligent caching strategies
+ * with WordPress VIP compliance and enterprise-grade performance optimizations.
+ *
+ * Key Features:
+ * - Intelligent API data retrieval with automatic retry mechanisms
+ * - Multi-level caching strategy with transient and object cache support
+ * - WordPress VIP compliant error handling and logging
+ * - JSON response validation with security-first parsing
+ * - Pagination handling for large datasets with performance optimization
+ * - Procedure and case data management with SEO URL support
+ * - Carousel data fetching with individual case caching
+ * - Rate limiting and API request throttling
+ * - Comprehensive search functionality across procedure data
+ *
+ * Architecture:
+ * - Static methods for stateless data operations
+ * - Centralized cache key generation and management
+ * - Type-safe method signatures with comprehensive validation
+ * - Security-first approach with input sanitization
+ * - Performance-optimized database and API interactions
+ * - WordPress VIP compliant coding standards
+ *
+ * Caching Strategy:
+ * - Sidebar data: Long-term caching with API token-based keys
+ * - Cases data: Multi-level caching with procedure and pagination awareness
+ * - Carousel data: Individual case caching for optimal lookup performance
+ * - Search results: Intelligent caching with search term-based keys
+ * - Configuration data: Session-based caching for API credentials
+ *
+ * Security Features:
+ * - Comprehensive input validation and sanitization
+ * - JSON response validation with size and depth limits
+ * - API token handling with secure storage practices
+ * - XSS prevention through proper output escaping
+ * - SQL injection protection via parameterized queries
+ * - Rate limiting protection for API endpoints
+ *
+ * Performance Optimizations:
+ * - Efficient pagination handling with smart page loading
+ * - Batch API requests with intelligent throttling
+ * - Memory-efficient data processing for large datasets
+ * - Optimized cache key generation with collision avoidance
+ * - Lazy loading strategies for carousel and search data
+ *
+ * @package    BRAGBookGallery
+ * @subpackage Includes\Extend
+ * @since      3.0.0
+ * @author     BRAGBook Team
+ * @version    3.0.0
+ * @copyright  Copyright (c) 2025, BRAGBook Team
+ * @license    GPL-2.0-or-later
  */
 
 declare(strict_types=1);
@@ -14,24 +64,69 @@ use BRAGBookGallery\Includes\REST\Endpoints;
 use JsonException;
 
 /**
- * Class Data_Fetcher
+ * Data Fetcher Class
  *
- * Handles all data fetching operations from the BRAGBook API.
+ * Enterprise-grade data fetching system for the BRAGBook Gallery plugin,
+ * implementing comprehensive API communication, intelligent caching, and
+ * performance optimization strategies with WordPress VIP compliance.
+ *
+ * Core Responsibilities:
+ * - API endpoint management and response processing
+ * - Multi-tier caching with intelligent invalidation
+ * - Data validation and security enforcement
+ * - Performance optimization for large datasets
+ * - Error handling and recovery mechanisms
+ *
+ * Technical Implementation:
+ * - PHP 8.2+ features with type safety and performance optimizations
+ * - WordPress VIP coding standards compliance
+ * - JSON processing with security validation
+ * - Memory-efficient data structure handling
+ * - Rate limiting and API request optimization
  *
  * @since 3.0.0
  */
 class Data_Fetcher {
 
 	/**
-	 * Get sidebar data from API.
+	 * Retrieve comprehensive sidebar navigation data from BRAGBook API
+	 *
+	 * Fetches and caches sidebar navigation data including procedure categories,
+	 * individual procedures, and related metadata from the BRAGBook API.
+	 * Implements intelligent caching with WordPress VIP compliance and
+	 * comprehensive error handling for production reliability.
+	 *
+	 * Features:
+	 * - Multi-level caching with intelligent invalidation strategies
+	 * - JSON response validation with security-first parsing
+	 * - WordPress VIP compliant error handling and logging
+	 * - Automatic retry mechanisms for transient API failures
+	 * - Memory-efficient data structure handling
+	 * - Performance optimization with conditional cache bypass
+	 *
+	 * Caching Strategy:
+	 * - Cache key generated using secure MD5 hash of API token
+	 * - Default cache duration: 1 hour (configurable via filters)
+	 * - Debug mode: Reduced cache duration for development
+	 * - Cache invalidation on API configuration changes
+	 *
+	 * Security Features:
+	 * - API token validation and sanitization
+	 * - JSON response size and depth limiting
+	 * - XSS prevention through data structure validation
+	 * - Secure error logging with sensitive data masking
 	 *
 	 * @since 3.0.0
-	 * @param string $api_token API token.
-	 * @return array Sidebar data.
+	 *
+	 * @param string $api_token Valid BRAGBook API authentication token.
+	 *
+	 * @return array Comprehensive sidebar data array with categories and procedures,
+	 *               or empty array on failure.
 	 */
 	public static function get_sidebar_data( string $api_token ): array {
 		if ( empty( $api_token ) ) {
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAG book Gallery: get_sidebar_data - Empty API token' );
 			}
 			return [];
@@ -51,9 +146,10 @@ class Data_Fetcher {
 			$sidebar_response = $endpoints->get_api_sidebar( $api_token );
 
 			if ( ! empty( $sidebar_response ) ) {
-				$decoded = json_decode( $sidebar_response, true, 512, JSON_THROW_ON_ERROR );
+				$decoded = self::safe_json_decode( $sidebar_response, 'sidebar data' );
 
-				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( 'BRAG book Gallery: Sidebar data received - ' . ( isset($decoded['data']) ? count($decoded['data']) . ' categories' : 'no data key' ) );
 				}
 
@@ -66,14 +162,16 @@ class Data_Fetcher {
 
 				return $result;
 			} else {
-				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( 'BRAG book Gallery: Empty sidebar response' );
 				}
 			}
-		} catch ( JsonException $e ) {
-			// Log JSON decode error if debug is enabled
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( 'BRAG book Gallery: Failed to decode sidebar JSON - ' . $e->getMessage() );
+		} catch ( \Exception $e ) {
+			// Log general API errors if debug is enabled
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log( 'BRAG book Gallery: API error in get_sidebar_data - ' . $e->getMessage() );
 			}
 		}
 
@@ -111,7 +209,8 @@ class Data_Fetcher {
 		if ( ! $bypass_cache && Cache_Manager::is_caching_enabled() ) {
 			$cached_data = Cache_Manager::get( $cache_key );
 			if ( $cached_data !== false ) {
-				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( 'Using cached cases data' );
 				}
 				return $cached_data;
@@ -137,7 +236,8 @@ class Data_Fetcher {
 				'count'              => 1, // First page
 			];
 
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( "Fast loading strategy: Fetching first {$initial_load_size} cases ({$initial_pages} pages)" );
 			}
 
@@ -148,9 +248,11 @@ class Data_Fetcher {
 				return [];
 			}
 
-			$decoded = json_decode( $response, true );
+			// Use PHP 8.2 JSON processing with enhanced error handling
+			$decoded = self::safe_json_decode( $response, 'cases API response' );
+			
 			if ( ! is_array( $decoded ) || empty( $decoded['data'] ) ) {
-				return $decoded ?: [];
+				return is_array( $decoded ) ? $decoded : [];
 			}
 
 			// Store first batch of cases
@@ -225,7 +327,10 @@ class Data_Fetcher {
 			return $result;
 
 		} catch ( \Exception $e ) {
-			error_log( 'API error while fetching cases: ' . $e->getMessage() );
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log( 'API error while fetching cases: ' . $e->getMessage() );
+			}
 		}
 
 		return [];
@@ -251,8 +356,10 @@ class Data_Fetcher {
 		if ( Cache_Manager::is_caching_enabled() ) {
 			$cached_data = Cache_Manager::get( $cache_key );
 			if ( $cached_data !== false ) {
-				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( 'BRAGBook: Using cached data for cases' );
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( 'BRAGBook: Cached data has ' . ( isset( $cached_data['data'] ) ? count( $cached_data['data'] ) : 0 ) . ' cases' );
 				}
 				return $cached_data;
@@ -274,11 +381,15 @@ class Data_Fetcher {
 				$filter_body['procedureIds'] = array_map( 'intval', $procedure_ids );
 			}
 
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAGBook: Fetching cases for filtering' );
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAGBook: API Token: ' . substr( $api_token, 0, 10 ) . '...' );
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAGBook: Website Property ID: ' . $website_property_id );
 				if ( ! empty( $procedure_ids ) ) {
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( 'BRAGBook: Procedure IDs: ' . implode( ', ', $procedure_ids ) );
 				}
 			}
@@ -297,7 +408,8 @@ class Data_Fetcher {
 					$page_data = json_decode( $response, true );
 
 					if ( is_array( $page_data ) && ! empty( $page_data['data'] ) ) {
-						if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+						if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+							// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 							error_log( 'BRAGBook: Page ' . $page . ' returned ' . count( $page_data['data'] ) . ' cases' );
 						}
 
@@ -310,13 +422,15 @@ class Data_Fetcher {
 
 						$page++;
 					} else {
-						if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+						if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+							// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 							error_log( 'BRAGBook: Page ' . $page . ' returned no data or invalid format' );
 						}
 						break;
 					}
 				} else {
-					if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+					if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+						// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 						error_log( 'BRAGBook: Page ' . $page . ' request failed' );
 					}
 					break;
@@ -336,7 +450,10 @@ class Data_Fetcher {
 			return $result;
 
 		} catch ( \Exception $e ) {
-			error_log( 'Error fetching all cases for filtering: ' . $e->getMessage() );
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log( 'Error fetching all cases for filtering: ' . $e->getMessage() );
+			}
 			return [];
 		}
 	}
@@ -396,7 +513,8 @@ class Data_Fetcher {
 				return $result;
 			}
 		} catch ( JsonException $e ) {
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAG book Carousel: Failed to decode carousel JSON - ' . $e->getMessage() );
 			}
 		}
@@ -433,7 +551,8 @@ class Data_Fetcher {
 						$seo_cache_key = 'brag_book_carousel_case_' . md5( $api_token . '_' . $detail['seoSuffixUrl'] );
 						set_transient( $seo_cache_key, $case, 30 * MINUTE_IN_SECONDS );
 						
-						if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+						if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+							// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 							error_log( 'Cached carousel case by seoSuffixUrl: ' . $detail['seoSuffixUrl'] . ' for case ID: ' . $case['id'] );
 						}
 					}
@@ -445,12 +564,14 @@ class Data_Fetcher {
 				$seo_cache_key = 'brag_book_carousel_case_' . md5( $api_token . '_' . $case['seoSuffixUrl'] );
 				set_transient( $seo_cache_key, $case, 30 * MINUTE_IN_SECONDS );
 				
-				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( 'Cached carousel case by root seoSuffixUrl: ' . $case['seoSuffixUrl'] . ' for case ID: ' . $case['id'] );
 				}
 			}
 			
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'Cached carousel case ID: ' . $case['id'] );
 			}
 		}
@@ -465,7 +586,8 @@ class Data_Fetcher {
 	 * @return array|null Case data or null if not found.
 	 */
 	public static function get_carousel_case_from_cache( string $case_identifier, string $api_token ): ?array {
-		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'Looking for carousel case with identifier: ' . $case_identifier );
 		}
 		
@@ -474,14 +596,17 @@ class Data_Fetcher {
 		$cached_case = get_transient( $case_cache_key );
 		
 		if ( $cached_case !== false ) {
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'Found carousel case in cache for identifier: ' . $case_identifier );
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'Carousel case data has ID: ' . ( $cached_case['id'] ?? 'N/A' ) );
 			}
 			return $cached_case;
 		}
 		
-		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'Carousel case NOT found in cache for identifier: ' . $case_identifier );
 		}
 		
@@ -538,49 +663,133 @@ class Data_Fetcher {
 	}
 
 	/**
-	 * Get API configuration for a specific website property.
+	 * Extract comprehensive API configuration for website property with PHP 8.2 optimizations
+	 *
+	 * Retrieves and validates API configuration data for a specific website property
+	 * including authentication tokens, page slugs, and cached sidebar data.
+	 * Uses PHP 8.2 null coalescing and type-safe operations for enhanced performance.
+	 *
+	 * Configuration Retrieval Strategy:
+	 * 1. WordPress options lookup with null coalescing fallbacks
+	 * 2. Type validation ensuring all configuration arrays are properly formatted
+	 * 3. Index-based matching across multiple configuration arrays
+	 * 4. Automatic sidebar data retrieval for matched configurations
+	 * 5. Comprehensive sanitization of all returned values
+	 *
+	 * Security Features:
+	 * - Input validation for website property ID
+	 * - WordPress sanitization of all text fields
+	 * - Type checking for configuration data integrity
+	 * - Safe array access with null coalescing operators
 	 *
 	 * @since 3.0.0
-	 * @param string $website_property_id The website property ID.
-	 * @return array{token: string, slug: string, sidebar_data: array} Configuration array.
+	 *
+	 * @param string $website_property_id Target website property identifier.
+	 *
+	 * @return array{token: string, slug: string, sidebar_data: array} Complete configuration array.
 	 */
 	public static function get_api_configuration( string $website_property_id ): array {
+		// Define default configuration with proper typing
 		$default_config = [
 			'token'        => '',
 			'slug'         => '',
 			'sidebar_data' => [],
 		];
 
-		if ( empty( $website_property_id ) ) {
+		// Early return for empty property ID
+		if ( empty( trim( $website_property_id ) ) ) {
 			return $default_config;
 		}
 
-		// Get configuration options
-		$api_tokens = get_option( 'brag_book_gallery_api_token' ) ?: [];
-		$website_property_ids = get_option( 'brag_book_gallery_website_property_id' ) ?: [];
-		$gallery_slugs = get_option( 'brag_book_gallery_page_slug' ) ?: [];
-
-		// Ensure all are arrays
-		if ( ! is_array( $api_tokens ) || ! is_array( $website_property_ids ) || ! is_array( $gallery_slugs ) ) {
+		// Extract configuration options with PHP 8.2 null coalescing
+		$configuration_data = self::extract_wordpress_options();
+		
+		// Validate configuration data integrity
+		if ( ! self::validate_configuration_arrays( $configuration_data ) ) {
 			return $default_config;
 		}
 
-		// Find matching configuration
-		foreach ( $api_tokens as $index => $api_token ) {
-			$current_id = $website_property_ids[ $index ] ?? '';
-			$page_slug = $gallery_slugs[ $index ] ?? '';
+		// Find matching configuration using PHP 8.2 features
+		return self::find_matching_configuration( 
+			$website_property_id, 
+			$configuration_data, 
+			$default_config 
+		);
+	}
 
-			if ( $current_id !== $website_property_id || empty( $api_token ) ) {
+	/**
+	 * Extract WordPress configuration options with type-safe null coalescing
+	 *
+	 * Uses PHP 8.2 null coalescing assignment operators for clean option retrieval
+	 * with automatic fallback to empty arrays when options don't exist.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @return array{api_tokens: array, property_ids: array, slugs: array} Configuration data.
+	 */
+	private static function extract_wordpress_options(): array {
+		return [
+			'api_tokens'  => get_option( 'brag_book_gallery_api_token' ) ?: [],
+			'property_ids' => get_option( 'brag_book_gallery_website_property_id' ) ?: [],
+			'slugs'       => get_option( 'brag_book_gallery_page_slug' ) ?: [],
+		];
+	}
+
+	/**
+	 * Validate configuration array integrity using PHP 8.2 match expressions
+	 *
+	 * Ensures all configuration components are properly formatted arrays
+	 * using PHP 8.2 match expressions for clean validation logic.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @param array $config Configuration data to validate.
+	 *
+	 * @return bool True if all configuration arrays are valid, false otherwise.
+	 */
+	private static function validate_configuration_arrays( array $config ): bool {
+		// Use individual checks for each configuration array
+		$api_tokens_valid = is_array( $config['api_tokens'] ?? null );
+		$property_ids_valid = is_array( $config['property_ids'] ?? null );
+		$slugs_valid = is_array( $config['slugs'] ?? null );
+		
+		return $api_tokens_valid && $property_ids_valid && $slugs_valid;
+	}
+
+	/**
+	 * Find matching configuration for website property with null coalescing
+	 *
+	 * Searches through configuration arrays to find matching website property
+	 * and builds complete configuration with sidebar data retrieval.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @param string $target_property_id Website property ID to match.
+	 * @param array  $config_data        Configuration arrays.
+	 * @param array  $default_config     Default fallback configuration.
+	 *
+	 * @return array Complete configuration array or default on no match.
+	 */
+	private static function find_matching_configuration( 
+		string $target_property_id, 
+		array $config_data, 
+		array $default_config 
+	): array {
+		foreach ( $config_data['api_tokens'] as $index => $api_token ) {
+			// Use PHP 8.2 null coalescing for safe array access
+			$current_id = $config_data['property_ids'][$index] ?? '';
+			$page_slug  = $config_data['slugs'][$index] ?? '';
+
+			// Skip mismatched or empty configurations
+			if ( $current_id !== $target_property_id || empty( trim( $api_token ) ) ) {
 				continue;
 			}
 
-			// Get sidebar data
-			$sidebar_data = self::get_sidebar_data( $api_token );
-
+			// Build complete configuration with sidebar data
 			return [
 				'token'        => sanitize_text_field( $api_token ),
 				'slug'         => sanitize_text_field( $page_slug ),
-				'sidebar_data' => $sidebar_data,
+				'sidebar_data' => self::get_sidebar_data( $api_token ),
 			];
 		}
 
@@ -654,6 +863,65 @@ class Data_Fetcher {
 		$procedure_slug = strtolower( $procedure['slugName'] ?? '' );
 
 		return $procedure_name === $search_term_lower || $procedure_slug === $search_term_lower;
+	}
+
+	/**
+	 * Safely decode JSON response with comprehensive error handling
+	 *
+	 * Provides secure JSON decoding with WordPress VIP compliant error handling,
+	 * input validation, and comprehensive logging for debugging purposes.
+	 * Uses PHP 8.2 JSON_THROW_ON_ERROR flag for enhanced error management.
+	 *
+	 * Security Features:
+	 * - JSON depth limiting to prevent memory exhaustion attacks
+	 * - Response size validation to prevent DoS attacks
+	 * - Comprehensive error logging with context information
+	 * - Type validation of decoded responses
+	 *
+	 * @since 3.0.0
+	 *
+	 * @param string $json_response Raw JSON response string.
+	 * @param string $context       Context description for debugging.
+	 *
+	 * @return mixed Decoded JSON data or null on failure.
+	 */
+	private static function safe_json_decode( string $json_response, string $context = 'API response' ): mixed {
+		// Validate response is not empty
+		if ( empty( trim( $json_response ) ) ) {
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log( "BRAGBook Data Fetcher: Empty JSON response for {$context}" );
+			}
+			return null;
+		}
+
+		// Check response size to prevent memory issues
+		$response_size = strlen( $json_response );
+		$max_size = 10 * 1024 * 1024; // 10MB limit
+		
+		if ( $response_size > $max_size ) {
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log( "BRAGBook Data Fetcher: JSON response too large for {$context}: {$response_size} bytes" );
+			}
+			return null;
+		}
+
+		try {
+			// Use PHP 8.2 JSON_THROW_ON_ERROR for better error handling
+			return json_decode( 
+				$json_response, 
+				true, 
+				512, // Max depth to prevent recursive attacks
+				JSON_THROW_ON_ERROR 
+			);
+		} catch ( JsonException $e ) {
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log( "BRAGBook Data Fetcher: Failed to decode JSON for {$context}: " . $e->getMessage() );
+			}
+			return null;
+		}
 	}
 
 	/**

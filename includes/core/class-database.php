@@ -1,10 +1,20 @@
 <?php
+declare( strict_types=1 );
+
 /**
  * Database Manager
  *
- * Manages database setup and maintenance for the BRAG book Gallery plugin.
- * Handles custom table creation, updates, and data operations following
- * WordPress VIP coding standards for security and performance.
+ * Enterprise-grade database management for the BRAG Book Gallery plugin.
+ * Implements secure schema management, sync operations tracking, and
+ * comprehensive caching strategies following WordPress VIP standards.
+ *
+ * Features:
+ * - Custom table creation with dbDelta safety
+ * - Sync operation logging and tracking
+ * - API case to WordPress post mapping
+ * - Performance-optimized queries with caching
+ * - Comprehensive data validation and sanitization
+ * - Automatic cleanup and maintenance routines
  *
  * @package    BRAGBookGallery
  * @subpackage Includes\Core
@@ -13,8 +23,6 @@
  * @copyright  Copyright (c) 2025, Candace Crowe Design LLC
  * @license    GPL-2.0-or-later
  */
-
-declare( strict_types=1 );
 
 namespace BRAGBookGallery\Includes\Core;
 
@@ -34,109 +42,164 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Database {
 
 	/**
-	 * Database version option key
-	 *
-	 * Used to track the current database schema version.
+	 * Database version option key.
 	 *
 	 * @since 3.0.0
-	 * @var string
+	 * @var string Option name for version tracking.
 	 */
 	private const DB_VERSION_OPTION = 'brag_book_gallery_db_version';
 
 	/**
-	 * Current database version
-	 *
-	 * Increment this when making schema changes.
+	 * Current database schema version.
 	 *
 	 * @since 3.0.0
-	 * @var string
+	 * @var string Semantic version string.
 	 */
 	private const CURRENT_DB_VERSION = '1.0.0';
 
 	/**
-	 * Cache group for database queries
+	 * Cache group identifier for database operations.
 	 *
 	 * @since 3.0.0
-	 * @var string
+	 * @var string Cache group name.
 	 */
 	private const CACHE_GROUP = 'brag_book_gallery_db';
 
 	/**
-	 * Cache expiration time (1 hour)
+	 * Cache TTL in seconds.
 	 *
 	 * @since 3.0.0
-	 * @var int
+	 * @var int Cache expiration (1 hour).
 	 */
 	private const CACHE_EXPIRATION = 3600;
 
 	/**
-	 * WordPress database object
+	 * Valid sync operation types.
 	 *
 	 * @since 3.0.0
-	 * @var \wpdb
+	 * @var array<int, string> Allowed sync types.
 	 */
-	private $wpdb;
+	private const VALID_SYNC_TYPES = [ 'full', 'partial', 'single' ];
 
 	/**
-	 * Table prefix for plugin tables
+	 * Valid sync operation statuses.
 	 *
 	 * @since 3.0.0
-	 * @var string
+	 * @var array<int, string> Allowed sync statuses.
+	 */
+	private const VALID_SYNC_STATUSES = [ 'started', 'completed', 'failed' ];
+
+	/**
+	 * Maximum error message length for TEXT field.
+	 *
+	 * @since 3.0.0
+	 * @var int Character limit for error messages.
+	 */
+	private const MAX_ERROR_MESSAGE_LENGTH = 65535;
+
+	/**
+	 * WordPress database instance.
+	 *
+	 * @since 3.0.0
+	 * @var \wpdb Global WordPress database object.
+	 */
+	private \wpdb $wpdb;
+
+	/**
+	 * Table prefix for plugin-specific tables.
+	 *
+	 * @since 3.0.0
+	 * @var string Prefixed table identifier.
 	 */
 	private string $table_prefix;
 
 	/**
-	 * Constructor
-	 *
-	 * Initializes the database manager with WordPress database object
-	 * and sets up table prefixes.
+	 * Cache for expensive operations.
 	 *
 	 * @since 3.0.0
+	 * @var array<string, mixed> Operation results cache.
+	 */
+	private array $cache = [];
+
+	/**
+	 * Constructor - Initialize database manager.
+	 *
+	 * Sets up database connection, table prefixes, and initialization hooks.
+	 * Implements defensive programming practices for reliability.
+	 *
+	 * @since 3.0.0
+	 * @throws \RuntimeException If database initialization fails.
 	 */
 	public function __construct() {
-		global $wpdb;
+		try {
+			global $wpdb;
 
-		$this->wpdb = $wpdb;
+			if ( ! $wpdb instanceof \wpdb ) {
+				throw new \RuntimeException( 'WordPress database not available' );
+			}
 
-		// Ensure we have a valid prefix.
-		$prefix = ! empty( $wpdb->prefix ) ? $wpdb->prefix : 'wp_';
-		$this->table_prefix = $prefix . 'brag_';
+			$this->wpdb = $wpdb;
 
-		$this->init();
+			// Ensure valid table prefix with fallback
+			$prefix = $wpdb->prefix ?: 'wp_';
+			$this->table_prefix = $prefix . 'brag_';
+
+			$this->init();
+
+			do_action( 'qm/debug', 'Database manager initialized successfully' );
+		} catch ( \Exception $e ) {
+			do_action( 'qm/debug', sprintf( 'Database initialization failed: %s', $e->getMessage() ) );
+			throw new \RuntimeException( 'Database manager initialization failed', 0, $e );
+		}
 	}
 
 	/**
-	 * Initialize database manager
+	 * Initialize database manager.
 	 *
-	 * Sets up hooks for database version checking.
-	 * Note: Activation hooks should be registered in the main plugin file.
+	 * Registers hooks for version checking and maintenance operations.
+	 * Uses modern PHP 8.2 array syntax for improved readability.
 	 *
 	 * @since 3.0.0
 	 * @return void
 	 */
 	private function init(): void {
-		// Check database version on plugins_loaded to ensure all plugins are ready.
-		add_action( 'plugins_loaded', array( $this, 'check_database_version' ) );
+		// Check database version after all plugins are loaded
+		add_action( 'plugins_loaded', [ $this, 'check_database_version' ] );
+
+		// Schedule cleanup operations
+		if ( ! wp_next_scheduled( 'brag_book_gallery_db_cleanup' ) ) {
+			wp_schedule_event( time(), 'daily', 'brag_book_gallery_db_cleanup' );
+		}
+
+		add_action( 'brag_book_gallery_db_cleanup', [ $this, 'daily_cleanup' ] );
 	}
 
 	/**
-	 * Check if database needs to be updated
+	 * Check if database needs to be updated.
 	 *
-	 * Compares installed version with current version and
-	 * performs updates if necessary.
+	 * Smart version comparison with automatic migration and cache invalidation.
+	 * Implements comprehensive error handling and logging.
 	 *
 	 * @since 3.0.0
 	 * @return void
 	 */
 	public function check_database_version(): void {
-		$installed_version = get_option( self::DB_VERSION_OPTION, '0.0.0' );
+		try {
+			$installed_version = $this->get_installed_version();
 
-		// Only update if version is different.
-		if ( version_compare( $installed_version, self::CURRENT_DB_VERSION, '<' ) ) {
-			$this->create_tables();
+			// Check if upgrade needed using semantic version comparison
+			if ( version_compare( $installed_version, self::CURRENT_DB_VERSION, '<' ) ) {
+				do_action( 'qm/debug', sprintf( 
+					'Database upgrade needed: %s -> %s',
+					$installed_version,
+					self::CURRENT_DB_VERSION
+				) );
 
-			// Clear any cached data when updating schema.
-			wp_cache_flush_group( self::CACHE_GROUP );
+				$this->create_tables();
+				$this->invalidate_all_caches();
+			}
+		} catch ( \Exception $e ) {
+			do_action( 'qm/debug', sprintf( 'Database version check failed: %s', $e->getMessage() ) );
 		}
 	}
 
@@ -189,11 +252,12 @@ class Database {
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 		dbDelta( $sql );
 
-		// Log any database errors for debugging.
+		// Log any database errors using VIP-compliant debugging
 		if ( ! empty( $this->wpdb->last_error ) ) {
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( 'BRAG Book Gallery: Error creating sync_log table: ' . $this->wpdb->last_error );
-			}
+			do_action( 'qm/debug', sprintf( 
+				'Error creating sync_log table: %s',
+				$this->wpdb->last_error 
+			) );
 		}
 	}
 
@@ -229,11 +293,12 @@ class Database {
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 		dbDelta( $sql );
 
-		// Log any database errors for debugging.
+		// Log any database errors using VIP-compliant debugging
 		if ( ! empty( $this->wpdb->last_error ) ) {
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( 'BRAG Book Gallery: Error creating case_map table: ' . $this->wpdb->last_error );
-			}
+			do_action( 'qm/debug', sprintf( 
+				'Error creating case_map table: %s',
+				$this->wpdb->last_error 
+			) );
 		}
 	}
 
@@ -264,20 +329,25 @@ class Database {
 	}
 
 	/**
-	 * Log sync operation
+	 * Log sync operation.
 	 *
-	 * Records a sync operation in the database for tracking and debugging.
-	 * Follows VIP standards by using prepared statements.
+	 * Records comprehensive sync operation data with validation and caching.
+	 * Uses prepared statements and error handling per VIP standards.
 	 *
 	 * @since 3.0.0
-	 *
-	 * @param string $sync_type       Type of sync operation (full, partial, single).
-	 * @param string $sync_status     Status of sync operation (started, completed, failed).
-	 * @param int    $items_processed Number of items processed.
-	 * @param int    $items_failed    Number of items that failed.
-	 * @param string $error_messages  Error messages if any.
-	 *
+	 * @param string $sync_type       Operation type (full|partial|single).
+	 * @param string $sync_status     Operation status (started|completed|failed).
+	 * @param int    $items_processed Number of successfully processed items.
+	 * @param int    $items_failed    Number of failed items.
+	 * @param string $error_messages  Aggregated error messages.
 	 * @return int|false Insert ID on success, false on failure.
+	 * 
+	 * @example
+	 * ```php
+	 * $log_id = $db->log_sync_operation( 'full', 'started' );
+	 * // ... perform sync operations ...
+	 * $db->update_sync_log( $log_id, 'completed', 150, 2 );
+	 * ```
 	 */
 	public function log_sync_operation(
 		string $sync_type,
@@ -288,60 +358,62 @@ class Database {
 	): false|int {
 		$table_name = $this->get_sync_log_table();
 
-		// Validate input parameters.
-		$valid_sync_types = array( 'full', 'partial', 'single' );
-		$valid_sync_statuses = array( 'started', 'completed', 'failed' );
+		try {
+			// Validate input parameters using predefined constants
+			if ( ! $this->is_valid_sync_type( $sync_type ) || 
+				 ! $this->is_valid_sync_status( $sync_status ) ) {
+				return false;
+			}
 
-		if ( ! in_array( $sync_type, $valid_sync_types, true ) ||
-			 ! in_array( $sync_status, $valid_sync_statuses, true ) ) {
+			// Prepare sanitized data for insertion
+			$data = [
+				'sync_type'       => $sync_type,
+				'sync_status'     => $sync_status,
+				'items_processed' => max( 0, $items_processed ),
+				'items_failed'    => max( 0, $items_failed ),
+				'error_messages'  => substr( $error_messages, 0, self::MAX_ERROR_MESSAGE_LENGTH ),
+				'started_at'      => current_time( 'mysql' ),
+			];
+
+			// Set completion time for finished operations
+			if ( in_array( $sync_status, [ 'completed', 'failed' ], true ) ) {
+				$data['completed_at'] = current_time( 'mysql' );
+			}
+
+			// Dynamic format specifiers
+			$formats = [ '%s', '%s', '%d', '%d', '%s', '%s' ];
+			if ( isset( $data['completed_at'] ) ) {
+				$formats[] = '%s';
+			}
+
+			// Insert the log entry
+			$result = $this->wpdb->insert( $table_name, $data, $formats );
+
+			// Clear related caches on successful insertion
+			if ( false !== $result ) {
+				$this->clear_sync_caches();
+				return $this->wpdb->insert_id;
+			}
+
+			return false;
+		} catch ( \Exception $e ) {
+			do_action( 'qm/debug', sprintf( 'Sync logging error: %s', $e->getMessage() ) );
 			return false;
 		}
-
-		// Prepare data for insertion.
-		$data = array(
-			'sync_type'       => $sync_type,
-			'sync_status'     => $sync_status,
-			'items_processed' => absint( $items_processed ),
-			'items_failed'    => absint( $items_failed ),
-			'error_messages'  => substr( $error_messages, 0, 65535 ), // Limit to TEXT field size.
-			'started_at'      => current_time( 'mysql' ),
-		);
-
-		// Set completed time if operation is finished.
-		if ( in_array( $sync_status, array( 'completed', 'failed' ), true ) ) {
-			$data['completed_at'] = current_time( 'mysql' );
-		}
-
-		// Format specifiers for data types.
-		$formats = array( '%s', '%s', '%d', '%d', '%s', '%s' );
-		if ( isset( $data['completed_at'] ) ) {
-			$formats[] = '%s';
-		}
-
-		// Insert the log entry.
-		$result = $this->wpdb->insert( $table_name, $data, $formats );
-
-		// Clear cache after insertion.
-		wp_cache_delete( 'recent_sync_logs', self::CACHE_GROUP );
-		wp_cache_delete( 'sync_stats', self::CACHE_GROUP );
-
-		return false !== $result ? $this->wpdb->insert_id : false;
 	}
 
 	/**
-	 * Update sync log entry
+	 * Update sync log entry.
 	 *
-	 * Updates an existing sync log entry with new status and statistics.
-	 * Uses prepared statements for security.
+	 * Updates existing sync operation with new status and metrics.
+	 * Implements comprehensive validation and error handling.
 	 *
 	 * @since 3.0.0
-	 *
-	 * @param int    $log_id          Log entry ID to update.
-	 * @param string $sync_status     New status for the sync operation.
-	 * @param int    $items_processed Number of items processed.
-	 * @param int    $items_failed    Number of items that failed.
-	 * @param string $error_messages  Error messages if any.
-	 *
+	 * @param int    $log_id          Target log entry ID.
+	 * @param string $sync_status     Updated operation status.
+	 * @param int    $items_processed Updated processed count.
+	 * @param int    $items_failed    Updated failure count.
+	 * @param string $error_messages  Updated error messages.
 	 * @return bool True on success, false on failure.
 	 */
 	public function update_sync_log(
@@ -351,41 +423,51 @@ class Database {
 		int $items_failed = 0,
 		string $error_messages = ''
 	): bool {
-		$table_name = $this->get_sync_log_table();
+		try {
+			$table_name = $this->get_sync_log_table();
 
-		// Validate sync status.
-		$valid_sync_statuses = array( 'started', 'completed', 'failed' );
-		if ( ! in_array( $sync_status, $valid_sync_statuses, true ) ) {
+			// Validate inputs
+			if ( $log_id <= 0 || ! $this->is_valid_sync_status( $sync_status ) ) {
+				return false;
+			}
+
+			// Prepare sanitized update data
+			$data = [
+				'sync_status'     => $sync_status,
+				'items_processed' => max( 0, $items_processed ),
+				'items_failed'    => max( 0, $items_failed ),
+				'error_messages'  => substr( $error_messages, 0, self::MAX_ERROR_MESSAGE_LENGTH ),
+			];
+
+			// Set completion timestamp for finished operations
+			if ( in_array( $sync_status, [ 'completed', 'failed' ], true ) ) {
+				$data['completed_at'] = current_time( 'mysql' );
+			}
+
+			// Update with proper format specifiers
+			$formats = [ '%s', '%d', '%d', '%s' ];
+			if ( isset( $data['completed_at'] ) ) {
+				$formats[] = '%s';
+			}
+
+			$result = $this->wpdb->update(
+				$table_name,
+				$data,
+				[ 'id' => $log_id ],
+				$formats,
+				[ '%d' ]
+			);
+
+			// Clear caches on successful update
+			if ( false !== $result ) {
+				$this->clear_sync_caches();
+			}
+
+			return false !== $result;
+		} catch ( \Exception $e ) {
+			do_action( 'qm/debug', sprintf( 'Sync log update error: %s', $e->getMessage() ) );
 			return false;
 		}
-
-		// Prepare update data.
-		$data = array(
-			'sync_status'     => $sync_status,
-			'items_processed' => absint( $items_processed ),
-			'items_failed'    => absint( $items_failed ),
-			'error_messages'  => substr( $error_messages, 0, 65535 ), // Limit to TEXT field size.
-		);
-
-		// Set completed time if operation is finished.
-		if ( in_array( $sync_status, array( 'completed', 'failed' ), true ) ) {
-			$data['completed_at'] = current_time( 'mysql' );
-		}
-
-		// Update the log entry.
-		$result = $this->wpdb->update(
-			$table_name,
-			$data,
-			array( 'id' => absint( $log_id ) ),
-			array( '%s', '%d', '%d', '%s', '%s' ),
-			array( '%d' )
-		);
-
-		// Clear cache after update.
-		wp_cache_delete( 'recent_sync_logs', self::CACHE_GROUP );
-		wp_cache_delete( 'sync_stats', self::CACHE_GROUP );
-
-		return false !== $result;
 	}
 
 	/**
@@ -844,16 +926,99 @@ class Database {
 	}
 
 	/**
-	 * Get table charset and collation
-	 *
-	 * Returns the charset and collation for database tables.
-	 * Uses WordPress database settings for consistency.
+	 * Get table charset and collation.
 	 *
 	 * @since 3.0.0
-	 *
 	 * @return string Charset and collation string.
 	 */
 	public function get_charset_collate(): string {
 		return $this->wpdb->get_charset_collate();
+	}
+
+	/**
+	 * Get installed database version.
+	 *
+	 * @since 3.0.0
+	 * @return string Installed version string.
+	 */
+	private function get_installed_version(): string {
+		$version = get_option( self::DB_VERSION_OPTION, '0.0.0' );
+		return is_string( $version ) ? sanitize_text_field( $version ) : '0.0.0';
+	}
+
+	/**
+	 * Invalidate all database-related caches.
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	private function invalidate_all_caches(): void {
+		if ( function_exists( 'wp_cache_flush_group' ) ) {
+			wp_cache_flush_group( self::CACHE_GROUP );
+		} else {
+			// Fallback cache clearing
+			$this->clear_sync_caches();
+		}
+	}
+
+	/**
+	 * Clear sync-related caches.
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	private function clear_sync_caches(): void {
+		$cache_keys = [
+			'recent_sync_logs',
+			'sync_stats',
+			'recent_sync_logs_10',
+			'recent_sync_logs_20',
+			'recent_sync_logs_50',
+		];
+
+		foreach ( $cache_keys as $key ) {
+			wp_cache_delete( $key, self::CACHE_GROUP );
+		}
+	}
+
+	/**
+	 * Validate sync type.
+	 *
+	 * @since 3.0.0
+	 * @param string $sync_type Sync type to validate.
+	 * @return bool True if valid.
+	 */
+	private function is_valid_sync_type( string $sync_type ): bool {
+		return in_array( $sync_type, self::VALID_SYNC_TYPES, true );
+	}
+
+	/**
+	 * Validate sync status.
+	 *
+	 * @since 3.0.0
+	 * @param string $sync_status Sync status to validate.
+	 * @return bool True if valid.
+	 */
+	private function is_valid_sync_status( string $sync_status ): bool {
+		return in_array( $sync_status, self::VALID_SYNC_STATUSES, true );
+	}
+
+	/**
+	 * Daily cleanup routine.
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	public function daily_cleanup(): void {
+		try {
+			// Clean up old sync logs (keep 30 days)
+			$deleted = $this->cleanup_old_sync_logs( 30 );
+			
+			if ( $deleted > 0 ) {
+				do_action( 'qm/debug', sprintf( 'Cleaned up %d old sync logs', $deleted ) );
+			}
+		} catch ( \Exception $e ) {
+			do_action( 'qm/debug', sprintf( 'Daily cleanup failed: %s', $e->getMessage() ) );
+		}
 	}
 }

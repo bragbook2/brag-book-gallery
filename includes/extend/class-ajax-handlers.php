@@ -2,8 +2,16 @@
 /**
  * AJAX handlers for BRAGBookGallery plugin.
  *
+ * This class handles all AJAX endpoints for the BRAGBook Gallery plugin,
+ * including gallery filtering, case details loading, favorites management,
+ * cache operations, and administrative functions. All methods implement
+ * proper WordPress security practices including nonce verification,
+ * capability checks, and data sanitization.
+ *
  * @package BRAGBookGallery
  * @since   3.0.0
+ * @author  BRAGBook Team
+ * @version 3.0.0
  */
 
 declare(strict_types=1);
@@ -14,39 +22,77 @@ use BRAGBookGallery\Includes\REST\Endpoints;
 use Exception;
 
 /**
- * Class Ajax_Handlers
+ * AJAX Handlers Class
  *
- * Handles all AJAX operations for the BRAGBookGallery plugin.
+ * Manages all AJAX operations for the BRAGBookGallery plugin including:
+ * - Gallery content filtering and loading
+ * - Individual case detail retrieval
+ * - Favorites system integration
+ * - Cache management operations
+ * - Administrative functions (rewrite rules, cache clearing)
+ *
+ * Security Features:
+ * - Nonce verification for all requests
+ * - Capability checks for admin functions
+ * - Input sanitization and validation
+ * - Error handling with proper logging
  *
  * @since 3.0.0
  */
 class Ajax_Handlers {
 
 	/**
-	 * Set no-cache headers for AJAX responses.
+	 * Set comprehensive no-cache headers for AJAX responses.
+	 *
+	 * Implements VIP-compliant caching prevention for AJAX responses,
+	 * including compatibility with various caching systems like LiteSpeed,
+	 * Varnish, and CDNs. Uses WordPress core nocache_headers() as the
+	 * foundation and adds additional headers for comprehensive coverage.
 	 *
 	 * @since 3.0.0
 	 * @return void
 	 */
 	private static function set_no_cache_headers(): void {
-		// Prevent all caching
+		// Use WordPress core function for standard no-cache headers
 		nocache_headers();
 
-		// Additional headers for LiteSpeed and other caching systems
-		header( 'X-LiteSpeed-Cache-Control: no-cache' );
-		header( 'Cache-Control: no-cache, no-store, must-revalidate, max-age=0' );
-		header( 'Pragma: no-cache' );
-		header( 'Expires: Wed, 11 Jan 1984 05:00:00 GMT' );
-		header( 'X-Accel-Expires: 0' );
+		// Additional headers for comprehensive caching system coverage
+		if ( ! headers_sent() ) {
+			header( 'X-LiteSpeed-Cache-Control: no-cache', true );
+			header( 'Cache-Control: no-cache, no-store, must-revalidate, max-age=0', true );
+			header( 'Pragma: no-cache', true );
+			header( 'Expires: Wed, 11 Jan 1984 05:00:00 GMT', true );
+			header( 'X-Accel-Expires: 0', true );
+		}
 
-		// Disable LiteSpeed caching for this response
+		// Disable LiteSpeed caching if the plugin is active
 		if ( defined( 'LSCWP_V' ) ) {
+			/**
+			 * Disable LiteSpeed cache for this AJAX request.
+			 *
+			 * @since 3.0.0
+			 */
 			do_action( 'litespeed_control_set_nocache', 'bragbook ajax request' );
 		}
 	}
 
 	/**
-	 * Register all AJAX handlers.
+	 * Register all AJAX handlers with WordPress.
+	 *
+	 * Registers both logged-in (wp_ajax_) and non-logged-in (wp_ajax_nopriv_)
+	 * AJAX actions for public-facing functionality, and admin-only actions
+	 * for administrative features. Each handler implements proper security
+	 * validation including nonce verification and capability checks.
+	 *
+	 * Public AJAX Actions:
+	 * - Gallery filtering and case loading
+	 * - Case detail retrieval
+	 * - Favorites management
+	 *
+	 * Admin-only AJAX Actions:
+	 * - Cache management operations
+	 * - Rewrite rules management
+	 * - Debug utilities
 	 *
 	 * @since 3.0.0
 	 * @return void
@@ -93,72 +139,42 @@ class Ajax_Handlers {
 	/**
 	 * AJAX handler to flush rewrite rules.
 	 *
+	 * Handles administrative requests to flush WordPress rewrite rules
+	 * with different flush types including standard, hard, and verification.
+	 * Requires manage_options capability and proper nonce verification.
+	 *
 	 * @since 3.0.0
 	 * @return void
 	 */
 	public static function ajax_flush_rewrite_rules(): void {
-		// Check nonce - fixed to match what's being sent
-		if ( ! wp_verify_nonce( $_POST['nonce'] ?? '', 'brag_book_flush_rewrite_rules' ) ) {
-			wp_send_json_error( 'Security check failed' );
+		// Sanitize and validate nonce from request
+		$nonce = isset( $_POST['nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['nonce'] ) ) : '';
+		if ( ! wp_verify_nonce( $nonce, 'brag_book_flush_rewrite_rules' ) ) {
+			wp_send_json_error( __( 'Security check failed', 'brag-book-gallery' ) );
+			return;
 		}
 
-		// Check permissions
+		// Verify user has administrative permissions
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error( 'Insufficient permissions' );
+			wp_send_json_error( __( 'Insufficient permissions', 'brag-book-gallery' ) );
+			return;
 		}
 
-		$flush_type = sanitize_text_field( $_POST['flush_type'] ?? 'standard' );
+		// Sanitize flush type parameter
+		$flush_type = isset( $_POST['flush_type'] ) ? sanitize_text_field( wp_unslash( $_POST['flush_type'] ) ) : 'standard';
 		$message = '';
 
 		try {
-			switch ( $flush_type ) {
-				case 'hard':
-					// Force register our rules
-					Rewrite_Rules_Handler::custom_rewrite_rules();
-					// Hard flush (updates .htaccess)
-					flush_rewrite_rules( true );
-					$message = 'Hard flush completed successfully. Rewrite rules and .htaccess updated.';
-					break;
-
-				case 'with_registration':
-					// Re-register custom rules first
-					Rewrite_Rules_Handler::custom_rewrite_rules();
-					// Then flush
-					flush_rewrite_rules( false );
-					$message = 'Rules re-registered and flushed successfully.';
-					break;
-
-				case 'verify':
-					global $wp_rewrite;
-					$rules = $wp_rewrite->wp_rewrite_rules();
-					$gallery_rules_count = 0;
-
-					if ( ! empty( $rules ) ) {
-						foreach ( $rules as $pattern => $query ) {
-							if ( strpos( $query, 'procedure_title' ) !== false ||
-								 strpos( $query, 'case_id' ) !== false ) {
-								$gallery_rules_count++;
-							}
-						}
-					}
-
-					$message = sprintf(
-						'Verification complete. Found %d total rules, %d gallery-specific rules.',
-						count( $rules ),
-						$gallery_rules_count
-					);
-					break;
-
-				case 'standard':
-				default:
-					// Standard flush
-					flush_rewrite_rules( false );
-					$message = 'Standard flush completed successfully.';
-					break;
-			}
+			// Use PHP 8.2 match expression for cleaner logic
+			$message = match ( $flush_type ) {
+				'hard' => self::perform_hard_flush(),
+				'with_registration' => self::perform_flush_with_registration(),
+				'verify' => self::perform_verification(),
+				default => self::perform_standard_flush(),
+			};
 
 			// Clear the notice
-			delete_transient( 'bragbook_show_rewrite_notice' );
+			delete_transient( 'brag_book_gallery_show_rewrite_notice' );
 
 			// Clear any caches
 			if ( function_exists( 'wp_cache_flush' ) ) {
@@ -168,13 +184,98 @@ class Ajax_Handlers {
 
 			wp_send_json_success( $message );
 
+			// Clear the notice
+			delete_transient( 'brag_book_gallery_show_rewrite_notice' );
+
+			// Clear any caches
+			if ( function_exists( 'wp_cache_flush' ) ) {
+				wp_cache_flush();
+				$message .= ' ' . __( 'Object cache cleared.', 'brag-book-gallery' );
+			}
+
+			wp_send_json_success( $message );
+
 		} catch ( Exception $e ) {
-			wp_send_json_error( 'Error flushing rules: ' . $e->getMessage() );
+			wp_send_json_error( __( 'Error flushing rules: ', 'brag-book-gallery' ) . $e->getMessage() );
 		}
 	}
 
 	/**
+	 * Perform a hard flush of rewrite rules.
+	 *
+	 * Forces registration of custom rules and updates .htaccess file.
+	 *
+	 * @since 3.0.0
+	 * @return string Success message
+	 */
+	private static function perform_hard_flush(): string {
+		Rewrite_Rules_Handler::custom_rewrite_rules();
+		flush_rewrite_rules( true );
+		return __( 'Hard flush completed successfully. Rewrite rules and .htaccess updated.', 'brag-book-gallery' );
+	}
+
+	/**
+	 * Perform a flush with rule re-registration.
+	 *
+	 * Re-registers custom rules before flushing them.
+	 *
+	 * @since 3.0.0
+	 * @return string Success message
+	 */
+	private static function perform_flush_with_registration(): string {
+		Rewrite_Rules_Handler::custom_rewrite_rules();
+		flush_rewrite_rules( false );
+		return __( 'Rules re-registered and flushed successfully.', 'brag-book-gallery' );
+	}
+
+	/**
+	 * Perform verification of existing rewrite rules.
+	 *
+	 * Counts total and gallery-specific rules for diagnostic purposes.
+	 *
+	 * @since 3.0.0
+	 * @return string Verification results message
+	 */
+	private static function perform_verification(): string {
+		global $wp_rewrite;
+		$rules = $wp_rewrite->wp_rewrite_rules();
+		$gallery_rules_count = 0;
+
+		if ( ! empty( $rules ) ) {
+			foreach ( $rules as $pattern => $query ) {
+				if ( str_contains( $query, 'procedure_title' ) || str_contains( $query, 'case_id' ) ) {
+					$gallery_rules_count++;
+				}
+			}
+		}
+
+		return sprintf(
+			/* translators: 1: total rules count, 2: gallery rules count */
+			__( 'Verification complete. Found %1$d total rules, %2$d gallery-specific rules.', 'brag-book-gallery' ),
+			count( $rules ),
+			$gallery_rules_count
+		);
+	}
+
+	/**
+	 * Perform a standard flush of rewrite rules.
+	 *
+	 * Standard flush without .htaccess update.
+	 *
+	 * @since 3.0.0
+	 * @return string Success message
+	 */
+	private static function perform_standard_flush(): string {
+		flush_rewrite_rules( false );
+		return __( 'Standard flush completed successfully.', 'brag-book-gallery' );
+	}
+
+	/**
 	 * AJAX handler for loading filtered gallery content.
+	 *
+	 * Handles AJAX requests for filtering gallery content based on procedure,
+	 * nudity preferences, and other filter criteria. Implements comprehensive
+	 * security validation, data sanitization, and error handling.
 	 *
 	 * @since 3.0.0
 	 * @return void
@@ -183,34 +284,32 @@ class Ajax_Handlers {
 		// Set no-cache headers first
 		self::set_no_cache_headers();
 
-		// Simple test response - uncomment to test if handler is reached
-		// wp_send_json_success( [ 'html' => '<div class="brag-book-gallery-test">AJAX handler is working! Received action: ' . ($_POST['action'] ?? 'none') . '</div>', 'count' => 0 ] );
-		// return;
-
-		// Wrap everything in try-catch to capture any errors
 		try {
-			// Debug: Log that we reached the handler
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( 'BRAGBook Gallery: ajax_load_filtered_gallery called' );
-				error_log( 'POST data: ' . print_r( $_POST, true ) );
-			}
+			// Validate and sanitize request data
+			$request_data = self::validate_and_sanitize_request( [
+				'nonce' => 'brag_book_gallery_nonce',
+				'required_fields' => [],
+				'optional_fields' => [ 'procedure_name', 'procedure_ids', 'has_nudity' ],
+			] );
 
-			// Verify nonce
-			if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'brag_book_gallery_nonce' ) ) {
+			if ( is_wp_error( $request_data ) ) {
 				wp_send_json_error( [
-					'message' => __( 'Security check failed - nonce invalid or missing.', 'brag-book-gallery' ),
-					'debug' => [
-						'has_nonce' => isset( $_POST['nonce'] ),
-						'nonce_value' => isset( $_POST['nonce'] ) ? sanitize_text_field( $_POST['nonce'] ) : 'not set',
-					],
+					'message' => $request_data->get_error_message(),
+					'debug' => WP_DEBUG ? $request_data->get_error_data() : null,
 				] );
 				return;
 			}
 
-			// Get filter parameters
-			$procedure_name = isset( $_POST['procedure_name'] ) ? sanitize_text_field( wp_unslash( $_POST['procedure_name'] ) ) : '';
-			$procedure_ids = isset( $_POST['procedure_ids'] ) ? sanitize_text_field( wp_unslash( $_POST['procedure_ids'] ) ) : '';
-			$has_nudity = isset( $_POST['has_nudity'] ) ? ( '1' === $_POST['has_nudity'] ) : false;
+			// Extract sanitized parameters
+			$procedure_name = $request_data['procedure_name'] ?? '';
+			$procedure_ids = $request_data['procedure_ids'] ?? '';
+			$has_nudity = '1' === ( $request_data['has_nudity'] ?? '' );
+
+			// Debug logging with proper WordPress debugging
+			if ( WP_DEBUG && WP_DEBUG_LOG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log( 'BRAGBook Gallery: ajax_load_filtered_gallery called with params: ' . wp_json_encode( $request_data ) );
+			}
 
 			// Get gallery page configuration
 			$gallery_slugs = get_option( 'brag_book_gallery_gallery_page_slug', [] );
@@ -220,9 +319,10 @@ class Ajax_Handlers {
 			$api_tokens = get_option( 'brag_book_gallery_api_token', [] );
 			$website_property_ids = get_option( 'brag_book_gallery_website_property_id', [] );
 
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( 'API Tokens: ' . print_r( $api_tokens, true ) );
-				error_log( 'Website Property IDs: ' . print_r( $website_property_ids, true ) );
+			// Debug API configuration logging
+			if ( WP_DEBUG && WP_DEBUG_LOG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log( 'BRAGBook Gallery API config - Tokens: ' . count( $api_tokens ) . ', Property IDs: ' . count( $website_property_ids ) );
 			}
 
 			// Get the first configured API token and property ID
@@ -274,7 +374,7 @@ class Ajax_Handlers {
 			}
 
 			// Debug: Log first case structure to understand API response
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG && ! empty( $gallery_data['data'][0] ) ) {
+			if ( WP_DEBUG && ! empty( $gallery_data['data'][0] ) ) {
 				$first_case = $gallery_data['data'][0];
 				error_log( 'First case structure:' );
 				error_log( '  ID: ' . ( $first_case['id'] ?? 'not set' ) );
@@ -296,7 +396,7 @@ class Ajax_Handlers {
 			$filtered_cases = [];
 
 			// Debug log for procedure filtering
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			if ( WP_DEBUG ) {
 				error_log( 'Procedure Filter Debug:' );
 				error_log( '  Procedure name: ' . $procedure_name );
 				error_log( '  Procedure IDs: ' . $procedure_ids );
@@ -308,7 +408,7 @@ class Ajax_Handlers {
 			if ( ! empty( $procedure_ids_array ) ) {
 				$filtered_cases = $gallery_data['data'] ?? [];
 
-				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				if ( WP_DEBUG ) {
 					error_log( '  Using API-filtered results: ' . count( $filtered_cases ) . ' cases' );
 				}
 			} else if ( ! empty( $procedure_name ) ) {
@@ -336,7 +436,7 @@ class Ajax_Handlers {
 			}
 
 			// Debug log the filter results
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			if ( WP_DEBUG ) {
 				error_log( '  Total filtered cases found: ' . count( $filtered_cases ) );
 				if ( count( $filtered_cases ) > 0 ) {
 					error_log( '  First few case IDs: ' . implode( ', ', array_slice( array_column( $filtered_cases, 'id' ), 0, 5 ) ) );
@@ -527,7 +627,7 @@ class Ajax_Handlers {
 			if ( ! empty( $procedure_name ) ) {
 				// Get the proper display name from sidebar data if possible
 				$display_name = $procedure_name;
-				
+
 				// Generate title and description
 				$site_name = get_bloginfo( 'name' );
 				$seo_data['title'] = $display_name . ' Before & After Gallery | ' . $site_name;
@@ -560,7 +660,7 @@ class Ajax_Handlers {
 				'message' => __( 'An error occurred while loading the filtered gallery.', 'brag-book-gallery' ),
 				'error' => $e->getMessage(),
 				'type' => get_class( $e ),
-				'debug' => defined( 'WP_DEBUG' ) && WP_DEBUG ? [
+				'debug' => WP_DEBUG ? [
 					'message' => $e->getMessage(),
 					'file' => basename( $e->getFile() ),
 					'line' => $e->getLine(),
@@ -571,41 +671,53 @@ class Ajax_Handlers {
 	}
 
 	/**
-	 * AJAX handler to load case details.
+	 * AJAX handler to load case details from the API.
+	 *
+	 * Retrieves detailed information for a specific case including images,
+	 * patient information, and procedure details. Implements comprehensive
+	 * validation, caching, and error handling. Returns formatted case data
+	 * suitable for frontend display.
+	 *
+	 * Expected POST Parameters:
+	 * - nonce: Security nonce for 'brag_book_gallery_nonce'
+	 * - case_id: Required case identifier
+	 * - procedure_ids: Optional comma-separated procedure IDs for filtering
 	 *
 	 * @since 3.0.0
-	 * @return void
+	 * @return void Sends JSON response via wp_send_json_success/error
 	 */
 	public static function ajax_load_case_details(): void {
-		// Verify nonce
-		if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'brag_book_gallery_nonce' ) ) {
+		// Validate and sanitize request data
+		$request_data = self::validate_and_sanitize_request( [
+			'nonce' => 'brag_book_gallery_nonce',
+			'required_fields' => [ 'case_id' ],
+			'optional_fields' => [ 'procedure_ids' ],
+		] );
+
+		if ( is_wp_error( $request_data ) ) {
 			wp_send_json_error( [
-				'message' => __( 'Security check failed.', 'brag-book-gallery' ),
+				'message' => $request_data->get_error_message(),
+				'debug' => WP_DEBUG ? $request_data->get_error_data() : null,
 			] );
+			return;
 		}
 
-		// Get case ID
-		$case_id = isset( $_POST['case_id'] ) ? sanitize_text_field( wp_unslash( $_POST['case_id'] ) ) : '';
+		$case_id = $request_data['case_id'];
 
-		if ( empty( $case_id ) ) {
-			wp_send_json_error( [
-				'message' => __( 'Case ID is required.', 'brag-book-gallery' ),
-			] );
-		}
-
-		// Get procedure IDs if provided
+		// Parse procedure IDs if provided
 		$procedure_ids = [];
-		if ( isset( $_POST['procedure_ids'] ) && ! empty( $_POST['procedure_ids'] ) ) {
-			$ids_string = sanitize_text_field( wp_unslash( $_POST['procedure_ids'] ) );
-			$procedure_ids = array_map( 'intval', explode( ',', $ids_string ) );
+		if ( ! empty( $request_data['procedure_ids'] ) ) {
+			$procedure_ids = array_map( 'intval', explode( ',', $request_data['procedure_ids'] ) );
 
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( 'BRAGBook Gallery: Received procedure IDs: ' . json_encode( $procedure_ids ) );
+			if ( WP_DEBUG && WP_DEBUG_LOG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log( 'BRAGBook Gallery: Received procedure IDs: ' . wp_json_encode( $procedure_ids ) );
 			}
 		}
 
-		// Debug: Log the case ID being requested
-		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+		// Debug logging
+		if ( WP_DEBUG && WP_DEBUG_LOG ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAGBook Gallery: ajax_load_case_details called for case ID: ' . $case_id );
 		}
 
@@ -631,7 +743,7 @@ class Ajax_Handlers {
 		// If not found and case_id is numeric, try the direct API method with procedure IDs
 		if ( empty( $case_data ) && is_numeric( $case_id ) ) {
 			$endpoints = new Endpoints();
-			
+
 			// Try to get case details using the caseNumber endpoint
 			foreach ( $api_tokens as $index => $token ) {
 				$property_id = $website_property_ids[ $index ] ?? null;
@@ -642,7 +754,7 @@ class Ajax_Handlers {
 				}
 
 				// Debug: Log the request details
-				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				if ( WP_DEBUG ) {
 					error_log( 'BRAGBook Gallery: Fetching case ' . $case_id . ' with token index ' . $index . ' and property ID ' . $property_id );
 				}
 
@@ -651,7 +763,7 @@ class Ajax_Handlers {
 
 				if ( ! empty( $response ) && is_array( $response ) ) {
 					// Debug: Log successful response
-					if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+					if ( WP_DEBUG ) {
 						error_log( 'BRAGBook Gallery: Successfully fetched case ' . $case_id . ' - Case ID in response: ' . ( $response['id'] ?? 'N/A' ) );
 					}
 					$case_data = $response;
@@ -674,7 +786,7 @@ class Ajax_Handlers {
 
 			if ( ! empty( $response['cases'] ) && is_array( $response['cases'] ) ) {
 				// Debug: Log available case numbers for comparison
-				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				if ( WP_DEBUG ) {
 					$available_cases = array_map( function( $case ) {
 						return $case['caseNumber'] ?? $case['id'] ?? 'no-id';
 					}, array_slice( $response['cases'], 0, 10 ) ); // First 10 for brevity
@@ -717,36 +829,53 @@ class Ajax_Handlers {
 	}
 
 	/**
-	 * AJAX handler for loading case details HTML.
+	 * AJAX handler for loading case details as formatted HTML.
+	 *
+	 * Similar to ajax_load_case_details but returns pre-formatted HTML
+	 * instead of raw case data. Used for direct insertion into modal
+	 * dialogs or detail views. Includes proper image handling, responsive
+	 * layout, and accessibility features.
+	 *
+	 * Expected POST Parameters:
+	 * - nonce: Security nonce for 'brag_book_gallery_nonce'
+	 * - case_id: Required case identifier
+	 * - procedure_id: Optional procedure ID
+	 * - procedure_slug: Optional procedure slug
+	 * - procedure_name: Optional procedure name
+	 * - procedure_ids: Optional comma-separated procedure IDs
 	 *
 	 * @since 3.0.0
-	 * @return void
+	 * @return void Sends JSON response with HTML content
 	 */
 	public static function ajax_load_case_details_html(): void {
-		// Verify nonce
-		if ( ! wp_verify_nonce( $_POST['nonce'] ?? '', 'brag_book_gallery_nonce' ) ) {
-			wp_send_json_error( 'Invalid nonce' );
+		// Validate and sanitize request data
+		$request_data = self::validate_and_sanitize_request( [
+			'nonce' => 'brag_book_gallery_nonce',
+			'required_fields' => [ 'case_id' ],
+			'optional_fields' => [ 'procedure_id', 'procedure_slug', 'procedure_name', 'procedure_ids' ],
+		] );
+
+		if ( is_wp_error( $request_data ) ) {
+			wp_send_json_error( [
+				'message' => $request_data->get_error_message(),
+				'debug' => WP_DEBUG ? $request_data->get_error_data() : null,
+			] );
 			return;
 		}
 
-		$case_id = sanitize_text_field( $_POST['case_id'] ?? '' );
-		$procedure_id = sanitize_text_field( $_POST['procedure_id'] ?? '' );
-		$procedure_slug = sanitize_text_field( $_POST['procedure_slug'] ?? '' );
-		$procedure_name = sanitize_text_field( $_POST['procedure_name'] ?? '' );
+		$case_id = $request_data['case_id'];
+		$procedure_id = $request_data['procedure_id'] ?? '';
+		$procedure_slug = $request_data['procedure_slug'] ?? '';
+		$procedure_name = $request_data['procedure_name'] ?? '';
 
-		if ( empty( $case_id ) ) {
-			wp_send_json_error( 'Case ID is required' );
-			return;
-		}
-
-		// Get procedure IDs if provided
+		// Parse procedure IDs if provided
 		$procedure_ids = [];
-		if ( isset( $_POST['procedure_ids'] ) && ! empty( $_POST['procedure_ids'] ) ) {
-			$ids_string = sanitize_text_field( wp_unslash( $_POST['procedure_ids'] ) );
-			$procedure_ids = array_map( 'intval', explode( ',', $ids_string ) );
+		if ( ! empty( $request_data['procedure_ids'] ) ) {
+			$procedure_ids = array_map( 'intval', explode( ',', $request_data['procedure_ids'] ) );
 
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( 'BRAGBook Gallery HTML: Received procedure IDs: ' . json_encode( $procedure_ids ) );
+			if ( WP_DEBUG && WP_DEBUG_LOG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log( 'BRAGBook Gallery HTML: Received procedure IDs: ' . wp_json_encode( $procedure_ids ) );
 			}
 		}
 
@@ -788,26 +917,41 @@ class Ajax_Handlers {
 	}
 
 	/**
-	 * Simple AJAX handler for case details.
+	 * Simplified AJAX handler for basic case details.
+	 *
+	 * Lightweight version of the case details handler for scenarios
+	 * requiring minimal data transfer. Returns essential case information
+	 * without full formatting or extensive metadata. Ideal for popups,
+	 * tooltips, or preview functionality.
+	 *
+	 * Expected POST Parameters:
+	 * - nonce: Security nonce for 'brag_book_gallery_nonce'
+	 * - case_id: Required case identifier
+	 * - procedure_slug: Optional procedure slug
+	 * - procedure_name: Optional procedure name
 	 *
 	 * @since 3.0.0
-	 * @return void
+	 * @return void Sends JSON response with minimal case data
 	 */
 	public static function ajax_simple_case_handler(): void {
-		// Verify nonce
-		if ( ! wp_verify_nonce( $_POST['nonce'] ?? '', 'brag_book_gallery_nonce' ) ) {
-			wp_send_json_error( 'Invalid nonce' );
+		// Validate and sanitize request data
+		$request_data = self::validate_and_sanitize_request( [
+			'nonce' => 'brag_book_gallery_nonce',
+			'required_fields' => [ 'case_id' ],
+			'optional_fields' => [ 'procedure_slug', 'procedure_name' ],
+		] );
+
+		if ( is_wp_error( $request_data ) ) {
+			wp_send_json_error( [
+				'message' => $request_data->get_error_message(),
+				'debug' => WP_DEBUG ? $request_data->get_error_data() : null,
+			] );
 			return;
 		}
 
-		$case_id = sanitize_text_field( $_POST['case_id'] ?? '' );
-		$procedure_slug = sanitize_text_field( $_POST['procedure_slug'] ?? '' );
-		$procedure_name = sanitize_text_field( $_POST['procedure_name'] ?? '' );
-
-		if ( empty( $case_id ) ) {
-			wp_send_json_error( 'Case ID is required' );
-			return;
-		}
+		$case_id = $request_data['case_id'];
+		$procedure_slug = $request_data['procedure_slug'] ?? '';
+		$procedure_name = $request_data['procedure_name'] ?? '';
 
 		// Get API configuration
 		$api_tokens = get_option( 'brag_book_gallery_api_token', [] );
@@ -1033,7 +1177,7 @@ class Ajax_Handlers {
 			}
 
 			// Log for debugging
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			if ( WP_DEBUG ) {
 				error_log( 'Load More Results: Cases loaded: ' . count( $all_cases ) . ', Has more: ' . ( $has_more ? 'true' : 'false' ) );
 			}
 
@@ -1148,30 +1292,39 @@ class Ajax_Handlers {
 	}
 
 	/**
-	 * Helper: Find a case by ID.
+	 * Find a case by ID from cached data or API.
+	 *
+	 * Searches for a case using multiple methods:
+	 * 1. Carousel cache lookup (for seoSuffixUrl identifiers)
+	 * 2. Cached gallery data search (by numeric ID or seoSuffixUrl)
+	 * 3. Direct API call as fallback
+	 *
+	 * Supports both numeric case IDs and SEO-friendly suffix URLs
+	 * for flexible case identification across different contexts.
 	 *
 	 * @since 3.0.0
-	 * @param string $case_id Case ID to find.
-	 * @param string $api_token API token.
-	 * @param int    $website_property_id Website property ID.
-	 * @return array|null Case data or null if not found.
+	 * @param string $case_id Case identifier (numeric ID or seoSuffixUrl).
+	 * @param string $api_token BRAGBook API authentication token.
+	 * @param int    $website_property_id Website property identifier.
+	 * @return array|null Case data array or null if not found.
 	 */
 	private static function find_case_by_id( string $case_id, string $api_token, int $website_property_id ): ?array {
 		// Debug logging
-		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+		if ( WP_DEBUG && WP_DEBUG_LOG ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'find_case_by_id: Looking for case: ' . $case_id );
 		}
-		
+
 		// First check if this is a carousel case in cache (case_id might be seoSuffixUrl)
 		$carousel_case = Data_Fetcher::get_carousel_case_from_cache( $case_id, $api_token );
 		if ( $carousel_case !== null ) {
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			if ( WP_DEBUG ) {
 				error_log( 'find_case_by_id: Found case in carousel cache for identifier: ' . $case_id );
 				error_log( 'find_case_by_id: Actual case ID is: ' . ( $carousel_case['id'] ?? 'N/A' ) );
 			}
 			return $carousel_case;
 		}
-		
+
 		// Next, try to get the case from cached data
 		$cache_key = 'brag_book_all_cases_' . md5( $api_token . $website_property_id );
 		$cached_data = get_transient( $cache_key );
@@ -1179,8 +1332,8 @@ class Ajax_Handlers {
 
 		// Check if case_id is numeric (traditional ID) or alphanumeric (SEO suffix)
 		$is_numeric_id = is_numeric( $case_id );
-		
-		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+
+		if ( WP_DEBUG ) {
 			error_log( 'find_case_by_id: Is numeric ID? ' . ( $is_numeric_id ? 'Yes' : 'No' ) );
 		}
 
@@ -1190,27 +1343,27 @@ class Ajax_Handlers {
 				// First, try by numeric ID if the identifier is numeric
 				if ( $is_numeric_id ) {
 					if ( isset( $case['id'] ) && strval( $case['id'] ) === strval( $case_id ) ) {
-						if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+						if ( WP_DEBUG ) {
 							error_log( 'find_case_by_id: Found case by numeric ID in cache' );
 						}
 						return $case;
 					}
 				}
-				
+
 				// Always also check by SEO suffix URL (even for numeric-looking identifiers)
 				// Check at root level first
 				if ( isset( $case['seoSuffixUrl'] ) && $case['seoSuffixUrl'] === $case_id ) {
-					if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+					if ( WP_DEBUG ) {
 						error_log( 'find_case_by_id: Found case by SEO suffix at root level in cache' );
 					}
 					return $case;
 				}
-				
+
 				// Then check in caseDetails array
 				if ( isset( $case['caseDetails'] ) && is_array( $case['caseDetails'] ) ) {
 					foreach ( $case['caseDetails'] as $detail ) {
 						if ( isset( $detail['seoSuffixUrl'] ) && $detail['seoSuffixUrl'] === $case_id ) {
-							if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+							if ( WP_DEBUG ) {
 								error_log( 'find_case_by_id: Found case by SEO suffix in caseDetails in cache' );
 							}
 							return $case;
@@ -1228,27 +1381,27 @@ class Ajax_Handlers {
 				// First, try by numeric ID if the identifier is numeric
 				if ( $is_numeric_id ) {
 					if ( isset( $case['id'] ) && strval( $case['id'] ) === strval( $case_id ) ) {
-						if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+						if ( WP_DEBUG ) {
 							error_log( 'find_case_by_id: Found case by numeric ID from API' );
 						}
 						return $case;
 					}
 				}
-				
+
 				// Always also check by SEO suffix URL (even for numeric-looking identifiers)
 				// Check at root level first
 				if ( isset( $case['seoSuffixUrl'] ) && $case['seoSuffixUrl'] === $case_id ) {
-					if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+					if ( WP_DEBUG ) {
 						error_log( 'find_case_by_id: Found case by SEO suffix at root level from API' );
 					}
 					return $case;
 				}
-				
+
 				// Then check in caseDetails array
 				if ( isset( $case['caseDetails'] ) && is_array( $case['caseDetails'] ) ) {
 					foreach ( $case['caseDetails'] as $detail ) {
 						if ( isset( $detail['seoSuffixUrl'] ) && $detail['seoSuffixUrl'] === $case_id ) {
-							if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+							if ( WP_DEBUG ) {
 								error_log( 'find_case_by_id: Found case by SEO suffix in caseDetails from API' );
 							}
 							return $case;
@@ -1277,27 +1430,27 @@ class Ajax_Handlers {
 					// First, try by numeric ID if the identifier is numeric
 					if ( $is_numeric_id ) {
 						if ( isset( $case['id'] ) && strval( $case['id'] ) === strval( $case_id ) ) {
-							if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+							if ( WP_DEBUG ) {
 								error_log( 'find_case_by_id: Found case by numeric ID in last resort' );
 							}
 							return $case;
 						}
 					}
-					
+
 					// Always also check by SEO suffix URL (even for numeric-looking identifiers)
 					// Check at root level first
 					if ( isset( $case['seoSuffixUrl'] ) && $case['seoSuffixUrl'] === $case_id ) {
-						if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+						if ( WP_DEBUG ) {
 							error_log( 'find_case_by_id: Found case by SEO suffix at root level in last resort' );
 						}
 						return $case;
 					}
-					
+
 					// Then check in caseDetails array
 					if ( isset( $case['caseDetails'] ) && is_array( $case['caseDetails'] ) ) {
 						foreach ( $case['caseDetails'] as $detail ) {
 							if ( isset( $detail['seoSuffixUrl'] ) && $detail['seoSuffixUrl'] === $case_id ) {
-								if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+								if ( WP_DEBUG ) {
 									error_log( 'find_case_by_id: Found case by SEO suffix in caseDetails in last resort' );
 								}
 								return $case;
@@ -1571,7 +1724,7 @@ class Ajax_Handlers {
 			$endpoints = new Endpoints();
 
 			// Debug logging
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			if ( WP_DEBUG ) {
 				error_log( 'BRAGBook Favorites: Submitting with data:' );
 				error_log( '  Email: ' . $email );
 				error_log( '  Phone: ' . $phone );
@@ -1590,7 +1743,7 @@ class Ajax_Handlers {
 				$case_id
 			);
 
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			if ( WP_DEBUG ) {
 				error_log( 'BRAGBook Favorites: API Response: ' . ( $response ? substr( $response, 0, 500 ) : 'NULL' ) );
 			}
 
@@ -1892,7 +2045,7 @@ class Ajax_Handlers {
 		if ( empty( $favorite_cases ) ) {
 			// Include debug info in the response if WP_DEBUG is enabled
 			$debug_html = '';
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			if ( WP_DEBUG ) {
 				$debug_html = '<div class="debug-info" style="margin-top: 20px; padding: 10px; background: #f0f0f0; font-size: 12px;">';
 				$debug_html .= '<strong>Debug Info:</strong><br>';
 				$debug_html .= 'Case IDs requested: ' . implode( ', ', $ids ) . '<br>';
@@ -1937,8 +2090,66 @@ class Ajax_Handlers {
 			'html' => $html,
 			'cases' => $favorite_cases,
 			'count' => count( $favorite_cases ),
-			'debug' => defined( 'WP_DEBUG' ) && WP_DEBUG ? $debug_info : null,
+			'debug' => WP_DEBUG ? $debug_info : null,
 		] );
+	}
+
+	/**
+	 * Validate and sanitize AJAX request data.
+	 *
+	 * Provides centralized validation and sanitization for all AJAX requests.
+	 * Implements proper nonce verification, data sanitization, and field validation.
+	 *
+	 * @since 3.0.0
+	 * @param array $config Configuration array with nonce action and field definitions.
+	 * @return array|\WP_Error Sanitized data array or WP_Error on validation failure.
+	 */
+	private static function validate_and_sanitize_request( array $config ): array|\WP_Error {
+		// Get POST data once
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified below
+		$post_data = $_POST;
+
+		// Verify nonce if specified
+		if ( ! empty( $config['nonce'] ) ) {
+			$nonce = isset( $post_data['nonce'] ) ? sanitize_text_field( wp_unslash( $post_data['nonce'] ) ) : '';
+			if ( ! wp_verify_nonce( $nonce, $config['nonce'] ) ) {
+				return new \WP_Error(
+					'invalid_nonce',
+					__( 'Security check failed - nonce invalid or missing.', 'brag-book-gallery' ),
+					[
+						'has_nonce' => ! empty( $nonce ),
+						'expected_action' => $config['nonce'],
+					]
+				);
+			}
+		}
+
+		$sanitized_data = [];
+
+		// Process required fields
+		foreach ( $config['required_fields'] ?? [] as $field ) {
+			if ( ! isset( $post_data[ $field ] ) || '' === trim( $post_data[ $field ] ) ) {
+				return new \WP_Error(
+					'missing_required_field',
+					sprintf(
+						/* translators: %s: field name */
+						__( 'Required field "%s" is missing.', 'brag-book-gallery' ),
+						$field
+					),
+					[ 'field' => $field ]
+				);
+			}
+			$sanitized_data[ $field ] = sanitize_text_field( wp_unslash( $post_data[ $field ] ) );
+		}
+
+		// Process optional fields
+		foreach ( $config['optional_fields'] ?? [] as $field ) {
+			if ( isset( $post_data[ $field ] ) ) {
+				$sanitized_data[ $field ] = sanitize_text_field( wp_unslash( $post_data[ $field ] ) );
+			}
+		}
+
+		return $sanitized_data;
 	}
 
 }

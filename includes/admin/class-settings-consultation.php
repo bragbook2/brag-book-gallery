@@ -104,22 +104,18 @@ class Settings_Consultation extends Settings_Base {
 
 		$this->render_header();
 		?>
-		<div class="brag-book-gallery-vertical-layout">
+		<div class="brag-book-gallery-content">
 			<?php $this->render_consultation_tabs( $current_view ); ?>
-			<div class="brag-book-gallery-vertical-content">
-				<div class="tab-panel <?php echo $current_view === 'entries' ? 'active' : ''; ?>" data-tab="entries">
-					<?php if ( $current_view === 'entries' ) $this->render_consultation_entries(); ?>
-				</div>
-				<div class="tab-panel <?php echo $current_view === 'settings' ? 'active' : ''; ?>" data-tab="settings">
-					<?php if ( $current_view === 'settings' ) $this->render_consultation_settings(); ?>
-				</div>
-				<div class="tab-panel <?php echo $current_view === 'stats' ? 'active' : ''; ?>" data-tab="stats">
-					<?php if ( $current_view === 'stats' ) $this->render_consultation_stats(); ?>
-				</div>
-				<div class="tab-panel <?php echo $current_view === 'export' ? 'active' : ''; ?>" data-tab="export">
-					<?php if ( $current_view === 'export' ) $this->render_consultation_export(); ?>
-				</div>
-			</div>
+			
+			<?php if ( $current_view === 'entries' ) : ?>
+				<?php $this->render_consultation_entries(); ?>
+			<?php elseif ( $current_view === 'settings' ) : ?>
+				<?php $this->render_consultation_settings(); ?>
+			<?php elseif ( $current_view === 'stats' ) : ?>
+				<?php $this->render_consultation_stats(); ?>
+			<?php elseif ( $current_view === 'export' ) : ?>
+				<?php $this->render_consultation_export(); ?>
+			<?php endif; ?>
 		</div>
 		<?php
 		$this->render_footer();
@@ -140,26 +136,36 @@ class Settings_Consultation extends Settings_Base {
 		// Get count of consultation entries for badge
 		$entries_count = wp_count_posts( 'form-entries' )->publish ?? 0;
 		?>
-		<div class="brag-book-gallery-vertical-tabs">
-			<a href="<?php echo esc_url( $base_url . '&view=entries' ); ?>"
-			   class="nav-tab <?php echo $current_view === 'entries' ? 'nav-tab-active' : ''; ?>">
-				<?php esc_html_e( 'Entries', 'brag-book-gallery' ); ?>
-				<?php if ( $entries_count > 0 ) : ?>
-					<span class="tab-count"><?php echo esc_html( $entries_count ); ?></span>
-				<?php endif; ?>
-			</a>
-			<a href="<?php echo esc_url( $base_url . '&view=settings' ); ?>"
-			   class="nav-tab <?php echo $current_view === 'settings' ? 'nav-tab-active' : ''; ?>">
-				<?php esc_html_e( 'Settings', 'brag-book-gallery' ); ?>
-			</a>
-			<a href="<?php echo esc_url( $base_url . '&view=stats' ); ?>"
-			   class="nav-tab <?php echo $current_view === 'stats' ? 'nav-tab-active' : ''; ?>">
-				<?php esc_html_e( 'Statistics', 'brag-book-gallery' ); ?>
-			</a>
-			<a href="<?php echo esc_url( $base_url . '&view=export' ); ?>"
-			   class="nav-tab <?php echo $current_view === 'export' ? 'nav-tab-active' : ''; ?>">
-				<?php esc_html_e( 'Export', 'brag-book-gallery' ); ?>
-			</a>
+		<div class="brag-book-gallery-tabs">
+			<ul class="brag-book-gallery-tab-list">
+				<li class="brag-book-gallery-tab-item <?php echo $current_view === 'entries' ? 'active' : ''; ?>">
+					<a href="<?php echo esc_url( $base_url . '&view=entries' ); ?>"
+					   class="brag-book-gallery-tab-link">
+						<?php esc_html_e( 'Entries', 'brag-book-gallery' ); ?>
+						<?php if ( $entries_count > 0 ) : ?>
+							<span class="brag-book-gallery-tab-badge"><?php echo esc_html( $entries_count ); ?></span>
+						<?php endif; ?>
+					</a>
+				</li>
+				<li class="brag-book-gallery-tab-item <?php echo $current_view === 'settings' ? 'active' : ''; ?>">
+					<a href="<?php echo esc_url( $base_url . '&view=settings' ); ?>"
+					   class="brag-book-gallery-tab-link">
+						<?php esc_html_e( 'Settings', 'brag-book-gallery' ); ?>
+					</a>
+				</li>
+				<li class="brag-book-gallery-tab-item <?php echo $current_view === 'stats' ? 'active' : ''; ?>">
+					<a href="<?php echo esc_url( $base_url . '&view=stats' ); ?>"
+					   class="brag-book-gallery-tab-link">
+						<?php esc_html_e( 'Statistics', 'brag-book-gallery' ); ?>
+					</a>
+				</li>
+				<li class="brag-book-gallery-tab-item <?php echo $current_view === 'export' ? 'active' : ''; ?>">
+					<a href="<?php echo esc_url( $base_url . '&view=export' ); ?>"
+					   class="brag-book-gallery-tab-link">
+						<?php esc_html_e( 'Export', 'brag-book-gallery' ); ?>
+					</a>
+				</li>
+			</ul>
 		</div>
 		<?php
 	}
@@ -209,6 +215,26 @@ class Settings_Consultation extends Settings_Base {
 			</div>
 			<div class="bb-pagination-nav"></div>
 		</div>
+
+		<!-- Consultation Details Dialog -->
+		<dialog class="consultation-dialog" id="consultationDetailsDialog">
+			<div class="consultation-dialog-content">
+				<div class="consultation-dialog-header">
+					<h2><?php esc_html_e( 'Consultation Details', 'brag-book-gallery' ); ?></h2>
+					<button type="button" class="dialog-close" onclick="document.getElementById('consultationDetailsDialog').close()">
+						<span class="dashicons dashicons-no-alt"></span>
+					</button>
+				</div>
+				<div class="consultation-dialog-body" id="consultationDetailsBody">
+					<!-- Content will be loaded here -->
+				</div>
+				<div class="consultation-dialog-footer">
+					<button type="button" class="button button-secondary" onclick="document.getElementById('consultationDetailsDialog').close()">
+						<?php esc_html_e( 'Close', 'brag-book-gallery' ); ?>
+					</button>
+				</div>
+			</div>
+		</dialog>
 
 		<script type="text/javascript">
 		document.addEventListener( 'DOMContentLoaded', () => {
@@ -264,7 +290,50 @@ class Settings_Consultation extends Settings_Base {
 						loadConsultationPosts( page );
 					}
 				}
+				
+				// Handle view consultation clicks
+				const viewButton = event.target.closest( '.view-consultation' );
+				if ( viewButton ) {
+					event.preventDefault();
+					const postId = viewButton.dataset.id;
+					viewConsultationDetails( postId );
+				}
 			});
+			
+			// View consultation details function
+			const viewConsultationDetails = async ( postId ) => {
+				const dialog = document.getElementById( 'consultationDetailsDialog' );
+				const body = document.getElementById( 'consultationDetailsBody' );
+				
+				if ( !dialog || !body ) return;
+				
+				body.innerHTML = '<p style="text-align: center; padding: 20px;"><?php echo esc_js( __( 'Loading...', 'brag-book-gallery' ) ); ?></p>';
+				dialog.showModal();
+				
+				const formData = new FormData();
+				formData.append( 'post_id', postId );
+				formData.append( 'nonce', nonce );
+				formData.append( 'action', 'consultation-get-details' );
+				
+				try {
+					const response = await fetch( ajaxurl, {
+						method: 'POST',
+						body: formData,
+						credentials: 'same-origin'
+					});
+					
+					const data = await response.json();
+					
+					if ( data.success ) {
+						body.innerHTML = data.data.html;
+					} else {
+						body.innerHTML = '<p style="color: red; padding: 20px;">' + ( data.data || '<?php echo esc_js( __( 'Error loading consultation details', 'brag-book-gallery' ) ); ?>' ) + '</p>';
+					}
+				} catch ( error ) {
+					console.error( 'Error loading consultation details:', error );
+					body.innerHTML = '<p style="color: red; padding: 20px;"><?php echo esc_js( __( 'Failed to load consultation details', 'brag-book-gallery' ) ); ?></p>';
+				}
+			};
 		});
 		</script>
 		<?php
@@ -422,109 +491,6 @@ class Settings_Consultation extends Settings_Base {
 				<?php submit_button( __( 'Save Settings', 'brag-book-gallery' ) ); ?>
 			</form>
 		</div>
-
-		<!-- Statistics Section -->
-		<div class="brag-book-gallery-section">
-			<h2><?php esc_html_e( 'Consultation Statistics', 'brag-book-gallery' ); ?></h2>
-			<div class="brag-book-gallery-stats-grid">
-				<div class="stat-card">
-					<div class="stat-value">
-						<?php
-						$total = wp_count_posts( 'form-entries' );
-						echo esc_html( $total->publish ?? 0 );
-						?>
-					</div>
-					<div class="stat-label"><?php esc_html_e( 'Total Consultations', 'brag-book-gallery' ); ?></div>
-				</div>
-
-				<div class="stat-card">
-					<div class="stat-value">
-						<?php
-						// Get consultations from last 30 days
-						$args = array(
-							'post_type' => 'form-entries',
-							'post_status' => 'publish',
-							'date_query' => array(
-								array(
-									'after' => '30 days ago',
-								),
-							),
-							'posts_per_page' => -1,
-						);
-						$recent = new \WP_Query( $args );
-						echo esc_html( $recent->found_posts );
-						wp_reset_postdata();
-						?>
-					</div>
-					<div class="stat-label"><?php esc_html_e( 'Last 30 Days', 'brag-book-gallery' ); ?></div>
-				</div>
-
-				<div class="stat-card">
-					<div class="stat-value">
-						<?php
-						// Get consultations from last 7 days
-						$args = array(
-							'post_type' => 'form-entries',
-							'post_status' => 'publish',
-							'date_query' => array(
-								array(
-									'after' => '7 days ago',
-								),
-							),
-							'posts_per_page' => -1,
-						);
-						$week = new \WP_Query( $args );
-						echo esc_html( $week->found_posts );
-						wp_reset_postdata();
-						?>
-					</div>
-					<div class="stat-label"><?php esc_html_e( 'Last 7 Days', 'brag-book-gallery' ); ?></div>
-				</div>
-
-				<div class="stat-card">
-					<div class="stat-value">
-						<?php
-						// Get today's consultations
-						$args = array(
-							'post_type' => 'form-entries',
-							'post_status' => 'publish',
-							'date_query' => array(
-								array(
-									'after' => 'today',
-								),
-							),
-							'posts_per_page' => -1,
-						);
-						$today = new \WP_Query( $args );
-						echo esc_html( $today->found_posts );
-						wp_reset_postdata();
-						?>
-					</div>
-					<div class="stat-label"><?php esc_html_e( 'Today', 'brag-book-gallery' ); ?></div>
-				</div>
-			</div>
-		</div>
-
-		<!-- Export Section -->
-		<div class="brag-book-gallery-section">
-			<h2><?php esc_html_e( 'Export Consultations', 'brag-book-gallery' ); ?></h2>
-			<p><?php esc_html_e( 'Export consultation data for external use or backup.', 'brag-book-gallery' ); ?></p>
-			<p>
-				<button type="button" class="button button-secondary" id="export-csv">
-					<svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="currentColor"><path d="M480-328.46 309.23-499.23l42.16-43.38L450-444v-336h60v336l98.61-98.61 42.16 43.38L480-328.46ZM252.31-180Q222-180 201-201q-21-21-21-51.31v-108.46h60v108.46q0 4.62 3.85 8.46 3.84 3.85 8.46 3.85h455.38q4.62 0 8.46-3.85 3.85-3.84 3.85-8.46v-108.46h60v108.46Q780-222 759-201q-21 21-51.31 21H252.31Z"/></svg>
-					<?php esc_html_e( 'Export as CSV', 'brag-book-gallery' ); ?>
-				</button>
-			</p>
-		</div>
-
-		<script type="text/javascript">
-		jQuery(document).ready(function($) {
-			$('#export-csv').on('click', function() {
-				// TODO: Implement CSV export functionality
-				alert('<?php echo esc_js( __( 'CSV export feature coming soon!', 'brag-book-gallery' ) ); ?>');
-			});
-		});
-		</script>
 		<?php
 	}
 

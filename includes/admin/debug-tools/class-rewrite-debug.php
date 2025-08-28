@@ -11,7 +11,7 @@
 
 declare(strict_types=1);
 
-namespace BRAGBookGallery\Admin\Debug_Tools;
+namespace BRAGBookGallery\Includes\Admin\Debug_Tools;
 
 use BRAGBookGallery\Includes\Core\Slug_Helper;
 use BRAGBookGallery\Includes\Extend\Rewrite_Rules_Handler;
@@ -256,18 +256,37 @@ class Rewrite_Debug {
 	}
 
 	/**
-	 * Render settings section
+	 * Render settings section with enhanced diagnostics
 	 *
-	 * Displays current plugin settings relevant to rewrite rules.
+	 * Displays current plugin settings relevant to rewrite rules with
+	 * performance metrics and validation.
 	 *
 	 * @since 3.0.0
 	 * @return void
 	 */
 	private function render_settings(): void {
-		// Use helper function to get the first slug
-		$brag_book_gallery_page_slug = Slug_Helper::get_first_gallery_page_slug( '(not set)' );
-		$permalink_structure  = get_option( 'permalink_structure' );
-		?>
+		$start_time = microtime( true );
+		
+		try {
+			// Use helper function to get the first slug with caching
+			$cache_key = 'settings_data';
+			if ( isset( $this->cache[ $cache_key ] ) ) {
+				$settings_data = $this->cache[ $cache_key ];
+			} else {
+				$settings_data = [
+					'gallery_slug' => Slug_Helper::get_first_gallery_page_slug( '(not set)' ),
+					'permalink_structure' => get_option( 'permalink_structure' ),
+					'home_url' => home_url(),
+					'site_url' => site_url(),
+					'wp_version' => get_bloginfo( 'version' ),
+					'plugin_version' => defined( 'BRAG_BOOK_GALLERY_VERSION' ) ? BRAG_BOOK_GALLERY_VERSION : 'Unknown',
+				];
+				$this->cache[ $cache_key ] = $settings_data;
+			}
+			
+			$brag_book_gallery_page_slug = $settings_data['gallery_slug'];
+			$permalink_structure = $settings_data['permalink_structure'];
+			?>
 		<div class="rewrite-table-wrapper">
 			<table class="rewrite-table settings-table">
 				<tbody>
@@ -289,10 +308,29 @@ class Rewrite_Debug {
 							<a href="<?php echo esc_url( home_url() ); ?>" class="value-link" target="_blank"><?php echo esc_url( home_url() ); ?></a>
 						</td>
 					</tr>
+					<tr class="table-row">
+						<th class="setting-label"><?php esc_html_e( 'WordPress Version', 'brag-book-gallery' ); ?></th>
+						<td class="setting-value">
+							<span class="value-text"><?php echo esc_html( $settings_data['wp_version'] ); ?></span>
+						</td>
+					</tr>
+					<tr class="table-row">
+						<th class="setting-label"><?php esc_html_e( 'Plugin Version', 'brag-book-gallery' ); ?></th>
+						<td class="setting-value">
+							<span class="value-badge"><?php echo esc_html( $settings_data['plugin_version'] ); ?></span>
+						</td>
+					</tr>
 				</tbody>
 			</table>
 		</div>
 		<?php
+			
+			$this->performance_metrics['render_settings'] = microtime( true ) - $start_time;
+			
+		} catch ( Exception $e ) {
+			error_log( '[BRAGBook Rewrite Debug] Error rendering settings: ' . $e->getMessage() );
+			echo '<p class="error">' . esc_html__( 'Error loading settings', 'brag-book-gallery' ) . '</p>';
+		}
 	}
 
 	/**

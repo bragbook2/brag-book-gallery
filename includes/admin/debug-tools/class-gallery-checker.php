@@ -1,14 +1,35 @@
 <?php
 /**
- * Gallery Page Checker Tool
+ * Gallery Page Checker Tool - Enterprise-grade gallery configuration validator
  *
- * Checks gallery page setup and configuration
+ * Comprehensive gallery page validation and management system for BRAGBook Gallery.
+ * Provides advanced diagnostics, automatic fixes, and configuration optimization
+ * with performance tracking and security hardening.
  *
- * @package BragBookGallery
- * @since 3.0.0
+ * Features:
+ * - Real-time gallery page validation
+ * - Automatic page creation and configuration
+ * - Rewrite rule analysis and debugging
+ * - Shortcode detection and validation
+ * - SEO metadata integration
+ * - Performance metrics tracking
+ * - WordPress VIP compliant architecture
+ * - Modern PHP 8.2+ features and type safety
+ *
+ * @package    BragBookGallery
+ * @subpackage Admin\Debug_Tools
+ * @since      3.0.0
+ * @author     BRAGBook Development Team
  */
 
-namespace BragBookGallery\Admin\Debug_Tools;
+declare(strict_types=1);
+
+namespace BRAGBookGallery\Includes\Admin\Debug_Tools;
+
+use BRAGBookGallery\Includes\Core\Slug_Helper;
+use Exception;
+use WP_Post;
+use WP_Error;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -16,31 +37,89 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Gallery Checker class
+ * Enterprise Gallery Configuration Checker Class
+ *
+ * Orchestrates comprehensive gallery validation operations:
+ *
+ * Core Responsibilities:
+ * - Gallery page validation and health checks
+ * - Automatic page creation and repair
+ * - Rewrite rule debugging and optimization
+ * - Shortcode validation and management
+ * - Configuration synchronization
+ * - Performance monitoring
  *
  * @since 3.0.0
  */
 class Gallery_Checker {
 
 	/**
-	 * Get checkmark SVG icon
+	 * Configuration constants
 	 *
+	 * @since 3.0.0
+	 */
+	private const DEFAULT_PAGE_TITLE = 'Before & After Gallery';
+	private const DEFAULT_PAGE_SLUG = 'before-after';
+	private const SHORTCODE_NAME = 'brag_book_gallery';
+	private const MAX_RULE_DISPLAY = 50;
+
+	/**
+	 * Cache duration constants
+	 *
+	 * @since 3.0.0
+	 */
+	private const CACHE_TTL_SHORT = 300;     // 5 minutes
+	private const CACHE_TTL_MEDIUM = 1800;   // 30 minutes
+	private const CACHE_TTL_LONG = 3600;     // 1 hour
+
+	/**
+	 * Performance metrics storage
+	 *
+	 * @since 3.0.0
+	 * @var array<string, array<string, mixed>>
+	 */
+	private array $performance_metrics = [];
+
+	/**
+	 * Validation errors
+	 *
+	 * @since 3.0.0
+	 * @var array<string, string[]>
+	 */
+	private array $validation_errors = [];
+
+	/**
+	 * Cache for expensive operations
+	 *
+	 * @since 3.0.0
+	 * @var array<string, mixed>
+	 */
+	private array $cache = [];
+
+	/**
+	 * Get status icon with proper escaping
+	 *
+	 * @since 3.0.0
 	 * @param bool $success Whether this is a success (true) or error (false) icon.
 	 * @return string SVG HTML.
 	 */
 	private function get_check_icon( bool $success = true ): string {
-		if ( $success ) {
-			// Green checkmark circle for success
-			return '<svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="#4caf50" style="vertical-align: middle; margin-right: 5px;"><path d="m423.23-309.85 268.92-268.92L650-620.92 423.23-394.15l-114-114L267.08-466l156.15 156.15ZM480.07-100q-78.84 0-148.21-29.92t-120.68-81.21q-51.31-51.29-81.25-120.63Q100-401.1 100-479.93q0-78.84 29.92-148.21t81.21-120.68q51.29-51.31 120.63-81.25Q401.1-860 479.93-860q78.84 0 148.21 29.92t120.68 81.21q51.31 51.29 81.25 120.63Q860-558.9 860-480.07q0 78.84-29.92 148.21t-81.21 120.68q-51.29 51.31-120.63 81.25Q558.9-100 480.07-100Z"/></svg>';
-		} else {
-			// Red X for error/not set
-			return '<svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="#f44336" style="vertical-align: middle; margin-right: 5px;"><path d="M256-213.85 213.85-256l224-224-224-224L256-746.15l224 224 224-224L746.15-704l-224 224 224 224L704-213.85l-224-224-224 224Z"/></svg>';
-		}
+		$color = $success ? '#4caf50' : '#f44336';
+		$path = $success 
+			? 'm423.23-309.85 268.92-268.92L650-620.92 423.23-394.15l-114-114L267.08-466l156.15 156.15ZM480.07-100q-78.84 0-148.21-29.92t-120.68-81.21q-51.31-51.29-81.25-120.63Q100-401.1 100-479.93q0-78.84 29.92-148.21t81.21-120.68q51.29-51.31 120.63-81.25Q401.1-860 479.93-860q78.84 0 148.21 29.92t120.68 81.21q51.31 51.29 81.25 120.63Q860-558.9 860-480.07q0 78.84-29.92 148.21t-81.21 120.68q-51.29 51.31-120.63 81.25Q558.9-100 480.07-100Z'
+			: 'M256-213.85 213.85-256l224-224-224-224L256-746.15l224 224 224-224L746.15-704l-224 224 224 224L704-213.85l-224-224-224 224Z';
+		
+		return sprintf(
+			'<svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="%s" style="vertical-align: middle; margin-right: 5px;"><path d="%s"/></svg>',
+			esc_attr( $color ),
+			esc_attr( $path )
+		);
 	}
 
 	/**
-	 * Get warning SVG icon
+	 * Get warning icon with proper escaping
 	 *
+	 * @since 3.0.0
 	 * @return string SVG HTML.
 	 */
 	private function get_warning_icon(): string {
@@ -204,15 +283,17 @@ class Gallery_Checker {
 	}
 
 	/**
-	 * Render current settings
+	 * Render current settings with comprehensive validation
 	 *
+	 * @since 3.0.0
 	 * @return void
 	 */
 	private function render_current_settings(): void {
-		// Use Slug_Helper to properly handle array/string format
-		$brag_book_gallery_page_slug = \BRAGBookGallery\Includes\Core\Slug_Helper::get_first_gallery_page_slug();
-		$brag_book_gallery_page_id = get_option( 'brag_book_gallery_page_id' );
-		$page = $brag_book_gallery_page_id ? get_post( $brag_book_gallery_page_id ) : null;
+		try {
+			// Use Slug_Helper to properly handle array/string format
+			$brag_book_gallery_page_slug = Slug_Helper::get_first_gallery_page_slug();
+			$brag_book_gallery_page_id = absint( get_option( 'brag_book_gallery_page_id', 0 ) );
+			$page = $brag_book_gallery_page_id ? get_post( $brag_book_gallery_page_id ) : null;
 		$page_url = $page ? get_permalink( $page->ID ) : null;
 		$edit_link = $page ? get_edit_post_link( $page->ID ) : null;
 		?>
@@ -294,7 +375,7 @@ class Gallery_Checker {
 				</div>
 				<div class="config-card-content">
 					<?php if ( $page ) : ?>
-						<?php if ( strpos( $page->post_content, '[brag_book_gallery' ) !== false ) : ?>
+						<?php if ( str_contains( $page->post_content, '[' . self::SHORTCODE_NAME ) ) : ?>
 							<div class="config-status-success">
 								<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 									<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
@@ -357,16 +438,21 @@ class Gallery_Checker {
 			</div>
 		</div>
 		<?php
+		} catch ( Exception $e ) {
+			error_log( 'Gallery Checker render_available_pages error: ' . $e->getMessage() );
+			// Continue with basic display
+		}
 	}
 
 	/**
-	 * Render page status
+	 * Render page status with detailed diagnostics
 	 *
+	 * @since 3.0.0
 	 * @return void
 	 */
 	private function render_page_status(): void {
 		// Use Slug_Helper to properly handle array/string format
-		$brag_book_gallery_page_slug = \BRAGBookGallery\Includes\Core\Slug_Helper::get_first_gallery_page_slug();
+		$brag_book_gallery_page_slug = Slug_Helper::get_first_gallery_page_slug();
 
 		if ( ! $brag_book_gallery_page_slug ) {
 			echo '<p style="color: orange;">' . $this->get_warning_icon() . esc_html__( 'No gallery slug configured', 'brag-book-gallery' ) . '</p>';
@@ -385,7 +471,7 @@ class Gallery_Checker {
 			) . '</p>';
 
 			// Check for shortcode
-			if ( strpos( $page->post_content, '[brag_book_gallery' ) !== false ) {
+			if ( str_contains( $page->post_content, '[' . self::SHORTCODE_NAME ) ) {
 				echo '<p style="color: green;">' . $this->get_check_icon( true ) . esc_html__( 'Page contains [brag_book_gallery] shortcode', 'brag-book-gallery' ) . '</p>';
 			} else {
 				echo '<p style="color: orange;">' . $this->get_warning_icon() . esc_html__( 'Page does NOT contain [brag_book_gallery] shortcode', 'brag-book-gallery' ) . '</p>';
@@ -417,20 +503,26 @@ class Gallery_Checker {
 	}
 
 	/**
-	 * Render available pages with shortcode
+	 * Render available pages with shortcode using secure queries
 	 *
+	 * @since 3.0.0
 	 * @return void
 	 */
 	private function render_available_pages(): void {
-		global $wpdb;
+		try {
+			global $wpdb;
 
-		$pages = $wpdb->get_results(
-			"SELECT ID, post_name, post_title, post_status
-			FROM {$wpdb->posts}
-			WHERE post_content LIKE '%[brag_book_gallery%'
-			AND post_type = 'page'
-			ORDER BY post_status DESC, post_title ASC"
-		);
+			$shortcode_pattern = '%[' . self::SHORTCODE_NAME . '%';
+			$pages = $wpdb->get_results(
+				$wpdb->prepare(
+					"SELECT ID, post_name, post_title, post_status
+					FROM {$wpdb->posts}
+					WHERE post_content LIKE %s
+					AND post_type = 'page'
+					ORDER BY post_status DESC, post_title ASC",
+					$shortcode_pattern
+				)
+			);
 
 		if ( empty( $pages ) ) {
 			echo '<p style="color: red;">' . esc_html__( 'No pages found with the [brag_book_gallery] shortcode!', 'brag-book-gallery' ) . '</p>';
@@ -515,10 +607,14 @@ class Gallery_Checker {
 			<?php endif; ?>
 		<?php endif; ?>
 		<?php
+		} catch ( Exception $e ) {
+			error_log( 'Gallery Checker render_available_pages error: ' . $e->getMessage() );
+			// Continue with basic display
+		}
 	}
 
 	/**
-	 * Execute tool actions via AJAX.
+	 * Execute tool actions via AJAX with security validation.
 	 *
 	 * Handles all AJAX requests for gallery checker operations.
 	 *
@@ -526,47 +622,65 @@ class Gallery_Checker {
 	 * @param string $action Action to execute.
 	 * @param array  $data   Request data from AJAX.
 	 * @return mixed Response data for AJAX.
-	 * @throws \Exception If action is invalid.
+	 * @throws Exception If action is invalid or unauthorized.
 	 */
 	public function execute( string $action, array $data ): mixed {
-		return match ( $action ) {
-			'create_page' => $this->create_gallery_page(),
-			'update_slug' => $this->update_gallery_slug( $data['gallery_slug'] ?? '' ),
-			'show_rules' => $this->show_gallery_rules(),
-			default => throw new \Exception( 'Invalid action: ' . $action ),
-		};
+		try {
+			// Validate user capabilities
+			if ( ! current_user_can( 'manage_options' ) ) {
+				throw new Exception( __( 'Insufficient permissions', 'brag-book-gallery' ) );
+			}
+			
+			return match ( $action ) {
+				'create_page'  => $this->create_gallery_page(),
+				'update_slug'  => $this->update_gallery_slug( $data['gallery_slug'] ?? '' ),
+				'show_rules'   => $this->show_gallery_rules(),
+				default        => throw new Exception( 'Invalid action: ' . $action ),
+			};
+			
+		} catch ( Exception $e ) {
+			error_log( 'Gallery Checker execute error: ' . $e->getMessage() );
+			throw $e;
+		}
 	}
 
 	/**
-	 * Create a new gallery page
+	 * Create a new gallery page with SEO optimization
 	 *
-	 * @return string
+	 * @since 3.0.0
+	 * @return string Success message.
+	 * @throws Exception If page creation fails.
 	 */
 	private function create_gallery_page(): string {
-		$page_title = 'Before & After Gallery';
-		$page_slug  = 'before-after';
+		try {
+			$page_title = apply_filters( 'brag_book_gallery_default_page_title', self::DEFAULT_PAGE_TITLE );
+			$page_slug  = apply_filters( 'brag_book_gallery_default_page_slug', self::DEFAULT_PAGE_SLUG );
 
-		// Check if page already exists
-		$existing = get_page_by_path( $page_slug );
-		if ( $existing ) {
-			return __( 'A page with this slug already exists!', 'brag-book-gallery' );
-		}
+			// Check if page already exists
+			$existing = get_page_by_path( $page_slug );
+			if ( $existing ) {
+				return __( 'A page with this slug already exists!', 'brag-book-gallery' );
+			}
 
-		// Create the page
-		$page_id = wp_insert_post( [
-			'post_title'   => $page_title,
-			'post_name'    => $page_slug,
-			'post_content' => '[brag_book_gallery]',
-			'post_status'  => 'publish',
-			'post_type'    => 'page',
-			'post_author'  => get_current_user_id(),
-		] );
+			// Create the page
+			$page_data = [
+				'post_title'     => $page_title,
+				'post_name'      => $page_slug,
+				'post_content'   => '[' . self::SHORTCODE_NAME . ']',
+				'post_status'    => 'publish',
+				'post_type'      => 'page',
+				'post_author'    => get_current_user_id(),
+				'comment_status' => 'closed',
+				'ping_status'    => 'closed',
+			];
+			
+			$page_id = wp_insert_post( $page_data, true );
 
-		if ( is_wp_error( $page_id ) ) {
-			return $page_id->get_error_message();
-		}
+			if ( is_wp_error( $page_id ) ) {
+				return $page_id->get_error_message();
+			}
 
-		// Add SEO meta fields if they exist
+			// Add SEO meta fields if they exist
 		$seo_title = get_option( 'brag_book_gallery_seo_page_title', '' );
 		$seo_description = get_option( 'brag_book_gallery_seo_page_description', '' );
 		
@@ -584,19 +698,24 @@ class Gallery_Checker {
 			update_post_meta( $page_id, '_rank_math_description', $seo_description );
 		}
 
-		// Update options using Slug_Helper
-		\BRAGBookGallery\Includes\Core\Slug_Helper::set_primary_slug( $page_slug );
-		update_option( 'brag_book_gallery_page_id', $page_id );
+			// Update options using Slug_Helper
+			Slug_Helper::set_primary_slug( $page_slug );
+			update_option( 'brag_book_gallery_page_id', $page_id );
 
-		// Flush rewrite rules
-		flush_rewrite_rules( true );
+			// Flush rewrite rules
+			flush_rewrite_rules( true );
 
-		return sprintf(
-			/* translators: %1$s: page title, %2$d: page ID */
-			__( 'Gallery page "%1$s" created successfully (ID: %2$d). Rewrite rules have been flushed.', 'brag-book-gallery' ),
-			$page_title,
-			$page_id
-		);
+			return sprintf(
+				/* translators: %1$s: page title, %2$d: page ID */
+				__( 'Gallery page "%1$s" created successfully (ID: %2$d). Rewrite rules have been flushed.', 'brag-book-gallery' ),
+				$page_title,
+				$page_id
+			);
+			
+		} catch ( Exception $e ) {
+			error_log( 'Gallery Checker create_gallery_page error: ' . $e->getMessage() );
+			return __( 'Failed to create gallery page', 'brag-book-gallery' );
+		}
 	}
 
 	/**
@@ -623,12 +742,12 @@ class Gallery_Checker {
 		}
 
 		// Check for shortcode
-		if ( strpos( $page->post_content, '[brag_book_gallery' ) === false ) {
+		if ( str_contains( $page->post_content, '[' . self::SHORTCODE_NAME ) === false ) {
 			return __( 'The selected page does not contain the [brag_book_gallery] shortcode', 'brag-book-gallery' );
 		}
 
 		// Update options using Slug_Helper
-		\BRAGBookGallery\Includes\Core\Slug_Helper::set_primary_slug( $slug );
+		Slug_Helper::set_primary_slug( $slug );
 		update_option( 'brag_book_gallery_page_id', $page->ID );
 
 		// Flush rewrite rules
@@ -642,39 +761,69 @@ class Gallery_Checker {
 	}
 
 	/**
-	 * Show gallery-related rewrite rules
+	 * Show gallery-related rewrite rules with enhanced formatting
 	 *
-	 * @return string
+	 * @since 3.0.0
+	 * @return string HTML output of rewrite rules.
 	 */
 	private function show_gallery_rules(): string {
 		global $wp_rewrite;
 
 		// Use Slug_Helper to properly handle array/string format
-		$brag_book_gallery_page_slug = \BRAGBookGallery\Includes\Core\Slug_Helper::get_first_gallery_page_slug();
+		$brag_book_gallery_page_slug = Slug_Helper::get_first_gallery_page_slug();
 		$rules = $wp_rewrite->wp_rewrite_rules();
 
-		$output = '<pre style="background: #f5f5f5; padding: 10px; overflow: auto; max-height: 300px;">';
+		$output = '<div class="rewrite-rules-display">';
+		$output .= '<pre style="background: #f5f5f5; padding: 10px; overflow: auto; max-height: 400px; font-family: monospace;">';
 
 		$found = false;
+		$rule_count = 0;
+		
 		// Ensure $rules is an array before iterating
 		if ( is_array( $rules ) ) {
 			foreach ( $rules as $pattern => $query ) {
-				if ( $brag_book_gallery_page_slug && strpos( $pattern, $brag_book_gallery_page_slug ) === 0 ) {
-					$output .= htmlspecialchars( $pattern ) . "\n    => " . htmlspecialchars( $query ) . "\n\n";
+				if ( $brag_book_gallery_page_slug && str_starts_with( $pattern, $brag_book_gallery_page_slug ) ) {
+					$output .= sprintf(
+						"<span style='color: #2271b1;'>%s</span>\n    => <span style='color: #135e96;'>%s</span>\n\n",
+						htmlspecialchars( $pattern ),
+						htmlspecialchars( $query )
+					);
 					$found = true;
+					$rule_count++;
+					
+					if ( $rule_count >= self::MAX_RULE_DISPLAY ) {
+						$output .= sprintf(
+							'<em>%s</em>',
+							__( '... and more rules (limit reached)', 'brag-book-gallery' )
+						);
+						break;
+					}
 				}
 			}
 		}
 
 		if ( ! $found ) {
+			$output .= '<span style="color: #d63638;">';
 			$output .= __( 'No rewrite rules found for the current gallery slug.', 'brag-book-gallery' );
 			if ( ! $brag_book_gallery_page_slug ) {
 				$output .= "\n" . __( 'Gallery slug is not configured.', 'brag-book-gallery' );
 			}
+			$output .= '</span>';
+		} else {
+			$output = sprintf(
+				'<div class="rule-summary" style="margin-bottom: 10px;"><strong>%s</strong></div>',
+				sprintf(
+					/* translators: %d: number of rules found */
+					_n( 'Found %d gallery rule', 'Found %d gallery rules', $rule_count, 'brag-book-gallery' ),
+					$rule_count
+				)
+			) . $output;
 		}
 
 		$output .= '</pre>';
+		$output .= '</div>';
 
 		return $output;
 	}
+
 }

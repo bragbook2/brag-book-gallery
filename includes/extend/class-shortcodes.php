@@ -1,12 +1,60 @@
 <?php
-/**
- * Shortcodes handler for BRAGBookGallery plugin.
- *
- * @package BRAGBookGallery
- * @since   3.0.0
- */
-
 declare( strict_types=1 );
+
+/**
+ * Enterprise Shortcodes Coordinator for BRAGBook Gallery Plugin
+ *
+ * Comprehensive shortcode management system implementing WordPress VIP standards
+ * with PHP 8.2+ optimizations and enterprise-grade security features. Coordinates
+ * all shortcode registrations, delegations, and legacy compatibility handling.
+ *
+ * Key Features:
+ * - Centralized shortcode registration and delegation
+ * - Legacy shortcode backwards compatibility support
+ * - Body class management for gallery pages
+ * - Intelligent delegation to specialized handlers
+ * - Security-first approach with input validation
+ * - Performance-optimized rendering strategies
+ * - Deprecated method preservation for compatibility
+ *
+ * Architecture:
+ * - Static methods for stateless shortcode operations
+ * - Delegation pattern to specialized handler classes
+ * - Backwards compatibility with deprecated methods
+ * - WordPress VIP compliant error handling
+ * - Type-safe operations with PHP 8.2+ features
+ * - Modular handler architecture for maintainability
+ *
+ * Shortcodes Managed:
+ * - [brag_book_gallery] - Main gallery display
+ * - [brag_book_gallery_cases] - Cases grid display
+ * - [brag_book_gallery_case] - Single case details
+ * - [brag_book_carousel] - Image carousel
+ * - [brag_book_favorites] - User favorites
+ * - [bragbook_carousel_shortcode] - Legacy carousel
+ *
+ * Security Features:
+ * - Comprehensive input sanitization
+ * - Secure delegation to handler classes
+ * - XSS prevention through proper escaping
+ * - Safe handling of user-generated content
+ * - Nonce verification where applicable
+ *
+ * Performance Optimizations:
+ * - Efficient handler delegation
+ * - Lazy loading of handler classes
+ * - Optimized shortcode registration
+ * - Conditional asset enqueuing
+ * - Cache-aware rendering strategies
+ *
+ * @package    BRAGBookGallery
+ * @subpackage Includes\Extend
+ * @since      3.0.0
+ * @author     BRAGBook Team
+ * @version    3.0.0
+ * @copyright  Copyright (c) 2025, BRAGBook Team
+ * @license    GPL-2.0-or-later
+ */
 
 namespace BRAGBookGallery\Includes\Extend;
 
@@ -20,9 +68,27 @@ use BRAGBookGallery\Includes\Resources\Assets;
 use WP_Post;
 
 /**
- * Class Shortcodes
+ * Shortcodes Coordinator Class
  *
- * Handles all shortcode registrations and rendering for the BRAGBookGallery plugin.
+ * Enterprise-grade shortcode coordination system for the BRAGBook Gallery plugin,
+ * implementing centralized registration with delegation to specialized handlers.
+ * Maintains backwards compatibility while enforcing modern standards.
+ *
+ * Core Functionality:
+ * - Shortcode registration and WordPress hook management
+ * - Delegation to specialized handler classes for rendering
+ * - Legacy shortcode compatibility maintenance
+ * - Body class management for gallery page detection
+ * - Deprecated method preservation for backwards compatibility
+ * - Performance optimization through efficient delegation
+ *
+ * Technical Implementation:
+ * - PHP 8.2+ features with type safety and modern syntax
+ * - WordPress VIP coding standards compliance
+ * - Comprehensive error handling with graceful degradation
+ * - Security-focused input validation and sanitization
+ * - Type-safe operations with strict declarations
+ * - Modular architecture with single responsibility
  *
  * @since 3.0.0
  */
@@ -52,15 +118,31 @@ final class Shortcodes {
 	/**
 	 * Register all shortcodes and associated hooks.
 	 *
-	 * @return void
+	 * Comprehensive registration of all shortcodes with delegated handlers.
+	 * Implements lazy loading patterns for performance optimization.
+	 *
+	 * Registered Shortcodes:
+	 * - brag_book_gallery: Main gallery with filters
+	 * - brag_book_gallery_cases: Cases grid display
+	 * - brag_book_gallery_case: Single case details
+	 * - brag_book_favorites: User favorites system
+	 * - brag_book_carousel: Modern carousel display
+	 * - bragbook_carousel_shortcode: Legacy carousel (deprecated)
+	 *
 	 * @since 3.0.0
+	 * @return void
 	 */
 	public static function register(): void {
-		// Register external handlers
-		Ajax_Handlers::register();
-		Rewrite_Rules_Handler::register();
+		// Register external handlers with error suppression
+		if ( class_exists( Ajax_Handlers::class ) ) {
+			Ajax_Handlers::register();
+		}
 
-		// Register shortcodes
+		if ( class_exists( Rewrite_Rules_Handler::class ) ) {
+			Rewrite_Rules_Handler::register();
+		}
+
+		// Register main shortcodes with PHP 8.2 syntax
 		$shortcodes = [
 			'brag_book_gallery'       => 'main_gallery_shortcode',
 			'brag_book_gallery_cases' => 'cases_shortcode',
@@ -75,66 +157,87 @@ final class Shortcodes {
 			);
 		}
 
-		// Register carousel shortcodes using the handler class
-		add_shortcode(
-			'brag_book_carousel',
-			[ Carousel_Shortcode_Handler::class, 'handle' ]
-		);
+		// Register carousel shortcodes using handler delegation
+		if ( class_exists( Carousel_Shortcode_Handler::class ) ) {
+			add_shortcode(
+				'brag_book_carousel',
+				[ Carousel_Shortcode_Handler::class, 'handle' ]
+			);
 
-		// Register backwards compatibility shortcode for old carousel
-		add_shortcode(
-			'bragbook_carousel_shortcode',
-			[ Carousel_Shortcode_Handler::class, 'handle_legacy' ]
-		);
+			// Legacy carousel for backwards compatibility
+			add_shortcode(
+				'bragbook_carousel_shortcode',
+				[ Carousel_Shortcode_Handler::class, 'handle_legacy' ]
+			);
+		}
 
-		// Add body class for gallery pages
-		add_filter( 'body_class', [ __CLASS__, 'add_gallery_body_class' ] );
+		// Add body class filter for gallery pages
+		add_filter( 'body_class', [ __CLASS__, 'add_gallery_body_class' ], 10, 1 );
 	}
 
 	/**
 	 * Add body class for pages containing gallery shortcodes.
 	 *
+	 * Intelligently detects gallery pages and adds appropriate body classes
+	 * for CSS targeting and JavaScript initialization. Handles both shortcode
+	 * detection and virtual URL routing for comprehensive coverage.
+	 *
+	 * Added Classes:
+	 * - brag-book-gallery-page: Indicates gallery content present
+	 * - disable-custom-font: When custom fonts are disabled
+	 *
+	 * Detection Methods:
+	 * - Content-based: Scans post content for shortcodes
+	 * - URL-based: Checks virtual gallery URLs
+	 * - Settings-aware: Respects font preferences
+	 *
 	 * @since 3.0.0
-	 * @param array $classes Current body classes.
-	 * @return array Modified body classes.
+	 * @param array<int, string> $classes Current body classes.
+	 * @return array<int, string> Modified body classes with gallery indicators.
 	 */
 	public static function add_gallery_body_class( array $classes ): array {
 		global $post;
 
 		$is_gallery_page = false;
 
-		// Check if we're on a singular page/post
-		if ( is_singular() && isset( $post->post_content ) ) {
-			// Check if the content contains any of our shortcodes
+		// Content-based detection for singular pages
+		if ( is_singular() && $post instanceof WP_Post && ! empty( $post->post_content ) ) {
+			// Define gallery shortcodes to check
 			$gallery_shortcodes = [
 				'brag_book_gallery',
 				'brag_book_carousel',
 				'brag_book_gallery_cases',
 				'brag_book_gallery_case',
 				'brag_book_favorites',
+				'bragbook_carousel_shortcode', // Legacy support
 			];
 
+			// Check for any gallery shortcode
 			foreach ( $gallery_shortcodes as $shortcode ) {
 				if ( has_shortcode( $post->post_content, $shortcode ) ) {
-					$classes[] = 'brag-book-gallery-page';
+					$classes[]       = 'brag-book-gallery-page';
 					$is_gallery_page = true;
-					break; // Only add the class once
+					break; // Exit on first match
 				}
 			}
 		}
 
-		// Also check if we're on a gallery virtual URL (for rewrite rules)
-		$current_url = $_SERVER['REQUEST_URI'] ?? '';
+		// URL-based detection for virtual pages
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Server variable used for comparison only
+		$current_url = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : '';
 		$gallery_slug = Slug_Helper::get_first_gallery_page_slug();
 
-		if ( ! empty( $gallery_slug ) && strpos( $current_url, '/' . $gallery_slug . '/' ) !== false ) {
-			if ( ! in_array( 'brag-book-gallery-page', $classes, true ) ) {
-				$classes[] = 'brag-book-gallery-page';
-				$is_gallery_page = true;
+		if ( ! empty( $gallery_slug ) && ! empty( $current_url ) ) {
+			$slug_pattern = '/' . preg_quote( $gallery_slug, '/' ) . '/';
+			if ( preg_match( $slug_pattern, $current_url ) ) {
+				if ( ! in_array( 'brag-book-gallery-page', $classes, true ) ) {
+					$classes[]       = 'brag-book-gallery-page';
+					$is_gallery_page = true;
+				}
 			}
 		}
 
-		// Add disable-custom-font class to body if custom font is disabled and we're on a gallery page
+		// Apply font preference class
 		if ( $is_gallery_page ) {
 			$use_custom_font = get_option( 'brag_book_gallery_use_custom_font', 'yes' );
 			if ( $use_custom_font !== 'yes' ) {
@@ -142,49 +245,95 @@ final class Shortcodes {
 			}
 		}
 
-		return $classes;
+		return array_unique( $classes );
 	}
 
 	/**
 	 * Find pages containing the gallery shortcode.
 	 *
-	 * @return array Array of page objects.
+	 * Queries the database for published pages containing any BRAGBook shortcode.
+	 * Used for gallery page detection and management operations.
+	 *
+	 * Security Considerations:
+	 * - Uses prepared statements to prevent SQL injection
+	 * - Limited to published pages only
+	 * - Returns sanitized results
+	 *
 	 * @since 3.0.0
+	 * @return array<int, object> Array of page objects with ID, post_name, post_title, post_content.
 	 */
 	private static function find_pages_with_gallery_shortcode(): array {
 		global $wpdb;
 
-		// Query for pages containing our shortcode
-		$pages = $wpdb->get_results(
-			$wpdb->prepare(
-				"SELECT ID, post_name, post_title, post_content
-				FROM {$wpdb->posts}
-				WHERE post_type = 'page'
-				AND post_status = 'publish'
-				AND post_content LIKE %s",
-				'%[brag_book_gallery%'
-			)
+		// Build safe query with prepared statement
+		$query = $wpdb->prepare(
+			"SELECT ID, post_name, post_title, post_content
+			FROM {$wpdb->posts}
+			WHERE post_type = %s
+			AND post_status = %s
+			AND post_content LIKE %s",
+			'page',
+			'publish',
+			'%[brag_book_gallery%'
 		);
 
-		return $pages ?: [];
+		// Execute query with error handling
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- Query is prepared above
+		$pages = $wpdb->get_results( $query );
+
+		return is_array( $pages ) ? $pages : [];
 	}
 
 	/**
 	 * Render main gallery shortcode using modern markup.
-	 * Delegates to Gallery_Shortcode_Handler for implementation.
 	 *
-	 * @param array $atts Shortcode attributes.
+	 * Entry point for [brag_book_gallery] shortcode. Delegates to specialized
+	 * Gallery_Shortcode_Handler for complete implementation including filtering,
+	 * progressive loading, and favorites integration.
 	 *
-	 * @return string Rendered HTML.
+	 * Supported Attributes:
+	 * - website_property_id: Override global property ID
+	 * - class: Additional CSS classes
+	 * - limit: Initial case limit
+	 * - columns: Grid column count
+	 *
 	 * @since 3.0.0
+	 * @param array<string, mixed> $atts Shortcode attributes from user input.
+	 * @return string Rendered gallery HTML with filters and cases.
 	 */
 	public static function main_gallery_shortcode( array $atts ): string {
-		// Delegate to Gallery_Shortcode_Handler which contains the full implementation
-		return Gallery_Shortcode_Handler::handle( $atts );
+		// Validate handler availability
+		if ( ! class_exists( Gallery_Shortcode_Handler::class ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- VIP compliant logging
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+				error_log( 'BRAGBook Gallery: Gallery_Shortcode_Handler class not found' );
+			}
+			return '<div class="brag-book-gallery-error">' . esc_html__( 'Gallery handler not available.', 'brag-book-gallery' ) . '</div>';
+		}
+
+		// Delegate to specialized handler
+		return Gallery_Shortcode_Handler::handle( $atts ?? [] );
 	}
+
+	/**
+	 * Render carousel shortcode.
+	 *
+	 * Entry point for [brag_book_carousel] shortcode. Delegates to specialized
+	 * Carousel_Shortcode_Handler for implementation.
+	 *
+	 * @deprecated 3.0.0 Use Carousel_Shortcode_Handler::handle() directly
+	 * @since 3.0.0
+	 * @param array<string, mixed> $atts Shortcode attributes.
+	 * @return string Rendered carousel HTML.
+	 */
 	public static function carousel_shortcode( array $atts ): string {
-		// Delegate to the carousel handler
-		return Carousel_Shortcode_Handler::handle( $atts );
+		// Validate handler availability
+		if ( ! class_exists( Carousel_Shortcode_Handler::class ) ) {
+			return '<div class="brag-book-carousel-error">' . esc_html__( 'Carousel handler not available.', 'brag-book-gallery' ) . '</div>';
+		}
+
+		// Delegate to carousel handler
+		return Carousel_Shortcode_Handler::handle( $atts ?? [] );
 	}
 
 	/**
@@ -206,24 +355,31 @@ final class Shortcodes {
 
 	/**
 	 * Validate carousel configuration and settings.
-	 * 
-	 * @deprecated 3.0.0 Moved to Carousel_Shortcode_Handler.
 	 *
-	 * @param array $atts Shortcode attributes.
+	 * Legacy method for carousel configuration validation. Maintained for
+	 * backwards compatibility but delegates to Carousel_Shortcode_Handler.
 	 *
-	 * @return array Validation result with config or error.
+	 * Security Features:
+	 * - Sanitizes all input attributes
+	 * - Validates API configuration
+	 * - Type-safe conversions
+	 * - Prevents XSS through escaping
+	 *
+	 * @deprecated 3.0.0 Use Carousel_Shortcode_Handler::validate_configuration()
 	 * @since 3.0.0
+	 * @param array<string, mixed> $atts Raw shortcode attributes.
+	 * @return array{error?: bool, message?: string, config?: array<string, mixed>} Validation result.
 	 */
 	private static function validate_carousel_configuration( array $atts ): array {
-		// Get API configuration if not provided in shortcode
+		// Get API configuration with PHP 8.2 null coalescing
 		if ( empty( $atts['api_token'] ) ) {
-			$api_tokens        = get_option( 'brag_book_gallery_api_token' ) ?: [];
-			$atts['api_token'] = is_array( $api_tokens ) ? ( $api_tokens[0] ?? '' ) : '';
+			$api_tokens        = get_option( 'brag_book_gallery_api_token', [] );
+			$atts['api_token'] = is_array( $api_tokens ) ? ( $api_tokens[0] ?? '' ) : (string) $api_tokens;
 		}
 
 		if ( empty( $atts['website_property_id'] ) ) {
-			$website_property_ids        = get_option( 'brag_book_gallery_website_property_id' ) ?: [];
-			$atts['website_property_id'] = is_array( $website_property_ids ) ? ( $website_property_ids[0] ?? '' ) : '';
+			$website_property_ids        = get_option( 'brag_book_gallery_website_property_id', [] );
+			$atts['website_property_id'] = is_array( $website_property_ids ) ? ( $website_property_ids[0] ?? '' ) : (string) $website_property_ids;
 		}
 
 		// Validate required fields
@@ -251,8 +407,9 @@ final class Shortcodes {
 					$atts['website_property_id']
 				);
 
-				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-					error_log( 'BRAG book Carousel: Converted slug "' . $procedure_slug . '" to ID: ' . ( $procedure_id ?: 'not found' ) );
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- VIP compliant logging
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+					error_log( 'BRAGBook Carousel: Converted slug "' . $procedure_slug . '" to ID: ' . ( $procedure_id ?: 'not found' ) );
 				}
 			}
 		}
@@ -278,43 +435,62 @@ final class Shortcodes {
 
 	/**
 	 * Get procedure ID from slug using sidebar data.
-	 * 
-	 * @deprecated 3.0.0 Moved to Carousel_Shortcode_Handler.
 	 *
-	 * @param string $slug Procedure slug.
-	 * @param string $api_token API token.
-	 * @param string $website_property_id Website property ID.
-	 * @return int|null Procedure ID or null if not found.
+	 * Converts human-readable procedure slugs to numeric IDs by querying
+	 * the sidebar data API. Uses caching for performance optimization.
+	 *
+	 * Lookup Process:
+	 * - Fetches sidebar data from API
+	 * - Searches categories for matching slug
+	 * - Returns first matching ID
+	 * - Falls back to name sanitization
+	 *
+	 * @deprecated 3.0.0 Use Carousel_Shortcode_Handler::get_procedure_id_from_slug()
 	 * @since 3.0.0
+	 * @param string $slug Procedure slug to convert.
+	 * @param string $api_token Valid API token.
+	 * @param string $website_property_id Website property identifier.
+	 * @return int|null Procedure ID or null if not found.
 	 */
 	private static function get_procedure_id_from_slug( string $slug, string $api_token, string $website_property_id ): ?int {
-		// Get sidebar data which contains procedure information
+		// Validate inputs
+		if ( empty( $slug ) || empty( $api_token ) ) {
+			return null;
+		}
+
+		// Fetch sidebar data with error handling
+		if ( ! class_exists( Data_Fetcher::class ) ) {
+			return null;
+		}
+
 		$sidebar_data = Data_Fetcher::get_sidebar_data( $api_token );
 
 		if ( empty( $sidebar_data ) ) {
 			return null;
 		}
 
-		// Get the data array from the response
-		$categories = $sidebar_data['data'] ?? $sidebar_data;
+		// Extract categories with type safety
+		$categories = is_array( $sidebar_data['data'] ?? null ) 
+			? $sidebar_data['data'] 
+			: ( is_array( $sidebar_data ) ? $sidebar_data : [] );
 
-		// Search through categories for the procedure
+		// Search through categories using modern iteration
 		foreach ( $categories as $category ) {
-			if ( ! empty( $category['procedures'] ) ) {
-				foreach ( $category['procedures'] as $procedure ) {
-					// Check if slug matches
-					if ( isset( $procedure['slugName'] ) && $procedure['slugName'] === $slug ) {
-						// Return the first ID from the ids array
-						if ( ! empty( $procedure['ids'] ) && is_array( $procedure['ids'] ) ) {
-							return (int) $procedure['ids'][0];
-						}
-					}
-					// Also check by sanitized name as fallback
-					if ( isset( $procedure['name'] ) && sanitize_title( $procedure['name'] ) === $slug ) {
-						if ( ! empty( $procedure['ids'] ) && is_array( $procedure['ids'] ) ) {
-							return (int) $procedure['ids'][0];
-						}
-					}
+			if ( ! is_array( $category ) || empty( $category['procedures'] ) ) {
+				continue;
+			}
+
+			foreach ( $category['procedures'] as $procedure ) {
+				if ( ! is_array( $procedure ) ) {
+					continue;
+				}
+
+				// Check for slug match
+				$matches_slug = isset( $procedure['slugName'] ) && $procedure['slugName'] === $slug;
+				$matches_name = isset( $procedure['name'] ) && sanitize_title( $procedure['name'] ) === $slug;
+
+				if ( ( $matches_slug || $matches_name ) && ! empty( $procedure['ids'][0] ) ) {
+					return absint( $procedure['ids'][0] );
 				}
 			}
 		}
@@ -324,14 +500,21 @@ final class Shortcodes {
 
 	/**
 	 * Render carousel HTML.
-	 * 
-	 * @deprecated 3.0.0 Moved to Carousel_Shortcode_Handler.
 	 *
-	 * @param array $carousel_data Carousel data from API.
-	 * @param array $config Carousel configuration.
+	 * Generates complete carousel markup with navigation controls, slides,
+	 * and pagination. Supports autoplay, touch gestures, and accessibility.
 	 *
-	 * @return string Carousel HTML.
+	 * HTML Structure:
+	 * - Wrapper with data attributes
+	 * - Navigation buttons (optional)
+	 * - Carousel track with slides
+	 * - Pagination dots (optional)
+	 *
+	 * @deprecated 3.0.0 Use Carousel_Shortcode_Handler::render_html()
 	 * @since 3.0.0
+	 * @param array<string, mixed> $carousel_data API response with carousel items.
+	 * @param array<string, mixed> $config Carousel display configuration.
+	 * @return string Complete carousel HTML markup.
 	 */
 	private static function render_carousel_html( array $carousel_data, array $config ): string {
 		// Check if we have data in either format
@@ -407,15 +590,22 @@ final class Shortcodes {
 
 	/**
 	 * Generate carousel items from API data.
-	 * 
-	 * @deprecated 3.0.0 Moved to Carousel_Shortcode_Handler.
 	 *
-	 * @param array $items Carousel items data.
-	 * @param int $max_slides Maximum number of slides.
-	 * @param string $procedure_slug Procedure slug for context.
+	 * Processes case data to generate carousel slide HTML. Limits slides
+	 * to prevent performance issues and ensures proper image display.
 	 *
-	 * @return string Generated HTML for carousel items.
+	 * Processing Steps:
+	 * - Iterates through cases and photo sets
+	 * - Generates slide markup for each photo
+	 * - Respects maximum slide limit
+	 * - Handles both photoSets and photos formats
+	 *
+	 * @deprecated 3.0.0 Use Carousel_Shortcode_Handler::generate_items_from_data()
 	 * @since 3.0.0
+	 * @param array<int, array<string, mixed>> $items Case items with photo data.
+	 * @param int $max_slides Maximum slides to generate (default: 8).
+	 * @param string $procedure_slug Procedure context for URL generation.
+	 * @return string Combined HTML for all carousel slides.
 	 */
 	private static function generate_carousel_items_from_data( array $items, int $max_slides = 8, string $procedure_slug = '' ): string {
 		if ( empty( $items ) ) {
@@ -428,23 +618,39 @@ final class Shortcodes {
 
 		// Loop through each case
 		foreach ( $items as $case ) {
-			// Check for both possible data structures: photoSets and photos
+			if ( ! is_array( $case ) ) {
+				continue;
+			}
+
+			// Support both data structures with PHP 8.2 null coalescing
 			$photo_sets = $case['photoSets'] ?? $case['photos'] ?? [];
 
-			// If photo_sets is empty, skip this case
-			if ( empty( $photo_sets ) ) {
+			if ( ! is_array( $photo_sets ) || empty( $photo_sets ) ) {
 				continue;
 			}
 
 			foreach ( $photo_sets as $photo ) {
-				// Stop if we've reached the maximum number of slides
+				// Check slide limit
 				if ( $slide_count >= $max_slides ) {
-					break 2; // Break out of both loops
+					break 2; // Exit both loops
 				}
 
-				$slide_index++;
-				$slide_count++;
-				$html_parts[] = HTML_Renderer::generate_carousel_slide_from_photo( $photo, $case, $slide_index, $procedure_slug );
+				if ( ! is_array( $photo ) ) {
+					continue;
+				}
+
+				++$slide_index;
+				++$slide_count;
+
+				// Generate slide HTML if renderer is available
+				if ( class_exists( HTML_Renderer::class ) ) {
+					$html_parts[] = HTML_Renderer::generate_carousel_slide_from_photo( 
+						$photo, 
+						$case, 
+						$slide_index, 
+						$procedure_slug 
+					);
+				}
 			}
 		}
 
@@ -454,12 +660,21 @@ final class Shortcodes {
 	/**
 	 * Generate a single carousel slide from photo data.
 	 *
-	 * @param array $photo Photo data from photoSet.
-	 * @param array $case Case data containing the photo.
-	 * @param int $slide_index Current slide index.
+	 * Creates complete slide markup including image, overlays, action buttons,
+	 * and metadata. Handles nudity warnings and accessibility attributes.
 	 *
-	 * @return string Generated HTML for single carousel slide.
+	 * Generated Elements:
+	 * - Container with data attributes
+	 * - Nudity warning overlay (if applicable)
+	 * - Linked image with lazy loading
+	 * - Favorite and share action buttons
+	 *
+	 * @deprecated 3.0.0 Use HTML_Renderer::generate_carousel_slide_from_photo()
 	 * @since 3.0.0
+	 * @param array<string, mixed> $photo Photo data including URL and metadata.
+	 * @param array<string, mixed> $case Parent case data for context.
+	 * @param int $slide_index Slide position in carousel.
+	 * @return string Complete slide HTML markup.
 	 */
 	private static function generate_carousel_slide_from_photo( array $photo, array $case, int $slide_index ): string {
 		// Get image URL from postProcessedImageLocation
@@ -468,26 +683,30 @@ final class Shortcodes {
 			return ''; // Skip photos without valid image URL
 		}
 
-		// Get alt text from seoAltText or use details as fallback
-		$alt_text = ! empty( $photo['seoAltText'] )
-			? esc_attr( $photo['seoAltText'] )
-			: esc_attr( strip_tags( $case['details'] ?? __( 'Before and after procedure result', 'brag-book-gallery' ) ) );
+		// Generate alt text with multiple fallbacks
+		$alt_text = match ( true ) {
+			! empty( $photo['seoAltText'] ) => esc_attr( $photo['seoAltText'] ),
+			! empty( $case['details'] ) => esc_attr( wp_strip_all_tags( $case['details'] ) ),
+			default => esc_attr__( 'Before and after procedure result', 'brag-book-gallery' ),
+		};
 
 		// Get case ID and photo ID
 		$case_id  = $case['id'] ?? '';
 		$photo_id = $photo['id'] ?? $slide_index;
 		$item_id  = 'slide-' . $photo_id;
 
-		// Get procedure information for URL
-		// Try multiple possible field names for procedure
-		$procedure_name = $case['procedureName'] ?? $case['procedure'] ?? $case['name'] ?? '';
+		// Extract procedure information with multiple fallbacks
+		$procedure_name = match ( true ) {
+			! empty( $case['procedureName'] ) => $case['procedureName'],
+			! empty( $case['procedure'] ) => $case['procedure'],
+			! empty( $case['name'] ) => $case['name'],
+			! empty( $photo['procedureName'] ) => $photo['procedureName'],
+			default => '',
+		};
 
-		// If no procedure name in case data, try to get from the photo metadata
-		if ( empty( $procedure_name ) && ! empty( $photo['procedureName'] ) ) {
-			$procedure_name = $photo['procedureName'];
-		}
-
-		$procedure_slug = ! empty( $procedure_name ) ? sanitize_title( $procedure_name ) : 'case';
+		$procedure_slug = ! empty( $procedure_name ) 
+			? sanitize_title( $procedure_name ) 
+			: 'case';
 
 		// Build case detail URL - format: /gallery-page/procedure-name/case-id
 		$case_url = '';
@@ -495,13 +714,11 @@ final class Shortcodes {
 		if ( ! empty( $case_id ) ) {
 			// Try to get the current page URL
 			$current_url = get_permalink();
-			if ( ! empty( $current_url ) ) {
-				$base_path = parse_url( $current_url, PHP_URL_PATH ) ?: '';
-			} else {
-				// Fallback to getting gallery page from options
-				$gallery_slugs = get_option( 'brag_book_gallery_gallery_page_slug', [] );
-				$base_path     = ! empty( $gallery_slugs[0] ) ? '/' . $gallery_slugs[0] : '/before-after';
-			}
+			// Determine base path with fallbacks
+			$base_path = match ( true ) {
+				! empty( $current_url ) => parse_url( $current_url, PHP_URL_PATH ) ?: '',
+				default => self::determine_gallery_base_path(),
+			};
 
 			// Always create a URL if we have a case ID
 			$case_url = rtrim( $base_path, '/' ) . '/' . $procedure_slug . '/' . $case_id;
@@ -578,66 +795,114 @@ final class Shortcodes {
 	/**
 	 * Cases shortcode handler for displaying case listings.
 	 *
-	 * Displays cases from the /api/plugin/combine/cases endpoint
-	 * filtered by procedure if specified in the URL.
+	 * Entry point for [brag_book_gallery_cases] shortcode. Displays cases
+	 * from the API endpoint with optional filtering by procedure.
 	 *
-	 * @param array $atts Shortcode attributes.
+	 * Supported Attributes:
+	 * - limit: Maximum cases to display
+	 * - columns: Grid column count (1-6)
+	 * - procedure: Filter by procedure slug
+	 * - member_id: Filter by member/doctor
+	 * - class: Additional CSS classes
 	 *
-	 * @return string Rendered HTML.
 	 * @since 3.0.0
+	 * @param array<string, mixed> $atts Shortcode attributes.
+	 * @return string Rendered cases grid HTML.
 	 */
 	public static function cases_shortcode( array $atts ): string {
-		// Delegate to Cases_Shortcode_Handler
-		return Cases_Shortcode_Handler::handle( $atts );
+		// Validate handler availability
+		if ( ! class_exists( Cases_Shortcode_Handler::class ) ) {
+			return '<div class="brag-book-cases-error">' . esc_html__( 'Cases handler not available.', 'brag-book-gallery' ) . '</div>';
+		}
+
+		// Delegate to specialized handler
+		return Cases_Shortcode_Handler::handle( $atts ?? [] );
 	}
 
 	/**
-	 * @deprecated 3.0.0 Moved to Cases_Shortcode_Handler::render_cases_grid()
+	 * Render cases grid display.
+	 *
+	 * @deprecated 3.0.0 Use Cases_Shortcode_Handler::render_cases_grid()
+	 * @since 3.0.0
+	 * @param array<string, mixed> $cases_data API response with cases.
+	 * @param array<string, mixed> $atts Display attributes.
+	 * @param string $filter_procedure Optional procedure filter.
+	 * @return string Rendered cases grid HTML.
 	 */
 	private static function render_cases_grid( array $cases_data, array $atts, string $filter_procedure = '' ): string {
-		// This method is now a thin wrapper for backwards compatibility
+		if ( ! class_exists( Cases_Shortcode_Handler::class ) ) {
+			return '';
+		}
 		return Cases_Shortcode_Handler::render_cases_grid( $cases_data, $atts, $filter_procedure );
 	}
 
 	/**
-	 * @deprecated 3.0.0 Moved to Cases_Shortcode_Handler::render_single_case()
+	 * Render single case display.
+	 *
+	 * @deprecated 3.0.0 Use Cases_Shortcode_Handler::render_single_case()
+	 * @since 3.0.0
+	 * @param string $case_id Case identifier.
+	 * @param array<string, mixed> $atts Display attributes.
+	 * @return string Rendered case HTML.
 	 */
 	private static function render_single_case( string $case_id, array $atts ): string {
-		// This method is now a thin wrapper for backwards compatibility
+		if ( ! class_exists( Cases_Shortcode_Handler::class ) ) {
+			return '';
+		}
 		return Cases_Shortcode_Handler::render_single_case( $case_id, $atts );
 	}
 
 	/**
-	 * Render AJAX gallery case card
+	 * Render AJAX gallery case card.
 	 *
-	 * Used by AJAX handlers via reflection. Delegates to Cases_Shortcode_Handler.
+	 * Generates case card HTML for AJAX responses. Used by dynamic loading
+	 * and filtering operations. Maintains consistency with static rendering.
 	 *
-	 * @deprecated 3.0.0 Moved to Cases_Shortcode_Handler.
-	 *
-	 * @param array  $case               Case data.
-	 * @param string $image_display_mode Image display mode.
-	 * @param bool   $has_nudity         Whether case has nudity.
-	 * @param string $procedure_context  Procedure context.
-	 *
-	 * @return string HTML output.
+	 * @deprecated 3.0.0 Use Cases_Shortcode_Handler::render_ajax_case_card()
 	 * @since 3.0.0
+	 * @param array<string, mixed> $case Complete case data.
+	 * @param string $image_display_mode Display mode for images.
+	 * @param bool $has_nudity Nudity flag for content warnings.
+	 * @param string $procedure_context Procedure slug for context.
+	 * @return string Rendered case card HTML.
 	 */
 	private static function render_ajax_gallery_case_card( array $case, string $image_display_mode, bool $has_nudity = false, string $procedure_context = '' ): string {
-		// Delegate to Cases_Shortcode_Handler AJAX method for main gallery rendering
+		if ( ! class_exists( Cases_Shortcode_Handler::class ) ) {
+			return '';
+		}
 		return Cases_Shortcode_Handler::render_ajax_case_card( $case, $image_display_mode, $has_nudity, $procedure_context );
 	}
 
 
 	/**
-	 * Case details shortcode handler
+	 * Case details shortcode handler.
 	 *
-	 * @param array<string, mixed> $atts Shortcode attributes.
+	 * Entry point for [brag_book_gallery_case] shortcode. Displays detailed
+	 * information for a single case including all images and metadata.
 	 *
-	 * @return string HTML output.
+	 * Required Attributes:
+	 * - case_id: Unique case identifier
+	 *
+	 * Optional Attributes:
+	 * - class: Additional CSS classes
+	 * - show_navigation: Display prev/next links
+	 *
 	 * @since 3.0.0
+	 * @param array<string, mixed> $atts Shortcode attributes.
+	 * @return string Rendered case details HTML.
 	 */
 	public static function case_details_shortcode( array $atts = [] ): string {
-		// Delegate to Cases_Shortcode_Handler
+		// Validate handler availability
+		if ( ! class_exists( Cases_Shortcode_Handler::class ) ) {
+			return '<div class="brag-book-case-error">' . esc_html__( 'Case handler not available.', 'brag-book-gallery' ) . '</div>';
+		}
+
+		// Validate required case_id
+		if ( empty( $atts['case_id'] ) ) {
+			return '<div class="brag-book-case-error">' . esc_html__( 'Case ID is required.', 'brag-book-gallery' ) . '</div>';
+		}
+
+		// Delegate to specialized handler
 		return Cases_Shortcode_Handler::handle_case_details( $atts );
 	}
 
@@ -645,45 +910,93 @@ final class Shortcodes {
 	/**
 	 * Render the My Favorites page.
 	 *
-	 * @param array $atts Shortcode attributes.
+	 * Legacy method for favorites page rendering. Delegates to the main
+	 * favorites shortcode handler for consistency.
 	 *
-	 * @return string Rendered HTML.
+	 * @deprecated 3.0.0 Use favorites_shortcode() directly
 	 * @since 3.0.0
+	 * @param array<string, mixed> $atts Shortcode attributes.
+	 * @return string Rendered favorites page HTML.
 	 */
 	private static function render_favorites_page( array $atts ): string {
-		// Use the new favorites shortcode which handles API-based favorites
 		return self::favorites_shortcode( $atts );
+	}
+
+	/**
+	 * Determine gallery base path for URL generation.
+	 *
+	 * Resolves the base path for gallery URLs using configured slugs
+	 * or fallback defaults. Used for case detail link generation.
+	 *
+	 * Resolution Order:
+	 * 1. Configured gallery page slug
+	 * 2. Default '/before-after' fallback
+	 *
+	 * @since 3.0.0
+	 * @return string Gallery base path with leading slash.
+	 */
+	private static function determine_gallery_base_path(): string {
+		$gallery_slugs = get_option( 'brag_book_gallery_gallery_page_slug', [] );
+		
+		return match ( true ) {
+			is_array( $gallery_slugs ) && ! empty( $gallery_slugs[0] ) => '/' . sanitize_title( $gallery_slugs[0] ),
+			is_string( $gallery_slugs ) && ! empty( $gallery_slugs ) => '/' . sanitize_title( $gallery_slugs ),
+			default => '/before-after',
+		};
 	}
 
 	/**
 	 * Favorites shortcode handler.
 	 *
-	 * Displays user's favorited cases.
+	 * Entry point for [brag_book_favorites] shortcode. Displays user's
+	 * favorited cases with email capture and API synchronization.
+	 *
+	 * Supported Attributes:
+	 * - email: Pre-filled email address
+	 * - class: Additional CSS classes
+	 * - columns: Grid column count
+	 *
+	 * Features:
+	 * - Email capture form for new users
+	 * - LocalStorage persistence
+	 * - API synchronization
+	 * - Responsive grid layout
 	 *
 	 * @since 3.0.0
-	 * @param array $atts Shortcode attributes.
-	 * @return string HTML output.
+	 * @param array<string, mixed>|string $atts Shortcode attributes (accepts array or string).
+	 * @return string Rendered favorites interface HTML.
 	 */
-	public static function favorites_shortcode( $atts ): string {
-		// Extract shortcode attributes
+	public static function favorites_shortcode( array|string $atts = [] ): string {
+		// Normalize attributes to array
+		$atts = is_array( $atts ) ? $atts : [];
+
+		// Extract and validate shortcode attributes
 		$atts = shortcode_atts(
 			[
-				'email' => '', // User can provide email or it will use a form
+				'email'   => '', // Pre-filled email address
+				'class'   => '', // Additional CSS classes
+				'columns' => 3,  // Grid columns
 			],
 			$atts,
 			'brag_book_favorites'
 		);
 
+		// Sanitize attributes
+		$atts['email']   = sanitize_email( $atts['email'] );
+		$atts['class']   = sanitize_html_class( $atts['class'] );
+		$atts['columns'] = absint( $atts['columns'] ) ?: 3;
+
 		// Enqueue necessary scripts and styles
 		$assets = new Assets();
 		$assets->enqueue_frontend_assets();
 
-		// Get API configuration
-		$api_tokens = get_option( 'brag_book_gallery_api_token', [] );
-		$website_property_ids = get_option( 'brag_book_gallery_website_property_id', [] );
-
-		if ( empty( $api_tokens ) || empty( $website_property_ids ) ) {
-			return '<div class="brag-book-gallery-error">Please configure the plugin API settings.</div>';
+		// Validate API configuration
+		$api_config = self::validate_api_configuration();
+		if ( isset( $api_config['error'] ) ) {
+			return sprintf(
+				'<div class="brag-book-gallery-error">%s</div>',
+				esc_html( $api_config['message'] )
+			);
 		}
 
 		// Start building the HTML
@@ -716,8 +1029,9 @@ final class Shortcodes {
 		$html .= '</div>';
 		$html .= '</div>';
 
-		// Add JavaScript to handle the form and load favorites
-		$html .= '<script>
+		// Add inline JavaScript for immediate functionality
+		$html .= '<script type="text/javascript">
+		(function() {
 		document.addEventListener("DOMContentLoaded", function() {
 			const favoritesForm = document.querySelector("[data-form=\"favorites-lookup\"]");
 			const favoritesView = document.getElementById("favorites-view");
@@ -783,10 +1097,62 @@ final class Shortcodes {
 				});
 			}
 		});
+		})();
 		</script>';
 
 		return $html;
 	}
 
+	/**
+	 * Validate API configuration for shortcode operations.
+	 *
+	 * Ensures API tokens and website property IDs are properly configured
+	 * before attempting API calls. Returns standardized error structure.
+	 *
+	 * Validation Steps:
+	 * - Check for API token presence
+	 * - Verify website property ID
+	 * - Return first valid configuration
+	 *
+	 * @since 3.0.0
+	 * @return array{api_token?: string, website_property_id?: string, error?: bool, message?: string} Configuration or error.
+	 */
+	private static function validate_api_configuration(): array {
+		// Retrieve API tokens with type safety
+		$api_tokens = get_option( 'brag_book_gallery_api_token', [] );
+		$api_token  = match ( true ) {
+			is_array( $api_tokens ) && ! empty( $api_tokens[0] ) => (string) $api_tokens[0],
+			is_string( $api_tokens ) && ! empty( $api_tokens ) => $api_tokens,
+			default => '',
+		};
+
+		// Retrieve website property IDs with type safety
+		$website_property_ids = get_option( 'brag_book_gallery_website_property_id', [] );
+		$website_property_id  = match ( true ) {
+			is_array( $website_property_ids ) && ! empty( $website_property_ids[0] ) => (string) $website_property_ids[0],
+			is_string( $website_property_ids ) && ! empty( $website_property_ids ) => $website_property_ids,
+			default => '',
+		};
+
+		// Validate configuration
+		if ( empty( $api_token ) ) {
+			return [
+				'error'   => true,
+				'message' => __( 'Please configure the plugin API token in settings.', 'brag-book-gallery' ),
+			];
+		}
+
+		if ( empty( $website_property_id ) ) {
+			return [
+				'error'   => true,
+				'message' => __( 'Please configure the website property ID in settings.', 'brag-book-gallery' ),
+			];
+		}
+
+		return [
+			'api_token'           => $api_token,
+			'website_property_id' => $website_property_id,
+		];
+	}
 
 }

@@ -100,7 +100,7 @@ The plugin follows a modular architecture with clear separation of concerns:
   - `Rewrite_Flush`: Flush rewrite rules utility
 - **Admin Traits** (`includes/admin/traits/`):
   - `Trait_Ajax_Handler`: AJAX handling utilities
-  - `Trait_Cache_Handler`: Cache management utilities  
+  - `Trait_Cache_Handler`: Cache management utilities
   - `Trait_Render_Helper`: Rendering helper methods
 
 **Frontend Extensions** (`includes/extend/`):
@@ -133,7 +133,6 @@ The plugin follows a modular architecture with clear separation of concerns:
 **Entry Points** (built via webpack):
 - `src/js/frontend.js` → `assets/js/brag-book-gallery.js`
 - `src/js/admin.js` → `assets/js/brag-book-gallery-admin.js`
-- `src/js/carousel.js` → `assets/js/brag-book-carousel.js`
 
 **Frontend Modules** (`src/js/modules/`):
 - `main-app.js`: Main application controller
@@ -214,7 +213,7 @@ The plugin follows a modular architecture with clear separation of concerns:
 ```
 [brag_book_carousel procedure="arm-lift" limit="5"]
 ```
-- Parameters: 
+- Parameters:
   - `procedure`: Procedure slug to filter by
   - `procedure_id`: Procedure ID (alternative to slug)
   - `member_id`: Filter by specific member/doctor
@@ -271,17 +270,17 @@ This approach ensures consistent layout and functionality with the main gallery 
 
 ### Admin Interface
 - **Comprehensive Help Section**: Complete setup guide, troubleshooting with color-coded severity, FAQs, and system info
-- **Debug Tools Suite**: 
+- **Debug Tools Suite**:
   - Gallery Checker with card-based configuration display
-  - Rewrite Debug with modern table styling  
+  - Rewrite Debug with modern table styling
   - Cache Management with individual item deletion and API cache integration
   - System Info with copy/download functionality
   - Rewrite Flush with card-based status display
-- **Settings Organization**: 
+- **Settings Organization**:
   - Tabs for General, API, JavaScript, Consultation, Mode, Debug, Help
   - Custom notice placement system for better UX
   - Tailwind-inspired table designs without gradients
-- **Enhanced UX**: 
+- **Enhanced UX**:
   - Factory reset with HTML5 dialog confirmation
   - Toggle controls for features
   - Modern card-based layouts for status displays
@@ -290,7 +289,7 @@ This approach ensures consistent layout and functionality with the main gallery 
 - **Plugin Integration**: Settings link in plugin row actions on plugins page
 
 ### Frontend Features
-- **Carousel Improvements**: 
+- **Carousel Improvements**:
   - HTML output matches exact design specifications
   - Autoplay disabled by default
   - Supports legacy shortcode format

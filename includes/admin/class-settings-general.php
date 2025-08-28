@@ -90,7 +90,7 @@ class Settings_General extends Settings_Base {
 					'mode' => 'css',
 				),
 			) );
-			
+
 			// Ensure CSS linting is available
 			if ( $editor_settings !== false ) {
 				// The wp_enqueue_code_editor automatically loads needed scripts
@@ -163,7 +163,8 @@ class Settings_General extends Settings_Base {
 						</td>
 					</tr>
 
-					<tr>
+					<!--Hidden for Release 3.2.0-->
+					<tr style="display:none;">
 						<th scope="row">
 							<label for="brag_book_gallery_infinite_scroll" class="brag-book-toggle-label">
 								<?php esc_html_e( 'Enable Infinite Scroll', 'brag-book-gallery' ); ?>
@@ -188,7 +189,8 @@ class Settings_General extends Settings_Base {
 						</td>
 					</tr>
 
-					<tr>
+					<!--Hidden for Release 3.2.0-->
+					<tr style="display:none">
 						<th scope="row">
 							<label for="brag_book_gallery_image_display_mode" class="brag-book-toggle-label">
 								<?php esc_html_e( 'Before & After Mode', 'brag-book-gallery' ); ?>
@@ -213,7 +215,8 @@ class Settings_General extends Settings_Base {
 						</td>
 					</tr>
 
-					<tr>
+					<!--Hidden for Release 3.2.0-->
+					<tr style="display:none">
 						<th scope="row">
 							<label for="brag_book_gallery_enable_sharing" class="brag-book-toggle-label">
 								<?php esc_html_e( 'Enable Sharing', 'brag-book-gallery' ); ?>
@@ -238,7 +241,8 @@ class Settings_General extends Settings_Base {
 						</td>
 					</tr>
 
-					<tr>
+					<!--Hidden for Release 3.2.0-->
+					<tr style="display:none;">
 						<th scope="row">
 							<label for="brag_book_gallery_enable_lightbox" class="brag-book-toggle-label">
 								<?php esc_html_e( 'Enable Lightbox', 'brag-book-gallery' ); ?>
@@ -263,7 +267,8 @@ class Settings_General extends Settings_Base {
 						</td>
 					</tr>
 
-					<tr>
+					<!--Hidden for Release 3.2.0-->
+					<tr style="display:none;">
 						<th scope="row">
 							<label for="brag_book_gallery_enable_filtering" class="brag-book-toggle-label">
 								<?php esc_html_e( 'Enable Filtering', 'brag-book-gallery' ); ?>
@@ -488,7 +493,8 @@ class Settings_General extends Settings_Base {
 						</td>
 					</tr>
 
-					<tr>
+					<!--Hidden on Release 3.2.0-->
+					<tr style="display:none;">
 						<th scope="row">
 							<label for="brag_book_gallery_enable_debug" class="brag-book-toggle-label">
 								<?php esc_html_e( 'Enable Debug Mode', 'brag-book-gallery' ); ?>
@@ -513,7 +519,8 @@ class Settings_General extends Settings_Base {
 						</td>
 					</tr>
 
-					<tr>
+					<!--Hidden on Release 3.2.0-->
+					<tr style="display:none;">
 						<th scope="row">
 							<label for="brag_book_gallery_delete_on_uninstall" class="brag-book-toggle-label">
 								<?php esc_html_e( 'Delete Data on Uninstall', 'brag-book-gallery' ); ?>
@@ -542,7 +549,7 @@ class Settings_General extends Settings_Base {
 				<?php submit_button( __( 'Save Settings', 'brag-book-gallery' ) ); ?>
 			</form>
 		</div>
-		
+
 		<?php if ( $editor_settings !== false ) : ?>
 		<script type="text/javascript">
 		// Enhanced CSS Editor with WordPress CodeMirror
@@ -553,13 +560,13 @@ class Settings_General extends Settings_Base {
 			const errorMessage = document.getElementById('css-error-message');
 			const errorText = document.getElementById('css-error-text');
 			let cssEditor = null;
-			
+
 			// Initialize WordPress CodeMirror with CSS linting
 			if (typeof wp !== 'undefined' && wp.codeEditor && cssTextarea) {
 				const editorSettings = <?php echo wp_json_encode( $editor_settings ); ?>;
 				const editor = wp.codeEditor.initialize(cssTextarea, editorSettings);
 				cssEditor = editor.codemirror;
-				
+
 				// Add custom error handling for lint messages
 				cssEditor.on('change', function(cm) {
 					// WordPress CodeMirror automatically updates the textarea
@@ -574,12 +581,12 @@ class Settings_General extends Settings_Base {
 					}
 				});
 			}
-			
+
 			// Helper function to get CSS value
 			function getCSSValue() {
 				return cssEditor ? cssEditor.getValue() : cssTextarea.value;
 			}
-			
+
 			// Helper function to set CSS value
 			function setCSSValue(value) {
 				if (cssEditor) {
@@ -592,7 +599,7 @@ class Settings_General extends Settings_Base {
 			// Basic CSS validation
 			function validateCSS(css) {
 				const errors = [];
-				
+
 				// Check for unclosed brackets
 				const openBrackets = (css.match(/{/g) || []).length;
 				const closeBrackets = (css.match(/}/g) || []).length;
@@ -613,7 +620,7 @@ class Settings_General extends Settings_Base {
 				lines.forEach((line, index) => {
 					if (line.includes('/*')) inComment = true;
 					if (line.includes('*/')) inComment = false;
-					
+
 					if (!inComment && line.includes(':') && !line.includes(';') && !line.includes('{')) {
 						const trimmed = line.trim();
 						if (trimmed && !trimmed.endsWith('{') && !trimmed.startsWith('@')) {
@@ -663,18 +670,18 @@ class Settings_General extends Settings_Base {
 			if (document.getElementById('format-css-btn')) {
 				document.getElementById('format-css-btn').addEventListener('click', function() {
 					let css = getCSSValue();
-					
+
 					// Basic formatting
 					css = css.replace(/\s*{\s*/g, ' {\n    ');
 					css = css.replace(/;\s*/g, ';\n    ');
 					css = css.replace(/\s*}\s*/g, '\n}\n');
 					css = css.replace(/}\n{/g, '}\n\n{');
 					css = css.replace(/\n\s*\n\s*\n/g, '\n\n');
-					
+
 					// Clean up extra spaces
 					css = css.replace(/    }/g, '}');
 					css = css.trim();
-					
+
 					setCSSValue(css);
 				});
 			}
@@ -683,7 +690,7 @@ class Settings_General extends Settings_Base {
 			if (document.getElementById('minify-css-btn')) {
 				document.getElementById('minify-css-btn').addEventListener('click', function() {
 					let css = getCSSValue();
-					
+
 					// Remove comments
 					css = css.replace(/\/\*[\s\S]*?\*\//g, '');
 					// Remove unnecessary whitespace
@@ -694,7 +701,7 @@ class Settings_General extends Settings_Base {
 					css = css.replace(/\s*:\s*/g, ':');
 					css = css.replace(/\s*,\s*/g, ',');
 					css = css.trim();
-					
+
 					setCSSValue(css);
 				});
 			}
@@ -752,7 +759,7 @@ class Settings_General extends Settings_Base {
 		});
 		</script>
 		<?php endif; ?>
-		
+
 		<?php
 		$this->render_footer();
 	}

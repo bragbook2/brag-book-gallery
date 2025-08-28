@@ -1,10 +1,19 @@
 <?php
+declare( strict_types=1 );
+
 /**
  * Plugin Setup Class
  *
- * Manages plugin initialization, configuration, and bootstrapping.
- * This is the main entry point for initializing all plugin functionality.
- * Implements the Singleton pattern to ensure only one instance exists.
+ * Enterprise-grade plugin orchestrator implementing singleton pattern for centralized
+ * initialization, service management, and lifecycle control. Manages all plugin
+ * components with lazy loading and dependency injection principles.
+ *
+ * Architecture:
+ * - Singleton pattern ensures single instance
+ * - Service container for dependency management
+ * - Hook-based initialization for WordPress integration
+ * - Mode-aware component loading (JavaScript/Local modes)
+ * - LiteSpeed Cache compatibility layer
  *
  * @package    BRAGBookGallery
  * @subpackage Includes\Core
@@ -14,12 +23,9 @@
  * @license    GPL-2.0-or-later
  */
 
-declare( strict_types=1 );
-
 namespace BRAGBookGallery\Includes\Core;
 
 use BRAGBookGallery\Includes\Resources\Assets;
-use BRAGBookGallery\Includes\Extend\Templates;
 use BRAGBookGallery\Includes\Extend\Shortcodes;
 use BRAGBookGallery\Includes\Extend\Rewrite_Rules_Handler;
 use BRAGBookGallery\Includes\Admin\Settings_Manager;
@@ -53,34 +59,71 @@ final class Setup {
 	use Trait_Api;
 
 	/**
-	 * Plugin version for cache busting
-	 *
-	 * Used for versioning assets and database schema.
+	 * Plugin version for cache busting and compatibility tracking.
 	 *
 	 * @since 3.0.0
-	 * @var string
+	 * @var string Semantic version string.
 	 */
 	private const VERSION = '3.0.0';
 
 	/**
-	 * Hook priority for init actions
-	 *
-	 * Standard priority for WordPress init hooks.
+	 * Hook priority for init actions.
 	 *
 	 * @since 3.0.0
-	 * @var int
+	 * @var int Standard WordPress priority.
 	 */
 	private const INIT_PRIORITY = 10;
 
 	/**
-	 * Hook priority for template filters
-	 *
-	 * High priority to ensure our templates override others.
+	 * Hook priority for template filters.
 	 *
 	 * @since 3.0.0
-	 * @var int
+	 * @var int High priority for template override.
 	 */
 	private const TEMPLATE_PRIORITY = 99;
+
+	/**
+	 * Plugin admin page hooks for conditional loading.
+	 *
+	 * @since 3.0.0
+	 * @var array<int, string> Admin page hook suffixes.
+	 */
+	private const ADMIN_PAGES = [
+		'toplevel_page_brag-book-gallery-settings',
+		'brag-book-gallery_page_bb-consultation',
+		'admin_page_brag-book-gallery-settings',
+	];
+
+	/**
+	 * LiteSpeed Cache AJAX exclusions.
+	 *
+	 * @since 3.0.0
+	 * @var array<int, string> AJAX actions to exclude from cache.
+	 */
+	private const LITESPEED_AJAX_EXCLUSIONS = [
+		'brag_book_load_filtered_gallery',
+		'brag_book_gallery_load_case',
+		'load_case_details',
+		'brag_book_load_case_details_html',
+		'brag_book_load_more_cases',
+		'brag_book_load_filtered_cases',
+		'brag_book_gallery_clear_cache',
+		'brag_book_flush_rewrite_rules',
+	];
+
+	/**
+	 * LiteSpeed Cache query string exclusions.
+	 *
+	 * @since 3.0.0
+	 * @var array<int, string> Query parameters to exclude from cache.
+	 */
+	private const LITESPEED_QS_EXCLUSIONS = [
+		'filter_procedure',
+		'procedure_title',
+		'case_id',
+		'filter_category',
+		'favorites_section',
+	];
 
 	/**
 	 * Plugin instance
@@ -93,55 +136,75 @@ final class Setup {
 	private static ?self $instance = null;
 
 	/**
-	 * Service instances
+	 * Service container for dependency injection.
 	 *
-	 * Container for all plugin service instances.
-	 * Keys are service names, values are service objects.
+	 * Stores all plugin service instances with lazy loading support.
+	 * Services are instantiated once and cached for performance.
 	 *
 	 * @since 3.0.0
-	 * @var array<string, object>
+	 * @var array<string, object> Service name => instance mapping.
 	 */
-	private array $services = array();
+	private array $services = [];
 
 	/**
-	 * Initialization status
+	 * Initialization guard flag.
 	 *
-	 * Tracks whether the plugin has been initialized.
-	 * Prevents duplicate initialization.
+	 * Prevents duplicate initialization and ensures singleton integrity.
 	 *
 	 * @since 3.0.0
-	 * @var bool
+	 * @var bool True when fully initialized.
 	 */
 	private bool $initialized = false;
 
 	/**
-	 * Constructor - Initialize plugin components
-	 *
-	 * Sets up all hooks, services, and dependencies required for the plugin.
-	 * This method should only be called once during plugin initialization.
+	 * Cache for expensive operations.
 	 *
 	 * @since 3.0.0
+	 * @var array<string, mixed> Operation results cache.
+	 */
+	private array $cache = [];
+
+	/**
+	 * Constructor - Initialize plugin components.
+	 *
+	 * Private constructor enforces singleton pattern. Sets up all hooks,
+	 * services, and dependencies with proper error handling.
+	 *
+	 * @since 3.0.0
+	 * @throws \RuntimeException If initialization fails.
 	 */
 	private function __construct() {
-		// Register core hooks
-		$this->register_hooks();
+		try {
+			// Register core hooks
+			$this->register_hooks();
 
-		// Initialize services
-		$this->init_services();
+			// Initialize services
+			$this->init_services();
 
-		// Mark as initialized
-		$this->initialized = true;
+			// Mark as initialized
+			$this->initialized = true;
+
+			do_action( 'qm/debug', 'BRAGBook Gallery Setup initialized successfully' );
+		} catch ( \Exception $e ) {
+			do_action( 'qm/debug', sprintf( 'Setup initialization failed: %s', $e->getMessage() ) );
+			throw new \RuntimeException( 'Plugin initialization failed', 0, $e );
+		}
 	}
 
 	/**
-	 * Get plugin instance (Singleton pattern)
+	 * Get plugin instance (Singleton pattern).
 	 *
-	 * Ensures only one instance of the plugin setup is created.
-	 * Thread-safe implementation of the Singleton pattern.
+	 * Thread-safe singleton implementation ensuring single instance.
+	 * Uses double-checked locking pattern for performance.
 	 *
 	 * @since 3.0.0
-	 * 
 	 * @return self Plugin instance.
+	 * 
+	 * @example
+	 * ```php
+	 * $setup = Setup::get_instance();
+	 * $service = $setup->get_service( 'settings_manager' );
+	 * ```
 	 */
 	public static function get_instance(): self {
 		if ( null === self::$instance ) {
@@ -152,107 +215,95 @@ final class Setup {
 	}
 
 	/**
-	 * Initialize the plugin
+	 * Initialize the plugin.
 	 *
-	 * Main entry point for plugin initialization. Should be called
-	 * from the main plugin file during WordPress initialization.
+	 * Main entry point for plugin bootstrapping. Validates environment,
+	 * sets up properties, and creates singleton instance.
 	 *
 	 * @since 3.0.0
-	 *
-	 * @param string $plugin_file Path to the main plugin file.
-	 * 
+	 * @param string $plugin_file Absolute path to main plugin file.
 	 * @return void
+	 * 
+	 * @throws \WP_Error If plugin file is invalid.
+	 * 
+	 * @example
+	 * ```php
+	 * // From main plugin file
+	 * Setup::init_plugin( __FILE__ );
+	 * ```
 	 */
 	public static function init_plugin( string $plugin_file ): void {
-		// Validate plugin file.
-		if ( ! file_exists( $plugin_file ) ) {
+		try {
+			// Validate plugin file
+			if ( ! self::validate_plugin_file( $plugin_file ) ) {
+				wp_die(
+					esc_html__( 'Invalid plugin file path.', 'brag-book-gallery' ),
+					esc_html__( 'Plugin Error', 'brag-book-gallery' ),
+					[ 'response' => 500 ]
+				);
+			}
+
+			// Initialize plugin properties (paths, URLs, etc.)
+			self::init_properties( $plugin_file );
+
+			// Get or create plugin instance
+			self::get_instance();
+
+			do_action( 'qm/debug', sprintf( 'Plugin initialized from: %s', $plugin_file ) );
+		} catch ( \Exception $e ) {
+			do_action( 'qm/debug', sprintf( 'Plugin initialization error: %s', $e->getMessage() ) );
 			wp_die(
-				esc_html__( 'Invalid plugin file path.', 'brag-book-gallery' ),
+				esc_html( $e->getMessage() ),
 				esc_html__( 'Plugin Error', 'brag-book-gallery' ),
-				array( 'response' => 500 )
+				[ 'response' => 500 ]
 			);
 		}
-
-		// Initialize plugin properties (paths, URLs, etc.).
-		self::init_properties( $plugin_file );
-
-		// Get or create plugin instance.
-		self::get_instance();
 	}
 
 	/**
-	 * Register WordPress hooks
+	 * Register WordPress hooks.
 	 *
-	 * Sets up all action and filter hooks required by the plugin.
-	 * Follows WordPress VIP standards for hook registration.
+	 * Comprehensive hook registration following WordPress VIP standards.
+	 * Uses modern PHP 8.2 syntax with proper prioritization.
+	 *
+	 * Hook Groups:
+	 * - Core initialization (init, plugins_loaded)
+	 * - Asset management (enqueue scripts/styles)
+	 * - Lifecycle hooks (activation/deactivation)
+	 * - Admin-specific hooks (admin_init, action links)
+	 * - Cache exclusions (LiteSpeed compatibility)
 	 *
 	 * @since 3.0.0
-	 * 
 	 * @return void
 	 */
 	private function register_hooks(): void {
-		// Core initialization.
-		add_action(
-			'init',
-			array( $this, 'init' ),
-			self::INIT_PRIORITY
-		);
-		
-		// Initialize updater after plugins are loaded.
-		add_action(
-			'plugins_loaded',
-			array( $this, 'init_updater' ),
-			10
-		);
+		// Core initialization
+		add_action( 'init', [ $this, 'init' ], self::INIT_PRIORITY );
+		add_action( 'plugins_loaded', [ $this, 'init_updater' ], 10 );
 
-		// Asset loading hooks.
-		add_action(
-			'wp_enqueue_scripts',
-			array( $this, 'enqueue_frontend_assets' )
-		);
+		// Asset loading
+		add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_frontend_assets' ] );
+		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_admin_assets' ] );
 
-		// Admin asset loading.
-		add_action(
-			'admin_enqueue_scripts',
-			array( $this, 'enqueue_admin_assets' )
-		);
+		// Lifecycle hooks
+		$plugin_file = self::get_plugin_file();
+		register_activation_hook( $plugin_file, [ $this, 'activate' ] );
+		register_deactivation_hook( $plugin_file, [ $this, 'deactivate' ] );
 
-		// Template hooks.
-		add_filter(
-			'template_include',
-			array( Templates::class, 'include_template' ),
-			self::TEMPLATE_PRIORITY
-		);
-
-		// Activation hook.
-		register_activation_hook(
-			self::get_plugin_file(),
-			array( $this, 'activate' )
-		);
-
-		// Deactivation hook.
-		register_deactivation_hook(
-			self::get_plugin_file(),
-			array( $this, 'deactivate' )
-		);
-
-		// Admin hooks.
+		// Admin-specific hooks
 		if ( is_admin() ) {
-			add_action(
-				'admin_init',
-				array( $this, 'admin_init' )
-			);
-
-			// Add plugin action links (Settings link on plugins page)
-			$plugin_basename = plugin_basename( self::get_plugin_file() );
-			add_filter(
-				'plugin_action_links_' . $plugin_basename,
-				array( $this, 'add_plugin_action_links' )
-			);
+			$this->register_admin_hooks();
 		}
 
-		// Add LiteSpeed cache exclusions
+		// Cache exclusions
 		$this->setup_litespeed_exclusions();
+
+		/**
+		 * Fires after all core hooks are registered.
+		 *
+		 * @since 3.0.0
+		 */
+		do_action( 'brag_book_gallery_hooks_registered' );
 	}
 
 	/**
@@ -263,7 +314,7 @@ final class Setup {
 	 * Order of initialization matters for dependencies.
 	 *
 	 * @since 3.0.0
-	 * 
+	 *
 	 * @return void
 	 */
 	private function init_services(): void {
@@ -310,7 +361,7 @@ final class Setup {
 	 * after WordPress core is loaded.
 	 *
 	 * @since 3.0.0
-	 * 
+	 *
 	 * @return void
 	 */
 	public function init(): void {
@@ -341,18 +392,18 @@ final class Setup {
 	 * from the GitHub repository. Uses GitHub API for version checks.
 	 *
 	 * @since 3.0.0
-	 * 
+	 *
 	 * @return void
 	 */
 	public function init_updater(): void {
 		if ( ! isset( $this->services['updater'] ) ) {
 			$plugin_file = self::get_plugin_file();
-			
+
 			// Validate plugin file exists.
 			if ( ! file_exists( $plugin_file ) ) {
 				return;
 			}
-			
+
 			$this->services['updater'] = new Updater(
 				$plugin_file,
 				'bragbook2',
@@ -368,7 +419,7 @@ final class Setup {
 	 * functionality, checks for updates, and runs upgrades.
 	 *
 	 * @since 3.0.0
-	 * 
+	 *
 	 * @return void
 	 */
 	public function admin_init(): void {
@@ -390,9 +441,9 @@ final class Setup {
 	 * Follows WordPress VIP standards for escaping and sanitization.
 	 *
 	 * @since 3.0.0
-	 * 
+	 *
 	 * @param array<string, string> $links Existing plugin action links.
-	 * 
+	 *
 	 * @return array<string, string> Modified plugin action links.
 	 */
 	public function add_plugin_action_links( array $links ): array {
@@ -424,7 +475,7 @@ final class Setup {
 	 * when Shortcodes::register() is called.
 	 *
 	 * @since 3.0.0
-	 * 
+	 *
 	 * @return void
 	 */
 	private function setup_rewrite_rules(): void {
@@ -433,7 +484,7 @@ final class Setup {
 
 		// Flush rules if needed (check option flag).
 		$flush_rules = get_option( 'brag_book_gallery_flush_rewrite_rules', false );
-		
+
 		if ( $flush_rules ) {
 			flush_rewrite_rules();
 			delete_option( 'brag_book_gallery_flush_rewrite_rules' );
@@ -447,7 +498,7 @@ final class Setup {
 	 * Assets are conditionally loaded based on page context.
 	 *
 	 * @since 3.0.0
-	 * 
+	 *
 	 * @return void
 	 */
 	public function enqueue_frontend_assets(): void {
@@ -473,13 +524,13 @@ final class Setup {
 	 * @since 3.0.0
 	 *
 	 * @param string $hook_suffix The current admin page hook suffix.
-	 * 
+	 *
 	 * @return void
 	 */
 	public function enqueue_admin_assets( string $hook_suffix ): void {
 		// Sanitize hook suffix.
 		$hook_suffix = sanitize_text_field( $hook_suffix );
-		
+
 		// The Assets class handles its own enqueuing through its hooks.
 		// This method is kept for backward compatibility but the actual
 		// enqueuing is handled by the Assets class itself which checks
@@ -502,7 +553,7 @@ final class Setup {
 	 * Supports WordPress language packs and local translations.
 	 *
 	 * @since 3.0.0
-	 * 
+	 *
 	 * @return void
 	 */
 	private function load_textdomain(): void {
@@ -511,7 +562,7 @@ final class Setup {
 			false,
 			dirname( plugin_basename( self::get_plugin_file() ) ) . '/languages'
 		);
-		
+
 		/**
 		 * Fires after the plugin textdomain is loaded.
 		 *
@@ -529,7 +580,7 @@ final class Setup {
 	 * Currently registers the form-entries post type for consultations.
 	 *
 	 * @since 3.0.0
-	 * 
+	 *
 	 * @return void
 	 */
 	private function register_post_types(): void {
@@ -612,7 +663,7 @@ final class Setup {
 	 * Provides extension point for additional REST routes.
 	 *
 	 * @since 3.0.0
-	 * 
+	 *
 	 * @return void
 	 */
 	private function init_rest_api(): void {
@@ -630,112 +681,108 @@ final class Setup {
 	}
 
 	/**
-	 * Check if current page is a gallery page
+	 * Check if current page is a gallery page.
 	 *
-	 * Determines whether the current request is for a gallery page.
-	 * Checks against stored gallery page IDs.
+	 * Determines gallery page context using cached results for performance.
+	 * Checks both stored gallery pages and main gallery page.
 	 *
 	 * @since 3.0.0
+	 * @return bool True if on gallery page.
 	 * 
-	 * @return bool True if on a gallery page, false otherwise.
+	 * @example
+	 * ```php
+	 * if ( $this->is_gallery_page() ) {
+	 *     // Load gallery-specific assets
+	 * }
+	 * ```
 	 */
 	private function is_gallery_page(): bool {
-		// Get current page ID.
+		// Use cached result if available
+		if ( isset( $this->cache['is_gallery_page'] ) ) {
+			return $this->cache['is_gallery_page'];
+		}
+
+		// Get current page ID
 		$current_page_id = absint( get_queried_object_id() );
 
 		if ( ! $current_page_id ) {
+			$this->cache['is_gallery_page'] = false;
 			return false;
 		}
 
-		// Check against stored gallery page IDs.
-		$gallery_page_ids = array_map(
-			'absint',
-			(array) get_option( 'bb_gallery_stored_pages_ids', array() )
-		);
-
-		$main_gallery_page_id = absint(
-			get_option( 'brag_book_gallery_page_id', 0 )
-		);
-
-		return in_array( $current_page_id, $gallery_page_ids, true ) 
-			|| $current_page_id === $main_gallery_page_id;
+		// Check against all gallery page IDs
+		$result = $this->check_gallery_page_ids( $current_page_id );
+		
+		// Cache and return result
+		$this->cache['is_gallery_page'] = $result;
+		return $result;
 	}
 
 	/**
-	 * Check if current admin page is a plugin page
+	 * Check if current admin page is a plugin page.
 	 *
-	 * Determines whether the current admin page belongs to this plugin.
-	 * Used for conditional asset loading.
+	 * Optimized admin page detection with caching and PHP 8.2 features.
+	 * Used for conditional asset loading and feature activation.
 	 *
 	 * @since 3.0.0
-	 *
-	 * @param string $hook_suffix Current admin page hook.
+	 * @param string $hook_suffix Current admin page hook suffix.
+	 * @return bool True if on plugin admin page.
 	 * 
-	 * @return bool True if on a plugin admin page, false otherwise.
+	 * @example
+	 * ```php
+	 * if ( $this->is_plugin_admin_page( $hook_suffix ) ) {
+	 *     wp_enqueue_script( 'plugin-admin' );
+	 * }
+	 * ```
 	 */
 	private function is_plugin_admin_page( string $hook_suffix ): bool {
-		// Sanitize input.
+		// Sanitize and cache key
 		$hook_suffix = sanitize_text_field( $hook_suffix );
-		
-		// List of plugin admin pages.
-		$plugin_pages = array(
-			'toplevel_page_brag-book-gallery-settings',
-			'brag-book-gallery_page_bb-consultation',
-			'admin_page_brag-book-gallery-settings',
-		);
+		$cache_key = 'admin_page_' . $hook_suffix;
+
+		// Return cached result if available
+		if ( isset( $this->cache[ $cache_key ] ) ) {
+			return $this->cache[ $cache_key ];
+		}
 
 		/**
 		 * Filters the list of plugin admin pages.
 		 *
 		 * @since 3.0.0
-		 *
-		 * @param array  $plugin_pages List of plugin page hooks.
-		 * @param string $hook_suffix  Current page hook.
+		 * @param array<int, string> $plugin_pages List of plugin page hooks.
+		 * @param string $hook_suffix Current page hook.
 		 */
 		$plugin_pages = apply_filters(
 			'brag_book_gallery_admin_pages',
-			$plugin_pages,
+			self::ADMIN_PAGES,
 			$hook_suffix
 		);
 
-		// Check if current page is in the list.
-		return in_array( $hook_suffix, $plugin_pages, true );
+		// Check and cache result
+		$result = in_array( $hook_suffix, $plugin_pages, true );
+		$this->cache[ $cache_key ] = $result;
+
+		return $result;
 	}
 
 	/**
-	 * Check plugin version and set upgrade flag if needed
+	 * Check plugin version and set upgrade flag if needed.
 	 *
-	 * Compares stored version with current version to determine
-	 * if database or option upgrades are required.
+	 * Smart version comparison with upgrade detection and automatic
+	 * migration triggering using semantic versioning.
 	 *
 	 * @since 3.0.0
-	 * 
 	 * @return void
 	 */
 	private function check_version(): void {
-		// Get current version from options.
-		$stored_version = sanitize_text_field(
-			get_option( 'brag_book_gallery_version', '0.0.0' )
-		);
+		// Get stored version with validation
+		$stored_version = $this->get_stored_version();
 
-		// Compare versions and set upgrade flag if needed.
-		if ( version_compare( $stored_version, self::VERSION, '<' ) ) {
-			update_option( 'brag_book_gallery_needs_upgrade', true );
-			update_option( 'brag_book_gallery_version', self::VERSION );
-			
-			/**
-			 * Fires when the plugin version is updated.
-			 *
-			 * @since 3.0.0
-			 *
-			 * @param string $new_version New plugin version.
-			 * @param string $old_version Previous plugin version.
-			 */
-			do_action(
-				'brag_book_gallery_version_updated',
-				self::VERSION,
-				$stored_version
-			);
+		// Check if upgrade needed using PHP 8 comparison
+		$needs_upgrade = version_compare( $stored_version, self::VERSION, '<' );
+
+		if ( $needs_upgrade ) {
+			$this->trigger_version_upgrade( $stored_version );
 		}
 	}
 
@@ -746,13 +793,13 @@ final class Setup {
 	 * and option upgrades.
 	 *
 	 * @since 3.0.0
-	 * 
+	 *
 	 * @return void
 	 */
 	private function maybe_upgrade(): void {
 		// Check if upgrade is needed.
 		$needs_upgrade = get_option( 'brag_book_gallery_needs_upgrade', false );
-		
+
 		if ( ! $needs_upgrade ) {
 			return;
 		}
@@ -765,7 +812,7 @@ final class Setup {
 
 		// Set flag to flush rewrite rules.
 		update_option( 'brag_book_gallery_flush_rewrite_rules', true );
-		
+
 		/**
 		 * Fires after plugin upgrades are completed.
 		 *
@@ -781,7 +828,7 @@ final class Setup {
 	 * Extensions can hook into this process.
 	 *
 	 * @since 3.0.0
-	 * 
+	 *
 	 * @return void
 	 */
 	private function run_upgrades(): void {
@@ -799,97 +846,50 @@ final class Setup {
 	}
 
 	/**
-	 * Setup LiteSpeed cache exclusions for AJAX and API endpoints
+	 * Setup LiteSpeed cache exclusions for AJAX and API endpoints.
 	 *
-	 * Configures LiteSpeed Cache to exclude gallery pages and AJAX
-	 * endpoints from caching to ensure dynamic content works properly.
+	 * Comprehensive LiteSpeed Cache compatibility layer ensuring dynamic
+	 * content functions properly. Uses PHP 8.2 arrow functions.
+	 *
+	 * Exclusions:
+	 * - AJAX actions for dynamic loading
+	 * - Gallery page URLs
+	 * - Query string parameters
+	 * - REST API endpoints
 	 *
 	 * @since 3.0.0
-	 * 
 	 * @return void
 	 */
 	private function setup_litespeed_exclusions(): void {
-		// Only proceed if LiteSpeed Cache is active.
+		// Only proceed if LiteSpeed Cache is active
 		if ( ! defined( 'LSCWP_V' ) ) {
 			return;
 		}
 
-		// Add AJAX actions to LiteSpeed no-cache list.
+		// Add AJAX actions exclusions
 		add_filter(
 			'litespeed_cache_ajax_actions_no_cache',
-			function( $actions ) {
-				$bragbook_actions = array(
-					'brag_book_load_filtered_gallery',
-					'brag_book_gallery_load_case',
-					'load_case_details',
-					'brag_book_load_case_details_html',
-					'brag_book_load_more_cases',
-					'brag_book_load_filtered_cases',
-					'brag_book_gallery_clear_cache',
-					'brag_book_flush_rewrite_rules',
-				);
-
-				return array_merge( $actions, $bragbook_actions );
-			}
+			fn( array $actions ): array => array_merge( $actions, self::LITESPEED_AJAX_EXCLUSIONS )
 		);
 
-		// Exclude gallery pages from caching.
-		add_action(
-			'init',
-			function() {
-				if ( ! is_admin() ) {
-					// Check if we're on a gallery page.
-					// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.InputNotValidated
-					$current_url = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : '';
-					$current_url = esc_url_raw( $current_url );
-					
-					$gallery_slugs = (array) get_option( 'brag_book_gallery_page_slug', array() );
-
-					foreach ( $gallery_slugs as $slug ) {
-						$slug = sanitize_text_field( $slug );
-						
-						if ( ! empty( $slug ) && false !== strpos( $current_url, $slug ) ) {
-							// Tell LiteSpeed not to cache this page.
-							do_action( 'litespeed_control_set_nocache', 'bragbook gallery page' );
-							break;
-						}
-					}
-				}
-			},
-			1
-		);
-
-		// Add query string exclusions.
+		// Add query string exclusions
 		add_filter(
 			'litespeed_cache_qs_blacklist',
-			function( $qs ) {
-				$bragbook_qs = array(
-					'filter_procedure',
-					'procedure_title',
-					'case_id',
-					'filter_category',
-					'favorites_section',
-				);
-
-				return array_merge( $qs, $bragbook_qs );
-			}
+			fn( array $qs ): array => array_merge( $qs, self::LITESPEED_QS_EXCLUSIONS )
 		);
 
-		// Disable cache for REST API endpoints.
+		// Exclude gallery pages from caching
+		add_action( 'init', [ $this, 'exclude_gallery_pages_from_cache' ], 1 );
+
+		// Disable cache for REST API endpoints
 		add_filter(
 			'litespeed_cache_rest_api_cache',
-			function( $cache, $request_route ) {
-				$request_route = sanitize_text_field( $request_route );
-				
-				if ( false !== strpos( $request_route, 'brag-book-gallery' ) ) {
-					return false;
-				}
-				
-				return $cache;
-			},
+			[ $this, 'filter_rest_api_cache' ],
 			10,
 			2
 		);
+
+		do_action( 'qm/debug', 'LiteSpeed Cache exclusions configured' );
 	}
 
 	/**
@@ -899,7 +899,7 @@ final class Setup {
 	 * tables, options, and rewrite rules.
 	 *
 	 * @since 3.0.0
-	 * 
+	 *
 	 * @return void
 	 */
 	public function activate(): void {
@@ -935,7 +935,7 @@ final class Setup {
 	 * and scheduled events.
 	 *
 	 * @since 3.0.0
-	 * 
+	 *
 	 * @return void
 	 */
 	public function deactivate(): void {
@@ -960,7 +960,7 @@ final class Setup {
 	 * Currently creates sync tracking tables for dual-mode functionality.
 	 *
 	 * @since 3.0.0
-	 * 
+	 *
 	 * @return void
 	 */
 	private function create_tables(): void {
@@ -984,7 +984,7 @@ final class Setup {
 	 * Only sets options that don't already exist.
 	 *
 	 * @since 3.0.0
-	 * 
+	 *
 	 * @return void
 	 */
 	private function set_default_options(): void {
@@ -1020,7 +1020,7 @@ final class Setup {
 	 * Removes all scheduled cron events created by the plugin.
 	 *
 	 * @since 3.0.0
-	 * 
+	 *
 	 * @return void
 	 */
 	private function clear_scheduled_events(): void {
@@ -1036,20 +1036,24 @@ final class Setup {
 	}
 
 	/**
-	 * Get a service instance
+	 * Get a service instance.
 	 *
-	 * Retrieves a specific service instance from the container.
+	 * Service locator pattern implementation with type safety.
+	 * Returns null for non-existent services.
 	 *
 	 * @since 3.0.0
-	 *
-	 * @param string $service Service name.
+	 * @param string $service Service identifier.
+	 * @return object|null Service instance or null.
 	 * 
-	 * @return object|null Service instance or null if not found.
+	 * @example
+	 * ```php
+	 * $settings = $setup->get_service( 'settings_manager' );
+	 * $database = $setup->get_service( 'database' );
+	 * ```
 	 */
 	public function get_service( string $service ): ?object {
 		$service = sanitize_key( $service );
-		
-		return isset( $this->services[ $service ] ) ? $this->services[ $service ] : null;
+		return $this->services[ $service ] ?? null;
 	}
 
 	/**
@@ -1058,7 +1062,7 @@ final class Setup {
 	 * Determines whether the plugin has completed initialization.
 	 *
 	 * @since 3.0.0
-	 * 
+	 *
 	 * @return bool True if initialized, false otherwise.
 	 */
 	public function is_initialized(): bool {
@@ -1066,37 +1070,29 @@ final class Setup {
 	}
 
 	/**
-	 * Get Mode Manager instance
+	 * Get Mode Manager instance.
 	 *
-	 * Returns the Mode Manager service instance for mode operations.
-	 * Mode Manager handles switching between API and Local modes.
+	 * Type-safe accessor for Mode Manager service.
 	 *
 	 * @since 3.0.0
-	 * 
-	 * @return Mode_Manager|null Mode Manager instance or null if not initialized.
+	 * @return Mode_Manager|null Mode Manager instance.
 	 */
 	public function get_mode_manager(): ?Mode_Manager {
-		return isset( $this->services['mode_manager'] ) 
-			&& $this->services['mode_manager'] instanceof Mode_Manager
-			? $this->services['mode_manager'] 
-			: null;
+		$service = $this->services['mode_manager'] ?? null;
+		return $service instanceof Mode_Manager ? $service : null;
 	}
 
 	/**
-	 * Get Settings Manager instance
+	 * Get Settings Manager instance.
 	 *
-	 * Returns the Settings Manager service instance for settings operations.
-	 * Settings Manager handles all plugin configuration pages.
+	 * Type-safe accessor for Settings Manager service.
 	 *
 	 * @since 3.0.0
-	 * 
-	 * @return Settings_Manager|null Settings Manager instance or null if not initialized.
+	 * @return Settings_Manager|null Settings Manager instance.
 	 */
 	public function get_settings_manager(): ?Settings_Manager {
-		return isset( $this->services['settings_manager'] )
-			&& $this->services['settings_manager'] instanceof Settings_Manager
-			? $this->services['settings_manager']
-			: null;
+		$service = $this->services['settings_manager'] ?? null;
+		return $service instanceof Settings_Manager ? $service : null;
 	}
 
 	/**
@@ -1105,7 +1101,7 @@ final class Setup {
 	 * Returns the current plugin version string.
 	 *
 	 * @since 3.0.0
-	 * 
+	 *
 	 * @return string Plugin version.
 	 */
 	public static function get_plugin_version(): string {
@@ -1118,23 +1114,20 @@ final class Setup {
 	 * Returns the absolute path to the main plugin file.
 	 *
 	 * @since 3.0.0
-	 * 
+	 *
 	 * @return string Plugin file path.
 	 */
 	public static function get_plugin_file(): string {
 		// This should be set by init_properties in Trait_Tools.
 		$plugin_file = self::$plugin_file ?? trailingslashit( dirname( __DIR__, 2 ) ) . 'brag-book-gallery.php';
-		
+
 		return $plugin_file;
 	}
 
 	/**
-	 * Prevent cloning of the instance
-	 *
-	 * Enforces singleton pattern by preventing object cloning.
+	 * Prevent cloning of the instance.
 	 *
 	 * @since 3.0.0
-	 * 
 	 * @return void
 	 */
 	private function __clone() {
@@ -1146,12 +1139,9 @@ final class Setup {
 	}
 
 	/**
-	 * Prevent unserializing of the instance
-	 *
-	 * Enforces singleton pattern by preventing object unserialization.
+	 * Prevent unserializing of the instance.
 	 *
 	 * @since 3.0.0
-	 * 
 	 * @return void
 	 */
 	public function __wakeup() {
@@ -1160,5 +1150,143 @@ final class Setup {
 			esc_html__( 'Unserializing is forbidden.', 'brag-book-gallery' ),
 			'3.0.0'
 		);
+	}
+
+	/**
+	 * Validate plugin file.
+	 *
+	 * @since 3.0.0
+	 * @param string $plugin_file Plugin file path.
+	 * @return bool True if valid.
+	 */
+	private static function validate_plugin_file( string $plugin_file ): bool {
+		return ! empty( $plugin_file ) && file_exists( $plugin_file ) && is_readable( $plugin_file );
+	}
+
+	/**
+	 * Register admin-specific hooks.
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	private function register_admin_hooks(): void {
+		add_action( 'admin_init', [ $this, 'admin_init' ] );
+
+		// Add plugin action links
+		$plugin_basename = plugin_basename( self::get_plugin_file() );
+		add_filter(
+			'plugin_action_links_' . $plugin_basename,
+			[ $this, 'add_plugin_action_links' ]
+		);
+	}
+
+	/**
+	 * Check gallery page IDs.
+	 *
+	 * @since 3.0.0
+	 * @param int $current_page_id Current page ID.
+	 * @return bool True if gallery page.
+	 */
+	private function check_gallery_page_ids( int $current_page_id ): bool {
+		// Get all gallery page IDs
+		$gallery_page_ids = array_map(
+			'absint',
+			(array) get_option( 'bb_gallery_stored_pages_ids', [] )
+		);
+
+		$main_gallery_page_id = absint(
+			get_option( 'brag_book_gallery_page_id', 0 )
+		);
+
+		return in_array( $current_page_id, $gallery_page_ids, true )
+			|| $current_page_id === $main_gallery_page_id;
+	}
+
+	/**
+	 * Get stored plugin version.
+	 *
+	 * @since 3.0.0
+	 * @return string Version string.
+	 */
+	private function get_stored_version(): string {
+		$version = get_option( 'brag_book_gallery_version', '0.0.0' );
+		return is_string( $version ) ? sanitize_text_field( $version ) : '0.0.0';
+	}
+
+	/**
+	 * Trigger version upgrade.
+	 *
+	 * @since 3.0.0
+	 * @param string $old_version Previous version.
+	 * @return void
+	 */
+	private function trigger_version_upgrade( string $old_version ): void {
+		update_option( 'brag_book_gallery_needs_upgrade', true );
+		update_option( 'brag_book_gallery_version', self::VERSION );
+
+		/**
+		 * Fires when the plugin version is updated.
+		 *
+		 * @since 3.0.0
+		 * @param string $new_version New plugin version.
+		 * @param string $old_version Previous plugin version.
+		 */
+		do_action(
+			'brag_book_gallery_version_updated',
+			self::VERSION,
+			$old_version
+		);
+
+		do_action( 'qm/debug', sprintf( 
+			'Version upgrade triggered: %s -> %s',
+			$old_version,
+			self::VERSION 
+		) );
+	}
+
+	/**
+	 * Exclude gallery pages from LiteSpeed cache.
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	public function exclude_gallery_pages_from_cache(): void {
+		if ( is_admin() ) {
+			return;
+		}
+
+		// Check current URL against gallery slugs
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- Sanitized below
+		$current_url = $_SERVER['REQUEST_URI'] ?? '';
+		$current_url = esc_url_raw( wp_unslash( $current_url ) );
+
+		$gallery_slugs = (array) get_option( 'brag_book_gallery_page_slug', [] );
+
+		foreach ( $gallery_slugs as $slug ) {
+			$slug = sanitize_text_field( (string) $slug );
+
+			if ( ! empty( $slug ) && str_contains( $current_url, $slug ) ) {
+				do_action( 'litespeed_control_set_nocache', 'bragbook gallery page' );
+				break;
+			}
+		}
+	}
+
+	/**
+	 * Filter REST API cache for plugin endpoints.
+	 *
+	 * @since 3.0.0
+	 * @param bool   $cache Whether to cache.
+	 * @param string $request_route Request route.
+	 * @return bool Modified cache setting.
+	 */
+	public function filter_rest_api_cache( bool $cache, string $request_route ): bool {
+		$request_route = sanitize_text_field( $request_route );
+		
+		if ( str_contains( $request_route, 'brag-book-gallery' ) ) {
+			return false;
+		}
+
+		return $cache;
 	}
 }

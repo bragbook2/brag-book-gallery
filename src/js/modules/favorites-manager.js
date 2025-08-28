@@ -125,9 +125,10 @@ class FavoritesManager {
 			}
 		});
 
-		// Add to favorites set
+		// Add to internal favorites collection
 		this.favorites.add(itemId);
 
+		// Persist to localStorage if enabled
 		if (this.options.persistToStorage) {
 			this.saveToStorage();
 		}
@@ -141,16 +142,21 @@ class FavoritesManager {
 		}));
 	}
 
+	/**
+	 * Remove an item from favorites and update UI
+	 * @param {string} itemId - The ID of the item to unfavorite
+	 * @param {HTMLElement} button - The button that was clicked (optional)
+	 */
 	removeFavorite(itemId, button) {
-		// Find buttons if not provided - check both data-item-id and data-case-id
+		// Update button states - find all relevant buttons if none provided
 		if (!button) {
 			const buttons = document.querySelectorAll(`[data-item-id="${itemId}"][data-favorited="true"], [data-case-id="${itemId}"][data-favorited="true"]`);
 			buttons.forEach(btn => {
 				btn.dataset.favorited = 'false';
 			});
 		} else {
+			// Update the specific button and find related buttons
 			button.dataset.favorited = 'false';
-			// Also update any other buttons for the same item
 			const otherButtons = document.querySelectorAll(`[data-item-id="${itemId}"], [data-case-id="${itemId}"]`);
 			otherButtons.forEach(btn => {
 				if (btn !== button && btn.dataset.favorited !== undefined) {
@@ -159,24 +165,30 @@ class FavoritesManager {
 			});
 		}
 
-		// Remove from favorites set
+		// Remove from internal favorites collection
 		this.favorites.delete(itemId);
 
+		// Persist changes to localStorage if enabled
 		if (this.options.persistToStorage) {
 			this.saveToStorage();
 		}
 
+		// Update UI and notify listeners
 		this.updateUI();
 		this.options.onUpdate(this.favorites);
 		
-		// Dispatch custom event for other components
+		// Dispatch global event for other components
 		window.dispatchEvent(new CustomEvent('favoritesUpdated', { 
 			detail: { favorites: this.favorites } 
 		}));
 	}
 
+	/**
+	 * Submit a favorite to the WordPress API
+	 * @param {string} caseId - The case ID to add to favorites
+	 */
 	submitFavoriteToAPI(caseId) {
-		// Create form data with user info and case ID
+		// Prepare form data for WordPress AJAX endpoint
 		const formData = new FormData();
 		formData.append('action', 'brag_book_add_favorite');
 		formData.append('nonce', window.bragBookGalleryConfig?.nonce || '');
@@ -213,6 +225,10 @@ class FavoritesManager {
 		});
 	}
 
+	/**
+	 * Handle submission of the user info form in the favorites dialog
+	 * @param {HTMLFormElement} form - The form element that was submitted
+	 */
 	handleFavoritesFormSubmit(form) {
 		const formData = new FormData(form);
 		const data = Object.fromEntries(formData.entries());
@@ -335,8 +351,12 @@ class FavoritesManager {
 		});
 	}
 
+	/**
+	 * Display a success notification to the user
+	 * @param {string} message - The message to display
+	 */
 	showSuccessNotification(message) {
-		// Create notification element if it doesn't exist
+		// Get or create notification element
 		let notification = document.getElementById('favoritesNotification');
 		if (!notification) {
 			notification = document.createElement('div');
@@ -428,8 +448,11 @@ class FavoritesManager {
 		}
 	}
 
+	/**
+	 * Update all UI elements that display favorites information
+	 */
 	updateUI() {
-		// Update count - get ALL elements with data-favorites-count
+		// Update favorites count displays throughout the page
 		const countElements = document.querySelectorAll('[data-favorites-count]');
 		const count = this.favorites.size;
 
@@ -452,6 +475,9 @@ class FavoritesManager {
 		this.updateFavoritesDisplay();
 	}
 
+	/**
+	 * Load favorites from localStorage and update button states
+	 */
 	loadFromStorage() {
 		try {
 			const stored = localStorage.getItem(this.options.storageKey);
@@ -459,9 +485,9 @@ class FavoritesManager {
 				const items = JSON.parse(stored);
 				this.favorites = new Set(items);
 
-				// Update button states for all matching elements
+				// Update UI to reflect loaded favorites
 				items.forEach(itemId => {
-					// Find buttons by both data-item-id and data-case-id
+					// Find all buttons for this item and mark as favorited
 					const buttons = document.querySelectorAll(`[data-item-id="${itemId}"], [data-case-id="${itemId}"]`);
 					buttons.forEach(button => {
 						if (button.dataset.favorited !== undefined) {
@@ -475,6 +501,9 @@ class FavoritesManager {
 		}
 	}
 
+	/**
+	 * Save favorites to localStorage
+	 */
 	saveToStorage() {
 		try {
 			localStorage.setItem(this.options.storageKey, JSON.stringify([...this.favorites]));
@@ -483,18 +512,24 @@ class FavoritesManager {
 		}
 	}
 
+	/**
+	 * Load user information from localStorage
+	 */
 	loadUserInfo() {
 		try {
 			const stored = localStorage.getItem(this.options.userInfoKey);
 			if (stored) {
 				this.userInfo = JSON.parse(stored);
-				this.hasShownDialog = true; // Don't show dialog again if we have user info
+				this.hasShownDialog = true; // Skip dialog if we already have user info
 			}
 		} catch (e) {
 			console.error('Failed to load user info from storage:', e);
 		}
 	}
 
+	/**
+	 * Save user information to localStorage
+	 */
 	saveUserInfo() {
 		try {
 			localStorage.setItem(this.options.userInfoKey, JSON.stringify(this.userInfo));
@@ -503,10 +538,17 @@ class FavoritesManager {
 		}
 	}
 
+	/**
+	 * Get the current favorites set
+	 * @returns {Set<string>} Set of favorited item IDs
+	 */
 	getFavorites() {
 		return this.favorites;
 	}
 
+	/**
+	 * Clear all favorites and update UI
+	 */
 	clear() {
 		this.favorites.clear();
 		if (this.options.persistToStorage) {

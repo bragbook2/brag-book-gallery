@@ -29,9 +29,61 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Migration Manager Class
  *
- * Manages the migration process between different operational modes.
+ * Enterprise-grade migration system for transitioning between JavaScript and Local operational modes
+ * within the BRAG Book Gallery plugin ecosystem. Provides comprehensive data validation, backup
+ * capabilities, pre-flight checks, and rollback functionality for safe mode transitions.
  *
- * @since 3.0.0
+ * ## Key Features
+ * - **Bidirectional Migration**: Seamlessly migrate between JavaScript and Local modes
+ * - **Data Integrity**: Comprehensive validation and backup systems
+ * - **Pre-flight Checks**: System compatibility and resource availability validation
+ * - **Rollback Support**: Complete rollback capabilities with backup restoration
+ * - **Import/Export**: Full data export and import functionality for transfers
+ * - **AJAX & REST APIs**: Multiple integration endpoints for frontend/backend operations
+ * - **WordPress VIP Compliant**: Follows WordPress VIP coding standards and logging practices
+ *
+ * ## Migration Types
+ * - **JavaScript to Local**: Migrates from API-driven to database-driven architecture
+ * - **Local to JavaScript**: Transitions from database storage back to API-driven mode
+ *
+ * ## Architecture
+ * - Utilizes match expressions for efficient conditional logic (PHP 8.2+)
+ * - Employs typed properties for enhanced type safety
+ * - Implements comprehensive error handling with structured logging
+ * - Supports batch operations for performance optimization
+ * - Integrates with WordPress transient system for status management
+ *
+ * ## Usage Example
+ * ```php
+ * $migration_manager = new Migration_Manager();
+ * 
+ * // Migrate to Local mode with custom options
+ * $success = $migration_manager->migrate_to_local([
+ *     'preserve_settings' => true,
+ *     'import_images' => true,
+ *     'cleanup_after' => false,
+ *     'batch_size' => 50,
+ * ]);
+ * 
+ * if (!$success) {
+ *     $status = $migration_manager->get_migration_status();
+ *     error_log('Migration failed: ' . $status['message']);
+ * }
+ * ```
+ *
+ * ## Dependencies
+ * - Database: Core database operations and table management
+ * - Sync_Manager: API synchronization and data fetching
+ * - Data_Validator: Migration data validation and integrity checks
+ * - Gallery_Post_Type: Custom post type definitions
+ * - Gallery_Taxonomies: Custom taxonomy definitions
+ *
+ * @package    BRAGBookGallery
+ * @subpackage Includes\Migration
+ * @since      3.0.0
+ * @author     Candace Crowe Design <info@candacecrowe.com>
+ * @copyright  Copyright (c) 2025, Candace Crowe Design LLC
+ * @license    GPL-2.0-or-later
  */
 class Migration_Manager {
 
@@ -39,41 +91,79 @@ class Migration_Manager {
 	 * Database manager instance
 	 *
 	 * @since 3.0.0
-	 * @var Database
 	 */
-	private $database;
+	private Database $database;
 
 	/**
 	 * Sync manager instance
 	 *
 	 * @since 3.0.0
-	 * @var Sync_Manager
 	 */
-	private $sync_manager;
+	private Sync_Manager $sync_manager;
 
 	/**
 	 * Data validator instance
 	 *
 	 * @since 3.0.0
-	 * @var Data_Validator
 	 */
-	private $data_validator;
+	private Data_Validator $data_validator;
 
 	/**
-	 * Migration option key
+	 * Migration configuration constants
 	 *
 	 * @since 3.0.0
-	 * @var string
 	 */
 	private const MIGRATION_STATUS_OPTION = 'brag_book_gallery_migration_status';
+	private const BACKUP_OPTION = 'brag_book_gallery_migration_backup';
 
 	/**
-	 * Backup option key
+	 * Migration type constants
 	 *
 	 * @since 3.0.0
-	 * @var string
 	 */
-	private const BACKUP_OPTION = 'brag_book_gallery_migration_backup';
+	private const MIGRATION_TYPES = [
+		'JAVASCRIPT_TO_LOCAL' => 'javascript_to_local',
+		'LOCAL_TO_JAVASCRIPT' => 'local_to_javascript',
+	];
+
+	/**
+	 * Migration status constants
+	 *
+	 * @since 3.0.0
+	 */
+	private const MIGRATION_STATUSES = [
+		'IDLE' => 'idle',
+		'RUNNING' => 'running',
+		'COMPLETED' => 'completed',
+		'FAILED' => 'failed',
+	];
+
+	/**
+	 * Default migration options
+	 *
+	 * @since 3.0.0
+	 */
+	private const DEFAULT_LOCAL_OPTIONS = [
+		'preserve_settings' => true,
+		'import_images' => true,
+		'cleanup_after' => false,
+		'batch_size' => 20,
+	];
+
+	private const DEFAULT_JAVASCRIPT_OPTIONS = [
+		'preserve_data' => true,
+		'archive_posts' => false,
+		'keep_images' => true,
+	];
+
+	/**
+	 * Pre-flight check constants
+	 *
+	 * @since 3.0.0
+	 */
+	private const MIN_WORDPRESS_VERSION = '5.0';
+	private const MIN_PHP_VERSION = '8.0';
+	private const MIN_STORAGE_BYTES = 1073741824; // 1GB
 
 	/**
 	 * Constructor
@@ -112,22 +202,39 @@ class Migration_Manager {
 	/**
 	 * Migrate from JavaScript to Local mode
 	 *
+	 * Performs a comprehensive migration from API-driven JavaScript mode to database-driven Local mode.
+	 * This process includes data synchronization, validation, settings preservation, and optional cleanup.
+	 *
 	 * @since 3.0.0
-	 * @param array $options Migration options.
-	 * @return bool Success status.
+	 * @param array{preserve_settings?: bool, import_images?: bool, cleanup_after?: bool, batch_size?: int} $options Migration configuration options
+	 * @return bool True on successful migration, false on failure (check logs for details)
+	 *
+	 * @throws \Exception When pre-flight checks fail, sync operations fail, or data validation fails
 	 */
-	public function migrate_to_local( array $options = array() ): bool {
-		$defaults = array(
-			'preserve_settings' => true,
-			'import_images' => true,
-			'cleanup_after' => false,
-			'batch_size' => 20,
-		);
+	public function migrate_to_local( array $options = [] ): bool {
+		$options = wp_parse_args( $options, self::DEFAULT_LOCAL_OPTIONS );
 
-		$options = wp_parse_args( $options, $defaults );
+		// Validate migration options
+		$options_validation = $this->validate_local_migration_options( $options );
+		if ( ! $options_validation['valid'] ) {
+			$this->log_migration_error( 'invalid_migration_options', 'Invalid migration options provided', [
+				'errors' => $options_validation['errors'],
+				'options' => $options,
+			] );
+			return false;
+		}
+
+		// Validate system preconditions
+		$precondition_validation = $this->validate_migration_preconditions( self::MIGRATION_TYPES['JAVASCRIPT_TO_LOCAL'] );
+		if ( ! $precondition_validation['valid'] ) {
+			$this->log_migration_error( 'migration_preconditions_failed', 'Migration preconditions not met', [
+				'errors' => $precondition_validation['errors'],
+			] );
+			return false;
+		}
 
 		// Set migration status
-		$this->set_migration_status( 'javascript_to_local', 'running' );
+		$this->set_migration_status( self::MIGRATION_TYPES['JAVASCRIPT_TO_LOCAL'], self::MIGRATION_STATUSES['RUNNING'] );
 
 		try {
 			// Fire pre-migration hooks
@@ -164,7 +271,7 @@ class Migration_Manager {
 			}
 
 			// Update migration status
-			$this->set_migration_status( 'javascript_to_local', 'completed' );
+			$this->set_migration_status( self::MIGRATION_TYPES['JAVASCRIPT_TO_LOCAL'], self::MIGRATION_STATUSES['COMPLETED'] );
 
 			// Fire post-migration hooks
 			do_action( 'brag_book_gallery_post_migrate_to_local', $options );
@@ -172,8 +279,11 @@ class Migration_Manager {
 			return true;
 
 		} catch ( \Exception $e ) {
-			$this->set_migration_status( 'javascript_to_local', 'failed', $e->getMessage() );
-			error_log( 'BRAG book Gallery Migration Error: ' . $e->getMessage() );
+			$this->set_migration_status( self::MIGRATION_TYPES['JAVASCRIPT_TO_LOCAL'], self::MIGRATION_STATUSES['FAILED'], $e->getMessage() );
+			$this->handle_migration_exception( $e, 'migrate_to_local', [
+				'migration_type' => self::MIGRATION_TYPES['JAVASCRIPT_TO_LOCAL'],
+				'options' => $options,
+			] );
 			return false;
 		}
 	}
@@ -181,21 +291,39 @@ class Migration_Manager {
 	/**
 	 * Migrate from Local to JavaScript mode
 	 *
+	 * Transitions from database-driven Local mode back to API-driven JavaScript mode.
+	 * Handles data preservation, archival, or cleanup based on configuration options.
+	 *
 	 * @since 3.0.0
-	 * @param array $options Migration options.
-	 * @return bool Success status.
+	 * @param array{preserve_data?: bool, archive_posts?: bool, keep_images?: bool} $options Migration configuration options
+	 * @return bool True on successful migration, false on failure (check logs for details)
+	 *
+	 * @throws \Exception When pre-flight checks fail or data handling operations fail
 	 */
-	public function migrate_to_javascript( array $options = array() ): bool {
-		$defaults = array(
-			'preserve_data' => true,
-			'archive_posts' => false,
-			'keep_images' => true,
-		);
+	public function migrate_to_javascript( array $options = [] ): bool {
+		$options = wp_parse_args( $options, self::DEFAULT_JAVASCRIPT_OPTIONS );
 
-		$options = wp_parse_args( $options, $defaults );
+		// Validate migration options
+		$options_validation = $this->validate_javascript_migration_options( $options );
+		if ( ! $options_validation['valid'] ) {
+			$this->log_migration_error( 'invalid_migration_options', 'Invalid migration options provided', [
+				'errors' => $options_validation['errors'],
+				'options' => $options,
+			] );
+			return false;
+		}
+
+		// Validate system preconditions
+		$precondition_validation = $this->validate_migration_preconditions( self::MIGRATION_TYPES['LOCAL_TO_JAVASCRIPT'] );
+		if ( ! $precondition_validation['valid'] ) {
+			$this->log_migration_error( 'migration_preconditions_failed', 'Migration preconditions not met', [
+				'errors' => $precondition_validation['errors'],
+			] );
+			return false;
+		}
 
 		// Set migration status
-		$this->set_migration_status( 'local_to_javascript', 'running' );
+		$this->set_migration_status( self::MIGRATION_TYPES['LOCAL_TO_JAVASCRIPT'], self::MIGRATION_STATUSES['RUNNING'] );
 
 		try {
 			// Fire pre-migration hooks
@@ -226,7 +354,7 @@ class Migration_Manager {
 			$this->preserve_local_mode_settings();
 
 			// Update migration status
-			$this->set_migration_status( 'local_to_javascript', 'completed' );
+			$this->set_migration_status( self::MIGRATION_TYPES['LOCAL_TO_JAVASCRIPT'], self::MIGRATION_STATUSES['COMPLETED'] );
 
 			// Fire post-migration hooks
 			do_action( 'brag_book_gallery_post_migrate_to_javascript', $options );
@@ -234,17 +362,25 @@ class Migration_Manager {
 			return true;
 
 		} catch ( \Exception $e ) {
-			$this->set_migration_status( 'local_to_javascript', 'failed', $e->getMessage() );
-			error_log( 'BRAG book Gallery Migration Error: ' . $e->getMessage() );
+			$this->set_migration_status( self::MIGRATION_TYPES['LOCAL_TO_JAVASCRIPT'], self::MIGRATION_STATUSES['FAILED'], $e->getMessage() );
+			$this->handle_migration_exception( $e, 'migrate_to_javascript', [
+				'migration_type' => self::MIGRATION_TYPES['LOCAL_TO_JAVASCRIPT'],
+				'options' => $options,
+			] );
 			return false;
 		}
 	}
 
 	/**
-	 * Rollback migration
+	 * Rollback migration to previous state
+	 *
+	 * Restores plugin settings and post statuses from backup data created during migration.
+	 * This operation is only available if a backup exists from a previous migration.
 	 *
 	 * @since 3.0.0
-	 * @return bool Success status.
+	 * @return bool True if rollback succeeded, false if no backup available or rollback failed
+	 *
+	 * @throws \Exception When backup restoration operations fail
 	 */
 	public function rollback(): bool {
 		$backup = get_option( self::BACKUP_OPTION, array() );
@@ -286,10 +422,13 @@ class Migration_Manager {
 	}
 
 	/**
-	 * Export data for backup or transfer
+	 * Export comprehensive plugin data for backup or transfer
+	 *
+	 * Creates a complete data export including settings, posts, taxonomies, and sync data.
+	 * Useful for creating backups before migrations or transferring data between installations.
 	 *
 	 * @since 3.0.0
-	 * @return array Exported data.
+	 * @return array{version: string, timestamp: string, settings: array<string, mixed>, posts: array<int, array>, taxonomies: array<string, array>, sync_data: array<string, mixed>} Complete plugin data export
 	 */
 	public function export_data(): array {
 		$export_data = array(
@@ -305,11 +444,16 @@ class Migration_Manager {
 	}
 
 	/**
-	 * Import data from backup or transfer
+	 * Import data from backup or transfer file
+	 *
+	 * Restores plugin data from a previously exported backup. Validates data format
+	 * and version compatibility before proceeding with import operations.
 	 *
 	 * @since 3.0.0
-	 * @param array $data Data to import.
-	 * @return bool Success status.
+	 * @param array{version: string, timestamp: string, settings?: array, posts?: array, taxonomies?: array, sync_data?: array} $data Exported data to import
+	 * @return bool True if import succeeded, false if validation failed or import errors occurred
+	 *
+	 * @throws \Exception When data validation fails or import operations encounter errors
 	 */
 	public function import_data( array $data ): bool {
 		try {
@@ -354,13 +498,13 @@ class Migration_Manager {
 	 * @return bool True if checks pass.
 	 */
 	private function pre_flight_checks( string $target_mode ): bool {
-		$checks = array();
+		$checks = [];
 
 		// Check WordPress version
-		$checks['wp_version'] = version_compare( get_bloginfo( 'version' ), '5.0', '>=' );
+		$checks['wp_version'] = version_compare( get_bloginfo( 'version' ), self::MIN_WORDPRESS_VERSION, '>=' );
 
 		// Check PHP version
-		$checks['php_version'] = version_compare( PHP_VERSION, '8.0', '>=' );
+		$checks['php_version'] = version_compare( PHP_VERSION, self::MIN_PHP_VERSION, '>=' );
 
 		// Check database connectivity
 		$checks['database'] = $this->test_database_connection();
@@ -368,19 +512,26 @@ class Migration_Manager {
 		// Check write permissions
 		$checks['file_permissions'] = $this->check_file_permissions();
 
-		// Mode-specific checks
-		if ( $target_mode === 'local' ) {
-			// Check API connectivity
-			$checks['api_connectivity'] = $this->test_api_connectivity();
+		// Mode-specific checks using match expression
+		$additional_checks = match ( $target_mode ) {
+			'local' => [
+				'api_connectivity' => $this->test_api_connectivity(),
+				'storage_space' => $this->check_available_storage(),
+			],
+			'javascript' => [],
+			default => [],
+		};
 
-			// Check available storage
-			$checks['storage_space'] = $this->check_available_storage();
-		}
+		$checks = array_merge( $checks, $additional_checks );
 
 		// Check if any checks failed
 		foreach ( $checks as $check => $result ) {
 			if ( ! $result ) {
-				error_log( "BRAG book Gallery Pre-flight check failed: {$check}" );
+				$this->log_migration_error( 'preflight_check_failed', "Pre-flight check failed: {$check}", [
+					'operation' => 'pre_flight_checks',
+					'failed_check' => $check,
+					'target_mode' => $target_mode,
+				] );
 				return false;
 			}
 		}
@@ -459,11 +610,11 @@ class Migration_Manager {
 	 * @return void
 	 */
 	public function create_backup(): void {
-		$backup_data = array(
+		$backup_data = [
 			'timestamp' => current_time( 'mysql' ),
 			'settings' => $this->get_current_settings(),
 			'posts' => $this->get_current_post_statuses(),
-		);
+		];
 
 		update_option( self::BACKUP_OPTION, $backup_data );
 	}
@@ -475,15 +626,15 @@ class Migration_Manager {
 	 * @return array Current settings.
 	 */
 	private function get_current_settings(): array {
-		$settings = array();
+		$settings = [];
 
-		$option_keys = array(
+		$option_keys = [
 			'brag_book_gallery_mode',
 			'brag_book_gallery_mode_settings',
 			'brag_book_gallery_api_url',
 			'brag_book_gallery_api_token',
 			'brag_book_gallery_property_id',
-		);
+		];
 
 		foreach ( $option_keys as $key ) {
 			$settings[ $key ] = get_option( $key );
@@ -499,14 +650,14 @@ class Migration_Manager {
 	 * @return array Post statuses.
 	 */
 	private function get_current_post_statuses(): array {
-		$posts = get_posts( array(
+		$posts = get_posts( [
 			'post_type' => Gallery_Post_Type::POST_TYPE,
 			'post_status' => 'any',
 			'numberposts' => -1,
 			'fields' => 'ids',
-		) );
+		] );
 
-		$statuses = array();
+		$statuses = [];
 
 		foreach ( $posts as $post_id ) {
 			$post = get_post( $post_id );
@@ -528,12 +679,12 @@ class Migration_Manager {
 	 * @return void
 	 */
 	private function set_migration_status( string $type, string $status, string $message = '' ): void {
-		$status_data = array(
+		$status_data = [
 			'type' => $type,
 			'status' => $status,
 			'message' => $message,
 			'timestamp' => current_time( 'mysql' ),
-		);
+		];
 
 		update_option( self::MIGRATION_STATUS_OPTION, $status_data );
 
@@ -548,12 +699,12 @@ class Migration_Manager {
 	 * @return array Migration status data.
 	 */
 	public function get_migration_status(): array {
-		return get_option( self::MIGRATION_STATUS_OPTION, array(
+		return get_option( self::MIGRATION_STATUS_OPTION, [
 			'type' => '',
-			'status' => 'idle',
+			'status' => self::MIGRATION_STATUSES['IDLE'],
 			'message' => '',
 			'timestamp' => '',
-		) );
+		] );
 	}
 
 	/**
@@ -563,12 +714,12 @@ class Migration_Manager {
 	 * @return void
 	 */
 	private function preserve_javascript_mode_settings(): void {
-		$js_settings = array(
+		$js_settings = [
 			'api_url' => get_option( 'brag_book_gallery_api_url', '' ),
 			'api_token' => get_option( 'brag_book_gallery_api_token', '' ),
 			'property_id' => get_option( 'brag_book_gallery_property_id', 0 ),
 			'cache_duration' => get_option( 'brag_book_gallery_cache_duration', 300 ),
-		);
+		];
 
 		update_option( 'brag_book_gallery_preserved_js_settings', $js_settings );
 	}
@@ -593,17 +744,17 @@ class Migration_Manager {
 	 * @return void
 	 */
 	private function archive_local_mode_posts(): void {
-		$posts = get_posts( array(
+		$posts = get_posts( [
 			'post_type' => Gallery_Post_Type::POST_TYPE,
 			'post_status' => 'publish',
 			'numberposts' => -1,
-		) );
+		] );
 
 		foreach ( $posts as $post ) {
-			wp_update_post( array(
+			wp_update_post( [
 				'ID' => $post->ID,
 				'post_status' => 'draft',
-			) );
+			] );
 
 			// Add meta to indicate this was archived during migration
 			update_post_meta( $post->ID, '_brag_migration_archived', current_time( 'mysql' ) );
@@ -697,13 +848,13 @@ class Migration_Manager {
 	 * @return void
 	 */
 	private function cleanup_empty_terms(): void {
-		$taxonomies = array( Gallery_Taxonomies::CATEGORY_TAXONOMY, Gallery_Taxonomies::PROCEDURE_TAXONOMY );
+		$taxonomies = [ Gallery_Taxonomies::CATEGORY_TAXONOMY, Gallery_Taxonomies::PROCEDURE_TAXONOMY ];
 
 		foreach ( $taxonomies as $taxonomy ) {
-			$terms = get_terms( array(
+			$terms = get_terms( [
 				'taxonomy' => $taxonomy,
 				'hide_empty' => false,
-			) );
+			] );
 
 			foreach ( $terms as $term ) {
 				if ( $term->count === 0 ) {
@@ -771,10 +922,10 @@ class Migration_Manager {
 		$export_taxonomies = array();
 
 		foreach ( $taxonomies as $taxonomy ) {
-			$terms = get_terms( array(
+			$terms = get_terms( [
 				'taxonomy' => $taxonomy,
 				'hide_empty' => false,
-			) );
+			] );
 
 			$export_terms = array();
 
@@ -1121,5 +1272,596 @@ class Migration_Manager {
 	 */
 	public function rest_permission_check( $request ): bool {
 		return current_user_can( 'manage_options' );
+	}
+
+	/**
+	 * Log migration errors using WordPress VIP compliant logging
+	 *
+	 * @since 3.0.0
+	 * @param string $error_code Unique error code for tracking
+	 * @param string $message Error message
+	 * @param array<string, mixed> $context Additional context for debugging
+	 * @return void
+	 */
+	private function log_migration_error( string $error_code, string $message, array $context = [] ): void {
+		do_action( 'qm/debug', 'BRAG Book Gallery Migration Error: ' . $message, [
+			'error_code' => $error_code,
+			'message' => $message,
+			'context' => $context,
+			'timestamp' => current_time( 'mysql' ),
+			'class' => __CLASS__,
+		] );
+	}
+
+	/**
+	 * Validate migration options for JavaScript to Local migration
+	 *
+	 * @since 3.0.0
+	 * @param array<string, mixed> $options Options to validate
+	 * @return array{valid: bool, errors: array<string>} Validation result
+	 */
+	private function validate_local_migration_options( array $options ): array {
+		$errors = [];
+
+		// Validate preserve_settings
+		if ( isset( $options['preserve_settings'] ) && ! is_bool( $options['preserve_settings'] ) ) {
+			$errors[] = 'preserve_settings must be a boolean value';
+		}
+
+		// Validate import_images
+		if ( isset( $options['import_images'] ) && ! is_bool( $options['import_images'] ) ) {
+			$errors[] = 'import_images must be a boolean value';
+		}
+
+		// Validate cleanup_after
+		if ( isset( $options['cleanup_after'] ) && ! is_bool( $options['cleanup_after'] ) ) {
+			$errors[] = 'cleanup_after must be a boolean value';
+		}
+
+		// Validate batch_size
+		if ( isset( $options['batch_size'] ) ) {
+			if ( ! is_int( $options['batch_size'] ) || $options['batch_size'] < 1 || $options['batch_size'] > 1000 ) {
+				$errors[] = 'batch_size must be an integer between 1 and 1000';
+			}
+		}
+
+		return [
+			'valid' => empty( $errors ),
+			'errors' => $errors,
+		];
+	}
+
+	/**
+	 * Validate migration options for Local to JavaScript migration
+	 *
+	 * @since 3.0.0
+	 * @param array<string, mixed> $options Options to validate
+	 * @return array{valid: bool, errors: array<string>} Validation result
+	 */
+	private function validate_javascript_migration_options( array $options ): array {
+		$errors = [];
+
+		// Validate preserve_data
+		if ( isset( $options['preserve_data'] ) && ! is_bool( $options['preserve_data'] ) ) {
+			$errors[] = 'preserve_data must be a boolean value';
+		}
+
+		// Validate archive_posts
+		if ( isset( $options['archive_posts'] ) && ! is_bool( $options['archive_posts'] ) ) {
+			$errors[] = 'archive_posts must be a boolean value';
+		}
+
+		// Validate keep_images
+		if ( isset( $options['keep_images'] ) && ! is_bool( $options['keep_images'] ) ) {
+			$errors[] = 'keep_images must be a boolean value';
+		}
+
+		// Validate conflicting options
+		if ( isset( $options['preserve_data'] ) && $options['preserve_data'] === false && 
+			 isset( $options['archive_posts'] ) && $options['archive_posts'] === true ) {
+			$errors[] = 'archive_posts cannot be true when preserve_data is false';
+		}
+
+		return [
+			'valid' => empty( $errors ),
+			'errors' => $errors,
+		];
+	}
+
+	/**
+	 * Validate system requirements and pre-conditions
+	 *
+	 * @since 3.0.0
+	 * @param string $migration_type Type of migration being performed
+	 * @return array{valid: bool, errors: array<string>} Validation result
+	 */
+	private function validate_migration_preconditions( string $migration_type ): array {
+		$errors = [];
+
+		// Check if another migration is currently running
+		$current_status = $this->get_migration_status();
+		if ( $current_status['status'] === self::MIGRATION_STATUSES['RUNNING'] ) {
+			$errors[] = 'Another migration is currently in progress';
+		}
+
+		// Validate migration type
+		if ( ! in_array( $migration_type, self::MIGRATION_TYPES, true ) ) {
+			$errors[] = 'Invalid migration type specified';
+		}
+
+		// Check WordPress memory limit
+		$memory_limit = wp_convert_hr_to_bytes( ini_get( 'memory_limit' ) );
+		$min_memory = 128 * 1024 * 1024; // 128MB
+		if ( $memory_limit < $min_memory ) {
+			$errors[] = 'Insufficient memory limit. Minimum 128MB required.';
+		}
+
+		// Check PHP execution time limit for long operations
+		$max_execution_time = intval( ini_get( 'max_execution_time' ) );
+		if ( $max_execution_time > 0 && $max_execution_time < 300 ) {
+			$errors[] = 'PHP max_execution_time should be at least 300 seconds for migrations';
+		}
+
+		return [
+			'valid' => empty( $errors ),
+			'errors' => $errors,
+		];
+	}
+
+	/**
+	 * Enhanced exception handling with context preservation
+	 *
+	 * @since 3.0.0
+	 * @param \Exception $exception The caught exception
+	 * @param string $operation The operation that failed
+	 * @param array<string, mixed> $context Additional context
+	 * @return void
+	 */
+	private function handle_migration_exception( \Exception $exception, string $operation, array $context = [] ): void {
+		$error_context = array_merge( $context, [
+			'operation' => $operation,
+			'exception_type' => get_class( $exception ),
+			'exception_code' => $exception->getCode(),
+			'file' => $exception->getFile(),
+			'line' => $exception->getLine(),
+			'trace' => $exception->getTraceAsString(),
+		] );
+
+		$this->log_migration_error(
+			strtolower( str_replace( ' ', '_', $operation ) ) . '_exception',
+			$exception->getMessage(),
+			$error_context
+		);
+	}
+
+	/**
+	 * Sanitize migration options for security
+	 *
+	 * @since 3.0.0
+	 * @param array<string, mixed> $options Raw options to sanitize
+	 * @param array<string> $allowed_keys List of allowed option keys
+	 * @return array<string, mixed> Sanitized options
+	 */
+	private function sanitize_migration_options( array $options, array $allowed_keys ): array {
+		$sanitized = [];
+
+		foreach ( $allowed_keys as $key ) {
+			if ( ! isset( $options[ $key ] ) ) {
+				continue;
+			}
+
+			$value = $options[ $key ];
+
+			// Sanitize based on expected type and key
+			switch ( $key ) {
+				case 'preserve_settings':
+				case 'import_images':
+				case 'cleanup_after':
+				case 'preserve_data':
+				case 'archive_posts':
+				case 'keep_images':
+					$sanitized[ $key ] = (bool) $value;
+					break;
+
+				case 'batch_size':
+					$sanitized[ $key ] = max( 1, min( 1000, intval( $value ) ) );
+					break;
+
+				default:
+					// For unknown keys, apply basic sanitization
+					if ( is_string( $value ) ) {
+						$sanitized[ $key ] = sanitize_text_field( $value );
+					} elseif ( is_numeric( $value ) ) {
+						$sanitized[ $key ] = floatval( $value );
+					} else {
+						$sanitized[ $key ] = $value;
+					}
+					break;
+			}
+		}
+
+		return $sanitized;
+	}
+
+	/**
+	 * Validate nonce and user permissions for AJAX requests
+	 *
+	 * @since 3.0.0
+	 * @param string $nonce_action Nonce action to verify
+	 * @param string $capability Required user capability
+	 * @return array{valid: bool, error?: string} Validation result
+	 */
+	private function validate_ajax_security( string $nonce_action, string $capability = 'manage_options' ): array {
+		// Check nonce
+		if ( ! check_ajax_referer( $nonce_action, 'nonce', false ) ) {
+			return [
+				'valid' => false,
+				'error' => 'Security check failed - invalid nonce.',
+			];
+		}
+
+		// Check user capability
+		if ( ! current_user_can( $capability ) ) {
+			return [
+				'valid' => false,
+				'error' => 'Insufficient permissions.',
+			];
+		}
+
+		return [ 'valid' => true ];
+	}
+
+	/**
+	 * Rate limiting for migration operations
+	 *
+	 * @since 3.0.0
+	 * @param string $operation Operation type
+	 * @param int $limit Maximum attempts within time window
+	 * @param int $window Time window in seconds
+	 * @return bool True if within limits, false if rate limited
+	 */
+	private function check_rate_limit( string $operation, int $limit = 3, int $window = 300 ): bool {
+		$transient_key = 'brag_book_migration_rate_limit_' . md5( $operation . get_current_user_id() );
+		$attempts = get_transient( $transient_key );
+
+		if ( $attempts === false ) {
+			// First attempt within window
+			set_transient( $transient_key, 1, $window );
+			return true;
+		}
+
+		if ( $attempts >= $limit ) {
+			$this->log_migration_error( 'rate_limit_exceeded', 'Rate limit exceeded for operation: ' . $operation, [
+				'operation' => $operation,
+				'attempts' => $attempts,
+				'limit' => $limit,
+				'user_id' => get_current_user_id(),
+			] );
+			return false;
+		}
+
+		// Increment attempt counter
+		set_transient( $transient_key, $attempts + 1, $window );
+		return true;
+	}
+
+	/**
+	 * Validate import data structure and prevent malicious content
+	 *
+	 * @since 3.0.0
+	 * @param array<string, mixed> $data Import data to validate
+	 * @return array{valid: bool, errors: array<string>} Validation result
+	 */
+	private function validate_import_data_security( array $data ): array {
+		$errors = [];
+
+		// Check data size limits
+		$serialized_size = strlen( maybe_serialize( $data ) );
+		$max_size = 50 * 1024 * 1024; // 50MB
+		if ( $serialized_size > $max_size ) {
+			$errors[] = 'Import data exceeds maximum allowed size of 50MB';
+		}
+
+		// Validate required structure
+		if ( ! isset( $data['version'] ) || ! is_string( $data['version'] ) ) {
+			$errors[] = 'Missing or invalid version information';
+		}
+
+		// Check for suspicious patterns in data
+		$suspicious_patterns = [
+			'/(<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>)/mi',
+			'/javascript:/i',
+			'/vbscript:/i',
+			'/data:.*base64/i',
+		];
+
+		$data_string = maybe_serialize( $data );
+		foreach ( $suspicious_patterns as $pattern ) {
+			if ( preg_match( $pattern, $data_string ) ) {
+				$errors[] = 'Import data contains potentially malicious content';
+				break;
+			}
+		}
+
+		// Validate nested array depth to prevent memory exhaustion
+		if ( $this->get_array_depth( $data ) > 10 ) {
+			$errors[] = 'Import data structure is too deeply nested';
+		}
+
+		return [
+			'valid' => empty( $errors ),
+			'errors' => $errors,
+		];
+	}
+
+	/**
+	 * Get maximum depth of nested arrays
+	 *
+	 * @since 3.0.0
+	 * @param mixed $array Data to check
+	 * @param int $current_depth Current recursion depth
+	 * @return int Maximum depth found
+	 */
+	private function get_array_depth( $array, int $current_depth = 0 ): int {
+		if ( ! is_array( $array ) ) {
+			return $current_depth;
+		}
+
+		$max_depth = $current_depth;
+		foreach ( $array as $value ) {
+			if ( is_array( $value ) ) {
+				$depth = $this->get_array_depth( $value, $current_depth + 1 );
+				$max_depth = max( $max_depth, $depth );
+			}
+		}
+
+		return $max_depth;
+	}
+
+	/**
+	 * Cache migration status and intermediate results
+	 *
+	 * @since 3.0.0
+	 */
+	private array $migration_cache = [];
+
+	/**
+	 * Cache configuration constants
+	 *
+	 * @since 3.0.0
+	 */
+	private const CACHE_TTL_SHORT = 300;  // 5 minutes
+	private const CACHE_TTL_MEDIUM = 1800; // 30 minutes
+	private const CACHE_TTL_LONG = 3600;   // 1 hour
+
+	/**
+	 * Get cached migration data
+	 *
+	 * @since 3.0.0
+	 * @param string $key Cache key
+	 * @param callable|null $callback Function to generate data if cache miss
+	 * @param int $ttl Cache TTL in seconds
+	 * @return mixed Cached data or callback result
+	 */
+	private function get_cached_migration_data( string $key, ?callable $callback = null, int $ttl = self::CACHE_TTL_MEDIUM ) {
+		// Check memory cache first
+		if ( isset( $this->migration_cache[ $key ] ) ) {
+			return $this->migration_cache[ $key ];
+		}
+
+		// Check WordPress transient cache
+		$transient_key = 'brag_book_migration_' . md5( $key );
+		$cached_data = get_transient( $transient_key );
+
+		if ( $cached_data !== false ) {
+			// Store in memory cache for subsequent requests
+			$this->migration_cache[ $key ] = $cached_data;
+			return $cached_data;
+		}
+
+		// Cache miss - generate data if callback provided
+		if ( $callback !== null ) {
+			$data = $callback();
+			$this->set_migration_cache( $key, $data, $ttl );
+			return $data;
+		}
+
+		return null;
+	}
+
+	/**
+	 * Set migration data in cache
+	 *
+	 * @since 3.0.0
+	 * @param string $key Cache key
+	 * @param mixed $data Data to cache
+	 * @param int $ttl Cache TTL in seconds
+	 * @return void
+	 */
+	private function set_migration_cache( string $key, $data, int $ttl = self::CACHE_TTL_MEDIUM ): void {
+		// Store in memory cache
+		$this->migration_cache[ $key ] = $data;
+
+		// Store in WordPress transient cache
+		$transient_key = 'brag_book_migration_' . md5( $key );
+		set_transient( $transient_key, $data, $ttl );
+	}
+
+	/**
+	 * Clear migration caches
+	 *
+	 * @since 3.0.0
+	 * @param string|null $pattern Optional pattern to match cache keys
+	 * @return void
+	 */
+	private function clear_migration_cache( ?string $pattern = null ): void {
+		// Clear memory cache
+		if ( $pattern === null ) {
+			$this->migration_cache = [];
+		} else {
+			foreach ( array_keys( $this->migration_cache ) as $key ) {
+				if ( strpos( $key, $pattern ) !== false ) {
+					unset( $this->migration_cache[ $key ] );
+				}
+			}
+		}
+
+		// Clear transient cache
+		global $wpdb;
+		if ( $pattern === null ) {
+			$wpdb->query(
+				"DELETE FROM {$wpdb->options} 
+				 WHERE option_name LIKE '_transient_brag_book_migration_%' 
+				 OR option_name LIKE '_transient_timeout_brag_book_migration_%'"
+			);
+		} else {
+			$pattern_md5 = md5( $pattern );
+			$wpdb->query( $wpdb->prepare(
+				"DELETE FROM {$wpdb->options} 
+				 WHERE option_name LIKE %s 
+				 OR option_name LIKE %s",
+				'_transient_brag_book_migration_%' . $pattern_md5 . '%',
+				'_transient_timeout_brag_book_migration_%' . $pattern_md5 . '%'
+			) );
+		}
+	}
+
+	/**
+	 * Batch process posts for improved performance
+	 *
+	 * @since 3.0.0
+	 * @param array<int> $post_ids Post IDs to process
+	 * @param callable $processor Function to process each batch
+	 * @param int $batch_size Number of posts per batch
+	 * @return array{processed: int, errors: array<string>} Processing results
+	 */
+	private function batch_process_posts( array $post_ids, callable $processor, int $batch_size = 20 ): array {
+		$processed = 0;
+		$errors = [];
+		$batches = array_chunk( $post_ids, $batch_size );
+
+		foreach ( $batches as $batch_index => $batch ) {
+			try {
+				$result = $processor( $batch, $batch_index );
+				if ( $result === true || is_int( $result ) ) {
+					$processed += is_int( $result ) ? $result : count( $batch );
+				} elseif ( is_array( $result ) && isset( $result['errors'] ) ) {
+					$errors = array_merge( $errors, $result['errors'] );
+				}
+
+				// Allow WordPress to process other tasks between batches
+				if ( function_exists( 'wp_cache_flush_group' ) ) {
+					wp_cache_flush_group( 'posts' );
+				}
+
+				// Brief pause to prevent overwhelming the system
+				usleep( 10000 ); // 10ms
+
+			} catch ( \Exception $e ) {
+				$errors[] = "Batch {$batch_index} failed: " . $e->getMessage();
+				$this->log_migration_error( 'batch_processing_error', $e->getMessage(), [
+					'batch_index' => $batch_index,
+					'batch_size' => count( $batch ),
+					'post_ids' => $batch,
+				] );
+			}
+		}
+
+		return [
+			'processed' => $processed,
+			'errors' => $errors,
+		];
+	}
+
+	/**
+	 * Optimize database queries during migration
+	 *
+	 * @since 3.0.0
+	 * @param callable $operation Database operation to perform
+	 * @return mixed Operation result
+	 */
+	private function optimize_database_operation( callable $operation ) {
+		global $wpdb;
+
+		// Disable object cache updates during bulk operations
+		wp_suspend_cache_invalidation( true );
+
+		// Increase memory limit for large operations
+		$original_memory_limit = ini_get( 'memory_limit' );
+		if ( wp_convert_hr_to_bytes( $original_memory_limit ) < 256 * 1024 * 1024 ) {
+			ini_set( 'memory_limit', '256M' );
+		}
+
+		// Optimize database settings for bulk operations
+		$wpdb->query( 'SET autocommit = 0' );
+		$wpdb->query( 'SET unique_checks = 0' );
+		$wpdb->query( 'SET foreign_key_checks = 0' );
+
+		try {
+			$result = $operation();
+			
+			// Commit all changes
+			$wpdb->query( 'COMMIT' );
+
+		} catch ( \Exception $e ) {
+			// Rollback on error
+			$wpdb->query( 'ROLLBACK' );
+			throw $e;
+
+		} finally {
+			// Restore database settings
+			$wpdb->query( 'SET autocommit = 1' );
+			$wpdb->query( 'SET unique_checks = 1' );
+			$wpdb->query( 'SET foreign_key_checks = 1' );
+
+			// Restore original memory limit
+			ini_set( 'memory_limit', $original_memory_limit );
+
+			// Re-enable cache invalidation
+			wp_suspend_cache_invalidation( false );
+
+			// Clear any accumulated cache
+			wp_cache_flush();
+		}
+
+		return $result;
+	}
+
+	/**
+	 * Monitor migration performance and resource usage
+	 *
+	 * @since 3.0.0
+	 * @param string $operation Operation being monitored
+	 * @return array{memory_peak: string, execution_time: float, queries: int} Performance metrics
+	 */
+	private function monitor_performance( string $operation ): array {
+		static $start_time = null;
+		static $start_queries = null;
+
+		if ( $start_time === null ) {
+			$start_time = microtime( true );
+			$start_queries = get_num_queries();
+			return [];
+		}
+
+		$end_time = microtime( true );
+		$execution_time = $end_time - $start_time;
+		$memory_peak = size_format( memory_get_peak_usage( true ) );
+		$queries = get_num_queries() - $start_queries;
+
+		$performance_data = [
+			'memory_peak' => $memory_peak,
+			'execution_time' => round( $execution_time, 2 ),
+			'queries' => $queries,
+		];
+
+		// Log performance metrics
+		do_action( 'qm/debug', "Migration performance for {$operation}", $performance_data );
+
+		// Reset for next operation
+		$start_time = null;
+		$start_queries = null;
+
+		return $performance_data;
 	}
 }

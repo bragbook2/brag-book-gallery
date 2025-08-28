@@ -1,44 +1,65 @@
 /**
  * Dialog Component
- * Reusable dialog/modal component using native dialog element
+ * Reusable dialog/modal component using native HTML dialog element
+ * Provides accessibility, keyboard navigation, and backdrop click handling
  */
 class Dialog {
+	/**
+	 * Initialize a new dialog instance
+	 * @param {string} dialogId - The ID of the dialog element
+	 * @param {Object} options - Configuration options
+	 * @param {boolean} options.closeOnBackdrop - Close dialog when clicking backdrop (default: true)
+	 * @param {boolean} options.closeOnEscape - Close dialog when pressing ESC (default: true)
+	 * @param {Function} options.onOpen - Callback when dialog opens
+	 * @param {Function} options.onClose - Callback when dialog closes
+	 */
 	constructor(dialogId, options = {}) {
+		// Get dialog element from DOM
 		this.dialog = document.getElementById(dialogId);
-		// Look for any close button with data-action containing "close"
+		
+		// Find all close buttons within the dialog
 		this.closeButtons = this.dialog?.querySelectorAll('[data-action*="close"]');
 
+		// Merge options with defaults
 		this.options = {
-			closeOnBackdrop: options.closeOnBackdrop !== false,
-			closeOnEscape: options.closeOnEscape !== false,
-			onOpen: options.onOpen || (() => {}),
-			onClose: options.onClose || (() => {}),
+			closeOnBackdrop: options.closeOnBackdrop !== false, // Default: true
+			closeOnEscape: options.closeOnEscape !== false, // Default: true
+			onOpen: options.onOpen || (() => {}), // Open callback
+			onClose: options.onClose || (() => {}), // Close callback
 			...options
 		};
 
+		// Initialize only if dialog element exists
 		if (this.dialog) {
 			this.init();
 		}
 	}
 
+	/**
+	 * Initialize the dialog - sets up all event listeners
+	 */
 	init() {
 		this.setupEventListeners();
 	}
 
+	/**
+	 * Set up all event listeners for dialog interaction
+	 */
 	setupEventListeners() {
-		// Close buttons - use event delegation to avoid issues
+		// Handle close button clicks
 		this.closeButtons?.forEach(button => {
 			button.addEventListener('click', (e) => {
+				// Prevent default behavior and event bubbling
 				e.preventDefault();
 				e.stopPropagation();
 				this.close();
 			});
 		});
 
-		// Native backdrop click using light dismiss
+		// Handle backdrop clicks (light dismiss)
 		if (this.options.closeOnBackdrop && this.dialog) {
-			// For native dialog, clicking the ::backdrop triggers a click event on the dialog
-			// We check if the click target is the dialog itself (not its children)
+			// Native dialog elements pass backdrop clicks to the dialog element
+			// Only close if clicking the dialog itself, not its children
 			this.dialog.addEventListener('click', (e) => {
 				if (e.target === this.dialog) {
 					this.close();
@@ -46,30 +67,36 @@ class Dialog {
 			});
 		}
 
-		// Handle ESC key using the native 'cancel' event
+		// Handle ESC key press using native dialog 'cancel' event
 		if (this.options.closeOnEscape && this.dialog) {
 			this.dialog.addEventListener('cancel', (e) => {
+				// Prevent default ESC behavior and handle it ourselves
 				e.preventDefault();
 				this.close();
 			});
 		}
 	}
 
+	/**
+	 * Open the dialog modal
+	 */
 	open() {
+		// Exit early if dialog doesn't exist
 		if (!this.dialog) return;
 
 		try {
-			// Use native showModal - it handles everything including backdrop
+			// Use native showModal() for proper modal behavior
+			// This handles backdrop, focus trapping, and accessibility
 			this.dialog.showModal();
 			
-			// Prevent body scroll (native dialog should handle this but just in case)
+			// Prevent background scrolling during modal display
 			document.body.style.overflow = 'hidden';
 			
-			// Callback
+			// Execute open callback
 			this.options.onOpen();
 		} catch (error) {
+			// Fallback for older browsers without native dialog support
 			console.error('Error opening dialog:', error);
-			// Fallback for browsers without dialog support
 			this.dialog.setAttribute('open', '');
 			this.dialog.style.display = 'block';
 			document.body.style.overflow = 'hidden';
@@ -77,24 +104,29 @@ class Dialog {
 		}
 	}
 
+	/**
+	 * Close the dialog modal
+	 */
 	close() {
+		// Exit early if dialog doesn't exist
 		if (!this.dialog) return;
 
 		try {
-			// Use native close method - it properly handles all states
+			// Use native close() method for proper cleanup
+			// This handles focus restoration and accessibility
 			this.dialog.close();
 			
-			// Restore body scroll
+			// Restore background scrolling
 			document.body.style.overflow = '';
 			
-			// Ensure display is not stuck as block
+			// Clear any forced display styles
 			this.dialog.style.display = '';
 			
-			// Callback
+			// Execute close callback
 			this.options.onClose();
 		} catch (error) {
+			// Fallback for older browsers without native dialog support
 			console.error('Error closing dialog:', error);
-			// Fallback for browsers without dialog support
 			this.dialog.removeAttribute('open');
 			this.dialog.style.display = 'none';
 			document.body.style.overflow = '';
@@ -102,7 +134,12 @@ class Dialog {
 		}
 	}
 
+	/**
+	 * Check if the dialog is currently open
+	 * @returns {boolean} True if dialog is open
+	 */
 	isOpen() {
+		// Check both native 'open' property and fallback attribute
 		return this.dialog?.open || this.dialog?.hasAttribute('open');
 	}
 }

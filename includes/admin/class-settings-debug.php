@@ -71,12 +71,13 @@ class Settings_Debug extends Settings_Base {
 		$this->init_ajax_handlers();
 		$this->init_log_file();
 		
+		// Handle export/import early, before any output
+		add_action( 'admin_init', array( $this, 'handle_export_import_early' ), 1 );
+
 		// Initialize Debug Tools for AJAX handlers
 		// Must be initialized always, not just during AJAX, so the action is registered
-		if ( ! class_exists( '\BragBookGallery\Admin\Debug_Tools' ) ) {
-			require_once __DIR__ . '/class-debug-tools.php';
-		}
-		\BragBookGallery\Admin\Debug_Tools::get_instance();
+		// The autoloader will handle loading the class
+		\BRAGBookGallery\Includes\Admin\Debug_Tools::get_instance();
 	}
 
 	/**
@@ -88,20 +89,20 @@ class Settings_Debug extends Settings_Base {
 	protected function init_ajax_handlers(): void {
 		// Debug settings
 		$this->register_ajax_action( 'brag_book_gallery_save_debug_settings', array( $this, 'handle_save_debug_settings' ) );
-		
+
 		// Error log management
 		$this->register_ajax_action( 'brag_book_gallery_get_error_log', array( $this, 'handle_get_error_log' ) );
 		$this->register_ajax_action( 'brag_book_gallery_clear_error_log', array( $this, 'handle_clear_error_log' ) );
 		$this->register_ajax_action( 'brag_book_gallery_download_error_log', array( $this, 'handle_download_error_log' ) );
-		
+
 		// API log management
 		$this->register_ajax_action( 'brag_book_gallery_get_api_log', array( $this, 'handle_get_api_log' ) );
 		$this->register_ajax_action( 'brag_book_gallery_clear_api_log', array( $this, 'handle_clear_api_log' ) );
 		$this->register_ajax_action( 'brag_book_gallery_download_api_log', array( $this, 'handle_download_api_log' ) );
-		
+
 		// System info export
 		$this->register_ajax_action( 'brag_book_gallery_export_system_info', array( $this, 'handle_export_system_info' ) );
-		
+
 		// Factory reset
 		$this->register_ajax_action( 'brag_book_gallery_factory_reset', array( $this, 'handle_factory_reset' ) );
 	}
@@ -153,8 +154,10 @@ class Settings_Debug extends Settings_Base {
 			$this->clear_logs();
 		}
 
-		if ( isset( $_POST['export_settings'] ) ) {
-			$this->export_settings();
+		// Export is now handled in handle_export_import_early()
+		// Import is still handled here to show success messages
+		if ( isset( $_POST['import_settings'] ) ) {
+			$this->import_settings();
 		}
 
 		// Get current settings
@@ -187,23 +190,188 @@ class Settings_Debug extends Settings_Base {
 			<!-- Export/Import -->
 			<div class="brag-book-gallery-section">
 				<h2><?php esc_html_e( 'Export & Import', 'brag-book-gallery' ); ?></h2>
-				<form method="post">
-					<?php wp_nonce_field( 'brag_book_gallery_debug_action', 'debug_nonce' ); ?>
-					<table class="form-table brag-book-gallery-form-table">
-						<tr>
-							<th scope="row"><?php esc_html_e( 'Export Settings', 'brag-book-gallery' ); ?></th>
-							<td>
-								<p class="description">
-									<?php esc_html_e( 'Export all plugin settings as a JSON file for backup or migration.', 'brag-book-gallery' ); ?>
-								</p>
-								<button type="submit" name="export_settings" class="button button-secondary">
-									<?php esc_html_e( 'Export Settings', 'brag-book-gallery' ); ?>
-								</button>
-							</td>
-						</tr>
-					</table>
-				</form>
+				<table class="form-table brag-book-gallery-form-table">
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Settings Management', 'brag-book-gallery' ); ?></th>
+						<td>
+							<p class="description">
+								<?php esc_html_e( 'Export your plugin settings for backup or import previously saved settings.', 'brag-book-gallery' ); ?>
+							</p>
+							<button type="button" id="open-export-import-dialog" class="button button-secondary">
+								<svg xmlns="http://www.w3.org/2000/svg" height="20" viewBox="0 -960 960 960" width="20" fill="currentColor" style="vertical-align: middle; margin-right: 5px;"><path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560H200v560Zm80-120h400v-80H280v80Zm0-160h400v-80H280v80Zm0-160h400v-80H280v80Z"/></svg>
+								<?php esc_html_e( 'Manage Settings', 'brag-book-gallery' ); ?>
+							</button>
+						</td>
+					</tr>
+				</table>
 			</div>
+			
+			<!-- Export/Import Dialog -->
+			<dialog id="export-import-dialog" class="brag-book-gallery-dialog">
+				<div class="brag-book-gallery-dialog-content">
+					<div class="brag-book-gallery-dialog-header">
+						<h2><?php esc_html_e( 'Export & Import Settings', 'brag-book-gallery' ); ?></h2>
+						<button type="button" class="dialog-close" aria-label="<?php esc_attr_e( 'Close dialog', 'brag-book-gallery' ); ?>">
+							<span class="dashicons dashicons-no"></span>
+						</button>
+					</div>
+					
+					<div class="brag-book-gallery-dialog-body">
+						<!-- Tabs -->
+						<div class="brag-book-gallery-tabs">
+							<ul class="brag-book-gallery-tab-list">
+								<li class="brag-book-gallery-tab-item active">
+									<a href="#export-tab" class="brag-book-gallery-tab-link" data-tab="export">
+										<svg xmlns="http://www.w3.org/2000/svg" height="20" viewBox="0 -960 960 960" width="20" fill="currentColor"><path d="M480-320 280-520l56-58 104 104v-326h80v326l104-104 56 58-200 200ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z"/></svg>
+										<?php esc_html_e( 'Export', 'brag-book-gallery' ); ?>
+									</a>
+								</li>
+								<li class="brag-book-gallery-tab-item">
+									<a href="#import-tab" class="brag-book-gallery-tab-link" data-tab="import">
+										<svg xmlns="http://www.w3.org/2000/svg" height="20" viewBox="0 -960 960 960" width="20" fill="currentColor"><path d="M440-200h80v-326l104 104 56-58-200-200-200 200 56 58 104-104v326ZM240-80q-33 0-56.5-23.5T160-160v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-80H240Z"/></svg>
+										<?php esc_html_e( 'Import', 'brag-book-gallery' ); ?>
+									</a>
+								</li>
+							</ul>
+						</div>
+						
+						<!-- Tab Panels -->
+						<div class="brag-book-gallery-tab-panels">
+							<!-- Export Panel -->
+							<div id="export-tab" class="brag-book-gallery-tab-panel active">
+								<form method="post" id="export-form">
+									<?php wp_nonce_field( 'brag_book_gallery_debug_action', 'debug_nonce' ); ?>
+									<div class="export-content">
+										<div class="export-info">
+											<h3><?php esc_html_e( 'Export Plugin Settings', 'brag-book-gallery' ); ?></h3>
+											<p><?php esc_html_e( 'Create a backup of all your plugin settings. This includes:', 'brag-book-gallery' ); ?></p>
+											<ul>
+												<li><?php esc_html_e( 'API Configuration', 'brag-book-gallery' ); ?></li>
+												<li><?php esc_html_e( 'Display Settings', 'brag-book-gallery' ); ?></li>
+												<li><?php esc_html_e( 'Mode Settings', 'brag-book-gallery' ); ?></li>
+												<li><?php esc_html_e( 'Custom CSS', 'brag-book-gallery' ); ?></li>
+												<li><?php esc_html_e( 'SEO Settings', 'brag-book-gallery' ); ?></li>
+											</ul>
+											<p class="description"><?php esc_html_e( 'Note: API tokens are included but encrypted for security.', 'brag-book-gallery' ); ?></p>
+										</div>
+										<div class="export-action">
+											<button type="submit" name="export_settings" class="button button-primary button-large">
+												<svg xmlns="http://www.w3.org/2000/svg" height="20" viewBox="0 -960 960 960" width="20" fill="currentColor"><path d="M480-320 280-520l56-58 104 104v-326h80v326l104-104 56 58-200 200ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z"/></svg>
+												<?php esc_html_e( 'Download Settings', 'brag-book-gallery' ); ?>
+											</button>
+										</div>
+									</div>
+								</form>
+							</div>
+							
+							<!-- Import Panel -->
+							<div id="import-tab" class="brag-book-gallery-tab-panel">
+								<form method="post" enctype="multipart/form-data" id="import-form">
+									<?php wp_nonce_field( 'brag_book_gallery_debug_action', 'debug_nonce' ); ?>
+									<div class="import-content">
+										<div class="import-info">
+											<h3><?php esc_html_e( 'Import Plugin Settings', 'brag-book-gallery' ); ?></h3>
+											<p><?php esc_html_e( 'Restore settings from a previously exported JSON file.', 'brag-book-gallery' ); ?></p>
+											<div class="file-upload-wrapper">
+												<input type="file" name="import_file" accept=".json" id="import-settings-file" class="file-upload-input">
+												<label for="import-settings-file" class="file-upload-label">
+													<svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 -960 960 960" width="24" fill="currentColor"><path d="M320-240h320v-80H320v80Zm0-160h320v-80H320v80ZM240-80q-33 0-56.5-23.5T160-160v-640q0-33 23.5-56.5T240-880h320l240 240v480q0 33-23.5 56.5T720-80H240Zm280-520v-200H240v640h480v-440H520ZM240-800v200-200 640-640Z"/></svg>
+													<span class="file-label-text"><?php esc_html_e( 'Choose JSON file', 'brag-book-gallery' ); ?></span>
+													<span class="file-name"><?php esc_html_e( 'No file selected', 'brag-book-gallery' ); ?></span>
+												</label>
+											</div>
+											<div class="import-warning">
+												<p class="warning-text">
+													<svg xmlns="http://www.w3.org/2000/svg" height="20" viewBox="0 -960 960 960" width="20" fill="#d63638"><path d="m40-120 440-760 440 760H40Zm440-120q17 0 28.5-11.5T520-280q0-17-11.5-28.5T480-320q-17 0-28.5 11.5T440-280q0 17 11.5 28.5T480-240Zm-40-120h80v-200h-80v200Z"/></svg>
+													<strong><?php esc_html_e( 'Warning:', 'brag-book-gallery' ); ?></strong>
+													<?php esc_html_e( 'Importing will overwrite all current plugin settings. Make sure to export your current settings first if needed.', 'brag-book-gallery' ); ?>
+												</p>
+											</div>
+										</div>
+										<div class="import-action">
+											<button type="submit" name="import_settings" class="button button-primary button-large" disabled id="import-settings-button">
+												<svg xmlns="http://www.w3.org/2000/svg" height="20" viewBox="0 -960 960 960" width="20" fill="currentColor"><path d="M440-200h80v-326l104 104 56-58-200-200-200 200 56 58 104-104v326ZM240-80q-33 0-56.5-23.5T160-160v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-80H240Z"/></svg>
+												<?php esc_html_e( 'Import Settings', 'brag-book-gallery' ); ?>
+											</button>
+										</div>
+									</div>
+								</form>
+							</div>
+						</div>
+					</div>
+				</div>
+			</dialog>
+			
+			<script>
+			document.addEventListener('DOMContentLoaded', function() {
+				// Dialog management
+				const dialog = document.getElementById('export-import-dialog');
+				const openButton = document.getElementById('open-export-import-dialog');
+				const closeButton = dialog?.querySelector('.dialog-close');
+				
+				// Open dialog
+				openButton?.addEventListener('click', function() {
+					if (dialog && typeof dialog.showModal === 'function') {
+						dialog.showModal();
+					}
+				});
+				
+				// Close dialog
+				closeButton?.addEventListener('click', function() {
+					if (dialog && typeof dialog.close === 'function') {
+						dialog.close();
+					}
+				});
+				
+				// Close on backdrop click
+				dialog?.addEventListener('click', function(e) {
+					if (e.target === dialog) {
+						dialog.close();
+					}
+				});
+				
+				// Tab switching
+				const tabLinks = dialog?.querySelectorAll('.brag-book-gallery-tab-link');
+				const tabPanels = dialog?.querySelectorAll('.brag-book-gallery-tab-panel');
+				
+				tabLinks?.forEach(function(link) {
+					link.addEventListener('click', function(e) {
+						e.preventDefault();
+						const targetTab = this.dataset.tab;
+						
+						// Update active tab
+						tabLinks.forEach(function(tab) {
+							tab.closest('.brag-book-gallery-tab-item').classList.remove('active');
+						});
+						this.closest('.brag-book-gallery-tab-item').classList.add('active');
+						
+						// Update active panel
+						tabPanels.forEach(function(panel) {
+							panel.classList.remove('active');
+						});
+						document.getElementById(targetTab + '-tab')?.classList.add('active');
+					});
+				});
+				
+				// File upload handling
+				const fileInput = document.getElementById('import-settings-file');
+				const importButton = document.getElementById('import-settings-button');
+				const fileLabel = document.querySelector('.file-upload-label');
+				const fileName = document.querySelector('.file-name');
+				
+				fileInput?.addEventListener('change', function() {
+					if (this.files && this.files[0]) {
+						fileName.textContent = this.files[0].name;
+						fileLabel.classList.add('has-file');
+						importButton.disabled = false;
+					} else {
+						fileName.textContent = '<?php esc_html_e( 'No file selected', 'brag-book-gallery' ); ?>';
+						fileLabel.classList.remove('has-file');
+						importButton.disabled = true;
+					}
+				});
+			});
+			</script>
 
 			<!-- Factory Reset -->
 			<div class="brag-book-gallery-section brag-book-gallery-danger-zone">
@@ -268,7 +436,7 @@ class Settings_Debug extends Settings_Base {
 	 * - Plugin version vs minimum requirements
 	 * - WordPress version compatibility
 	 * - PHP version requirements (8.2+ recommended)
-	 * - Current operational mode (JavaScript/Local)
+	 * - Current operational mode (Default/Local)
 	 * - API connection configuration status
 	 * - Memory limit sufficiency for plugin operations
 	 *
@@ -298,9 +466,9 @@ class Settings_Debug extends Settings_Base {
 					<td><?php echo esc_html( $plugin_data['Version'] ?? '3.0.0' ); ?></td>
 					<td>
 						<?php if ( version_compare( $plugin_data['Version'], '3.0.0', '>=' ) ) : ?>
-							<span class="dashicons dashicons-yes-alt" style="color:#46b450;"></span>
+							<svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="#46b450"><path d="m424-296 282-282-56-56-226 226-114-114-56 56 170 170Zm56 216q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Z"/></svg>
 						<?php else : ?>
-							<span class="dashicons dashicons-warning" style="color:#ffb900;"></span>
+							<svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="#ffb900;"><path d="m336-280 144-144 144 144 56-56-144-144 144-144-56-56-144 144-144-144-56 56 144 144-144 144 56 56ZM480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Z"/></svg>
 						<?php endif; ?>
 					</td>
 				</tr>
@@ -309,9 +477,9 @@ class Settings_Debug extends Settings_Base {
 					<td><?php echo esc_html( get_bloginfo( 'version' ) ); ?></td>
 					<td>
 						<?php if ( version_compare( get_bloginfo( 'version' ), '6.0', '>=' ) ) : ?>
-							<span class="dashicons dashicons-yes-alt" style="color:#46b450;"></span>
+							<svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="#46b450"><path d="m424-296 282-282-56-56-226 226-114-114-56 56 170 170Zm56 216q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Z"/></svg>
 						<?php else : ?>
-							<span class="dashicons dashicons-warning" style="color:#ffb900;"></span>
+							<svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="#ffb900;"><path d="m336-280 144-144 144 144 56-56-144-144 144-144-56-56-144 144-144-144-56 56 144 144-144 144 56 56ZM480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Z"/></svg>
 						<?php endif; ?>
 					</td>
 				</tr>
@@ -320,16 +488,16 @@ class Settings_Debug extends Settings_Base {
 					<td><?php echo esc_html( phpversion() ); ?></td>
 					<td>
 						<?php if ( version_compare( phpversion(), '8.2', '>=' ) ) : ?>
-							<span class="dashicons dashicons-yes-alt" style="color:#46b450;"></span>
+							<svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="#46b450"><path d="m424-296 282-282-56-56-226 226-114-114-56 56 170 170Zm56 216q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Z"/></svg>
 						<?php else : ?>
-							<span class="dashicons dashicons-no-alt" style="color:#dc3232;"></span>
+							<svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="#ffb900;"><path d="m336-280 144-144 144 144 56-56-144-144 144-144-56-56-144 144-144-144-56 56 144 144-144 144 56 56ZM480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Z"/></svg>
 						<?php endif; ?>
 					</td>
 				</tr>
 				<tr>
 					<th><?php esc_html_e( 'Active Mode', 'brag-book-gallery' ); ?></th>
 					<td><?php echo esc_html( ucfirst( $mode_manager->get_current_mode() ) ); ?></td>
-					<td><span class="dashicons dashicons-yes-alt" style="color:#46b450;"></span></td>
+					<td><svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="#46b450"><path d="m424-296 282-282-56-56-226 226-114-114-56 56 170 170Zm56 216q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Z"/></svg></td>
 				</tr>
 				<tr>
 					<th><?php esc_html_e( 'API Connection', 'brag-book-gallery' ); ?></th>
@@ -344,9 +512,9 @@ class Settings_Debug extends Settings_Base {
 					</td>
 					<td>
 						<?php if ( $api_status === 'configured' ) : ?>
-							<span class="dashicons dashicons-yes-alt" style="color:#46b450;"></span>
+							<svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="#46b450"><path d="m424-296 282-282-56-56-226 226-114-114-56 56 170 170Zm56 216q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Z"/></svg>
 						<?php else : ?>
-							<span class="dashicons dashicons-warning" style="color:#ffb900;"></span>
+							<svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="#ffb900;"><path d="m336-280 144-144 144 144 56-56-144-144 144-144-56-56-144 144-144-144-56 56 144 144-144 144 56 56ZM480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Z"/></svg>
 						<?php endif; ?>
 					</td>
 				</tr>
@@ -358,9 +526,9 @@ class Settings_Debug extends Settings_Base {
 						$memory_limit = wp_convert_hr_to_bytes( ini_get( 'memory_limit' ) );
 						if ( $memory_limit >= 134217728 ) : // 128M
 						?>
-							<span class="dashicons dashicons-yes-alt" style="color:#46b450;"></span>
+							<svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="#46b450"><path d="m424-296 282-282-56-56-226 226-114-114-56 56 170 170Zm56 216q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Z"/></svg>
 						<?php else : ?>
-							<span class="dashicons dashicons-warning" style="color:#ffb900;"></span>
+							<svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="#ffb900;"><path d="m336-280 144-144 144 144 56-56-144-144 144-144-56-56-144 144-144-144-56 56 144 144-144 144 56 56ZM480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Z"/></svg>
 						<?php endif; ?>
 					</td>
 				</tr>
@@ -391,14 +559,19 @@ class Settings_Debug extends Settings_Base {
 						</label>
 					</th>
 					<td>
-						<label>
-							<input type="checkbox"
-							       id="enable_logs"
-							       name="enable_logs"
-							       value="yes"
-							       <?php checked( $enable_logs, 'yes' ); ?>>
-							<?php esc_html_e( 'Enable debug logging for troubleshooting', 'brag-book-gallery' ); ?>
-						</label>
+						<div class="brag-book-gallery-toggle-wrapper">
+							<label class="brag-book-gallery-toggle">
+								<input type="checkbox"
+								       id="enable_logs"
+								       name="enable_logs"
+								       value="yes"
+								       <?php checked( $enable_logs, 'yes' ); ?>>
+								<span class="brag-book-gallery-toggle-slider"></span>
+							</label>
+							<span class="brag-book-gallery-toggle-label">
+								<?php esc_html_e( 'Enable debug logging for troubleshooting', 'brag-book-gallery' ); ?>
+							</span>
+						</div>
 						<p class="description">
 							<?php esc_html_e( 'When enabled, plugin activities will be logged for debugging purposes.', 'brag-book-gallery' ); ?>
 						</p>
@@ -646,16 +819,39 @@ class Settings_Debug extends Settings_Base {
 	}
 
 	/**
-	 * Export settings
+	 * Handle export/import early before any output
 	 *
 	 * @since 3.0.0
 	 * @return void
 	 */
-	private function export_settings(): void {
-		if ( ! $this->save_settings( 'brag_book_gallery_debug_action', 'debug_nonce' ) ) {
+	public function handle_export_import_early(): void {
+		// Only process on our settings page
+		if ( ! isset( $_GET['page'] ) || $_GET['page'] !== 'brag-book-gallery-debug' ) {
 			return;
 		}
-
+		
+		// Handle export
+		if ( isset( $_POST['export_settings'] ) && isset( $_POST['debug_nonce'] ) ) {
+			if ( wp_verify_nonce( $_POST['debug_nonce'], 'brag_book_gallery_debug_action' ) && current_user_can( 'manage_options' ) ) {
+				$this->export_settings_direct();
+				exit; // Stop execution after export
+			}
+		}
+		
+		// Handle import (keep existing import logic in render method)
+	}
+	
+	/**
+	 * Export settings directly without page rendering
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	private function export_settings_direct(): void {
+		// Get plugin version
+		$plugin_data = get_plugin_data( WP_PLUGIN_DIR . '/brag-book-gallery/brag-book-gallery.php' );
+		$version = isset( $plugin_data['Version'] ) ? $plugin_data['Version'] : '3.0.0';
+		
 		// Get all plugin options
 		global $wpdb;
 		$options = $wpdb->get_results(
@@ -664,18 +860,85 @@ class Settings_Debug extends Settings_Base {
 			WHERE option_name LIKE 'brag_book_gallery_%'"
 		);
 
-		$export_data = array();
+		$export_data = array(
+			'version' => $version,
+			'exported' => current_time( 'mysql' ),
+			'site_url' => site_url(),
+			'settings' => array(),
+		);
+
 		foreach ( $options as $option ) {
-			// Skip transients and sensitive data
-			if ( strpos( $option->option_name, '_transient' ) === false
-				&& strpos( $option->option_name, 'api_token' ) === false ) {
-				$export_data[ $option->option_name ] = maybe_unserialize( $option->option_value );
+			// Skip transients
+			if ( strpos( $option->option_name, '_transient' ) === false ) {
+				$export_data['settings'][ $option->option_name ] = maybe_unserialize( $option->option_value );
 			}
 		}
 
 		// Create JSON file
 		$json_data = wp_json_encode( $export_data, JSON_PRETTY_PRINT );
-		$filename = 'bragbook-settings-' . date( 'Y-m-d-His' ) . '.json';
+		$filename = 'brag-book-gallery-settings-' . date( 'Y-m-d-His' ) . '.json';
+
+		// Clean any output buffers to prevent header errors
+		while ( ob_get_level() ) {
+			ob_end_clean();
+		}
+
+		// Send download headers
+		header( 'Content-Type: application/json' );
+		header( 'Content-Disposition: attachment; filename="' . $filename . '"' );
+		header( 'Content-Length: ' . strlen( $json_data ) );
+		
+		// Output the JSON and exit
+		echo $json_data;
+		exit;
+	}
+	
+	/**
+	 * Export settings (deprecated - kept for backward compatibility)
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	private function export_settings(): void {
+		// Verify nonce
+		if ( ! isset( $_POST['debug_nonce'] ) || ! wp_verify_nonce( $_POST['debug_nonce'], 'brag_book_gallery_debug_action' ) ) {
+			return;
+		}
+
+		// Check capabilities
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		// Get plugin version
+		$plugin_data = get_plugin_data( WP_PLUGIN_DIR . '/brag-book-gallery/brag-book-gallery.php' );
+		$version = isset( $plugin_data['Version'] ) ? $plugin_data['Version'] : '3.0.0';
+		
+		// Get all plugin options
+		global $wpdb;
+		$options = $wpdb->get_results(
+			"SELECT option_name, option_value
+			FROM {$wpdb->options}
+			WHERE option_name LIKE 'brag_book_gallery_%'"
+		);
+
+		$export_data = array(
+			'version' => $version,
+			'exported' => current_time( 'mysql' ),
+			'site_url' => site_url(),
+			'settings' => array(),
+		);
+
+		foreach ( $options as $option ) {
+			// Skip transients
+			if ( strpos( $option->option_name, '_transient' ) === false ) {
+				$export_data['settings'][ $option->option_name ] = maybe_unserialize( $option->option_value );
+			}
+		}
+
+		// Create JSON file
+		$json_data = wp_json_encode( $export_data, JSON_PRETTY_PRINT );
+		$filename = 'brag-book-gallery-settings-' . date( 'Y-m-d-His' ) . '.json';
 
 		// Send download headers
 		header( 'Content-Type: application/json' );
@@ -683,6 +946,85 @@ class Settings_Debug extends Settings_Base {
 		header( 'Content-Length: ' . strlen( $json_data ) );
 		echo $json_data;
 		exit;
+	}
+
+	/**
+	 * Import plugin settings from JSON file
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	private function import_settings(): void {
+		// Verify nonce
+		if ( ! isset( $_POST['debug_nonce'] ) || ! wp_verify_nonce( $_POST['debug_nonce'], 'brag_book_gallery_debug_action' ) ) {
+			$this->add_notice( __( 'Security check failed.', 'brag-book-gallery' ), 'error' );
+			return;
+		}
+
+		// Check capabilities
+		if ( ! current_user_can( 'manage_options' ) ) {
+			$this->add_notice( __( 'Insufficient permissions.', 'brag-book-gallery' ), 'error' );
+			return;
+		}
+
+		// Check if file was uploaded
+		if ( ! isset( $_FILES['import_file'] ) || $_FILES['import_file']['error'] !== UPLOAD_ERR_OK ) {
+			$this->add_notice( __( 'No file uploaded or upload error occurred.', 'brag-book-gallery' ), 'error' );
+			return;
+		}
+
+		// Read uploaded file
+		$json_content = file_get_contents( $_FILES['import_file']['tmp_name'] );
+		if ( ! $json_content ) {
+			$this->add_notice( __( 'Could not read uploaded file.', 'brag-book-gallery' ), 'error' );
+			return;
+		}
+
+		// Parse JSON
+		$import_data = json_decode( $json_content, true );
+		if ( json_last_error() !== JSON_ERROR_NONE ) {
+			$this->add_notice( __( 'Invalid JSON file format.', 'brag-book-gallery' ), 'error' );
+			return;
+		}
+
+		// Validate structure
+		if ( ! isset( $import_data['settings'] ) || ! is_array( $import_data['settings'] ) ) {
+			$this->add_notice( __( 'Invalid settings file structure.', 'brag-book-gallery' ), 'error' );
+			return;
+		}
+
+		// Import settings
+		$imported_count = 0;
+		$skipped_count = 0;
+		
+		foreach ( $import_data['settings'] as $option_name => $option_value ) {
+			// Only import brag_book_gallery options
+			if ( strpos( $option_name, 'brag_book_gallery_' ) === 0 ) {
+				// Skip transients
+				if ( strpos( $option_name, '_transient' ) !== false ) {
+					$skipped_count++;
+					continue;
+				}
+				
+				// Update or add the option
+				update_option( $option_name, $option_value );
+				$imported_count++;
+			}
+		}
+
+		// Clear caches after import
+		wp_cache_flush();
+		
+		// Flush rewrite rules
+		flush_rewrite_rules();
+
+		// Show success message
+		$message = sprintf(
+			__( 'Settings imported successfully! %d settings imported, %d skipped.', 'brag-book-gallery' ),
+			$imported_count,
+			$skipped_count
+		);
+		$this->add_notice( $message, 'success' );
 	}
 
 	/**
@@ -759,13 +1101,13 @@ class Settings_Debug extends Settings_Base {
 		$this->verify_ajax_request();
 
 		$log_file = $this->get_log_file_path( 'error' );
-		
+
 		if ( ! file_exists( $log_file ) ) {
 			wp_die( __( 'Error log file not found.', 'brag-book-gallery' ) );
 		}
 
 		$filename = 'brag-book-gallery-error-log-' . date( 'Y-m-d-His' ) . '.txt';
-		
+
 		header( 'Content-Type: text/plain' );
 		header( 'Content-Disposition: attachment; filename="' . $filename . '"' );
 		header( 'Content-Length: ' . filesize( $log_file ) );
@@ -814,13 +1156,13 @@ class Settings_Debug extends Settings_Base {
 		$this->verify_ajax_request();
 
 		$log_file = $this->get_log_file_path( 'api' );
-		
+
 		if ( ! file_exists( $log_file ) ) {
 			wp_die( __( 'API log file not found.', 'brag-book-gallery' ) );
 		}
 
 		$filename = 'brag-book-gallery-api-log-' . date( 'Y-m-d-His' ) . '.txt';
-		
+
 		header( 'Content-Type: text/plain' );
 		header( 'Content-Disposition: attachment; filename="' . $filename . '"' );
 		header( 'Content-Length: ' . filesize( $log_file ) );
@@ -839,7 +1181,7 @@ class Settings_Debug extends Settings_Base {
 
 		$system_info = $this->get_complete_system_info();
 		$filename = 'brag-book-gallery-system-info-' . date( 'Y-m-d-His' ) . '.txt';
-		
+
 		header( 'Content-Type: text/plain' );
 		header( 'Content-Disposition: attachment; filename="' . $filename . '"' );
 		header( 'Content-Length: ' . strlen( $system_info ) );
@@ -1014,16 +1356,16 @@ class Settings_Debug extends Settings_Base {
 	 */
 	private function render_diagnostic_tools(): void {
 		// Load debug tools if not already loaded
-		if ( ! class_exists( '\BragBookGallery\Admin\Debug_Tools' ) ) {
+		if ( ! class_exists( '\BRAGBookGallery\Includes\Admin\Debug_Tools' ) ) {
 			require_once __DIR__ . '/class-debug-tools.php';
 		}
-		
+
 		// Get debug tools instance
-		$debug_tools = \BragBookGallery\Admin\Debug_Tools::get_instance();
-		
+		$debug_tools = \BRAGBookGallery\Includes\Admin\Debug_Tools::get_instance();
+
 		// Enqueue necessary scripts and styles
 		$plugin_dir_url = plugin_dir_url( dirname( dirname( __FILE__ ) ) );
-		
+
 		wp_enqueue_script(
 			'brag-book-debug-tools',
 			$plugin_dir_url . 'assets/js/debug-tools.js',
@@ -1042,10 +1384,47 @@ class Settings_Debug extends Settings_Base {
 		);
 
 		// Debug tools styles are now included in brag-book-gallery-admin.css
-		
+
 		// Add inline script to handle tab navigation properly
 		wp_add_inline_script( 'brag-book-debug-tools', "
 			document.addEventListener('DOMContentLoaded', function() {
+				// Function to activate a specific tab
+				function activateDebugTab(targetId) {
+					// Update active tab
+					document.querySelectorAll('.brag-book-debug-tab-item').forEach(function(item) {
+						item.classList.remove('active');
+					});
+					const targetTab = document.querySelector('.brag-book-debug-tab-link[data-tab-target=\"' + targetId + '\"]');
+					if (targetTab) {
+						targetTab.closest('.brag-book-debug-tab-item').classList.add('active');
+					}
+					
+					// Update active panel
+					document.querySelectorAll('.brag-book-debug-tools .tool-panel').forEach(function(panel) {
+						panel.classList.remove('active');
+						panel.style.display = 'none';
+					});
+					const targetPanel = document.getElementById(targetId);
+					if (targetPanel) {
+						targetPanel.classList.add('active');
+						targetPanel.style.display = 'block';
+					}
+				}
+				
+				// Check for hash on page load and activate the corresponding tab
+				if (window.location.hash) {
+					const hashTarget = window.location.hash.substring(1);
+					if (document.getElementById(hashTarget)) {
+						activateDebugTab(hashTarget);
+					} else {
+						// Set System Info as default if hash doesn't match
+						activateDebugTab('system-info');
+					}
+				} else {
+					// Set System Info as default active tab
+					activateDebugTab('system-info');
+				}
+				
 				// Handle main navigation clicks to prevent jQuery errors
 				const mainNavTabs = document.querySelectorAll('.brag-book-gallery-nav-tabs .nav-tab');
 				mainNavTabs.forEach(function(tab) {
@@ -1055,46 +1434,26 @@ class Settings_Debug extends Settings_Base {
 						return true;
 					});
 				});
-				
+
 				// Handle debug tool tab clicks separately
 				const debugTabLinks = document.querySelectorAll('.brag-book-debug-tab-link');
 				debugTabLinks.forEach(function(link) {
 					link.addEventListener('click', function(e) {
 						e.preventDefault();
 						e.stopPropagation();
-						
+
 						const targetId = this.getAttribute('data-tab-target') || this.getAttribute('href').substring(1);
+						activateDebugTab(targetId);
 						
-						// Update active tab
-						document.querySelectorAll('.brag-book-debug-tab-item').forEach(function(item) {
-							item.classList.remove('active');
-						});
-						this.closest('.brag-book-debug-tab-item').classList.add('active');
-						
-						// Update active panel
-						document.querySelectorAll('.brag-book-debug-tools .tool-panel').forEach(function(panel) {
-							panel.classList.remove('active');
-							panel.style.display = 'none';
-						});
-						const targetPanel = document.getElementById(targetId);
-						if (targetPanel) {
-							targetPanel.classList.add('active');
-							targetPanel.style.display = 'block';
-						}
-						
+						// Update URL hash
+						window.location.hash = targetId;
+
 						return false;
 					});
 				});
-				
-				// Set System Info as default active tab
-				const systemInfoPanel = document.getElementById('system-info');
-				if (systemInfoPanel) {
-					systemInfoPanel.classList.add('active');
-					systemInfoPanel.style.display = 'block';
-				}
 			});
 		", 'before' );
-		
+
 		// Render the debug tools interface
 		?>
 		<div class="brag-book-debug-tools" data-no-jquery="true">
@@ -1130,80 +1489,53 @@ class Settings_Debug extends Settings_Base {
 				require_once __DIR__ . '/debug-tools/class-rewrite-debug.php';
 				require_once __DIR__ . '/debug-tools/class-rewrite-fix.php';
 				require_once __DIR__ . '/debug-tools/class-rewrite-flush.php';
-				
+
 				// Initialize tools
 				$tools = [
-					'system-info'      => new \BragBookGallery\Admin\Debug_Tools\System_Info(),
-					'cache-management' => new \BragBookGallery\Admin\Debug_Tools\Cache_Management(),
-					'gallery-checker'  => new \BragBookGallery\Admin\Debug_Tools\Gallery_Checker(),
-					'rewrite-debug'    => new \BragBookGallery\Admin\Debug_Tools\Rewrite_Debug(),
-					'rewrite-fix'      => new \BragBookGallery\Admin\Debug_Tools\Rewrite_Fix(),
-					'rewrite-flush'    => new \BragBookGallery\Admin\Debug_Tools\Rewrite_Flush(),
+					'system-info'      => new \BRAGBookGallery\Includes\Admin\Debug_Tools\System_Info(),
+					'cache-management' => new \BRAGBookGallery\Includes\Admin\Debug_Tools\Cache_Management(),
+					'gallery-checker'  => new \BRAGBookGallery\Includes\Admin\Debug_Tools\Gallery_Checker(),
+					'rewrite-debug'    => new \BRAGBookGallery\Includes\Admin\Debug_Tools\Rewrite_Debug(),
+					'rewrite-fix'      => new \BRAGBookGallery\Includes\Admin\Debug_Tools\Rewrite_Fix(),
+					'rewrite-flush'    => new \BRAGBookGallery\Includes\Admin\Debug_Tools\Rewrite_Flush(),
 				];
 				?>
-				
+
 				<div id="system-info" class="tool-panel active">
 					<?php $tools['system-info']->render(); ?>
 				</div>
-				
+
 				<div id="cache-management" class="tool-panel">
 					<?php $tools['cache-management']->render(); ?>
 				</div>
-				
+
 				<div id="gallery-checker" class="tool-panel">
 					<?php $tools['gallery-checker']->render(); ?>
 				</div>
-				
+
 				<div id="rewrite-debug" class="tool-panel">
 					<?php $tools['rewrite-debug']->render(); ?>
 				</div>
-				
+
 				<div id="rewrite-fix" class="tool-panel">
 					<?php $tools['rewrite-fix']->render(); ?>
 				</div>
-				
+
 				<div id="rewrite-flush" class="tool-panel">
 					<?php $tools['rewrite-flush']->render(); ?>
 				</div>
 			</div>
 		</div>
 
-		<script>
-		jQuery(document).ready(function($) {
-			// Tab switching - only for debug tool tabs, not main navigation
-			$('.brag-book-debug-tab-link').on('click', function(e) {
-				e.preventDefault();
-				var href = $(this).attr('href');
-				var target;
-				
-				// Extract the target ID from the href
-				if (href.startsWith('#')) {
-					target = href;
-				} else if (href.includes('#')) {
-					target = '#' + href.split('#')[1];
-				} else {
-					// If no hash in href, use data-tab-target attribute
-					var dataTarget = $(this).data('tab-target');
-					if (dataTarget) {
-						target = '#' + dataTarget;
-					} else {
-						return; // No valid target found
-					}
-				}
-				
-				// Update active tab (only debug tabs)
-				$('.brag-book-debug-tab-item').removeClass('active');
-				$(this).parent('.brag-book-debug-tab-item').addClass('active');
-				
-				// Update active panel
-				$('.tool-panel').removeClass('active').hide();
-				$(target).addClass('active').show();
-			});
-			
-			// Don't interfere with main navigation tabs - they should work normally
-			// Main nav tabs use full URLs and page navigation, not JavaScript tab switching
-		});
-		</script>
+		<style>
+		/* Ensure panels are properly hidden/shown */
+		.brag-book-debug-tools .tool-panel {
+			display: none;
+		}
+		.brag-book-debug-tools .tool-panel.active {
+			display: block;
+		}
+		</style>
 		<?php
 	}
 
@@ -1216,7 +1548,7 @@ class Settings_Debug extends Settings_Base {
 	public function handle_factory_reset(): void {
 		// Start output buffering to catch any unexpected output
 		ob_start();
-		
+
 		try {
 			// Verify nonce - using the admin nonce that's actually generated
 			if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'brag_book_gallery_admin' ) ) {
@@ -1264,14 +1596,14 @@ class Settings_Debug extends Settings_Base {
 				// Force delete the page (bypass trash)
 				wp_delete_post( $gallery_page_id, true );
 			}
-			
+
 			// Also check for any pages with the gallery shortcode and optionally delete them
 			$pages_with_shortcode = $wpdb->get_col(
-				"SELECT ID FROM {$wpdb->posts} 
-				WHERE post_content LIKE '%[brag_book_gallery%' 
+				"SELECT ID FROM {$wpdb->posts}
+				WHERE post_content LIKE '%[brag_book_gallery%'
 				AND post_type = 'page'"
 			);
-			
+
 			// Delete all pages containing the gallery shortcode
 			foreach ( $pages_with_shortcode as $page_id ) {
 				wp_delete_post( $page_id, true );
@@ -1284,15 +1616,15 @@ class Settings_Debug extends Settings_Base {
 
 			// Clear all transients
 			$wpdb->query(
-				"DELETE FROM {$wpdb->options} 
-				WHERE option_name LIKE '_transient_brag_book_%' 
+				"DELETE FROM {$wpdb->options}
+				WHERE option_name LIKE '_transient_brag_book_%'
 				OR option_name LIKE '_transient_timeout_brag_book_%'"
 			);
 
 			// Clear site transients
 			$wpdb->query(
-				"DELETE FROM {$wpdb->sitemeta} 
-				WHERE meta_key LIKE '_site_transient_brag_book_%' 
+				"DELETE FROM {$wpdb->sitemeta}
+				WHERE meta_key LIKE '_site_transient_brag_book_%'
 				OR meta_key LIKE '_site_transient_timeout_brag_book_%'"
 			);
 
@@ -1332,7 +1664,7 @@ class Settings_Debug extends Settings_Base {
 					$setup->activate();
 				}
 			}
-			
+
 			// Clear output buffer and send success response
 			ob_end_clean();
 			wp_send_json_success( [

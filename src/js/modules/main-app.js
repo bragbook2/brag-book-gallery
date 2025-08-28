@@ -8,19 +8,28 @@ import SearchAutocomplete from './search-autocomplete.js';
 import { NudityWarningManager, PhoneFormatter } from './utilities.js';
 
 /**
- * Main Application
- * Orchestrates all components
+ * Main Application Controller
+ * Orchestrates all gallery components including carousels, filters, dialogs, and favorites
+ * Manages global state and component communication
  */
 class BRAGbookGalleryApp {
+	/**
+	 * Initialize the main gallery application
+	 */
 	constructor() {
+		// Component storage for organized access
 		this.components = {};
-		// Store a global reference to the app instance
+		// Store global reference for other modules to access
 		window.bragBookGalleryApp = this;
+		// Start initialization process
 		this.init();
 	}
 
+	/**
+	 * Initialize all gallery components in sequence
+	 */
 	async init() {
-		// Initialize components
+		// Initialize core components
 		this.initializeCarousels();
 		this.initializeDialogs();
 		this.initializeFilters();
@@ -31,10 +40,10 @@ class BRAGbookGalleryApp {
 		this.initializeConsultationForm();
 		this.initializeCaseLinks();
 
-		// Check if we're on the favorites page
+		// Auto-activate favorites view if on favorites page
 		const galleryContent = document.getElementById('gallery-content');
 		if (galleryContent && galleryContent.dataset.favoritesPage === 'true') {
-			// We're on the favorites page, automatically show favorites view
+			// Delay to ensure all components are initialized
 			setTimeout(() => {
 				this.showFavoritesOnly();
 			}, 100);
@@ -43,19 +52,23 @@ class BRAGbookGalleryApp {
 		console.log("BRAG bookGallery initialized");
 	}
 
+	/**
+	 * Initialize all carousel components with specific configurations
+	 */
 	initializeCarousels() {
 		const carousels = document.querySelectorAll('.brag-book-gallery-carousel-wrapper');
 		this.components.carousels = [];
 
+		// Configure each carousel with different behaviors
 		carousels.forEach((carousel, index) => {
 			const options = index === 0 ? {
-				// First carousel: enable infinite loop and autoplay
+				// First carousel: featured content with autoplay
 				infinite: true,
 				autoplay: true,
 				autoplayDelay: 4000,
 				pauseOnHover: true
 			} : {
-				// Second carousel: disable infinite loop and autoplay
+				// Additional carousels: manual navigation only
 				infinite: false,
 				autoplay: false
 			};
@@ -63,23 +76,28 @@ class BRAGbookGalleryApp {
 			this.components.carousels.push(new Carousel(carousel, options));
 		});
 
-		// Handle window resize for carousels
+		// Handle responsive behavior with debounced resize events
 		let resizeTimer;
 		window.addEventListener('resize', () => {
 			clearTimeout(resizeTimer);
+			// Debounce resize events for performance
 			resizeTimer = setTimeout(() => {
 				this.components.carousels.forEach(carousel => carousel.refresh());
 			}, 250);
 		});
 	}
 
+	/**
+	 * Initialize dialog components for modals and popups
+	 */
 	initializeDialogs() {
+		// Initialize consultation request dialog
 		this.components.consultationDialog = new Dialog('consultationDialog', {
 			onOpen: () => console.log('Consultation dialog opened'),
 			onClose: () => console.log('Consultation dialog closed')
 		});
 
-		// Setup consultation button clicks
+		// Bind consultation buttons to dialog opening
 		document.querySelectorAll('[data-action="request-consultation"]').forEach(button => {
 			button.addEventListener('click', () => {
 				this.components.consultationDialog.open();
@@ -87,10 +105,13 @@ class BRAGbookGalleryApp {
 		});
 	}
 
+	/**
+	 * Initialize the filter system for procedure and demographic filtering
+	 */
 	initializeFilters() {
 		const filterContainer = document.querySelector('.brag-book-gallery-nav');
 
-		// Determine mode from data attribute or default to 'javascript'
+		// Configure filter mode (javascript vs navigation)
 		const mode = filterContainer?.dataset.filterMode || 'javascript';
 
 		this.components.filterSystem = new FilterSystem(filterContainer, {
@@ -114,15 +135,22 @@ class BRAGbookGalleryApp {
 		this.initializeDemographicFilterBadges();
 	}
 
+	/**
+	 * Initialize mobile navigation menu
+	 */
 	initializeMobileMenu() {
 		this.components.mobileMenu = new MobileMenu();
 	}
 
+	/**
+	 * Initialize favorites management system
+	 */
 	initializeFavorites() {
+		// Create favorites manager with count update callback
 		this.components.favoritesManager = new FavoritesManager({
 			onUpdate: (favorites) => {
 				console.log('Favorites updated:', favorites.size);
-				// Update the favorites count in the sidebar link
+				// Update UI elements that display favorite counts
 				this.updateFavoritesCount(favorites.size);
 			}
 		});
@@ -153,16 +181,20 @@ class BRAGbookGalleryApp {
 		});
 	}
 
+	/**
+	 * Initialize search autocomplete components for desktop and mobile
+	 */
 	initializeSearch() {
-		// Initialize all search wrappers (both desktop and mobile)
+		// Find all search wrapper elements (supports multiple instances)
 		const searchWrappers = document.querySelectorAll('.brag-book-gallery-search-wrapper');
 		this.components.searchAutocompletes = [];
 
 		searchWrappers.forEach((searchWrapper) => {
+			// Create search instance with configuration
 			const searchInstance = new SearchAutocomplete(searchWrapper, {
-				minChars: 1,
-				debounceDelay: 200,
-				maxResults: 10,
+				minChars: 1,          // Start searching after 1 character
+				debounceDelay: 200,   // 200ms delay for performance
+				maxResults: 10,       // Limit results shown
 				onSelect: (result) => {
 					console.log('Selected procedure:', result);
 					// The checkbox is automatically checked by the SearchAutocomplete class
@@ -172,8 +204,11 @@ class BRAGbookGalleryApp {
 		});
 	}
 
+	/**
+	 * Initialize social sharing manager if sharing is enabled
+	 */
 	initializeShareManager() {
-		// Only initialize ShareManager if sharing is enabled
+		// Only initialize if sharing is enabled in configuration
 		if (typeof bragBookGalleryConfig !== 'undefined' &&
 		    bragBookGalleryConfig.enableSharing === 'yes') {
 			this.components.shareManager = new ShareManager({

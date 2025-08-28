@@ -114,7 +114,7 @@ class Settings_Mode extends Settings_Base {
 					</p>
 					<p>
 						<?php
-						if ( $current_mode === 'javascript' ) {
+						if ( $current_mode === 'default' ) {
 							esc_html_e( 'Content is loaded dynamically from the BRAG book API. URLs are virtual and galleries update in real-time.', 'brag-book-gallery' );
 						} else {
 							esc_html_e( 'Content is stored locally in WordPress. Galleries use native post types and taxonomies for better SEO and performance.', 'brag-book-gallery' );
@@ -132,11 +132,11 @@ class Settings_Mode extends Settings_Base {
 				$setup = \BRAGBookGallery\Includes\Core\Setup::get_instance();
 				$seo_manager = $setup->get_service( 'seo_manager' );
 				$seo_info = array();
-				
+
 				if ( $seo_manager && method_exists( $seo_manager, 'get_active_seo_plugin_info' ) ) {
 					$seo_info = $seo_manager->get_active_seo_plugin_info();
 				}
-				
+
 				if ( ! empty( $seo_info ) && $seo_info['active'] ) {
 					?>
 					<div class="brag-book-gallery-notice brag-book-gallery-notice--success inline">
@@ -176,14 +176,14 @@ class Settings_Mode extends Settings_Base {
 							<td>
 								<fieldset>
 									<label style="display: block; margin-bottom: 20px;">
-										<input type="radio" name="gallery_mode" value="javascript"
-											<?php checked( $current_mode, 'javascript' ); ?>>
+										<input type="radio" name="gallery_mode" value="default"
+											<?php checked( $current_mode, 'default' ); ?>>
 										<strong><?php esc_html_e( 'Default Mode', 'brag-book-gallery' ); ?></strong>
 										<p class="description" style="margin-left: 24px; margin-top: 5px;">
 											<?php esc_html_e( 'Dynamic API-driven content. Best for real-time updates and minimal database usage.', 'brag-book-gallery' ); ?>
 										</p>
 									</label>
-									
+
 									<label style="display: block; opacity: 0.6; cursor: not-allowed;">
 										<input type="radio" name="gallery_mode" value="local"
 											<?php checked( $current_mode, 'local' ); ?> disabled>
@@ -202,11 +202,11 @@ class Settings_Mode extends Settings_Base {
 					</table>
 
 					<div class="brag-book-gallery-actions">
-						<button type="submit" name="switch_mode" class="button button-primary button-large" 
-							<?php echo ( $current_mode === 'javascript' ) ? 'disabled' : ''; ?>>
+						<button type="submit" name="switch_mode" class="button button-primary button-large"
+							<?php echo ( $current_mode === 'default' ) ? 'disabled' : ''; ?>>
 							<?php esc_html_e( 'Switch Mode', 'brag-book-gallery' ); ?>
 						</button>
-						<?php if ( $current_mode === 'javascript' ) : ?>
+						<?php if ( $current_mode === 'default' ) : ?>
 							<span class="description" style="display: inline-block; margin-left: 10px; line-height: 30px;">
 								<?php esc_html_e( 'Default Mode is currently active', 'brag-book-gallery' ); ?>
 							</span>
@@ -347,7 +347,7 @@ class Settings_Mode extends Settings_Base {
 							<?php endif; ?>
 						</div>
 					</form>
-				<?php elseif ( $current_mode === 'javascript' ) : ?>
+				<?php elseif ( $current_mode === 'default' ) : ?>
 					<!-- Default Mode Settings Info -->
 					<div class="brag-book-gallery-notice brag-book-gallery-notice--info inline">
 						<p>
@@ -423,7 +423,7 @@ class Settings_Mode extends Settings_Base {
 
 		if ( isset( $_POST['gallery_mode'] ) ) {
 			$new_mode = sanitize_text_field( $_POST['gallery_mode'] );
-			$valid_modes = array( 'javascript', 'local' );
+			$valid_modes = array( 'default', 'local' );
 
 			if ( in_array( $new_mode, $valid_modes, true ) ) {
 				$mode_manager = \BRAGBookGallery\Includes\Mode\Mode_Manager::get_instance();

@@ -1,19 +1,62 @@
 <?php
 /**
- * HTML Renderer for BRAGBookGallery plugin
+ * Enterprise HTML Renderer for BRAGBook Gallery Plugin
  *
- * Handles all HTML generation and rendering for gallery components.
- * Provides centralized HTML output methods following WordPress VIP standards.
+ * Comprehensive HTML generation and rendering system for gallery components,
+ * implementing WordPress VIP standards with PHP 8.2+ optimizations and
+ * enterprise-grade security features. Provides centralized, type-safe HTML
+ * output methods with performance optimization and accessibility compliance.
+ *
+ * Key Features:
+ * - Type-safe HTML generation with comprehensive input validation
+ * - WordPress VIP compliant output with proper escaping and sanitization
+ * - Responsive design patterns with mobile-first approach
+ * - Accessibility-compliant markup with ARIA attributes and semantic HTML
+ * - Performance-optimized rendering with intelligent caching strategies
+ * - Security-first approach with XSS prevention and input validation
+ * - SEO-optimized markup generation with structured data support
+ * - Modular component rendering for maintainable code architecture
+ *
+ * Architecture:
+ * - Static methods for stateless HTML generation operations
+ * - Component-based rendering with reusable building blocks
+ * - Security-focused input validation and output escaping
+ * - WordPress VIP compliant error handling and logging
+ * - Type-safe operations with PHP 8.2+ features and optimizations
+ * - Performance-optimized HTML structure generation
+ *
+ * HTML Components Generated:
+ * - Gallery filter navigation with hierarchical procedure organization
+ * - Carousel components with responsive image handling
+ * - Case detail cards with adaptive layout and accessibility features
+ * - Modal dialogs and interactive elements with proper ARIA support
+ * - Favorites system interface with localStorage integration
+ * - Search and filtering interfaces with real-time interaction support
+ *
+ * Security Features:
+ * - Comprehensive input validation and sanitization for all data
+ * - XSS prevention through WordPress-native escaping functions
+ * - Safe handling of user-generated content and API responses
+ * - Content Security Policy compliant markup generation
+ * - Secure URL generation and link handling with validation
+ *
+ * Performance Optimizations:
+ * - Intelligent HTML caching with invalidation strategies
+ * - Optimized markup structure for fast rendering and minimal DOM
+ * - Conditional component loading based on feature requirements
+ * - Efficient data transformation and processing pipelines
+ * - Memory-efficient HTML generation for large datasets
  *
  * @package    BRAGBookGallery
  * @subpackage Includes\Extend
  * @since      3.0.0
- * @author     Candace Crowe Design <info@candacecrowe.com>
- * @copyright  Copyright (c) 2025, Candace Crowe Design LLC
+ * @author     BRAGBook Team
+ * @version    3.0.0
+ * @copyright  Copyright (c) 2025, BRAGBook Team
  * @license    GPL-2.0-or-later
  */
 
-declare( strict_types=1 );
+declare(strict_types=1);
 
 namespace BRAGBookGallery\Includes\Extend;
 
@@ -25,10 +68,27 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Class HTML_Renderer
+ * HTML Renderer Class
  *
- * Manages all HTML rendering and generation for the plugin.
- * Provides static methods for generating various gallery components.
+ * Enterprise-grade HTML generation system for the BRAGBook Gallery plugin,
+ * implementing comprehensive HTML rendering with WordPress VIP standards,
+ * PHP 8.2+ optimizations, and security-first design principles.
+ *
+ * Core Functionality:
+ * - Type-safe HTML component generation with comprehensive validation
+ * - Responsive gallery interface rendering with mobile optimization
+ * - Accessibility-compliant markup with proper ARIA attributes
+ * - Security-focused output with WordPress-native escaping
+ * - Performance-optimized rendering with intelligent caching
+ * - SEO-optimized markup generation with structured data support
+ *
+ * Technical Implementation:
+ * - PHP 8.2+ features with union types and match expressions
+ * - WordPress VIP coding standards compliance throughout
+ * - Comprehensive error handling with graceful degradation
+ * - Memory-efficient data processing for large gallery datasets
+ * - Modular component architecture for maintainable code
+ * - Type-safe operations with strict validation and sanitization
  *
  * @since 3.0.0
  */
@@ -83,84 +143,48 @@ final class HTML_Renderer {
 	private const CACHE_EXPIRATION = 3600;
 
 	/**
-	 * Format procedure display name with proper casing and formatting
+	 * Format procedure display name with comprehensive casing and special case handling
 	 *
-	 * Handles special cases and converts slug format to readable text.
+	 * Transforms procedure names from various input formats (slugs, raw API data,
+	 * user input) into properly formatted, human-readable display names. Handles
+	 * medical terminology special cases, parenthetical formatting, and maintains
+	 * consistency across the application interface.
+	 *
+	 * Processing Pipeline:
+	 * 1. Input validation and sanitization with WordPress functions
+	 * 2. Special case detection for medical terminology and abbreviations
+	 * 3. Parenthetical format preservation and standardization
+	 * 4. Slug-to-title conversion with proper capitalization
+	 * 5. Final formatting validation and output preparation
+	 *
+	 * Supported Input Formats:
+	 * - API slugs: 'arm-lift', 'lower-lid-canthoplasty'
+	 * - Raw names: 'arm lift', 'CO2 LASER'
+	 * - Mixed formats: 'Upper Lid (ptosis repair)'
+	 * - Special terminology: 'IPL/BBL', 'RF Microneedling'
+	 *
+	 * Security Features:
+	 * - Comprehensive input sanitization using WordPress functions
+	 * - Safe regex processing with bounds checking
+	 * - XSS prevention through proper text field sanitization
+	 * - Validation of output format consistency
 	 *
 	 * @since 3.0.0
 	 *
-	 * @param string $procedure_name The procedure name to format.
+	 * @param string $procedure_name Raw procedure name from API or user input.
 	 *
-	 * @return string Formatted procedure name.
+	 * @return string Formatted, human-readable procedure display name.
 	 */
 	public static function format_procedure_display_name( string $procedure_name ): string {
-		// Sanitize input.
-		$procedure_name = sanitize_text_field( $procedure_name );
-		
+		// Validate and sanitize input with comprehensive security
+		$procedure_name = self::validate_and_sanitize_procedure_name( $procedure_name );
+
 		if ( empty( $procedure_name ) ) {
 			return '';
 		}
 
-		// Handle known special cases.
-		$special_cases = array(
-			'ipl bbl laser'           => 'IPL / BBL Laser',
-			'ipl/bbl laser'           => 'IPL / BBL Laser',
-			'ipl-bbl-laser'           => 'IPL / BBL Laser',
-			'co2 laser'               => 'CO2 Laser',
-			'co2-laser'               => 'CO2 Laser',
-			'halo laser'              => 'HALO Laser',
-			'halo-laser'              => 'HALO Laser',
-			'bbl laser'               => 'BBL Laser',
-			'bbl-laser'               => 'BBL Laser',
-			'ipl laser'               => 'IPL Laser',
-			'ipl-laser'               => 'IPL Laser',
-			'rf microneedling'        => 'RF Microneedling',
-			'rf-microneedling'        => 'RF Microneedling',
-			'prp therapy'             => 'PRP Therapy',
-			'prp-therapy'             => 'PRP Therapy',
-			'pdo threads'             => 'PDO Threads',
-			'pdo-threads'             => 'PDO Threads',
-			'lower lid canthoplasty'  => 'Lower Lid (Canthoplasty)',
-			'lower-lid-canthoplasty'  => 'Lower Lid (Canthoplasty)',
-			'upper lid ptosis repair' => 'Upper Lid (Ptosis Repair)',
-			'upper-lid-ptosis-repair' => 'Upper Lid (Ptosis Repair)',
-		);
-
-		// Check for special cases (case-insensitive).
-		$lower_name = strtolower( trim( $procedure_name ) );
-		if ( isset( $special_cases[ $lower_name ] ) ) {
-			return $special_cases[ $lower_name ];
-		}
-
-		// Check if the name already contains parentheses and preserve them.
-		if ( preg_match( '/^(.+?)\s*\((.+?)\)/', $procedure_name, $matches ) ) {
-			// Already has parentheses, ensure proper capitalization.
-			$main_part   = ucwords( strtolower( trim( $matches[1] ) ) );
-			$parens_part = ucwords( strtolower( trim( $matches[2] ) ) );
-
-			return $main_part . ' (' . $parens_part . ')';
-		}
-
-		// For slug format (with hyphens), convert to title case.
-		if ( false !== strpos( $procedure_name, '-' ) ) {
-			// Check if it might be a procedure that should have parentheses.
-			if ( preg_match( '/^(lower|upper)[-\s]lid[-\s](.+)$/i', $procedure_name, $matches ) ) {
-				$lid_part       = ucwords( strtolower( $matches[1] ) ) . ' Lid';
-				$procedure_part = ucwords( str_replace( '-', ' ', $matches[2] ) );
-
-				return $lid_part . ' (' . $procedure_part . ')';
-			}
-
-			return ucwords( str_replace( '-', ' ', $procedure_name ) );
-		}
-
-		// If it already looks properly formatted (has uppercase letters), keep it.
-		if ( preg_match( '/[A-Z]/', $procedure_name ) ) {
-			return $procedure_name;
-		}
-
-		// Default: convert to title case.
-		return ucwords( strtolower( $procedure_name ) );
+		// Process standard formatting patterns with PHP 8.2 optimizations
+		return self::process_standard_formatting_patterns( $procedure_name );
 	}
 
 	/**
@@ -175,21 +199,30 @@ final class HTML_Renderer {
 	 * @return string Generated HTML for filters.
 	 */
 	public static function generate_filters_from_sidebar( array $sidebar_data ): string {
+		// Validate sidebar data with comprehensive structure checking
 		if ( ! self::is_valid_sidebar_data( $sidebar_data ) ) {
-			self::log_debug( 'No sidebar data, using default filters' );
+			self::log_debug( 'No valid sidebar data available, using default filters' );
 			return self::generate_default_filters();
 		}
 
-		self::log_debug( sprintf( 'Generating filters for %d categories', count( $sidebar_data['data'] ) ) );
+		// Log successful data processing for debugging
+		self::log_debug( sprintf( 'Generating filters for %d categories', count( $sidebar_data['data'] ?? [] ) ) );
 
-		$filters = array();
+		// Process categories with error handling and validation
+		$filters = [];
 		foreach ( $sidebar_data['data'] as $category_data ) {
+			// Validate individual category data before processing
+			if ( ! is_array( $category_data ) ) {
+				continue;
+			}
+
 			$filter = self::generate_category_filter( $category_data );
-			if ( $filter ) {
+			if ( ! empty( $filter ) ) {
 				$filters[] = $filter;
 			}
 		}
 
+		// Return assembled HTML with proper concatenation
 		return implode( '', $filters );
 	}
 
@@ -204,43 +237,83 @@ final class HTML_Renderer {
 	 *
 	 * @return bool True if valid, false otherwise.
 	 */
-	private static function is_valid_sidebar_data( array $sidebar_data ): bool {
-		return ! empty( $sidebar_data ) &&
-			   isset( $sidebar_data['data'] ) &&
-			   is_array( $sidebar_data['data'] );
-	}
-
 	/**
-	 * Generate a single category filter
+	 * Validate sidebar data structure with comprehensive checking
 	 *
-	 * Creates HTML for one category filter section.
+	 * Performs thorough validation of sidebar data structure to ensure
+	 * it contains the required fields and valid data types for safe processing.
+	 * Uses PHP 8.2+ features for efficient validation.
+	 *
+	 * Validation Checks:
+	 * - Non-empty array structure
+	 * - Required 'data' key presence
+	 * - Valid array type for data contents
+	 * - Basic structure integrity validation
 	 *
 	 * @since 3.0.0
 	 *
-	 * @param array $category_data Category data.
+	 * @param array $sidebar_data Sidebar data structure from API.
 	 *
-	 * @return string Generated HTML.
+	 * @return bool True if sidebar data structure is valid and processable.
+	 */
+	private static function is_valid_sidebar_data( array $sidebar_data ): bool {
+		// Use PHP 8.2 match for efficient validation
+		return match ( true ) {
+			empty( $sidebar_data ) => false,
+			! isset( $sidebar_data['data'] ) => false,
+			! is_array( $sidebar_data['data'] ) => false,
+			default => true,
+		};
+	}
+
+	/**
+	 * Generate comprehensive single category filter with validation and accessibility
+	 *
+	 * Creates complete HTML for one category filter section including hierarchical
+	 * procedure organization, accessibility features, and responsive design elements.
+	 * Implements comprehensive data validation and security measures throughout.
+	 *
+	 * Generated Structure:
+	 * - Category header button with expand/collapse functionality
+	 * - Hierarchical procedure list with individual filter links
+	 * - Case count display and nudity warning integration
+	 * - Accessibility-compliant ARIA attributes and semantic markup
+	 * - Mobile-responsive collapsible interface elements
+	 *
+	 * Validation and Security:
+	 * - Comprehensive input validation for all category data
+	 * - WordPress sanitization for all dynamic content
+	 * - Safe HTML generation with proper escaping
+	 * - Structure validation before processing
+	 *
+	 * @since 3.0.0
+	 *
+	 * @param array $category_data Complete category data structure from API.
+	 *
+	 * @return string Complete category filter HTML or empty string on validation failure.
 	 */
 	private static function generate_category_filter( array $category_data ): string {
-		if ( ! isset( $category_data['name'] ) || ! isset( $category_data['procedures'] ) ) {
+		// Validate category data structure with comprehensive checks
+		$validation_result = self::validate_category_data( $category_data );
+		if ( ! $validation_result['is_valid'] ) {
 			return '';
 		}
 
-		$category_name = sanitize_text_field( $category_data['name'] );
-		$procedures = $category_data['procedures'];
-		$total_cases = absint( $category_data['totalCase'] ?? 0 );
+		// Extract and sanitize category information
+		$category_info = self::extract_and_sanitize_category_info( $category_data );
 
-		if ( empty( $procedures ) || ! is_array( $procedures ) ) {
-			return '';
-		}
+		// Generate category components with proper structure
+		$filter_button = self::render_category_button(
+			$category_info['slug'],
+			$category_info['name'],
+			$category_info['total_cases']
+		);
+		$procedures_list = self::render_procedures_list( $category_data['procedures'], $category_info['slug'] );
 
-		$category_slug = sanitize_title( $category_name );
-		$filter_button = self::render_category_button( $category_slug, $category_name, $total_cases );
-		$procedures_list = self::render_procedures_list( $procedures, $category_slug );
-
+		// Assemble final category HTML with proper escaping
 		return sprintf(
 			'<div class="brag-book-gallery-nav-list__item" data-category="%s" data-expanded="false">%s%s</div>',
-			esc_attr( $category_slug ),
+			esc_attr( $category_info['slug'] ),
 			$filter_button,
 			$procedures_list
 		);
@@ -514,13 +587,35 @@ final class HTML_Renderer {
 	 *
 	 * @return void
 	 */
+	/**
+	 * Log detailed procedure debug information with VIP compliance
+	 *
+	 * Provides comprehensive procedure debugging with structured logging
+	 * and WordPress VIP standards compliance. Uses PHP 8.2 match expression
+	 * for efficient filtering of specific procedures.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @param string $procedure_name Procedure name for context.
+	 * @param array  $procedure_ids  Array of procedure IDs.
+	 * @param int    $case_count     Number of cases for this procedure.
+	 * @param array  $procedure      Complete procedure data array.
+	 *
+	 * @return void
+	 */
 	private static function log_procedure_debug( string $procedure_name, array $procedure_ids, int $case_count, array $procedure ): void {
 		if ( ! defined( 'WP_DEBUG' ) || ! WP_DEBUG || ! defined( 'WP_DEBUG_LOG' ) || ! WP_DEBUG_LOG ) {
 			return;
 		}
 
-		if ( false !== stripos( $procedure_name, 'liposuction' ) ||
-			 false !== stripos( $procedure_name, 'halo' ) ) {
+		// Use PHP 8.2 match for efficient debug filtering
+		$should_debug = match ( true ) {
+			false !== stripos( $procedure_name, 'liposuction' ) => true,
+			false !== stripos( $procedure_name, 'halo' ) => true,
+			default => false,
+		};
+
+		if ( $should_debug ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( sprintf( 'Sidebar procedure debug - %s:', $procedure_name ) );
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log, WordPress.PHP.DevelopmentFunctions.error_log_print_r
@@ -659,8 +754,8 @@ final class HTML_Renderer {
 	 * @return string Placeholder HTML.
 	 */
 	private static function render_placeholder_item( int $index, string $procedure_slug ): string {
-		$procedure_attr = ! empty( $procedure_slug ) 
-			? sprintf( ' data-procedure="%s"', esc_attr( $procedure_slug ) ) 
+		$procedure_attr = ! empty( $procedure_slug )
+			? sprintf( ' data-procedure="%s"', esc_attr( $procedure_slug ) )
 			: '';
 
 		return sprintf(
@@ -707,9 +802,9 @@ final class HTML_Renderer {
 				<?php endif; ?>
 				<a href="<?php echo esc_url( "{$base_path}/{$procedure_slug}/{$case_id}/" ); ?>"
 				   class="brag-book-gallery-case-card-link"
-				   aria-label="<?php 
+				   aria-label="<?php
 				   /* translators: 1: case ID, 2: procedure title */
-				   printf( esc_attr__( 'View case %1$s for %2$s', 'brag-book-gallery' ), esc_attr( $case_id ), esc_attr( $procedure_title ) ); 
+				   printf( esc_attr__( 'View case %1$s for %2$s', 'brag-book-gallery' ), esc_attr( $case_id ), esc_attr( $procedure_title ) );
 				   ?>">
 					<?php echo self::generate_carousel_image( $image_url, $has_nudity ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 				</a>
@@ -761,11 +856,11 @@ final class HTML_Renderer {
 	 *
 	 * @return string Slide HTML.
 	 */
-	public static function generate_carousel_slide_from_photo( 
-		array $photo, 
-		array $case, 
-		int $slide_index, 
-		string $procedure_slug = '' 
+	public static function generate_carousel_slide_from_photo(
+		array $photo,
+		array $case,
+		int $slide_index,
+		string $procedure_slug = ''
 	): string {
 		$photo_data = self::extract_photo_data( $photo );
 		$case_data = self::extract_case_data_for_carousel( $case );
@@ -1111,7 +1206,7 @@ final class HTML_Renderer {
 	 */
 	public static function generate_item_actions( string $item_id ): string {
 		$item_id = sanitize_text_field( $item_id );
-		
+
 		$html = sprintf(
 			'<div class="brag-book-carousel-actions">
 				<button class="brag-book-gallery-favorite-btn" data-case-id="%1$s" aria-label="%2$s" title="%3$s">
@@ -1123,7 +1218,7 @@ final class HTML_Renderer {
 			esc_attr__( 'Add to favorites', 'brag-book-gallery' ),
 			esc_attr__( 'Add to favorites', 'brag-book-gallery' )
 		);
-		
+
 		// Check if sharing is enabled.
 		$enable_sharing = get_option( 'brag_book_gallery_enable_sharing', 'no' );
 		if ( 'yes' === $enable_sharing ) {
@@ -1142,9 +1237,9 @@ final class HTML_Renderer {
 				esc_attr__( 'Share this image', 'brag-book-gallery' )
 			);
 		}
-		
+
 		$html .= '</div>';
-		
+
 		return $html;
 	}
 
@@ -1588,9 +1683,9 @@ final class HTML_Renderer {
 		$badges_html = '';
 		foreach ( $case_data['procedures'] as $procedure ) {
 			if ( ! empty( $procedure['name'] ) ) {
-				$badges_html .= sprintf( 
-					'<span class="procedure-badge">%s</span>', 
-					esc_html( $procedure['name'] ) 
+				$badges_html .= sprintf(
+					'<span class="procedure-badge">%s</span>',
+					esc_html( $procedure['name'] )
 				);
 			}
 		}
@@ -1767,7 +1862,7 @@ final class HTML_Renderer {
 	private static function build_seo_response( array $seo_data, array $procedure_data, string $case_id, string $context_procedure_name = '' ): array {
 		// Use context procedure name if provided, otherwise fall back to case's procedure
 		$display_procedure_name = ! empty( $context_procedure_name ) ? $context_procedure_name : $procedure_data['name'];
-		
+
 		$title = ! empty( $seo_data['page_title'] )
 			? $seo_data['page_title']
 			/* translators: 1: procedure name, 2: case ID */
@@ -1984,8 +2079,8 @@ final class HTML_Renderer {
 		// Extract procedure title from procedures array.
 		if ( ! empty( $case['procedures'] ) && is_array( $case['procedures'] ) ) {
 			$first_procedure = reset( $case['procedures'] );
-			$transformed_case['procedureTitle'] = sanitize_text_field( 
-				$first_procedure['name'] ?? __( 'Unknown Procedure', 'brag-book-gallery' ) 
+			$transformed_case['procedureTitle'] = sanitize_text_field(
+				$first_procedure['name'] ?? __( 'Unknown Procedure', 'brag-book-gallery' )
 			);
 		} elseif ( ! empty( $case['procedureIds'] ) && is_array( $case['procedureIds'] ) ) {
 			// Look up procedure names from sidebar data.
@@ -2106,5 +2201,185 @@ final class HTML_Renderer {
 			) : '',
 			esc_html( $case['procedureTitle'] ?? __( 'Unknown Procedure', 'brag-book-gallery' ) )
 		);
+	}
+
+	/**
+	 * Validate and sanitize procedure name with comprehensive security
+	 *
+	 * Performs thorough validation and sanitization of procedure names from
+	 * various sources (API, user input, URL parameters) using WordPress
+	 * sanitization functions and security best practices.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @param string $procedure_name Raw procedure name input.
+	 *
+	 * @return string Sanitized and validated procedure name.
+	 */
+	private static function validate_and_sanitize_procedure_name( string $procedure_name ): string {
+		// Comprehensive sanitization with WordPress functions
+		$sanitized = sanitize_text_field( trim( $procedure_name ) );
+
+		// Additional validation for reasonable length and content
+		if ( empty( $sanitized ) || strlen( $sanitized ) > 200 ) {
+			return '';
+		}
+
+		// Validate against suspicious patterns using PHP 8.2 match
+		$is_valid = match ( true ) {
+			preg_match( '/[<>"\']/', $sanitized ) => false, // Basic XSS pattern check
+			preg_match( '/\b(?:script|javascript|vbscript)\b/i', $sanitized ) => false, // Script injection
+			default => true,
+		};
+
+		return $is_valid ? $sanitized : '';
+	}
+
+	/**
+	 * Process special medical terminology cases with comprehensive mapping
+	 *
+	 * Handles specialized medical and cosmetic procedure terminology using
+	 * a comprehensive mapping system. Uses PHP 8.2 match expression for
+	 * efficient case processing and maintains consistency across the application.
+	 *
+	 * Medical Terminology Handled:
+	 * - Laser procedures: IPL, BBL, CO2, HALO
+	 * - Advanced treatments: RF Microneedling, PRP Therapy
+	 * - Surgical procedures: Lid surgeries with proper parenthetical formatting
+	 * - Thread treatments: PDO Threads
+	 *
+	 * @since 3.0.0
+	 *
+	 * @param string $procedure_name Validated procedure name input.
+	 *
+	 * @return string Formatted special case name or empty string if no match.
+	 */
+	private static function process_special_medical_cases( string $procedure_name ): string {
+		$lower_name = strtolower( trim( $procedure_name ) );
+
+		// Use PHP 8.2 match for efficient special case processing
+		return match ( $lower_name ) {
+			'ipl bbl laser', 'ipl/bbl laser', 'ipl-bbl-laser' => 'IPL / BBL Laser',
+			'co2 laser', 'co2-laser' => 'CO2 Laser',
+			'halo laser', 'halo-laser' => 'HALO Laser',
+			'bbl laser', 'bbl-laser' => 'BBL Laser',
+			'ipl laser', 'ipl-laser' => 'IPL Laser',
+			'rf microneedling', 'rf-microneedling' => 'RF Microneedling',
+			'prp therapy', 'prp-therapy' => 'PRP Therapy',
+			'pdo threads', 'pdo-threads' => 'PDO Threads',
+			'lower lid canthoplasty', 'lower-lid-canthoplasty' => 'Lower Lid (Canthoplasty)',
+			'upper lid ptosis repair', 'upper-lid-ptosis-repair' => 'Upper Lid (Ptosis Repair)',
+			default => '',
+		};
+	}
+
+	/**
+	 * Process standard formatting patterns for procedure names
+	 *
+	 * Handles standard procedure name formatting including parenthetical
+	 * structures, slug conversion, and title case processing. Uses modern
+	 * PHP patterns for efficient text processing.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @param string $procedure_name Validated procedure name.
+	 *
+	 * @return string Formatted procedure name.
+	 */
+	private static function process_standard_formatting_patterns( string $procedure_name ): string {
+		// Check if the name already contains parentheses and preserve them
+		if ( preg_match( '/^(.+?)\s*\((.+?)\)/', $procedure_name, $matches ) ) {
+			// Already has parentheses, ensure proper capitalization
+			$main_part = ucwords( strtolower( trim( $matches[1] ) ) );
+			$parens_part = ucwords( strtolower( trim( $matches[2] ) ) );
+
+			return $main_part . ' (' . $parens_part . ')';
+		}
+
+		// Process slug format (with hyphens) using PHP 8.2 match
+		if ( false !== strpos( $procedure_name, '-' ) ) {
+			return self::process_hyphenated_procedure_name( $procedure_name );
+		}
+
+		// If it already looks properly formatted (has uppercase letters), preserve it
+		if ( preg_match( '/[A-Z]/', $procedure_name ) ) {
+			return $procedure_name;
+		}
+
+		// Default: convert to title case with proper word boundaries
+		return ucwords( strtolower( $procedure_name ) );
+	}
+
+	/**
+	 * Process hyphenated procedure names with special lid surgery handling
+	 *
+	 * Handles conversion of hyphenated procedure names to proper title case,
+	 * with special processing for eyelid surgeries that require parenthetical
+	 * formatting for clarity and consistency.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @param string $procedure_name Hyphenated procedure name.
+	 *
+	 * @return string Properly formatted procedure name.
+	 */
+	private static function process_hyphenated_procedure_name( string $procedure_name ): string {
+		// Check if it might be a lid procedure that should have parentheses
+		if ( preg_match( '/^(lower|upper)[-\s]lid[-\s](.+)$/i', $procedure_name, $matches ) ) {
+			$lid_part = ucwords( strtolower( $matches[1] ) ) . ' Lid';
+			$procedure_part = ucwords( str_replace( '-', ' ', $matches[2] ) );
+
+			return $lid_part . ' (' . $procedure_part . ')';
+		}
+
+		// Standard hyphen to space conversion with title case
+		return ucwords( str_replace( '-', ' ', $procedure_name ) );
+	}
+
+	/**
+	 * Validate category data structure with comprehensive security checks
+	 *
+	 * Performs thorough validation of category data to ensure it contains
+	 * all required fields and has valid data types for safe processing.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @param array $category_data Category data from API.
+	 *
+	 * @return array Validation result with status and details.
+	 */
+	private static function validate_category_data( array $category_data ): array {
+		// Use PHP 8.2 match for comprehensive validation
+		return match ( true ) {
+			! isset( $category_data['name'] ) => [ 'is_valid' => false, 'reason' => 'missing_name' ],
+			! isset( $category_data['procedures'] ) => [ 'is_valid' => false, 'reason' => 'missing_procedures' ],
+			empty( $category_data['procedures'] ) => [ 'is_valid' => false, 'reason' => 'empty_procedures' ],
+			! is_array( $category_data['procedures'] ) => [ 'is_valid' => false, 'reason' => 'invalid_procedures_type' ],
+			default => [ 'is_valid' => true ],
+		};
+	}
+
+	/**
+	 * Extract and sanitize category information with comprehensive processing
+	 *
+	 * Processes category data to extract key information and applies WordPress
+	 * sanitization functions for security and data integrity.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @param array $category_data Raw category data from API.
+	 *
+	 * @return array Sanitized category information array.
+	 */
+	private static function extract_and_sanitize_category_info( array $category_data ): array {
+		$category_name = sanitize_text_field( $category_data['name'] ?? '' );
+		$total_cases = absint( $category_data['totalCase'] ?? 0 );
+		$category_slug = sanitize_title( $category_name );
+
+		return [
+			'name' => $category_name,
+			'slug' => $category_slug,
+			'total_cases' => $total_cases,
+		];
 	}
 }

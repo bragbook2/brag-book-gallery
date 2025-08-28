@@ -1,10 +1,20 @@
 <?php
+declare( strict_types=1 );
+
 /**
  * Query Handler
  *
- * Handles database queries for local mode gallery data.
- * Provides optimized querying methods with caching and security
- * following WordPress VIP coding standards.
+ * Enterprise-grade database query manager for local mode gallery data.
+ * Implements advanced caching strategies, security measures, and performance
+ * optimizations following WordPress VIP coding standards.
+ *
+ * Features:
+ * - Multi-layer caching with cache groups
+ * - Parameterized queries for SQL injection prevention
+ * - Performance-optimized database operations
+ * - Comprehensive error handling and validation
+ * - Statistical analysis capabilities
+ * - Taxonomy and meta query builders
  *
  * @package    BRAGBookGallery
  * @subpackage Includes\Core
@@ -13,8 +23,6 @@
  * @copyright  Copyright (c) 2025, Candace Crowe Design LLC
  * @license    GPL-2.0-or-later
  */
-
-declare( strict_types=1 );
 
 namespace BRAGBookGallery\Includes\Core;
 
@@ -42,49 +50,82 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Query_Handler {
 
 	/**
-	 * Cache group for query results
-	 *
-	 * Used to group related cache entries for easy management.
+	 * Cache group identifier for query results.
 	 *
 	 * @since 3.0.0
-	 * @var string
+	 * @var string Cache group name.
 	 */
 	private const CACHE_GROUP = 'brag_book_gallery_queries';
 
 	/**
-	 * Default cache expiration time (1 hour)
+	 * Default cache expiration time in seconds.
 	 *
 	 * @since 3.0.0
-	 * @var int
+	 * @var int Cache TTL (1 hour).
 	 */
 	private const CACHE_EXPIRATION = 3600;
 
 	/**
-	 * Maximum posts per page limit
-	 *
-	 * Prevents excessive memory usage from large queries.
+	 * Maximum posts per page limit for performance.
 	 *
 	 * @since 3.0.0
-	 * @var int
+	 * @var int Query result limit.
 	 */
 	private const MAX_POSTS_PER_PAGE = 100;
 
 	/**
-	 * Get galleries with filters and pagination
-	 *
-	 * Retrieves gallery posts with support for various filters,
-	 * pagination, and caching. Follows VIP standards for query optimization.
+	 * Valid orderby options for security.
 	 *
 	 * @since 3.0.0
+	 * @var array<string, string> Allowed orderby values.
+	 */
+	private const VALID_ORDERBY = [
+		'date' => 'post_date',
+		'modified' => 'post_modified',
+		'title' => 'post_title',
+		'menu_order' => 'menu_order',
+		'rand' => 'rand',
+		'id' => 'ID',
+	];
+
+	/**
+	 * Valid sort orders.
 	 *
-	 * @param array $args {
-	 *     Query arguments.
+	 * @since 3.0.0
+	 * @var array<int, string> Allowed order values.
+	 */
+	private const VALID_ORDER = [ 'ASC', 'DESC' ];
+
+	/**
+	 * Common cache keys for efficient clearing.
 	 *
-	 *     @type int    $posts_per_page Number of posts to retrieve.
-	 *     @type int    $paged          Current page number.
-	 *     @type string $post_status    Post status to query.
-	 *     @type string $orderby        Order posts by.
-	 *     @type string $order          Order direction (ASC/DESC).
+	 * @since 3.0.0
+	 * @var array<int, string> Frequently used cache keys.
+	 */
+	private const COMMON_CACHE_KEYS = [
+		'gallery_stats',
+		'featured_galleries_6',
+		'featured_galleries_10',
+		'recent_galleries_10',
+		'recent_galleries_20',
+	];
+
+	/**
+	 * Get galleries with filters and pagination.
+	 *
+	 * Primary query method with comprehensive filtering, pagination,
+	 * and caching. Implements security best practices and performance
+	 * optimizations for enterprise-grade applications.
+	 *
+	 * @since 3.0.0
+	 * @param array<string, mixed> $args {
+	 *     Query configuration array.
+	 *
+	 *     @type int    $posts_per_page Number of posts (1-100).
+	 *     @type int    $paged          Page number (1+).
+	 *     @type string $post_status    Post status filter.
+	 *     @type string $orderby        Sort field (date|title|modified|menu_order|rand|id).
+	 *     @type string $order          Sort direction (ASC|DESC).
 	 *     @type string $category       Category slug or ID.
 	 *     @type string $procedure      Procedure slug or ID.
 	 *     @type string $patient_age    Patient age filter.
@@ -94,121 +135,198 @@ class Query_Handler {
 	 *     @type array  $tax_query      Taxonomy query array.
 	 *     @type bool   $include_meta   Include post meta data.
 	 *     @type bool   $include_images Include image data.
-	 *     @type bool   $cache          Enable caching.
+	 *     @type bool   $cache          Enable result caching.
 	 * }
 	 *
-	 * @return array {
-	 *     Gallery data with posts and pagination info.
+	 * @return array<string, mixed> {
+	 *     Formatted gallery results.
 	 *
-	 *     @type array $posts      Array of formatted post data.
-	 *     @type array $pagination Pagination information.
+	 *     @type array<int, array> $posts Gallery post data.
+	 *     @type array<string, mixed> $pagination Pagination metadata.
 	 * }
+	 *
+	 * @throws \InvalidArgumentException If arguments are invalid.
+	 *
+	 * @example
+	 * ```php
+	 * $results = $query_handler->get_galleries([
+	 *     'posts_per_page' => 12,
+	 *     'category' => 'cosmetic-surgery',
+	 *     'orderby' => 'date',
+	 *     'order' => 'DESC'
+	 * ]);
+	 * ```
 	 */
-	public function get_galleries( array $args = array() ): array {
-		// Set default arguments.
-		$defaults = array(
-			'posts_per_page' => 12,
-			'paged'          => 1,
-			'post_status'    => 'publish',
-			'orderby'        => 'date',
-			'order'          => 'DESC',
-			'category'       => '',
-			'procedure'      => '',
-			'patient_age'    => '',
-			'patient_gender' => '',
-			'search'         => '',
-			'meta_query'     => array(),
-			'tax_query'      => array(),
-			'include_meta'   => true,
-			'include_images' => true,
-			'cache'          => true,
-		);
+	public function get_galleries( array $args = [] ): array {
+		try {
+			// Set default arguments
+			$defaults = [
+				'posts_per_page' => 12,
+				'paged'          => 1,
+				'post_status'    => 'publish',
+				'orderby'        => 'date',
+				'order'          => 'DESC',
+				'category'       => '',
+				'procedure'      => '',
+				'patient_age'    => '',
+				'patient_gender' => '',
+				'search'         => '',
+				'meta_query'     => [],
+				'tax_query'      => [],
+				'include_meta'   => true,
+				'include_images' => true,
+				'cache'          => true,
+			];
 
-		$args = wp_parse_args( $args, $defaults );
+			$args = wp_parse_args( $args, $defaults );
 
-		// Sanitize and validate arguments.
-		$args['posts_per_page'] = min( absint( $args['posts_per_page'] ), self::MAX_POSTS_PER_PAGE );
-		$args['paged']          = max( absint( $args['paged'] ), 1 );
-		$args['orderby']        = sanitize_key( $args['orderby'] );
-		$args['order']          = in_array( strtoupper( $args['order'] ), array( 'ASC', 'DESC' ), true )
-								? strtoupper( $args['order'] ) : 'DESC';
+			// Sanitize and validate arguments
+			$args = $this->sanitize_query_args( $args );
 
-		// Build cache key.
-		$cache_key = 'galleries_' . md5( wp_json_encode( $args ) );
+			// Build cache key and check cache
+			$cache_key = $this->build_cache_key( 'galleries', $args );
 
-		// Try to get from cache.
-		if ( $args['cache'] ) {
-			$cached = wp_cache_get( $cache_key, self::CACHE_GROUP );
-			if ( false !== $cached ) {
-				return $cached;
+			if ( $args['cache'] ) {
+				$cached = wp_cache_get( $cache_key, self::CACHE_GROUP );
+				if ( false !== $cached ) {
+					return $cached;
+				}
 			}
+
+			// Build WP_Query arguments
+			$query_args = [
+				'post_type'      => Gallery_Post_Type::POST_TYPE,
+				'post_status'    => sanitize_key( $args['post_status'] ),
+				'posts_per_page' => $args['posts_per_page'],
+				'paged'          => $args['paged'],
+				'orderby'        => $args['orderby'],
+				'order'          => $args['order'],
+				'meta_query'     => $args['meta_query'], // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+				'tax_query'      => $args['tax_query'], // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_tax_query
+			];
+
+			// Add search query
+			if ( ! empty( $args['search'] ) ) {
+				$query_args['s'] = sanitize_text_field( $args['search'] );
+			}
+
+			// Add taxonomy filters
+			$this->add_taxonomy_filters( $query_args, $args );
+
+			// Add patient filters
+			$this->add_patient_filters( $query_args, $args );
+
+			// Set query relations
+			$this->set_query_relations( $query_args );
+
+			// Execute query
+			$query = new WP_Query( $query_args );
+
+			// Build result array
+			$result = $this->build_query_result( $query, $args );
+
+			// Reset global post data
+			wp_reset_postdata();
+
+			// Cache result
+			if ( $args['cache'] ) {
+				wp_cache_set( $cache_key, $result, self::CACHE_GROUP, self::CACHE_EXPIRATION );
+			}
+
+			return $result;
+		} catch ( \Exception $e ) {
+			do_action( 'qm/debug', sprintf( 'Gallery query error: %s', $e->getMessage() ) );
+			return [
+				'posts'      => [],
+				'pagination' => [],
+			];
 		}
+	}
 
-		// Build WP_Query arguments.
-		$query_args = array(
-			'post_type'      => Gallery_Post_Type::POST_TYPE,
-			'post_status'    => sanitize_key( $args['post_status'] ),
-			'posts_per_page' => $args['posts_per_page'],
-			'paged'          => $args['paged'],
-			'orderby'        => $args['orderby'],
-			'order'          => $args['order'],
-			'meta_query'     => $args['meta_query'], // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
-			'tax_query'      => $args['tax_query'], // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_tax_query
-		);
+	/**
+	 * Sanitize query arguments.
+	 *
+	 * @since 3.0.0
+	 * @param array<string, mixed> $args Query arguments.
+	 * @return array<string, mixed> Sanitized arguments.
+	 */
+	private function sanitize_query_args( array $args ): array {
+		// Sanitize numeric values
+		$args['posts_per_page'] = min( absint( $args['posts_per_page'] ), self::MAX_POSTS_PER_PAGE );
+		$args['paged'] = max( absint( $args['paged'] ), 1 );
 
-		// Add search query.
-		if ( ! empty( $args['search'] ) ) {
-			$query_args['s'] = sanitize_text_field( $args['search'] );
-		}
+		// Validate orderby
+		$args['orderby'] = array_key_exists( $args['orderby'], self::VALID_ORDERBY )
+			? $args['orderby']
+			: 'date';
 
-		// Add taxonomy filters.
-		$this->add_taxonomy_filters( $query_args, $args );
+		// Validate order
+		$args['order'] = in_array( strtoupper( $args['order'] ), self::VALID_ORDER, true )
+			? strtoupper( $args['order'] )
+			: 'DESC';
 
-		// Add patient filters.
-		$this->add_patient_filters( $query_args, $args );
+		return $args;
+	}
 
-		// Set tax_query relation if multiple taxonomies.
+	/**
+	 * Build cache key from arguments.
+	 *
+	 * @since 3.0.0
+	 * @param string $prefix Key prefix.
+	 * @param array<string, mixed> $args Arguments.
+	 * @return string Cache key.
+	 */
+	private function build_cache_key( string $prefix, array $args ): string {
+		return $prefix . '_' . md5( wp_json_encode( $args ) );
+	}
+
+	/**
+	 * Set query relations.
+	 *
+	 * @since 3.0.0
+	 * @param array<string, mixed> $query_args Query arguments by reference.
+	 * @return void
+	 */
+	private function set_query_relations( array &$query_args ): void {
+		// Set tax_query relation if multiple taxonomies
 		if ( isset( $query_args['tax_query'] ) && count( $query_args['tax_query'] ) > 1 ) {
 			$query_args['tax_query']['relation'] = 'AND';
 		}
 
-		// Set meta_query relation if multiple meta queries.
+		// Set meta_query relation if multiple meta queries
 		if ( isset( $query_args['meta_query'] ) && count( $query_args['meta_query'] ) > 1 ) {
 			$query_args['meta_query']['relation'] = 'AND';
 		}
+	}
 
-		// Execute query.
-		$query = new WP_Query( $query_args );
+	/**
+	 * Build query result array.
+	 *
+	 * @since 3.0.0
+	 * @param WP_Query $query WordPress query object.
+	 * @param array<string, mixed> $args Query arguments.
+	 * @return array<string, mixed> Formatted result.
+	 */
+	private function build_query_result( WP_Query $query, array $args ): array {
+		$result = [
+			'posts'      => [],
+			'pagination' => [
+				'current_page'   => $args['paged'],
+				'total_pages'    => $query->max_num_pages,
+				'total_posts'    => $query->found_posts,
+				'posts_per_page' => $args['posts_per_page'],
+				'has_prev'       => $args['paged'] > 1,
+				'has_next'       => $args['paged'] < $query->max_num_pages,
+			],
+		];
 
-		// Build result array.
-		$result = array(
-			'posts'      => array(),
-			'pagination' => array(
-				'current_page'    => $args['paged'],
-				'total_pages'     => $query->max_num_pages,
-				'total_posts'     => $query->found_posts,
-				'posts_per_page'  => $args['posts_per_page'],
-				'has_prev'        => $args['paged'] > 1,
-				'has_next'        => $args['paged'] < $query->max_num_pages,
-			),
-		);
-
-		// Process posts.
+		// Process posts
 		while ( $query->have_posts() ) {
 			$query->the_post();
 			$post = get_post();
 			if ( $post instanceof WP_Post ) {
-				$post_data = $this->format_post_data( $post, $args );
-				$result['posts'][] = $post_data;
+				$result['posts'][] = $this->format_post_data( $post, $args );
 			}
-		}
-
-		// Reset global post data.
-		wp_reset_postdata();
-
-		// Cache result.
-		if ( $args['cache'] ) {
-			wp_cache_set( $cache_key, $result, self::CACHE_GROUP, self::CACHE_EXPIRATION );
 		}
 
 		return $result;
@@ -1124,14 +1242,8 @@ class Query_Handler {
 			if ( function_exists( 'wp_cache_flush_group' ) ) {
 				wp_cache_flush_group( self::CACHE_GROUP );
 			} else {
-				// Fallback: Clear common keys.
-				$common_keys = array(
-					'gallery_stats',
-					'featured_galleries_6',
-					'featured_galleries_10',
-				);
-
-				foreach ( $common_keys as $cache_key ) {
+				// Fallback: Clear common keys
+				foreach ( self::COMMON_CACHE_KEYS as $cache_key ) {
 					wp_cache_delete( $cache_key, self::CACHE_GROUP );
 				}
 			}
@@ -1139,20 +1251,37 @@ class Query_Handler {
 	}
 
 	/**
-	 * Get cache statistics
+	 * Get cache statistics.
 	 *
-	 * Returns information about cache configuration.
+	 * Returns comprehensive cache configuration and status information.
 	 *
 	 * @since 3.0.0
-	 *
-	 * @return array Cache statistics.
+	 * @return array<string, mixed> Cache statistics and configuration.
 	 */
 	public function get_cache_stats(): array {
-		return array(
+		return [
 			'cache_group'      => self::CACHE_GROUP,
 			'cache_expiration' => self::CACHE_EXPIRATION,
 			'cache_enabled'    => wp_using_ext_object_cache(),
 			'max_posts_limit'  => self::MAX_POSTS_PER_PAGE,
-		);
+		];
+	}
+
+	/**
+	 * Get post by slug.
+	 *
+	 * @since 3.0.0
+	 * @param string $slug Post slug.
+	 * @return WP_Post|null Post object or null.
+	 */
+	private function get_post_by_slug( string $slug ): ?WP_Post {
+		$posts = get_posts( [
+			'post_type'      => Gallery_Post_Type::POST_TYPE,
+			'name'           => $slug,
+			'post_status'    => 'publish',
+			'posts_per_page' => 1,
+		] );
+
+		return ! empty( $posts ) ? $posts[0] : null;
 	}
 }

@@ -1,8 +1,20 @@
 <?php
 /**
- * Sync Manager
+ * Sync Manager - Enterprise-grade data synchronization system
  *
- * Manages synchronization of API data to local WordPress content.
+ * Comprehensive synchronization orchestrator for BRAGBook Gallery.
+ * Manages intelligent data syncing between external API and WordPress,
+ * with advanced features for performance, reliability, and scalability.
+ *
+ * Features:
+ * - Batch processing with configurable sizes
+ * - Change detection and incremental sync
+ * - Automatic retry with exponential backoff
+ * - Real-time progress tracking
+ * - Scheduled and manual sync options
+ * - REST API and AJAX interfaces
+ * - WordPress VIP compliant architecture
+ * - Modern PHP 8.2+ features and type safety
  *
  * @package    BRAGBookGallery
  * @subpackage Includes\Sync
@@ -19,6 +31,9 @@ namespace BRAGBookGallery\Includes\Sync;
 use BRAGBookGallery\Includes\Core\Database;
 use BRAGBookGallery\Includes\PostTypes\Gallery_Post_Type;
 use BRAGBookGallery\Includes\Taxonomies\Gallery_Taxonomies;
+use WP_REST_Request;
+use WP_REST_Response;
+use Exception;
 
 // Prevent direct access
 if ( ! defined( 'ABSPATH' ) ) {
@@ -26,13 +41,41 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Sync Manager Class
+ * Enterprise Sync Management System
  *
- * Coordinates the synchronization of API data to local WordPress content.
+ * Orchestrates comprehensive data synchronization operations:
+ *
+ * Core Responsibilities:
+ * - Manage full and incremental data syncing
+ * - Process taxonomies, cases, and media
+ * - Handle batch operations with rate limiting
+ * - Track sync progress and statistics
+ * - Provide REST API and AJAX interfaces
+ * - Schedule automatic synchronization
  *
  * @since 3.0.0
  */
-class Sync_Manager {
+final class Sync_Manager {
+
+	/**
+	 * Cache duration constants
+	 *
+	 * @since 3.0.0
+	 */
+	private const CACHE_TTL_SHORT = 300;     // 5 minutes
+	private const CACHE_TTL_MEDIUM = 1800;   // 30 minutes
+	private const CACHE_TTL_LONG = 3600;     // 1 hour
+	private const CACHE_TTL_EXTENDED = 7200; // 2 hours
+
+	/**
+	 * Sync configuration constants
+	 *
+	 * @since 3.0.0
+	 */
+	private const DEFAULT_BATCH_SIZE = 20;
+	private const MAX_RETRIES = 3;
+	private const RATE_LIMIT_DELAY = 100000; // 0.1 second in microseconds
+	private const SYNC_LOCK_TIMEOUT = 3600;  // 1 hour
 
 	/**
 	 * Database manager instance
@@ -40,7 +83,7 @@ class Sync_Manager {
 	 * @since 3.0.0
 	 * @var Database
 	 */
-	private $database;
+	private Database $database;
 
 	/**
 	 * Data mapper instance
@@ -48,7 +91,7 @@ class Sync_Manager {
 	 * @since 3.0.0
 	 * @var Data_Mapper
 	 */
-	private $data_mapper;
+	private Data_Mapper $data_mapper;
 
 	/**
 	 * Image sync instance
@@ -56,7 +99,7 @@ class Sync_Manager {
 	 * @since 3.0.0
 	 * @var Image_Sync
 	 */
-	private $image_sync;
+	private Image_Sync $image_sync;
 
 	/**
 	 * Current sync log ID
@@ -64,7 +107,44 @@ class Sync_Manager {
 	 * @since 3.0.0
 	 * @var int|null
 	 */
-	private $current_sync_log_id = null;
+	private ?int $current_sync_log_id = null;
+
+	/**
+	 * Performance metrics storage
+	 *
+	 * @since 3.0.0
+	 * @var array<string, mixed>
+	 */
+	private array $performance_metrics = [];
+
+	/**
+	 * Memory cache for optimization
+	 *
+	 * @since 3.0.0
+	 * @var array<string, mixed>
+	 */
+	private array $memory_cache = [];
+
+	/**
+	 * Error tracking for reporting
+	 *
+	 * @since 3.0.0
+	 * @var array<string, array<string, mixed>>
+	 */
+	private array $error_log = [];
+
+	/**
+	 * Sync progress tracking
+	 *
+	 * @since 3.0.0
+	 * @var array<string, mixed>
+	 */
+	private array $sync_progress = [
+		'total' => 0,
+		'processed' => 0,
+		'failed' => 0,
+		'current_step' => '',
+	];
 
 	/**
 	 * Constructor
@@ -80,58 +160,72 @@ class Sync_Manager {
 	}
 
 	/**
-	 * Initialize sync manager
+	 * Initialize sync manager with hooks and filters
 	 *
 	 * @since 3.0.0
 	 * @return void
 	 */
 	private function init(): void {
-		// Add AJAX handlers
-		add_action( 'wp_ajax_brag_book_gallery_sync_now', array( $this, 'ajax_sync_now' ) );
-		add_action( 'wp_ajax_brag_book_gallery_sync_status', array( $this, 'ajax_sync_status' ) );
-		add_action( 'wp_ajax_brag_book_gallery_cancel_sync', array( $this, 'ajax_cancel_sync' ) );
+		// Add AJAX handlers with proper naming
+		add_action( 'wp_ajax_brag_book_gallery_sync_now', [ $this, 'ajax_sync_now' ] );
+		add_action( 'wp_ajax_brag_book_gallery_sync_status', [ $this, 'ajax_sync_status' ] );
+		add_action( 'wp_ajax_brag_book_gallery_cancel_sync', [ $this, 'ajax_cancel_sync' ] );
+		add_action( 'wp_ajax_brag_book_gallery_get_progress', [ $this, 'ajax_get_progress' ] );
 
 		// Add WP-Cron hooks for scheduled syncing
-		add_action( 'brag_book_gallery_scheduled_sync', array( $this, 'run_scheduled_sync' ) );
+		add_action( 'brag_book_gallery_scheduled_sync', [ $this, 'run_scheduled_sync' ] );
 		
 		// Add REST API endpoints
-		add_action( 'rest_api_init', array( $this, 'register_rest_routes' ) );
+		add_action( 'rest_api_init', [ $this, 'register_rest_routes' ] );
+		
+		// Add cleanup hooks
+		add_action( 'brag_book_gallery_cleanup_old_sync_logs', [ $this, 'cleanup_old_sync_logs' ] );
 	}
 
 	/**
-	 * Sync all gallery data
+	 * Sync all gallery data with comprehensive processing
+	 *
+	 * Orchestrates full synchronization with progress tracking,
+	 * error handling, and performance optimization.
 	 *
 	 * @since 3.0.0
 	 * @param bool $force Force sync even if already running.
 	 * @return bool Success status.
 	 */
 	public function sync_all( bool $force = false ): bool {
-		// Check if sync is already running
-		if ( ! $force && $this->is_sync_running() ) {
+		$start_time = microtime( true );
+		
+		// Check if sync is already running with lock mechanism
+		if ( ! $force && ! $this->acquire_sync_lock() ) {
+			$this->log_error( 'sync_all', 'Sync already running or lock acquisition failed' );
 			return false;
 		}
 
+		// Initialize sync progress
+		$this->reset_sync_progress();
+		
 		// Start sync logging
 		$this->current_sync_log_id = $this->database->log_sync_operation( 'full', 'started' );
-		
-		// Set sync status
-		set_transient( 'brag_book_gallery_sync_status', 'running', HOUR_IN_SECONDS );
 		
 		try {
 			$items_processed = 0;
 			$items_failed = 0;
-			$errors = array();
+			$errors = [];
 
 			// Step 1: Sync categories and procedures
+			$this->update_sync_progress( 'Syncing taxonomies...', 0, 2 );
 			$taxonomy_result = $this->sync_taxonomies();
+			
 			if ( ! $taxonomy_result['success'] ) {
 				$errors[] = 'Taxonomy sync failed: ' . $taxonomy_result['message'];
 				$items_failed++;
+				$this->log_error( 'sync_taxonomies', $taxonomy_result['message'] );
 			} else {
 				$items_processed++;
 			}
 
 			// Step 2: Sync gallery cases
+			$this->update_sync_progress( 'Syncing cases...', 1, 2 );
 			$cases_result = $this->sync_cases();
 			$items_processed += $cases_result['processed'];
 			$items_failed += $cases_result['failed'];
@@ -141,7 +235,7 @@ class Sync_Manager {
 			}
 
 			// Update sync log
-			$final_status = $items_failed === 0 ? 'completed' : 'failed';
+			$final_status = $items_failed === 0 ? 'completed' : 'partial';
 			$this->database->update_sync_log(
 				$this->current_sync_log_id,
 				$final_status,
@@ -150,27 +244,25 @@ class Sync_Manager {
 				implode( "\n", $errors )
 			);
 
-			// Clear sync status
-			delete_transient( 'brag_book_gallery_sync_status' );
-			
 			// Update last sync time
 			update_option( 'brag_book_gallery_last_sync', current_time( 'mysql' ) );
+			update_option( 'brag_book_gallery_last_sync_stats', [
+				'processed' => $items_processed,
+				'failed' => $items_failed,
+				'duration' => microtime( true ) - $start_time,
+			] );
 
+			// Track performance
+			$this->track_performance( 'sync_all', microtime( true ) - $start_time );
+			
 			return $final_status === 'completed';
 
-		} catch ( \Exception $e ) {
-			// Log error and cleanup
-			$this->database->update_sync_log(
-				$this->current_sync_log_id,
-				'failed',
-				0,
-				1,
-				'Exception: ' . $e->getMessage()
-			);
-
-			delete_transient( 'brag_book_gallery_sync_status' );
-			
+		} catch ( Exception $e ) {
+			$this->handle_sync_error( $e );
 			return false;
+		} finally {
+			// Always release lock
+			$this->release_sync_lock();
 		}
 	}
 
@@ -324,77 +416,87 @@ class Sync_Manager {
 	}
 
 	/**
-	 * Process a single case
+	 * Process a single case with comprehensive validation
 	 *
 	 * @since 3.0.0
-	 * @param array $case_data Case data from API.
+	 * @param array<string, mixed> $case_data Case data from API.
 	 * @return bool Success status.
 	 */
 	private function process_single_case( array $case_data ): bool {
-		if ( empty( $case_data['id'] ) ) {
-			return false;
-		}
-
-		$api_case_id = (int) $case_data['id'];
-		$api_token = $this->get_current_api_token();
-		$property_id = $this->get_current_property_id();
-
-		// Generate sync hash for change detection
-		$sync_hash = md5( serialize( $case_data ) );
-
-		// Check if case needs updating
-		$existing_hash = $this->database->get_sync_hash( $api_case_id, $api_token );
-		if ( $existing_hash === $sync_hash ) {
-			// No changes, skip
-			return true;
-		}
-
-		// Get existing post or create new one
-		$post_id = $this->database->get_post_by_case_id( $api_case_id, $api_token );
+		$start_time = microtime( true );
 		
-		if ( $post_id ) {
-			// Update existing post
-			$mapped_data = $this->data_mapper->api_to_post_update( $case_data, $post_id );
-		} else {
-			// Create new post
-			$mapped_data = $this->data_mapper->api_to_post( $case_data );
-		}
+		try {
+			// Validate required data
+			if ( empty( $case_data['id'] ) ) {
+				$this->log_error( 'process_case', 'Missing case ID' );
+				return false;
+			}
 
-		if ( ! $mapped_data ) {
-			return false;
-		}
+			$api_case_id = (int) $case_data['id'];
+			$api_token = $this->get_current_api_token();
+			$property_id = $this->get_current_property_id();
 
-		// Insert or update post
-		if ( $post_id ) {
-			$mapped_data['ID'] = $post_id;
-			$result = wp_update_post( $mapped_data );
-		} else {
-			$result = wp_insert_post( $mapped_data );
+			// Generate sync hash for change detection using SHA256
+			$sync_hash = hash( 'sha256', wp_json_encode( $case_data ) );
+
+			// Check if case needs updating (change detection)
+			$existing_hash = $this->database->get_sync_hash( $api_case_id, $api_token );
+			if ( $existing_hash === $sync_hash && ! $this->should_force_update( $api_case_id ) ) {
+				// No changes, skip
+				$this->track_skip( $api_case_id, 'no_changes' );
+				return true;
+			}
+
+			// Get existing post or determine if new
+			$post_id = $this->database->get_post_by_case_id( $api_case_id, $api_token );
+			
+			// Map data based on operation type
+			$mapped_data = match ( (bool) $post_id ) {
+				true  => $this->data_mapper->api_to_post_update( $case_data, $post_id ),
+				false => $this->data_mapper->api_to_post( $case_data ),
+			};
+
+			if ( ! $mapped_data ) {
+				$this->log_error( 'process_case', "Failed to map data for case {$api_case_id}" );
+				return false;
+			}
+
+			// Insert or update post with error handling
+			$result = $this->save_post( $mapped_data, $post_id );
+			
+			if ( ! $result ) {
+				return false;
+			}
+			
 			$post_id = $result;
-		}
 
-		if ( is_wp_error( $result ) || ! $result ) {
+			// Update post meta with validation
+			$this->update_post_meta( $post_id, $case_data );
+
+			// Assign taxonomies with error handling
+			$this->assign_taxonomies( $post_id, $case_data );
+
+			// Handle images if enabled
+			if ( $this->should_import_images() ) {
+				$image_result = $this->image_sync->import_case_images( $post_id, $case_data );
+				
+				if ( ! $image_result['success'] ) {
+					$this->log_error( 'process_case_images', "Image import failed for case {$api_case_id}" );
+				}
+			}
+
+			// Update case mapping
+			$this->database->map_case_to_post( $api_case_id, $post_id, $api_token, $property_id, $sync_hash );
+
+			// Track performance
+			$this->track_performance( 'process_single_case', microtime( true ) - $start_time );
+			
+			return true;
+			
+		} catch ( Exception $e ) {
+			$this->log_error( 'process_case', $e->getMessage() );
 			return false;
 		}
-
-		// Update post meta
-		$this->update_post_meta( $post_id, $case_data );
-
-		// Assign taxonomies
-		$this->assign_taxonomies( $post_id, $case_data );
-
-		// Handle images
-		$mode_manager = \BRAGBookGallery\Includes\Mode\Mode_Manager::get_instance();
-		$settings = $mode_manager->get_mode_settings();
-		
-		if ( $settings['import_images'] ?? true ) {
-			$this->image_sync->import_case_images( $post_id, $case_data );
-		}
-
-		// Update case mapping
-		$this->database->map_case_to_post( $api_case_id, $post_id, $api_token, $property_id, $sync_hash );
-
-		return true;
 	}
 
 	/**
@@ -933,5 +1035,274 @@ class Sync_Manager {
 	 */
 	public function rest_permission_check( $request ): bool {
 		return current_user_can( 'manage_options' );
+	}
+
+	/**
+	 * Acquire sync lock to prevent concurrent syncs
+	 *
+	 * @since 3.0.0
+	 * @return bool True if lock acquired.
+	 */
+	private function acquire_sync_lock(): bool {
+		$lock_key = 'brag_book_gallery_sync_lock';
+		$lock_value = wp_generate_uuid4();
+		
+		// Try to set lock with timeout
+		if ( set_transient( $lock_key, $lock_value, self::SYNC_LOCK_TIMEOUT ) ) {
+			$this->memory_cache['sync_lock'] = $lock_value;
+			return true;
+		}
+		
+		// Check if existing lock has expired
+		$existing = get_transient( $lock_key );
+		if ( false === $existing ) {
+			// Lock expired, try again
+			return set_transient( $lock_key, $lock_value, self::SYNC_LOCK_TIMEOUT );
+		}
+		
+		return false;
+	}
+
+	/**
+	 * Release sync lock
+	 *
+	 * @since 3.0.0
+	 */
+	private function release_sync_lock(): void {
+		delete_transient( 'brag_book_gallery_sync_lock' );
+		unset( $this->memory_cache['sync_lock'] );
+	}
+
+	/**
+	 * Reset sync progress tracking
+	 *
+	 * @since 3.0.0
+	 */
+	private function reset_sync_progress(): void {
+		$this->sync_progress = [
+			'total' => 0,
+			'processed' => 0,
+			'failed' => 0,
+			'current_step' => '',
+			'started_at' => current_time( 'mysql' ),
+		];
+		
+		set_transient( 'brag_book_gallery_sync_progress', $this->sync_progress, HOUR_IN_SECONDS );
+	}
+
+	/**
+	 * Update sync progress
+	 *
+	 * @since 3.0.0
+	 * @param string $step Current step description.
+	 * @param int    $current Current item number.
+	 * @param int    $total Total items.
+	 */
+	private function update_sync_progress( string $step, int $current = 0, int $total = 0 ): void {
+		$this->sync_progress['current_step'] = $step;
+		
+		if ( $total > 0 ) {
+			$this->sync_progress['total'] = $total;
+			$this->sync_progress['processed'] = $current;
+			$this->sync_progress['percentage'] = round( ( $current / $total ) * 100, 2 );
+		}
+		
+		set_transient( 'brag_book_gallery_sync_progress', $this->sync_progress, HOUR_IN_SECONDS );
+	}
+
+	/**
+	 * Check if case should be force updated
+	 *
+	 * @since 3.0.0
+	 * @param int $case_id Case ID.
+	 * @return bool True if should force update.
+	 */
+	private function should_force_update( int $case_id ): bool {
+		// Check if case is in force update list
+		$force_list = get_transient( 'brag_book_gallery_force_update_cases' );
+		
+		if ( is_array( $force_list ) && in_array( $case_id, $force_list, true ) ) {
+			return true;
+		}
+		
+		// Check if force update all is enabled
+		return (bool) get_transient( 'brag_book_gallery_force_update_all' );
+	}
+
+	/**
+	 * Track skipped case
+	 *
+	 * @since 3.0.0
+	 * @param int    $case_id Case ID.
+	 * @param string $reason Skip reason.
+	 */
+	private function track_skip( int $case_id, string $reason ): void {
+		if ( ! isset( $this->memory_cache['skipped_cases'] ) ) {
+			$this->memory_cache['skipped_cases'] = [];
+		}
+		
+		$this->memory_cache['skipped_cases'][] = [
+			'case_id' => $case_id,
+			'reason' => $reason,
+			'time' => current_time( 'mysql' ),
+		];
+	}
+
+	/**
+	 * Save post with error handling
+	 *
+	 * @since 3.0.0
+	 * @param array    $mapped_data Mapped post data.
+	 * @param int|null $post_id Existing post ID.
+	 * @return int|false Post ID on success, false on failure.
+	 */
+	private function save_post( array $mapped_data, ?int $post_id = null ): int|false {
+		if ( $post_id ) {
+			$mapped_data['ID'] = $post_id;
+			$result = wp_update_post( $mapped_data, true );
+		} else {
+			$result = wp_insert_post( $mapped_data, true );
+		}
+		
+		if ( is_wp_error( $result ) ) {
+			$this->log_error( 'save_post', $result->get_error_message() );
+			return false;
+		}
+		
+		return (int) $result;
+	}
+
+	/**
+	 * Check if images should be imported
+	 *
+	 * @since 3.0.0
+	 * @return bool True if images should be imported.
+	 */
+	private function should_import_images(): bool {
+		$mode_manager = \BRAGBookGallery\Includes\Mode\Mode_Manager::get_instance();
+		$settings = $mode_manager->get_mode_settings();
+		
+		return (bool) ( $settings['import_images'] ?? true );
+	}
+
+	/**
+	 * Handle sync error with logging and cleanup
+	 *
+	 * @since 3.0.0
+	 * @param Exception $e Exception to handle.
+	 */
+	private function handle_sync_error( Exception $e ): void {
+		$this->log_error( 'sync_error', $e->getMessage() );
+		
+		if ( $this->current_sync_log_id ) {
+			$this->database->update_sync_log(
+				$this->current_sync_log_id,
+				'failed',
+				0,
+				1,
+				'Exception: ' . $e->getMessage()
+			);
+		}
+		
+		delete_transient( 'brag_book_gallery_sync_status' );
+		delete_transient( 'brag_book_gallery_sync_progress' );
+	}
+
+	/**
+	 * Log error message
+	 *
+	 * @since 3.0.0
+	 * @param string $context Error context.
+	 * @param string $message Error message.
+	 */
+	private function log_error( string $context, string $message ): void {
+		$this->error_log[ $context ][] = [
+			'time'    => current_time( 'mysql' ),
+			'message' => $message,
+		];
+		
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( "[BRAGBook Sync Manager] {$context}: {$message}" );
+		}
+	}
+
+	/**
+	 * Track performance metrics
+	 *
+	 * @since 3.0.0
+	 * @param string $operation Operation name.
+	 * @param float  $duration Operation duration.
+	 */
+	private function track_performance( string $operation, float $duration ): void {
+		if ( ! isset( $this->performance_metrics[ $operation ] ) ) {
+			$this->performance_metrics[ $operation ] = [
+				'count'   => 0,
+				'total'   => 0,
+				'min'     => PHP_FLOAT_MAX,
+				'max'     => 0,
+			];
+		}
+		
+		$metrics = &$this->performance_metrics[ $operation ];
+		$metrics['count']++;
+		$metrics['total'] += $duration;
+		$metrics['min'] = min( $metrics['min'], $duration );
+		$metrics['max'] = max( $metrics['max'], $duration );
+		$metrics['average'] = $metrics['total'] / $metrics['count'];
+	}
+
+	/**
+	 * Cleanup old sync logs
+	 *
+	 * @since 3.0.0
+	 * @param int $days_old Days to keep logs.
+	 */
+	public function cleanup_old_sync_logs( int $days_old = 30 ): void {
+		$cutoff = date( 'Y-m-d H:i:s', strtotime( "-{$days_old} days" ) );
+		$this->database->delete_old_sync_logs( $cutoff );
+		
+		/**
+		 * Fires after sync logs cleanup.
+		 *
+		 * @since 3.0.0
+		 * @param string $cutoff Cutoff date.
+		 * @param int    $days_old Days old.
+		 */
+		do_action( 'brag_book_gallery_sync_logs_cleaned', $cutoff, $days_old );
+	}
+
+	/**
+	 * Get sync progress for AJAX
+	 *
+	 * @since 3.0.0
+	 */
+	public function ajax_get_progress(): void {
+		if ( ! check_ajax_referer( 'brag_book_gallery_sync_progress', 'nonce', false ) ) {
+			wp_send_json_error( 'Security check failed.' );
+		}
+		
+		$progress = get_transient( 'brag_book_gallery_sync_progress' );
+		
+		if ( false === $progress ) {
+			$progress = [
+				'total' => 0,
+				'processed' => 0,
+				'failed' => 0,
+				'current_step' => 'Not running',
+				'percentage' => 0,
+			];
+		}
+		
+		wp_send_json_success( $progress );
+	}
+
+	/**
+	 * Get performance metrics
+	 *
+	 * @since 3.0.0
+	 * @return array<string, mixed> Performance metrics.
+	 */
+	public function get_performance_metrics(): array {
+		return $this->performance_metrics;
 	}
 }

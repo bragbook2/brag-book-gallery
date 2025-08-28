@@ -9,7 +9,9 @@
  * @since 3.0.0
  */
 
-namespace BragBookGallery\Admin;
+namespace BRAGBookGallery\Includes\Admin;
+
+use BRAGBookGallery\Includes\Admin\Debug_Tools;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -75,15 +77,7 @@ class Debug_Tools {
 	 * @return void
 	 */
 	private function register_tools(): void {
-		// Load tool classes
-		require_once __DIR__ . '/debug-tools/class-gallery-checker.php';
-		require_once __DIR__ . '/debug-tools/class-rewrite-debug.php';
-		require_once __DIR__ . '/debug-tools/class-rewrite-fix.php';
-		require_once __DIR__ . '/debug-tools/class-rewrite-flush.php';
-		require_once __DIR__ . '/debug-tools/class-cache-management.php';
-		require_once __DIR__ . '/debug-tools/class-system-info.php';
-
-		// Initialize tools
+		// Initialize tools - classes are loaded via autoloader
 		$this->tools['gallery-checker']   = new Debug_Tools\Gallery_Checker();
 		$this->tools['rewrite-debug']     = new Debug_Tools\Rewrite_Debug();
 		$this->tools['rewrite-fix']       = new Debug_Tools\Rewrite_Fix();

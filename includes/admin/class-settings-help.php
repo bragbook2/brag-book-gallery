@@ -28,7 +28,7 @@ if ( ! defined( 'WPINC' ) ) {
  * **Documentation Sections:**
  * - Quick setup guide with step-by-step instructions
  * - Complete shortcode reference with parameters
- * - Mode comparison table (JavaScript vs Local)
+ * - Mode comparison table (Default vs Local)
  * - Frequently asked questions with solutions
  * - System requirements and compatibility information
  *
@@ -131,7 +131,7 @@ class Settings_Help extends Settings_Base {
 			<!-- Shortcodes -->
 			<div class="brag-book-gallery-section">
 				<h2><?php esc_html_e( 'Available Shortcodes', 'brag-book-gallery' ); ?></h2>
-				
+
 				<div class="brag-book-gallery-card">
 					<h3><?php esc_html_e( 'Main Gallery Shortcode', 'brag-book-gallery' ); ?></h3>
 					<p><code style="display: block; padding: 10px; background: #f0f0f0; margin: 10px 0;">[brag_book_gallery]</code></p>
@@ -178,7 +178,7 @@ class Settings_Help extends Settings_Base {
 			<!-- Common Tasks -->
 			<div class="brag-book-gallery-section">
 				<h2><?php esc_html_e( 'Common Tasks', 'brag-book-gallery' ); ?></h2>
-				
+
 				<div class="brag-book-gallery-card">
 					<h3><?php esc_html_e( 'Clear Gallery Cache', 'brag-book-gallery' ); ?></h3>
 					<p><?php esc_html_e( 'If your gallery isn\'t showing the latest cases:', 'brag-book-gallery' ); ?></p>
@@ -186,25 +186,6 @@ class Settings_Help extends Settings_Base {
 						<li><?php esc_html_e( 'Go to', 'brag-book-gallery' ); ?> <a href="<?php echo esc_url( admin_url( 'admin.php?page=brag-book-gallery-settings&tab=javascript' ) ); ?>"><?php esc_html_e( 'JavaScript Settings', 'brag-book-gallery' ); ?></a></li>
 						<li><?php esc_html_e( 'Click the "Clear API Cache" button', 'brag-book-gallery' ); ?></li>
 						<li><?php esc_html_e( 'Refresh your gallery page', 'brag-book-gallery' ); ?></li>
-					</ol>
-				</div>
-
-				<div class="brag-book-gallery-card">
-					<h3><?php esc_html_e( 'Enable Nudity Warnings', 'brag-book-gallery' ); ?></h3>
-					<ol>
-						<li><?php esc_html_e( 'Go to', 'brag-book-gallery' ); ?> <a href="<?php echo esc_url( admin_url( 'admin.php?page=brag-book-gallery-settings&tab=javascript' ) ); ?>"><?php esc_html_e( 'JavaScript Settings', 'brag-book-gallery' ); ?></a></li>
-						<li><?php esc_html_e( 'Toggle "Enable Nudity Warning" to ON', 'brag-book-gallery' ); ?></li>
-						<li><?php esc_html_e( 'Save settings', 'brag-book-gallery' ); ?></li>
-					</ol>
-				</div>
-
-				<div class="brag-book-gallery-card">
-					<h3><?php esc_html_e( 'Customize Landing Page', 'brag-book-gallery' ); ?></h3>
-					<ol>
-						<li><?php esc_html_e( 'Go to', 'brag-book-gallery' ); ?> <a href="<?php echo esc_url( admin_url( 'admin.php?page=brag-book-gallery-settings&tab=javascript' ) ); ?>"><?php esc_html_e( 'JavaScript Settings', 'brag-book-gallery' ); ?></a></li>
-						<li><?php esc_html_e( 'Edit the "Landing Page Text" field', 'brag-book-gallery' ); ?></li>
-						<li><?php esc_html_e( 'You can use HTML and shortcodes here', 'brag-book-gallery' ); ?></li>
-						<li><?php esc_html_e( 'Save settings', 'brag-book-gallery' ); ?></li>
 					</ol>
 				</div>
 			</div>
@@ -216,7 +197,7 @@ class Settings_Help extends Settings_Base {
 				<div class="brag-book-gallery-card">
 					<h3><?php esc_html_e( '🔴 Gallery URLs Return 404 Errors', 'brag-book-gallery' ); ?></h3>
 					<p><?php esc_html_e( 'This is the most common issue. Here\'s how to fix it:', 'brag-book-gallery' ); ?></p>
-					
+
 					<h4><?php esc_html_e( 'Quick Fix:', 'brag-book-gallery' ); ?></h4>
 					<ol>
 						<li><?php esc_html_e( 'Go to Settings → Permalinks', 'brag-book-gallery' ); ?></li>
@@ -277,57 +258,87 @@ location ~ ^/gallery/([^/]+)/? {
 						</li>
 					</ol>
 				</div>
-
-				<div class="brag-book-gallery-card">
-					<h3><?php esc_html_e( '🟢 Performance Optimization', 'brag-book-gallery' ); ?></h3>
-					<h4><?php esc_html_e( 'Speed up your gallery:', 'brag-book-gallery' ); ?></h4>
-					<ul style="list-style: disc; margin-left: 20px;">
-						<li><?php esc_html_e( 'Enable caching in JavaScript Settings (1 hour recommended)', 'brag-book-gallery' ); ?></li>
-						<li><?php esc_html_e( 'Use progressive loading (loads 10 cases initially)', 'brag-book-gallery' ); ?></li>
-						<li><?php esc_html_e( 'Optimize images in your BRAG book account before uploading', 'brag-book-gallery' ); ?></li>
-						<li><?php esc_html_e( 'Consider using a CDN like Cloudflare', 'brag-book-gallery' ); ?></li>
-						<li><?php esc_html_e( 'Enable lazy loading for images (enabled by default)', 'brag-book-gallery' ); ?></li>
-					</ul>
-				</div>
 			</div>
 
 			<!-- FAQs -->
 			<div class="brag-book-gallery-section">
 				<h2><?php esc_html_e( 'Frequently Asked Questions', 'brag-book-gallery' ); ?></h2>
 
-				<div class="brag-book-gallery-faq">
-					<h3><?php esc_html_e( 'Q: How do I find my procedure slugs for the carousel shortcode?', 'brag-book-gallery' ); ?></h3>
-					<p><?php esc_html_e( 'A: Visit your gallery page and look at the URLs when you click on a procedure. The slug is the last part of the URL. For example, in "/gallery/breast-augmentation/", the slug is "breast-augmentation".', 'brag-book-gallery' ); ?></p>
-				</div>
+				<div class="brag-book-gallery-faq-container">
+					<details class="brag-book-gallery-accordion-item">
+						<summary><?php esc_html_e( 'How do I find my procedure slugs for the carousel shortcode?', 'brag-book-gallery' ); ?></summary>
+						<div class="brag-book-gallery-accordion-content">
+							<p><?php esc_html_e( 'Visit your gallery page and look at the URLs when you click on a procedure. The slug is the last part of the URL. For example, in "/gallery/breast-augmentation/", the slug is "breast-augmentation".', 'brag-book-gallery' ); ?></p>
+						</div>
+					</details>
 
-				<div class="brag-book-gallery-faq">
-					<h3><?php esc_html_e( 'Q: Can I have multiple galleries on different pages?', 'brag-book-gallery' ); ?></h3>
-					<p><?php esc_html_e( 'A: Yes! You can use the [brag_book_gallery] shortcode on multiple pages. Each can have different Website Property IDs if needed.', 'brag-book-gallery' ); ?></p>
-				</div>
+					<details class="brag-book-gallery-accordion-item">
+						<summary><?php esc_html_e( 'Can I have multiple galleries on different pages?', 'brag-book-gallery' ); ?></summary>
+						<div class="brag-book-gallery-accordion-content">
+							<p><?php esc_html_e( 'Yes! You can use the [brag_book_gallery] shortcode on multiple pages. Each can have different Website Property IDs if needed.', 'brag-book-gallery' ); ?></p>
+						</div>
+					</details>
 
-				<div class="brag-book-gallery-faq">
-					<h3><?php esc_html_e( 'Q: How often does the gallery update with new cases?', 'brag-book-gallery' ); ?></h3>
-					<p><?php esc_html_e( 'A: The gallery caches data for 1 hour by default. New cases will appear automatically after the cache expires, or you can manually clear the cache to see updates immediately.', 'brag-book-gallery' ); ?></p>
-				</div>
+					<details class="brag-book-gallery-accordion-item">
+						<summary><?php esc_html_e( 'How often does the gallery update with new cases?', 'brag-book-gallery' ); ?></summary>
+						<div class="brag-book-gallery-accordion-content">
+							<p><?php esc_html_e( 'The gallery caches data for 1 hour by default. New cases will appear automatically after the cache expires, or you can manually clear the cache to see updates immediately.', 'brag-book-gallery' ); ?></p>
+						</div>
+					</details>
 
-				<div class="brag-book-gallery-faq">
-					<h3><?php esc_html_e( 'Q: Can I customize the gallery colors and styling?', 'brag-book-gallery' ); ?></h3>
-					<p><?php esc_html_e( 'A: Yes! The plugin uses CSS classes prefixed with "brag-book-gallery-". You can add custom CSS in your theme or using the WordPress Customizer → Additional CSS.', 'brag-book-gallery' ); ?></p>
-				</div>
+					<details class="brag-book-gallery-accordion-item">
+						<summary><?php esc_html_e( 'Can I customize the gallery colors and styling?', 'brag-book-gallery' ); ?></summary>
+						<div class="brag-book-gallery-accordion-content">
+							<p><?php esc_html_e( 'Yes! The plugin uses CSS classes prefixed with "brag-book-gallery-". You can add custom CSS in your theme or using the WordPress Customizer → Additional CSS.', 'brag-book-gallery' ); ?></p>
+						</div>
+					</details>
 
-				<div class="brag-book-gallery-faq">
-					<h3><?php esc_html_e( 'Q: What\'s the difference between JavaScript and Local mode?', 'brag-book-gallery' ); ?></h3>
-					<p><?php esc_html_e( 'A: JavaScript mode (recommended) loads data directly from the BRAG book API and stays in sync. Local mode imports cases into your WordPress database for offline access but requires manual syncing.', 'brag-book-gallery' ); ?></p>
-				</div>
+					<details class="brag-book-gallery-accordion-item">
+						<summary><?php esc_html_e( 'What\'s the difference between Default and Local mode?', 'brag-book-gallery' ); ?></summary>
+						<div class="brag-book-gallery-accordion-content">
+							<p><?php esc_html_e( 'Default mode (recommended) loads data directly from the BRAG book API and stays in sync. Local mode imports cases into your WordPress database for offline access but requires manual syncing.', 'brag-book-gallery' ); ?></p>
+						</div>
+					</details>
 
-				<div class="brag-book-gallery-faq">
-					<h3><?php esc_html_e( 'Q: How do I enable the consultation form?', 'brag-book-gallery' ); ?></h3>
-					<p><?php esc_html_e( 'A: Go to Consultation Settings and configure your form preferences. The consultation button will automatically appear on gallery pages and case details.', 'brag-book-gallery' ); ?></p>
+					<details class="brag-book-gallery-accordion-item">
+						<summary><?php esc_html_e( 'How do I enable the consultation form?', 'brag-book-gallery' ); ?></summary>
+						<div class="brag-book-gallery-accordion-content">
+							<p><?php esc_html_e( 'Go to Consultation Settings and configure your form preferences. The consultation button will automatically appear on gallery pages and case details.', 'brag-book-gallery' ); ?></p>
+						</div>
+					</details>
+
+					<details class="brag-book-gallery-accordion-item">
+						<summary><?php esc_html_e( 'How do I use Custom CSS for additional styling?', 'brag-book-gallery' ); ?></summary>
+						<div class="brag-book-gallery-accordion-content">
+							<p><?php esc_html_e( 'Navigate to General Settings and scroll down to the Custom CSS section. The built-in CodeMirror editor provides syntax highlighting and validation. Your custom CSS is automatically applied to all gallery pages and shortcodes.', 'brag-book-gallery' ); ?></p>
+						</div>
+					</details>
+
+					<details class="brag-book-gallery-accordion-item">
+						<summary><?php esc_html_e( 'What should I do if my gallery isn\'t displaying?', 'brag-book-gallery' ); ?></summary>
+						<div class="brag-book-gallery-accordion-content">
+							<p><?php esc_html_e( 'First, check that your API credentials are configured in API Settings. Then visit Debug Tools → Gallery Checker to verify your page setup. If issues persist, try clearing the cache and flushing rewrite rules from the Debug Tools.', 'brag-book-gallery' ); ?></p>
+						</div>
+					</details>
+
+					<details class="brag-book-gallery-accordion-item">
+						<summary><?php esc_html_e( 'How can I display a specific procedure\'s cases?', 'brag-book-gallery' ); ?></summary>
+						<div class="brag-book-gallery-accordion-content">
+							<p><?php esc_html_e( 'Use the carousel shortcode with the procedure parameter: [brag_book_carousel procedure="procedure-slug" limit="5"]. You can find procedure slugs by visiting your gallery and checking the URL when filtering by a procedure.', 'brag-book-gallery' ); ?></p>
+						</div>
+					</details>
+
+					<details class="brag-book-gallery-accordion-item">
+						<summary><?php esc_html_e( 'Can I show/hide specific elements in the gallery?', 'brag-book-gallery' ); ?></summary>
+						<div class="brag-book-gallery-accordion-content">
+							<p><?php esc_html_e( 'Yes! In General Settings, you can control various display options including: grid layout toggle, sharing buttons, image display mode (single or before/after), and more. You can also use Custom CSS to hide specific elements.', 'brag-book-gallery' ); ?></p>
+						</div>
+					</details>
 				</div>
 			</div>
 
-			<!-- Support -->
-			<div class="brag-book-gallery-section">
+			<!-- Support - Hidden for Release 3.2.0-->
+			<div class="brag-book-gallery-section" style="display:none;">
 				<h2><?php esc_html_e( 'Support & Resources', 'brag-book-gallery' ); ?></h2>
 				<div class="brag-book-gallery-grid">
 					<div class="brag-book-gallery-card">
@@ -414,7 +425,7 @@ location ~ ^/gallery/([^/]+)/? {
 									<?php
 									$api_token = get_option( 'brag_book_gallery_api_token' );
 									$website_property_id = get_option( 'brag_book_gallery_website_property_id' );
-									
+
 									if ( $api_token && $website_property_id ) {
 										echo '<span style="color: #46b450;">✓</span> ';
 										esc_html_e( 'Configured', 'brag-book-gallery' );
@@ -427,7 +438,7 @@ location ~ ^/gallery/([^/]+)/? {
 							</tr>
 						</tbody>
 					</table>
-					
+
 					<div style="margin-top: 20px;">
 						<p><strong><?php esc_html_e( 'Quick Actions:', 'brag-book-gallery' ); ?></strong></p>
 						<p>
