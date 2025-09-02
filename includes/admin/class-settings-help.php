@@ -310,7 +310,7 @@ location ~ ^/gallery/([^/]+)/? {
 					<details class="brag-book-gallery-accordion-item">
 						<summary><?php esc_html_e( 'How do I use Custom CSS for additional styling?', 'brag-book-gallery' ); ?></summary>
 						<div class="brag-book-gallery-accordion-content">
-							<p><?php esc_html_e( 'Navigate to General Settings and scroll down to the Custom CSS section. The built-in CodeMirror editor provides syntax highlighting and validation. Your custom CSS is automatically applied to all gallery pages and shortcodes.', 'brag-book-gallery' ); ?></p>
+							<p><?php esc_html_e( 'Navigate to General Settings and scroll down to the Custom CSS section. The built-in Monaco Editor provides advanced features like IntelliSense, syntax highlighting, error checking, and auto-completion. Your custom CSS is automatically applied to all gallery pages and shortcodes.', 'brag-book-gallery' ); ?></p>
 						</div>
 					</details>
 

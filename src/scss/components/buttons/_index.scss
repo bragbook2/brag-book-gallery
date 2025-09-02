@@ -71,6 +71,26 @@
 	}
 }
 
+.brag-book-gallery-favorite-button,
+.brag-book-gallery-share-button {
+	background: transparent;
+
+	svg {
+		color: white;
+	}
+}
+
+.brag-book-gallery-favorite-button {
+	// SVG attributes are set inline in JavaScript
+}
+
+.brag-book-gallery-share-button {
+	svg {
+		fill: white;
+		color: white;
+	}
+}
+
 .brag-book-gallery-favorite-button[data-favorited=true] {
 	opacity: 1;
 
@@ -84,4 +104,36 @@
 	align-items: center;
 	justify-content: center;
 	margin-block: var(--wp--custom--brag-book-gallery--spacer--lg,16px);
+}
+
+.brag-book-load-more-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 12px 32px;
+	background: #fff;
+	color: #6b7280;
+	border: 1px solid #e5e7eb;
+	border-radius: 8px;
+	font-size: 15px;
+	font-weight: 500;
+	cursor: pointer;
+	transition: all .15s ease;
+	box-shadow: 0 1px 2px 0 rgba(0,0,0,.05);
+	font-family: inherit;
+
+	&:hover:not(:disabled) {
+		background: #f9fafb;
+		border-color: #d1d5db;
+		box-shadow: 0 4px 6px -1px rgba(0,0,0,.1),0 2px 4px -1px rgba(0,0,0,.06)
+	}
+
+	&:disabled {
+		opacity: .6;
+		cursor: not-allowed
+	}
+
+	&:active:not(:disabled) {
+		box-shadow: 0 1px 2px 0 rgba(0,0,0,.05)
+	}
 }

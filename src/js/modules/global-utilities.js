@@ -57,8 +57,6 @@ window.bragBookProcedureFilters = {
  */
 window.initializeProcedureFilters = function() {
 	const details = document.getElementById('procedure-filters-details');
-	console.log('Initializing procedure filters, details element:', details);
-	console.log('Complete dataset available:', window.bragBookGalleryConfig?.completeDataset?.length || 0, 'cases');
 	if (details && !details.dataset.initialized) {
 		// Generate filter options which will handle showing/hiding
 		generateProcedureFilterOptions();
@@ -80,16 +78,13 @@ window.generateProcedureFilterOptions = function() {
 	// Initialize the complete dataset from config if not already set
 	if (!window.bragBookCompleteDataset && window.bragBookGalleryConfig && window.bragBookGalleryConfig.completeDataset) {
 		window.bragBookCompleteDataset = window.bragBookGalleryConfig.completeDataset;
-		console.log('Initialized complete dataset with', window.bragBookCompleteDataset.length, 'cases');
 	} else if (!window.bragBookCompleteDataset) {
 		console.warn('Complete dataset not available from config');
-		console.log('Config object:', window.bragBookGalleryConfig);
 	}
 
 	// First try to use the complete dataset if available
 	let cards;
 	if (window.bragBookCompleteDataset && window.bragBookCompleteDataset.length > 0) {
-		console.log('Using complete dataset for filters:', window.bragBookCompleteDataset.length, 'cases');
 		// Use the complete dataset for filter generation
 		const filterData = {
 			age: new Set(),
@@ -148,9 +143,7 @@ window.generateProcedureFilterOptions = function() {
 	}
 
 	// Fallback to reading from visible cards if no complete dataset
-	console.log('Falling back to DOM cards for filters');
 	cards = document.querySelectorAll('.brag-book-gallery-case-card[data-card="true"]');
-	console.log('Found', cards.length, 'cards in DOM');
 	const filterData = {
 		age: new Set(),
 		gender: new Set(),
@@ -238,7 +231,6 @@ window.generateProcedureFilterOptions = function() {
  * @param {Object} filterData - Categorized filter options
  */
 window.generateFilterHTML = function(container, filterData) {
-	console.log('generateFilterHTML called with:', filterData);
 
 	// Build filter HTML
 	let html = '';
@@ -350,16 +342,12 @@ window.generateFilterHTML = function(container, filterData) {
 		html += '</details>';
 	}
 
-	console.log('Generated HTML length:', html.length);
-	console.log('HTML preview:', html.substring(0, 200) + (html.length > 200 ? '...' : ''));
-
 	container.innerHTML = html || '<p>No filters available</p>';
 
 	// Add event listeners to all checkboxes
 	const filterCheckboxes = container.querySelectorAll('input[type="checkbox"]');
 	filterCheckboxes.forEach(checkbox => {
 		checkbox.addEventListener('change', function() {
-			console.log('Filter changed:', this.dataset.filterType, '=', this.value, 'checked:', this.checked);
 			applyProcedureFilters();
 		});
 	});
@@ -368,7 +356,6 @@ window.generateFilterHTML = function(container, filterData) {
 	const details = document.getElementById('procedure-filters-details');
 	if (details) {
 		const hasFilters = html && html !== '<p>No filters available</p>';
-		console.log('Has filters:', hasFilters);
 		if (hasFilters) {
 			details.style.display = '';
 		} else {
@@ -382,9 +369,7 @@ window.generateFilterHTML = function(container, filterData) {
  * Handles both complete dataset filtering and DOM-based filtering
  */
 window.applyProcedureFilters = function() {
-	console.log('Applying procedure filters...');
 	const checkboxes = document.querySelectorAll('.brag-book-gallery-filter-option input:checked');
-	console.log('Checked filters:', checkboxes.length);
 
 	// Reset filter state
 	window.bragBookProcedureFilters = {
@@ -399,13 +384,10 @@ window.applyProcedureFilters = function() {
 	checkboxes.forEach(checkbox => {
 		const filterType = checkbox.dataset.filterType;
 		const value = checkbox.value;
-		console.log('Filter:', filterType, '=', value);
 		if (window.bragBookProcedureFilters[filterType]) {
 			window.bragBookProcedureFilters[filterType].push(value);
 		}
 	});
-
-	console.log('Active filters:', window.bragBookProcedureFilters);
 
 	// Check if any filters are selected
 	const hasActiveFilters = Object.values(window.bragBookProcedureFilters).some(arr => arr.length > 0);
@@ -421,7 +403,7 @@ window.applyProcedureFilters = function() {
 		updateFilteredCount(cards.length, cards.length);
 
 		// Show Load More button if it exists since no filters are active
-		const loadMoreBtn = document.querySelector('button[onclick*="loadMoreCases"]') || 
+		const loadMoreBtn = document.querySelector('button[onclick*="loadMoreCases"]') ||
 						   document.querySelector('.brag-book-gallery-load-more button');
 		const loadMoreContainer = loadMoreBtn ? (loadMoreBtn.closest('.brag-book-gallery-load-more-container') || loadMoreBtn.parentElement) : null;
 		if (loadMoreContainer && loadMoreBtn.hasAttribute('data-start-page')) {
@@ -522,29 +504,14 @@ window.applyProcedureFilters = function() {
 			cards = document.querySelectorAll('.brag-book-gallery-case-card, .brag-book-gallery-case-card');
 		}
 
-		console.log('Found cards for filtering:', cards.length);
-
 		let visibleCount = 0;
 		cards.forEach((card, index) => {
 			let show = true;
-
-			// Debug card data
-			if (index === 0) {
-				console.log('First card data attributes:', {
-					age: card.dataset.age,
-					gender: card.dataset.gender,
-					ethnicity: card.dataset.ethnicity,
-					height: card.dataset.height,
-					weight: card.dataset.weight,
-					card: card.dataset.card
-				});
-			}
 
 			// Check age filter
 			if (window.bragBookProcedureFilters.age.length > 0) {
 				const cardAge = parseInt(card.dataset.age);
 				let ageMatch = false;
-				console.log('Age check for card:', cardAge, 'against filters:', window.bragBookProcedureFilters.age);
 				window.bragBookProcedureFilters.age.forEach(range => {
 					if (range === '18-24' && cardAge >= 18 && cardAge < 25) ageMatch = true;
 					else if (range === '25-34' && cardAge >= 25 && cardAge < 35) ageMatch = true;
@@ -555,7 +522,6 @@ window.applyProcedureFilters = function() {
 				});
 				if (!ageMatch) {
 					show = false;
-					console.log('Age filter failed for card with age:', cardAge);
 				}
 			}
 
@@ -563,12 +529,6 @@ window.applyProcedureFilters = function() {
 			if (show && window.bragBookProcedureFilters.gender.length > 0) {
 				const cardGender = (card.dataset.gender || '').toLowerCase();
 				const filterGenders = window.bragBookProcedureFilters.gender.map(g => g.toLowerCase());
-
-				console.log('Gender check:', {
-					cardGender: cardGender,
-					filterGenders: filterGenders,
-					matches: filterGenders.includes(cardGender)
-				});
 
 				if (!filterGenders.includes(cardGender)) {
 					show = false;
@@ -579,12 +539,6 @@ window.applyProcedureFilters = function() {
 			if (show && window.bragBookProcedureFilters.ethnicity.length > 0) {
 				const cardEthnicity = (card.dataset.ethnicity || '').toLowerCase();
 				const filterEthnicities = window.bragBookProcedureFilters.ethnicity.map(e => e.toLowerCase());
-
-				console.log('Ethnicity check:', {
-					cardEthnicity: cardEthnicity,
-					filterEthnicities: filterEthnicities,
-					matches: filterEthnicities.includes(cardEthnicity)
-				});
 
 				if (!filterEthnicities.includes(cardEthnicity)) {
 					show = false;
@@ -671,7 +625,7 @@ window.applyProcedureFilters = function() {
 		}
 
 		// Hide Load More button when filters are active or no results found
-		const loadMoreBtn = document.querySelector('button[onclick*="loadMoreCases"]') || 
+		const loadMoreBtn = document.querySelector('button[onclick*="loadMoreCases"]') ||
 						   document.querySelector('.brag-book-gallery-load-more button');
 		const loadMoreContainer = loadMoreBtn ? (loadMoreBtn.closest('.brag-book-gallery-load-more-container') || loadMoreBtn.parentElement) : null;
 		if (loadMoreContainer) {
@@ -774,7 +728,7 @@ window.loadFilteredCases = function(matchingCaseIds) {
 	}
 
 	// Hide Load More button when filters are active since we're showing all matching results
-	const loadMoreBtn = document.querySelector('button[onclick*="loadMoreCases"]') || 
+	const loadMoreBtn = document.querySelector('button[onclick*="loadMoreCases"]') ||
 					   document.querySelector('.brag-book-gallery-load-more button');
 	const loadMoreContainer = loadMoreBtn ? (loadMoreBtn.closest('.brag-book-gallery-load-more-container') || loadMoreBtn.parentElement) : null;
 	if (loadMoreContainer) {
@@ -822,7 +776,6 @@ window.updateFilteredCount = function(shown, total) {
  * Clear all active demographic filters and show all cases
  */
 window.clearProcedureFilters = function() {
-	console.log('Clearing all procedure filters');
 
 	const checkboxes = document.querySelectorAll('.brag-book-gallery-filter-option input');
 	checkboxes.forEach(checkbox => {
@@ -859,14 +812,12 @@ window.clearProcedureFilters = function() {
 	// Clear all filter badges from the DOM
 	const badgesContainer = document.querySelector('[data-action="filter-badges"]');
 	if (badgesContainer) {
-		console.log('Clearing filter badges container');
 		badgesContainer.innerHTML = '';
 	}
 
 	// Also remove any individual badges that might exist elsewhere
 	const allBadges = document.querySelectorAll('.brag-book-gallery-filter-badge');
 	allBadges.forEach(badge => {
-		console.log('Removing badge:', badge);
 		badge.remove();
 	});
 
@@ -878,7 +829,6 @@ window.clearProcedureFilters = function() {
 
 	// Trigger any app-level badge updates if the app instance exists
 	if (window.bragBookGalleryApp && typeof window.bragBookGalleryApp.updateDemographicBadges === 'function') {
-		console.log('Calling app updateDemographicBadges with empty filters');
 		window.bragBookGalleryApp.updateDemographicBadges({
 			age: [],
 			gender: [],
@@ -890,7 +840,6 @@ window.clearProcedureFilters = function() {
 
 	// Also call the global update function if it exists
 	if (typeof window.updateDemographicFilterBadges === 'function') {
-		console.log('Calling global updateDemographicFilterBadges with empty filters');
 		window.updateDemographicFilterBadges({
 			age: [],
 			gender: [],
@@ -901,7 +850,7 @@ window.clearProcedureFilters = function() {
 	}
 
 	// Show Load More button again if it exists and has more pages
-	const loadMoreBtn = document.querySelector('button[onclick*="loadMoreCases"]') || 
+	const loadMoreBtn = document.querySelector('button[onclick*="loadMoreCases"]') ||
 					   document.querySelector('.brag-book-gallery-load-more button');
 	const loadMoreContainer = loadMoreBtn ? (loadMoreBtn.closest('.brag-book-gallery-load-more-container') || loadMoreBtn.parentElement) : null;
 	if (loadMoreContainer && loadMoreBtn && loadMoreBtn.hasAttribute('data-start-page')) {
@@ -988,7 +937,6 @@ window.loadCaseDetailsWithName = function(caseId, procedureId, procedureSlug, pr
 		const caseCard = document.querySelector(`.brag-book-gallery-case-card[data-case-id="${caseId}"]`);
 		if (caseCard && caseCard.dataset.procedureIds) {
 			procedureIds = caseCard.dataset.procedureIds;
-			console.log('Got procedure IDs from case card:', procedureIds);
 		}
 	}
 
@@ -1034,12 +982,12 @@ window.loadCaseDetailsWithName = function(caseId, procedureId, procedureSlug, pr
 	if (procedureId) {
 		requestParams.procedure_id = procedureId;
 	}
-	
+
 	// Add procedure slug if provided (for display context)
 	if (procedureSlug) {
 		requestParams.procedure_slug = procedureSlug;
 	}
-	
+
 	// Add procedure name if provided (for display)
 	if (procedureName) {
 		requestParams.procedure_name = procedureName;
@@ -1062,7 +1010,7 @@ window.loadCaseDetailsWithName = function(caseId, procedureId, procedureSlug, pr
 		.then(data => {
 			if (data.success) {
 				galleryContent.innerHTML = data.data.html;
-				
+
 				// Scroll to top of gallery content area smoothly after content loads
 				const wrapper = document.querySelector('.brag-book-gallery-wrapper');
 				if (wrapper) {
@@ -1106,7 +1054,6 @@ window.loadMoreCases = function(button) {
 	// Get all currently loaded case IDs to prevent duplicates
 	const loadedCases = document.querySelectorAll('[data-case-id]');
 	const loadedIds = Array.from(loadedCases).map(el => el.getAttribute('data-case-id')).filter(Boolean);
-	console.log('Currently loaded case IDs:', loadedIds.length, 'cases');
 
 	// Get the nonce from the localized script data
 	const nonce = window.bragBookGalleryConfig?.nonce || '';
@@ -1129,7 +1076,6 @@ window.loadMoreCases = function(button) {
 	})
 		.then(response => response.json())
 		.then(data => {
-			console.log('Load More Response:', data);
 			if (data.success) {
 				// Find the cases grid container
 				let container = document.querySelector('.brag-book-gallery-case-grid');
@@ -1142,8 +1088,6 @@ window.loadMoreCases = function(button) {
 				}
 
 				if (container) {
-					console.log('Adding HTML to container. HTML length:', data.data.html ? data.data.html.length : 0);
-					console.log('Debug info:', data.data.debug);
 					if (data.data.html) {
 						// Find the last case card in the grid
 						const lastCard = container.querySelector('.brag-book-gallery-case-card:last-child');
@@ -1154,7 +1098,6 @@ window.loadMoreCases = function(button) {
 							// If no cards exist, add to the container
 							container.insertAdjacentHTML('beforeend', data.data.html);
 						}
-						console.log('Cases in container after insert:', container.querySelectorAll('[data-case-id]').length);
 					} else {
 						console.error('No HTML received from server');
 					}
@@ -1172,8 +1115,6 @@ window.loadMoreCases = function(button) {
 					button.disabled = false;
 					button.textContent = originalText;
 				} else {
-					// No more cases or no new cases loaded (all were duplicates), hide the button
-					console.log('Hiding load more button - hasMore:', data.data.hasMore, 'newCasesLoaded:', newCasesLoaded);
 					const loadMoreContainer = button.closest('.brag-book-gallery-load-more-container') || button.parentElement;
 					if (loadMoreContainer) {
 						loadMoreContainer.style.display = 'none';
@@ -1271,7 +1212,7 @@ window.initInfiniteScroll = function() {
 			if (isLoading) return;
 
 			// Find the Load More button - look for button with onclick="loadMoreCases(this)"
-			const loadMoreButton = document.querySelector('button[onclick*="loadMoreCases"]') || 
+			const loadMoreButton = document.querySelector('button[onclick*="loadMoreCases"]') ||
 								   document.querySelector('.brag-book-gallery-load-more button');
 			if (!loadMoreButton || loadMoreButton.disabled || loadMoreButton.style.display === 'none') {
 				return;
@@ -1367,9 +1308,10 @@ document.addEventListener('DOMContentLoaded', function() {
 		// Ensure the complete dataset is available
 		if (!window.bragBookCompleteDataset && window.bragBookGalleryConfig && window.bragBookGalleryConfig.completeDataset) {
 			window.bragBookCompleteDataset = window.bragBookGalleryConfig.completeDataset;
-			console.log('Initialized bragBookCompleteDataset with', window.bragBookCompleteDataset.length, 'cases');
 		}
 		initializeProcedureFilters();
+
+		// Case navigation is now handled with anchor links, no JavaScript needed
 
 		// Check if we need to load a case on initial page load
 		const wrapper = document.querySelector('.brag-book-gallery-wrapper');
@@ -1380,10 +1322,10 @@ document.addEventListener('DOMContentLoaded', function() {
 			const pathSegments = window.location.pathname.split('/').filter(s => s);
 			// Find the segment before the last one (case ID)
 			const procedureSlug = pathSegments.length > 2 ? pathSegments[pathSegments.length - 2] : '';
-			
+
 			// Try to get the procedure name from the sidebar data
 			let procedureName = '';
-			
+
 			// First try to get from active sidebar link (if it exists and is already marked active)
 			const activeLink = document.querySelector(`.brag-book-gallery-nav-link[data-procedure="${procedureSlug}"]`);
 			if (activeLink) {
@@ -1392,7 +1334,7 @@ document.addEventListener('DOMContentLoaded', function() {
 					procedureName = label.textContent.trim();
 				}
 			}
-			
+
 			// If not found in DOM, lookup in sidebar data
 			if (!procedureName && window.bragBookGalleryConfig && window.bragBookGalleryConfig.sidebarData) {
 				const sidebarData = window.bragBookGalleryConfig.sidebarData;
@@ -1418,7 +1360,6 @@ document.addEventListener('DOMContentLoaded', function() {
 					procedureIds = caseCard.dataset.procedureIds;
 				}
 
-				console.log('Auto-loading case on page load:', caseId, 'for procedure:', procedureSlug, 'with name:', procedureName, 'and IDs:', procedureIds);
 				window.loadCaseDetailsWithName(caseId, '', procedureSlug, procedureName, procedureIds);
 			}, 200);
 		}

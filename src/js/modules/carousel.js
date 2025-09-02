@@ -56,6 +56,9 @@ class Carousel {
 	}
 
 	addShareButtons() {
+		// Check if this is a standalone carousel (not part of the main gallery)
+		const isStandaloneCarousel = !this.wrapper.closest('.brag-book-gallery-wrapper');
+		
 		// Add share buttons to all carousel items (preserve existing images and links)
 		const slides = this.track.querySelectorAll(this.options.slideSelector);
 
@@ -83,7 +86,7 @@ class Carousel {
 					// Try to determine procedure slug from data or context
 					const procedureSlug = slide.dataset.procedureSlug || 'procedure';
 					const basePath = window.location.pathname.replace(/\/[^\/]+\/[^\/]+\/?$/, '');
-					const caseUrl = `${basePath}/${procedureSlug}/${caseId}`.replace(/\/+/g, '/');
+					const caseUrl = `${basePath}/${procedureSlug}/${caseId}/`.replace(/\/+/g, '/');
 
 					const link = document.createElement('a');
 					link.href = caseUrl;
@@ -110,6 +113,11 @@ class Carousel {
 				}
 			}
 
+			// Skip action buttons for standalone carousels
+			if (isStandaloneCarousel) {
+				return;
+			}
+
 			// Ensure item actions container exists
 			let actionsContainer = slide.querySelector('.brag-book-gallery-item-actions');
 			if (!actionsContainer) {
@@ -130,7 +138,7 @@ class Carousel {
 					heartBtn.dataset.itemId = slide.dataset.slide;
 					heartBtn.setAttribute('aria-label', 'Add to favorites');
 					heartBtn.innerHTML = `
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg fill="rgba(255, 255, 255, 0.5)" stroke="white" stroke-width="2" viewBox="0 0 24 24">
                             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
                         </svg>
                     `;

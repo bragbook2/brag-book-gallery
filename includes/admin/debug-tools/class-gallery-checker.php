@@ -105,10 +105,10 @@ class Gallery_Checker {
 	 */
 	private function get_check_icon( bool $success = true ): string {
 		$color = $success ? '#4caf50' : '#f44336';
-		$path = $success 
+		$path = $success
 			? 'm423.23-309.85 268.92-268.92L650-620.92 423.23-394.15l-114-114L267.08-466l156.15 156.15ZM480.07-100q-78.84 0-148.21-29.92t-120.68-81.21q-51.31-51.29-81.25-120.63Q100-401.1 100-479.93q0-78.84 29.92-148.21t81.21-120.68q51.29-51.31 120.63-81.25Q401.1-860 479.93-860q78.84 0 148.21 29.92t120.68 81.21q51.31 51.29 81.25 120.63Q860-558.9 860-480.07q0 78.84-29.92 148.21t-81.21 120.68q-51.29 51.31-120.63 81.25Q558.9-100 480.07-100Z'
 			: 'M256-213.85 213.85-256l224-224-224-224L256-746.15l224 224 224-224L746.15-704l-224 224 224 224L704-213.85l-224-224-224 224Z';
-		
+
 		return sprintf(
 			'<svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="%s" style="vertical-align: middle; margin-right: 5px;"><path d="%s"/></svg>',
 			esc_attr( $color ),
@@ -170,7 +170,7 @@ class Gallery_Checker {
 				<div id="gallery-rules-display"></div>
 			</div>
 		</div>
-		
+
 		<script>
 		document.addEventListener('DOMContentLoaded', () => {
 			// Helper function for AJAX requests using async/await
@@ -179,7 +179,7 @@ class Gallery_Checker {
 				Object.entries(data).forEach(([key, value]) => {
 					formData.append(key, value);
 				});
-				
+
 				try {
 					const response = await fetch(ajaxurl, {
 						method: 'POST',
@@ -192,26 +192,26 @@ class Gallery_Checker {
 					return { success: false, data: 'Network error' };
 				}
 			};
-			
+
 			// Create gallery page
 			document.getElementById('create-gallery-page')?.addEventListener('click', async function() {
 				if (!confirm('<?php esc_html_e( 'This will create a new page with the [brag_book_gallery] shortcode. Continue?', 'brag-book-gallery' ); ?>')) {
 					return;
 				}
-				
+
 				this.disabled = true;
 				const resultDiv = document.getElementById('gallery-action-result');
 				if (resultDiv) {
 					resultDiv.innerHTML = '<p><?php esc_html_e( 'Creating gallery page...', 'brag-book-gallery' ); ?></p>';
 				}
-				
+
 				const response = await ajaxPost({
 					action: 'brag_book_debug_tool',
 					nonce: '<?php echo wp_create_nonce( 'brag_book_debug_tools' ); ?>',
 					tool: 'gallery-checker',
 					tool_action: 'create_page'
 				});
-				
+
 				if (resultDiv) {
 					if (response.success) {
 						resultDiv.innerHTML = `<div class="notice notice-success"><p>${response.data}</p></div>`;
@@ -222,18 +222,18 @@ class Gallery_Checker {
 				}
 				this.disabled = false;
 			});
-			
+
 			// Update gallery slug
 			document.getElementById('update-gallery-slug')?.addEventListener('click', async function() {
 				const newSlug = prompt('<?php esc_html_e( 'Enter the slug of an existing page that contains [brag_book_gallery]:', 'brag-book-gallery' ); ?>');
 				if (!newSlug) return;
-				
+
 				this.disabled = true;
 				const resultDiv = document.getElementById('gallery-action-result');
 				if (resultDiv) {
 					resultDiv.innerHTML = '<p><?php esc_html_e( 'Updating gallery slug...', 'brag-book-gallery' ); ?></p>';
 				}
-				
+
 				const response = await ajaxPost({
 					action: 'brag_book_debug_tool',
 					nonce: '<?php echo wp_create_nonce( 'brag_book_debug_tools' ); ?>',
@@ -241,7 +241,7 @@ class Gallery_Checker {
 					tool_action: 'update_slug',
 					gallery_slug: newSlug
 				});
-				
+
 				if (resultDiv) {
 					if (response.success) {
 						resultDiv.innerHTML = `<div class="notice notice-success"><p>${response.data}</p></div>`;
@@ -252,7 +252,7 @@ class Gallery_Checker {
 				}
 				this.disabled = false;
 			});
-			
+
 			// Show gallery rules
 			document.getElementById('show-gallery-rules')?.addEventListener('click', async function() {
 				this.disabled = true;
@@ -260,14 +260,14 @@ class Gallery_Checker {
 				if (displayDiv) {
 					displayDiv.innerHTML = '<p><?php esc_html_e( 'Loading rules...', 'brag-book-gallery' ); ?></p>';
 				}
-				
+
 				const response = await ajaxPost({
 					action: 'brag_book_debug_tool',
 					nonce: '<?php echo wp_create_nonce( 'brag_book_debug_tools' ); ?>',
 					tool: 'gallery-checker',
 					tool_action: 'show_rules'
 				});
-				
+
 				if (displayDiv) {
 					if (response.success) {
 						displayDiv.innerHTML = response.data;
@@ -335,25 +335,16 @@ class Gallery_Checker {
 							<span><?php esc_html_e( 'No gallery page configured', 'brag-book-gallery' ); ?></span>
 						</div>
 					<?php endif; ?>
-					
+
 					<?php if ( $page_url || $edit_link ) : ?>
 						<div class="config-actions">
 							<?php if ( $page_url ) : ?>
 								<a href="<?php echo esc_url( $page_url ); ?>" target="_blank" class="config-link">
-									<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-										<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-										<polyline points="15 3 21 3 21 9"></polyline>
-										<line x1="10" y1="14" x2="21" y2="3"></line>
-									</svg>
 									<?php esc_html_e( 'View', 'brag-book-gallery' ); ?>
 								</a>
 							<?php endif; ?>
 							<?php if ( $edit_link ) : ?>
 								<a href="<?php echo esc_url( $edit_link ); ?>" target="_blank" class="config-link">
-									<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-										<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-										<path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-									</svg>
 									<?php esc_html_e( 'Edit', 'brag-book-gallery' ); ?>
 								</a>
 							<?php endif; ?>
@@ -365,7 +356,7 @@ class Gallery_Checker {
 			<!-- Shortcode Status Card -->
 			<div class="config-card">
 				<div class="config-card-header">
-					<div class="config-card-icon <?php echo ( $page && strpos( $page->post_content, '[brag_book_gallery' ) !== false ) ? 'icon-success' : 'icon-warning'; ?>">
+					<div class="config-card-icon <?php echo ( $page && str_contains( $page->post_content, '[' . self::SHORTCODE_NAME ) ) ? 'icon-active' : 'icon-inactive'; ?>">
 						<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 							<polyline points="16 18 22 12 16 6"></polyline>
 							<polyline points="8 6 2 12 8 18"></polyline>
@@ -408,7 +399,7 @@ class Gallery_Checker {
 			<!-- Page Status Card -->
 			<div class="config-card">
 				<div class="config-card-header">
-					<div class="config-card-icon <?php echo ( $page && $page->post_status === 'publish' ) ? 'icon-success' : 'icon-warning'; ?>">
+					<div class="config-card-icon <?php echo ( $page && $page->post_status === 'publish' ) ? 'icon-active' : 'icon-inactive'; ?>">
 						<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 							<circle cx="12" cy="12" r="10"></circle>
 							<polyline points="12 6 12 12 16 14"></polyline>
@@ -426,7 +417,13 @@ class Gallery_Checker {
 						<?php else : ?>
 							<div class="config-item">
 								<span class="config-label"><?php esc_html_e( 'Modified:', 'brag-book-gallery' ); ?></span>
-								<span class="config-value"><?php echo esc_html( human_time_diff( strtotime( $page->post_modified ), current_time( 'timestamp' ) ) . ' ago' ); ?></span>
+								<span class="config-value"><?php 
+									if ( ! empty( $page->post_modified ) && $page->post_modified !== '0000-00-00 00:00:00' ) {
+										echo esc_html( human_time_diff( strtotime( $page->post_modified ), current_time( 'timestamp' ) ) . ' ago' );
+									} else {
+										esc_html_e( 'Unknown', 'brag-book-gallery' );
+									}
+								?></span>
 							</div>
 						<?php endif; ?>
 					<?php else : ?>
@@ -515,7 +512,7 @@ class Gallery_Checker {
 			$shortcode_pattern = '%[' . self::SHORTCODE_NAME . '%';
 			$pages = $wpdb->get_results(
 				$wpdb->prepare(
-					"SELECT ID, post_name, post_title, post_status
+					"SELECT ID, post_name, post_title, post_status, post_modified
 					FROM {$wpdb->posts}
 					WHERE post_content LIKE %s
 					AND post_type = 'page'
@@ -530,65 +527,73 @@ class Gallery_Checker {
 			return;
 		}
 		?>
-		<div class="rewrite-table-wrapper">
-			<table class="rewrite-table pages-table striped">
-				<thead>
-					<tr class="header-row">
-						<th class="header-cell">
-							<span class="header-text"><?php esc_html_e( 'ID', 'brag-book-gallery' ); ?></span>
-						</th>
-						<th class="header-cell">
-							<span class="header-text"><?php esc_html_e( 'Title', 'brag-book-gallery' ); ?></span>
-						</th>
-						<th class="header-cell">
-							<span class="header-text"><?php esc_html_e( 'Slug', 'brag-book-gallery' ); ?></span>
-						</th>
-						<th class="header-cell">
-							<span class="header-text"><?php esc_html_e( 'Status', 'brag-book-gallery' ); ?></span>
-						</th>
-						<th class="header-cell">
-							<span class="header-text"><?php esc_html_e( 'Actions', 'brag-book-gallery' ); ?></span>
-						</th>
-					</tr>
-				</thead>
-				<tbody>
-					<?php foreach ( $pages as $page ) : ?>
-					<tr class="table-row">
-						<td class="data-cell">
-							<span class="data-text"><?php echo esc_html( $page->ID ); ?></span>
-						</td>
-						<td class="data-cell">
-							<span class="data-text"><?php echo esc_html( $page->post_title ); ?></span>
-						</td>
-						<td class="data-cell">
-							<span class="data-text"><code><?php echo esc_html( $page->post_name ); ?></code></span>
-						</td>
-						<td class="data-cell">
-							<span class="data-text"><?php echo esc_html( $page->post_status ); ?></span>
-						</td>
-						<td class="data-cell">
-							<span class="data-text">
-								<?php $view_link = get_permalink( $page->ID ); ?>
-								<?php $edit_link = get_edit_post_link( $page->ID ); ?>
+		<div class="gallery-pages-cards">
+			<?php foreach ( $pages as $page ) : ?>
+				<?php
+				$view_link = get_permalink( $page->ID );
+				$edit_link = get_edit_post_link( $page->ID );
+				$is_published = ( $page->post_status === 'publish' );
+				?>
+				<div class="page-card">
+					<div class="page-card-header">
+						<div class="page-card-icon <?php echo $is_published ? 'icon-active' : 'icon-inactive'; ?>">
+							<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+								<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+								<polyline points="14 2 14 8 20 8"></polyline>
+							</svg>
+						</div>
+						<div class="page-card-title">
+							<h4><?php echo esc_html( $page->post_title ); ?></h4>
+							<span class="page-card-id">#<?php echo esc_html( $page->ID ); ?></span>
+						</div>
+						<div class="page-card-status">
+							<span class="config-status-badge status-<?php echo esc_attr( $page->post_status ); ?>">
+								<?php echo esc_html( ucfirst( $page->post_status ) ); ?>
+							</span>
+						</div>
+					</div>
+					<div class="page-card-content">
+						<div class="config-item">
+							<span class="config-label"><?php esc_html_e( 'Slug:', 'brag-book-gallery' ); ?></span>
+							<code class="config-value">/<?php echo esc_html( $page->post_name ); ?>/</code>
+						</div>
+						<div class="config-item">
+							<span class="config-label"><?php esc_html_e( 'Modified:', 'brag-book-gallery' ); ?></span>
+							<span class="config-value"><?php 
+								if ( ! empty( $page->post_modified ) && $page->post_modified !== '0000-00-00 00:00:00' ) {
+									echo esc_html( human_time_diff( strtotime( $page->post_modified ), current_time( 'timestamp' ) ) . ' ago' );
+								} else {
+									esc_html_e( 'Unknown', 'brag-book-gallery' );
+								}
+							?></span>
+						</div>
+						
+						<?php if ( $view_link || $edit_link ) : ?>
+							<div class="config-actions">
 								<?php if ( $view_link ) : ?>
-									<a href="<?php echo esc_url( $view_link ); ?>" target="_blank">
+									<a href="<?php echo esc_url( $view_link ); ?>" target="_blank" class="config-link">
+										<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+											<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+											<polyline points="15 3 21 3 21 9"></polyline>
+											<line x1="10" y1="14" x2="21" y2="3"></line>
+										</svg>
 										<?php esc_html_e( 'View', 'brag-book-gallery' ); ?>
 									</a>
-									<?php if ( $edit_link ) : ?>
-										|
-									<?php endif; ?>
 								<?php endif; ?>
 								<?php if ( $edit_link ) : ?>
-									<a href="<?php echo esc_url( $edit_link ); ?>" target="_blank">
+									<a href="<?php echo esc_url( $edit_link ); ?>" target="_blank" class="config-link">
+										<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+											<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+											<path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+										</svg>
 										<?php esc_html_e( 'Edit', 'brag-book-gallery' ); ?>
 									</a>
 								<?php endif; ?>
-							</span>
-						</td>
-					</tr>
-					<?php endforeach; ?>
-				</tbody>
-			</table>
+							</div>
+						<?php endif; ?>
+					</div>
+				</div>
+			<?php endforeach; ?>
 		</div>
 
 		<?php if ( ! empty( $pages ) ) : ?>
@@ -630,14 +635,14 @@ class Gallery_Checker {
 			if ( ! current_user_can( 'manage_options' ) ) {
 				throw new Exception( __( 'Insufficient permissions', 'brag-book-gallery' ) );
 			}
-			
+
 			return match ( $action ) {
 				'create_page'  => $this->create_gallery_page(),
 				'update_slug'  => $this->update_gallery_slug( $data['gallery_slug'] ?? '' ),
 				'show_rules'   => $this->show_gallery_rules(),
 				default        => throw new Exception( 'Invalid action: ' . $action ),
 			};
-			
+
 		} catch ( Exception $e ) {
 			error_log( 'Gallery Checker execute error: ' . $e->getMessage() );
 			throw $e;
@@ -673,7 +678,7 @@ class Gallery_Checker {
 				'comment_status' => 'closed',
 				'ping_status'    => 'closed',
 			];
-			
+
 			$page_id = wp_insert_post( $page_data, true );
 
 			if ( is_wp_error( $page_id ) ) {
@@ -683,14 +688,14 @@ class Gallery_Checker {
 			// Add SEO meta fields if they exist
 		$seo_title = get_option( 'brag_book_gallery_seo_page_title', '' );
 		$seo_description = get_option( 'brag_book_gallery_seo_page_description', '' );
-		
+
 		if ( ! empty( $seo_title ) ) {
 			update_post_meta( $page_id, '_yoast_wpseo_title', $seo_title );
 			update_post_meta( $page_id, '_aioseo_title', $seo_title );
 			update_post_meta( $page_id, '_seopress_titles_title', $seo_title );
 			update_post_meta( $page_id, '_rank_math_title', $seo_title );
 		}
-		
+
 		if ( ! empty( $seo_description ) ) {
 			update_post_meta( $page_id, '_yoast_wpseo_metadesc', $seo_description );
 			update_post_meta( $page_id, '_aioseo_description', $seo_description );
@@ -711,7 +716,7 @@ class Gallery_Checker {
 				$page_title,
 				$page_id
 			);
-			
+
 		} catch ( Exception $e ) {
 			error_log( 'Gallery Checker create_gallery_page error: ' . $e->getMessage() );
 			return __( 'Failed to create gallery page', 'brag-book-gallery' );
@@ -776,13 +781,39 @@ class Gallery_Checker {
 		$output = '<div class="rewrite-rules-display">';
 		$output .= '<pre style="background: #f5f5f5; padding: 10px; overflow: auto; max-height: 400px; font-family: monospace;">';
 
+		// Debug info
+		$output .= sprintf(
+			"<strong>Debug Info:</strong>\n" .
+			"Gallery Slug: %s\n" .
+			"Total Rewrite Rules: %d\n\n",
+			$brag_book_gallery_page_slug ? htmlspecialchars( $brag_book_gallery_page_slug ) : 'Not configured',
+			is_array( $rules ) ? count( $rules ) : 0
+		);
+
 		$found = false;
 		$rule_count = 0;
-		
+
 		// Ensure $rules is an array before iterating
 		if ( is_array( $rules ) ) {
 			foreach ( $rules as $pattern => $query ) {
-				if ( $brag_book_gallery_page_slug && str_starts_with( $pattern, $brag_book_gallery_page_slug ) ) {
+				// Look for gallery-related rules more broadly
+				$is_gallery_rule = false;
+				
+				if ( $brag_book_gallery_page_slug ) {
+					// Check if pattern starts with slug or contains gallery slug
+					$is_gallery_rule = str_starts_with( $pattern, $brag_book_gallery_page_slug ) ||
+					                  str_contains( $pattern, $brag_book_gallery_page_slug ) ||
+					                  str_contains( $query, $brag_book_gallery_page_slug );
+				}
+				
+				// Also show any brag_book related rules
+				if ( ! $is_gallery_rule ) {
+					$is_gallery_rule = str_contains( $pattern, 'brag' ) || 
+					                  str_contains( $query, 'brag' ) ||
+					                  str_contains( $query, 'gallery' );
+				}
+				
+				if ( $is_gallery_rule ) {
 					$output .= sprintf(
 						"<span style='color: #2271b1;'>%s</span>\n    => <span style='color: #135e96;'>%s</span>\n\n",
 						htmlspecialchars( $pattern ),
@@ -790,7 +821,7 @@ class Gallery_Checker {
 					);
 					$found = true;
 					$rule_count++;
-					
+
 					if ( $rule_count >= self::MAX_RULE_DISPLAY ) {
 						$output .= sprintf(
 							'<em>%s</em>',

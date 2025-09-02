@@ -104,68 +104,116 @@ class Settings_Consultation extends Settings_Base {
 
 		$this->render_header();
 		?>
-		<div class="brag-book-gallery-content">
-			<?php $this->render_consultation_tabs( $current_view ); ?>
-			
-			<?php if ( $current_view === 'entries' ) : ?>
-				<?php $this->render_consultation_entries(); ?>
-			<?php elseif ( $current_view === 'settings' ) : ?>
-				<?php $this->render_consultation_settings(); ?>
-			<?php elseif ( $current_view === 'stats' ) : ?>
-				<?php $this->render_consultation_stats(); ?>
-			<?php elseif ( $current_view === 'export' ) : ?>
-				<?php $this->render_consultation_export(); ?>
-			<?php endif; ?>
+
+		<!-- Consultation Management with Side Tabs -->
+		<div class="brag-book-gallery-tabbed-section">
+			<?php $this->render_consultation_side_tabs(); ?>
+			<div class="brag-book-gallery-tab-content">
+				<?php $this->render_consultation_tab_content(); ?>
+			</div>
 		</div>
+
+		<script>
+		document.addEventListener('DOMContentLoaded', function() {
+			// Tab switching functionality
+			const tabLinks = document.querySelectorAll('.brag-book-gallery-side-tabs a');
+			const tabPanels = document.querySelectorAll('.brag-book-gallery-tab-panel');
+
+			tabLinks.forEach(link => {
+				link.addEventListener('click', function(e) {
+					e.preventDefault();
+					
+					// Remove active class from all tabs and panels
+					tabLinks.forEach(l => l.classList.remove('active'));
+					tabPanels.forEach(panel => panel.classList.remove('active'));
+					
+					// Add active class to clicked tab
+					this.classList.add('active');
+					
+					// Show corresponding panel
+					const targetId = this.getAttribute('href').substring(1);
+					const targetPanel = document.getElementById(targetId);
+					if (targetPanel) {
+						targetPanel.classList.add('active');
+					}
+				});
+			});
+
+			// Set default active tab based on current view
+			const currentView = new URLSearchParams(window.location.search).get('view') || 'entries';
+			const defaultTab = document.querySelector(`.brag-book-gallery-side-tabs a[href="#${currentView}"]`);
+			const defaultPanel = document.getElementById(currentView);
+			
+			if (defaultTab && defaultPanel) {
+				// Remove any existing active classes
+				tabLinks.forEach(l => l.classList.remove('active'));
+				tabPanels.forEach(panel => panel.classList.remove('active'));
+				
+				// Set active tab and panel
+				defaultTab.classList.add('active');
+				defaultPanel.classList.add('active');
+			}
+		});
+		</script>
+
 		<?php
 		$this->render_footer();
 	}
 
 	/**
-	 * Render consultation-specific tabs
-	 *
-	 * Displays tabs for switching between entries and settings views.
+	 * Render consultation side tabs navigation
 	 *
 	 * @since 3.0.0
-	 * @param string $current_view Current active view
 	 * @return void
 	 */
-	private function render_consultation_tabs( string $current_view ): void {
-		$base_url = admin_url( 'admin.php?page=' . $this->page_slug );
-
+	private function render_consultation_side_tabs(): void {
 		// Get count of consultation entries for badge
 		$entries_count = wp_count_posts( 'form-entries' )->publish ?? 0;
 		?>
-		<div class="brag-book-gallery-tabs">
-			<ul class="brag-book-gallery-tab-list">
-				<li class="brag-book-gallery-tab-item <?php echo $current_view === 'entries' ? 'active' : ''; ?>">
-					<a href="<?php echo esc_url( $base_url . '&view=entries' ); ?>"
-					   class="brag-book-gallery-tab-link">
+		<div class="brag-book-gallery-side-tabs">
+			<ul>
+				<li>
+					<a href="#entries">
 						<?php esc_html_e( 'Entries', 'brag-book-gallery' ); ?>
 						<?php if ( $entries_count > 0 ) : ?>
 							<span class="brag-book-gallery-tab-badge"><?php echo esc_html( $entries_count ); ?></span>
 						<?php endif; ?>
 					</a>
 				</li>
-				<li class="brag-book-gallery-tab-item <?php echo $current_view === 'settings' ? 'active' : ''; ?>">
-					<a href="<?php echo esc_url( $base_url . '&view=settings' ); ?>"
-					   class="brag-book-gallery-tab-link">
-						<?php esc_html_e( 'Settings', 'brag-book-gallery' ); ?>
-					</a>
-				</li>
-				<li class="brag-book-gallery-tab-item <?php echo $current_view === 'stats' ? 'active' : ''; ?>">
-					<a href="<?php echo esc_url( $base_url . '&view=stats' ); ?>"
-					   class="brag-book-gallery-tab-link">
-						<?php esc_html_e( 'Statistics', 'brag-book-gallery' ); ?>
-					</a>
-				</li>
-				<li class="brag-book-gallery-tab-item <?php echo $current_view === 'export' ? 'active' : ''; ?>">
-					<a href="<?php echo esc_url( $base_url . '&view=export' ); ?>"
-					   class="brag-book-gallery-tab-link">
-						<?php esc_html_e( 'Export', 'brag-book-gallery' ); ?>
-					</a>
-				</li>
+				<li><a href="#settings"><?php esc_html_e( 'Settings', 'brag-book-gallery' ); ?></a></li>
+				<li><a href="#stats"><?php esc_html_e( 'Statistics', 'brag-book-gallery' ); ?></a></li>
+				<li><a href="#export"><?php esc_html_e( 'Export', 'brag-book-gallery' ); ?></a></li>
 			</ul>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Render consultation tab content panels
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	private function render_consultation_tab_content(): void {
+		?>
+		<!-- Entries Tab -->
+		<div id="entries" class="brag-book-gallery-tab-panel">
+			<?php $this->render_consultation_entries(); ?>
+		</div>
+
+		<!-- Settings Tab -->
+		<div id="settings" class="brag-book-gallery-tab-panel">
+			<?php $this->render_consultation_settings(); ?>
+		</div>
+
+		<!-- Statistics Tab -->
+		<div id="stats" class="brag-book-gallery-tab-panel">
+			<?php $this->render_consultation_stats(); ?>
+		</div>
+
+		<!-- Export Tab -->
+		<div id="export" class="brag-book-gallery-tab-panel">
+			<?php $this->render_consultation_export(); ?>
 		</div>
 		<?php
 	}

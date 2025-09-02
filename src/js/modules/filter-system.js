@@ -22,7 +22,7 @@ class FilterSystem {
 		this.activeFilters = new Map(); // Currently active filters
 		this.categories = new Map(); // Available filter categories
 		this.procedures = new Map(); // Available procedures by category
-		
+
 		// Store original SEO data for restoration when clearing filters
 		this.originalTitle = document.title;
 		this.originalDescription = document.querySelector('meta[name="description"]')?.content || '';
@@ -50,10 +50,10 @@ class FilterSystem {
 	init() {
 		// Build internal filter index for fast lookups
 		this.indexFilters();
-		
+
 		// Set up all event handlers
 		this.setupEventListeners();
-		
+
 		// Load any existing filter state from URL
 		this.loadStateFromUrl();
 
@@ -256,8 +256,7 @@ class FilterSystem {
 			hasNudity: hasNudity // Store nudity flag
 		});
 
-		// Update filter badges
-		console.log('Updating filter badges after filter activation');
+		// Update filter badges.
 		this.updateFilterBadges();
 
 		// Get the base URL from the gallery wrapper data attribute
@@ -270,8 +269,8 @@ class FilterSystem {
 			basePath = basePath.replace(/\/[^\/]+\/?$/, '');
 		}
 
-		// Create URL appending to current path: /before-after/procedure (no category)
-		const filterUrl = `${basePath}/${procedure}`.replace(/\/+/g, '/');
+		// Create URL appending to current path: /before-after/procedure/ (no category)
+		const filterUrl = `${basePath}/${procedure}/`.replace(/\/+/g, '/');
 
 		// Update browser URL
 		window.history.pushState(
@@ -504,7 +503,7 @@ class FilterSystem {
 		// Get AJAX configuration
 		const ajaxUrl = window.bragBookGalleryConfig?.ajaxUrl || '/wp-admin/admin-ajax.php';
 		const nonce = window.bragBookGalleryConfig?.nonce || '';
-		
+
 		// Get the proper procedure display name from the active link
 		let procedureName = procedure;
 		const activeLink = document.querySelector(`.brag-book-gallery-nav-link[data-procedure="${procedure}"]`);
@@ -534,7 +533,7 @@ class FilterSystem {
 			.then(result => {
 				if (result.success && result.data?.html) {
 					galleryContent.innerHTML = result.data.html;
-					
+
 					// Update page title and meta description if SEO data is provided
 					if (result.data.seo) {
 						if (result.data.seo.title) {
@@ -578,13 +577,9 @@ class FilterSystem {
 	 * Update filter badges display based on active filters
 	 */
 	updateFilterBadges() {
-		console.log('updateFilterBadges called, activeFilters size:', this.activeFilters.size);
 		const badgesContainer = document.querySelector('[data-action="filter-badges"]');
 		const clearAllButton = document.querySelector('[data-action="clear-filters"]');
-		
-		console.log('Badges container found:', !!badgesContainer);
-		console.log('Clear all button found:', !!clearAllButton);
-		
+
 		if (!badgesContainer || !clearAllButton) return;
 
 		// Clear existing procedure badges (but preserve demographic badges)
@@ -593,13 +588,11 @@ class FilterSystem {
 
 		// Check if there are active procedure filters
 		const hasActiveProcedureFilters = this.activeFilters.size > 0;
-		
+
 		if (hasActiveProcedureFilters) {
 			// Add procedure badges
-			console.log('Creating badges for procedure filters:', Array.from(this.activeFilters.entries()));
 			this.activeFilters.forEach((filter, key) => {
 				const badge = this.createFilterBadge(filter.category, filter.procedure, key);
-				console.log('Created badge for:', filter.category, filter.procedure);
 				badgesContainer.appendChild(badge);
 			});
 		}
@@ -607,7 +600,7 @@ class FilterSystem {
 		// Check if there are any active filters (demographic or procedure)
 		const demographicBadges = badgesContainer.querySelectorAll('[data-filter-category]');
 		const hasAnyActiveFilters = hasActiveProcedureFilters || demographicBadges.length > 0;
-		
+
 		// Show/hide clear all button based on any active filters
 		clearAllButton.style.display = hasAnyActiveFilters ? 'inline-block' : 'none';
 	}
@@ -666,7 +659,7 @@ class FilterSystem {
 		const filter = this.activeFilters.get(filterKey);
 		if (filter) {
 			this.activeFilters.delete(filterKey);
-			
+
 			// Remove active class from the corresponding filter link
 			const filterLink = document.querySelector(
 				`[data-category="${filter.category}"][data-procedure="${filter.procedure}"]`

@@ -90,16 +90,17 @@
 		&.server-info-table,
 		&.gallery-config-table,
 		&.verification-table {
-			.setting-label {
-				width: 30%;
-				font-weight: 600;
-				color: #374151;
-				background: #f9fafb;
-				border-right: 1px solid #e5e7eb;
-			}
-			
-			.setting-value {
-				.value-badge {
+			.data-cell {
+				&:first-child {
+					width: 30%;
+					font-weight: 600;
+					color: #374151;
+					background: #f9fafb;
+					border-right: 1px solid #e5e7eb;
+				}
+				
+				.value-badge,
+				.badge {
 					display: inline-block;
 					padding: 4px 10px;
 					background: #eff6ff;
@@ -107,9 +108,24 @@
 					border-radius: 6px;
 					font-size: 13px;
 					font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
+					margin-left: 8px;
+					
+					&.badge-info {
+						background: #eff6ff;
+						color: #1e40af;
+					}
+					
+					&.badge-success {
+						background: #dcfce7;
+						color: #15803d;
+					}
+					
+					&.badge-warning {
+						background: #fef3c7;
+						color: #92400e;
+					}
 				}
 				
-				.value-text,
 				.data-text {
 					color: #4b5563;
 				}

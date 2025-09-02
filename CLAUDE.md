@@ -78,7 +78,7 @@ The plugin follows a modular architecture with clear separation of concerns:
 **Admin** (`includes/admin/`):
 - `Settings_Manager`: Centralized settings management
 - `Settings_*`: Individual settings pages:
-  - `Settings_General`: General settings with Custom CSS editor (WordPress CodeMirror integration)
+  - `Settings_General`: General settings with Custom CSS editor (Monaco Editor integration)
   - `Settings_API`: API configuration
   - `Settings_API_Test`: API testing interface
   - `Settings_Debug`: Debug options
@@ -328,9 +328,10 @@ This approach ensures consistent layout and functionality with the main gallery 
 - Fixed factory reset redirect to correct settings page
 - Custom notice rendering system for controlled placement
 - **Custom CSS Management**:
-  - WordPress CodeMirror editor integration with line numbers and syntax highlighting
+  - Monaco Editor integration with IntelliSense, syntax highlighting, and error checking
+  - Advanced code editing features like auto-completion and formatting
   - Real-time CSS validation and linting
-  - CSS formatting and minification tools
+  - CSS formatting tools with dedicated "Format CSS" button
   - Prevention of duplicate CSS output across shortcodes
   - Centralized CSS injection via Asset_Manager class
   - Security sanitization to prevent XSS attacks
@@ -348,7 +349,7 @@ This approach ensures consistent layout and functionality with the main gallery 
 - Debug mode provides additional logging and shorter cache times
 - Custom CSS is stored in `brag_book_gallery_custom_css` option and injected once per page
 - All shortcodes properly enqueue their assets including custom CSS
-- WordPress CodeMirror editor provides syntax highlighting and CSS validation
+- Monaco Editor provides advanced IntelliSense, syntax highlighting, and CSS validation
 
 ## Debug and Development Tools
 

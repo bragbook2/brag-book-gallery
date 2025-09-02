@@ -150,6 +150,10 @@ class Settings_Api_Test extends Settings_Base {
 		$this->page_title = __( 'API Testing', 'brag-book-gallery' );
 		$this->menu_title = __( 'API Test', 'brag-book-gallery' );
 
+		// Enqueue CodeMirror for JSON display
+		wp_enqueue_code_editor( array( 'type' => 'application/json' ) );
+		wp_enqueue_script( 'wp-theme-plugin-editor' );
+
 		// Get API configuration
 		$api_tokens = get_option( 'brag_book_gallery_api_token', array() );
 		$website_property_ids = get_option( 'brag_book_gallery_website_property_id', array() );
@@ -362,6 +366,25 @@ class Settings_Api_Test extends Settings_Base {
 									</button>
 								</td>
 							</tr>
+
+							<!-- Views -->
+							<tr>
+								<td><code>/api/plugin/views</code></td>
+								<td><span class="method-badge method-post">POST</span></td>
+								<td>
+									<?php esc_html_e( 'Track case view for analytics', 'brag-book-gallery' ); ?>
+									<input type="number" id="view-case-id-input" placeholder="Case ID" class="small-text" style="margin-left: 10px;">
+								</td>
+								<td>
+									<button class="button button-secondary test-endpoint-btn"
+									        data-endpoint="views"
+									        data-method="POST"
+									        data-url="/api/plugin/views"
+									        data-needs-case-id="true">
+										<?php esc_html_e( 'Test', 'brag-book-gallery' ); ?>
+									</button>
+								</td>
+							</tr>
 						</tbody>
 					</table>
 				</div>
@@ -381,11 +404,11 @@ class Settings_Api_Test extends Settings_Base {
 					</div>
 					<div class="request-details">
 						<h4><?php esc_html_e( 'Request Details:', 'brag-book-gallery' ); ?></h4>
-						<pre class="api-request-content"></pre>
+						<textarea class="api-request-content" readonly rows="10"></textarea>
 					</div>
 					<div class="response-details">
 						<h4><?php esc_html_e( 'Response:', 'brag-book-gallery' ); ?></h4>
-						<pre class="api-response-content"></pre>
+						<textarea class="api-response-content" readonly rows="15"></textarea>
 					</div>
 				</div>
 			<?php endif; ?>
@@ -467,16 +490,24 @@ class Settings_Api_Test extends Settings_Base {
 			font-size: 13px;
 		}
 		.api-response-content, .api-request-content {
-			background: #f6f7f7;
+			width: 100%;
 			border: 1px solid #dcdcde;
 			border-radius: 4px;
-			padding: 15px;
-			overflow-x: auto;
-			max-height: 400px;
-			overflow-y: auto;
 			font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
 			font-size: 13px;
-			line-height: 1.4;
+			line-height: 1.6;
+			resize: vertical;
+		}
+		
+		/* CodeMirror will handle the styling, but we need some basic fallback */
+		.CodeMirror {
+			border: 1px solid #dcdcde;
+			border-radius: 4px;
+			max-height: 400px;
+		}
+		
+		.CodeMirror-scroll {
+			max-height: 400px;
 		}
 		.request-details, .response-details {
 			margin-top: 20px;
@@ -527,7 +558,18 @@ class Settings_Api_Test extends Settings_Base {
 
 			const setText = (selector, text) => {
 				const el = document.querySelector(selector);
-				if (el) el.textContent = text;
+				if (el) {
+					if (el.tagName.toLowerCase() === 'textarea') {
+						el.value = text;
+						// Trigger CodeMirror refresh if it exists
+						if (el.codeMirrorInstance) {
+							el.codeMirrorInstance.setValue(text);
+							el.codeMirrorInstance.refresh();
+						}
+					} else {
+						el.textContent = text;
+					}
+				}
 			};
 
 			const addClass = (selector, className) => {
@@ -538,6 +580,53 @@ class Settings_Api_Test extends Settings_Base {
 			const removeClass = (selector, className) => {
 				const el = document.querySelector(selector);
 				if (el) el.classList.remove(className);
+			};
+
+			// Initialize CodeMirror editors
+			let requestEditor = null;
+			let responseEditor = null;
+			
+			const initializeCodeMirror = () => {
+				// Check if wp.codeEditor is available
+				if (typeof wp !== 'undefined' && wp.codeEditor) {
+					const editorSettings = wp.codeEditor.defaultSettings ? wp.codeEditor.defaultSettings : {};
+					editorSettings.codemirror = {
+						...editorSettings.codemirror,
+						mode: 'application/json',
+						lineNumbers: true,
+						lineWrapping: true,
+						readOnly: true,
+						foldGutter: true,
+						gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter"],
+						theme: 'default'
+					};
+
+					// Initialize request details editor
+					const requestTextarea = document.querySelector('.api-request-content');
+					if (requestTextarea && !requestEditor) {
+						requestEditor = wp.codeEditor.initialize(requestTextarea, editorSettings);
+						requestTextarea.codeMirrorInstance = requestEditor.codemirror;
+					}
+
+					// Initialize response editor  
+					const responseTextarea = document.querySelector('.api-response-content');
+					if (responseTextarea && !responseEditor) {
+						responseEditor = wp.codeEditor.initialize(responseTextarea, editorSettings);
+						responseTextarea.codeMirrorInstance = responseEditor.codemirror;
+					}
+				}
+			};
+			
+			// Format JSON for display
+			const formatJSON = (json) => {
+				if (typeof json === 'string') {
+					try {
+						json = JSON.parse(json);
+					} catch (e) {
+						return json; // Return as-is if not valid JSON
+					}
+				}
+				return JSON.stringify(json, null, 2);
 			};
 
 			// Test endpoint button click
@@ -664,6 +753,28 @@ class Settings_Api_Test extends Settings_Base {
 								console.log('Consultations endpoint - URL:', url);
 								console.log('Consultations endpoint - Body:', requestBody);
 								break;
+
+							case 'views':
+								// Views needs case ID
+								const viewCaseIdInput = document.getElementById('view-case-id-input');
+								const viewCaseId = viewCaseIdInput ? viewCaseIdInput.value : '';
+								if (!viewCaseId || viewCaseId <= 0) {
+									alert('Please enter a valid Case ID for view tracking');
+									button.disabled = false;
+									button.textContent = originalText;
+									return;
+								}
+
+								// URL needs apiToken as query param
+								url += '?apiToken=' + encodeURIComponent(apiTokens[0]);
+
+								// Body should contain caseId
+								requestBody = {
+									caseId: parseInt(viewCaseId)
+								};
+								console.log('Views endpoint - URL:', url);
+								console.log('Views endpoint - Body:', requestBody);
+								break;
 						}
 
 						console.log('POST Request Body:', requestBody);
@@ -732,7 +843,7 @@ class Settings_Api_Test extends Settings_Base {
 						const duration = endTime - startTime;
 
 						// Show request details
-						setText('.api-request-content', JSON.stringify(requestDetails, null, 2));
+						setText('.api-request-content', formatJSON(requestDetails));
 
 						console.log('AJAX Response:', result);
 
@@ -746,7 +857,7 @@ class Settings_Api_Test extends Settings_Base {
 								addClass('.response-status', 'success');
 								removeClass('.response-status', 'error');
 								setText('.response-time', duration + 'ms');
-								setText('.api-response-content', JSON.stringify(apiResponse.body, null, 2));
+								setText('.api-response-content', formatJSON(apiResponse.body));
 							} else {
 								// Show error response from API
 								showElement('.api-response-container');
@@ -754,11 +865,11 @@ class Settings_Api_Test extends Settings_Base {
 								addClass('.response-status', 'error');
 								removeClass('.response-status', 'success');
 								setText('.response-time', duration + 'ms');
-								setText('.api-response-content', JSON.stringify({
+								setText('.api-response-content', formatJSON({
 									status: apiResponse.status,
 									body: apiResponse.body,
 									headers: apiResponse.headers
-								}, null, 2));
+								}));
 							}
 						} else {
 							// Show WordPress/network error
@@ -767,9 +878,9 @@ class Settings_Api_Test extends Settings_Base {
 							addClass('.response-status', 'error');
 							removeClass('.response-status', 'success');
 							setText('.response-time', duration + 'ms');
-							setText('.api-response-content', JSON.stringify(result.data || {
+							setText('.api-response-content', formatJSON(result.data || {
 								message: 'Failed to connect to API'
-							}, null, 2));
+							}));
 						}
 
 						// Re-enable button
@@ -783,7 +894,7 @@ class Settings_Api_Test extends Settings_Base {
 						console.error('Fetch Error:', error);
 
 						// Show request details
-						setText('.api-request-content', JSON.stringify(requestDetails, null, 2));
+						setText('.api-request-content', formatJSON(requestDetails));
 
 						// Show error response
 						showElement('.api-response-container');
@@ -791,10 +902,10 @@ class Settings_Api_Test extends Settings_Base {
 						addClass('.response-status', 'error');
 						removeClass('.response-status', 'success');
 						setText('.response-time', duration + 'ms');
-						setText('.api-response-content', JSON.stringify({
+						setText('.api-response-content', formatJSON({
 							error: error.message,
 							message: 'Could not connect to WordPress AJAX'
-						}, null, 2));
+						}));
 
 						// Re-enable button
 						button.disabled = false;
@@ -806,7 +917,8 @@ class Settings_Api_Test extends Settings_Base {
 			// Copy response button
 			document.querySelector('.copy-response-btn')?.addEventListener('click', function() {
 				const responseContent = document.querySelector('.api-response-content');
-				const responseText = responseContent ? responseContent.textContent : '';
+				// Get the plain text content, removing HTML tags
+				const responseText = responseContent ? responseContent.textContent || responseContent.innerText : '';
 				if (responseText) {
 					navigator.clipboard.writeText(responseText).then(() => {
 						alert('Response copied to clipboard!');
@@ -822,6 +934,27 @@ class Settings_Api_Test extends Settings_Base {
 				setText('.api-response-content', '');
 				setText('.api-request-content', '');
 			});
+			
+			// Initialize CodeMirror when the response container becomes visible
+			const observer = new MutationObserver(function(mutations) {
+				mutations.forEach(function(mutation) {
+					if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+						const container = document.querySelector('.api-response-container');
+						if (container && container.style.display !== 'none') {
+							// Initialize CodeMirror after a small delay to ensure DOM is ready
+							setTimeout(initializeCodeMirror, 100);
+						}
+					}
+				});
+			});
+			
+			const container = document.querySelector('.api-response-container');
+			if (container) {
+				observer.observe(container, {
+					attributes: true,
+					attributeFilter: ['style']
+				});
+			}
 		});
 		</script>
 

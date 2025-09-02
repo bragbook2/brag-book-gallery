@@ -128,6 +128,12 @@ class MobileMenu {
 		this.overlay?.classList.add('brag-book-gallery-active');
 		document.body.classList.add('brag-book-gallery-mobile-menu-open');
 
+		// Set high z-index for wrapper to ensure sidebar appears above everything
+		const wrapper = document.querySelector('.brag-book-gallery-wrapper');
+		if (wrapper) {
+			wrapper.style.zIndex = '9999';
+		}
+
 		// Update menu icon to X
 		const menuIcon = this.menuToggle.querySelector('svg');
 		if (menuIcon) {
@@ -158,6 +164,12 @@ class MobileMenu {
 		this.sidebar.classList.remove('brag-book-gallery-active');
 		this.overlay?.classList.remove('brag-book-gallery-active');
 		document.body.classList.remove('brag-book-gallery-mobile-menu-open');
+
+		// Reset z-index for wrapper
+		const wrapper = document.querySelector('.brag-book-gallery-wrapper');
+		if (wrapper) {
+			wrapper.style.zIndex = '';
+		}
 
 		// Update menu icon back to hamburger
 		const menuIcon = this.menuToggle.querySelector('svg');

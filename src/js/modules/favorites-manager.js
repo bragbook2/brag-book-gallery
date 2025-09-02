@@ -75,8 +75,6 @@ class FavoritesManager {
 			}
 		}
 
-		console.log('Toggle favorite:', { itemId, isFavorited, original: button.dataset.itemId });
-
 		// If removing favorite, just remove it
 		if (isFavorited) {
 			this.removeFavorite(itemId, button);
@@ -116,7 +114,7 @@ class FavoritesManager {
 		if (button) {
 			button.dataset.favorited = 'true';
 		}
-		
+
 		// Also update any other buttons for the same item
 		const allButtons = document.querySelectorAll(`[data-item-id="${itemId}"], [data-case-id="${itemId}"]`);
 		allButtons.forEach(btn => {
@@ -135,10 +133,10 @@ class FavoritesManager {
 
 		this.updateUI();
 		this.options.onUpdate(this.favorites);
-		
+
 		// Dispatch custom event for other components
-		window.dispatchEvent(new CustomEvent('favoritesUpdated', { 
-			detail: { favorites: this.favorites } 
+		window.dispatchEvent(new CustomEvent('favoritesUpdated', {
+			detail: { favorites: this.favorites }
 		}));
 	}
 
@@ -176,10 +174,10 @@ class FavoritesManager {
 		// Update UI and notify listeners
 		this.updateUI();
 		this.options.onUpdate(this.favorites);
-		
+
 		// Dispatch global event for other components
-		window.dispatchEvent(new CustomEvent('favoritesUpdated', { 
-			detail: { favorites: this.favorites } 
+		window.dispatchEvent(new CustomEvent('favoritesUpdated', {
+			detail: { favorites: this.favorites }
 		}));
 	}
 
@@ -197,12 +195,6 @@ class FavoritesManager {
 		formData.append('phone', this.userInfo.phone || '');
 		formData.append('name', this.userInfo.name || '');
 
-		console.log('Submitting favorite to API:', {
-			caseId: caseId,
-			email: this.userInfo.email,
-			name: this.userInfo.name
-		});
-
 		// Submit to API
 		fetch(window.bragBookGalleryConfig?.ajaxUrl || '/wp-admin/admin-ajax.php', {
 			method: 'POST',
@@ -210,7 +202,6 @@ class FavoritesManager {
 		})
 		.then(response => response.json())
 		.then(response => {
-			console.log('API Response:', response);
 			if (response.success) {
 				// Show success notification
 				this.showSuccessNotification('Added to favorites!');
@@ -241,17 +232,6 @@ class FavoritesManager {
 		// Add action and nonce for WordPress AJAX
 		formData.append('action', 'brag_book_add_favorite');
 		formData.append('nonce', window.bragBookGalleryConfig?.nonce || '');
-		
-		// Debug logging
-		console.log('Submitting to:', window.bragBookGalleryConfig?.ajaxUrl || '/wp-admin/admin-ajax.php');
-		console.log('Form data:', {
-			action: 'brag_book_add_favorite',
-			nonce: window.bragBookGalleryConfig?.nonce || 'no-nonce',
-			email: data.email,
-			phone: data.phone,
-			name: data.name,
-			case_id: this.lastAddedFavorite || 'no-case-id'
-		});
 
 		// Show loading state in form
 		const submitButton = form.querySelector('button[type="submit"]');
@@ -273,21 +253,19 @@ class FavoritesManager {
 			body: formData
 		})
 		.then(response => {
-			console.log('Response status:', response.status);
 			if (!response.ok) {
 				throw new Error(`HTTP error! status: ${response.status}`);
 			}
 			return response.json();
 		})
 		.then(response => {
-			console.log('Response data:', response);
 			if (response.success) {
 				// Save user info locally AND to localStorage
 				this.userInfo = data;
 				if (this.options.persistToStorage) {
 					this.saveUserInfo();
 				}
-				
+
 				// Also save to localStorage for future sessions
 				try {
 					localStorage.setItem(this.options.userInfoKey, JSON.stringify(data));
@@ -330,7 +308,7 @@ class FavoritesManager {
 		})
 		.catch(error => {
 			console.error('Error submitting favorites form:', error);
-			
+
 			// Show error message in form
 			const errorDiv = document.createElement('div');
 			errorDiv.className = 'brag-book-gallery-form-error';

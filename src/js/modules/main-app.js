@@ -49,7 +49,6 @@ class BRAGbookGalleryApp {
 			}, 100);
 		}
 
-		console.log("BRAG bookGallery initialized");
 	}
 
 	/**
@@ -93,8 +92,8 @@ class BRAGbookGalleryApp {
 	initializeDialogs() {
 		// Initialize consultation request dialog
 		this.components.consultationDialog = new Dialog('consultationDialog', {
-			onOpen: () => console.log('Consultation dialog opened'),
-			onClose: () => console.log('Consultation dialog closed')
+			onOpen: () => {},
+			onClose: () => {}
 		});
 
 		// Bind consultation buttons to dialog opening
@@ -118,12 +117,10 @@ class BRAGbookGalleryApp {
 			mode: mode,
 			baseUrl: '/gallery', // Customize as needed
 			onFilterChange: (activeFilters) => {
-				console.log('Active filters:', Array.from(activeFilters.entries()));
 				this.applyFilters(activeFilters);
 			},
 			onNavigate: (url) => {
 				// Custom navigation handler if needed
-				console.log('Navigating to:', url);
 				window.location.href = url;
 			}
 		});
@@ -149,7 +146,6 @@ class BRAGbookGalleryApp {
 		// Create favorites manager with count update callback
 		this.components.favoritesManager = new FavoritesManager({
 			onUpdate: (favorites) => {
-				console.log('Favorites updated:', favorites.size);
 				// Update UI elements that display favorite counts
 				this.updateFavoritesCount(favorites.size);
 			}
@@ -169,10 +165,9 @@ class BRAGbookGalleryApp {
 			// Check if we're on the My Favorites page
 			const currentPath = window.location.pathname;
 			const gallerySlug = window.bragBookGalleryConfig?.gallerySlug || 'before-after';
-			const favoritesPath = `/${gallerySlug}/myfavorites`;
+			const favoritesPath = `/${gallerySlug}/myfavorites/`;
 
 			if (currentPath === favoritesPath || currentPath.includes('myfavorites')) {
-				console.log('Favorites updated while on My Favorites page, refreshing...');
 				// Small delay to ensure localStorage is updated
 				setTimeout(() => {
 					this.showFavoritesOnly();
@@ -196,7 +191,6 @@ class BRAGbookGalleryApp {
 				debounceDelay: 200,   // 200ms delay for performance
 				maxResults: 10,       // Limit results shown
 				onSelect: (result) => {
-					console.log('Selected procedure:', result);
 					// The checkbox is automatically checked by the SearchAutocomplete class
 				}
 			});
@@ -213,7 +207,6 @@ class BRAGbookGalleryApp {
 		    bragBookGalleryConfig.enableSharing === 'yes') {
 			this.components.shareManager = new ShareManager({
 				onShare: (data) => {
-					console.log('Shared:', data);
 				}
 			});
 		}
@@ -261,7 +254,6 @@ class BRAGbookGalleryApp {
 				const procedureIds = caseLink.dataset.procedureIds;
 
 				if (caseId) {
-					console.log('Loading case:', caseId, 'with procedure IDs:', procedureIds);
 					// Load case details via AJAX
 					this.loadCaseDetails(caseId, caseLink.href, true, procedureIds);
 				}
@@ -279,7 +271,6 @@ class BRAGbookGalleryApp {
 					const procedureIds = caseLinkInCard.dataset.procedureIds || caseCard.dataset.procedureIds;
 
 					if (caseId) {
-						console.log('Loading case from card:', caseId, 'with procedure IDs:', procedureIds);
 						this.loadCaseDetails(caseId, caseLinkInCard.href, true, procedureIds);
 					}
 				}
@@ -304,7 +295,6 @@ class BRAGbookGalleryApp {
 	async loadCaseDetails(caseId, url, updateHistory = true, procedureIds = null) {
 		const galleryContent = document.getElementById('gallery-content');
 		if (!galleryContent) {
-			console.error('Gallery content container not found');
 			return;
 		}
 
@@ -313,11 +303,9 @@ class BRAGbookGalleryApp {
 			const caseCard = document.querySelector(`.brag-book-gallery-case-card[data-case-id="${caseId}"]`);
 			if (caseCard && caseCard.dataset.procedureIds) {
 				procedureIds = caseCard.dataset.procedureIds;
-				console.log('Got procedure IDs from case card:', procedureIds);
 			}
 		}
 
-		console.log('Loading case details for:', caseId, 'with procedure IDs:', procedureIds);
 
 		// Show loading state
 		galleryContent.innerHTML = '<div class="brag-book-gallery-loading">Loading case details...</div>';
@@ -330,20 +318,17 @@ class BRAGbookGalleryApp {
 		try {
 			// Check for config
 			if (typeof bragBookGalleryConfig === 'undefined') {
-				console.error('bragBookGalleryConfig not defined');
 				throw new Error('Configuration not loaded');
 			}
-
-			console.log('Making AJAX request to:', bragBookGalleryConfig.ajaxUrl);
 
 			// Extract procedure slug from the URL
 			// URL format: /gallery/procedure-slug/case-id
 			const pathSegments = url ? new URL(url).pathname.split('/').filter(s => s) : window.location.pathname.split('/').filter(s => s);
 			const procedureSlug = pathSegments.length > 2 ? pathSegments[pathSegments.length - 2] : '';
-			
+
 			// Try to get the procedure name from the sidebar data
 			let procedureName = '';
-			
+
 			// First try to get from active sidebar link (if it exists and is already marked active)
 			const activeLink = document.querySelector(`.brag-book-gallery-nav-link[data-procedure="${procedureSlug}"]`);
 			if (activeLink) {
@@ -352,7 +337,7 @@ class BRAGbookGalleryApp {
 					procedureName = label.textContent.trim();
 				}
 			}
-			
+
 			// If not found in DOM, lookup in sidebar data
 			if (!procedureName && window.bragBookGalleryConfig && window.bragBookGalleryConfig.sidebarData) {
 				const sidebarData = window.bragBookGalleryConfig.sidebarData;
@@ -369,7 +354,7 @@ class BRAGbookGalleryApp {
 					if (procedureName) break;
 				}
 			}
-			
+
 			// Prepare request parameters - use the HTML version
 			const requestParams = {
 				action: 'brag_book_load_case_details_html',
@@ -393,14 +378,12 @@ class BRAGbookGalleryApp {
 				body: new URLSearchParams(requestParams)
 			});
 
-			console.log('Response status:', response.status);
 
 			if (!response.ok) {
 				throw new Error(`HTTP error! status: ${response.status}`);
 			}
 
 			const data = await response.json();
-			console.log('Response data:', data);
 
 			if (data.success && data.data && data.data.html) {
 				// Display the HTML directly from the server
@@ -431,14 +414,30 @@ class BRAGbookGalleryApp {
 					}
 				}
 
+				// Log view tracking information to console
+				if (data.data.view_tracked) {
+					console.log(`✅ Case view tracked successfully for Case ID: ${data.data.case_id}`);
+				} else if (data.data.view_tracked === false) {
+					console.warn(`⚠️ Case view tracking failed for Case ID: ${data.data.case_id}`);
+
+					// Show additional debug info if available
+					if (data.data.debug) {
+						console.group('View Tracking Debug Info:');
+						console.log('Tracking attempted:', data.data.debug.view_tracking_attempted);
+						console.log('View tracked:', data.data.debug.view_tracked);
+						if (data.data.debug.tracking_error) {
+							console.error('Tracking error:', data.data.debug.tracking_error);
+						}
+						console.groupEnd();
+					}
+				}
+
 				// Re-initialize any necessary event handlers for the new content
 				this.initializeCaseDetailThumbnails();
 			} else {
-				console.error('API Error:', data);
 				throw new Error(data.data?.message || data.data || data.message || 'Failed to load case details');
 			}
 		} catch (error) {
-			console.error('Error loading case details:', error);
 			let errorMessage = 'Failed to load case details. Please try again.';
 
 			// If we have a more specific error message, show it
@@ -554,20 +553,17 @@ class BRAGbookGalleryApp {
 
 	handleSearch(query) {
 		const normalizedQuery = query.toLowerCase().trim();
-		console.log('Searching for:', normalizedQuery);
 		// Search implementation would go here
 	}
 
 	applyFilters(activeFilters) {
 		// Filter implementation would go here
-		console.log('Applying filters...');
 	}
 
 	async handleFormSubmit(form) {
 		const formData = new FormData(form);
 		const data = Object.fromEntries(formData.entries());
 
-		console.log('Form submitted:', data);
 
 		// Get submit button and disable it during submission
 		const submitBtn = form.querySelector('[data-action="form-submit"]');
@@ -626,10 +622,8 @@ class BRAGbookGalleryApp {
 				// Show error message in modal
 				const errorMessage = result.data || 'Failed to send consultation request. Please try again.';
 				this.showModalMessage(errorMessage, 'error');
-				console.error('Form submission error:', errorMessage);
 			}
 		} catch (error) {
-			console.error('Error submitting form:', error);
 			this.showModalMessage(error.message || 'An error occurred. Please try again.', 'error');
 		} finally {
 			// Re-enable the submit button
@@ -803,18 +797,14 @@ class BRAGbookGalleryApp {
 		// Try multiple approaches to find and attach the clear all button
 		const setupClearAllHandler = () => {
 			const clearAllButton = document.querySelector('[data-action="clear-filters"]');
-			console.log('Clear All button found:', clearAllButton);
-
 			if (clearAllButton) {
 				// Remove any existing listeners
 				clearAllButton.removeEventListener('click', this.handleClearAll);
 
 				// Add new listener
 				clearAllButton.addEventListener('click', this.handleClearAll.bind(this));
-				console.log('Clear All button event listener attached');
 				return true;
 			} else {
-				console.log('Clear All button not found - data-action: clear-filters');
 				return false;
 			}
 		};
@@ -823,7 +813,6 @@ class BRAGbookGalleryApp {
 		if (!setupClearAllHandler()) {
 			// If not found, try again after a short delay (for AJAX loaded content)
 			setTimeout(() => {
-				console.log('Retrying Clear All button setup...');
 				setupClearAllHandler();
 			}, 1000);
 		}
@@ -831,7 +820,6 @@ class BRAGbookGalleryApp {
 		// Also set up a global click handler as backup
 		document.addEventListener('click', (e) => {
 			if (e.target && e.target.dataset.action === 'clear-filters') {
-				console.log('Global click handler caught Clear All button');
 				e.preventDefault();
 				this.handleClearAll(e);
 			}
@@ -840,10 +828,6 @@ class BRAGbookGalleryApp {
 
 	handleClearAll(e) {
 		e.preventDefault();
-		console.log('Clear All button clicked - handling...');
-
-		// Clear demographic filter checkboxes
-		console.log('Clearing demographic filter checkboxes');
 		this.clearDemographicFilters();
 	}
 
@@ -868,7 +852,6 @@ class BRAGbookGalleryApp {
 			// Check if the clicked element is a remove button or inside one
 			const removeButton = e.target.closest('.brag-book-gallery-badge-remove');
 			if (removeButton) {
-				console.log('Global handler: Badge remove button clicked!');
 				e.preventDefault();
 				e.stopPropagation();
 
@@ -877,8 +860,6 @@ class BRAGbookGalleryApp {
 				if (badge) {
 					const category = badge.getAttribute('data-filter-category');
 					const value = badge.getAttribute('data-filter-value');
-
-					console.log('Global handler: Removing filter', { category, value });
 
 					if (category && value) {
 						this.removeDemographicFilter(category, value);
@@ -908,12 +889,9 @@ class BRAGbookGalleryApp {
 		// Also try direct checkbox monitoring
 		document.addEventListener('change', (e) => {
 			if (e.target.type === 'checkbox' && e.target.closest('.brag-book-gallery-filter-group')) {
-				console.log('Checkbox changed - target:', e.target);
-
 				// Manually build activeFilters from checked checkboxes
 				setTimeout(() => {
 					const activeFilters = this.buildActiveFiltersFromDOM();
-					console.log('Built activeFilters from DOM:', activeFilters);
 					this.updateDemographicBadges(activeFilters);
 				}, 100);
 			}
@@ -926,7 +904,6 @@ class BRAGbookGalleryApp {
 			const currentStateStr = JSON.stringify(currentState);
 
 			if (currentStateStr !== lastFilterState) {
-				console.log('Detected filter change via periodic check:', currentState);
 				this.updateDemographicBadges(currentState);
 				lastFilterState = currentStateStr;
 			}
@@ -1065,7 +1042,6 @@ class BRAGbookGalleryApp {
 		removeButton.addEventListener('click', (e) => {
 			e.preventDefault();
 			e.stopPropagation();
-			console.log('Badge remove button clicked!', { category, value });
 			this.removeDemographicFilter(category, value);
 		});
 
@@ -1107,7 +1083,6 @@ class BRAGbookGalleryApp {
 	 * Remove a demographic filter
 	 */
 	removeDemographicFilter(category, value) {
-		console.log(`Removing demographic filter: ${category} = ${value}`);
 
 		// Find the checkbox directly using the data-filter-type attribute and value
 		let targetCheckbox = null;
@@ -1115,7 +1090,6 @@ class BRAGbookGalleryApp {
 		// Based on the HTML structure, checkboxes have data-filter-type attribute
 		// and the value attribute matches what we're looking for
 		const selector = `input[type="checkbox"][data-filter-type="${category}"][value="${value}"]`;
-		console.log('Looking for checkbox with selector:', selector);
 
 		targetCheckbox = document.querySelector(selector);
 
@@ -1123,14 +1097,11 @@ class BRAGbookGalleryApp {
 		if (!targetCheckbox) {
 			// Try to find any checkbox with the matching value in the category
 			const checkboxes = document.querySelectorAll(`input[type="checkbox"][data-filter-type="${category}"]`);
-			console.log(`Found ${checkboxes.length} checkboxes with data-filter-type="${category}"`);
 
 			checkboxes.forEach(checkbox => {
 				const checkboxValue = checkbox.value;
 				const label = checkbox.nextElementSibling;
 				const labelText = label?.textContent?.trim() || '';
-
-				console.log(`Checking: value="${checkboxValue}", label="${labelText}", looking for="${value}"`);
 
 				// Match the value exactly or case-insensitively
 				if (checkboxValue === value ||
@@ -1138,25 +1109,18 @@ class BRAGbookGalleryApp {
 					labelText === value ||
 					labelText.toLowerCase() === value.toLowerCase()) {
 					targetCheckbox = checkbox;
-					console.log('Found matching checkbox!');
 				}
 			});
 		}
 
 		// If still not found, try a broader search
 		if (!targetCheckbox) {
-			console.log('Trying broader search...');
 			// Look for checkboxes by ID pattern (e.g., procedure-filter-age-18-24)
 			const idPattern = `procedure-filter-${category}-${value}`.toLowerCase().replace(/\s+/g, '-');
 			targetCheckbox = document.getElementById(idPattern);
-
-			if (targetCheckbox) {
-				console.log('Found checkbox by ID pattern:', idPattern);
-			}
 		}
 
 		if (targetCheckbox) {
-			console.log('Unchecking checkbox:', targetCheckbox);
 			targetCheckbox.checked = false;
 
 			// Trigger change event to update the filter system
@@ -1174,7 +1138,6 @@ class BRAGbookGalleryApp {
 
 				// Trigger any global filter update functions
 				if (typeof window.applyDemographicFilters === 'function') {
-					console.log('Calling applyDemographicFilters');
 					window.applyDemographicFilters();
 				}
 			}, 100);
@@ -1182,14 +1145,12 @@ class BRAGbookGalleryApp {
 			// Remove the badge immediately from DOM
 			const badge = document.querySelector(`.brag-book-gallery-filter-badge[data-filter-category="${category}"][data-filter-value="${value}"]`);
 			if (badge) {
-				console.log('Removing badge from DOM');
 				badge.remove();
 			}
 		} else {
 			console.warn(`Could not find checkbox for ${category}: ${value}`);
 
-			// Log all available checkboxes for debugging
-			console.log('Available checkboxes with data-filter-type:');
+			// Log all available checkboxes for debugging.
 			const allCheckboxes = document.querySelectorAll('input[type="checkbox"][data-filter-type]');
 			allCheckboxes.forEach(cb => {
 				console.log(`  - Type: ${cb.getAttribute('data-filter-type')}, Value: ${cb.value}, ID: ${cb.id}`);
@@ -1201,7 +1162,6 @@ class BRAGbookGalleryApp {
 	 * Clear all demographic filters
 	 */
 	clearDemographicFilters() {
-		console.log('Starting to clear demographic filters...');
 
 		// Find all checked checkboxes in filter groups with multiple selector patterns
 		const selectors = [
@@ -1214,27 +1174,21 @@ class BRAGbookGalleryApp {
 
 		selectors.forEach(selector => {
 			const checkboxes = document.querySelectorAll(selector);
-			console.log(`Found ${checkboxes.length} checked checkboxes with selector: ${selector}`);
 
 			checkboxes.forEach((checkbox) => {
-				console.log('Unchecking checkbox:', checkbox);
 				checkbox.checked = false;
 				checkbox.dispatchEvent(new Event('change', { bubbles: true }));
 				totalCleared++;
 			});
 		});
 
-		console.log(`Total checkboxes cleared: ${totalCleared}`);
-
 		// Also try to trigger any global filter clear functions
 		if (window.clearProcedureFilters) {
-			console.log('Calling global clearProcedureFilters function');
 			window.clearProcedureFilters();
 		}
 
 		// Force update badges to hide them
 		setTimeout(() => {
-			console.log('Updating badges to hide them');
 			this.updateDemographicBadges({
 				age: [],
 				gender: [],
@@ -1315,7 +1269,7 @@ class BRAGbookGalleryApp {
 		// Update URL to reflect favorites view
 		if (window.history && window.history.pushState) {
 			const gallerySlug = window.bragBookGalleryConfig?.gallerySlug || 'before-after';
-			const favoritesUrl = `/${gallerySlug}/myfavorites`;
+			const favoritesUrl = `/${gallerySlug}/myfavorites/`;
 			window.history.pushState({ view: 'favorites' }, '', favoritesUrl);
 		}
 
@@ -1437,8 +1391,6 @@ class BRAGbookGalleryApp {
 		const ajaxUrl = window.bragBookGalleryConfig?.ajaxUrl || '/wp-admin/admin-ajax.php';
 		const nonce = window.bragBookGalleryConfig?.nonce || '';
 
-		console.log('Loading favorites for email:', userInfo.email);
-
 		// Load from API
 		fetch(ajaxUrl, {
 			method: 'POST',
@@ -1453,8 +1405,6 @@ class BRAGbookGalleryApp {
 		})
 		.then(response => response.json())
 		.then(data => {
-			// Debug logging
-			console.log('AJAX Response:', data);
 
 			if (data.success && data.data) {
 				// Update user info from API response if it includes name and phone
@@ -1473,7 +1423,6 @@ class BRAGbookGalleryApp {
 							phone: apiUserInfo.phone || userInfo.phone || ''
 						};
 						localStorage.setItem(userInfoKey, JSON.stringify(updatedUserInfo));
-						console.log('Updated user info from API:', updatedUserInfo);
 
 						// Update the local userInfo variable
 						userInfo = updatedUserInfo;
@@ -1490,7 +1439,6 @@ class BRAGbookGalleryApp {
 						// If it exists, parse it
 						try {
 							existingFavorites = JSON.parse(storedFavorites);
-							console.log('Existing localStorage favorites:', existingFavorites);
 						} catch (e) {
 							console.error('Error parsing existing favorites:', e);
 							existingFavorites = [];
@@ -1511,7 +1459,6 @@ class BRAGbookGalleryApp {
 					// Convert back to array and save to localStorage
 					const updatedFavorites = Array.from(favoritesSet);
 					localStorage.setItem('brag-book-favorites', JSON.stringify(updatedFavorites));
-					console.log('Updated localStorage favorites (merged):', updatedFavorites);
 
 					// Update favorites manager if it exists
 					if (this.favoritesManager) {
@@ -1533,7 +1480,6 @@ class BRAGbookGalleryApp {
 					// No cases in response, but ensure localStorage has empty array if nothing exists
 					if (!localStorage.getItem('brag-book-favorites')) {
 						localStorage.setItem('brag-book-favorites', JSON.stringify([]));
-						console.log('Initialized empty favorites in localStorage');
 					}
 
 					// Update favorites count to 0
@@ -1580,7 +1526,6 @@ class BRAGbookGalleryApp {
 						if (allFavorites) {
 							try {
 								const favoriteIds = JSON.parse(allFavorites);
-								console.log('Updating favorite button states for IDs:', favoriteIds);
 
 								favoriteIds.forEach(favId => {
 									// Find all favorite buttons for this case and mark them as favorited
@@ -1597,7 +1542,6 @@ class BRAGbookGalleryApp {
 										buttons.forEach(button => {
 											if (button.dataset.favorited !== undefined) {
 												button.dataset.favorited = 'true';
-												console.log('Marked as favorite:', selector);
 											}
 										});
 									});
@@ -1614,7 +1558,6 @@ class BRAGbookGalleryApp {
 					// Empty or no cases - ensure localStorage is initialized
 					if (!localStorage.getItem('brag-book-favorites')) {
 						localStorage.setItem('brag-book-favorites', JSON.stringify([]));
-						console.log('Initialized empty favorites in localStorage');
 					}
 
 					galleryContent.innerHTML = `
@@ -1654,7 +1597,6 @@ class BRAGbookGalleryApp {
 				// Show error message - ensure localStorage is initialized even on error
 				if (!localStorage.getItem('brag-book-favorites')) {
 					localStorage.setItem('brag-book-favorites', JSON.stringify([]));
-					console.log('Initialized empty favorites in localStorage on error');
 				}
 
 				galleryContent.innerHTML = `
@@ -1770,7 +1712,7 @@ class BRAGbookGalleryApp {
 			procedureDisplayName = caseData.technique;
 		}
 
-		const caseUrl = '/' + gallerySlug + '/' + procedureSlug + '/' + caseId;
+		const caseUrl = '/' + gallerySlug + '/' + procedureSlug + '/' + caseId + '/';
 
 		// Get the first processed image
 		let imageUrl = '';

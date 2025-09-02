@@ -416,17 +416,6 @@ class Settings_Dashboard extends Settings_Base {
 				$settings_url = admin_url( 'admin.php?page=brag-book-gallery-local' );
 			}
 		}
-		$steps[] = array(
-			'title' => __( 'Configure Gallery Settings', 'brag-book-gallery' ),
-			'description' => sprintf(
-				/* translators: %s: Current mode name */
-				__( 'Complete the %s mode configuration.', 'brag-book-gallery' ),
-				ucfirst( $current_mode )
-			),
-			'completed' => $mode_configured,
-			'action_url' => $settings_url ?? admin_url( 'admin.php?page=brag-book-gallery-mode' ),
-			'action_text' => __( 'Configure', 'brag-book-gallery' ),
-		);
 		if ( $mode_configured ) $completed++;
 
 		// Step 4: Create First Gallery
@@ -471,12 +460,8 @@ class Settings_Dashboard extends Settings_Base {
 			'title' => __( 'Create Your First Gallery', 'brag-book-gallery' ),
 			'description' => __( 'Add your first before & after gallery to a page or post.', 'brag-book-gallery' ),
 			'completed' => $has_gallery,
-			'action_url' => $current_mode === 'local'
-				? admin_url( 'post-new.php?post_type=brag_gallery' )
-				: admin_url( 'admin.php?page=brag-book-gallery-help' ),
-			'action_text' => $current_mode === 'local'
-				? __( 'Create Gallery', 'brag-book-gallery' )
-				: __( 'View Guide', 'brag-book-gallery' ),
+			'action_url' => admin_url( 'admin.php?page=brag-book-gallery-general' ),
+			'action_text' =>  __( 'Create Gallery', 'brag-book-gallery' )
 		);
 		if ( $has_gallery ) $completed++;
 

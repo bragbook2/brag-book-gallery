@@ -485,7 +485,7 @@ final class HTML_Renderer {
 		$current_url = get_permalink();
 		$base_path = wp_parse_url( $current_url, PHP_URL_PATH ) ?: '';
 
-		return rtrim( $base_path, '/' ) . '/' . $procedure_slug;
+		return rtrim( $base_path, '/' ) . '/' . $procedure_slug . '/';
 	}
 
 	/**
@@ -853,6 +853,7 @@ final class HTML_Renderer {
 	 * @param array  $case           Case data.
 	 * @param int    $slide_index    Slide index.
 	 * @param string $procedure_slug Procedure slug.
+	 * @param bool   $is_standalone  Whether this is a standalone carousel (no action buttons).
 	 *
 	 * @return string Slide HTML.
 	 */
@@ -860,14 +861,15 @@ final class HTML_Renderer {
 		array $photo,
 		array $case,
 		int $slide_index,
-		string $procedure_slug = ''
+		string $procedure_slug = '',
+		bool $is_standalone = false
 	): string {
 		$photo_data = self::extract_photo_data( $photo );
 		$case_data = self::extract_case_data_for_carousel( $case );
 		$slide_data = self::build_slide_data( $photo_data, $case_data, $slide_index );
 		$case_url = self::build_case_url( $case_data, $procedure_slug );
 
-		return self::render_carousel_slide( $photo_data, $case_data, $slide_data, $case_url );
+		return self::render_carousel_slide( $photo_data, $case_data, $slide_data, $case_url, $is_standalone );
 	}
 
 	/**
@@ -979,7 +981,7 @@ final class HTML_Renderer {
 			? $case_data['seo_suffix']
 			: $case_data['id'];
 
-		return home_url( sprintf( '/%s/%s/%s', $gallery_slug, $resolved_procedure_slug, $case_identifier ) );
+		return home_url( sprintf( '/%s/%s/%s/', $gallery_slug, $resolved_procedure_slug, $case_identifier ) );
 	}
 
 	/**
@@ -1021,20 +1023,23 @@ final class HTML_Renderer {
 	 *
 	 * @since 3.0.0
 	 *
-	 * @param array  $photo_data Photo data.
-	 * @param array  $case_data  Case data.
-	 * @param array  $slide_data Slide data.
-	 * @param string $case_url   Case URL.
+	 * @param array  $photo_data    Photo data.
+	 * @param array  $case_data     Case data.
+	 * @param array  $slide_data    Slide data.
+	 * @param string $case_url      Case URL.
+	 * @param bool   $is_standalone Whether this is a standalone carousel (no action buttons).
 	 *
 	 * @return string Complete slide HTML.
 	 */
-	private static function render_carousel_slide( array $photo_data, array $case_data, array $slide_data, string $case_url ): string {
+	private static function render_carousel_slide( array $photo_data, array $case_data, array $slide_data, string $case_url, bool $is_standalone = false ): string {
 		$slide_wrapper = self::render_slide_wrapper( $slide_data );
 		$link_open = ! empty( $case_url ) ? self::render_link_open( $case_url, $photo_data['alt_text'] ) : '';
 		$link_close = ! empty( $case_url ) ? '</a>' : '';
 		$nudity_warning = $photo_data['has_nudity'] ? self::render_nudity_warning() : '';
 		$image_element = self::render_image_element( $photo_data );
-		$action_buttons = self::render_carousel_action_buttons( $case_data['id'] );
+		
+		// Only render action buttons for non-standalone carousels
+		$action_buttons = $is_standalone ? '' : self::render_carousel_action_buttons( $case_data['id'] );
 
 		return sprintf(
 			'%s%s%s%s%s%s</div>',
@@ -1424,12 +1429,23 @@ final class HTML_Renderer {
 		$gallery_slug = self::get_gallery_slug();
 		$base_path = '/' . ltrim( $gallery_slug, '/' );
 
+		// Build back URL and text based on whether we have procedure info
+		$back_url = $base_path . '/';
+		$back_text = __( '← Back to Gallery', 'brag-book-gallery' );
+		
+		if ( ! empty( $procedure_slug ) ) {
+			$back_url = $base_path . '/' . $procedure_slug . '/';
+			if ( ! empty( $procedure_name ) ) {
+				$back_text = sprintf( __( '← Back to %s', 'brag-book-gallery' ), $procedure_name );
+			}
+		}
+
 		$title_content = self::build_title_content( $seo_data, $procedure_data, $case_id, $procedure_slug, $procedure_name );
 
 		return sprintf(
 			'<div class="brag-book-gallery-brag-book-gallery-case-header-section"><div class="brag-book-gallery-case-navigation"><a href="%s" class="brag-book-gallery-back-link">%s</a></div><div class="brag-book-gallery-brag-book-gallery-case-header"><h2 class="brag-book-gallery-content-title">%s</h2></div></div>',
-			esc_url( $base_path ),
-			esc_html__( '← Back to Gallery', 'brag-book-gallery' ),
+			esc_url( $back_url ),
+			esc_html( $back_text ),
 			$title_content // Already escaped in build_title_content
 		);
 	}
@@ -1710,6 +1726,7 @@ final class HTML_Renderer {
 	 */
 	private static function render_patient_details_card( array $case_data ): string {
 		$patient_fields = array(
+			'id'        => __( 'Case ID', 'brag-book-gallery' ),
 			'ethnicity' => __( 'Ethnicity', 'brag-book-gallery' ),
 			'gender'    => __( 'Gender', 'brag-book-gallery' ),
 			'age'       => __( 'Age', 'brag-book-gallery' ),
@@ -1771,37 +1788,70 @@ final class HTML_Renderer {
 			return '';
 		}
 
-		$details_html = '';
+		// First pass: collect all regular values and all array values separately
+		$all_regular_details = array();
+		$all_array_details = array();
+		
 		foreach ( $case_data['procedureDetails'] as $procedure_id => $details ) {
 			if ( ! is_array( $details ) || empty( $details ) ) {
 				continue;
 			}
-
-			$grid_html = '';
+			
 			foreach ( $details as $label => $value ) {
 				if ( ! empty( $value ) ) {
-					$grid_html .= sprintf(
-						'<div class="brag-book-gallery-info-item"><span class="brag-book-gallery-info-label">%s</span><span class="brag-book-gallery-info-value">%s</span></div>',
-						esc_html( $label ),
-						esc_html( $value )
+					if ( is_array( $value ) ) {
+						$all_array_details[ $label ] = $value;
+					} else {
+						$all_regular_details[ $label ] = $value;
+					}
+				}
+			}
+		}
+
+		$all_cards_html = '';
+
+		// Create main Procedure Details card for all regular values first
+		if ( ! empty( $all_regular_details ) ) {
+			$grid_html = '';
+			foreach ( $all_regular_details as $label => $value ) {
+				$grid_html .= sprintf(
+					'<div class="brag-book-gallery-info-item"><span class="brag-book-gallery-info-label">%s</span><span class="brag-book-gallery-info-value">%s</span></div>',
+					esc_html( $label ),
+					esc_html( $value )
+				);
+			}
+
+			if ( $grid_html ) {
+				$all_cards_html .= sprintf(
+					'<div class="case-detail-card procedure-details-card"><div class="card-header"><h3 class="card-title">%s</h3></div><div class="card-content"><div class="procedure-details-grid">%s</div></div></div>',
+					esc_html__( 'Procedure Details', 'brag-book-gallery' ),
+					$grid_html
+				);
+			}
+		}
+
+		// Then create separate cards for all array values
+		foreach ( $all_array_details as $array_label => $array_values ) {
+			$array_items_html = '';
+			foreach ( $array_values as $item ) {
+				if ( ! empty( $item ) ) {
+					$array_items_html .= sprintf(
+						'<div class="brag-book-gallery-info-item"><span class="brag-book-gallery-info-value">%s</span></div>',
+						esc_html( $item )
 					);
 				}
 			}
 
-			if ( $grid_html ) {
-				$details_html .= sprintf( '<div class="procedure-details-grid">%s</div>', $grid_html );
+			if ( $array_items_html ) {
+				$all_cards_html .= sprintf(
+					'<div class="case-detail-card procedure-details-card"><div class="card-header"><h3 class="card-title">%s</h3></div><div class="card-content"><div class="procedure-details-grid">%s</div></div></div>',
+					esc_html( $array_label ),
+					$array_items_html
+				);
 			}
 		}
 
-		if ( empty( $details_html ) ) {
-			return '';
-		}
-
-		return sprintf(
-			'<div class="case-detail-card procedure-details-card"><div class="card-header"><h3 class="card-title">%s</h3></div><div class="card-content">%s</div></div>',
-			esc_html__( 'Procedure Details', 'brag-book-gallery' ),
-			$details_html
-		);
+		return $all_cards_html;
 	}
 
 	/**

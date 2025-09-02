@@ -295,6 +295,9 @@ final class Setup {
 			$this->register_admin_hooks();
 		}
 
+		// Cron events
+		add_action( 'brag_book_gallery_delayed_rewrite_flush', [ $this, 'handle_delayed_rewrite_flush' ] );
+
 		// Cache exclusions
 		$this->setup_litespeed_exclusions();
 
@@ -1288,5 +1291,39 @@ final class Setup {
 		}
 
 		return $cache;
+	}
+
+	/**
+	 * Handle delayed rewrite rules flush.
+	 *
+	 * This is scheduled after page creation to prevent timeouts
+	 * on managed hosting environments like WP Engine.
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	public function handle_delayed_rewrite_flush(): void {
+		// Only flush if we're not in an admin AJAX request to prevent conflicts
+		if ( wp_doing_ajax() ) {
+			return;
+		}
+
+		try {
+			// Flush rewrite rules
+			flush_rewrite_rules();
+			
+			// Clear any object cache to ensure fresh data
+			if ( function_exists( 'wp_cache_flush' ) ) {
+				wp_cache_flush();
+			}
+			
+			// Log for debugging
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'BRAGBook Gallery: Delayed rewrite rules flush completed' );
+			}
+		} catch ( Exception $e ) {
+			// Log error but don't break site
+			error_log( 'BRAGBook Gallery: Failed to flush rewrite rules - ' . $e->getMessage() );
+		}
 	}
 }

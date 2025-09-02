@@ -145,12 +145,6 @@ class Tabs {
 				'icon' => '',
 				'visible' => true,
 			),
-			'general' => array(
-				'title' => __( 'General', 'brag-book-gallery' ),
-				'url' => admin_url( 'admin.php?page=brag-book-gallery-general' ),
-				'icon' => '',
-				'visible' => true,
-			),
 			'api' => array(
 				'title' => __( 'API', 'brag-book-gallery' ),
 				'url' => admin_url( 'admin.php?page=brag-book-gallery-api-settings' ),
@@ -158,26 +152,18 @@ class Tabs {
 				'visible' => true,
 				'badge' => ! $this->plugin_state['has_api'] ? '!' : '',
 			),
-		);
-
-		// Add mode tab if API is configured
-		if ( $this->plugin_state['has_api'] ) {
-			$tabs['mode'] = array(
-				'title' => __( 'Mode', 'brag-book-gallery' ),
-				'url' => admin_url( 'admin.php?page=brag-book-gallery-mode' ),
+			'general' => array(
+				'title' => __( 'General', 'brag-book-gallery' ),
+				'url' => admin_url( 'admin.php?page=brag-book-gallery-general' ),
 				'icon' => '',
 				'visible' => true,
-			);
+			),
+		);
 
-			// Add mode-specific settings tab
-			if ( $this->plugin_state['current_mode'] === 'default' ) {
-				$tabs['default'] = array(
-					'title' => __( 'Default', 'brag-book-gallery' ),
-					'url' => admin_url( 'admin.php?page=brag-book-gallery-default' ),
-					'icon' => '',
-					'visible' => true,
-				);
-			} elseif ( $this->plugin_state['current_mode'] === 'local' ) {
+		// Add mode-specific settings tab if API is configured - Local mode only when available
+		if ( $this->plugin_state['has_api'] ) {
+			// Add mode-specific settings tab - only Local mode (currently disabled/coming soon)
+			if ( $this->plugin_state['current_mode'] === 'local' ) {
 				$tabs['local'] = array(
 					'title' => __( 'Local', 'brag-book-gallery' ),
 					'url' => admin_url( 'admin.php?page=brag-book-gallery-local' ),
@@ -186,13 +172,6 @@ class Tabs {
 				);
 			}
 
-			// Add API test tab
-			$tabs['api_test'] = array(
-				'title' => __( 'API Test', 'brag-book-gallery' ),
-				'url' => admin_url( 'admin.php?page=brag-book-gallery-api-test' ),
-				'icon' => '',
-				'visible' => true,
-			);
 		}
 
 		// Add consultation tab (always visible, settings inside control features)
@@ -203,17 +182,17 @@ class Tabs {
 			'visible' => true,
 		);
 
-		// Always add help and debug tabs
-		$tabs['help'] = array(
-			'title' => __( 'Help', 'brag-book-gallery' ),
-			'url' => admin_url( 'admin.php?page=brag-book-gallery-help' ),
+		// Always add debug and help tabs
+		$tabs['debug'] = array(
+			'title' => __( 'Debug', 'brag-book-gallery' ),
+			'url' => admin_url( 'admin.php?page=brag-book-gallery-debug' ),
 			'icon' => '',
 			'visible' => true,
 		);
 
-		$tabs['debug'] = array(
-			'title' => __( 'Debug', 'brag-book-gallery' ),
-			'url' => admin_url( 'admin.php?page=brag-book-gallery-debug' ),
+		$tabs['help'] = array(
+			'title' => __( 'Help', 'brag-book-gallery' ),
+			'url' => admin_url( 'admin.php?page=brag-book-gallery-help' ),
 			'icon' => '',
 			'visible' => true,
 		);

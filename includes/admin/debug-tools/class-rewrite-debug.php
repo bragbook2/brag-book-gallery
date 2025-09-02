@@ -447,15 +447,47 @@ class Rewrite_Debug {
 	private function render_query_vars(): void {
 		global $wp;
 
+		// Query variables actually used by the gallery system
 		$gallery_vars = [
-			'procedure_title',
-			'case_id',
-			'filter_procedure',
-			'filter_category',
-			'favorites_section',
+			'procedure_title',    // Procedure name in URLs (actively used)
+			'case_suffix',       // Case identifier (actively used in URL parsing)
+			'filter_procedure',  // Procedure filter (actively used)
+			'filter_category',   // Category filter (actively used)
+			'favorites_page',    // Favorites page indicator (actively used)
+			'brag_gallery_view', // URL Router gallery view (actively used)
+			'brag_gallery_case', // URL Router gallery case (actively used)
 		];
+		
+		// Debug information - show all registered query vars
+		$current_vars = array_merge( $wp->public_query_vars, $wp->private_query_vars );
+		$all_filtered_vars = apply_filters( 'query_vars', $current_vars );
+		$gallery_specific_vars = array_filter( $all_filtered_vars, function( $var ) {
+			return strpos( $var, 'brag' ) !== false || 
+				   strpos( $var, 'procedure' ) !== false || 
+				   strpos( $var, 'case' ) !== false ||
+				   strpos( $var, 'favorite' ) !== false;
+		});
 		?>
 		<div class="rewrite-table-wrapper">
+			<?php if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) : ?>
+			<details style="margin-bottom: 20px;">
+				<summary style="cursor: pointer; font-weight: 600; color: #666;">
+					<?php esc_html_e( 'Debug: All Gallery-Related Query Variables', 'brag-book-gallery' ); ?> 
+					<small>(<?php echo count( $gallery_specific_vars ); ?> found)</small>
+				</summary>
+				<div style="background: #f5f5f5; padding: 10px; margin-top: 10px; font-family: monospace; font-size: 12px;">
+					<?php if ( ! empty( $gallery_specific_vars ) ) : ?>
+						<strong>Gallery-related query vars:</strong><br>
+						<?php foreach ( $gallery_specific_vars as $var ) : ?>
+						<code><?php echo esc_html( $var ); ?></code><br>
+						<?php endforeach; ?>
+					<?php else : ?>
+						<em>No gallery-related query variables found.</em>
+					<?php endif; ?>
+				</div>
+			</details>
+			<?php endif; ?>
+			
 			<table class="rewrite-table query-vars-table">
 				<thead>
 					<tr>
@@ -466,12 +498,23 @@ class Rewrite_Debug {
 				<tbody>
 					<?php foreach ( $gallery_vars as $var ) : ?>
 					<?php
-					// Check both in WP object and through the query_vars filter
+					// Comprehensive check for query variable registration
 					$registered_vars = apply_filters( 'query_vars', [] );
+					
+					// Check multiple sources for query variable registration
 					$is_registered = in_array( $var, $wp->public_query_vars, true ) ||
 									in_array( $var, $wp->private_query_vars, true ) ||
 									in_array( $var, $registered_vars, true ) ||
 									isset( $wp->extra_query_vars[ $var ] );
+					
+					// Additional check: Try to get the filtered query vars directly
+					if ( ! $is_registered ) {
+						$all_query_vars = [];
+						// Get all query vars by applying the filter with current vars
+						$current_vars = array_merge( $wp->public_query_vars, $wp->private_query_vars );
+						$all_filtered_vars = apply_filters( 'query_vars', $current_vars );
+						$is_registered = in_array( $var, $all_filtered_vars, true );
+					}
 					?>
 					<tr class="table-row">
 						<td class="variable-column">

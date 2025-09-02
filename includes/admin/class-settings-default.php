@@ -494,16 +494,23 @@ class Settings_Default extends Settings_Base {
 					if (typeof ajaxurl === 'undefined') return;
 
 					try {
-						// Check if page exists via AJAX
+						// Check if page exists via AJAX with timeout
 						const formData = new FormData();
 						formData.append('action', 'brag_book_gallery_check_slug');
 						formData.append('slug', slug);
 						formData.append('nonce', '<?php echo wp_create_nonce( 'brag_book_gallery_check_slug' ); ?>');
 
+						// Create AbortController for timeout handling
+						const controller = new AbortController();
+						const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+
 						const response = await fetch(ajaxurl, {
 							method: 'POST',
-							body: formData
+							body: formData,
+							signal: controller.signal
 						});
+
+						clearTimeout(timeoutId);
 
 						const data = await response.json();
 
@@ -528,8 +535,16 @@ class Settings_Default extends Settings_Base {
 						}
 					} catch (error) {
 						console.error('Error checking slug:', error);
-						elements.slugStatus.className = 'slug-status';
-						elements.slugStatus.textContent = '';
+						elements.slugStatus.className = 'slug-status error';
+						
+						if (error.name === 'AbortError') {
+							elements.slugStatus.textContent = '<?php esc_html_e( 'Request timed out. Please try again.', 'brag-book-gallery' ); ?>';
+						} else if (error.message && error.message.includes('fetch')) {
+							elements.slugStatus.textContent = '<?php esc_html_e( 'Connection error. Check your internet connection.', 'brag-book-gallery' ); ?>';
+						} else {
+							elements.slugStatus.textContent = '<?php esc_html_e( 'Error checking slug availability', 'brag-book-gallery' ); ?>';
+						}
+						
 						elements.generateBtn.disabled = true;
 					}
 				};
@@ -561,10 +576,17 @@ class Settings_Default extends Settings_Base {
 						formData.append('title', title);
 						formData.append('nonce', '<?php echo wp_create_nonce( 'brag_book_gallery_generate_page' ); ?>');
 
+						// Create AbortController for timeout handling (longer timeout for page generation)
+						const controller = new AbortController();
+						const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 second timeout
+
 						const response = await fetch(ajaxurl, {
 							method: 'POST',
-							body: formData
+							body: formData,
+							signal: controller.signal
 						});
+
+						clearTimeout(timeoutId);
 
 						const data = await response.json();
 
@@ -587,7 +609,15 @@ class Settings_Default extends Settings_Base {
 					} catch (error) {
 						console.error('Error generating page:', error);
 						elements.slugStatus.className = 'slug-status error';
-						elements.slugStatus.textContent = '<?php esc_html_e( 'Connection error', 'brag-book-gallery' ); ?>';
+						
+						if (error.name === 'AbortError') {
+							elements.slugStatus.textContent = '<?php esc_html_e( 'Page creation timed out. This may happen on managed hosting. Please check if the page was created and try refreshing.', 'brag-book-gallery' ); ?>';
+						} else if (error.message && error.message.includes('fetch')) {
+							elements.slugStatus.textContent = '<?php esc_html_e( 'Connection error. Please check your internet connection and try again.', 'brag-book-gallery' ); ?>';
+						} else {
+							elements.slugStatus.textContent = '<?php esc_html_e( 'Unexpected error during page creation', 'brag-book-gallery' ); ?>';
+						}
+						
 						elements.generateBtn.textContent = '<?php esc_html_e( 'Generate Page', 'brag-book-gallery' ); ?>';
 						elements.generateBtn.disabled = false;
 					}

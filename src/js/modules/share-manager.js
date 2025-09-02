@@ -24,22 +24,8 @@ class ShareManager {
 	}
 
 	createShareMenu() {
-		// If share menu doesn't exist, create it
-		if (!this.shareMenu) {
-			const menuHtml = `
-                <div id="${this.options.shareMenuId}" class="brag-book-gallery-share-dropdown" role="menu">
-                    <button class="brag-book-gallery-share-dropdown-item" data-share-type="link" role="menuitem">Copy Link</button>
-                    <button class="brag-book-gallery-share-dropdown-item" data-share-type="email" role="menuitem">Email</button>
-                    <button class="brag-book-gallery-share-dropdown-item" data-share-type="facebook" role="menuitem">Facebook</button>
-                    <button class="brag-book-gallery-share-dropdown-item" data-share-type="twitter" role="menuitem">Twitter</button>
-                    <button class="brag-book-gallery-share-dropdown-item" data-share-type="pinterest" role="menuitem">Pinterest</button>
-                    <button class="brag-book-gallery-share-dropdown-item" data-share-type="whatsapp" role="menuitem">WhatsApp</button>
-                </div>
-            `;
-
-			document.body.insertAdjacentHTML('beforeend', menuHtml);
-			this.shareMenu = document.getElementById(this.options.shareMenuId);
-		}
+		// Share menus will be created per button, not globally
+		// This method is kept for compatibility but doesn't create a global menu
 	}
 
 	setupEventListeners() {
@@ -64,17 +50,30 @@ class ShareManager {
 			}
 
 			// Close dropdown when clicking outside
-			if (this.shareMenu?.classList.contains('active') &&
-			    !this.shareMenu.contains(e.target) &&
-			    !e.target.closest('.brag-book-gallery-share-button')) {
-				this.hideShareDropdown();
-			}
+			const activeDropdowns = document.querySelectorAll('.brag-book-gallery-share-dropdown.active');
+			activeDropdowns.forEach(dropdown => {
+				if (!dropdown.contains(e.target) && 
+				    !e.target.closest('.brag-book-gallery-share-button')) {
+					dropdown.classList.remove('active');
+					const button = dropdown.closest('.brag-book-gallery-share-button');
+					if (button) {
+						button.classList.remove('active');
+					}
+				}
+			});
 		});
 
 		// Close on escape
 		document.addEventListener('keydown', (e) => {
-			if (e.key === 'Escape' && this.shareMenu?.classList.contains('active')) {
-				this.hideShareDropdown();
+			if (e.key === 'Escape') {
+				const activeDropdowns = document.querySelectorAll('.brag-book-gallery-share-dropdown.active');
+				activeDropdowns.forEach(dropdown => {
+					dropdown.classList.remove('active');
+					const button = dropdown.closest('.brag-book-gallery-share-button');
+					if (button) {
+						button.classList.remove('active');
+					}
+				});
 			}
 		});
 	}
@@ -88,46 +87,35 @@ class ShareManager {
 	}
 
 	showShareDropdown(button) {
-		if (!this.shareMenu) return;
-
 		// Get the carousel item (slide)
 		this.activeItem = button.closest('.brag-book-gallery-carousel-item');
 		this.activeButton = button;
 
+		// Check if button already has a dropdown
+		let dropdown = button.querySelector('.brag-book-gallery-share-dropdown');
+		
+		// Create dropdown if it doesn't exist
+		if (!dropdown) {
+			const menuHtml = `
+                <div class="brag-book-gallery-share-dropdown" role="menu">
+                    <button class="brag-book-gallery-share-dropdown-item" data-share-type="link" role="menuitem">Copy Link</button>
+                    <button class="brag-book-gallery-share-dropdown-item" data-share-type="email" role="menuitem">Email</button>
+                    <button class="brag-book-gallery-share-dropdown-item" data-share-type="facebook" role="menuitem">Facebook</button>
+                    <button class="brag-book-gallery-share-dropdown-item" data-share-type="twitter" role="menuitem">Twitter</button>
+                    <button class="brag-book-gallery-share-dropdown-item" data-share-type="pinterest" role="menuitem">Pinterest</button>
+                    <button class="brag-book-gallery-share-dropdown-item" data-share-type="whatsapp" role="menuitem">WhatsApp</button>
+                </div>
+            `;
+			button.insertAdjacentHTML('beforeend', menuHtml);
+			dropdown = button.querySelector('.brag-book-gallery-share-dropdown');
+		}
+
+		this.shareMenu = dropdown;
+
 		// Add active class to button
 		button.classList.add('active');
 
-		// Get positions
-		const buttonRect = button.getBoundingClientRect();
-		const slideRect = this.activeItem.getBoundingClientRect();
-		const dropdownWidth = 120; // Approximate dropdown width
-		const dropdownHeight = 240; // Approximate dropdown height (6 items * 40px)
-
-		// Align dropdown's right edge with button's right edge
-		let left = buttonRect.right - dropdownWidth;
-		let top = buttonRect.bottom + 8;
-
-		// Make sure dropdown stays within the slide boundaries
-		// Check if dropdown would go past the left edge of the slide
-		if (left < slideRect.left) {
-			left = slideRect.left + 8; // Add small padding from left edge
-		}
-
-		// Check if dropdown would go past the right edge of the slide
-		if (left + dropdownWidth > slideRect.right) {
-			left = slideRect.right - dropdownWidth - 8; // Add small padding from right edge
-		}
-
-		// Adjust if dropdown would go off bottom of screen
-		if (top + dropdownHeight > window.innerHeight - 10) {
-			top = buttonRect.top - dropdownHeight - 8;
-		}
-
-		// Apply position
-		this.shareMenu.style.left = `${left}px`;
-		this.shareMenu.style.top = `${top}px`;
-
-		// Show dropdown
+		// Show dropdown (positioned via CSS)
 		this.shareMenu.classList.add('active');
 
 		// Animate if GSAP available

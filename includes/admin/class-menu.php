@@ -222,51 +222,10 @@ class Menu {
 			'condition'   => true,
 		);
 
-		// Mode Settings (requires API).
+		// Mode-specific Settings (requires API) - Local mode only when available
 		if ( $this->plugin_state['has_api'] ) {
 
-			$this->menu_config['submenus']['mode'] = array(
-				'parent_slug' => 'brag-book-gallery-settings',
-				'page_title'  => __(
-					'Mode Settings',
-					'brag-book-gallery'
-				),
-				'menu_title'  => __(
-					'Mode',
-					'brag-book-gallery'
-				),
-				'capability'  => 'manage_options',
-				'menu_slug'   => 'brag-book-gallery-mode',
-				'callback'    => array(
-					$this->settings_pages['mode'],
-					'render'
-				),
-				'condition'   => true,
-			);
-
-			// Default Settings (Default mode only).
-			if ( $this->plugin_state['current_mode'] === 'default' ) {
-				$this->menu_config['submenus']['default'] = array(
-					'parent_slug' => 'brag-book-gallery-settings',
-					'page_title'  => __(
-						'Default Settings',
-						'brag-book-gallery'
-					),
-					'menu_title'  => __(
-						'Default',
-						'brag-book-gallery'
-					),
-					'capability'  => 'manage_options',
-					'menu_slug'   => 'brag-book-gallery-default',
-					'callback'    => array(
-						$this->settings_pages['default'],
-						'render'
-					),
-					'condition'   => true,
-				);
-			}
-
-			// Local Settings (Local mode only).
+			// Local Settings (Local mode only) - currently disabled/coming soon
 			if ( $this->plugin_state['current_mode'] === 'local' ) {
 				$this->menu_config['submenus']['local'] = array(
 					'parent_slug' => 'brag-book-gallery-settings',
@@ -288,25 +247,6 @@ class Menu {
 				);
 			}
 
-			// API Test (requires API).
-			$this->menu_config['submenus']['api_test'] = array(
-				'parent_slug' => 'brag-book-gallery-settings',
-				'page_title'  => __(
-					'API Test',
-					'brag-book-gallery'
-				),
-				'menu_title'  => __(
-					'API Test',
-					'brag-book-gallery'
-				),
-				'capability'  => 'manage_options',
-				'menu_slug'   => 'brag-book-gallery-api-test',
-				'callback'    => array(
-					$this->settings_pages['api_test'],
-					'render'
-				),
-				'condition'   => true,
-			);
 		}
 
 		// Consultations (always visible, settings inside will control features).

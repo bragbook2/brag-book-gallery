@@ -74,3 +74,231 @@
 	margin-block-start: var(--space-1);
 	line-height: var(--leading-relaxed);
 }
+
+/* Gallery Grid Button Controls */
+.brag-book-gallery-grid-buttons {
+	display: flex;
+	gap: var(--space-2);
+	align-items: center;
+}
+
+.brag-book-gallery-grid-option {
+	position: relative;
+	cursor: pointer;
+}
+
+.brag-book-gallery-grid-option input[type="radio"] {
+	position: absolute;
+	opacity: 0;
+	pointer-events: none;
+}
+
+.brag-book-gallery-grid-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 44px;
+	height: 44px;
+	border: 2px solid var(--slate-300);
+	border-radius: var(--rounded-md);
+	background: white;
+	color: var(--slate-600);
+	transition: all 0.2s ease;
+	cursor: pointer;
+}
+
+.brag-book-gallery-grid-btn:hover {
+	border-color: var(--blue-400);
+	color: var(--blue-600);
+	background: var(--blue-50);
+}
+
+.brag-book-gallery-grid-option input[type="radio"]:checked + .brag-book-gallery-grid-btn {
+	border-color: var(--blue-500);
+	background: var(--blue-500);
+	color: white;
+}
+
+.brag-book-gallery-grid-option input[type="radio"]:focus + .brag-book-gallery-grid-btn {
+	outline: 2px solid var(--blue-500);
+	outline-offset: 2px;
+}
+
+.brag-book-gallery-grid-btn svg {
+	width: 16px;
+	height: 16px;
+	flex-shrink: 0;
+}
+
+.brag-book-gallery-grid-btn .sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
+}
+
+/* Character count for SEO fields */
+.character-count {
+	margin-top: 5px;
+	font-size: 13px;
+	color: #666;
+}
+
+.character-count .warning-text {
+	color: #d63638;
+	margin-left: 10px;
+}
+
+/* SERP Preview styling */
+.serp-preview-container {
+	margin-top: 30px;
+	padding: 20px;
+	background: #f0f0f1;
+	border-radius: 4px;
+
+	h3 {
+		margin-top: 0;
+		margin-bottom: 15px;
+		color: #1d2327;
+	}
+}
+
+.serp-preview {
+	background: #fff;
+	padding: 20px;
+	border-radius: 8px;
+	font-family: arial, sans-serif;
+	max-width: 600px;
+	box-shadow: 0 1px 6px rgba(32, 33, 36, 0.28);
+}
+
+.serp-title {
+	color: #1a0dab;
+	font-size: 20px;
+	line-height: 1.3;
+	margin-bottom: 3px;
+	cursor: pointer;
+	display: -webkit-box;
+	-webkit-line-clamp: 1;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+
+	&:hover {
+		text-decoration: underline;
+	}
+}
+
+.serp-url {
+	color: #006621;
+	font-size: 14px;
+	line-height: 1.3;
+	margin-bottom: 5px;
+}
+
+.serp-description {
+	color: #545454;
+	font-size: 14px;
+	line-height: 1.58;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+}
+
+/* Slug status messages */
+.slug-status {
+	margin-top: 5px;
+	font-size: 13px;
+	display: none;
+
+	&.warning {
+		color: #dba617;
+		display: block;
+	}
+
+	&.success {
+		color: #00a32a;
+		display: block;
+	}
+
+	&.error {
+		color: #d63638;
+		display: block;
+	}
+}
+
+.slug-input-wrapper {
+	display: flex;
+	align-items: center;
+}
+
+#generate-page-btn:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
+}
+
+/* Monaco Editor styling */
+#monaco-editor-container {
+	border: 1px solid var(--slate-300);
+	border-radius: var(--rounded-md);
+	background: white;
+	overflow: hidden;
+	
+	&:focus-within {
+		border-color: var(--blue-500);
+		box-shadow: 0 0 0 1px var(--blue-500);
+	}
+}
+
+.monaco-editor-toolbar {
+	display: flex;
+	align-items: center;
+	gap: var(--space-3);
+	padding: var(--space-2) 0;
+	border-top: 1px solid var(--slate-200);
+	background: var(--slate-50);
+	border-radius: 0 0 var(--rounded-md) var(--rounded-md);
+	margin-top: -1px; // Overlap with editor container
+	
+	button {
+		font-size: var(--text-xs);
+		padding: var(--space-1) var(--space-2);
+		line-height: var(--leading-4);
+		
+		&:hover {
+			background: var(--slate-100);
+		}
+	}
+}
+
+.monaco-editor-status {
+	margin-left: auto;
+	font-size: var(--text-xs);
+	color: var(--slate-500);
+	font-family: var(--font-mono, Consolas, Monaco, 'Courier New', monospace);
+	
+	span {
+		font-weight: var(--font-medium);
+		color: var(--slate-700);
+	}
+}
+
+/* Monaco Editor theme customizations */
+.monaco-editor .margin {
+	background: var(--slate-50) !important;
+}
+
+.monaco-editor .current-line {
+	border: none !important;
+	background: var(--blue-50) !important;
+}
+
+/* Ensure Monaco Editor integrates well with WordPress admin */
+.monaco-editor {
+	font-family: Consolas, Monaco, 'Courier New', monospace !important;
+}
