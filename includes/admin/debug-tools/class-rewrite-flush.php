@@ -242,7 +242,7 @@ final class Rewrite_Flush {
 					</div>
 
 					<h3><?php esc_html_e( 'When to flush rewrite rules:', 'brag-book-gallery' ); ?></h3>
-					<ul style="list-style: disc; margin-left: 20px;">
+					<ul>
 						<li><?php esc_html_e( 'After changing permalink settings', 'brag-book-gallery' ); ?></li>
 						<li><?php esc_html_e( 'After updating the gallery slug', 'brag-book-gallery' ); ?></li>
 						<li><?php esc_html_e( 'When custom URLs return 404 errors', 'brag-book-gallery' ); ?></li>
@@ -259,7 +259,7 @@ final class Rewrite_Flush {
 				<div class="tool-section">
 					<h3><?php esc_html_e( 'Flush Options', 'brag-book-gallery' ); ?></h3>
 
-					<div style="margin: 20px 0;">
+					<div class="flush-option">
 						<button class="button button-primary button-large" id="flush-rules-standard">
 							<?php esc_html_e( 'Standard Flush', 'brag-book-gallery' ); ?>
 						</button>
@@ -268,7 +268,7 @@ final class Rewrite_Flush {
 						</p>
 					</div>
 
-					<div style="margin: 20px 0;">
+					<div class="flush-option">
 						<button class="button button-secondary button-large" id="flush-rules-hard">
 							<?php esc_html_e( 'Hard Flush', 'brag-book-gallery' ); ?>
 						</button>
@@ -277,7 +277,7 @@ final class Rewrite_Flush {
 						</p>
 					</div>
 
-					<div style="margin: 20px 0;">
+					<div class="flush-option">
 						<button class="button button-secondary" id="flush-with-registration">
 							<?php esc_html_e( 'Flush with Rule Registration', 'brag-book-gallery' ); ?>
 						</button>
@@ -286,9 +286,9 @@ final class Rewrite_Flush {
 						</p>
 					</div>
 
-					<div style="margin: 20px 0; padding: 15px; background: #f0f8ff; border-left: 4px solid #0073aa;">
-						<h4 style="margin-top: 0;"><?php esc_html_e( 'Comprehensive Standalone Flush', 'brag-book-gallery' ); ?></h4>
-						<button class="button button-secondary button-large" id="flush-rules-standalone" style="background: #0073aa; color: white; border-color: #0073aa;">
+					<div class="flush-option featured">
+						<h4><?php esc_html_e( 'Comprehensive Standalone Flush', 'brag-book-gallery' ); ?></h4>
+						<button class="button button-primary button-large" id="flush-rules-standalone">
 							<?php esc_html_e( 'Run Standalone Flush Process', 'brag-book-gallery' ); ?>
 						</button>
 						<p class="description">
@@ -310,23 +310,23 @@ final class Rewrite_Flush {
 					<button class="button" id="verify-rules">
 						<?php esc_html_e( 'Verify Rules', 'brag-book-gallery' ); ?>
 					</button>
-					<button class="button" id="test-urls" style="margin-left: 10px;">
+					<button class="button" id="test-urls">
 						<?php esc_html_e( 'Test URLs', 'brag-book-gallery' ); ?>
 					</button>
 					<div id="verify-result"></div>
 				</div>
 
 				<!-- Dialog for Standalone Flush Results -->
-				<dialog id="standalone-flush-dialog" style="width: 90%; max-width: 800px; max-height: 90vh; padding: 0; border: none; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+				<dialog id="standalone-flush-dialog">
 					<div style="display: flex; flex-direction: column; height: 100%;">
-						<div style="padding: 20px; background: #f0f8ff; border-bottom: 1px solid #0073aa; display: flex; justify-content: space-between; align-items: center;">
-							<h2 style="margin: 0; color: #0073aa;"><?php esc_html_e( 'Comprehensive Flush Results', 'brag-book-gallery' ); ?></h2>
-							<button type="button" id="close-dialog" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #666;" aria-label="<?php esc_attr_e( 'Close dialog', 'brag-book-gallery' ); ?>">&times;</button>
+						<div class="dialog-header">
+							<h2><?php esc_html_e( 'Comprehensive Flush Results', 'brag-book-gallery' ); ?></h2>
+							<button type="button" id="close-dialog" aria-label="<?php esc_attr_e( 'Close dialog', 'brag-book-gallery' ); ?>">&times;</button>
 						</div>
-						<div id="dialog-content" style="padding: 20px; overflow-y: auto; flex: 1;">
+						<div id="dialog-content" class="dialog-content">
 							<!-- Results will be inserted here -->
 						</div>
-						<div style="padding: 20px; background: #f5f5f5; border-top: 1px solid #ddd; text-align: right;">
+						<div class="dialog-footer">
 							<button type="button" class="button button-primary" id="close-dialog-footer"><?php esc_html_e( 'Close', 'brag-book-gallery' ); ?></button>
 						</div>
 					</div>
@@ -335,7 +335,7 @@ final class Rewrite_Flush {
 				<div class="tool-section">
 					<h3><?php esc_html_e( 'Alternative Methods', 'brag-book-gallery' ); ?></h3>
 					<p><?php esc_html_e( 'You can also flush rewrite rules by:', 'brag-book-gallery' ); ?></p>
-					<ul style="list-style: disc; margin-left: 20px;">
+					<ul>
 						<li>
 							<?php
 							printf(

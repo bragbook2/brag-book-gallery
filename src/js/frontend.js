@@ -19,6 +19,8 @@ import { NudityWarningManager, PhoneFormatter } from './modules/utilities.js';
 // Import global utilities (this will execute the initialization code)
 import './modules/global-utilities.js';
 
+// Make components available on window for global access
+
 // Export all components for external use if needed
 export {
 	BRAGbookGalleryApp,
@@ -34,4 +36,3 @@ export {
 };
 
 // Initialize the main application (this happens automatically when global-utilities.js is imported)
-console.log('BRAG Book Gallery modules loaded successfully');

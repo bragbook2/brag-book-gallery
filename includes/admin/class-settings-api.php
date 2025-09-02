@@ -222,7 +222,7 @@ class Settings_Api extends Settings_Base {
 											<label><?php esc_html_e( 'Website Property ID', 'brag-book-gallery' ); ?></label>
 										</th>
 										<td>
-											<?php 
+											<?php
 												$property_id_value = $website_property_ids[ $index ] ?? '';
 												// Ensure we have a string, not an array
 												if ( is_array( $property_id_value ) ) {
@@ -263,6 +263,21 @@ class Settings_Api extends Settings_Base {
 					</button>
 				</p>
 
+				<?php
+				// Check if gallery pages exist
+				$gallery_page_slugs = \BRAGBookGallery\Includes\Core\Slug_Helper::get_all_gallery_page_slugs();
+				if ( empty( $gallery_page_slugs ) ) :
+					?>
+					<div class="brag-book-gallery-notice brag-book-gallery-notice--warning">
+						<div style="display:flex;align-items:center;justify-content: space-between">
+							<h4><?php esc_html_e( 'After configuring the API. Please create gallery page on the default tab', 'brag-book-gallery' ); ?></h4>
+							<a href="<?php echo esc_url( admin_url( 'admin.php?page=brag-book-gallery-general' ) ); ?>" class="button button-primary">
+								<?php esc_html_e( 'Create Gallery Page', 'brag-book-gallery' ); ?>
+							</a>
+						</>
+					</div>
+				<?php endif; ?>
+
 			</div>
 
 			<div class="brag-book-gallery-section">
@@ -291,20 +306,22 @@ class Settings_Api extends Settings_Base {
 
 					<tr>
 						<th scope="row">
-							<label for="enable_caching" class="brag-book-toggle-label">
+							<label for="enable_caching" class="brag-book-gallery-toggle-label">
 								<?php esc_html_e( 'Enable Caching', 'brag-book-gallery' ); ?>
 							</label>
 						</th>
 						<td>
-							<label class="brag-book-toggle-switch">
-								<input type="hidden" name="enable_caching" value="no" />
-								<input type="checkbox"
-								       id="enable_caching"
-								       name="enable_caching"
-								       value="yes"
-								       <?php checked( $enable_caching, 'yes' ); ?> />
-								<span class="brag-book-toggle-slider"></span>
-							</label>
+							<div class="brag-book-gallery-toggle-wrapper">
+								<label class="brag-book-gallery-toggle">
+									<input type="hidden" name="enable_caching" value="no" />
+									<input type="checkbox"
+									       id="enable_caching"
+									       name="enable_caching"
+									       value="yes"
+									       <?php checked( $enable_caching, 'yes' ); ?> />
+									<span class="brag-book-gallery-toggle-slider"></span>
+								</label>
+							</div>
 							<p class="description">
 								<?php esc_html_e( 'Cache API responses for better performance', 'brag-book-gallery' ); ?>
 							</p>
@@ -1100,7 +1117,7 @@ class Settings_Api extends Settings_Base {
 		if ( isset( $api_tokens[ $index ] ) ) {
 			unset( $api_tokens[ $index ] );
 			unset( $property_ids[ $index ] );
-			
+
 			// Only unset if the index exists in these arrays
 			if ( isset( $page_slugs[ $index ] ) ) {
 				unset( $page_slugs[ $index ] );
@@ -1165,29 +1182,92 @@ class Settings_Api extends Settings_Base {
 			wp_send_json_error( __( 'Slug is required.', 'brag-book-gallery' ) );
 		}
 
-		// Get current gallery slug
-		$current_gallery_slug = get_option( 'brag_book_gallery_page_slug', '' );
-		
+		// Get current gallery slug using Slug_Helper for consistency
+		$current_gallery_slug = \BRAGBookGallery\Includes\Core\Slug_Helper::get_first_gallery_page_slug();
+
 		// Check if slug exists as a post or page
 		$exists = get_page_by_path( $slug, OBJECT, array( 'post', 'page' ) );
-		
-		// Determine the appropriate message
+
+		// Also check if this slug is already in the gallery slugs array
+		$all_gallery_slugs = \BRAGBookGallery\Includes\Core\Slug_Helper::get_all_gallery_page_slugs();
+		$is_gallery_slug = in_array( $slug, $all_gallery_slugs, true );
+
+		// Initialize response data
+		$has_shortcode = false;
+		$needs_shortcode = false;
+		$can_generate = false;
+		$response_type = 'info'; // success, warning, error, info
+
+		// Determine the appropriate message and response
 		if ( $exists ) {
-			// Check if this is the current gallery slug
-			if ( $slug === $current_gallery_slug ) {
-				$message = __( 'This slug is the active gallery.', 'brag-book-gallery' );
+			// Check if the existing page contains the gallery shortcode
+			$page_content = $exists->post_content;
+			$has_shortcode = $this->has_gallery_shortcode( $page_content );
+
+			if ( $is_gallery_slug ) {
+				// This is already a configured gallery slug
+				if ( $has_shortcode ) {
+					$message = __( 'This slug is already configured for a gallery page with the correct shortcode.', 'brag-book-gallery' );
+					$response_type = 'success';
+				} else {
+					$message = __( 'This slug is configured as a gallery page but is missing the [brag_book_gallery] shortcode.', 'brag-book-gallery' );
+					$response_type = 'warning';
+					$needs_shortcode = true;
+				}
 			} else {
-				$message = __( 'This slug is already in use.', 'brag-book-gallery' );
+				// This slug exists but isn't configured as a gallery slug
+				if ( $has_shortcode ) {
+					$message = __( 'This page contains the gallery shortcode but isn\'t registered as a gallery page.', 'brag-book-gallery' );
+					$response_type = 'warning';
+				} else {
+					$message = __( 'This slug is already in use by another page without the gallery shortcode.', 'brag-book-gallery' );
+					$response_type = 'warning';
+					$needs_shortcode = true;
+				}
 			}
 		} else {
-			$message = __( 'This slug is available.', 'brag-book-gallery' );
+			// Slug is available for use
+			$message = __( 'This slug is available for use.', 'brag-book-gallery' );
+			$response_type = 'success';
+			$can_generate = true;
 		}
 
 		wp_send_json_success( array(
-			'exists'    => (bool) $exists,  // JavaScript expects 'exists' property
-			'available' => ! $exists,
-			'message'   => $message,
+			'exists'          => (bool) $exists,
+			'available'       => ! $exists,
+			'can_generate'    => $can_generate,
+			'has_shortcode'   => $has_shortcode,
+			'needs_shortcode' => $needs_shortcode,
+			'message'         => $message,
+			'response_type'   => $response_type,
+			'is_gallery_slug' => $is_gallery_slug,
+			'edit_link'       => $exists ? get_edit_post_link( $exists->ID, 'raw' ) : '',
 		) );
+	}
+
+	/**
+	 * Check if content contains the gallery shortcode
+	 *
+	 * Searches for the [brag_book_gallery] shortcode in content, accounting for:
+	 * - Basic shortcode: [brag_book_gallery]
+	 * - Shortcode with attributes: [brag_book_gallery website_property_id="123"]
+	 * - Self-closing variations: [brag_book_gallery/]
+	 * - Whitespace variations
+	 *
+	 * @since 3.0.0
+	 * @param string $content Page/post content to search
+	 * @return bool True if shortcode is found, false otherwise
+	 */
+	private function has_gallery_shortcode( string $content ): bool {
+		if ( empty( $content ) ) {
+			return false;
+		}
+
+		// Use WordPress's built-in shortcode parsing for accuracy
+		// This handles all variations and attribute combinations
+		$shortcode_regex = get_shortcode_regex( array( 'brag_book_gallery' ) );
+
+		return (bool) preg_match( "/$shortcode_regex/", $content );
 	}
 
 	/**
@@ -1197,6 +1277,11 @@ class Settings_Api extends Settings_Base {
 	 * @return void
 	 */
 	public function handle_generate_page(): void {
+		// Set time limit to prevent timeouts on managed hosts like WP Engine
+		if ( ! wp_doing_cron() ) {
+			@set_time_limit( 60 );
+		}
+
 		// Use the correct nonce action for this handler
 		$this->verify_ajax_request( 'brag_book_gallery_generate_page' );
 
@@ -1207,59 +1292,84 @@ class Settings_Api extends Settings_Base {
 			wp_send_json_error( __( 'Slug and title are required.', 'brag-book-gallery' ) );
 		}
 
-		// Check if page already exists
+		// Double-check if page already exists
 		if ( get_page_by_path( $slug ) ) {
 			wp_send_json_error( __( 'A page with this slug already exists.', 'brag-book-gallery' ) );
 		}
 
-		// Create the page
-		$page_id = wp_insert_post( array(
-			'post_title'   => $title,
-			'post_name'    => $slug,
-			'post_content' => '[brag_book_gallery]',
-			'post_status'  => 'publish',
-			'post_type'    => 'page',
-		) );
+		// Create the page with error handling
+		try {
+			$page_id = wp_insert_post( array(
+				'post_title'   => $title,
+				'post_name'    => $slug,
+				'post_content' => '[brag_book_gallery]',
+				'post_status'  => 'publish',
+				'post_type'    => 'page',
+			), true );
 
-		if ( is_wp_error( $page_id ) ) {
-			wp_send_json_error( $page_id->get_error_message() );
+			if ( is_wp_error( $page_id ) ) {
+				wp_send_json_error( sprintf(
+					__( 'Failed to create page: %s', 'brag-book-gallery' ),
+					$page_id->get_error_message()
+				) );
+			}
+
+			// Add SEO meta fields if they exist
+			$seo_title = get_option( 'brag_book_gallery_seo_page_title', '' );
+			$seo_description = get_option( 'brag_book_gallery_seo_page_description', '' );
+
+			if ( ! empty( $seo_title ) ) {
+				update_post_meta( $page_id, '_yoast_wpseo_title', $seo_title );
+				update_post_meta( $page_id, '_aioseo_title', $seo_title );
+				update_post_meta( $page_id, '_seopress_titles_title', $seo_title );
+				update_post_meta( $page_id, '_rank_math_title', $seo_title );
+			}
+
+			if ( ! empty( $seo_description ) ) {
+				update_post_meta( $page_id, '_yoast_wpseo_metadesc', $seo_description );
+				update_post_meta( $page_id, '_aioseo_description', $seo_description );
+				update_post_meta( $page_id, '_seopress_titles_desc', $seo_description );
+				update_post_meta( $page_id, '_rank_math_description', $seo_description );
+			}
+
+			// Use Slug_Helper to manage the slugs properly
+			$add_result = \BRAGBookGallery\Includes\Core\Slug_Helper::add_gallery_slug( $slug );
+
+			if ( ! $add_result ) {
+				// If slug couldn't be added, still proceed but log warning
+				error_log( "BRAGBook Gallery: Could not add slug '$slug' to gallery slugs via Slug_Helper" );
+
+				// Fallback: update option directly
+				$page_slugs = get_option( 'brag_book_gallery_page_slug', array() );
+				if ( ! is_array( $page_slugs ) ) {
+					$page_slugs = array();
+				}
+				$page_slugs[] = $slug;
+				update_option( 'brag_book_gallery_page_slug', $page_slugs );
+			}
+
+			// Schedule rewrite rules flush instead of doing it immediately
+			// This prevents timeouts on managed hosting like WP Engine
+			wp_schedule_single_event( time() + 5, 'brag_book_gallery_delayed_rewrite_flush' );
+
+			// For immediate feedback, try a quick flush but don't block on it
+			if ( function_exists( 'wp_cache_flush' ) ) {
+				wp_cache_flush();
+			}
+
+			wp_send_json_success( array(
+				'page_id'   => $page_id,
+				'message'   => __( 'Gallery page created successfully! Rewrite rules will be updated shortly.', 'brag-book-gallery' ),
+				'url'       => get_permalink( $page_id ),
+				'edit_link' => get_edit_post_link( $page_id, 'raw' ),
+			) );
+
+		} catch ( Exception $e ) {
+			wp_send_json_error( sprintf(
+				__( 'Unexpected error creating page: %s', 'brag-book-gallery' ),
+				$e->getMessage()
+			) );
 		}
-
-		// Add SEO meta fields if they exist
-		$seo_title = get_option( 'brag_book_gallery_seo_page_title', '' );
-		$seo_description = get_option( 'brag_book_gallery_seo_page_description', '' );
-		
-		if ( ! empty( $seo_title ) ) {
-			update_post_meta( $page_id, '_yoast_wpseo_title', $seo_title );
-			update_post_meta( $page_id, '_aioseo_title', $seo_title );
-			update_post_meta( $page_id, '_seopress_titles_title', $seo_title );
-			update_post_meta( $page_id, '_rank_math_title', $seo_title );
-		}
-		
-		if ( ! empty( $seo_description ) ) {
-			update_post_meta( $page_id, '_yoast_wpseo_metadesc', $seo_description );
-			update_post_meta( $page_id, '_aioseo_description', $seo_description );
-			update_post_meta( $page_id, '_seopress_titles_desc', $seo_description );
-			update_post_meta( $page_id, '_rank_math_description', $seo_description );
-		}
-
-		// Save the slug to the options
-		$page_slugs = get_option( 'brag_book_gallery_page_slug', array() );
-		if ( ! is_array( $page_slugs ) ) {
-			$page_slugs = array();
-		}
-		$page_slugs[] = $slug;
-		update_option( 'brag_book_gallery_page_slug', $page_slugs );
-
-		// Flush rewrite rules after creating gallery page
-		flush_rewrite_rules();
-
-		wp_send_json_success( array(
-			'page_id'   => $page_id,
-			'message'   => __( 'Page created successfully.', 'brag-book-gallery' ),
-			'url'       => get_permalink( $page_id ),
-			'edit_link' => get_edit_post_link( $page_id, 'raw' ),
-		) );
 	}
 
 	/**

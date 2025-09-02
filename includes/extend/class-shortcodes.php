@@ -648,7 +648,8 @@ final class Shortcodes {
 						$photo, 
 						$case, 
 						$slide_index, 
-						$procedure_slug 
+						$procedure_slug,
+						true // This is a standalone carousel
 					);
 				}
 			}
@@ -721,7 +722,7 @@ final class Shortcodes {
 			};
 
 			// Always create a URL if we have a case ID
-			$case_url = rtrim( $base_path, '/' ) . '/' . $procedure_slug . '/' . $case_id;
+			$case_url = rtrim( $base_path, '/' ) . '/' . $procedure_slug . '/' . $case_id . '/';
 		}
 
 		// Check for nudity flag if available

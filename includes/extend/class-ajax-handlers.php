@@ -901,14 +901,54 @@ class Ajax_Handlers {
 		}
 
 		if ( ! empty( $case_data ) && is_array( $case_data ) ) {
+			// Track case view for analytics (fire and forget - don't let failures affect the response)
+			$view_tracked = false;
+			$view_tracking_error = null;
+			
+			if ( is_numeric( $case_id ) ) {
+				try {
+					$endpoints = isset( $endpoints ) ? $endpoints : new Endpoints();
+					$tracking_response = $endpoints->track_case_view( $api_token, intval( $case_id ) );
+					
+					if ( $tracking_response !== null ) {
+						$view_tracked = true;
+						
+						if ( WP_DEBUG && WP_DEBUG_LOG ) {
+							// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+							error_log( 'BRAGBook Gallery: View tracked for case ID: ' . $case_id );
+						}
+					}
+				} catch ( Exception $e ) {
+					$view_tracking_error = $e->getMessage();
+					
+					// Log the error but don't prevent the case from loading
+					if ( WP_DEBUG && WP_DEBUG_LOG ) {
+						// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+						error_log( 'BRAGBook Gallery: Failed to track view for case ID ' . $case_id . ': ' . $e->getMessage() );
+					}
+				}
+			}
+
 			// Generate HTML and SEO data for case details using HTML_Renderer class method
 			$result = HTML_Renderer::render_case_details_html( $case_data, $procedure_slug, $procedure_name );
 
-			wp_send_json_success( [
+			$response_data = [
 				'html' => $result['html'],
 				'case_id' => $case_id,
 				'seo' => $result['seo'],
-			] );
+				'view_tracked' => $view_tracked,
+			];
+
+			// Add debug info for development
+			if ( WP_DEBUG ) {
+				$response_data['debug'] = [
+					'view_tracking_attempted' => is_numeric( $case_id ),
+					'view_tracked' => $view_tracked,
+					'tracking_error' => $view_tracking_error,
+				];
+			}
+
+			wp_send_json_success( $response_data );
 			return;
 		}
 

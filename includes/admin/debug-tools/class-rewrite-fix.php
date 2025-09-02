@@ -10,10 +10,10 @@
  * @subpackage Admin\Debug_Tools
  * @since      3.0.0
  * @version    3.0.0
- * 
+ *
  * @author     BRAGBook Team
  * @license    GPL-2.0-or-later
- * 
+ *
  * @see \BRAGBookGallery\Includes\Extend\Rewrite_Rules_Handler For rule registration
  * @see \BRAGBookGallery\Admin\Debug_Tools\Rewrite_Debug For rule analysis
  * @see \BRAGBookGallery\Includes\Core\Slug_Helper For slug management
@@ -259,12 +259,7 @@ final class Rewrite_Fix {
 				<h2><?php esc_html_e( 'Live Site Rewrite Rules Fix', 'brag-book-gallery' ); ?></h2>
 
 				<div class="tool-section">
-					<h3><?php esc_html_e( '1. Server Environment', 'brag-book-gallery' ); ?></h3>
-					<?php $this->render_server_info(); ?>
-				</div>
-
-				<div class="tool-section">
-					<h3><?php esc_html_e( '2. .htaccess Status', 'brag-book-gallery' ); ?></h3>
+					<h3><?php esc_html_e( '.htaccess Status', 'brag-book-gallery' ); ?></h3>
 					<button type="button" class="button" id="check-htaccess">
 						<?php esc_html_e( 'Check .htaccess', 'brag-book-gallery' ); ?>
 					</button>
@@ -272,12 +267,7 @@ final class Rewrite_Fix {
 				</div>
 
 				<div class="tool-section">
-					<h3><?php esc_html_e( '3. Gallery Configuration', 'brag-book-gallery' ); ?></h3>
-					<?php $this->render_gallery_config(); ?>
-				</div>
-
-				<div class="tool-section">
-					<h3><?php esc_html_e( '4. Rewrite Rules Status', 'brag-book-gallery' ); ?></h3>
+					<h3><?php esc_html_e( 'Rewrite Rules Status', 'brag-book-gallery' ); ?></h3>
 					<button type="button" class="button" id="check-rules-status">
 						<?php esc_html_e( 'Check Rules Status', 'brag-book-gallery' ); ?>
 					</button>
@@ -285,21 +275,11 @@ final class Rewrite_Fix {
 				</div>
 
 				<div class="tool-section">
-					<h3><?php esc_html_e( '5. Test URLs', 'brag-book-gallery' ); ?></h3>
-					<?php $this->render_test_urls(); ?>
-				</div>
-
-				<div class="tool-section">
-					<h3><?php esc_html_e( '6. Fix Actions', 'brag-book-gallery' ); ?></h3>
+					<h3><?php esc_html_e( 'Fix Actions', 'brag-book-gallery' ); ?></h3>
 					<button type="button" class="button button-primary" id="apply-fixes">
 						<?php esc_html_e( 'Apply All Fixes', 'brag-book-gallery' ); ?>
 					</button>
 					<div id="fix-result"></div>
-				</div>
-
-				<div class="tool-section">
-					<h3><?php esc_html_e( '7. Manual Fix Instructions', 'brag-book-gallery' ); ?></h3>
-					<?php $this->render_manual_instructions(); ?>
 				</div>
 			</div>
 			<?php
@@ -335,24 +315,34 @@ final class Rewrite_Fix {
 			?>
 			<div class="rewrite-table-wrapper">
 				<table class="rewrite-table server-info-table">
+					<thead>
+						<tr class="header-row">
+							<th class="header-cell setting-column">
+								<span class="header-text"><?php esc_html_e( 'Setting', 'brag-book-gallery' ); ?></span>
+							</th>
+							<th class="header-cell value-column">
+								<span class="header-text"><?php esc_html_e( 'Value', 'brag-book-gallery' ); ?></span>
+							</th>
+						</tr>
+					</thead>
 					<tbody>
 						<tr class="table-row">
-							<th class="setting-label">
-								<span class="label-text"><?php esc_html_e( 'Server Software', 'brag-book-gallery' ); ?></span>
-							</th>
-							<td class="setting-value">
-								<span class="value-text"><?php echo esc_html( $environment['software'] ); ?></span>
+							<td class="data-cell">
+								<span class="data-text"><?php esc_html_e( 'Server Software', 'brag-book-gallery' ); ?></span>
+							</td>
+							<td class="data-cell">
+								<span class="data-text"><?php echo esc_html( $environment['software'] ); ?></span>
 								<?php if ( 'Unknown' !== $environment['server_type'] ) : ?>
 									<span class="badge badge-info"><?php echo esc_html( $environment['server_type'] ); ?></span>
 								<?php endif; ?>
 							</td>
 						</tr>
 						<tr class="table-row">
-							<th class="setting-label">
-								<span class="label-text"><?php esc_html_e( 'PHP Version', 'brag-book-gallery' ); ?></span>
-							</th>
-							<td class="setting-value">
-								<span class="value-text"><?php echo esc_html( $environment['php_version'] ); ?></span>
+							<td class="data-cell">
+								<span class="data-text"><?php esc_html_e( 'PHP Version', 'brag-book-gallery' ); ?></span>
+							</td>
+							<td class="data-cell">
+								<span class="data-text"><?php echo esc_html( $environment['php_version'] ); ?></span>
 								<?php if ( version_compare( $environment['php_version'], '8.2', '>=' ) ) : ?>
 									<?php echo $this->get_check_icon( true ); ?>
 								<?php elseif ( version_compare( $environment['php_version'], '8.0', '>=' ) ) : ?>
@@ -363,22 +353,22 @@ final class Rewrite_Fix {
 							</td>
 						</tr>
 						<tr class="table-row">
-							<th class="setting-label">
-								<span class="label-text"><?php esc_html_e( 'WordPress Version', 'brag-book-gallery' ); ?></span>
-							</th>
-							<td class="setting-value">
-								<span class="value-text"><?php echo esc_html( $environment['wp_version'] ); ?></span>
+							<td class="data-cell">
+								<span class="data-text"><?php esc_html_e( 'WordPress Version', 'brag-book-gallery' ); ?></span>
+							</td>
+							<td class="data-cell">
+								<span class="data-text"><?php echo esc_html( $environment['wp_version'] ); ?></span>
 								<?php if ( $environment['is_multisite'] ) : ?>
 									<span class="badge badge-info"><?php esc_html_e( 'Multisite', 'brag-book-gallery' ); ?></span>
 								<?php endif; ?>
 							</td>
 						</tr>
 						<tr class="table-row">
-							<th class="setting-label">
-								<span class="label-text"><?php esc_html_e( 'Permalink Structure', 'brag-book-gallery' ); ?></span>
-							</th>
-							<td class="setting-value">
-								<span class="value-text"><?php echo esc_html( $environment['permalink_structure'] ); ?></span>
+							<td class="data-cell">
+								<span class="data-text"><?php esc_html_e( 'Permalink Structure', 'brag-book-gallery' ); ?></span>
+							</td>
+							<td class="data-cell">
+								<span class="data-text"><?php echo esc_html( $environment['permalink_structure'] ); ?></span>
 								<?php if ( 'Plain' === $environment['permalink_structure'] ) : ?>
 									<span class="notice-inline notice-warning">
 										<?php esc_html_e( 'Custom URLs require pretty permalinks', 'brag-book-gallery' ); ?>
@@ -387,28 +377,28 @@ final class Rewrite_Fix {
 							</td>
 						</tr>
 						<tr class="table-row">
-							<th class="setting-label">
-								<span class="label-text"><?php esc_html_e( 'Home URL', 'brag-book-gallery' ); ?></span>
-							</th>
-							<td class="setting-value">
-								<span class="value-text"><?php echo esc_url( $environment['home_url'] ); ?></span>
+							<td class="data-cell">
+								<span class="data-text"><?php esc_html_e( 'Home URL', 'brag-book-gallery' ); ?></span>
+							</td>
+							<td class="data-cell">
+								<span class="data-text"><?php echo esc_url( $environment['home_url'] ); ?></span>
 							</td>
 						</tr>
 						<tr class="table-row">
-							<th class="setting-label">
-								<span class="label-text"><?php esc_html_e( 'Site URL', 'brag-book-gallery' ); ?></span>
-							</th>
-							<td class="setting-value">
-								<span class="value-text"><?php echo esc_url( $environment['site_url'] ); ?></span>
+							<td class="data-cell">
+								<span class="data-text"><?php esc_html_e( 'Site URL', 'brag-book-gallery' ); ?></span>
+							</td>
+							<td class="data-cell">
+								<span class="data-text"><?php echo esc_url( $environment['site_url'] ); ?></span>
 							</td>
 						</tr>
 						<?php if ( 'Unknown' !== $environment['hosting_provider'] ) : ?>
 						<tr class="table-row">
-							<th class="setting-label">
-								<span class="label-text"><?php esc_html_e( 'Hosting Provider', 'brag-book-gallery' ); ?></span>
-							</th>
-							<td class="setting-value">
-								<span class="value-text"><?php echo esc_html( $environment['hosting_provider'] ); ?></span>
+							<td class="data-cell">
+								<span class="data-text"><?php esc_html_e( 'Hosting Provider', 'brag-book-gallery' ); ?></span>
+							</td>
+							<td class="data-cell">
+								<span class="data-text"><?php echo esc_html( $environment['hosting_provider'] ); ?></span>
 								<?php if ( in_array( $environment['hosting_provider'], [ 'WP Engine', 'Kinsta' ], true ) ) : ?>
 									<span class="notice-inline notice-warning">
 										<?php esc_html_e( 'Some restrictions may apply', 'brag-book-gallery' ); ?>
@@ -419,10 +409,10 @@ final class Rewrite_Fix {
 						<?php endif; ?>
 						<?php if ( null !== $environment['mod_rewrite'] ) : ?>
 						<tr class="table-row">
-							<th class="setting-label">
-								<span class="label-text"><?php esc_html_e( 'mod_rewrite', 'brag-book-gallery' ); ?></span>
-							</th>
-							<td class="setting-value">
+							<td class="data-cell">
+								<span class="data-text"><?php esc_html_e( 'mod_rewrite', 'brag-book-gallery' ); ?></span>
+							</td>
+							<td class="data-cell">
 								<?php if ( $environment['mod_rewrite'] ) : ?>
 									<span style="color: green;"><?php echo $this->get_check_icon( true ); ?><?php esc_html_e( 'Enabled', 'brag-book-gallery' ); ?></span>
 								<?php else : ?>
@@ -455,10 +445,10 @@ final class Rewrite_Fix {
 			// Use Slug_Helper to properly handle array/string format
 			$brag_book_gallery_page_slug = \BRAGBookGallery\Includes\Core\Slug_Helper::get_first_gallery_page_slug();
 			$brag_book_gallery_page_id = get_option( 'brag_book_gallery_page_id' );
-			
+
 			// Validate configuration
 			$config_issues = $this->validate_gallery_configuration();
-			
+
 			if ( ! empty( $config_issues ) ) {
 				echo '<div class="notice notice-warning"><p>';
 				echo esc_html__( 'Configuration issues detected:', 'brag-book-gallery' ) . '</p><ul>';
@@ -470,35 +460,45 @@ final class Rewrite_Fix {
 			?>
 			<div class="rewrite-table-wrapper">
 				<table class="rewrite-table gallery-config-table">
+					<thead>
+						<tr class="header-row">
+							<th class="header-cell setting-column">
+								<span class="header-text"><?php esc_html_e( 'Setting', 'brag-book-gallery' ); ?></span>
+							</th>
+							<th class="header-cell value-column">
+								<span class="header-text"><?php esc_html_e( 'Value', 'brag-book-gallery' ); ?></span>
+							</th>
+						</tr>
+					</thead>
 					<tbody>
 						<tr class="table-row">
-							<th class="setting-label">
-								<span class="label-text"><?php esc_html_e( 'Combine Gallery Slug', 'brag-book-gallery' ); ?></span>
-							</th>
-							<td class="setting-value">
-								<span class="value-text"><?php echo esc_html( $brag_book_gallery_page_slug ?: '(not set)' ); ?></span>
+							<td class="data-cell">
+								<span class="data-text"><?php esc_html_e( 'Combine Gallery Slug', 'brag-book-gallery' ); ?></span>
+							</td>
+							<td class="data-cell">
+								<span class="data-text"><?php echo esc_html( $brag_book_gallery_page_slug ?: '(not set)' ); ?></span>
 							</td>
 						</tr>
 						<tr class="table-row">
-							<th class="setting-label">
-								<span class="label-text"><?php esc_html_e( 'Combine Gallery Page ID', 'brag-book-gallery' ); ?></span>
-							</th>
-							<td class="setting-value">
-								<span class="value-text"><?php echo esc_html( $brag_book_gallery_page_id ?: '(not set)' ); ?></span>
+							<td class="data-cell">
+								<span class="data-text"><?php esc_html_e( 'Combine Gallery Page ID', 'brag-book-gallery' ); ?></span>
+							</td>
+							<td class="data-cell">
+								<span class="data-text"><?php echo esc_html( $brag_book_gallery_page_id ?: '(not set)' ); ?></span>
 							</td>
 						</tr>
 						<?php if ( $brag_book_gallery_page_slug ) : ?>
-						<?php 
+						<?php
 						// Handle both string and array formats
 						$slug_to_check = is_array( $brag_book_gallery_page_slug ) ? reset( $brag_book_gallery_page_slug ) : $brag_book_gallery_page_slug;
-						$page = get_page_by_path( $slug_to_check ); 
+						$page = get_page_by_path( $slug_to_check );
 						?>
 						<tr class="table-row">
-							<th class="setting-label">
-								<span class="label-text"><?php esc_html_e( 'Page Status', 'brag-book-gallery' ); ?></span>
-							</th>
-							<td class="setting-value">
-								<span class="value-text">
+							<td class="data-cell">
+								<span class="data-text"><?php esc_html_e( 'Page Status', 'brag-book-gallery' ); ?></span>
+							</td>
+							<td class="data-cell">
+								<span class="data-text">
 									<?php if ( $page ) : ?>
 										<span style="color: green;"><?php echo $this->get_check_icon( true ); ?>Page exists</span>
 										<?php if ( str_contains( $page->post_content, '[brag_book_gallery' ) ) : ?>
@@ -540,6 +540,9 @@ final class Rewrite_Fix {
 			$issues[] = __( 'Gallery slug is not configured', 'brag-book-gallery' );
 		}
 
+		// Enhanced gallery page detection logic
+		$gallery_page_found = false;
+
 		if ( ! $page_id ) {
 			// Check if there's a page with the gallery slug that we can auto-detect
 			if ( $slug ) {
@@ -548,14 +551,79 @@ final class Rewrite_Fix {
 					// Auto-fix: Set the page ID since we found the gallery page
 					update_option( 'brag_book_gallery_page_id', $page_by_slug->ID );
 					$page_id = $page_by_slug->ID;
+					$gallery_page_found = true;
+				}
+			}
+
+			if ( ! $gallery_page_found ) {
+				// Try to find any page with the gallery shortcode
+				global $wpdb;
+				$gallery_pages = $wpdb->get_results( $wpdb->prepare(
+					"SELECT ID, post_title, post_name FROM {$wpdb->posts}
+					WHERE post_type = 'page'
+					AND post_status = 'publish'
+					AND post_content LIKE %s",
+					'%[brag_book_gallery%'
+				) );
+
+				if ( ! empty( $gallery_pages ) ) {
+					// Use the first gallery page found
+					$gallery_page = $gallery_pages[0];
+					update_option( 'brag_book_gallery_page_id', $gallery_page->ID );
+					$page_id = $gallery_page->ID;
+					$gallery_page_found = true;
+				}
+			}
+
+			if ( ! $gallery_page_found ) {
+				if ( $slug ) {
+					$issues[] = __( 'Gallery page ID is not set but there is a gallery slug configured', 'brag-book-gallery' );
 				} else {
-					$issues[] = __( 'Gallery page ID is not set but there is a gallery page configured', 'brag-book-gallery' );
+					$issues[] = __( 'Gallery page ID is not set', 'brag-book-gallery' );
+				}
+			}
+		} else {
+			// Page ID is set, verify the page exists and contains gallery shortcode
+			$page = get_post( $page_id );
+			if ( ! $page ) {
+				// Page ID is set but page doesn't exist - try to find the correct page
+				if ( $slug ) {
+					$page_by_slug = get_page_by_path( $slug );
+					if ( $page_by_slug && str_contains( $page_by_slug->post_content, '[brag_book_gallery' ) ) {
+						// Update to correct page ID
+						update_option( 'brag_book_gallery_page_id', $page_by_slug->ID );
+						$page_id = $page_by_slug->ID;
+						$gallery_page_found = true;
+					}
+				}
+
+				if ( ! $gallery_page_found ) {
+					// Try to find any page with gallery shortcode
+					global $wpdb;
+					$gallery_pages = $wpdb->get_results( $wpdb->prepare(
+						"SELECT ID, post_title, post_name FROM {$wpdb->posts}
+						WHERE post_type = 'page'
+						AND post_status = 'publish'
+						AND post_content LIKE %s",
+						'%[brag_book_gallery%'
+					) );
+
+					if ( ! empty( $gallery_pages ) ) {
+						$gallery_page = $gallery_pages[0];
+						update_option( 'brag_book_gallery_page_id', $gallery_page->ID );
+						$gallery_page_found = true;
+					} else {
+						$issues[] = __( 'Gallery page does not exist', 'brag-book-gallery' );
+					}
 				}
 			} else {
-				$issues[] = __( 'Gallery page ID is not set', 'brag-book-gallery' );
+				// Page exists, verify it has the gallery shortcode
+				if ( ! str_contains( $page->post_content, '[brag_book_gallery' ) ) {
+					$issues[] = __( 'Gallery page exists but does not contain the gallery shortcode', 'brag-book-gallery' );
+				} else {
+					$gallery_page_found = true;
+				}
 			}
-		} elseif ( ! get_post( $page_id ) ) {
-			$issues[] = __( 'Gallery page does not exist', 'brag-book-gallery' );
 		}
 
 		if ( 'Plain' === get_option( 'permalink_structure' ) ) {
@@ -568,9 +636,9 @@ final class Rewrite_Fix {
 	/**
 	 * Render test URLs for validation.
 	 *
-	 * Generates sample URLs based on current gallery configuration to help
-	 * users test rewrite rule functionality after fixes are applied.
-	 * Includes URL validation and health checks.
+	 * Generates sample URLs based on current gallery configuration and real API data
+	 * to help users test rewrite rule functionality after fixes are applied.
+	 * Includes URL validation and health checks with actual procedure data.
 	 *
 	 * @since 3.0.0
 	 *
@@ -588,27 +656,78 @@ final class Rewrite_Fix {
 
 			// Ensure slug is never null for PHP 8.2 compatibility
 			$slug = $brag_book_gallery_page_slug ?? '';
+
+			// Get real procedure and case data from API
+			$real_data = $this->get_real_api_data();
+
+			// Build test URLs with real data or fallbacks
+			$procedure_slug = $real_data['procedure_slug'] ?? 'tummy-tuck';
+			$case_id = $real_data['case_id'] ?? '12345';
+
 			$test_urls = [
-				'gallery' => home_url( '/' . $slug . '/' ),
-				'procedure' => home_url( '/' . $slug . '/tummy-tuck/' ),
-				'case' => home_url( '/' . $slug . '/tummy-tuck/12345/' ),
-				'favorites' => home_url( '/' . $slug . '/myfavorites/' ),
+				'gallery' => [
+					'url' => home_url( '/' . $slug . '/' ),
+					'description' => __( 'Main Gallery Page', 'brag-book-gallery' ),
+				],
+				'procedure' => [
+					'url' => home_url( '/' . $slug . '/' . $procedure_slug . '/' ),
+					'description' => sprintf(
+						/* translators: %s: Procedure name */
+						__( 'Procedure Page (%s)', 'brag-book-gallery' ),
+						ucwords( str_replace( '-', ' ', $procedure_slug ) )
+					),
+				],
+				'case' => [
+					'url' => home_url( '/' . $slug . '/' . $procedure_slug . '/' . $case_id . '/' ),
+					'description' => sprintf(
+						/* translators: %1$s: Case ID, %2$s: Procedure name */
+						__( 'Individual Case (%1$s - %2$s)', 'brag-book-gallery' ),
+						$case_id,
+						ucwords( str_replace( '-', ' ', $procedure_slug ) )
+					),
+				],
+				'favorites' => [
+					'url' => home_url( '/' . $slug . '/myfavorites/' ),
+					'description' => __( 'Favorites Page', 'brag-book-gallery' ),
+				],
 			];
+
+			// Show data source info
+			if ( $real_data['is_real'] ) {
+				echo '<p><span style="color: green;">' . $this->get_check_icon( true ) . '</span>' .
+					esc_html__( 'Test URLs generated from real API data:', 'brag-book-gallery' ) . '</p>';
+			} else {
+				echo '<p><span style="color: orange;">' . $this->get_warning_icon() . '</span>' .
+					esc_html__( 'Using placeholder data (API not configured or unavailable):', 'brag-book-gallery' ) . '</p>';
+			}
 			?>
-			<p><?php esc_html_e( 'Click to test these URLs:', 'brag-book-gallery' ); ?></p>
-			<ul>
-				<?php foreach ( $test_urls as $type => $url ) : ?>
-				<li>
-					<a href="<?php echo esc_url( $url ); ?>" target="_blank" class="test-url" data-type="<?php echo esc_attr( $type ); ?>">
-						<?php echo esc_html( $url ); ?>
-					</a>
-					<button type="button" class="button button-small test-url-btn" data-url="<?php echo esc_url( $url ); ?>">
-						<?php esc_html_e( 'Test', 'brag-book-gallery' ); ?>
-					</button>
-					<span class="test-result" id="test-result-<?php echo esc_attr( $type ); ?>"></span>
+			<ul class="test-urls-list">
+				<?php foreach ( $test_urls as $type => $data ) : ?>
+				<li class="test-url-item">
+					<div class="test-url-info">
+						<strong><?php echo esc_html( $data['description'] ); ?></strong><br>
+						<a href="<?php echo esc_url( $data['url'] ); ?>" target="_blank" class="test-url" data-type="<?php echo esc_attr( $type ); ?>">
+							<?php echo esc_html( $data['url'] ); ?>
+						</a>
+					</div>
+					<div class="test-url-actions">
+						<button type="button" class="button button-small test-url-btn" data-url="<?php echo esc_url( $data['url'] ); ?>">
+							<?php esc_html_e( 'Test', 'brag-book-gallery' ); ?>
+						</button>
+						<span class="test-result" id="test-result-<?php echo esc_attr( $type ); ?>"></span>
+					</div>
 				</li>
 				<?php endforeach; ?>
 			</ul>
+
+			<?php if ( $real_data['is_real'] && ! empty( $real_data['debug_info'] ) ) : ?>
+			<details class="api-debug-info">
+				<summary><?php esc_html_e( 'API Debug Info (click to expand)', 'brag-book-gallery' ); ?></summary>
+				<pre style="background: #f5f5f5; padding: 10px; overflow: auto; max-height: 200px;"><?php
+					echo esc_html( wp_json_encode( $real_data['debug_info'], JSON_PRETTY_PRINT ) );
+				?></pre>
+			</details>
+			<?php endif; ?>
 			<?php
 		} catch ( Exception $e ) {
 			$this->handle_error( $e, __METHOD__ );
@@ -617,218 +736,163 @@ final class Rewrite_Fix {
 	}
 
 	/**
-	 * Render manual fix instructions for different server environments.
+	 * Get real API data for generating test URLs.
 	 *
-	 * Provides server-specific manual instructions for Apache, Nginx, WP Engine,
-	 * and general troubleshooting steps when automated fixes are insufficient.
+	 * Fetches actual procedure and case data from the API to generate
+	 * realistic test URLs based on current configuration.
 	 *
 	 * @since 3.0.0
 	 *
-	 * @return void
+	 * @return array{procedure_slug: string, case_id: string, is_real: bool, debug_info: array}
 	 */
-	private function render_manual_instructions(): void {
-		// Use Slug_Helper to properly handle array/string format
-		$brag_book_gallery_page_slug = \BRAGBookGallery\Includes\Core\Slug_Helper::get_first_gallery_page_slug();
-		$brag_book_gallery_page_id = get_option( 'brag_book_gallery_page_id' );
-		?>
-		<div class="manual-instructions">
-			<h4><?php esc_html_e( 'For Apache servers:', 'brag-book-gallery' ); ?></h4>
-			<p><?php esc_html_e( 'Ensure mod_rewrite is enabled in your hosting control panel.', 'brag-book-gallery' ); ?></p>
+	private function get_real_api_data(): array {
+		$fallback_data = [
+			'procedure_slug' => 'tummy-tuck',
+			'case_id' => '12345',
+			'is_real' => false,
+			'debug_info' => [],
+		];
 
-			<h4><?php esc_html_e( 'For Nginx servers:', 'brag-book-gallery' ); ?></h4>
-			<p><?php esc_html_e( 'Add these rules to your nginx.conf:', 'brag-book-gallery' ); ?></p>
-			<?php if ( $brag_book_gallery_page_slug ) : ?>
-			<pre style="background: #f5f5f5; padding: 10px;">location ~ ^/<?php echo esc_html( $brag_book_gallery_page_slug ); ?>/([^/]+)/([0-9]+)/?$ {
-    try_files $uri $uri/ /index.php?page_id=<?php echo esc_html( $brag_book_gallery_page_id ?: '[PAGE_ID]' ); ?>&procedure_title=$1&case_id=$2;
-}
+		try {
+			// Get current API configuration
+			$mode = get_option( 'brag_book_gallery_mode', 'local' );
+			$api_tokens = get_option( 'brag_book_gallery_api_token', [] );
+			$website_property_ids = get_option( 'brag_book_gallery_website_property_id', [] );
 
-location ~ ^/<?php echo esc_html( $brag_book_gallery_page_slug ); ?>/([^/]+)/?$ {
-    try_files $uri $uri/ /index.php?page_id=<?php echo esc_html( $brag_book_gallery_page_id ?: '[PAGE_ID]' ); ?>&filter_procedure=$1;
-}</pre>
-			<?php else : ?>
-			<p><?php esc_html_e( 'Set brag_book_gallery_page_slug option first', 'brag-book-gallery' ); ?></p>
-			<?php endif; ?>
-
-			<h4><?php esc_html_e( 'For WP Engine:', 'brag-book-gallery' ); ?></h4>
-			<ol>
-				<li><?php esc_html_e( 'Contact WP Engine support to add custom rewrite rules', 'brag-book-gallery' ); ?></li>
-				<li><?php esc_html_e( 'Clear all caches from WP Engine dashboard', 'brag-book-gallery' ); ?></li>
-				<li><?php esc_html_e( 'Use the flush tool after rules are added', 'brag-book-gallery' ); ?></li>
-			</ol>
-
-			<h4><?php esc_html_e( 'General steps:', 'brag-book-gallery' ); ?></h4>
-			<ol>
-				<li><?php esc_html_e( 'Clear all caches (CloudFlare, hosting cache, WordPress cache plugins)', 'brag-book-gallery' ); ?></li>
-				<li><?php esc_html_e( 'Check hosting restrictions - some hosts block custom rewrite rules', 'brag-book-gallery' ); ?></li>
-				<li><?php esc_html_e( 'Ensure permalink structure is not "Plain"', 'brag-book-gallery' ); ?></li>
-			</ol>
-		</div>
-		
-		<script>
-		document.addEventListener('DOMContentLoaded', function() {
-			/**
-			 * Modern AJAX request handler using fetch API with async/await.
-			 *
-			 * @param {Object} data - Request data to send
-			 * @param {Function} onSuccess - Success callback
-			 * @param {Function} onError - Error callback
-			 * @param {Function} onComplete - Complete callback
-			 * @returns {Promise<void>}
-			 */
-			const ajaxRequest = async function(data, onSuccess, onError, onComplete) {
-				try {
-					const formData = new FormData();
-					Object.entries(data).forEach(function([key, value]) {
-						formData.append(key, value);
-					});
-					
-					const response = await fetch(ajaxurl, {
-						method: 'POST',
-						credentials: 'same-origin',
-						body: formData
-					});
-					
-					const result = await response.json();
-					
-					if (onSuccess) onSuccess(result);
-				} catch (error) {
-					console.error('AJAX request failed:', error);
-					if (onError) onError(error);
-				} finally {
-					if (onComplete) onComplete();
-				}
-			};
-			
-			/**
-			 * Handle button state during operations.
-			 *
-			 * @param {HTMLButtonElement} button - Button element to manage
-			 * @param {boolean} isLoading - Whether button is in loading state
-			 * @param {string} loadingText - Text to show during loading
-			 */
-			const handleButtonState = function(button, isLoading, loadingText = 'Processing...') {
-				if (isLoading) {
-					button.disabled = true;
-					button.dataset.originalText = button.textContent;
-					button.textContent = loadingText;
-				} else {
-					button.disabled = false;
-					button.textContent = button.dataset.originalText || button.textContent;
-				}
-			};
-			
-			/**
-			 * Display results in target element with proper styling.
-			 *
-			 * @param {HTMLElement} target - Target element for results
-			 * @param {string} content - Content to display
-			 * @param {string} type - Result type ('success', 'error', 'info')
-			 */
-			const displayResult = function(target, content, type = 'info') {
-				if (!target) return;
-				
-				const cssClass = {
-					success: 'notice notice-success',
-					error: 'notice notice-error',
-					info: 'notice notice-info'
-				}[type] || 'notice notice-info';
-				
-				target.innerHTML = `<div class="${cssClass}"><p>${content}</p></div>`;
-			};
-			
-			// Event Handlers
-			const checkHtaccessBtn = document.getElementById('check-htaccess');
-			const checkRulesBtn = document.getElementById('check-rules-status');
-			const applyFixesBtn = document.getElementById('apply-fixes');
-			
-			const htaccessResult = document.getElementById('htaccess-status');
-			const rulesResult = document.getElementById('rules-status');
-			const fixResult = document.getElementById('fix-result');
-			
-			// Check .htaccess handler
-			if (checkHtaccessBtn) {
-				checkHtaccessBtn.addEventListener('click', async function() {
-					handleButtonState(checkHtaccessBtn, true, 'Checking...');
-					displayResult(htaccessResult, 'Checking .htaccess file...', 'info');
-					
-					await ajaxRequest(
-						{
-							action: 'brag_book_debug_tool',
-							nonce: '<?php echo esc_js( wp_create_nonce( 'brag_book_debug_tools' ) ); ?>',
-							tool: 'rewrite-fix',
-							tool_action: 'check_htaccess'
-						},
-						(response) => {
-							if (response.success) {
-								htaccessResult.innerHTML = response.data;
-							} else {
-								displayResult(htaccessResult, `Error: ${response.data}`, 'error');
-							}
-						},
-						function() { displayResult(htaccessResult, 'Failed to check .htaccess. Please try again.', 'error'); },
-						function() { handleButtonState(checkHtaccessBtn, false); }
-					);
-				});
+			// Validate API configuration
+			if ( ! is_array( $api_tokens ) || ! is_array( $website_property_ids ) ) {
+				return $fallback_data;
 			}
-			
-			// Check rules status handler
-			if (checkRulesBtn) {
-				checkRulesBtn.addEventListener('click', async function() {
-					handleButtonState(checkRulesBtn, true, 'Checking...');
-					displayResult(rulesResult, 'Checking rewrite rules status...', 'info');
-					
-					await ajaxRequest(
-						{
-							action: 'brag_book_debug_tool',
-							nonce: '<?php echo esc_js( wp_create_nonce( 'brag_book_debug_tools' ) ); ?>',
-							tool: 'rewrite-fix',
-							tool_action: 'check_rules'
-						},
-						(response) => {
-							if (response.success) {
-								rulesResult.innerHTML = response.data;
-							} else {
-								displayResult(rulesResult, `Error: ${response.data}`, 'error');
-							}
-						},
-						function() { displayResult(rulesResult, 'Failed to check rules. Please try again.', 'error'); },
-						function() { handleButtonState(checkRulesBtn, false); }
-					);
-				});
+
+			$api_token = $api_tokens[ $mode ] ?? '';
+			$website_property_id = $website_property_ids[ $mode ] ?? '';
+
+			if ( empty( $api_token ) || empty( $website_property_id ) ) {
+				return $fallback_data;
 			}
-			
-			// Apply fixes handler
-			if (applyFixesBtn) {
-				applyFixesBtn.addEventListener('click', async function() {
-					if (!confirm('<?php echo esc_js( __( 'This will attempt to fix rewrite rule issues. Continue?', 'brag-book-gallery' ) ); ?>')) {
-						return;
+
+			// Check if we have cached sidebar data
+			$cache_key = 'brag_book_gallery_sidebar_data_' . md5( $api_token . $website_property_id );
+			$sidebar_data = get_transient( $cache_key );
+
+			if ( false === $sidebar_data ) {
+				// Try to fetch fresh data from API
+				if ( class_exists( '\BRAGBookGallery\Includes\REST\Endpoints' ) ) {
+					$endpoints = new \BRAGBookGallery\Includes\REST\Endpoints();
+					$sidebar_response = $endpoints->get_sidebar_data( $api_token, $website_property_id );
+
+					if ( $sidebar_response ) {
+						$sidebar_data = json_decode( $sidebar_response, true );
+						if ( json_last_error() === JSON_ERROR_NONE && is_array( $sidebar_data ) ) {
+							// Cache for 5 minutes
+							set_transient( $cache_key, $sidebar_data, 300 );
+						} else {
+							$sidebar_data = null;
+						}
 					}
-					
-					handleButtonState(applyFixesBtn, true, 'Applying fixes...');
-					displayResult(fixResult, 'Applying all fixes...', 'info');
-					
-					await ajaxRequest(
-						{
-							action: 'brag_book_debug_tool',
-							nonce: '<?php echo esc_js( wp_create_nonce( 'brag_book_debug_tools' ) ); ?>',
-							tool: 'rewrite-fix',
-							tool_action: 'apply_fixes'
-						},
-						(response) => {
-							if (response.success) {
-								displayResult(fixResult, response.data, 'success');
-							} else {
-								displayResult(fixResult, `Error: ${response.data}`, 'error');
-							}
-						},
-						function() { displayResult(fixResult, 'Failed to apply fixes. Please try again.', 'error'); },
-						function() { handleButtonState(applyFixesBtn, false); }
-					);
-				});
+				}
 			}
-		});
-		</script>
-		<?php
+
+			$debug_info = [
+				'mode' => $mode,
+				'api_token_length' => strlen( $api_token ),
+				'website_property_id' => $website_property_id,
+				'sidebar_data_available' => ! empty( $sidebar_data ),
+			];
+
+			// Extract real procedure data
+			if ( ! empty( $sidebar_data ) && isset( $sidebar_data['procedures'] ) && is_array( $sidebar_data['procedures'] ) ) {
+				$procedures = $sidebar_data['procedures'];
+
+				// Find the first procedure with a valid slug
+				foreach ( $procedures as $procedure ) {
+					if ( ! empty( $procedure['seoSuffixUrl'] ) ) {
+						$procedure_slug = sanitize_title( $procedure['seoSuffixUrl'] );
+						$debug_info['found_procedure'] = $procedure['title'] ?? $procedure_slug;
+
+						// Try to get a real case ID from cases data
+						$case_id = $this->get_real_case_id( $api_token, $website_property_id, $procedure['id'] ?? null );
+
+						return [
+							'procedure_slug' => $procedure_slug,
+							'case_id' => $case_id ?: '12345',
+							'is_real' => true,
+							'debug_info' => $debug_info,
+						];
+					}
+				}
+			}
+
+			return $fallback_data;
+
+		} catch ( Exception $e ) {
+			$this->handle_error( $e, __METHOD__ );
+			return $fallback_data;
+		}
+	}
+
+	/**
+	 * Get a real case ID from the API.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @param string   $api_token            API token.
+	 * @param string   $website_property_id  Website property ID.
+	 * @param int|null $procedure_id         Optional procedure ID to filter by.
+	 * @return string|null Real case ID or null if not found.
+	 */
+	private function get_real_case_id( string $api_token, string $website_property_id, ?int $procedure_id = null ): ?string {
+		try {
+			// Check if we have cached cases data
+			$cache_key = 'brag_book_gallery_cases_sample_' . md5( $api_token . $website_property_id . ( $procedure_id ?? 'all' ) );
+			$cached_case_id = get_transient( $cache_key );
+
+			if ( false !== $cached_case_id ) {
+				return $cached_case_id;
+			}
+
+			// Try to fetch a small sample of cases
+			if ( class_exists( '\BRAGBookGallery\Includes\REST\Endpoints' ) ) {
+				$endpoints = new \BRAGBookGallery\Includes\REST\Endpoints();
+
+				// Build request parameters
+				$params = [
+					'page' => 1,
+					'per_page' => 1, // Just get one case
+				];
+
+				if ( $procedure_id ) {
+					$params['procedure_id'] = $procedure_id;
+				}
+
+				$cases_response = $endpoints->get_cases_data( $api_token, $procedure_id ?: [], $website_property_id, $params );
+
+				if ( $cases_response ) {
+					$cases_data = json_decode( $cases_response, true );
+					if ( json_last_error() === JSON_ERROR_NONE &&
+						 is_array( $cases_data ) &&
+						 isset( $cases_data['data'] ) &&
+						 is_array( $cases_data['data'] ) &&
+						 ! empty( $cases_data['data'] ) ) {
+
+						$first_case = $cases_data['data'][0];
+						$case_id = $first_case['id'] ?? null;
+
+						if ( $case_id ) {
+							// Cache for 10 minutes
+							set_transient( $cache_key, (string) $case_id, 600 );
+							return (string) $case_id;
+						}
+					}
+				}
+			}
+
+			return null;
+
+		} catch ( Exception $e ) {
+			$this->handle_error( $e, __METHOD__ );
+			return null;
+		}
 	}
 
 	/**
@@ -1197,7 +1261,7 @@ location ~ ^/<?php echo esc_html( $brag_book_gallery_page_slug ); ?>/([^/]+)/?$ 
 			// Attempt rollback
 			$this->rollback_fixes();
 
-			return '<div class="notice notice-error"><p>' . 
+			return '<div class="notice notice-error"><p>' .
 				esc_html( sprintf(
 					/* translators: %s: Error message */
 					__( 'Failed to apply fixes: %s. Rules have been rolled back.', 'brag-book-gallery' ),

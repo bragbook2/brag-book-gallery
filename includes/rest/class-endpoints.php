@@ -1150,46 +1150,49 @@ class Endpoints {
 	 *
 	 * Records a view event for a specific case for analytics purposes.
 	 * This endpoint is typically called when a user views a case detail page.
+	 * Uses POST method with JSON body containing caseId and apiToken.
 	 *
 	 * @since 3.0.0
 	 *
 	 * @param string $api_token API authentication token
-	 * @param int    $case_id   Optional case ID to track
+	 * @param int    $case_id   Case ID to track (required)
 	 * @param array  $metadata  Optional additional metadata for tracking
 	 *
 	 * @return string|null Response body on success, null on failure
 	 */
 	public function track_case_view(
 		string $api_token,
-		int $case_id = 0,
+		int $case_id,
 		array $metadata = array()
 	): ?string {
-		// Build query parameters
-		$query_params = array(
-			'apiToken' => $api_token,
-		);
-
-		// Add case ID if provided
-		if ( $case_id > 0 ) {
-			$query_params['caseId'] = $case_id;
+		// Validate required parameters
+		if ( empty( $api_token ) || $case_id <= 0 ) {
+			$this->log_error( 'Invalid parameters for case view tracking: API token and case ID are required' );
+			return null;
 		}
+
+		// Build request body with required format
+		$body = array(
+			'caseId' => $case_id,
+		);
 
 		// Add any additional metadata
 		if ( ! empty( $metadata ) ) {
-			$query_params = array_merge( $query_params, $metadata );
+			$body = array_merge( $body, $metadata );
 		}
 
-		// Build URL with query parameters
-		$url = self::API_ENDPOINTS['views'] . '?' . http_build_query( $query_params );
+		// Add API token to URL as query parameter (authentication)
+		$url = self::API_ENDPOINTS['views'] . '?' . http_build_query( array( 'apiToken' => $api_token ) );
 
-		// Make GET request to track the view
-		$response = wp_remote_get(
+		// Make POST request to track the view
+		$response = wp_remote_post(
 			$this->get_api_base_url() . $url,
 			array(
 				'timeout' => self::API_TIMEOUT,
 				'headers' => array(
 					'Content-Type' => 'application/json',
 				),
+				'body' => wp_json_encode( $body ),
 			)
 		);
 
@@ -1206,7 +1209,7 @@ class Endpoints {
 		$response_body = wp_remote_retrieve_body( $response );
 
 		// Check response code
-		if ( $response_code !== 200 ) {
+		if ( ! in_array( $response_code, [ 200, 201 ], true ) ) {
 			$this->log_api_error(
 				self::API_ENDPOINTS['views'],
 				sprintf(

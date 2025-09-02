@@ -30,10 +30,6 @@ class NudityWarningManager {
 
 	init() {
 		this.setupEventListeners();
-
-		// Add console message for how to reset
-		console.log('%cTo reset nudity warnings, type: nudityManager.resetAcceptance()',
-			'background: #333; color: #fff; padding: 5px; border-radius: 3px;');
 	}
 
 	saveAcceptanceStatus() {

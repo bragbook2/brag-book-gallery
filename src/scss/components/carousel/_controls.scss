@@ -4,51 +4,87 @@
 // components / carousel controls
 // -----------------------------------------------------------------------------
 
+// Carousel header styles
+.brag-book-gallery-carousel-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: var(--wp--custom--brag-book-gallery--spacer--lg, 20px);
+}
+
+.brag-book-gallery-carousel-title {
+	margin: 0;
+	font-size: var(--wp--custom--brag-book-gallery--font-size--xl, 24px);
+	font-weight: 600;
+	color: var(--wp--custom--brag-book-gallery--color--dark-grey, #333);
+}
+
+.brag-book-gallery-carousel-nav {
+	display: flex;
+	gap: var(--wp--custom--brag-book-gallery--spacer--sm, 8px);
+}
+
 .brag-book-gallery-carousel-btn {
-	position: absolute;
-	top: 50%;
-	width: calc( 12 * var(--wp--custom--brag-book-gallery--spacer,4px) );
-	height: calc( 12 * var(--wp--custom--brag-book-gallery--spacer,4px) );
-	background: rgba(255, 255, 255, 0.95);
-	backdrop-filter: blur(10px);
-	-webkit-backdrop-filter: blur(10px);
-	border: 1.5px solid var(--wp--custom--brag-book-gallery--color--lighter-grey);
+	position: relative;
+	top: auto;
+	left: auto;
+	right: auto;
+	transform: none;
+	width: 40px;
+	height: 40px;
+	background: #ffffff;
+	border: none;
 	border-radius: 50%;
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	cursor: pointer;
-	transition: var(--wp--custom--brag-book-gallery--transition);
+	transition: all 0.3s ease;
 	z-index: 10;
-	box-shadow: var(--wp--custom--brag-book-gallery--shadow-lg);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+	color: var(--wp--custom--brag-book-gallery--color--dark-grey, #333);
 
 	&:hover {
-		&:not(.disabled) {
-			color: var(--wp--custom--brag-book-gallery--color--white,#FFF);
-			background: var(--wp--custom--brag-book-gallery--color--black);
-			border-color: var(--wp--custom--brag-book-gallery--color--black);
-			box-shadow: var(--wp--custom--brag-book-gallery--shadow-xl);
+		&:not(:disabled) {
+			transform: translateY(-1px);
+			box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+			background: #ffffff;
+		}
+	}
+
+	&:active {
+		&:not(:disabled) {
+			transform: translateY(0);
+			box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 		}
 	}
 
 	&:disabled {
 		opacity: 0.4;
 		cursor: not-allowed;
-		background: rgba(255, 255, 255, 0.5);
+		background: #ffffff;
+		box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 	}
 
 	&:focus {
 		outline: none;
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 0 0 3px rgba(59, 130, 246, 0.1);
 	}
+}
+
+// Legacy support for old carousel layout (if any exist)
+.brag-book-gallery-carousel-content .brag-book-gallery-carousel-btn {
+	position: absolute;
+	top: 50%;
+	width: calc( 12 * var(--wp--custom--brag-book-gallery--spacer,4px) );
+	height: calc( 12 * var(--wp--custom--brag-book-gallery--spacer,4px) );
 
 	&[data-direction="prev"] {
-		position: absolute;
 		left: 0;
 		transform: translate3d(-50%, -50%, 0);
 	}
 
 	&[data-direction="next"] {
-		position: absolute;
 		right: 0;
 		transform: translate3d(50%, -50%, 0);
 	}

@@ -352,6 +352,47 @@ final class Carousel_Shortcode_Handler {
 	}
 
 	/**
+	 * Get procedure name for carousel title
+	 *
+	 * Gets the human-readable procedure name from the configuration.
+	 *
+	 * @param array<string, mixed> $config Carousel configuration.
+	 *
+	 * @return string Procedure name or default title.
+	 * @since 3.0.0
+	 */
+	private static function get_procedure_name( array $config ): string {
+		// If we have a procedure slug, try to get the name from sidebar data
+		if ( ! empty( $config['procedure_slug'] ) ) {
+			$api_token = $config['api_token'] ?? '';
+			if ( ! empty( $api_token ) ) {
+				$sidebar_data = Data_Fetcher::get_sidebar_data( $api_token );
+				if ( ! empty( $sidebar_data ) ) {
+					$categories = isset( $sidebar_data['data'] ) ? $sidebar_data['data'] : $sidebar_data;
+					foreach ( $categories as $category ) {
+						if ( ! empty( $category['procedures'] ) && is_array( $category['procedures'] ) ) {
+							foreach ( $category['procedures'] as $procedure ) {
+								if ( isset( $procedure['slugName'] ) && $procedure['slugName'] === $config['procedure_slug'] ) {
+									return sanitize_text_field( $procedure['name'] ?? '' );
+								}
+								if ( isset( $procedure['name'] ) && sanitize_title( $procedure['name'] ) === $config['procedure_slug'] ) {
+									return sanitize_text_field( $procedure['name'] );
+								}
+							}
+						}
+					}
+				}
+			}
+			
+			// Fallback: convert slug to title case
+			return ucwords( str_replace( array( '-', '_' ), ' ', $config['procedure_slug'] ) );
+		}
+
+		// Default title
+		return __( 'Recent Results', 'brag-book-gallery' );
+	}
+
+	/**
 	 * Get procedure ID from slug using sidebar data
 	 *
 	 * Converts a procedure slug to its corresponding ID using API sidebar data.
@@ -465,13 +506,23 @@ final class Carousel_Shortcode_Handler {
 
 		ob_start();
 		?>
+		<?php
+		// Get procedure name for title
+		$procedure_name = self::get_procedure_name( $config );
+		?>
 		<div class="<?php echo esc_attr( $css_class ); ?>"
 			 data-carousel="<?php echo esc_attr( $carousel_id ); ?>">
-			<div class="brag-book-gallery-carousel-content">
+			<div class="brag-book-gallery-carousel-header">
+				<h2 class="brag-book-gallery-carousel-title"><?php echo esc_html( $procedure_name ); ?></h2>
 				<?php if ( $config['show_controls'] ) : ?>
-					<?php echo self::render_navigation_button( 'prev' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+					<div class="brag-book-gallery-carousel-nav">
+						<?php echo self::render_navigation_button( 'prev' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+						<?php echo self::render_navigation_button( 'next' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+					</div>
 				<?php endif; ?>
-
+			</div>
+			
+			<div class="brag-book-gallery-carousel-content">
 				<div class="brag-book-gallery-carousel-track"
 					 data-carousel-track="<?php echo esc_attr( $carousel_id ); ?>"
 					 role="region"
@@ -486,10 +537,6 @@ final class Carousel_Shortcode_Handler {
 					echo self::generate_carousel_items( $items_data, $limit, $procedure_slug );
 					?>
 				</div>
-
-				<?php if ( $config['show_controls'] ) : ?>
-					<?php echo self::render_navigation_button( 'next' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-				<?php endif; ?>
 			</div>
 
 			<?php if ( $config['show_pagination'] ) : ?>
@@ -534,14 +581,15 @@ final class Carousel_Shortcode_Handler {
 			__( 'Previous slide', 'brag-book-gallery' ) : 
 			__( 'Next slide', 'brag-book-gallery' );
 		$path = $is_prev ? 
-			'M15 18L9 12L15 6' : 
-			'M9 18L15 12L9 6';
+			'M400-240 160-480l240-240 56 58-142 142h486v80H314l142 142-56 58Z' : 
+			'm560-240-56-58 142-142H160v-80h486L504-662l56-58 240 240-240 240Z';
 
 		return sprintf(
-			'<button class="brag-book-gallery-carousel-btn" data-direction="%s" aria-label="%s">' .
-			'<svg class="brag-book-gallery-arrow-icon" width="24" height="24" viewBox="0 0 24 24" fill="none">' .
-			'<path d="%s" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' .
+			'<button class="brag-book-gallery-carousel-btn brag-book-gallery-carousel-btn--%s" data-direction="%s" aria-label="%s">' .
+			'<svg class="brag-book-gallery-arrow-icon" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor">' .
+			'<path d="%s"/>' .
 			'</svg></button>',
+			esc_attr( $direction ),
 			esc_attr( $direction ),
 			esc_attr( $label ),
 			esc_attr( $path )
@@ -613,7 +661,8 @@ final class Carousel_Shortcode_Handler {
 				$photo,
 				$case,
 				$slide_index,
-				$procedure_slug
+				$procedure_slug,
+				true // This is a standalone carousel
 			);
 		}
 

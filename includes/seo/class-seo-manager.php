@@ -1022,7 +1022,9 @@ final class SEO_Manager {
 
 		// Add gallery page to breadcrumb
 		if ( ! empty( $this->seo_data['canonical_url'] ) ) {
-			$gallery_url = home_url( '/' . trim( get_option( 'brag_book_gallery_page_slug', 'gallery' ), '/' ) . '/' );
+			$page_slug = get_option( 'brag_book_gallery_page_slug', 'gallery' );
+			$page_slug = is_string( $page_slug ) ? $page_slug : 'gallery';
+			$gallery_url = home_url( '/' . trim( $page_slug, '/' ) . '/' );
 			
 			if ( $this->seo_data['page_type'] !== 'gallery_home' ) {
 				$breadcrumb_items[] = array(

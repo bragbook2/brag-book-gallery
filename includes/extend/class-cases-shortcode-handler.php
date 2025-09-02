@@ -835,7 +835,7 @@ final class Cases_Shortcode_Handler {
 		}
 		
 		$procedure_slug = ! empty( $procedure_context ) ? sanitize_title( $procedure_context ) : 'case';
-		$case_url = home_url( '/' . $gallery_slug . '/' . $procedure_slug . '/' . $seo_suffix );
+		$case_url = home_url( '/' . $gallery_slug . '/' . $procedure_slug . '/' . $seo_suffix . '/' );
 		
 		// Start article
 		$html .= '<article class="brag-book-gallery-case-card" ' . implode( ' ', $data_attrs ) . '>';

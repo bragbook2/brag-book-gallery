@@ -230,7 +230,7 @@ class Cache_Management {
 			<!-- Cache Items Table -->
 			<?php if ( ! empty( $cached_items ) ) : ?>
 				<div class="cache-table-wrapper">
-					<table class="cache-items-table" id="cache-items-table">
+					<table class="cache-items-table wp-list-table widefat fixed striped" id="cache-items-table">
 						<thead>
 							<tr>
 								<th class="checkbox-column">
@@ -279,19 +279,17 @@ class Cache_Management {
 									</td>
 									<td class="actions-column">
 										<div class="cache-actions-wrapper">
-											<button type="button" class="cache-btn cache-btn-view view-cache-data" data-key="<?php echo esc_attr( $item['key'] ); ?>">
+											<button type="button" class="cache-btn cache-btn-view view-cache-data" data-key="<?php echo esc_attr( $item['key'] ); ?>" title="<?php esc_attr_e( 'View', 'brag-book-gallery' ); ?>">
 												<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 													<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
 													<circle cx="12" cy="12" r="3"></circle>
 												</svg>
-												<span><?php esc_html_e( 'View', 'brag-book-gallery' ); ?></span>
 											</button>
-											<button type="button" class="cache-btn cache-btn-delete delete-cache-item" data-key="<?php echo esc_attr( $item['key'] ); ?>">
+											<button type="button" class="cache-btn cache-btn-delete delete-cache-item" data-key="<?php echo esc_attr( $item['key'] ); ?>" title="<?php esc_attr_e( 'Delete', 'brag-book-gallery' ); ?>">
 												<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 													<polyline points="3 6 5 6 21 6"></polyline>
 													<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
 												</svg>
-												<span><?php esc_html_e( 'Delete', 'brag-book-gallery' ); ?></span>
 											</button>
 										</div>
 									</td>
@@ -762,6 +760,443 @@ class Cache_Management {
 			};
 		});
 		</script>
+		
+		<style>
+		/* Clean Cache Table Styles */
+		.cache-table-wrapper {
+			margin-top: 1.5rem;
+			border: 1px solid #e5e7eb;
+			background: white;
+			overflow: auto;
+			max-height: 600px;
+		}
+
+		.cache-items-table {
+			width: 100%;
+			border-collapse: separate;
+			border-spacing: 0;
+			margin: 0;
+			font-size: 0.875rem;
+			line-height: 1.25rem;
+		}
+
+		.cache-items-table thead {
+			background: #f8fafc;
+			border-bottom: 2px solid #e2e8f0;
+		}
+
+		.cache-items-table thead th {
+			padding: 0.875rem 1rem;
+			text-align: left;
+			font-weight: 600;
+			font-size: 0.8125rem;
+			color: #374151;
+			text-transform: uppercase;
+			letter-spacing: 0.025em;
+			border-bottom: 2px solid #e2e8f0;
+			position: sticky;
+			top: 0;
+			background: #f8fafc;
+			z-index: 10;
+		}
+
+		.cache-items-table tbody tr {
+			transition: all 0.15s ease-in-out;
+			border-bottom: 1px solid #f3f4f6;
+		}
+
+		.cache-items-table tbody tr:hover {
+			background: #fafbfc;
+			transform: translateY(-1px);
+			box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.1);
+		}
+
+		.cache-items-table tbody tr:last-child {
+			border-bottom: none;
+		}
+
+		.cache-items-table tbody td {
+			padding: 0.875rem 1rem;
+			vertical-align: middle;
+			border-right: 1px solid #f3f4f6;
+		}
+
+		.cache-items-table tbody td:last-child {
+			border-right: none;
+		}
+
+		/* Column Specific Styles */
+		.checkbox-column {
+			width: 3rem;
+			text-align: center;
+		}
+
+		.cache-checkbox {
+			width: 1.125rem;
+			height: 1.125rem;
+			border-radius: 0.25rem;
+			border: 2px solid #000000;
+			background: white;
+			transition: all 0.15s ease-in-out;
+			appearance: none;
+			cursor: pointer;
+			position: relative;
+		}
+
+		.cache-checkbox:checked {
+			background: #000000;
+			border-color: #000000;
+		}
+
+		.cache-checkbox:checked::after {
+			content: '✓';
+			position: absolute;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			color: white;
+			font-size: 0.75rem;
+			font-weight: bold;
+		}
+
+		.key-column {
+			min-width: 200px;
+			max-width: 300px;
+		}
+
+		.cache-key-wrapper {
+			display: flex;
+			flex-direction: column;
+			gap: 0.25rem;
+		}
+
+		.cache-key-name {
+			font-weight: 600;
+			color: #1f2937;
+			font-size: 0.875rem;
+		}
+
+		.cache-key-full {
+			font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+			font-size: 0.75rem;
+			color: #6b7280;
+			background: #f9fafb;
+			padding: 0.25rem 0.5rem;
+			border-radius: 0.375rem;
+			border: 1px solid #e5e7eb;
+			word-break: break-all;
+		}
+
+		.type-column {
+			width: 120px;
+		}
+
+		.type-column span,
+		.cache-type-badge {
+			display: inline-block;
+			padding: 0.25rem 0.75rem;
+			border-radius: 9999px;
+			font-size: 0.75rem;
+			font-weight: 500;
+			background: #eff6ff;
+			color: #1d4ed8;
+			border: 1px solid #bfdbfe;
+		}
+
+		.size-column {
+			width: 100px;
+			text-align: right;
+		}
+
+		.size-column span,
+		.cache-size {
+			font-weight: 600;
+			color: #059669;
+			background: #ecfdf5;
+			padding: 0.25rem 0.5rem;
+			border-radius: 0.375rem;
+			font-size: 0.75rem;
+			display: inline-block;
+		}
+
+		.expiration-column {
+			width: 160px;
+		}
+
+		.cache-expiration-wrapper {
+			display: flex;
+			flex-direction: column;
+			gap: 0.125rem;
+		}
+
+		.cache-time-remaining {
+			font-weight: 600;
+			color: #0ea5e9;
+			font-size: 0.875rem;
+		}
+
+		.cache-expiration-date {
+			font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+			font-size: 0.6875rem;
+			color: #6b7280;
+		}
+
+		.cache-status-expired {
+			display: inline-block;
+			padding: 0.25rem 0.75rem;
+			border-radius: 9999px;
+			font-size: 0.75rem;
+			font-weight: 600;
+			background: #fef2f2;
+			color: #dc2626;
+			border: 1px solid #fecaca;
+		}
+
+		.actions-column {
+			width: 140px;
+		}
+
+		.cache-actions-wrapper {
+			display: flex;
+			gap: 0.5rem;
+			align-items: center;
+			justify-content: center;
+		}
+
+		/* Simple Button Styles */
+		.cache-btn {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			width: 2rem;
+			height: 2rem;
+			padding: 0;
+			border: 1px solid #d1d5db;
+			border-radius: 0.375rem;
+			cursor: pointer;
+			transition: all 0.15s ease-in-out;
+			text-decoration: none;
+			position: relative;
+			background: white;
+		}
+
+		.cache-btn-view {
+			color: #3b82f6;
+			border-color: #3b82f6;
+		}
+
+		.cache-btn-view:hover {
+			background: #3b82f6;
+			color: white;
+		}
+
+		.cache-btn-delete {
+			color: #dc2626;
+			border-color: #dc2626;
+		}
+
+		.cache-btn-delete:hover {
+			background: #dc2626;
+			color: white;
+		}
+
+		.cache-btn svg {
+			width: 1rem;
+			height: 1rem;
+		}
+
+		/* Tooltip Styles */
+		.cache-btn {
+			position: relative;
+		}
+
+		.cache-btn::after {
+			content: attr(title);
+			position: absolute;
+			bottom: 100%;
+			left: 50%;
+			transform: translateX(-50%);
+			background: #374151;
+			color: white;
+			padding: 0.25rem 0.5rem;
+			border-radius: 0.25rem;
+			font-size: 0.75rem;
+			white-space: nowrap;
+			opacity: 0;
+			pointer-events: none;
+			transition: opacity 0.15s ease-in-out;
+			margin-bottom: 0.25rem;
+			z-index: 1000;
+		}
+
+		.cache-btn:hover::after {
+			opacity: 1;
+		}
+
+		/* Action Buttons Section */
+		.cache-actions {
+			margin: 1.5rem 0;
+			padding: 1rem;
+			background: #f8fafc;
+			border: 1px solid #e2e8f0;
+			display: flex;
+			flex-wrap: wrap;
+			gap: 0.75rem;
+			align-items: center;
+		}
+
+		.cache-actions .button {
+			display: inline-flex;
+			align-items: center;
+			gap: 0.5rem;
+			padding: 0.625rem 1rem;
+			border: 1px solid;
+			border-radius: 0.375rem;
+			cursor: pointer;
+			transition: all 0.15s ease-in-out;
+			font-size: 0.875rem;
+			font-weight: 500;
+			text-decoration: none;
+		}
+
+		.cache-actions .button-primary {
+			background: #3b82f6;
+			color: white;
+			border-color: #3b82f6;
+		}
+
+		.cache-actions .button-primary:hover {
+			background: #1d4ed8;
+			border-color: #1d4ed8;
+		}
+
+		.cache-actions .button-secondary {
+			background: white;
+			color: #374151;
+			border-color: #d1d5db;
+		}
+
+		.cache-actions .button-secondary:hover {
+			background: #f3f4f6;
+			border-color: #9ca3af;
+		}
+
+		.cache-actions .button-danger {
+			background: #dc2626;
+			color: white;
+			border-color: #dc2626;
+		}
+
+		.cache-actions .button-danger:hover {
+			background: #b91c1c;
+			border-color: #b91c1c;
+		}
+
+		.cache-actions .button:disabled {
+			opacity: 0.5;
+			cursor: not-allowed;
+			transform: none !important;
+			box-shadow: none !important;
+		}
+
+		.cache-actions .button svg {
+			width: 1.25rem;
+			height: 1.25rem;
+		}
+
+		/* Cache Statistics */
+		.cache-stats {
+			margin: 1rem 0 1.5rem;
+			padding: 1rem;
+			background: #f9fafb;
+			border: 1px solid #e5e7eb;
+		}
+
+		.cache-stats h4 {
+			margin: 0 0 0.75rem;
+			color: #1f2937;
+			font-size: 1rem;
+			font-weight: 600;
+		}
+
+		.cache-stats ul {
+			margin: 0;
+			padding: 0;
+			list-style: none;
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+			gap: 0.5rem;
+		}
+
+		.cache-stats li {
+			padding: 0.5rem 0.75rem;
+			background: white;
+			border-radius: 0.5rem;
+			border: 1px solid #f3f4f6;
+			color: #374151;
+			font-size: 0.875rem;
+			box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+		}
+
+		/* Status Messages */
+		#cache-action-status {
+			padding: 0.5rem 0.75rem;
+			border-radius: 0.5rem;
+			font-size: 0.875rem;
+			font-weight: 500;
+		}
+
+		#cache-action-status.status-success {
+			background: #ecfdf5;
+			color: #059669;
+			border: 1px solid #a7f3d0;
+		}
+
+		#cache-action-status.status-error {
+			background: #fef2f2;
+			color: #dc2626;
+			border: 1px solid #fecaca;
+		}
+
+		#cache-action-status.status-info {
+			background: #eff6ff;
+			color: #1d4ed8;
+			border: 1px solid #bfdbfe;
+		}
+
+		/* Responsive Design */
+		@media (max-width: 768px) {
+			.cache-table-wrapper {
+				margin-left: -1rem;
+				margin-right: -1rem;
+				border-radius: 0;
+				border-left: none;
+				border-right: none;
+			}
+
+			.cache-items-table thead th,
+			.cache-items-table tbody td {
+				padding: 0.5rem 0.75rem;
+			}
+
+			.cache-key-full {
+				font-size: 0.6875rem;
+			}
+
+			.cache-actions {
+				flex-direction: column;
+				align-items: stretch;
+			}
+
+			.cache-actions .button {
+				justify-content: center;
+			}
+
+			.cache-stats ul {
+				grid-template-columns: 1fr;
+			}
+		}
+		</style>
 		<?php
 	}
 

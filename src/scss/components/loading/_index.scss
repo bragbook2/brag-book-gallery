@@ -1,4 +1,8 @@
+@charset "UTF-8";
 
+// -----------------------------------------------------------------------------
+// components / loading / index
+// -----------------------------------------------------------------------------
 
 .brag-book-gallery-loading {
 	display: flex;
@@ -6,62 +10,29 @@
 	justify-content: center;
 	padding: 48px;
 	font-size: var(--wp--custom--brag-book-gallery--spacer--lg);
-	color: var(--wp--custom--brag-book-gallery--color--grey)
+	color: var(--wp--custom--brag-book-gallery--color--grey);
+
+	&::before {
+		content: '';
+		display: inline-block;
+		width: var(--wp--custom--brag-book-gallery--spacer--2xl);
+		height: var(--wp--custom--brag-book-gallery--spacer--2xl);
+		margin-right: var(--wp--custom--brag-book-gallery--spacer--md);
+		border: 3px solid var(--wp--custom--brag-book-gallery--color--light-grey);
+		border-top-color: var(--wp--custom--brag-book-gallery--color--grey);
+		border-radius: 50%;
+		animation: spin 1s linear infinite;
+	}
 }
 
-.brag-book-gallery-loading::before {
-	content: "";
-	display: inline-block;
-	width: var(--wp--custom--brag-book-gallery--spacer--2xl);
-	height: var(--wp--custom--brag-book-gallery--spacer--2xl);
-	margin-right: var(--wp--custom--brag-book-gallery--spacer--md);
-	border: 3px solid var(--wp--custom--brag-book-gallery--color--light-grey);
-	border-top-color: var(--wp--custom--brag-book-gallery--color--grey);
-	border-radius: 50%;
-	animation: spin 1s linear infinite
+.brag-book-load-more-container {
+	text-align: center;
+	margin: var(--wp--custom--brag-book-gallery--spacer--2xl) 0;
+	padding: var(--wp--custom--brag-book-gallery--spacer--lg) 0
 }
 
 @keyframes spin {
 	to {
 		transform: rotate(360deg)
 	}
-}
-
-.brag-book-load-more-container {
-	text-align: center;
-	margin: 30px 0;
-	padding: 20px 0
-}
-
-.brag-book-load-more-btn {
-	display: inline-flex;
-	align-items: center;
-	gap: 8px;
-	padding: 12px 32px;
-	background: #fff;
-	color: #6b7280;
-	border: 1px solid #e5e7eb;
-	border-radius: 8px;
-	font-size: 15px;
-	font-weight: 500;
-	cursor: pointer;
-	transition: all .15s ease;
-	box-shadow: 0 1px 2px 0 rgba(0,0,0,.05);
-	font-family: inherit
-}
-
-.brag-book-load-more-btn:hover:not(:disabled) {
-	background: #f9fafb;
-	border-color: #d1d5db;
-	box-shadow: 0 4px 6px -1px rgba(0,0,0,.1),0 2px 4px -1px rgba(0,0,0,.06)
-}
-
-.brag-book-load-more-btn:disabled {
-	opacity: .6;
-	cursor: not-allowed
-}
-
-.brag-book-load-more-btn:active:not(:disabled) {
-	transform: translateY(0);
-	box-shadow: 0 1px 2px 0 rgba(0,0,0,.05)
 }
