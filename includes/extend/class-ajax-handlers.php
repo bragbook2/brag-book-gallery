@@ -289,7 +289,7 @@ class Ajax_Handlers {
 			$request_data = self::validate_and_sanitize_request( [
 				'nonce' => 'brag_book_gallery_nonce',
 				'required_fields' => [],
-				'optional_fields' => [ 'procedure_name', 'procedure_ids', 'has_nudity' ],
+				'optional_fields' => [ 'procedure_name', 'procedure_ids' ],
 			] );
 
 			if ( is_wp_error( $request_data ) ) {
@@ -303,7 +303,6 @@ class Ajax_Handlers {
 			// Extract sanitized parameters
 			$procedure_name = $request_data['procedure_name'] ?? '';
 			$procedure_ids = $request_data['procedure_ids'] ?? '';
-			$has_nudity = '1' === ( $request_data['has_nudity'] ?? '' );
 
 			// Debug logging with proper WordPress debugging
 			if ( WP_DEBUG && WP_DEBUG_LOG ) {
@@ -580,12 +579,22 @@ class Ajax_Handlers {
 					// Only render the first page of cases
 					$cases_to_render = array_slice( $transformed_cases, 0, $items_per_page );
 
+					// Debug: Log case rendering info
+					error_log( 'AJAX Handler - About to render ' . count( $cases_to_render ) . ' cases (items_per_page: ' . $items_per_page . ')' );
+
+					// Get sidebar data once for nudity checking
+					$sidebar_data = Data_Fetcher::get_sidebar_data( $api_tokens[0] );
+
 					foreach ( $cases_to_render as $case ) {
+						// Determine if this specific case has nudity based on its procedure IDs
+						$case_has_nudity = self::case_has_nudity_with_sidebar( $case, $sidebar_data );
+						
+						
 						// Use reflection to access the render_ajax_gallery_case_card method
 						try {
 							$method = new \ReflectionMethod( Shortcodes::class, 'render_ajax_gallery_case_card' );
 							$method->setAccessible( true );
-							$html .= $method->invoke( null, $case, $image_display_mode, $has_nudity, $procedure_name );
+							$html .= $method->invoke( null, $case, $image_display_mode, $case_has_nudity, $procedure_name );
 						} catch ( \Exception $render_error ) {
 							error_log( 'Error rendering case card: ' . $render_error->getMessage() );
 						}
@@ -1139,7 +1148,6 @@ class Ajax_Handlers {
 		// Get parameters
 		$start_page = isset( $_POST['start_page'] ) ? intval( $_POST['start_page'] ) : 2;
 		$procedure_ids = isset( $_POST['procedure_ids'] ) ? array_map( 'intval', explode( ',', sanitize_text_field( wp_unslash( $_POST['procedure_ids'] ) ) ) ) : [];
-		$has_nudity = isset( $_POST['has_nudity'] ) && $_POST['has_nudity'] === '1';
 		$procedure_name = isset( $_POST['procedure_name'] ) ? sanitize_text_field( wp_unslash( $_POST['procedure_name'] ) ) : '';
 
 		// Get already loaded case IDs to prevent duplicates
@@ -1209,11 +1217,17 @@ class Ajax_Handlers {
 			$html = '';
 			$image_display_mode = get_option( 'brag_book_gallery_image_display_mode', 'single' );
 
+			// Get sidebar data once for nudity checking
+			$sidebar_data = Data_Fetcher::get_sidebar_data( $api_tokens[0] );
+
 			foreach ( $all_cases as $case ) {
+				// Determine if this specific case has nudity based on its procedure IDs
+				$case_has_nudity = self::case_has_nudity_with_sidebar( $case, $sidebar_data );
+				
 				// Use reflection to access the private method from Shortcodes class
 				$method = new \ReflectionMethod( Shortcodes::class, 'render_ajax_gallery_case_card' );
 				$method->setAccessible( true );
-				$html .= $method->invoke( null, $case, $image_display_mode, $has_nudity, $procedure_name );
+				$html .= $method->invoke( null, $case, $image_display_mode, $case_has_nudity, $procedure_name );
 			}
 
 			// Log for debugging
@@ -1286,8 +1300,12 @@ class Ajax_Handlers {
 			$html = '';
 			$cases_found = 0;
 
-			// Check for nudity in procedures
-			$procedure_nudity_map = self::get_procedure_nudity_map();
+			// Get sidebar data once for nudity checking
+			$api_tokens = get_option( 'brag_book_gallery_api_token', [] );
+			$sidebar_data = null;
+			if ( ! empty( $api_tokens[0] ) ) {
+				$sidebar_data = Data_Fetcher::get_sidebar_data( $api_tokens[0] );
+			}
 
 			if ( $cached_data && isset( $cached_data['data'] ) ) {
 				// Look for the requested cases in our cached data - ONLY THE PAGINATED ONES
@@ -1296,11 +1314,8 @@ class Ajax_Handlers {
 						// Get image display mode
 						$image_display_mode = get_option( 'brag_book_gallery_image_display_mode', 'single' );
 
-						// Check if this case's procedure has nudity
-						$case_nudity = false;
-						if ( ! empty( $case['technique'] ) && isset( $procedure_nudity_map[ $case['technique'] ] ) ) {
-							$case_nudity = $procedure_nudity_map[ $case['technique'] ];
-						}
+						// Check if this case's procedure has nudity based on procedure IDs
+						$case_nudity = self::case_has_nudity_with_sidebar( $case, $sidebar_data );
 
 						// Render the case card using Shortcodes class method
 						// Use reflection to access the private method
@@ -1634,7 +1649,6 @@ class Ajax_Handlers {
 				formData.append("nonce", "' . wp_create_nonce( 'brag_book_gallery_nonce' ) . '");
 				formData.append("start_page", startPage);
 				formData.append("procedure_ids", procedureIds);
-				formData.append("has_nudity", "' . ( $has_nudity ? '1' : '0' ) . '");
 				formData.append("loaded_ids", loadedIds);
 
 				// Make AJAX request
@@ -2182,6 +2196,76 @@ class Ajax_Handlers {
 		}
 
 		return $sanitized_data;
+	}
+
+	/**
+	 * Check if a case has nudity based on its procedure IDs.
+	 *
+	 * @since 3.2.1
+	 *
+	 * @param array $case Case data containing procedureIds.
+	 *
+	 * @return bool True if any of the case's procedures have nudity flag set.
+	 */
+	private static function case_has_nudity( array $case ): bool {
+		// Check if case has procedure IDs
+		if ( empty( $case['procedureIds'] ) || ! is_array( $case['procedureIds'] ) ) {
+			return false;
+		}
+
+		// Get API token for sidebar data
+		$api_tokens = get_option( 'brag_book_gallery_api_token', [] );
+		if ( empty( $api_tokens[0] ) ) {
+			return false;
+		}
+
+		// Get sidebar data to check procedure nudity flags
+		$sidebar_data = Data_Fetcher::get_sidebar_data( $api_tokens[0] );
+		if ( empty( $sidebar_data['data'] ) ) {
+			return false;
+		}
+
+		// Check each procedure ID for nudity flag
+		foreach ( $case['procedureIds'] as $procedure_id ) {
+			$procedure = Data_Fetcher::find_procedure_by_id( $sidebar_data, (int) $procedure_id );
+			if ( $procedure && ! empty( $procedure['nudity'] ) ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Check if a case has nudity based on its procedure IDs (optimized version with pre-fetched sidebar data).
+	 *
+	 * @since 3.2.1
+	 *
+	 * @param array      $case        Case data containing procedureIds.
+	 * @param array|null $sidebar_data Pre-fetched sidebar data.
+	 *
+	 * @return bool True if any of the case's procedures have nudity flag set.
+	 */
+	private static function case_has_nudity_with_sidebar( array $case, $sidebar_data ): bool {
+		// Check if case has procedure IDs
+		if ( empty( $case['procedureIds'] ) || ! is_array( $case['procedureIds'] ) ) {
+			return false;
+		}
+
+		// Check if sidebar data is available
+		if ( empty( $sidebar_data['data'] ) ) {
+			return false;
+		}
+
+		// Check each procedure ID for nudity flag
+		foreach ( $case['procedureIds'] as $procedure_id ) {
+			$procedure = Data_Fetcher::find_procedure_by_id( $sidebar_data['data'], (int) $procedure_id );
+			if ( $procedure && ! empty( $procedure['nudity'] ) ) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 }

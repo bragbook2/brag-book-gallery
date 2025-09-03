@@ -406,7 +406,7 @@ final class Cases_Shortcode_Handler {
 		error_log( 'API Token exists: ' . ( ! empty( $atts['api_token'] ) ? 'Yes' : 'No' ) );
 		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'Website Property ID: ' . $atts['website_property_id'] );
-		
+
 		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Debug logging only.
 		$request_uri = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : 'N/A';
 		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
@@ -431,14 +431,14 @@ final class Cases_Shortcode_Handler {
 		if ( ! empty( $filter_procedure ) ) {
 			// Try to find matching procedure in sidebar data.
 			$sidebar_data = Data_Fetcher::get_sidebar_data( $atts['api_token'] );
-			
+
 			if ( ! empty( $sidebar_data['data'] ) ) {
 				$procedure_info = Data_Fetcher::find_procedure_by_slug( $sidebar_data['data'], $filter_procedure );
-				
+
 				// Use 'ids' array which contains all procedure IDs for this procedure type.
 				if ( ! empty( $procedure_info['ids'] ) && is_array( $procedure_info['ids'] ) ) {
 					$procedure_ids = array_map( 'intval', $procedure_info['ids'] );
-					
+
 					if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
 						// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 						error_log( 'Cases shortcode - Found procedure IDs for ' . $filter_procedure . ': ' . implode( ',', $procedure_ids ) );
@@ -448,7 +448,7 @@ final class Cases_Shortcode_Handler {
 				} elseif ( ! empty( $procedure_info['id'] ) ) {
 					// Fallback to single 'id' if 'ids' array doesn't exist.
 					$procedure_ids = array( intval( $procedure_info['id'] ) );
-					
+
 					if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
 						// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 						error_log( 'Cases shortcode - Using single procedure ID for ' . $filter_procedure . ': ' . $procedure_info['id'] );
@@ -504,12 +504,22 @@ final class Cases_Shortcode_Handler {
 		// Get image display mode setting.
 		$image_display_mode = get_option( 'brag_book_gallery_image_display_mode', 'single' );
 
+		// Get sidebar data once for nudity checking
+		$api_tokens = get_option( 'brag_book_gallery_api_token', [] );
+		$sidebar_data = null;
+		if ( ! empty( $api_tokens[0] ) ) {
+			$sidebar_data = Data_Fetcher::get_sidebar_data( $api_tokens[0] );
+		}
+
 		foreach ( $cases as $case ) {
+			// Check if this case has nudity based on its procedure IDs
+			$case_has_nudity = self::case_has_nudity_with_sidebar( $case, $sidebar_data );
+
 			// Render each case card.
 			$output .= self::render_case_card(
 				$case,
 				$image_display_mode,
-				false,
+				$case_has_nudity,
 				$filter_procedure
 			);
 		}
@@ -719,7 +729,7 @@ final class Cases_Shortcode_Handler {
 						if ( ! empty( $photo_set['beforePhoto'] ) ) {
 							?>
 							<div class="case-image before-image">
-								<img src="<?php echo esc_url( $photo_set['beforePhoto'] ); ?>" 
+								<img src="<?php echo esc_url( $photo_set['beforePhoto'] ); ?>"
 									 alt="<?php esc_attr_e( 'Before', 'brag-book-gallery' ); ?>" />
 								<span class="image-label"><?php esc_html_e( 'Before', 'brag-book-gallery' ); ?></span>
 							</div>
@@ -728,7 +738,7 @@ final class Cases_Shortcode_Handler {
 						if ( ! empty( $photo_set['afterPhoto'] ) ) {
 							?>
 							<div class="case-image after-image">
-								<img src="<?php echo esc_url( $photo_set['afterPhoto'] ); ?>" 
+								<img src="<?php echo esc_url( $photo_set['afterPhoto'] ); ?>"
 									 alt="<?php esc_attr_e( 'After', 'brag-book-gallery' ); ?>" />
 								<span class="image-label"><?php esc_html_e( 'After', 'brag-book-gallery' ); ?></span>
 							</div>
@@ -771,7 +781,7 @@ final class Cases_Shortcode_Handler {
 			</div>
 		</div>
 		<?php
-		
+
 		return ob_get_clean();
 	}
 
@@ -790,196 +800,215 @@ final class Cases_Shortcode_Handler {
 	 *
 	 * @return string HTML output.
 	 */
-	public static function render_ajax_case_card( array $case, string $image_display_mode, bool $procedure_nudity = false, string $procedure_context = '' ): string {
-		$html = '';
+	/**
+	 * Render case card for main gallery AJAX
+	 *
+	 * Generates HTML specifically for main gallery case cards loaded via AJAX.
+	 * This uses the exact structure expected by the main gallery JavaScript.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @param array  $case                Case data.
+	 * @param string $image_display_mode  Image display mode.
+	 * @param bool   $procedure_nudity    Whether procedure has nudity.
+	 * @param string $procedure_context   Procedure context from filter.
+	 *
+	 * @return string HTML output.
+	 */
+	public static function render_ajax_case_card(
+		array $case,
+		string $image_display_mode,
+		bool $procedure_nudity = false,
+		string $procedure_context = ''
+	): string {
 		$case_id = sanitize_text_field( $case['id'] ?? '' );
-		
+
 		if ( empty( $case_id ) ) {
 			return '';
 		}
-		
-		// Prepare data attributes
-		$data_attrs = array(
+
+		// Build data attributes
+		$data_attrs = [
 			'data-card="true"',
-			'data-case-id="' . esc_attr( $case_id ) . '"',
-		);
-		
-		// Add filtering attributes
+			sprintf( 'data-case-id="%s"', esc_attr( $case_id ) ),
+		];
+
+		// Add optional filtering attributes
 		if ( ! empty( $case['age'] ) ) {
-			$data_attrs[] = 'data-age="' . esc_attr( $case['age'] ) . '"';
+			$data_attrs[] = sprintf( 'data-age="%s"', esc_attr( $case['age'] ) );
 		}
 		if ( ! empty( $case['gender'] ) ) {
-			$data_attrs[] = 'data-gender="' . esc_attr( strtolower( $case['gender'] ) ) . '"';
+			$data_attrs[] = sprintf( 'data-gender="%s"', esc_attr( strtolower( $case['gender'] ) ) );
 		}
 		if ( ! empty( $case['ethnicity'] ) ) {
-			$data_attrs[] = 'data-ethnicity="' . esc_attr( strtolower( $case['ethnicity'] ) ) . '"';
+			$data_attrs[] = sprintf( 'data-ethnicity="%s"', esc_attr( strtolower( $case['ethnicity'] ) ) );
 		}
-		
+
 		// Add procedure IDs
 		$procedure_ids = '';
 		if ( ! empty( $case['procedureIds'] ) && is_array( $case['procedureIds'] ) ) {
 			$procedure_ids = implode( ',', array_map( 'absint', $case['procedureIds'] ) );
-			$data_attrs[] = 'data-procedure-ids="' . esc_attr( $procedure_ids ) . '"';
+			$data_attrs[] = sprintf( 'data-procedure-ids="%s"', esc_attr( $procedure_ids ) );
 		}
-		
-		// Get case URL
+
+		// Build case URL
 		$gallery_slug = \BRAGBookGallery\Includes\Core\Slug_Helper::get_first_gallery_page_slug( 'gallery' );
-		$seo_suffix = '';
-		
-		// Extract SEO suffix if available
+
+		// Extract SEO suffix
+		$seo_suffix = $case_id;
 		if ( ! empty( $case['caseDetails'] ) && is_array( $case['caseDetails'] ) ) {
 			$first_detail = reset( $case['caseDetails'] );
-			$seo_suffix = ! empty( $first_detail['seoSuffixUrl'] ) ? $first_detail['seoSuffixUrl'] : $case_id;
-		} else {
-			$seo_suffix = $case_id;
+			$seo_suffix = $first_detail['seoSuffixUrl'] ?? $case_id;
 		}
-		
-		$procedure_slug = ! empty( $procedure_context ) ? sanitize_title( $procedure_context ) : 'case';
-		$case_url = home_url( '/' . $gallery_slug . '/' . $procedure_slug . '/' . $seo_suffix . '/' );
-		
-		// Start article
-		$html .= '<article class="brag-book-gallery-case-card" ' . implode( ' ', $data_attrs ) . '>';
-		
-		// Image section
-		$html .= '<div class="brag-book-gallery-case-images single-image">';
-		$html .= '<div class="brag-book-gallery-single-image">';
-		$html .= '<div class="brag-book-gallery-image-container">';
-		
-		// Skeleton loader
-		$html .= '<div class="brag-book-gallery-skeleton-loader" style="display: none;"></div>';
-		
-		// Item actions (favorites button)
-		$html .= '<div class="brag-book-gallery-item-actions">';
-		$html .= '<button class="brag-book-gallery-favorite-button" data-favorited="false" data-item-id="case-' . esc_attr( $case_id ) . '" aria-label="Add to favorites">';
-		$html .= '<svg fill="rgba(255, 255, 255, 0.5)" stroke="white" stroke-width="2" viewBox="0 0 24 24">';
-		$html .= '<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>';
-		$html .= '</svg>';
-		$html .= '</button>';
-		$html .= '</div>';
-		
-		// Case link with image
-		$html .= '<a href="' . esc_url( $case_url ) . '" class="brag-book-gallery-case-card-link" data-case-id="' . esc_attr( $case_id ) . '" data-procedure-ids="' . esc_attr( $procedure_ids ) . '">';
-		
-		// Get main image URL - try multiple possible data structures
+
+		$procedure_slug = ! empty( $procedure_context )
+			? sanitize_title( $procedure_context )
+			: 'case';
+
+		$case_url = home_url( sprintf( '/%s/%s/%s/', $gallery_slug, $procedure_slug, $seo_suffix ) );
+
+		// Extract main image URL with priority checking
 		$main_image_url = '';
-		$alt_text = ' - Case ' . $case_id;
-		
-		// Try photoSets first (most common structure)
-		if ( ! empty( $case['photoSets'] ) && is_array( $case['photoSets'] ) ) {
+		$alt_text = sprintf( ' - Case %s', $case_id );
+
+		// Check photoSets first
+		if ( empty( $main_image_url ) && ! empty( $case['photoSets'] ) && is_array( $case['photoSets'] ) ) {
 			$first_photo = reset( $case['photoSets'] );
-			// Try various field names used by the API
-			if ( ! empty( $first_photo['postProcessedImageLocation'] ) ) {
-				$main_image_url = $first_photo['postProcessedImageLocation'];
-			} elseif ( ! empty( $first_photo['afterLocationUrl1'] ) ) {
-				$main_image_url = $first_photo['afterLocationUrl1'];
-			} elseif ( ! empty( $first_photo['beforeLocationUrl'] ) ) {
-				$main_image_url = $first_photo['beforeLocationUrl'];
-			} elseif ( ! empty( $first_photo['afterPhoto'] ) ) {
-				$main_image_url = $first_photo['afterPhoto'];
-			} elseif ( ! empty( $first_photo['beforePhoto'] ) ) {
-				$main_image_url = $first_photo['beforePhoto'];
+			$image_fields = [
+				'postProcessedImageLocation',
+				'afterLocationUrl1',
+				'beforeLocationUrl',
+				'afterPhoto',
+				'beforePhoto',
+			];
+
+			foreach ( $image_fields as $field ) {
+				if ( ! empty( $first_photo[ $field ] ) ) {
+					$main_image_url = $first_photo[ $field ];
+					break;
+				}
 			}
 		}
-		
-		// Fallback to afterImage/beforeImage properties (direct on case object)
-		if ( empty( $main_image_url ) ) {
-			if ( ! empty( $case['afterImage'] ) ) {
-				$main_image_url = $case['afterImage'];
-			} elseif ( ! empty( $case['beforeImage'] ) ) {
-				$main_image_url = $case['beforeImage'];
-			}
-		}
-		
-		// Fallback to mainImageUrl property
-		if ( empty( $main_image_url ) && ! empty( $case['mainImageUrl'] ) ) {
-			$main_image_url = $case['mainImageUrl'];
-		}
-		
-		// Try to find any image URL in caseDetails if still empty
+
+		// Check direct case properties
+		$main_image_url = $main_image_url ?: ( $case['afterImage'] ?? $case['beforeImage'] ?? $case['mainImageUrl'] ?? '' );
+
+		// Check caseDetails as last resort
 		if ( empty( $main_image_url ) && ! empty( $case['caseDetails'] ) && is_array( $case['caseDetails'] ) ) {
 			foreach ( $case['caseDetails'] as $detail ) {
 				if ( ! empty( $detail['afterPhoto'] ) ) {
 					$main_image_url = $detail['afterPhoto'];
 					break;
-				} elseif ( ! empty( $detail['beforePhoto'] ) ) {
+				}
+				if ( ! empty( $detail['beforePhoto'] ) ) {
 					$main_image_url = $detail['beforePhoto'];
 					break;
 				}
 			}
 		}
-		
-		// Always render the picture/img tags, even if empty (for consistent structure)
-		$html .= '<picture class="brag-book-gallery-picture">';
-		if ( ! empty( $main_image_url ) ) {
-			$html .= '<img src="' . esc_url( $main_image_url ) . '" alt="' . esc_attr( $alt_text ) . '" loading="lazy" ';
-			$html .= 'data-image-type="single" data-image-url="' . esc_url( $main_image_url ) . '" ';
-			$html .= 'onload="this.closest(\'.brag-book-gallery-image-container\').querySelector(\'.brag-book-gallery-skeleton-loader\').style.display=\'none\';">';
-		}
-		$html .= '</picture>';
-		
-		$html .= '</a>'; // Close case-card-link
-		$html .= '</div>'; // Close image-container
-		$html .= '</div>'; // Close single-image
-		$html .= '</div>'; // Close case-images
-		
-		// Case details section
-		$html .= '<details class="brag-book-gallery-case-card-details">';
-		
-		// Summary
-		$html .= '<summary class="brag-book-gallery-case-card-summary">';
-		$html .= '<div class="brag-book-gallery-case-card-summary-info">';
-		
-		// Get procedure name - use the context if provided (for filtered views)
+
+		// Get procedure name
 		$procedure_name = 'Case';
-		
-		// If we have a procedure context (from filtered gallery view), use that
 		if ( ! empty( $procedure_context ) ) {
-			// Convert slug back to proper case title (e.g., 'facelift' -> 'Facelift')
 			$procedure_name = ucwords( str_replace( '-', ' ', $procedure_context ) );
-		} else {
-			// Otherwise fall back to the case's actual procedure
-			if ( ! empty( $case['procedures'] ) && is_array( $case['procedures'] ) ) {
-				$first_procedure = reset( $case['procedures'] );
-				$procedure_name = $first_procedure['name'] ?? 'Case';
-			}
+		} elseif ( ! empty( $case['procedures'] ) && is_array( $case['procedures'] ) ) {
+			$first_procedure = reset( $case['procedures'] );
+			$procedure_name = $first_procedure['name'] ?? 'Case';
 		}
-		
-		$html .= '<span class="brag-book-gallery-case-card-summary-info__name">' . esc_html( $procedure_name ) . '</span>';
-		$html .= '<span class="brag-book-gallery-case-card-summary-info__case-number">Case #' . esc_html( $case_id ) . '</span>';
-		$html .= '</div>';
-		
-		$html .= '<div class="brag-book-gallery-case-card-summary-details">';
-		$html .= '<p class="brag-book-gallery-case-card-summary-details__more">';
-		$html .= '<strong>More Details</strong> ';
-		$html .= '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor">';
-		$html .= '<path d="M444-288h72v-156h156v-72H516v-156h-72v156H288v72h156v156Zm36.28 192Q401-96 331-126t-122.5-82.5Q156-261 126-330.96t-30-149.5Q96-560 126-629.5q30-69.5 82.5-122T330.96-834q69.96-30 149.5-30t149.04 30q69.5 30 122 82.5T834-629.28q30 69.73 30 149Q864-401 834-331t-82.5 122.5Q699-156 629.28-126q-69.73 30-149 30Z"></path>';
-		$html .= '</svg>';
-		$html .= '</p>';
-		$html .= '</div>';
-		$html .= '</summary>';
-		
-		// Details content
-		$html .= '<div class="brag-book-gallery-case-card-details-content">';
-		$html .= '<p class="brag-book-gallery-case-card-details-content__title">Procedures Performed:</p>';
-		$html .= '<ul class="brag-book-gallery-case-card-procedures-list">';
-		
+
+		// Build HTML
+		$html = sprintf(
+			'<article class="brag-book-gallery-case-card" %s>',
+			implode( ' ', $data_attrs )
+		);
+
+		// Image section
+		$html .= '<div class="brag-book-gallery-case-images single-image">
+        <div class="brag-book-gallery-single-image">
+            <div class="brag-book-gallery-image-container">
+                <div class="brag-book-gallery-skeleton-loader" style="display: none;"></div>';
+
+		// Favorites button
+		$html .= sprintf(
+			'<div class="brag-book-gallery-item-actions">
+            <button class="brag-book-gallery-favorite-button" data-favorited="false" data-item-id="case-%s" aria-label="Add to favorites">
+                <svg fill="rgba(255, 255, 255, 0.5)" stroke="white" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                </svg>
+            </button>
+        </div>',
+			esc_attr( $case_id )
+		);
+
+		// Case link with image
+		$html .= sprintf(
+			'<a href="%s" class="brag-book-gallery-case-card-link" data-case-id="%s" data-procedure-ids="%s">
+            <picture class="brag-book-gallery-picture">',
+			esc_url( $case_url ),
+			esc_attr( $case_id ),
+			esc_attr( $procedure_ids )
+		);
+
+		if ( ! empty( $main_image_url ) ) {
+			$html .= sprintf(
+				'<img src="%s" alt="%s" loading="lazy" data-image-type="single" data-image-url="%s" onload="this.closest(\'.brag-book-gallery-image-container\').querySelector(\'.brag-book-gallery-skeleton-loader\').style.display=\'none\';">',
+				esc_url( $main_image_url ),
+				esc_attr( $alt_text ),
+				esc_url( $main_image_url )
+			);
+		}
+
+		$html .= '</picture></a></div></div></div>';
+
+		// Add nudity warning if needed
+		if ( $procedure_nudity ) {
+			$html .= self::render_nudity_warning();
+		}
+
+		// Details section
+		$html .= sprintf(
+			'<details class="brag-book-gallery-case-card-details">
+            <summary class="brag-book-gallery-case-card-summary">
+                <div class="brag-book-gallery-case-card-summary-info">
+                    <span class="brag-book-gallery-case-card-summary-info__name">%s</span>
+                    <span class="brag-book-gallery-case-card-summary-info__case-number">%s #%s</span>
+                </div>
+                <div class="brag-book-gallery-case-card-summary-details">
+                    <p class="brag-book-gallery-case-card-summary-details__more">
+                        <strong>%s</strong>
+                        <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor">
+                            <path d="M444-288h72v-156h156v-72H516v-156h-72v156H288v72h156v156Zm36.28 192Q401-96 331-126t-122.5-82.5Q156-261 126-330.96t-30-149.5Q96-560 126-629.5q30-69.5 82.5-122T330.96-834q69.96-30 149.5-30t149.04 30q69.5 30 122 82.5T834-629.28q30 69.73 30 149Q864-401 834-331t-82.5 122.5Q699-156 629.28-126q-69.73 30-149 30Z"></path>
+                        </svg>
+                    </p>
+                </div>
+            </summary>',
+			esc_html( $procedure_name ),
+			esc_html__( 'Case', 'brag-book-gallery' ),
+			esc_html( $case_id ),
+			esc_html__( 'More Details', 'brag-book-gallery' )
+		);
+
+		// Procedures list
+		$html .= '<div class="brag-book-gallery-case-card-details-content">
+        <p class="brag-book-gallery-case-card-details-content__title">' . esc_html__( 'Procedures Performed:', 'brag-book-gallery' ) . '</p>
+        <ul class="brag-book-gallery-case-card-procedures-list">';
+
 		if ( ! empty( $case['procedures'] ) && is_array( $case['procedures'] ) ) {
 			foreach ( $case['procedures'] as $procedure ) {
 				if ( ! empty( $procedure['name'] ) ) {
-					$html .= '<li class="brag-book-gallery-case-card-procedures-list__item">' . esc_html( $procedure['name'] ) . '</li>';
+					$html .= sprintf(
+						'<li class="brag-book-gallery-case-card-procedures-list__item">%s</li>',
+						esc_html( $procedure['name'] )
+					);
 				}
 			}
 		}
-		
-		$html .= '</ul>';
-		$html .= '</div>';
-		$html .= '</details>';
-		
-		$html .= '</article>';
-		
+
+		$html .= '</ul></div></details></article>';
+
 		return $html;
 	}
-	
+
 	/**
 	 * Render case card for grid display
 	 *
@@ -994,7 +1023,12 @@ final class Cases_Shortcode_Handler {
 	 *
 	 * @return string HTML output.
 	 */
-	public static function render_case_card( array $case, string $image_display_mode, bool $procedure_nudity = false, string $procedure_context = '' ): string {
+	public static function render_case_card(
+		array $case,
+		string $image_display_mode,
+		bool $procedure_nudity = false,
+		string $procedure_context = ''
+	): string {
 		$html = '';
 
 		// Prepare data attributes for filtering.
@@ -1030,7 +1064,7 @@ final class Cases_Shortcode_Handler {
 		// Add images.
 		if ( ! empty( $case['photoSets'] ) && is_array( $case['photoSets'] ) ) {
 			$first_photo = reset( $case['photoSets'] );
-			
+
 			if ( 'before_after' === $image_display_mode ) {
 				// Show both before and after images.
 				$html .= '<div class="case-images before-after">';
@@ -1146,11 +1180,11 @@ final class Cases_Shortcode_Handler {
 		// Extract SEO fields from caseDetails if available.
 		if ( ! empty( $case['caseDetails'] ) && is_array( $case['caseDetails'] ) ) {
 			$first_detail = reset( $case['caseDetails'] );
-			
+
 			if ( empty( $info['case_id'] ) ) {
 				$info['case_id'] = $first_detail['caseId'] ?? '';
 			}
-			
+
 			$info['seo_suffix_url']       = $first_detail['seoSuffixUrl'] ?? '';
 			$info['seo_headline']         = $first_detail['seoHeadline'] ?? '';
 			$info['seo_page_title']       = $first_detail['seoPageTitle'] ?? '';
@@ -1183,7 +1217,7 @@ final class Cases_Shortcode_Handler {
 
 		// Determine procedure slug.
 		$procedure_slug = '';
-		
+
 		// First priority: use procedure context passed from AJAX filter.
 		if ( ! empty( $procedure_context ) ) {
 			$procedure_slug = sanitize_title( $procedure_context );
@@ -1236,7 +1270,7 @@ final class Cases_Shortcode_Handler {
 		// Safe extraction of current URL with null coalescing
 		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- URL parsing only.
 		$current_url = $_SERVER['REQUEST_URI'] ?? '';
-		
+
 		if ( empty( $current_url ) ) {
 			return self::extract_procedure_from_case_data( $case );
 		}
@@ -1246,7 +1280,7 @@ final class Cases_Shortcode_Handler {
 
 		// Build regex pattern with proper escaping
 		$pattern = '/' . preg_quote( $gallery_slug, '/' ) . '/([^/]+)(?:/|$)/';
-		
+
 		// Extract procedure slug from URL structure
 		if ( preg_match( $pattern, $current_url, $matches ) && ! empty( $matches[1] ) ) {
 			return sanitize_title( $matches[1] );
@@ -1272,7 +1306,7 @@ final class Cases_Shortcode_Handler {
 		// Use PHP 8.2 null coalescing for safe nested array access
 		$first_procedure = $case['procedures'][0] ?? null;
 		$procedure_name  = $first_procedure['name'] ?? 'case';
-		
+
 		return sanitize_title( $procedure_name );
 	}
 
@@ -1380,8 +1414,40 @@ final class Cases_Shortcode_Handler {
 			?>
 		</div>
 		<?php
-		
+
 		return ob_get_clean();
+	}
+
+	/**
+	 * Check if a case has nudity based on its procedure IDs (optimized version with pre-fetched sidebar data).
+	 *
+	 * @since 3.2.1
+	 *
+	 * @param array      $case        Case data containing procedureIds.
+	 * @param array|null $sidebar_data Pre-fetched sidebar data.
+	 *
+	 * @return bool True if any of the case's procedures have nudity flag set.
+	 */
+	private static function case_has_nudity_with_sidebar( array $case, $sidebar_data ): bool {
+		// Check if case has procedure IDs
+		if ( empty( $case['procedureIds'] ) || ! is_array( $case['procedureIds'] ) ) {
+			return false;
+		}
+
+		// Check if sidebar data is available
+		if ( empty( $sidebar_data['data'] ) ) {
+			return false;
+		}
+
+		// Check each procedure ID for nudity flag
+		foreach ( $case['procedureIds'] as $procedure_id ) {
+			$procedure = Data_Fetcher::find_procedure_by_id( $sidebar_data['data'], (int) $procedure_id );
+			if ( $procedure && ! empty( $procedure['nudity'] ) ) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**
