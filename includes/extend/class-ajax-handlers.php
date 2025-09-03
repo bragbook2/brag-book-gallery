@@ -1763,17 +1763,6 @@ class Ajax_Handlers {
 			// Call the Endpoints class to submit favorite
 			$endpoints = new Endpoints();
 
-			// Debug logging
-			if ( WP_DEBUG ) {
-				error_log( 'BRAGBook Favorites: Submitting with data:' );
-				error_log( '  Email: ' . $email );
-				error_log( '  Phone: ' . $phone );
-				error_log( '  Name: ' . $name );
-				error_log( '  Case ID: ' . $case_id );
-				error_log( '  API Tokens: ' . print_r( $api_tokens, true ) );
-				error_log( '  Website IDs: ' . print_r( $website_property_ids, true ) );
-			}
-
 			$response = $endpoints->get_favorite_data(
 				$api_tokens,
 				$website_property_ids,
@@ -1782,10 +1771,6 @@ class Ajax_Handlers {
 				$name,
 				$case_id
 			);
-
-			if ( WP_DEBUG ) {
-				error_log( 'BRAGBook Favorites: API Response: ' . ( $response ? substr( $response, 0, 500 ) : 'NULL' ) );
-			}
 
 			if ( ! empty( $response ) ) {
 				$data = json_decode( $response, true );
@@ -1818,7 +1803,14 @@ class Ajax_Handlers {
 				] );
 			}
 
+		} catch ( \InvalidArgumentException $e ) {
+			// Handle validation errors with specific message
+			wp_send_json_error( [
+				'message' => $e->getMessage(),
+				'debug' => WP_DEBUG ? 'Validation Error: ' . $e->getMessage() : null,
+			] );
 		} catch ( \Exception $e ) {
+			// Handle other exceptions
 			wp_send_json_error( [
 				'message' => __( 'An error occurred while adding to favorites. Please try again.', 'brag-book-gallery' ),
 				'debug' => WP_DEBUG ? $e->getMessage() : null,

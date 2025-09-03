@@ -181,11 +181,20 @@ class Settings_Help extends Settings_Base {
 
 				<div class="brag-book-gallery-card">
 					<h3><?php esc_html_e( 'Clear Gallery Cache', 'brag-book-gallery' ); ?></h3>
-					<p><?php esc_html_e( 'If your gallery isn\'t showing the latest cases:', 'brag-book-gallery' ); ?></p>
+					<p><?php esc_html_e( 'If your gallery isn\'t showing the latest cases, you have several options:', 'brag-book-gallery' ); ?></p>
+					
+					<h4><?php esc_html_e( 'Quick Cache Clear:', 'brag-book-gallery' ); ?></h4>
 					<ol>
 						<li><?php esc_html_e( 'Go to', 'brag-book-gallery' ); ?> <a href="<?php echo esc_url( admin_url( 'admin.php?page=brag-book-gallery-settings&tab=javascript' ) ); ?>"><?php esc_html_e( 'JavaScript Settings', 'brag-book-gallery' ); ?></a></li>
 						<li><?php esc_html_e( 'Click the "Clear API Cache" button', 'brag-book-gallery' ); ?></li>
 						<li><?php esc_html_e( 'Refresh your gallery page', 'brag-book-gallery' ); ?></li>
+					</ol>
+
+					<h4><?php esc_html_e( 'Advanced Cache Management:', 'brag-book-gallery' ); ?></h4>
+					<ol>
+						<li><?php esc_html_e( 'Go to', 'brag-book-gallery' ); ?> <a href="<?php echo esc_url( admin_url( 'admin.php?page=brag-book-gallery-debug#cache-management' ) ); ?>"><?php esc_html_e( 'Debug Tools → Cache Management', 'brag-book-gallery' ); ?></a></li>
+						<li><?php esc_html_e( 'View detailed cache information and expiration times', 'brag-book-gallery' ); ?></li>
+						<li><?php esc_html_e( 'Clear individual cache items or all cached data', 'brag-book-gallery' ); ?></li>
 					</ol>
 				</div>
 			</div>
@@ -211,12 +220,12 @@ class Settings_Help extends Settings_Base {
 							<?php esc_html_e( 'Open Debug Tools', 'brag-book-gallery' ); ?>
 						</a>
 					</p>
-					<p><?php esc_html_e( 'The Debug Tools provide:', 'brag-book-gallery' ); ?></p>
+					<p><?php esc_html_e( 'The Debug Tools provide comprehensive diagnostic capabilities organized in tabs:', 'brag-book-gallery' ); ?></p>
 					<ul style="list-style: disc; margin-left: 20px;">
-						<li><strong><?php esc_html_e( 'Gallery Checker', 'brag-book-gallery' ); ?></strong> - <?php esc_html_e( 'Verifies your gallery page exists and is configured correctly', 'brag-book-gallery' ); ?></li>
-						<li><strong><?php esc_html_e( 'Rewrite Debug', 'brag-book-gallery' ); ?></strong> - <?php esc_html_e( 'Shows exactly which rewrite rules are active', 'brag-book-gallery' ); ?></li>
-						<li><strong><?php esc_html_e( 'Rewrite Fix', 'brag-book-gallery' ); ?></strong> - <?php esc_html_e( 'Automatically fixes common rewrite issues', 'brag-book-gallery' ); ?></li>
-						<li><strong><?php esc_html_e( 'Cache Management', 'brag-book-gallery' ); ?></strong> - <?php esc_html_e( 'View and clear specific cached items', 'brag-book-gallery' ); ?></li>
+						<li><strong><?php esc_html_e( 'Diagnostic Tools', 'brag-book-gallery' ); ?></strong> - <?php esc_html_e( 'System status, gallery checker, and rewrite rules analysis', 'brag-book-gallery' ); ?></li>
+						<li><strong><?php esc_html_e( 'Cache Management', 'brag-book-gallery' ); ?></strong> - <?php esc_html_e( 'View and clear individual cached items with detailed information', 'brag-book-gallery' ); ?></li>
+						<li><strong><?php esc_html_e( 'Rewrite Fix', 'brag-book-gallery' ); ?></strong> - <?php esc_html_e( 'Automatically detects and fixes common URL rewrite issues', 'brag-book-gallery' ); ?></li>
+						<li><strong><?php esc_html_e( 'Flush Rules', 'brag-book-gallery' ); ?></strong> - <?php esc_html_e( 'Regenerate WordPress rewrite rules and query variables', 'brag-book-gallery' ); ?></li>
 					</ul>
 
 					<h4><?php esc_html_e( 'For Nginx Servers:', 'brag-book-gallery' ); ?></h4>
@@ -244,7 +253,7 @@ location ~ ^/gallery/([^/]+)/? {
 						<li>
 							<strong><?php esc_html_e( 'Clear Cache', 'brag-book-gallery' ); ?></strong>
 							<ul style="list-style: disc; margin-left: 20px;">
-								<li><?php esc_html_e( 'Clear plugin cache from JavaScript Settings', 'brag-book-gallery' ); ?></li>
+								<li><?php esc_html_e( 'Clear plugin cache from JavaScript Settings or Debug Tools → Cache Management', 'brag-book-gallery' ); ?></li>
 								<li><?php esc_html_e( 'Clear browser cache (Ctrl+Shift+R or Cmd+Shift+R)', 'brag-book-gallery' ); ?></li>
 							</ul>
 						</li>
@@ -317,7 +326,7 @@ location ~ ^/gallery/([^/]+)/? {
 					<details class="brag-book-gallery-accordion-item">
 						<summary><?php esc_html_e( 'What should I do if my gallery isn\'t displaying?', 'brag-book-gallery' ); ?></summary>
 						<div class="brag-book-gallery-accordion-content">
-							<p><?php esc_html_e( 'First, check that your API credentials are configured in API Settings. Then visit Debug Tools → Gallery Checker to verify your page setup. If issues persist, try clearing the cache and flushing rewrite rules from the Debug Tools.', 'brag-book-gallery' ); ?></p>
+							<p><?php esc_html_e( 'First, check that your API credentials are configured in API Settings. Then visit Debug Tools → Diagnostic Tools to run the Gallery Checker and verify your page setup. If issues persist, try clearing the cache from Cache Management tab and flushing rewrite rules from the Flush Rules tab.', 'brag-book-gallery' ); ?></p>
 						</div>
 					</details>
 
@@ -334,10 +343,23 @@ location ~ ^/gallery/([^/]+)/? {
 							<p><?php esc_html_e( 'Yes! In General Settings, you can control various display options including: grid layout toggle, sharing buttons, image display mode (single or before/after), and more. You can also use Custom CSS to hide specific elements.', 'brag-book-gallery' ); ?></p>
 						</div>
 					</details>
+
+					<details class="brag-book-gallery-accordion-item">
+						<summary><?php esc_html_e( 'How do the new Debug Tools help me troubleshoot issues?', 'brag-book-gallery' ); ?></summary>
+						<div class="brag-book-gallery-accordion-content">
+							<p><?php esc_html_e( 'The Debug Tools in version 3.2.0+ provide comprehensive diagnostic capabilities:', 'brag-book-gallery' ); ?></p>
+							<ul style="list-style: disc; margin-left: 20px;">
+								<li><strong><?php esc_html_e( 'Diagnostic Tools:', 'brag-book-gallery' ); ?></strong> <?php esc_html_e( 'System status overview, gallery page validation, rewrite rules analysis, and query variables debugging', 'brag-book-gallery' ); ?></li>
+								<li><strong><?php esc_html_e( 'Cache Management:', 'brag-book-gallery' ); ?></strong> <?php esc_html_e( 'View all cached items with expiration times and selectively clear individual cache entries', 'brag-book-gallery' ); ?></li>
+								<li><strong><?php esc_html_e( 'Rewrite Fix:', 'brag-book-gallery' ); ?></strong> <?php esc_html_e( 'Automatically detects and repairs common URL rewrite issues with real API data testing', 'brag-book-gallery' ); ?></li>
+								<li><strong><?php esc_html_e( 'Flush Rules:', 'brag-book-gallery' ); ?></strong> <?php esc_html_e( 'Regenerates WordPress rewrite rules and query variables with confirmation dialogs', 'brag-book-gallery' ); ?></li>
+							</ul>
+						</div>
+					</details>
 				</div>
 			</div>
 
-			<!-- Support - Hidden for Release 3.2.0-->
+			<!-- Support - Hidden for Release 3.2.1-->
 			<div class="brag-book-gallery-section" style="display:none;">
 				<h2><?php esc_html_e( 'Support & Resources', 'brag-book-gallery' ); ?></h2>
 				<div class="brag-book-gallery-grid">
@@ -442,11 +464,14 @@ location ~ ^/gallery/([^/]+)/? {
 					<div style="margin-top: 20px;">
 						<p><strong><?php esc_html_e( 'Quick Actions:', 'brag-book-gallery' ); ?></strong></p>
 						<p>
-							<a href="<?php echo esc_url( admin_url( 'admin.php?page=brag-book-gallery-debug' ) ); ?>" class="button">
+							<a href="<?php echo esc_url( admin_url( 'admin.php?page=brag-book-gallery-debug#diagnostic-tools' ) ); ?>" class="button">
 								<?php esc_html_e( 'Debug Tools', 'brag-book-gallery' ); ?>
 							</a>
 							<a href="<?php echo esc_url( admin_url( 'admin.php?page=brag-book-gallery-settings' ) ); ?>" class="button">
 								<?php esc_html_e( 'General Settings', 'brag-book-gallery' ); ?>
+							</a>
+							<a href="<?php echo esc_url( admin_url( 'admin.php?page=brag-book-gallery-settings&tab=api' ) ); ?>" class="button">
+								<?php esc_html_e( 'API Settings', 'brag-book-gallery' ); ?>
 							</a>
 							<a href="<?php echo esc_url( admin_url( 'options-permalink.php' ) ); ?>" class="button">
 								<?php esc_html_e( 'Flush Permalinks', 'brag-book-gallery' ); ?>

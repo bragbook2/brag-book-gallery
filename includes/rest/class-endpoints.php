@@ -140,6 +140,38 @@ class Endpoints {
 	);
 
 	/**
+	 * Input validation security rules
+	 *
+	 * @since 3.0.0
+	 * @var array<string, array<string, mixed>>
+	 */
+	private const SECURITY_RULES = array(
+		'email' => array(
+			'required' => true,
+			'max_length' => 254,
+			'pattern' => '/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/',
+		),
+		'phone' => array(
+			'required' => true,
+			'min_length' => 10,
+			'max_length' => 20,
+			'pattern' => '/^[\d\s\-\(\)\+\.]+$/',
+		),
+		'name' => array(
+			'required' => true,
+			'min_length' => 1,
+			'max_length' => 100,
+			'pattern' => '/^[a-zA-Z\s\-\.\']+$/',
+		),
+		'case_id' => array(
+			'required' => false,
+			'min_length' => 1,
+			'max_length' => 20,
+			'pattern' => '/^[a-zA-Z0-9_\-]+$/',
+		),
+	);
+
+	/**
 	 * Send plugin version tracking data
 	 *
 	 * Sends plugin usage analytics to the BRAG book service for
@@ -429,13 +461,12 @@ class Endpoints {
 
 		// Validate email.
 		if ( ! is_email( $email ) ) {
-			$this->send_json_error(
+			throw new \InvalidArgumentException(
 				esc_html__(
 					'Invalid email address',
 					'brag-book-gallery'
 				)
 			);
-			return null;
 		}
 
 		// Enhanced input validation and sanitization with security rules
@@ -468,13 +499,12 @@ class Endpoints {
 
 		// Check for validation errors
 		if ( ! empty( $validation_errors ) ) {
-			$this->send_json_error(
+			throw new \InvalidArgumentException(
 				esc_html__(
 					'Input validation failed: ',
 					'brag-book-gallery'
 				) . implode( ', ', $validation_errors )
 			);
-			return null;
 		}
 
 		// Prepare request body
@@ -1012,7 +1042,13 @@ class Endpoints {
 			)
 		};
 
-		$this->send_json_error( $user_message );
+		// If we're in an AJAX context, throw exception instead of calling wp_send_json_error
+		// This allows the calling code to handle the error appropriately
+		if ( wp_doing_ajax() ) {
+			throw new \Exception( $user_message );
+		} else {
+			$this->send_json_error( $user_message );
+		}
 	}
 
 	/**
