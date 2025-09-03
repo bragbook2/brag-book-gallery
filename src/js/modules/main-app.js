@@ -39,6 +39,7 @@ class BRAGbookGalleryApp {
 		this.initializeShareManager();
 		this.initializeConsultationForm();
 		this.initializeCaseLinks();
+		this.initializeNudityWarning();
 
 		// Auto-activate favorites view if on favorites page
 		const galleryContent = document.getElementById('gallery-content');
@@ -1767,6 +1768,13 @@ class BRAGbookGalleryApp {
 				button.dataset.favorited = isFavorited.toString();
 			});
 		}
+	}
+
+	/**
+	 * Initialize nudity warning management
+	 */
+	initializeNudityWarning() {
+		this.components.nudityWarningManager = new NudityWarningManager();
 	}
 }
 

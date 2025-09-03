@@ -1037,7 +1037,7 @@ final class HTML_Renderer {
 		$link_close = ! empty( $case_url ) ? '</a>' : '';
 		$nudity_warning = $photo_data['has_nudity'] ? self::render_nudity_warning() : '';
 		$image_element = self::render_image_element( $photo_data );
-		
+
 		// Only render action buttons for non-standalone carousels
 		$action_buttons = $is_standalone ? '' : self::render_carousel_action_buttons( $case_data['id'] );
 
@@ -1432,7 +1432,7 @@ final class HTML_Renderer {
 		// Build back URL and text based on whether we have procedure info
 		$back_url = $base_path . '/';
 		$back_text = __( '← Back to Gallery', 'brag-book-gallery' );
-		
+
 		if ( ! empty( $procedure_slug ) ) {
 			$back_url = $base_path . '/' . $procedure_slug . '/';
 			if ( ! empty( $procedure_name ) ) {
@@ -1791,12 +1791,12 @@ final class HTML_Renderer {
 		// First pass: collect all regular values and all array values separately
 		$all_regular_details = array();
 		$all_array_details = array();
-		
+
 		foreach ( $case_data['procedureDetails'] as $procedure_id => $details ) {
 			if ( ! is_array( $details ) || empty( $details ) ) {
 				continue;
 			}
-			
+
 			foreach ( $details as $label => $value ) {
 				if ( ! empty( $value ) ) {
 					if ( is_array( $value ) ) {
@@ -2092,9 +2092,16 @@ final class HTML_Renderer {
 		$image_display_mode = get_option( 'brag_book_gallery_image_display_mode', 'single' );
 		$cards_html = '';
 
+		// Get sidebar data once for nudity checking
+		$api_tokens = get_option( 'brag_book_gallery_api_token', [] );
+		$sidebar_data = null;
+		if ( ! empty( $api_tokens[0] ) ) {
+			$sidebar_data = Data_Fetcher::get_sidebar_data( $api_tokens[0] );
+		}
+
 		foreach ( $cases as $case ) {
 			$transformed_case = self::transform_case_data( $case );
-			$cards_html .= self::render_single_case_card( $transformed_case, $image_display_mode );
+			$cards_html .= self::render_single_case_card_with_sidebar( $transformed_case, $image_display_mode, $sidebar_data );
 		}
 
 		return $cards_html;
@@ -2212,12 +2219,43 @@ final class HTML_Renderer {
 	 */
 	private static function render_single_case_card( array $case, string $image_display_mode ): string {
 		try {
+			// Check if this case has nudity based on its procedure IDs
+			$case_has_nudity = self::case_has_nudity( $case );
+
 			// Use reflection to call protected method from Shortcodes class.
 			$shortcodes_class = 'BRAGBookGallery\Includes\Extend\Shortcodes';
 			$method = new \ReflectionMethod( $shortcodes_class, 'render_ajax_gallery_case_card' );
 			$method->setAccessible( true );
 
-			return $method->invoke( null, $case, $image_display_mode, false, '' );
+			return $method->invoke( null, $case, $image_display_mode, $case_has_nudity, '' );
+		} catch ( \Exception $e ) {
+			self::log_debug( sprintf( 'Error rendering favorite case card: %s', $e->getMessage() ) );
+			return self::render_fallback_case_card( $case );
+		}
+	}
+
+	/**
+	 * Render single case card with pre-fetched sidebar data (optimized version).
+	 *
+	 * @since 3.2.1
+	 *
+	 * @param array      $case               Case data.
+	 * @param string     $image_display_mode Display mode.
+	 * @param array|null $sidebar_data       Pre-fetched sidebar data.
+	 *
+	 * @return string Card HTML.
+	 */
+	private static function render_single_case_card_with_sidebar( array $case, string $image_display_mode, $sidebar_data ): string {
+		try {
+			// Check if this case has nudity based on its procedure IDs
+			$case_has_nudity = self::case_has_nudity_with_sidebar( $case, $sidebar_data );
+
+			// Use reflection to call protected method from Shortcodes class.
+			$shortcodes_class = 'BRAGBookGallery\Includes\Extend\Shortcodes';
+			$method = new \ReflectionMethod( $shortcodes_class, 'render_ajax_gallery_case_card' );
+			$method->setAccessible( true );
+
+			return $method->invoke( null, $case, $image_display_mode, $case_has_nudity, '' );
 		} catch ( \Exception $e ) {
 			self::log_debug( sprintf( 'Error rendering favorite case card: %s', $e->getMessage() ) );
 			return self::render_fallback_case_card( $case );
@@ -2431,5 +2469,90 @@ final class HTML_Renderer {
 			'slug' => $category_slug,
 			'total_cases' => $total_cases,
 		];
+	}
+
+	/**
+	 * Check if a case has nudity based on its procedure IDs.
+	 *
+	 * @since 3.2.1
+	 *
+	 * @param array $case Case data containing procedureIds.
+	 *
+	 * @return bool True if any of the case's procedures have nudity flag set.
+	 */
+	private static function case_has_nudity( array $case ): bool {
+		// Check if case has procedure IDs
+		if ( empty( $case['procedureIds'] ) || ! is_array( $case['procedureIds'] ) ) {
+			return false;
+		}
+
+		// Get API token for sidebar data
+		$api_tokens = get_option( 'brag_book_gallery_api_token', [] );
+		if ( empty( $api_tokens[0] ) ) {
+			return false;
+		}
+
+		// Get sidebar data to check procedure nudity flags
+		$sidebar_data = Data_Fetcher::get_sidebar_data( $api_tokens[0] );
+		if ( empty( $sidebar_data['data'] ) ) {
+			return false;
+		}
+
+		// Check each procedure ID for nudity flag
+		foreach ( $case['procedureIds'] as $procedure_id ) {
+			$procedure = Data_Fetcher::find_procedure_by_id( $sidebar_data['data'], (int) $procedure_id );
+			if ( $procedure && ! empty( $procedure['nudity'] ) ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Check if a case has nudity based on its procedure IDs (optimized version with pre-fetched sidebar data).
+	 *
+	 * @since 3.2.1
+	 *
+	 * @param array      $case        Case data containing procedureIds.
+	 * @param array|null $sidebar_data Pre-fetched sidebar data.
+	 *
+	 * @return bool True if any of the case's procedures have nudity flag set.
+	 */
+	private static function case_has_nudity_with_sidebar( array $case, $sidebar_data ): bool {
+		// Check if case has procedure IDs
+		if ( empty( $case['procedureIds'] ) || ! is_array( $case['procedureIds'] ) ) {
+			error_log( 'HTML_Renderer: Case has no procedureIds or not array. Case ID: ' . ( $case['id'] ?? 'unknown' ) );
+			return false;
+		}
+
+		// Check if sidebar data is available
+		if ( empty( $sidebar_data['data'] ) ) {
+			error_log( 'HTML_Renderer: No sidebar data available' );
+			return false;
+		}
+
+		// Debug: Log case and procedure details
+		error_log( 'HTML_Renderer: Checking case ' . ( $case['id'] ?? 'unknown' ) . ' with procedure IDs: ' . implode( ',', $case['procedureIds'] ) );
+
+		// Check each procedure ID for nudity flag
+		foreach ( $case['procedureIds'] as $procedure_id ) {
+			$procedure = Data_Fetcher::find_procedure_by_id( $sidebar_data['data'], (int) $procedure_id );
+
+			if ( $procedure ) {
+				$has_nudity = ! empty( $procedure['nudity'] );
+				error_log( 'HTML_Renderer: Procedure ID ' . $procedure_id . ' (' . ( $procedure['name'] ?? 'unknown' ) . ') has nudity: ' . ( $has_nudity ? 'YES' : 'NO' ) );
+
+				if ( $has_nudity ) {
+					error_log( 'HTML_Renderer: Case ' . ( $case['id'] ?? 'unknown' ) . ' WILL SHOW nudity warning' );
+					return true;
+				}
+			} else {
+				error_log( 'HTML_Renderer: Procedure ID ' . $procedure_id . ' NOT FOUND in sidebar data' );
+			}
+		}
+
+		error_log( 'HTML_Renderer: Case ' . ( $case['id'] ?? 'unknown' ) . ' will NOT show nudity warning' );
+		return false;
 	}
 }
