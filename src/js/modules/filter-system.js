@@ -516,7 +516,7 @@ class FilterSystem {
 
 		// Prepare request data
 		const formData = new FormData();
-		formData.append('action', 'brag_book_load_filtered_gallery');
+		formData.append('action', 'brag_book_gallery_load_filtered_gallery');
 		formData.append('nonce', nonce);
 		formData.append('procedure_name', procedureName); // Send display name for SEO
 		formData.append('procedure_slug', procedure); // Send slug for filtering

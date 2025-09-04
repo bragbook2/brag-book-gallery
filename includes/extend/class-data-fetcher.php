@@ -250,7 +250,7 @@ class Data_Fetcher {
 
 			// Use PHP 8.2 JSON processing with enhanced error handling
 			$decoded = self::safe_json_decode( $response, 'cases API response' );
-			
+
 			if ( ! is_array( $decoded ) || empty( $decoded['data'] ) ) {
 				return is_array( $decoded ) ? $decoded : [];
 			}
@@ -348,7 +348,7 @@ class Data_Fetcher {
 	public static function get_all_cases_for_filtering( string $api_token, string $website_property_id, array $procedure_ids = [] ): array {
 		// Check cache first - include procedure IDs in cache key
 		if ( ! empty( $procedure_ids ) ) {
-			$cache_key = 'brag_book_filtered_cases_' . md5( $api_token . $website_property_id . implode( ',', $procedure_ids ) );
+			$cache_key = 'brag_book_gallery_transient_filtered_cases_' . $api_token . '_' . $website_property_id . implode( ',', $procedure_ids );
 		} else {
 			$cache_key = Cache_Manager::get_all_cases_cache_key( $api_token, $website_property_id );
 		}
@@ -505,7 +505,7 @@ class Data_Fetcher {
 				// Cache the result
 				if ( Cache_Manager::is_caching_enabled() && ! empty( $result ) ) {
 					Cache_Manager::set( $cache_key, $result );
-					
+
 					// Also cache individual carousel cases for lookup
 					self::cache_carousel_cases( $result, $config['api_token'] );
 				}
@@ -541,16 +541,16 @@ class Data_Fetcher {
 			}
 
 			// Cache by case ID
-			$case_cache_key = 'brag_book_carousel_case_' . md5( $api_token . '_' . $case['id'] );
+			$case_cache_key = 'brag_book_gallery_transient_carousel_case_' . $api_token . '_' . $case['id'];
 			set_transient( $case_cache_key, $case, 30 * MINUTE_IN_SECONDS );
-			
+
 			// Also cache by seoSuffixUrl if it exists
 			if ( ! empty( $case['caseDetails'] ) && is_array( $case['caseDetails'] ) ) {
 				foreach ( $case['caseDetails'] as $detail ) {
 					if ( ! empty( $detail['seoSuffixUrl'] ) ) {
-						$seo_cache_key = 'brag_book_carousel_case_' . md5( $api_token . '_' . $detail['seoSuffixUrl'] );
+						$seo_cache_key = 'brag_book_gallery_transient_carousel_case_' . $api_token . '_' . $detail['seoSuffixUrl'];
 						set_transient( $seo_cache_key, $case, 30 * MINUTE_IN_SECONDS );
-						
+
 						if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
 							// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 							error_log( 'Cached carousel case by seoSuffixUrl: ' . $detail['seoSuffixUrl'] . ' for case ID: ' . $case['id'] );
@@ -558,18 +558,18 @@ class Data_Fetcher {
 					}
 				}
 			}
-			
+
 			// Also check for seoSuffixUrl at root level
 			if ( ! empty( $case['seoSuffixUrl'] ) ) {
-				$seo_cache_key = 'brag_book_carousel_case_' . md5( $api_token . '_' . $case['seoSuffixUrl'] );
+				$seo_cache_key = 'brag_book_gallery_transient_carousel_case_' .  $api_token . '_' . $case['seoSuffixUrl'];
 				set_transient( $seo_cache_key, $case, 30 * MINUTE_IN_SECONDS );
-				
+
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
 					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( 'Cached carousel case by root seoSuffixUrl: ' . $case['seoSuffixUrl'] . ' for case ID: ' . $case['id'] );
 				}
 			}
-			
+
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'Cached carousel case ID: ' . $case['id'] );
@@ -590,11 +590,11 @@ class Data_Fetcher {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'Looking for carousel case with identifier: ' . $case_identifier );
 		}
-		
+
 		// Try to get from cache using the identifier (could be ID or seoSuffixUrl)
-		$case_cache_key = 'brag_book_carousel_case_' . md5( $api_token . '_' . $case_identifier );
+		$case_cache_key = 'brag_book_gallery_transient_carousel_case_' . $case_identifier;
 		$cached_case = get_transient( $case_cache_key );
-		
+
 		if ( $cached_case !== false ) {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
@@ -604,12 +604,12 @@ class Data_Fetcher {
 			}
 			return $cached_case;
 		}
-		
+
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'Carousel case NOT found in cache for identifier: ' . $case_identifier );
 		}
-		
+
 		return null;
 	}
 
@@ -703,17 +703,17 @@ class Data_Fetcher {
 
 		// Extract configuration options with PHP 8.2 null coalescing
 		$configuration_data = self::extract_wordpress_options();
-		
+
 		// Validate configuration data integrity
 		if ( ! self::validate_configuration_arrays( $configuration_data ) ) {
 			return $default_config;
 		}
 
 		// Find matching configuration using PHP 8.2 features
-		return self::find_matching_configuration( 
-			$website_property_id, 
-			$configuration_data, 
-			$default_config 
+		return self::find_matching_configuration(
+			$website_property_id,
+			$configuration_data,
+			$default_config
 		);
 	}
 
@@ -752,7 +752,7 @@ class Data_Fetcher {
 		$api_tokens_valid = is_array( $config['api_tokens'] ?? null );
 		$property_ids_valid = is_array( $config['property_ids'] ?? null );
 		$slugs_valid = is_array( $config['slugs'] ?? null );
-		
+
 		return $api_tokens_valid && $property_ids_valid && $slugs_valid;
 	}
 
@@ -770,10 +770,10 @@ class Data_Fetcher {
 	 *
 	 * @return array Complete configuration array or default on no match.
 	 */
-	private static function find_matching_configuration( 
-		string $target_property_id, 
-		array $config_data, 
-		array $default_config 
+	private static function find_matching_configuration(
+		string $target_property_id,
+		array $config_data,
+		array $default_config
 	): array {
 		foreach ( $config_data['api_tokens'] as $index => $api_token ) {
 			// Use PHP 8.2 null coalescing for safe array access
@@ -898,7 +898,7 @@ class Data_Fetcher {
 		// Check response size to prevent memory issues
 		$response_size = strlen( $json_response );
 		$max_size = 10 * 1024 * 1024; // 10MB limit
-		
+
 		if ( $response_size > $max_size ) {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
@@ -909,11 +909,11 @@ class Data_Fetcher {
 
 		try {
 			// Use PHP 8.2 JSON_THROW_ON_ERROR for better error handling
-			return json_decode( 
-				$json_response, 
-				true, 
+			return json_decode(
+				$json_response,
+				true,
 				512, // Max depth to prevent recursive attacks
-				JSON_THROW_ON_ERROR 
+				JSON_THROW_ON_ERROR
 			);
 		} catch ( JsonException $e ) {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {

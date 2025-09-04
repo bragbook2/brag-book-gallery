@@ -139,7 +139,7 @@ final class Image_Sync {
 	 */
 	public function import_case_images( int $post_id, array $case_data ): array {
 		$start_time = microtime( true );
-		
+
 		$results = [
 			'success'       => true,
 			'before_images' => [],
@@ -177,7 +177,7 @@ final class Image_Sync {
 								'after'  => 'after_images',
 								default  => null,
 							};
-							
+
 							if ( $result_key ) {
 								$results[ $result_key ][] = $attachment_id;
 							}
@@ -204,7 +204,7 @@ final class Image_Sync {
 			// Track performance
 			$duration = microtime( true ) - $start_time;
 			$this->track_performance( 'import_case_images', $duration );
-			
+
 			$results['stats'] = [
 				'duration_seconds' => round( $duration, 2 ),
 				'total_processed'  => count( $results['before_images'] ) + count( $results['after_images'] ),
@@ -241,7 +241,7 @@ final class Image_Sync {
 				// Check cache first
 				$cache_key = $this->get_url_cache_key( $url );
 				$cached_id = $this->get_cached_attachment_id( $cache_key );
-				
+
 				if ( $cached_id ) {
 					$attachment_ids[] = $cached_id;
 					continue;
@@ -323,7 +323,7 @@ final class Image_Sync {
 	 */
 	public function sideload_image( string $url, int $post_id = 0 ): ?int {
 		$start_time = microtime( true );
-		
+
 		if ( ! function_exists( 'media_sideload_image' ) ) {
 			require_once ABSPATH . 'wp-admin/includes/media.php';
 			require_once ABSPATH . 'wp-admin/includes/file.php';
@@ -387,7 +387,7 @@ final class Image_Sync {
 
 			$this->track_performance( 'sideload_image', microtime( true ) - $start_time );
 			return $attachment_id;
-			
+
 		} catch ( Exception $e ) {
 			$this->log_error( 'sideload_image', $e->getMessage() );
 			throw $e;
@@ -841,7 +841,7 @@ final class Image_Sync {
 	private function validate_image_type( string $type ): string {
 		$valid_types = [ 'before', 'after', 'other' ];
 		$type = strtolower( trim( $type ) );
-		
+
 		return in_array( $type, $valid_types, true ) ? $type : 'other';
 	}
 
@@ -866,7 +866,7 @@ final class Image_Sync {
 	 * @return string Cache key.
 	 */
 	private function get_url_cache_key( string $url ): string {
-		return 'brag_img_' . md5( $url );
+		return 'brag_book_gallery_transient_img_' . $url;
 	}
 
 	/**
@@ -880,7 +880,7 @@ final class Image_Sync {
 		if ( isset( $this->memory_cache[ $cache_key ] ) ) {
 			return $this->memory_cache[ $cache_key ];
 		}
-		
+
 		$cached = get_transient( $cache_key );
 		return $cached ? (int) $cached : null;
 	}
@@ -906,16 +906,16 @@ final class Image_Sync {
 	 */
 	private function sanitize_url( string $url ): ?string {
 		$url = esc_url_raw( $url );
-		
+
 		if ( ! filter_var( $url, FILTER_VALIDATE_URL ) ) {
 			return null;
 		}
-		
+
 		// Ensure HTTPS for security
 		if ( strpos( $url, 'http://' ) === 0 ) {
 			$url = str_replace( 'http://', 'https://', $url );
 		}
-		
+
 		return $url;
 	}
 
@@ -933,20 +933,20 @@ final class Image_Sync {
 			'cloudinary.com',
 			'amazonaws.com',
 		] );
-		
+
 		if ( empty( $allowed_domains ) ) {
 			return true; // No restrictions
 		}
-		
+
 		$parsed = wp_parse_url( $url );
 		$host = $parsed['host'] ?? '';
-		
+
 		foreach ( $allowed_domains as $domain ) {
 			if ( str_ends_with( $host, $domain ) ) {
 				return true;
 			}
 		}
-		
+
 		return false;
 	}
 
@@ -962,24 +962,24 @@ final class Image_Sync {
 		$max_retries = self::MAX_DOWNLOAD_RETRIES;
 		$attempt = 0;
 		$last_error = null;
-		
+
 		while ( $attempt < $max_retries ) {
 			try {
 				return $this->sideload_image( $url, $post_id );
 			} catch ( Exception $e ) {
 				$last_error = $e;
 				$attempt++;
-				
+
 				if ( $attempt < $max_retries ) {
 					sleep( min( $attempt * 2, 10 ) ); // Exponential backoff
 				}
 			}
 		}
-		
+
 		if ( $last_error ) {
 			$this->log_error( 'sideload_retries', "Failed after {$max_retries} attempts: {$last_error->getMessage()}" );
 		}
-		
+
 		return null;
 	}
 
@@ -993,7 +993,7 @@ final class Image_Sync {
 	private function track_import_success( int $attachment_id, string $url ): void {
 		update_post_meta( $attachment_id, '_brag_import_success', true );
 		update_post_meta( $attachment_id, '_brag_import_timestamp', time() );
-		
+
 		/**
 		 * Fires after successful image import.
 		 *
@@ -1016,7 +1016,7 @@ final class Image_Sync {
 			'time'    => current_time( 'mysql' ),
 			'message' => $message,
 		];
-		
+
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 			error_log( "[BRAGBook Image Sync] {$context}: {$message}" );
 		}
@@ -1038,7 +1038,7 @@ final class Image_Sync {
 				'max'     => 0,
 			];
 		}
-		
+
 		$metrics = &$this->performance_metrics[ $operation ];
 		$metrics['count']++;
 		$metrics['total'] += $duration;

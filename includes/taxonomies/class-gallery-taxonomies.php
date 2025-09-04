@@ -182,7 +182,7 @@ final class Gallery_Taxonomies {
 	 */
 	public function register_categories(): void {
 		$start_time = microtime( true );
-		
+
 		try {
 			$labels = [
 				'name'                       => _x( 'Medical Categories', 'taxonomy general name', 'brag-book-gallery' ),
@@ -225,9 +225,9 @@ final class Gallery_Taxonomies {
 			];
 
 			register_taxonomy( self::CATEGORY_TAXONOMY, [ Gallery_Post_Type::POST_TYPE ], $args );
-			
+
 			$this->track_performance( 'register_categories', microtime( true ) - $start_time );
-			
+
 		} catch ( Exception $e ) {
 			$this->log_error( 'register_categories', $e->getMessage() );
 		}
@@ -241,7 +241,7 @@ final class Gallery_Taxonomies {
 	 */
 	public function register_procedures(): void {
 		$start_time = microtime( true );
-		
+
 		try {
 			$labels = [
 				'name'                       => _x( 'Procedures', 'taxonomy general name', 'brag-book-gallery' ),
@@ -284,9 +284,9 @@ final class Gallery_Taxonomies {
 			];
 
 			register_taxonomy( self::PROCEDURE_TAXONOMY, [ Gallery_Post_Type::POST_TYPE ], $args );
-			
+
 			$this->track_performance( 'register_procedures', microtime( true ) - $start_time );
-			
+
 		} catch ( Exception $e ) {
 			$this->log_error( 'register_procedures', $e->getMessage() );
 		}
@@ -300,7 +300,7 @@ final class Gallery_Taxonomies {
 	 */
 	public function register_term_meta(): void {
 		$start_time = microtime( true );
-		
+
 		try {
 			// Category meta fields
 			register_term_meta(
@@ -381,16 +381,16 @@ final class Gallery_Taxonomies {
 					'auth_callback'     => fn() => current_user_can( 'edit_term_meta' ),
 				]
 			);
-			
+
 			/**
 			 * Fires after term meta fields are registered.
 			 *
 			 * @since 3.0.0
 			 */
 			do_action( 'brag_book_gallery_term_meta_registered' );
-			
+
 			$this->track_performance( 'register_term_meta', microtime( true ) - $start_time );
-			
+
 		} catch ( Exception $e ) {
 			$this->log_error( 'register_term_meta', $e->getMessage() );
 		}
@@ -555,7 +555,7 @@ final class Gallery_Taxonomies {
 
 			// Clear cache after save
 			$this->clear_term_cache( $term_id, self::CATEGORY_TAXONOMY );
-			
+
 			/**
 			 * Fires after category meta is saved.
 			 *
@@ -563,7 +563,7 @@ final class Gallery_Taxonomies {
 			 * @param int $term_id The term ID.
 			 */
 			do_action( 'brag_book_gallery_category_meta_saved', $term_id );
-			
+
 		} catch ( Exception $e ) {
 			$this->log_error( 'save_category_meta', $e->getMessage() );
 		}
@@ -601,7 +601,7 @@ final class Gallery_Taxonomies {
 
 			// Clear cache after save
 			$this->clear_term_cache( $term_id, self::PROCEDURE_TAXONOMY );
-			
+
 			/**
 			 * Fires after procedure meta is saved.
 			 *
@@ -609,7 +609,7 @@ final class Gallery_Taxonomies {
 			 * @param int $term_id The term ID.
 			 */
 			do_action( 'brag_book_gallery_procedure_meta_saved', $term_id );
-			
+
 		} catch ( Exception $e ) {
 			$this->log_error( 'save_procedure_meta', $e->getMessage() );
 		}
@@ -627,14 +627,14 @@ final class Gallery_Taxonomies {
 		if ( ! in_array( $taxonomy, [ self::CATEGORY_TAXONOMY, self::PROCEDURE_TAXONOMY ], true ) ) {
 			return;
 		}
-		
+
 		// Clear specific term cache
 		$this->clear_term_cache( $term_id, $taxonomy );
-		
+
 		// Clear general taxonomy cache
-		delete_transient( 'brag_book_gallery_' . $taxonomy . '_terms' );
-		delete_transient( 'brag_book_gallery_' . $taxonomy . '_hierarchy' );
-		
+		delete_transient( 'brag_book_gallery_transient_' . $taxonomy . '_terms' );
+		delete_transient( 'brag_book_gallery_transient_' . $taxonomy . '_hierarchy' );
+
 		// Clear memory cache
 		$this->memory_cache = [];
 	}
@@ -648,8 +648,8 @@ final class Gallery_Taxonomies {
 	 */
 	private function clear_term_cache( int $term_id, string $taxonomy ): void {
 		clean_term_cache( $term_id, $taxonomy );
-		delete_transient( 'brag_book_gallery_term_' . $term_id );
-		
+		delete_transient( 'brag_book_gallery_transient_term_' . $term_id );
+
 		// Clear related caches
 		wp_cache_delete( 'last_changed', 'terms' );
 	}
@@ -663,16 +663,16 @@ final class Gallery_Taxonomies {
 	 */
 	public function add_custom_columns( array $columns ): array {
 		$new_columns = [];
-		
+
 		foreach ( $columns as $key => $value ) {
 			$new_columns[ $key ] = $value;
-			
+
 			if ( $key === 'name' ) {
 				$new_columns['api_id'] = __( 'API ID', 'brag-book-gallery' );
 				$new_columns['case_count'] = __( 'Cases', 'brag-book-gallery' );
 			}
 		}
-		
+
 		return $new_columns;
 	}
 
@@ -687,7 +687,7 @@ final class Gallery_Taxonomies {
 	 */
 	public function render_custom_column( string $content, string $column_name, int $term_id ): string {
 		$taxonomy = get_current_screen()->taxonomy ?? '';
-		
+
 		switch ( $column_name ) {
 			case 'api_id':
 				$meta_key = match ( $taxonomy ) {
@@ -695,13 +695,13 @@ final class Gallery_Taxonomies {
 					self::PROCEDURE_TAXONOMY => 'brag_procedure_api_id',
 					default                  => '',
 				};
-				
+
 				if ( $meta_key ) {
 					$api_id = get_term_meta( $term_id, $meta_key, true );
 					$content = $api_id ? esc_html( $api_id ) : '—';
 				}
 				break;
-				
+
 			case 'case_count':
 				$term = get_term( $term_id, $taxonomy );
 				if ( ! is_wp_error( $term ) ) {
@@ -709,7 +709,7 @@ final class Gallery_Taxonomies {
 				}
 				break;
 		}
-		
+
 		return $content;
 	}
 
@@ -726,7 +726,7 @@ final class Gallery_Taxonomies {
 			'procedure' => 'manage_categories',
 			default     => 'manage_categories',
 		};
-		
+
 		return [
 			'manage_terms' => $base,
 			'edit_terms'   => $base,
@@ -744,14 +744,14 @@ final class Gallery_Taxonomies {
 	 */
 	public function update_term_count( array $terms, object $taxonomy ): void {
 		global $wpdb;
-		
+
 		foreach ( $terms as $term ) {
 			$count = $wpdb->get_var( $wpdb->prepare(
-				"SELECT COUNT(*) FROM $wpdb->term_relationships 
+				"SELECT COUNT(*) FROM $wpdb->term_relationships
 				WHERE term_taxonomy_id = %d",
 				$term
 			) );
-			
+
 			$wpdb->update(
 				$wpdb->term_taxonomy,
 				[ 'count' => $count ],
@@ -799,7 +799,7 @@ final class Gallery_Taxonomies {
 			'time'    => current_time( 'mysql' ),
 			'message' => $message,
 		];
-		
+
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 			error_log( "[BRAGBook Taxonomies] {$context}: {$message}" );
 		}
@@ -821,7 +821,7 @@ final class Gallery_Taxonomies {
 				'max'     => 0,
 			];
 		}
-		
+
 		$metrics = &$this->performance_metrics[ $operation ];
 		$metrics['count']++;
 		$metrics['total'] += $duration;
@@ -839,20 +839,20 @@ final class Gallery_Taxonomies {
 	 * @return array<WP_Term> Array of terms.
 	 */
 	public function get_terms_cached( string $taxonomy, array $args = [] ): array {
-		$cache_key = 'terms_' . md5( $taxonomy . serialize( $args ) );
-		
+		$cache_key = 'brag_book_gallery_transient_terms_' . $taxonomy . serialize( $args );
+
 		// Check memory cache
 		if ( isset( $this->memory_cache[ $cache_key ] ) ) {
 			return $this->memory_cache[ $cache_key ];
 		}
-		
+
 		// Check transient cache
-		$cached = get_transient( 'brag_book_gallery_' . $cache_key );
+		$cached = get_transient( 'brag_book_gallery_transient_' . $cache_key );
 		if ( false !== $cached ) {
 			$this->memory_cache[ $cache_key ] = $cached;
 			return $cached;
 		}
-		
+
 		// Get fresh data
 		$defaults = [
 			'taxonomy'   => $taxonomy,
@@ -860,16 +860,16 @@ final class Gallery_Taxonomies {
 			'orderby'    => 'name',
 			'order'      => 'ASC',
 		];
-		
+
 		$args = wp_parse_args( $args, $defaults );
 		$terms = get_terms( $args );
-		
+
 		if ( ! is_wp_error( $terms ) ) {
 			// Cache the results
 			$this->memory_cache[ $cache_key ] = $terms;
-			set_transient( 'brag_book_gallery_' . $cache_key, $terms, self::CACHE_TTL_MEDIUM );
+			set_transient( 'brag_book_gallery_transient_' . $cache_key, $terms, self::CACHE_TTL_MEDIUM );
 		}
-		
+
 		return is_wp_error( $terms ) ? [] : $terms;
 	}
 
@@ -882,26 +882,26 @@ final class Gallery_Taxonomies {
 	 * @return array<mixed> Hierarchical term tree.
 	 */
 	public function get_term_hierarchy( string $taxonomy, int $parent = 0 ): array {
-		$cache_key = "hierarchy_{$taxonomy}_{$parent}";
-		
+		$cache_key = "brag_book_gallery_transient_hierarchy_{$taxonomy}_{$parent}";
+
 		// Check cache
 		if ( isset( $this->memory_cache[ $cache_key ] ) ) {
 			return $this->memory_cache[ $cache_key ];
 		}
-		
+
 		$terms = $this->get_terms_cached( $taxonomy, [
 			'parent' => $parent,
 		] );
-		
+
 		$hierarchy = [];
-		
+
 		foreach ( $terms as $term ) {
 			$hierarchy[] = [
 				'term'     => $term,
 				'children' => $this->get_term_hierarchy( $taxonomy, $term->term_id ),
 			];
 		}
-		
+
 		$this->memory_cache[ $cache_key ] = $hierarchy;
 		return $hierarchy;
 	}
@@ -931,11 +931,11 @@ final class Gallery_Taxonomies {
 			'failed'  => [],
 			'updated' => [],
 		];
-		
+
 		try {
 			foreach ( $terms as $term_data ) {
 				$result = $this->import_single_term( $taxonomy, $term_data );
-				
+
 				if ( is_wp_error( $result ) ) {
 					$results['failed'][] = [
 						'data'  => $term_data,
@@ -947,16 +947,16 @@ final class Gallery_Taxonomies {
 					$results['success'][] = $result['term_id'];
 				}
 			}
-			
+
 			// Clear cache after bulk import
 			$this->clear_taxonomy_cache( 0, 0, $taxonomy );
-			
+
 			$this->track_performance( 'bulk_import_terms', microtime( true ) - $start_time );
-			
+
 		} catch ( Exception $e ) {
 			$this->log_error( 'bulk_import_terms', $e->getMessage() );
 		}
-		
+
 		return $results;
 	}
 
@@ -973,20 +973,20 @@ final class Gallery_Taxonomies {
 		if ( empty( $term_data['name'] ) ) {
 			return new \WP_Error( 'missing_name', 'Term name is required' );
 		}
-		
+
 		$name = $this->sanitize_string( $term_data['name'], self::MAX_TERM_NAME_LENGTH );
-		$slug = ! empty( $term_data['slug'] ) 
+		$slug = ! empty( $term_data['slug'] )
 			? $this->sanitize_string( $term_data['slug'], self::MAX_SLUG_LENGTH )
 			: sanitize_title( $name );
-		
+
 		// Check if term exists
 		$existing_term = get_term_by( 'slug', $slug, $taxonomy );
 		$updated = false;
-		
+
 		if ( $existing_term ) {
 			$term_id = $existing_term->term_id;
 			$updated = true;
-			
+
 			// Update term if needed
 			if ( $existing_term->name !== $name ) {
 				wp_update_term( $term_id, $taxonomy, [
@@ -999,34 +999,34 @@ final class Gallery_Taxonomies {
 			$term_args = [
 				'slug' => $slug,
 			];
-			
+
 			if ( ! empty( $term_data['parent'] ) ) {
 				$term_args['parent'] = absint( $term_data['parent'] );
 			}
-			
+
 			if ( ! empty( $term_data['description'] ) ) {
-				$term_args['description'] = $this->sanitize_string( 
-					$term_data['description'], 
-					self::MAX_DESCRIPTION_LENGTH 
+				$term_args['description'] = $this->sanitize_string(
+					$term_data['description'],
+					self::MAX_DESCRIPTION_LENGTH
 				);
 			}
-			
+
 			$term = wp_insert_term( $name, $taxonomy, $term_args );
-			
+
 			if ( is_wp_error( $term ) ) {
 				return $term;
 			}
-			
+
 			$term_id = $term['term_id'];
 		}
-		
+
 		// Update term meta
 		if ( ! empty( $term_data['meta'] ) && is_array( $term_data['meta'] ) ) {
 			foreach ( $term_data['meta'] as $meta_key => $meta_value ) {
 				update_term_meta( $term_id, $meta_key, $meta_value );
 			}
 		}
-		
+
 		return [
 			'term_id' => $term_id,
 			'updated' => $updated,
@@ -1044,10 +1044,10 @@ final class Gallery_Taxonomies {
 		$terms = $this->get_terms_cached( $taxonomy, [
 			'hide_empty' => false,
 		] );
-		
+
 		$exported = array_map( function( $term ) {
 			$meta = [];
-			
+
 			// Get all term meta
 			$meta_keys = $this->get_taxonomy_meta_keys( $term->taxonomy );
 			foreach ( $meta_keys as $key ) {
@@ -1056,7 +1056,7 @@ final class Gallery_Taxonomies {
 					$meta[ $key ] = $value;
 				}
 			}
-			
+
 			return [
 				'term_id'     => $term->term_id,
 				'name'        => $term->name,
@@ -1067,7 +1067,7 @@ final class Gallery_Taxonomies {
 				'meta'        => $meta,
 			];
 		}, $terms );
-		
+
 		return $exported;
 	}
 
@@ -1106,22 +1106,22 @@ final class Gallery_Taxonomies {
 		if ( empty( $taxonomies ) ) {
 			$taxonomies = [ self::CATEGORY_TAXONOMY, self::PROCEDURE_TAXONOMY ];
 		}
-		
-		$cache_key = 'search_' . md5( $search . serialize( $taxonomies ) );
-		
+
+		$cache_key = 'brag_book_gallery_transient_search_' .$search . serialize( $taxonomies );
+
 		// Check cache
 		if ( isset( $this->memory_cache[ $cache_key ] ) ) {
 			return $this->memory_cache[ $cache_key ];
 		}
-		
+
 		$results = [];
-		
+
 		foreach ( $taxonomies as $taxonomy ) {
 			$terms = $this->get_terms_cached( $taxonomy, [
 				'search'     => $search,
 				'hide_empty' => false,
 			] );
-			
+
 			foreach ( $terms as $term ) {
 				$results[] = [
 					'term_id'  => $term->term_id,
@@ -1132,12 +1132,12 @@ final class Gallery_Taxonomies {
 				];
 			}
 		}
-		
+
 		// Sort by relevance (count)
 		usort( $results, fn( $a, $b ) => $b['count'] <=> $a['count'] );
-		
+
 		$this->memory_cache[ $cache_key ] = $results;
-		
+
 		return $results;
 	}
 
@@ -1150,23 +1150,23 @@ final class Gallery_Taxonomies {
 	 * @return WP_Term|null Term object or null.
 	 */
 	public function get_term_by_api_id( string $taxonomy, int $api_id ): ?WP_Term {
-		$cache_key = "api_term_{$taxonomy}_{$api_id}";
-		
+		$cache_key = "brag_book_gallery_transient_api_term_{$taxonomy}_{$api_id}";
+
 		// Check cache
 		if ( isset( $this->memory_cache[ $cache_key ] ) ) {
 			return $this->memory_cache[ $cache_key ];
 		}
-		
+
 		$meta_key = match ( $taxonomy ) {
 			self::CATEGORY_TAXONOMY  => 'brag_category_api_id',
 			self::PROCEDURE_TAXONOMY => 'brag_procedure_api_id',
 			default                  => '',
 		};
-		
+
 		if ( ! $meta_key ) {
 			return null;
 		}
-		
+
 		$terms = get_terms( [
 			'taxonomy'   => $taxonomy,
 			'meta_key'   => $meta_key,
@@ -1174,11 +1174,11 @@ final class Gallery_Taxonomies {
 			'hide_empty' => false,
 			'number'     => 1,
 		] );
-		
+
 		$term = ! empty( $terms ) && ! is_wp_error( $terms ) ? $terms[0] : null;
-		
+
 		$this->memory_cache[ $cache_key ] = $term;
-		
+
 		return $term;
 	}
 
@@ -1192,25 +1192,25 @@ final class Gallery_Taxonomies {
 	public function sync_term_counts( string $taxonomy ): int {
 		$start_time = microtime( true );
 		$updated = 0;
-		
+
 		try {
 			$terms = $this->get_terms_cached( $taxonomy, [
 				'hide_empty' => false,
 				'fields'     => 'ids',
 			] );
-			
+
 			wp_update_term_count_now( $terms, $taxonomy );
 			$updated = count( $terms );
-			
+
 			// Clear cache after sync
 			$this->clear_taxonomy_cache( 0, 0, $taxonomy );
-			
+
 			$this->track_performance( 'sync_term_counts', microtime( true ) - $start_time );
-			
+
 		} catch ( Exception $e ) {
 			$this->log_error( 'sync_term_counts', $e->getMessage() );
 		}
-		
+
 		return $updated;
 	}
 }

@@ -164,9 +164,9 @@ class On_Page {
 	 * @since 3.0.0
 	 *
 	 * @return array{
-	 *     bb_title: string,
-	 *     bb_description: string,
-	 *     bb_procedure_name: string
+	 *     brag_book_gallery_title: string,
+	 *     brag_book_gallery_description: string,
+	 *     brag_book_gallery_procedure_name: string
 	 * } SEO data array with comprehensive metadata
 	 */
 	public function get_custom_title_and_description(): array {
@@ -175,9 +175,9 @@ class On_Page {
 
 		// Initialize return data with modern array syntax
 		$seo_data = [
-			'bb_title'          => '',
-			'bb_description'    => '',
-			'bb_procedure_name' => ''
+			'brag_book_gallery_title'          => '',
+			'brag_book_gallery_description'    => '',
+			'brag_book_gallery_procedure_name' => ''
 		];
 
 		// Get configuration options
@@ -410,9 +410,9 @@ class On_Page {
 			default => false
 		} ) {
 			return [
-				'bb_title'          => '',
-				'bb_description'    => '',
-				'bb_procedure_name' => ''
+				'brag_book_gallery_title'          => '',
+				'brag_book_gallery_description'    => '',
+				'brag_book_gallery_procedure_name' => ''
 			];
 		}
 
@@ -432,9 +432,9 @@ class On_Page {
 		);
 
 		return [
-			'bb_title'          => $title,
-			'bb_description'    => '',
-			'bb_procedure_name' => $procedure_data['bb_procedure_name'] ?? $procedure_name
+			'brag_book_gallery_title'          => $title,
+			'brag_book_gallery_description'    => '',
+			'brag_book_gallery_procedure_name' => $procedure_data['brag_book_gallery_procedure_name'] ?? $procedure_name
 		];
 	}
 
@@ -450,7 +450,7 @@ class On_Page {
 	 */
 	private function get_case_details_seo( array $url_parts, array $config, string $site_title ): array {
 		$case_identifier = $url_parts[2];
-		$is_case_id      = str_contains( $case_identifier, 'bb-case' );
+		$is_case_id      = str_contains( $case_identifier, 'brag-book-gallery-case' );
 
 		// Extract case ID or SEO suffix
 		$case_id    = null;
@@ -468,9 +468,9 @@ class On_Page {
 
 		if ( empty( $case_data ) ) {
 			return [
-				'bb_title'          => '',
-				'bb_description'    => '',
-				'bb_procedure_name' => ''
+				'brag_book_gallery_title'          => '',
+				'brag_book_gallery_description'    => '',
+				'brag_book_gallery_procedure_name' => ''
 			];
 		}
 
@@ -508,7 +508,7 @@ class On_Page {
 		if ( $is_combine ) {
 			$api_tokens     = array_values( $config['api_tokens'] );
 			$procedure_data = $this->get_procedure_data_from_sidebar( $api_tokens, $procedure_slug, true );
-			$procedure_ids  = $procedure_data['bb_procedure_id'] ?? [];
+			$procedure_ids  = $procedure_data['brag_book_gallery_procedure_id'] ?? [];
 
 			$data = $this->api_handler->get_case_data(
 				$case_id ?? 0,
@@ -531,7 +531,7 @@ class On_Page {
 			}
 
 			$procedure_data = $this->get_procedure_data_from_sidebar( $api_token, $procedure_slug, false );
-			$procedure_id   = $procedure_data['bb_procedure_id'] ?? null;
+			$procedure_id   = $procedure_data['brag_book_gallery_procedure_id'] ?? null;
 
 			// Enhanced caching for case data with memory layer
 			$cache_key = $this->generate_cache_key( 'case_data', [
@@ -644,9 +644,9 @@ class On_Page {
 		$description = $case_details['seoPageDescription'] ?? '';
 
 		return [
-			'bb_title'          => $title,
-			'bb_description'    => $description,
-			'bb_procedure_name' => $procedure_name
+			'brag_book_gallery_title'          => $title,
+			'brag_book_gallery_description'    => $description,
+			'brag_book_gallery_procedure_name' => $procedure_name
 		];
 	}
 
@@ -756,8 +756,8 @@ class On_Page {
 			if ( empty( $sidebar_data ) || ! is_string( $sidebar_data ) ) {
 				$this->log_validation_error( 'Empty or invalid sidebar data' );
 				$result = [
-					'bb_procedure_id'    => null,
-					'bb_procedure_name'  => '',
+					'brag_book_gallery_procedure_id'    => null,
+					'brag_book_gallery_procedure_name'  => '',
 					'procedureTotalCase' => 0
 				];
 			} else {
@@ -768,8 +768,8 @@ class On_Page {
 				if ( ! isset( $sidebar->data ) || ! is_array( $sidebar->data ) ) {
 					$this->log_validation_error( 'Sidebar data missing required structure' );
 					$result = [
-						'bb_procedure_id'    => null,
-						'bb_procedure_name'  => '',
+						'brag_book_gallery_procedure_id'    => null,
+						'brag_book_gallery_procedure_name'  => '',
 						'procedureTotalCase' => 0
 					];
 				} else {
@@ -779,8 +779,8 @@ class On_Page {
 						foreach ( $category->procedures as $procedure ) {
 							if ( $procedure->slugName === $procedure_slug ) {
 								$result = [
-									'bb_procedure_id'    => $is_combine ? $procedure->ids : ( $procedure->ids[0] ?? null ),
-									'bb_procedure_name'  => $procedure->name ?? '',
+									'brag_book_gallery_procedure_id'    => $is_combine ? $procedure->ids : ( $procedure->ids[0] ?? null ),
+									'brag_book_gallery_procedure_name'  => $procedure->name ?? '',
 									'procedureTotalCase' => $procedure->totalCase ?? 0
 								];
 								$found = true;
@@ -791,8 +791,8 @@ class On_Page {
 
 					if ( ! $found ) {
 						$result = [
-							'bb_procedure_id'    => null,
-							'bb_procedure_name'  => '',
+							'brag_book_gallery_procedure_id'    => null,
+							'brag_book_gallery_procedure_name'  => '',
 							'procedureTotalCase' => 0
 						];
 					}
@@ -802,15 +802,15 @@ class On_Page {
 		} catch ( \JsonException $e ) {
 			$this->log_validation_error( 'JSON parsing error in sidebar data: ' . $e->getMessage() );
 			$result = [
-				'bb_procedure_id'    => null,
-				'bb_procedure_name'  => '',
+				'brag_book_gallery_procedure_id'    => null,
+				'brag_book_gallery_procedure_name'  => '',
 				'procedureTotalCase' => 0
 			];
 		} catch ( \Exception $e ) {
 			$this->log_validation_error( 'Unexpected error in sidebar processing: ' . $e->getMessage() );
 			$result = [
-				'bb_procedure_id'    => null,
-				'bb_procedure_name'  => '',
+				'brag_book_gallery_procedure_id'    => null,
+				'brag_book_gallery_procedure_name'  => '',
 				'procedureTotalCase' => 0
 			];
 		}
@@ -833,7 +833,7 @@ class On_Page {
 	 * @since 3.0.0
 	 */
 	public function get_custom_title(): string {
-		return $this->seo_data['bb_title'] ?? '';
+		return $this->seo_data['brag_book_gallery_title'] ?? '';
 	}
 
 	/**
@@ -843,7 +843,7 @@ class On_Page {
 	 * @since 3.0.0
 	 */
 	public function get_custom_description(): string {
-		return $this->seo_data['bb_description'] ?? '';
+		return $this->seo_data['brag_book_gallery_description'] ?? '';
 	}
 
 	/**
@@ -1342,7 +1342,7 @@ class On_Page {
 	 * @return bool True if under limit, false if rate limited
 	 */
 	private function check_rate_limit( string $identifier, int $limit = 50, int $window = 3600 ): bool {
-		$cache_key = 'brag_book_seo_rate_limit_' . md5( $identifier );
+		$cache_key = 'brag_book_gallery_transient_seo_rate_limit_' . $identifier;
 		$current_count = get_transient( $cache_key );
 
 		if ( $current_count === false ) {
@@ -1376,7 +1376,7 @@ class On_Page {
 	 */
 	private function generate_cache_key( string $type, array $data ): string {
 		$key_data = wp_json_encode( $data );
-		return 'brag_book_seo_' . $type . '_' . md5( $key_data );
+		return 'brag_book_gallery_transient_seo_' . $type . '_' . $key_data;
 	}
 
 	/**

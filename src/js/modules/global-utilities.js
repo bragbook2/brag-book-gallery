@@ -683,7 +683,7 @@ window.loadFilteredCases = function(matchingCaseIds) {
 
 			// Make AJAX request to load the specific cases
 			const formData = new FormData();
-			formData.append('action', 'brag_book_load_filtered_cases');
+			formData.append('action', 'brag_book_gallery_load_filtered_cases');
 			formData.append('case_ids', needToLoad.join(','));
 			formData.append('nonce', typeof bragBookAjax !== 'undefined' ? bragBookAjax.nonce : '');
 
@@ -973,7 +973,7 @@ window.loadCaseDetailsWithName = function(caseId, procedureId, procedureSlug, pr
 
 	// Prepare request parameters
 	const requestParams = {
-		action: 'load_case_details',
+		action: 'brag_book_gallery_load_case_details',
 		case_id: caseId,
 		nonce: bragBookGalleryConfig.nonce
 	};
@@ -1020,7 +1020,17 @@ window.loadCaseDetailsWithName = function(caseId, procedureId, procedureSlug, pr
 					galleryContent.scrollIntoView({ behavior: 'smooth', block: 'start' });
 				}
 			} else {
-				galleryContent.innerHTML = '<div class="brag-book-gallery-error">Failed to load case details: ' + (data.data || 'Unknown error') + '</div>';
+				let errorMessage = 'Unknown error';
+				if (data.data) {
+					if (typeof data.data === 'string') {
+						errorMessage = data.data;
+					} else if (data.data.message) {
+						errorMessage = data.data.message;
+					} else {
+						errorMessage = JSON.stringify(data.data);
+					}
+				}
+				galleryContent.innerHTML = '<div class="brag-book-gallery-error">Failed to load case details: ' + errorMessage + '</div>';
 			}
 		})
 		.catch(error => {
@@ -1061,7 +1071,7 @@ window.loadMoreCases = function(button) {
 
 	// Prepare AJAX data
 	const formData = new FormData();
-	formData.append('action', 'brag_book_load_more_cases');
+	formData.append('action', 'brag_book_gallery_load_more_cases');
 	formData.append('nonce', nonce);
 	formData.append('start_page', startPage);
 	formData.append('procedure_ids', procedureIds);

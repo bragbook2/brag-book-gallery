@@ -189,7 +189,7 @@ class Database {
 
 			// Check if upgrade needed using semantic version comparison
 			if ( version_compare( $installed_version, self::CURRENT_DB_VERSION, '<' ) ) {
-				do_action( 'qm/debug', sprintf( 
+				do_action( 'qm/debug', sprintf(
 					'Database upgrade needed: %s -> %s',
 					$installed_version,
 					self::CURRENT_DB_VERSION
@@ -254,9 +254,9 @@ class Database {
 
 		// Log any database errors using VIP-compliant debugging
 		if ( ! empty( $this->wpdb->last_error ) ) {
-			do_action( 'qm/debug', sprintf( 
+			do_action( 'qm/debug', sprintf(
 				'Error creating sync_log table: %s',
-				$this->wpdb->last_error 
+				$this->wpdb->last_error
 			) );
 		}
 	}
@@ -295,9 +295,9 @@ class Database {
 
 		// Log any database errors using VIP-compliant debugging
 		if ( ! empty( $this->wpdb->last_error ) ) {
-			do_action( 'qm/debug', sprintf( 
+			do_action( 'qm/debug', sprintf(
 				'Error creating case_map table: %s',
-				$this->wpdb->last_error 
+				$this->wpdb->last_error
 			) );
 		}
 	}
@@ -341,7 +341,7 @@ class Database {
 	 * @param int    $items_failed    Number of failed items.
 	 * @param string $error_messages  Aggregated error messages.
 	 * @return int|false Insert ID on success, false on failure.
-	 * 
+	 *
 	 * @example
 	 * ```php
 	 * $log_id = $db->log_sync_operation( 'full', 'started' );
@@ -360,7 +360,7 @@ class Database {
 
 		try {
 			// Validate input parameters using predefined constants
-			if ( ! $this->is_valid_sync_type( $sync_type ) || 
+			if ( ! $this->is_valid_sync_type( $sync_type ) ||
 				 ! $this->is_valid_sync_status( $sync_status ) ) {
 				return false;
 			}
@@ -487,7 +487,7 @@ class Database {
 		$limit = min( absint( $limit ), 100 );
 
 		// Try to get from cache first.
-		$cache_key = 'recent_sync_logs_' . $limit;
+		$cache_key = 'brag_book_gallery_transient_recent_sync_logs_' . $limit;
 		$cached = wp_cache_get( $cache_key, self::CACHE_GROUP );
 
 		if ( false !== $cached ) {
@@ -610,7 +610,7 @@ class Database {
 		}
 
 		// Try cache first.
-		$cache_key = 'post_id_' . $api_case_id . '_' . md5( $api_token );
+		$cache_key = 'brag_book_gallery_transient_post_id_' . $api_case_id . '_' . $api_token;
 		$cached = wp_cache_get( $cache_key, self::CACHE_GROUP );
 
 		if ( false !== $cached ) {
@@ -657,7 +657,7 @@ class Database {
 		}
 
 		// Try cache first.
-		$cache_key = 'sync_hash_' . $api_case_id . '_' . md5( $api_token );
+		$cache_key = 'brag_book_gallery_sync_hash_' . $api_case_id . '_' . $api_token;
 		$cached = wp_cache_get( $cache_key, self::CACHE_GROUP );
 
 		if ( false !== $cached ) {
@@ -1013,7 +1013,7 @@ class Database {
 		try {
 			// Clean up old sync logs (keep 30 days)
 			$deleted = $this->cleanup_old_sync_logs( 30 );
-			
+
 			if ( $deleted > 0 ) {
 				do_action( 'qm/debug', sprintf( 'Cleaned up %d old sync logs', $deleted ) );
 			}

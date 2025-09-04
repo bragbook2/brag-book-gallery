@@ -788,7 +788,7 @@ final class Sync_Manager {
 	 * @return bool True if sync is running.
 	 */
 	public function is_sync_running(): bool {
-		return get_transient( 'brag_book_gallery_sync_status' ) === 'running';
+		return get_transient( 'brag_book_gallery_transient_sync_status' ) === 'running';
 	}
 
 	/**
@@ -816,7 +816,7 @@ final class Sync_Manager {
 	 * @return bool Success status.
 	 */
 	public function cancel_sync(): bool {
-		delete_transient( 'brag_book_gallery_sync_status' );
+		delete_transient( 'brag_book_gallery_transient_sync_status' );
 		
 		if ( $this->current_sync_log_id ) {
 			$this->database->update_sync_log( $this->current_sync_log_id, 'failed', 0, 0, 'Cancelled by user' );
@@ -1044,7 +1044,7 @@ final class Sync_Manager {
 	 * @return bool True if lock acquired.
 	 */
 	private function acquire_sync_lock(): bool {
-		$lock_key = 'brag_book_gallery_sync_lock';
+		$lock_key = 'brag_book_gallery_transient_sync_lock';
 		$lock_value = wp_generate_uuid4();
 		
 		// Try to set lock with timeout
@@ -1069,7 +1069,7 @@ final class Sync_Manager {
 	 * @since 3.0.0
 	 */
 	private function release_sync_lock(): void {
-		delete_transient( 'brag_book_gallery_sync_lock' );
+		delete_transient( 'brag_book_gallery_transient_sync_lock' );
 		unset( $this->memory_cache['sync_lock'] );
 	}
 
@@ -1087,7 +1087,7 @@ final class Sync_Manager {
 			'started_at' => current_time( 'mysql' ),
 		];
 		
-		set_transient( 'brag_book_gallery_sync_progress', $this->sync_progress, HOUR_IN_SECONDS );
+		set_transient( 'brag_book_gallery_transient_sync_progress', $this->sync_progress, HOUR_IN_SECONDS );
 	}
 
 	/**
@@ -1107,7 +1107,7 @@ final class Sync_Manager {
 			$this->sync_progress['percentage'] = round( ( $current / $total ) * 100, 2 );
 		}
 		
-		set_transient( 'brag_book_gallery_sync_progress', $this->sync_progress, HOUR_IN_SECONDS );
+		set_transient( 'brag_book_gallery_transient_sync_progress', $this->sync_progress, HOUR_IN_SECONDS );
 	}
 
 	/**
@@ -1119,14 +1119,14 @@ final class Sync_Manager {
 	 */
 	private function should_force_update( int $case_id ): bool {
 		// Check if case is in force update list
-		$force_list = get_transient( 'brag_book_gallery_force_update_cases' );
+		$force_list = get_transient( 'brag_book_gallery_transient_force_update_cases' );
 		
 		if ( is_array( $force_list ) && in_array( $case_id, $force_list, true ) ) {
 			return true;
 		}
 		
 		// Check if force update all is enabled
-		return (bool) get_transient( 'brag_book_gallery_force_update_all' );
+		return (bool) get_transient( 'brag_book_gallery_transient_force_update_all' );
 	}
 
 	/**
@@ -1204,8 +1204,8 @@ final class Sync_Manager {
 			);
 		}
 		
-		delete_transient( 'brag_book_gallery_sync_status' );
-		delete_transient( 'brag_book_gallery_sync_progress' );
+		delete_transient( 'brag_book_gallery_transient_sync_status' );
+		delete_transient( 'brag_book_gallery_transient_sync_progress' );
 	}
 
 	/**
@@ -1281,7 +1281,7 @@ final class Sync_Manager {
 			wp_send_json_error( 'Security check failed.' );
 		}
 		
-		$progress = get_transient( 'brag_book_gallery_sync_progress' );
+		$progress = get_transient( 'brag_book_gallery_transient_sync_progress' );
 		
 		if ( false === $progress ) {
 			$progress = [

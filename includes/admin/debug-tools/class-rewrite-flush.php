@@ -66,7 +66,7 @@ final class Rewrite_Flush {
 	 * @since 3.0.0
 	 * @var string
 	 */
-	private const CACHE_PREFIX = 'brag_book_flush_';
+	private const CACHE_PREFIX = 'brag_book_gallery_transient_flush_';
 
 	/**
 	 * Cache duration in seconds (5 minutes).
@@ -228,16 +228,16 @@ final class Rewrite_Flush {
 				);
 			}
 			?>
-			<div class="rewrite-flush-tool" data-nonce="<?php echo esc_attr( wp_create_nonce( 'brag_book_debug_tools' ) ); ?>">
-				<h2><?php esc_html_e( 'Flush Rewrite Rules', 'brag-book-gallery' ); ?></h2>
+			<div class="rewrite-flush-tool" data-nonce="<?php echo esc_attr( wp_create_nonce( 'brag_book_gallery_debug_tools' ) ); ?>">
+				<h2><?php esc_html_e( 'Flush Rewrite Rules', 'brag-book-gallery' ); ?> <small style="color: #666;">(Enhanced)</small></h2>
 
 				<div class="tool-section">
-					<p><?php esc_html_e( 'Use this tool to regenerate WordPress rewrite rules. This can help fix issues with custom URLs not working properly.', 'brag-book-gallery' ); ?></p>
+					<p><?php esc_html_e( 'Regenerate WordPress rewrite rules and register BRAGBook Gallery query variables. Use this when gallery URLs return 404 errors or after plugin updates.', 'brag-book-gallery' ); ?></p>
 
 					<div class="notice notice-info">
 						<p>
 							<?php echo $this->get_info_icon(); ?>
-							<?php esc_html_e( 'Flushing rewrite rules is a resource-intensive operation. Only do this when necessary.', 'brag-book-gallery' ); ?>
+							<?php esc_html_e( 'The comprehensive flush registers all 7 query variables and is recommended for troubleshooting.', 'brag-book-gallery' ); ?>
 						</p>
 					</div>
 
@@ -289,16 +289,16 @@ final class Rewrite_Flush {
 					<div class="flush-option featured">
 						<h4><?php esc_html_e( 'Comprehensive Standalone Flush', 'brag-book-gallery' ); ?></h4>
 						<button class="button button-primary button-large" id="flush-rules-standalone">
-							<?php esc_html_e( 'Run Standalone Flush Process', 'brag-book-gallery' ); ?>
+							<?php esc_html_e( 'Run Comprehensive Flush Process', 'brag-book-gallery' ); ?>
 						</button>
 						<p class="description">
-							<strong><?php esc_html_e( 'Complete flush process that:', 'brag-book-gallery' ); ?></strong><br>
-							• <?php esc_html_e( 'Registers all BRAGBook Gallery custom rewrite rules', 'brag-book-gallery' ); ?><br>
+							<strong><?php esc_html_e( 'Complete 5-step flush process that:', 'brag-book-gallery' ); ?></strong><br>
+							• <?php esc_html_e( 'Performs environment compatibility check', 'brag-book-gallery' ); ?><br>
+							• <?php esc_html_e( 'Registers all 7 BRAGBook query variables', 'brag-book-gallery' ); ?><br>
+							• <?php esc_html_e( 'Re-registers custom rewrite rules', 'brag-book-gallery' ); ?><br>
 							• <?php esc_html_e( 'Performs hard flush with .htaccess update', 'brag-book-gallery' ); ?><br>
-							• <?php esc_html_e( 'Clears all related transients and caches', 'brag-book-gallery' ); ?><br>
-							• <?php esc_html_e( 'Displays comprehensive diagnostic information', 'brag-book-gallery' ); ?><br>
-							• <?php esc_html_e( 'Shows registered query variables and sample URLs', 'brag-book-gallery' ); ?><br>
-							• <?php esc_html_e( 'Provides performance metrics', 'brag-book-gallery' ); ?>
+							• <?php esc_html_e( 'Clears all caches and transients', 'brag-book-gallery' ); ?><br>
+							<em><?php esc_html_e( 'Includes detailed diagnostics and sample URLs', 'brag-book-gallery' ); ?></em>
 						</p>
 					</div>
 
@@ -439,8 +439,8 @@ final class Rewrite_Flush {
 
 						await ajaxRequest(
 							{
-								action: 'brag_book_flush_rewrite_rules',
-								nonce: '<?php echo esc_js( wp_create_nonce( 'brag_book_flush_rewrite_rules' ) ); ?>',
+								action: 'brag_book_gallery_flush_rewrite_rules',
+								nonce: '<?php echo esc_js( wp_create_nonce( 'brag_book_gallery_flush_rewrite_rules' ) ); ?>',
 								flush_type: 'standard'
 							},
 							function(response) {
@@ -463,8 +463,8 @@ final class Rewrite_Flush {
 
 						await ajaxRequest(
 							{
-								action: 'brag_book_flush_rewrite_rules',
-								nonce: '<?php echo esc_js( wp_create_nonce( 'brag_book_flush_rewrite_rules' ) ); ?>',
+								action: 'brag_book_gallery_flush_rewrite_rules',
+								nonce: '<?php echo esc_js( wp_create_nonce( 'brag_book_gallery_flush_rewrite_rules' ) ); ?>',
 								flush_type: 'hard'
 							},
 							function(response) {
@@ -487,8 +487,8 @@ final class Rewrite_Flush {
 
 						await ajaxRequest(
 							{
-								action: 'brag_book_flush_rewrite_rules',
-								nonce: '<?php echo esc_js( wp_create_nonce( 'brag_book_flush_rewrite_rules' ) ); ?>',
+								action: 'brag_book_gallery_flush_rewrite_rules',
+								nonce: '<?php echo esc_js( wp_create_nonce( 'brag_book_gallery_flush_rewrite_rules' ) ); ?>',
 								flush_type: 'with_registration'
 							},
 							function(response) {
@@ -533,8 +533,8 @@ final class Rewrite_Flush {
 
 						await ajaxRequest(
 							{
-								action: 'brag_book_debug_tool',
-								nonce: '<?php echo esc_js( wp_create_nonce( 'brag_book_debug_tools' ) ); ?>',
+								action: 'brag_book_gallery_debug_tool',
+								nonce: '<?php echo esc_js( wp_create_nonce( 'brag_book_gallery_debug_tools' ) ); ?>',
 								tool: 'rewrite-flush',
 								tool_action: 'standalone'
 							},
@@ -597,8 +597,8 @@ final class Rewrite_Flush {
 
 						await ajaxRequest(
 							{
-								action: 'brag_book_debug_tool',
-								nonce: '<?php echo esc_js( wp_create_nonce( 'brag_book_debug_tools' ) ); ?>',
+								action: 'brag_book_gallery_debug_tool',
+								nonce: '<?php echo esc_js( wp_create_nonce( 'brag_book_gallery_debug_tools' ) ); ?>',
 								tool: 'rewrite-flush',
 								tool_action: 'verify'
 							},
@@ -624,8 +624,8 @@ final class Rewrite_Flush {
 
 						await ajaxRequest(
 							{
-								action: 'brag_book_debug_tool',
-								nonce: '<?php echo esc_js( wp_create_nonce( 'brag_book_debug_tools' ) ); ?>',
+								action: 'brag_book_gallery_debug_tool',
+								nonce: '<?php echo esc_js( wp_create_nonce( 'brag_book_gallery_debug_tools' ) ); ?>',
 								tool: 'rewrite-flush',
 								tool_action: 'test_urls'
 							},
@@ -1000,7 +1000,15 @@ final class Rewrite_Flush {
 		try {
 			// Register query vars
 			global $wp;
-			$query_vars = [ 'procedure_title', 'case_id', 'filter_procedure', 'filter_category', 'favorites_section' ];
+			$query_vars = [ 
+				'procedure_title', 
+				'case_suffix', 
+				'filter_procedure', 
+				'filter_category', 
+				'favorites_page', 
+				'brag_book_gallery_view', 
+				'brag_book_gallery_case' 
+			];
 			foreach ( $query_vars as $var ) {
 				$wp->add_query_var( $var );
 			}
@@ -1129,20 +1137,41 @@ final class Rewrite_Flush {
 				esc_html( $hosting )
 			) . '</p>';
 
-			// Step 2: Register rules
-			$output .= '<h4>' . __( 'Step 2: Rule Registration', 'brag-book-gallery' ) . '</h4>';
+			// Step 2: Register query variables
+			$output .= '<h4>' . __( 'Step 2: Register Query Variables', 'brag-book-gallery' ) . '</h4>';
+			global $wp;
+			$query_vars = [ 
+				'procedure_title', 
+				'case_suffix', 
+				'filter_procedure', 
+				'filter_category', 
+				'favorites_page', 
+				'brag_book_gallery_view', 
+				'brag_book_gallery_case' 
+			];
+			foreach ( $query_vars as $var ) {
+				$wp->add_query_var( $var );
+			}
+			$output .= '<p>' . $this->get_check_icon( true ) . sprintf( 
+				/* translators: %d: Number of query variables registered */
+				__( 'Registered %d query variables', 'brag-book-gallery' ), 
+				count( $query_vars ) 
+			) . '</p>';
+
+			// Step 3: Register rules
+			$output .= '<h4>' . __( 'Step 3: Rule Registration', 'brag-book-gallery' ) . '</h4>';
 			if ( class_exists( '\BRAGBookGallery\Includes\Extend\Rewrite_Rules_Handler' ) ) {
 				\BRAGBookGallery\Includes\Extend\Rewrite_Rules_Handler::custom_rewrite_rules();
 				$output .= '<p>' . $this->get_check_icon( true ) . __( 'Custom rewrite rules registered', 'brag-book-gallery' ) . '</p>';
 			}
 
-			// Step 3: Flush rules
-			$output .= '<h4>' . __( 'Step 3: Flush Rules', 'brag-book-gallery' ) . '</h4>';
+			// Step 4: Flush rules
+			$output .= '<h4>' . __( 'Step 4: Flush Rules', 'brag-book-gallery' ) . '</h4>';
 			flush_rewrite_rules( true );
 			$output .= '<p>' . $this->get_check_icon( true ) . __( 'Rewrite rules flushed (hard flush with .htaccess update)', 'brag-book-gallery' ) . '</p>';
 
-			// Step 4: Clear caches
-			$output .= '<h4>' . __( 'Step 4: Clear Caches', 'brag-book-gallery' ) . '</h4>';
+			// Step 5: Clear caches
+			$output .= '<h4>' . __( 'Step 5: Clear Caches', 'brag-book-gallery' ) . '</h4>';
 			$this->clear_all_caches();
 			$output .= '<p>' . $this->get_check_icon( true ) . __( 'All caches cleared', 'brag-book-gallery' ) . '</p>';
 
@@ -1150,11 +1179,13 @@ final class Rewrite_Flush {
 			$output .= '<h4>' . __( 'Registered Query Variables:', 'brag-book-gallery' ) . '</h4>';
 			$output .= '<ul>';
 			$query_vars = [
-				'procedure_title' => __( 'Used for case detail URLs', 'brag-book-gallery' ),
-				'case_id' => __( 'Used for individual case pages', 'brag-book-gallery' ),
-				'filter_procedure' => __( 'Used for procedure filtering', 'brag-book-gallery' ),
-				'filter_category' => __( 'Used for category filtering', 'brag-book-gallery' ),
-				'favorites_section' => __( 'Used for favorites pages', 'brag-book-gallery' ),
+				'procedure_title' => __( 'Used for case detail URLs with procedure names', 'brag-book-gallery' ),
+				'case_suffix' => __( 'Used for case URL suffixes and identifiers', 'brag-book-gallery' ),
+				'filter_procedure' => __( 'Used for procedure filtering in gallery views', 'brag-book-gallery' ),
+				'filter_category' => __( 'Used for category filtering in gallery views', 'brag-book-gallery' ),
+				'favorites_page' => __( 'Used for favorites page detection and routing', 'brag-book-gallery' ),
+				'brag_book_gallery_view' => __( 'Used for gallery view type control', 'brag-book-gallery' ),
+				'brag_book_gallery_case' => __( 'Used for individual case page routing', 'brag-book-gallery' ),
 			];
 			foreach ( $query_vars as $var => $description ) {
 				$output .= '<li><code>' . esc_html( $var ) . '</code> - ' . esc_html( $description ) . '</li>';
@@ -1277,7 +1308,15 @@ final class Rewrite_Flush {
 			}
 
 			// Check query vars
-			$required_vars = [ 'procedure_title', 'case_id', 'filter_procedure' ];
+			$required_vars = [ 
+				'procedure_title', 
+				'case_suffix', 
+				'filter_procedure', 
+				'filter_category', 
+				'favorites_page', 
+				'brag_book_gallery_view', 
+				'brag_book_gallery_case' 
+			];
 			$missing_vars = [];
 			$registered_vars = [];
 
@@ -1538,7 +1577,7 @@ final class Rewrite_Flush {
 	 */
 	private function clear_related_transients(): void {
 		$transients = [
-			'brag_book_gallery_show_rewrite_notice',
+			'brag_book_gallery_transient_show_rewrite_notice',
 			'brag_book_gallery_rules_check',
 			self::CACHE_PREFIX . 'verification',
 		];

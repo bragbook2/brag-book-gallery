@@ -106,7 +106,7 @@ final class SEO_Manager {
 	 * Note: The following properties are inherited from traits:
 	 * - $validation_errors from Trait_Sanitizer
 	 * - $memory_cache from Trait_Api
-	 * 
+	 *
 	 * @since 3.0.0
 	 */
 	public function __construct() {
@@ -253,7 +253,7 @@ final class SEO_Manager {
 				'trace' => $e->getTraceAsString(),
 				'url'   => $_SERVER['REQUEST_URI'] ?? 'unknown',
 			] );
-			
+
 			// Provide fallback SEO data
 			$this->seo_data = $this->get_fallback_seo_data();
 		}
@@ -307,7 +307,7 @@ final class SEO_Manager {
 
 		// Parse current URL with validation
 		$request_uri = $_SERVER['REQUEST_URI'] ?? '';
-		
+
 		// Validate and sanitize the request URI
 		if ( empty( $request_uri ) || ! $this->validate_url( home_url( $request_uri ) ) ) {
 			$this->log_error( 'Invalid request URI detected', [ 'uri' => $request_uri ] );
@@ -319,12 +319,12 @@ final class SEO_Manager {
 
 		// Split URL into parts and validate
 		$url_parts = array_filter( explode( '/', trim( $clean_uri, '/' ) ) );
-		
+
 		// Sanitize URL parts to prevent injection
 		$url_parts = array_map( function( $part ) {
 			return $this->sanitize_procedure_slug( $part ) ?? '';
 		}, $url_parts );
-		
+
 		$url_parts = array_filter( $url_parts ); // Remove empty parts after sanitization
 
 		// Get site title and current page slug.
@@ -524,7 +524,7 @@ final class SEO_Manager {
 	private function get_procedure_data( string $procedure_slug, bool $is_combine ): ?array {
 
 		// Cache key based on procedure slug and combine status.
-		$cache_key   = 'brag_book_gallery_procedure_' . md5( $procedure_slug . ( $is_combine ? '_combine' : '_single' ) );
+		$cache_key   = 'brag_book_gallery_transient_procedure_' . $procedure_slug . ( $is_combine ? '_combine' : '_single' );
 
 		// Check cache first.
 		$cached_data = get_transient( $cache_key );
@@ -583,7 +583,7 @@ final class SEO_Manager {
 	private function get_case_seo_data( string $case_id_or_slug, array $procedure_data, bool $is_combine ): ?array {
 
 		// Cache key based on case identifier and procedure data.
-		$cache_key   = 'brag_book_gallery_case_seo_' . md5( $case_id_or_slug . serialize( $procedure_data ) );
+		$cache_key   = 'brag_book_gallery_case_seo_' .$case_id_or_slug . serialize( $procedure_data );
 
 		// Check cache first.
 		$cached_data = get_transient( $cache_key );
@@ -596,7 +596,7 @@ final class SEO_Manager {
 		$case_id    = '';
 		$seo_suffix = '';
 
-		if ( str_starts_with( $case_id_or_slug, 'bb-case-' ) ) {
+		if ( str_starts_with( $case_id_or_slug, 'brag-book-gallery-case-' ) ) {
 			preg_match( '/\d+/', $case_id_or_slug, $matches );
 			$case_id = $matches[0] ?? '';
 		} else {
@@ -714,7 +714,7 @@ final class SEO_Manager {
 	 */
 	private function get_combined_sidebar_data( array $api_tokens ): array {
 
-		$cache_key   = 'brag_book_gallery_combined_sidebar_' . md5( serialize( $api_tokens ) );
+		$cache_key   = 'brag_book_gallery_transient_combined_sidebar_' . serialize( $api_tokens );
 		$cached_data = get_transient( $cache_key );
 
 		if ( false !== $cached_data ) {
@@ -771,7 +771,7 @@ final class SEO_Manager {
 	 */
 	private function get_sidebar_data( string $api_token ): array {
 
-		$cache_key   = 'brag_book_gallery_sidebar_' . md5( $api_token );
+		$cache_key   = 'brag_book_gallery_transient_sidebar_' . $api_token;
 
 		$cached_data = get_transient( $cache_key );
 
@@ -990,7 +990,7 @@ final class SEO_Manager {
 		$og_title = $this->sanitize_meta_content( $this->seo_data['title'], 'title' );
 		$og_description = $this->sanitize_meta_content( $this->seo_data['description'], 'description' );
 		$og_url = $this->sanitize_meta_content( $this->seo_data['canonical_url'], 'url' );
-		
+
 		echo '<meta property="og:title" content="' . $og_title . '">' . "\n";
 		echo '<meta property="og:description" content="' . $og_description . '">' . "\n";
 		echo '<meta property="og:url" content="' . $og_url . '">' . "\n";
@@ -1025,7 +1025,7 @@ final class SEO_Manager {
 			$page_slug = get_option( 'brag_book_gallery_page_slug', 'gallery' );
 			$page_slug = is_string( $page_slug ) ? $page_slug : 'gallery';
 			$gallery_url = home_url( '/' . trim( $page_slug, '/' ) . '/' );
-			
+
 			if ( $this->seo_data['page_type'] !== 'gallery_home' ) {
 				$breadcrumb_items[] = array(
 					'@type'    => 'ListItem',
@@ -1251,7 +1251,7 @@ final class SEO_Manager {
 	 */
 	private function log_error( string $message, array $context = [] ): void {
 		$error_id = uniqid( 'seo_error_', true );
-		
+
 		$this->validation_errors[ $error_id ] = [
 			'message'   => $message,
 			'context'   => $context,
@@ -1355,7 +1355,7 @@ final class SEO_Manager {
 
 		// Remove any potentially dangerous characters
 		$sanitized = sanitize_title( $slug );
-		
+
 		// Ensure slug only contains safe characters
 		if ( ! preg_match( '/^[a-z0-9\-]+$/', $sanitized ) ) {
 			$this->log_error( 'Invalid procedure slug format', [ 'original' => $slug, 'sanitized' => $sanitized ] );
@@ -1408,7 +1408,7 @@ final class SEO_Manager {
 		foreach ( $array as $key => $value ) {
 			// Sanitize the key
 			$clean_key = sanitize_key( (string) $key );
-			
+
 			if ( is_array( $value ) ) {
 				// Recursively sanitize nested arrays
 				$sanitized[ $clean_key ] = $this->deep_sanitize_array( $value );
@@ -1497,7 +1497,7 @@ final class SEO_Manager {
 		}
 
 		// Log unexpected data types for monitoring
-		$this->log_error( 'Unexpected data type encountered', [ 
+		$this->log_error( 'Unexpected data type encountered', [
 			'type' => gettype( $value ),
 			'value' => print_r( $value, true )
 		] );
@@ -1543,7 +1543,7 @@ final class SEO_Manager {
 		// Remove HTML tags and entities
 		$title = wp_strip_all_tags( $title );
 		$title = html_entity_decode( $title, ENT_QUOTES | ENT_HTML5, 'UTF-8' );
-		
+
 		// Limit title length for SEO best practices
 		if ( mb_strlen( $title ) > 60 ) {
 			$title = mb_substr( $title, 0, 57 ) . '...';
@@ -1564,7 +1564,7 @@ final class SEO_Manager {
 		// Remove HTML tags and entities
 		$description = wp_strip_all_tags( $description );
 		$description = html_entity_decode( $description, ENT_QUOTES | ENT_HTML5, 'UTF-8' );
-		
+
 		// Limit description length for SEO best practices
 		if ( mb_strlen( $description ) > 160 ) {
 			$description = mb_substr( $description, 0, 157 ) . '...';
@@ -1583,7 +1583,7 @@ final class SEO_Manager {
 	 */
 	private function sanitize_meta_url( string $url ): string {
 		$url = esc_url_raw( $url );
-		
+
 		if ( empty( $url ) || ! $this->validate_url( $url ) ) {
 			$this->log_error( 'Invalid meta URL detected', [ 'url' => $url ] );
 			return home_url( '/' );
@@ -1606,11 +1606,11 @@ final class SEO_Manager {
 	 * @since 3.0.0
 	 */
 	private function is_rate_limited( string $identifier, int $limit = 100, int $window = 3600 ): bool {
-		$cache_key = 'brag_book_rate_limit_' . md5( $identifier );
+		$cache_key = 'brag_book_gallery_transient_rate_limit_' . $identifier;
 		$requests = get_transient( $cache_key ) ?: 0;
 
 		if ( $requests >= $limit ) {
-			$this->log_error( 'Rate limit exceeded', [ 
+			$this->log_error( 'Rate limit exceeded', [
 				'identifier' => $identifier,
 				'requests' => $requests,
 				'limit' => $limit
@@ -1638,7 +1638,7 @@ final class SEO_Manager {
 	 */
 	private function get_cached_data( string $cache_key, callable $callback, int $ttl = self::CACHE_TTL_MEDIUM, string $category = 'seo' ) {
 		$start_time = microtime( true );
-		
+
 		// Check memory cache first (fastest)
 		if ( isset( $this->memory_cache[ $cache_key ] ) ) {
 			$this->track_performance( $category, microtime( true ) - $start_time, 'memory_hit' );
@@ -1656,11 +1656,11 @@ final class SEO_Manager {
 		// Generate data if not cached
 		try {
 			$data = $callback();
-			
+
 			// Store in both cache levels
 			$this->memory_cache[ $cache_key ] = $data;
 			set_transient( $cache_key, $data, $ttl );
-			
+
 			$this->track_performance( $category, microtime( true ) - $start_time, 'cache_miss' );
 			return $data;
 		} catch ( \Exception $e ) {
@@ -1668,7 +1668,7 @@ final class SEO_Manager {
 				'cache_key' => $cache_key,
 				'error' => $e->getMessage()
 			] );
-			
+
 			$this->track_performance( $category, microtime( true ) - $start_time, 'cache_error' );
 			return null;
 		}
@@ -1752,7 +1752,7 @@ final class SEO_Manager {
 		// Only run cleanup occasionally to avoid performance impact
 		$cleanup_key = 'brag_book_seo_cleanup_last';
 		$last_cleanup = get_transient( $cleanup_key );
-		
+
 		if ( false !== $last_cleanup ) {
 			return; // Cleanup already performed recently
 		}
@@ -1760,12 +1760,12 @@ final class SEO_Manager {
 		try {
 			// Delete expired transients related to the plugin
 			$expired_transients = $wpdb->get_col( $wpdb->prepare(
-				"SELECT option_name FROM {$wpdb->options} 
-				WHERE option_name LIKE %s 
-				AND option_name LIKE %s 
+				"SELECT option_name FROM {$wpdb->options}
+				WHERE option_name LIKE %s
+				AND option_name LIKE %s
 				AND (
-					SELECT CAST(option_value AS UNSIGNED) 
-					FROM {$wpdb->options} o2 
+					SELECT CAST(option_value AS UNSIGNED)
+					FROM {$wpdb->options} o2
 					WHERE o2.option_name = CONCAT('_transient_timeout_', SUBSTRING(option_name, 12))
 				) < %d",
 				'_transient_brag_book_%',
@@ -1845,9 +1845,9 @@ final class SEO_Manager {
 			}
 
 			if ( $category_stats['operations'] > 0 ) {
-				$category_stats['avg_duration'] = round( 
-					$category_stats['total_duration'] / $category_stats['operations'], 
-					2 
+				$category_stats['avg_duration'] = round(
+					$category_stats['total_duration'] / $category_stats['operations'],
+					2
 				);
 			}
 
@@ -1885,7 +1885,7 @@ final class SEO_Manager {
 			$api_tokens = get_option( 'brag_book_gallery_api_token', [] );
 			if ( ! empty( $api_tokens ) && is_array( $api_tokens ) ) {
 				$this->get_cached_data(
-					'brag_book_gallery_combined_sidebar_' . md5( serialize( $api_tokens ) ),
+					'brag_book_gallery_transient_combined_sidebar_' . serialize( $api_tokens ),
 					fn() => $this->get_combined_sidebar_data( $api_tokens ),
 					self::CACHE_TTL_LONG,
 					'warm_up'
@@ -1894,7 +1894,7 @@ final class SEO_Manager {
 
 			// Pre-load basic SEO data
 			$this->get_cached_data(
-				'brag_book_seo_basic_' . md5( $_SERVER['REQUEST_URI'] ?? '/' ),
+				'brag_book_seo_basic_' . $_SERVER['REQUEST_URI'] ?? '/',
 				fn() => $this->generate_seo_data(),
 				self::CACHE_TTL_MEDIUM,
 				'warm_up'

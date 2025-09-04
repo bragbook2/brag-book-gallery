@@ -1,6 +1,6 @@
 /**
  * BRAG book Admin JavaScript
- * 
+ *
  * Handles all WordPress admin interface functionality including:
  * - Dynamic settings table management
  * - Debug tools and logging
@@ -26,18 +26,18 @@ if (typeof window.BRAGbookAdmin === 'undefined') {
 		 */
 		constructor() {
 			// Configure AJAX endpoints - check multiple possible localization objects
-			this.ajaxUrl = (typeof brag_book_gallery_admin !== 'undefined' && brag_book_gallery_admin.ajaxurl) 
-				? brag_book_gallery_admin.ajaxurl 
+			this.ajaxUrl = (typeof brag_book_gallery_admin !== 'undefined' && brag_book_gallery_admin.ajaxurl)
+				? brag_book_gallery_admin.ajaxurl
 				: (typeof brag_book_gallery_ajax !== 'undefined' ? brag_book_gallery_ajax.ajaxurl : '/wp-admin/admin-ajax.php');
-			
+
 			// Configure security nonces - check multiple possible sources
-			this.nonce = (typeof brag_book_gallery_admin !== 'undefined' && brag_book_gallery_admin.nonce) 
-				? brag_book_gallery_admin.nonce 
+			this.nonce = (typeof brag_book_gallery_admin !== 'undefined' && brag_book_gallery_admin.nonce)
+				? brag_book_gallery_admin.nonce
 				: (typeof brag_book_gallery_ajax !== 'undefined' ? brag_book_gallery_ajax.nonce : '');
-			
+
 			// Dialog instance for user feedback
 			this.dialog = null;
-			
+
 			// Initialize all admin functionality
 			this.init();
 		}
@@ -513,14 +513,14 @@ if (typeof window.BRAGbookAdmin === 'undefined') {
 					const logContent = errorLogContent.textContent;
 					const blob = new Blob([logContent], { type: 'text/plain' });
 					const url = window.URL.createObjectURL(blob);
-					
+
 					// Create temporary download link with date-stamped filename
 					const a = document.createElement('a');
 					a.href = url;
 					a.download = `brag-book-gallery-error-log-${new Date().toISOString().split('T')[0]}.txt`;
 					document.body.appendChild(a);
 					a.click();
-					
+
 					// Clean up temporary elements
 					document.body.removeChild(a);
 					window.URL.revokeObjectURL(url);
@@ -776,16 +776,16 @@ if (typeof window.BRAGbookAdmin === 'undefined') {
 		 * Initialize API validation
 		 */
 		initApiValidation() {
-			const validateButtons = document.querySelectorAll('.bb-validate-api');
+			const validateButtons = document.querySelectorAll('.brag-book-gallery-validate-api');
 
 			validateButtons.forEach(button => {
 				button.addEventListener('click', async (e) => {
-					const row = e.target.closest('.bb-api-row');
+					const row = e.target.closest('.brag-book-gallery-api-row');
 					if (!row) return;
 
 					const tokenInput = row.querySelector('input[name*="api_token"]');
 					const propertyInput = row.querySelector('input[name*="website_property_id"]');
-					const statusDiv = row.querySelector('.bb-api-status');
+					const statusDiv = row.querySelector('.brag-book-gallery-api-status');
 
 					if (!tokenInput || !propertyInput) return;
 
@@ -886,7 +886,7 @@ if (typeof window.BRAGbookAdmin === 'undefined') {
 		 */
 		initFactoryReset() {
 			const resetButton = document.getElementById('brag-book-gallery-factory-reset');
-			
+
 			if (!resetButton) return;
 
 			resetButton.addEventListener('click', async (e) => {
@@ -943,7 +943,7 @@ if (typeof window.BRAGbookAdmin === 'undefined') {
 
 				firstCancelBtn.addEventListener('click', closeFirstDialog);
 				firstCloseBtn.addEventListener('click', closeFirstDialog);
-				
+
 				// Click outside to close
 				confirmDialog.addEventListener('click', (e) => {
 					if (e.target === confirmDialog) {
@@ -1016,11 +1016,11 @@ if (typeof window.BRAGbookAdmin === 'undefined') {
 							// Get nonce from button data attribute if main nonce isn't available
 							const buttonNonce = resetButton.getAttribute('data-nonce');
 							const nonceToUse = this.nonce || buttonNonce || '';
-							
+
 							if (!nonceToUse) {
 								throw new Error('Security nonce not found. Please refresh the page and try again.');
 							}
-							
+
 							const response = await this.ajaxPost({
 								action: 'brag_book_gallery_factory_reset',
 								nonce: nonceToUse,
@@ -1039,7 +1039,7 @@ if (typeof window.BRAGbookAdmin === 'undefined') {
 									'success',
 									'Factory Reset Complete'
 								);
-								
+
 								// Wait a moment then redirect
 								setTimeout(() => {
 									if (response.data.redirect) {
@@ -1053,14 +1053,14 @@ if (typeof window.BRAGbookAdmin === 'undefined') {
 							}
 						} catch (error) {
 							console.error('Factory reset error:', error);
-							
+
 							// Show error dialog
 							this.showDialog(
 								`Failed to reset plugin: ${error.message}`,
 								'error',
 								'Factory Reset Failed'
 							);
-							
+
 							// Re-enable button
 							resetButton.disabled = false;
 							resetButton.textContent = originalText;

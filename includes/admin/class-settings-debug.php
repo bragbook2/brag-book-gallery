@@ -190,14 +190,14 @@ class Settings_Debug extends Settings_Base {
 					panel.classList.remove('active');
 					panel.style.display = 'none';
 				});
-				
+
 				// Show target panel
 				const targetPanel = document.getElementById(targetId);
 				if (targetPanel) {
 					targetPanel.classList.add('active');
 					targetPanel.style.display = 'block';
 				}
-				
+
 				// Update tab active states
 				const allTabs = document.querySelectorAll('.brag-book-gallery-side-tabs a');
 				allTabs.forEach(tab => {
@@ -208,17 +208,17 @@ class Settings_Debug extends Settings_Base {
 					}
 				});
 			}
-			
+
 			// Tab switching functionality
 			const tabLinks = document.querySelectorAll('.brag-book-gallery-side-tabs a');
-			
+
 			tabLinks.forEach(link => {
 				link.addEventListener('click', function(e) {
 					e.preventDefault();
-					
+
 					const targetId = this.getAttribute('href').substring(1);
 					showTabPanel(targetId);
-					
+
 					// Update URL hash without triggering page reload
 					if (history.pushState) {
 						history.pushState(null, null, '#' + targetId);
@@ -238,7 +238,7 @@ class Settings_Debug extends Settings_Base {
 					showTabPanel('system-status');
 				}
 			}
-			
+
 			// Handle browser back/forward navigation
 			window.addEventListener('hashchange', function() {
 				const hash = window.location.hash.substring(1);
@@ -1480,7 +1480,7 @@ class Settings_Debug extends Settings_Base {
 			'bragBookDebugTools',
 			[
 				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
-				'nonce'   => wp_create_nonce( 'brag_book_debug_tools' ),
+				'nonce'   => wp_create_nonce( 'brag_book_gallery_debug_tools' ),
 			]
 		);
 

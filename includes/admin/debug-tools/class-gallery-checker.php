@@ -206,8 +206,8 @@ class Gallery_Checker {
 				}
 
 				const response = await ajaxPost({
-					action: 'brag_book_debug_tool',
-					nonce: '<?php echo wp_create_nonce( 'brag_book_debug_tools' ); ?>',
+					action: 'brag_book_gallery_debug_tool',
+					nonce: '<?php echo wp_create_nonce( 'brag_book_gallery_debug_tools' ); ?>',
 					tool: 'gallery-checker',
 					tool_action: 'create_page'
 				});
@@ -235,8 +235,8 @@ class Gallery_Checker {
 				}
 
 				const response = await ajaxPost({
-					action: 'brag_book_debug_tool',
-					nonce: '<?php echo wp_create_nonce( 'brag_book_debug_tools' ); ?>',
+					action: 'brag_book_gallery_debug_tool',
+					nonce: '<?php echo wp_create_nonce( 'brag_book_gallery_debug_tools' ); ?>',
 					tool: 'gallery-checker',
 					tool_action: 'update_slug',
 					gallery_slug: newSlug
@@ -262,8 +262,8 @@ class Gallery_Checker {
 				}
 
 				const response = await ajaxPost({
-					action: 'brag_book_debug_tool',
-					nonce: '<?php echo wp_create_nonce( 'brag_book_debug_tools' ); ?>',
+					action: 'brag_book_gallery_debug_tool',
+					nonce: '<?php echo wp_create_nonce( 'brag_book_gallery_debug_tools' ); ?>',
 					tool: 'gallery-checker',
 					tool_action: 'show_rules'
 				});
@@ -417,7 +417,7 @@ class Gallery_Checker {
 						<?php else : ?>
 							<div class="config-item">
 								<span class="config-label"><?php esc_html_e( 'Modified:', 'brag-book-gallery' ); ?></span>
-								<span class="config-value"><?php 
+								<span class="config-value"><?php
 									if ( ! empty( $page->post_modified ) && $page->post_modified !== '0000-00-00 00:00:00' ) {
 										echo esc_html( human_time_diff( strtotime( $page->post_modified ), current_time( 'timestamp' ) ) . ' ago' );
 									} else {
@@ -559,7 +559,7 @@ class Gallery_Checker {
 						</div>
 						<div class="config-item">
 							<span class="config-label"><?php esc_html_e( 'Modified:', 'brag-book-gallery' ); ?></span>
-							<span class="config-value"><?php 
+							<span class="config-value"><?php
 								if ( ! empty( $page->post_modified ) && $page->post_modified !== '0000-00-00 00:00:00' ) {
 									echo esc_html( human_time_diff( strtotime( $page->post_modified ), current_time( 'timestamp' ) ) . ' ago' );
 								} else {
@@ -567,7 +567,7 @@ class Gallery_Checker {
 								}
 							?></span>
 						</div>
-						
+
 						<?php if ( $view_link || $edit_link ) : ?>
 							<div class="config-actions">
 								<?php if ( $view_link ) : ?>
@@ -798,21 +798,21 @@ class Gallery_Checker {
 			foreach ( $rules as $pattern => $query ) {
 				// Look for gallery-related rules more broadly
 				$is_gallery_rule = false;
-				
+
 				if ( $brag_book_gallery_page_slug ) {
 					// Check if pattern starts with slug or contains gallery slug
 					$is_gallery_rule = str_starts_with( $pattern, $brag_book_gallery_page_slug ) ||
 					                  str_contains( $pattern, $brag_book_gallery_page_slug ) ||
 					                  str_contains( $query, $brag_book_gallery_page_slug );
 				}
-				
+
 				// Also show any brag_book related rules
 				if ( ! $is_gallery_rule ) {
-					$is_gallery_rule = str_contains( $pattern, 'brag' ) || 
+					$is_gallery_rule = str_contains( $pattern, 'brag' ) ||
 					                  str_contains( $query, 'brag' ) ||
 					                  str_contains( $query, 'gallery' );
 				}
-				
+
 				if ( $is_gallery_rule ) {
 					$output .= sprintf(
 						"<span style='color: #2271b1;'>%s</span>\n    => <span style='color: #135e96;'>%s</span>\n\n",

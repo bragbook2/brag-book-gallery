@@ -79,8 +79,10 @@ trait Trait_Cache_Handler {
 		$transient_patterns = array(
 			'brag_book_gallery_api_%',
 			'brag_book_gallery_filters_%',
-			'brag_book_gallery_sidebar_%',
-			'brag_book_gallery_cases_%',
+			'brag_book_gallery_transient_sidebar_%',
+			'brag_book_gallery_transient_cases_%',
+			'brag_book_gallery_transient_carousel_%',
+			'brag_book_gallery_transient_all_cases_%',
 			'brag_book_gallery_combine_%',
 		);
 		

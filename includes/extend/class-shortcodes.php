@@ -30,7 +30,7 @@ declare( strict_types=1 );
  * - [brag_book_gallery_cases] - Cases grid display
  * - [brag_book_gallery_case] - Single case details
  * - [brag_book_carousel] - Image carousel
- * - [brag_book_favorites] - User favorites
+ * - [brag_book_gallery_favorites] - User favorites
  * - [bragbook_carousel_shortcode] - Legacy carousel
  *
  * Security Features:
@@ -125,7 +125,7 @@ final class Shortcodes {
 	 * - brag_book_gallery: Main gallery with filters
 	 * - brag_book_gallery_cases: Cases grid display
 	 * - brag_book_gallery_case: Single case details
-	 * - brag_book_favorites: User favorites system
+	 * - brag_book_gallery_favorites: User favorites system
 	 * - brag_book_carousel: Modern carousel display
 	 * - bragbook_carousel_shortcode: Legacy carousel (deprecated)
 	 *
@@ -147,7 +147,7 @@ final class Shortcodes {
 			'brag_book_gallery'       => 'main_gallery_shortcode',
 			'brag_book_gallery_cases' => 'cases_shortcode',
 			'brag_book_gallery_case'  => 'case_details_shortcode',
-			'brag_book_favorites'     => 'favorites_shortcode',
+			'brag_book_gallery_favorites'     => 'favorites_shortcode',
 		];
 
 		foreach ( $shortcodes as $tag => $callback ) {
@@ -208,7 +208,7 @@ final class Shortcodes {
 				'brag_book_carousel',
 				'brag_book_gallery_cases',
 				'brag_book_gallery_case',
-				'brag_book_favorites',
+				'brag_book_gallery_favorites',
 				'bragbook_carousel_shortcode', // Legacy support
 			];
 
@@ -338,7 +338,7 @@ final class Shortcodes {
 
 	/**
 	 * Handle legacy carousel shortcode for backwards compatibility.
-	 * 
+	 *
 	 * @deprecated 3.0.0 Use Carousel_Shortcode_Handler::handle_legacy() instead.
 	 *
 	 * Maps old [bragbook_carousel_shortcode] attributes to new [brag_book_carousel] format.
@@ -470,8 +470,8 @@ final class Shortcodes {
 		}
 
 		// Extract categories with type safety
-		$categories = is_array( $sidebar_data['data'] ?? null ) 
-			? $sidebar_data['data'] 
+		$categories = is_array( $sidebar_data['data'] ?? null )
+			? $sidebar_data['data']
 			: ( is_array( $sidebar_data ) ? $sidebar_data : [] );
 
 		// Search through categories using modern iteration
@@ -644,10 +644,10 @@ final class Shortcodes {
 
 				// Generate slide HTML if renderer is available
 				if ( class_exists( HTML_Renderer::class ) ) {
-					$html_parts[] = HTML_Renderer::generate_carousel_slide_from_photo( 
-						$photo, 
-						$case, 
-						$slide_index, 
+					$html_parts[] = HTML_Renderer::generate_carousel_slide_from_photo(
+						$photo,
+						$case,
+						$slide_index,
 						$procedure_slug,
 						true // This is a standalone carousel
 					);
@@ -705,8 +705,8 @@ final class Shortcodes {
 			default => '',
 		};
 
-		$procedure_slug = ! empty( $procedure_name ) 
-			? sanitize_title( $procedure_name ) 
+		$procedure_slug = ! empty( $procedure_name )
+			? sanitize_title( $procedure_name )
 			: 'case';
 
 		// Build case detail URL - format: /gallery-page/procedure-name/case-id
@@ -938,7 +938,7 @@ final class Shortcodes {
 	 */
 	private static function determine_gallery_base_path(): string {
 		$gallery_slugs = get_option( 'brag_book_gallery_gallery_page_slug', [] );
-		
+
 		return match ( true ) {
 			is_array( $gallery_slugs ) && ! empty( $gallery_slugs[0] ) => '/' . sanitize_title( $gallery_slugs[0] ),
 			is_string( $gallery_slugs ) && ! empty( $gallery_slugs ) => '/' . sanitize_title( $gallery_slugs ),
@@ -949,7 +949,7 @@ final class Shortcodes {
 	/**
 	 * Favorites shortcode handler.
 	 *
-	 * Entry point for [brag_book_favorites] shortcode. Displays user's
+	 * Entry point for [brag_book_gallery_favorites] shortcode. Displays user's
 	 * favorited cases with email capture and API synchronization.
 	 *
 	 * Supported Attributes:
@@ -979,7 +979,7 @@ final class Shortcodes {
 				'columns' => 3,  // Grid columns
 			],
 			$atts,
-			'brag_book_favorites'
+			'brag_book_gallery_favorites'
 		);
 
 		// Sanitize attributes

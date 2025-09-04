@@ -42,7 +42,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * Architecture:
  * - Static methods for stateless asset management
- * - Caching mechanisms for performance optimization  
+ * - Caching mechanisms for performance optimization
  * - Security-first approach to custom CSS handling
  * - Dependency management for third-party libraries
  * - Localization support for internationalization
@@ -139,7 +139,7 @@ final class Asset_Manager {
 
 		// Check if GSAP should be loaded from CDN or locally.
 		$gsap_url = self::get_gsap_url();
-		
+
 		// Enqueue GSAP library.
 		wp_enqueue_script(
 			'gsap',
@@ -161,7 +161,7 @@ final class Asset_Manager {
 			$js_version,
 			true
 		);
-		
+
 		/**
 		 * Fires after gallery assets are enqueued.
 		 *
@@ -197,7 +197,7 @@ final class Asset_Manager {
 
 		// Add custom CSS only once.
 		self::add_custom_css( 'brag-book-gallery-main' );
-		
+
 		/**
 		 * Fires after cases assets are enqueued.
 		 *
@@ -238,7 +238,7 @@ final class Asset_Manager {
 		// Ensure all_cases_data is properly formatted
 		$all_cases_data = is_array( $all_cases_data ) ? $all_cases_data : [];
 		$plugin_url = Setup::get_plugin_url();
-		
+
 		// Get gallery slug - handle both array and string formats.
 		$gallery_slug_option = get_option( 'brag_book_gallery_page_slug', 'gallery' );
 		if ( is_array( $gallery_slug_option ) ) {
@@ -247,7 +247,7 @@ final class Asset_Manager {
 		} else {
 			$gallery_slug = sanitize_title( (string) $gallery_slug_option );
 		}
-		
+
 		// Sanitize and prepare configuration data.
 		$localized_data = array(
 			'apiToken'          => sanitize_text_field( $config['api_token'] ?? '' ),
@@ -262,12 +262,12 @@ final class Asset_Manager {
 			'sidebarData'       => $sidebar_data,
 			'completeDataset'   => array(),
 		);
-		
+
 		// Process complete dataset if provided.
 		if ( ! empty( $all_cases_data['data'] ) && is_array( $all_cases_data['data'] ) ) {
-			$localized_data['completeDataset'] = array_map( 
-				array( __CLASS__, 'prepare_case_data' ), 
-				$all_cases_data['data'] 
+			$localized_data['completeDataset'] = array_map(
+				array( __CLASS__, 'prepare_case_data' ),
+				$all_cases_data['data']
 			);
 		}
 
@@ -307,13 +307,13 @@ final class Asset_Manager {
 			'height'    => [ 'height', 'patientHeight' ],
 			'weight'    => [ 'weight', 'patientWeight' ],
 		];
-		
+
 		$normalized_data = [];
-		
+
 		// Process each field with fallback support
 		foreach ( $field_mapping as $normalized_key => $possible_keys ) {
 			$value = '';
-			
+
 			// Find the first available value from possible keys
 			foreach ( $possible_keys as $key ) {
 				if ( isset( $case[ $key ] ) && '' !== $case[ $key ] ) {
@@ -321,10 +321,10 @@ final class Asset_Manager {
 					break;
 				}
 			}
-			
+
 			$normalized_data[ $normalized_key ] = sanitize_text_field( $value );
 		}
-		
+
 		return $normalized_data;
 	}
 
@@ -354,14 +354,14 @@ final class Asset_Manager {
 			'websitePropertyId' => sanitize_text_field( $config['website_property_id'] ?? '' ),
 			'apiEndpoint'       => esc_url_raw( get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' ) ),
 			'ajaxUrl'           => esc_url_raw( admin_url( 'admin-ajax.php' ) ),
-			'nonce'             => wp_create_nonce( 'brag_book_carousel_nonce' ),
+			'nonce'             => wp_create_nonce( 'brag_book_gallery_carousel_nonce' ),
 			'pluginUrl'         => esc_url_raw( Setup::get_plugin_url() ),
 			'showControls'      => (bool) ( $config['show_controls'] ?? true ),
 			'showPagination'    => (bool) ( $config['show_pagination'] ?? true ),
 			'autoPlay'          => (bool) ( $config['auto_play'] ?? false ),
 			'limit'             => absint( $config['limit'] ?? 10 ),
 		];
-		
+
 		// Localize the script with validated data (using main gallery script)
 		wp_localize_script(
 			'brag-book-gallery-main',
@@ -441,16 +441,16 @@ final class Asset_Manager {
 		if ( isset( self::$version_cache[ $file_path ] ) ) {
 			return self::$version_cache[ $file_path ];
 		}
-		
+
 		// Calculate version using PHP 8.2 match expression for cleaner logic
 		$version = match ( true ) {
 			file_exists( $file_path ) => (string) ( filemtime( $file_path ) ?: self::VERSION ),
 			default => self::VERSION,
 		};
-			
+
 		// Cache the result to avoid repeated filesystem calls
 		self::$version_cache[ $file_path ] = $version;
-		
+
 		return $version;
 	}
 
@@ -469,12 +469,12 @@ final class Asset_Manager {
 	private static function get_gsap_url(): string {
 		$plugin_path = Setup::get_plugin_path();
 		$plugin_url = Setup::get_plugin_url();
-		
+
 		// Use PHP 8.2 match expression for cleaner URL resolution
 		return match ( true ) {
-			file_exists( $plugin_path . 'assets/vendor/gsap.min.js' ) => 
+			file_exists( $plugin_path . 'assets/vendor/gsap.min.js' ) =>
 				esc_url_raw( $plugin_url . 'assets/vendor/gsap.min.js' ),
-			default => 
+			default =>
 				esc_url_raw( self::GSAP_CDN . self::GSAP_VERSION . '/gsap.min.js' ),
 		};
 	}
@@ -505,26 +505,26 @@ final class Asset_Manager {
 		if ( '' === trim( $handle ) ) {
 			return;
 		}
-		
+
 		// Prevent duplicate CSS injection per page load
 		if ( self::$custom_css_added ) {
 			return;
 		}
 
 		$custom_css = get_option( 'brag_book_gallery_custom_css', '' );
-		
+
 		// Early return if no custom CSS is configured
 		if ( empty( $custom_css ) || ! is_string( $custom_css ) ) {
 			return;
 		}
-		
+
 		// Comprehensive CSS sanitization
 		$sanitized_css = self::sanitize_custom_css( $custom_css );
-		
+
 		if ( ! empty( $sanitized_css ) ) {
 			wp_add_inline_style( $handle, $sanitized_css );
 			self::$custom_css_added = true;
-			
+
 			/**
 			 * Fires after custom CSS is successfully added.
 			 *
@@ -560,7 +560,7 @@ final class Asset_Manager {
 	private static function sanitize_custom_css( string $css ): string {
 		// Remove any HTML/script tags that might be present
 		$css = wp_strip_all_tags( $css );
-		
+
 		// Remove potentially dangerous CSS directives using match expressions
 		$dangerous_patterns = [
 			'@import[^;]+;',           // External resource imports
@@ -570,16 +570,16 @@ final class Asset_Manager {
 			'data\s*:\s*[^;]*base64', // Base64 data URIs (potential XSS)
 			'@charset[^;]+;',         // Character set declarations
 		];
-		
+
 		// Apply sanitization patterns
 		foreach ( $dangerous_patterns as $pattern ) {
 			$css = (string) preg_replace( '/' . $pattern . '/i', '', $css );
 		}
-		
+
 		// Additional cleanup - remove excessive whitespace while preserving structure
 		$css = (string) preg_replace( '/\s+/', ' ', $css );
 		$css = (string) preg_replace( '/;\s*}/', '}', $css );
-		
+
 		return trim( $css );
 	}
 

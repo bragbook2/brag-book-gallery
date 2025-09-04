@@ -99,25 +99,32 @@ class Ajax_Handlers {
 	 */
 	public static function register(): void {
 		// Gallery filtering
-		add_action( 'wp_ajax_brag_book_load_filtered_gallery', [ __CLASS__, 'ajax_load_filtered_gallery' ] );
-		add_action( 'wp_ajax_nopriv_brag_book_load_filtered_gallery', [ __CLASS__, 'ajax_load_filtered_gallery' ] );
+		add_action( 'wp_ajax_brag_book_gallery_load_filtered_gallery', [ __CLASS__, 'ajax_load_filtered_gallery' ] );
+		add_action( 'wp_ajax_nopriv_brag_book_gallery_load_filtered_gallery', [ __CLASS__, 'ajax_load_filtered_gallery' ] );
 
 		// Case details
 		add_action( 'wp_ajax_brag_book_gallery_load_case', [ __CLASS__, 'ajax_load_case_details' ] );
 		add_action( 'wp_ajax_nopriv_brag_book_gallery_load_case', [ __CLASS__, 'ajax_load_case_details' ] );
+		add_action( 'wp_ajax_brag_book_gallery_load_case_details', [ __CLASS__, 'ajax_load_case_details_html' ] );
+		add_action( 'wp_ajax_nopriv_brag_book_gallery_load_case_details', [ __CLASS__, 'ajax_load_case_details_html' ] );
+		
+		// Debug log the case details registration
+		if ( WP_DEBUG && WP_DEBUG_LOG ) {
+			error_log( 'BRAG book Gallery: Registering AJAX action: wp_ajax_brag_book_gallery_load_case_details' );
+		}
 
 		add_action( 'wp_ajax_load_case_details', [ __CLASS__, 'ajax_simple_case_handler' ] );
 		add_action( 'wp_ajax_nopriv_load_case_details', [ __CLASS__, 'ajax_simple_case_handler' ] );
 
-		add_action( 'wp_ajax_brag_book_load_case_details_html', [ __CLASS__, 'ajax_load_case_details_html' ] );
-		add_action( 'wp_ajax_nopriv_brag_book_load_case_details_html', [ __CLASS__, 'ajax_load_case_details_html' ] );
+		add_action( 'wp_ajax_brag_book_gallery_load_case_details_html', [ __CLASS__, 'ajax_load_case_details_html' ] );
+		add_action( 'wp_ajax_nopriv_brag_book_gallery_load_case_details_html', [ __CLASS__, 'ajax_load_case_details_html' ] );
 
 		// Load more and filtering
-		add_action( 'wp_ajax_brag_book_load_more_cases', [ __CLASS__, 'ajax_load_more_cases' ] );
-		add_action( 'wp_ajax_nopriv_brag_book_load_more_cases', [ __CLASS__, 'ajax_load_more_cases' ] );
+		add_action( 'wp_ajax_brag_book_gallery_load_more_cases', [ __CLASS__, 'ajax_load_more_cases' ] );
+		add_action( 'wp_ajax_nopriv_brag_book_gallery_load_more_cases', [ __CLASS__, 'ajax_load_more_cases' ] );
 
-		add_action( 'wp_ajax_brag_book_load_filtered_cases', [ __CLASS__, 'ajax_load_filtered_cases' ] );
-		add_action( 'wp_ajax_nopriv_brag_book_load_filtered_cases', [ __CLASS__, 'ajax_load_filtered_cases' ] );
+		add_action( 'wp_ajax_brag_book_gallery_load_filtered_cases', [ __CLASS__, 'ajax_load_filtered_cases' ] );
+		add_action( 'wp_ajax_nopriv_brag_book_gallery_load_filtered_cases', [ __CLASS__, 'ajax_load_filtered_cases' ] );
 
 		// Cache management
 		add_action( 'wp_ajax_brag_book_gallery_clear_cache', [ __CLASS__, 'ajax_clear_cache' ] );
@@ -125,7 +132,7 @@ class Ajax_Handlers {
 		add_action( 'wp_ajax_brag_book_get_cache_data', [ __CLASS__, 'ajax_get_cache_data' ] );
 
 		// Rewrite rules
-		add_action( 'wp_ajax_brag_book_flush_rewrite_rules', [ __CLASS__, 'ajax_flush_rewrite_rules' ] );
+		add_action( 'wp_ajax_brag_book_gallery_flush_rewrite_rules', [ __CLASS__, 'ajax_flush_rewrite_rules' ] );
 
 		// Favorites
 		add_action( 'wp_ajax_brag_book_add_favorite', [ __CLASS__, 'ajax_add_favorite' ] );
@@ -149,7 +156,7 @@ class Ajax_Handlers {
 	public static function ajax_flush_rewrite_rules(): void {
 		// Sanitize and validate nonce from request
 		$nonce = isset( $_POST['nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['nonce'] ) ) : '';
-		if ( ! wp_verify_nonce( $nonce, 'brag_book_flush_rewrite_rules' ) ) {
+		if ( ! wp_verify_nonce( $nonce, 'brag_book_gallery_flush_rewrite_rules' ) ) {
 			wp_send_json_error( __( 'Security check failed', 'brag-book-gallery' ) );
 			return;
 		}
@@ -174,7 +181,7 @@ class Ajax_Handlers {
 			};
 
 			// Clear the notice
-			delete_transient( 'brag_book_gallery_show_rewrite_notice' );
+			delete_transient( 'brag_book_gallery_transient_show_rewrite_notice' );
 
 			// Clear any caches
 			if ( function_exists( 'wp_cache_flush' ) ) {
@@ -185,7 +192,7 @@ class Ajax_Handlers {
 			wp_send_json_success( $message );
 
 			// Clear the notice
-			delete_transient( 'brag_book_gallery_show_rewrite_notice' );
+			delete_transient( 'brag_book_gallery_transient_show_rewrite_notice' );
 
 			// Clear any caches
 			if ( function_exists( 'wp_cache_flush' ) ) {
@@ -588,8 +595,8 @@ class Ajax_Handlers {
 					foreach ( $cases_to_render as $case ) {
 						// Determine if this specific case has nudity based on its procedure IDs
 						$case_has_nudity = self::case_has_nudity_with_sidebar( $case, $sidebar_data );
-						
-						
+
+
 						// Use reflection to access the render_ajax_gallery_case_card method
 						try {
 							$method = new \ReflectionMethod( Shortcodes::class, 'render_ajax_gallery_case_card' );
@@ -857,6 +864,12 @@ class Ajax_Handlers {
 	 * @return void Sends JSON response with HTML content
 	 */
 	public static function ajax_load_case_details_html(): void {
+		// Debug logging to confirm this method is called
+		if ( WP_DEBUG && WP_DEBUG_LOG ) {
+			error_log( 'BRAGBook Gallery: ajax_load_case_details_html method called' );
+			error_log( 'BRAGBook Gallery: POST data: ' . print_r( $_POST, true ) );
+		}
+
 		// Validate and sanitize request data
 		$request_data = self::validate_and_sanitize_request( [
 			'nonce' => 'brag_book_gallery_nonce',
@@ -913,15 +926,15 @@ class Ajax_Handlers {
 			// Track case view for analytics (fire and forget - don't let failures affect the response)
 			$view_tracked = false;
 			$view_tracking_error = null;
-			
+
 			if ( is_numeric( $case_id ) ) {
 				try {
 					$endpoints = isset( $endpoints ) ? $endpoints : new Endpoints();
 					$tracking_response = $endpoints->track_case_view( $api_token, intval( $case_id ) );
-					
+
 					if ( $tracking_response !== null ) {
 						$view_tracked = true;
-						
+
 						if ( WP_DEBUG && WP_DEBUG_LOG ) {
 							// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 							error_log( 'BRAGBook Gallery: View tracked for case ID: ' . $case_id );
@@ -929,7 +942,7 @@ class Ajax_Handlers {
 					}
 				} catch ( Exception $e ) {
 					$view_tracking_error = $e->getMessage();
-					
+
 					// Log the error but don't prevent the case from loading
 					if ( WP_DEBUG && WP_DEBUG_LOG ) {
 						// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
@@ -1223,7 +1236,7 @@ class Ajax_Handlers {
 			foreach ( $all_cases as $case ) {
 				// Determine if this specific case has nudity based on its procedure IDs
 				$case_has_nudity = self::case_has_nudity_with_sidebar( $case, $sidebar_data );
-				
+
 				// Use reflection to access the private method from Shortcodes class
 				$method = new \ReflectionMethod( Shortcodes::class, 'render_ajax_gallery_case_card' );
 				$method->setAccessible( true );
@@ -1294,7 +1307,7 @@ class Ajax_Handlers {
 
 		try {
 			// Get cached cases data
-			$cache_key = 'brag_book_cases_' . md5( $api_token . $website_property_id );
+			$cache_key = 'brag_book_gallery_transient_cases_' . $api_token . $website_property_id;
 			$cached_data = get_transient( $cache_key );
 
 			$html = '';
@@ -1364,10 +1377,14 @@ class Ajax_Handlers {
 	 * @return array|null Case data array or null if not found.
 	 */
 	private static function find_case_by_id( string $case_id, string $api_token, int $website_property_id ): ?array {
-		// Debug logging
+		// Enhanced debug logging for troubleshooting
 		if ( WP_DEBUG && WP_DEBUG_LOG ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'find_case_by_id: Looking for case: ' . $case_id );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			error_log( 'find_case_by_id: API token (first 10 chars): ' . substr( $api_token, 0, 10 ) );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			error_log( 'find_case_by_id: Website property ID: ' . $website_property_id );
 		}
 
 		// First check if this is a carousel case in cache (case_id might be seoSuffixUrl)
@@ -1381,7 +1398,7 @@ class Ajax_Handlers {
 		}
 
 		// Next, try to get the case from cached data
-		$cache_key = 'brag_book_all_cases_' . md5( $api_token . $website_property_id );
+		$cache_key = 'brag_book_gallery_transient_all_cases_' . $api_token . '_' . $website_property_id;
 		$cached_data = get_transient( $cache_key );
 		$case_data = null;
 
@@ -1393,20 +1410,31 @@ class Ajax_Handlers {
 		}
 
 		if ( $cached_data && isset( $cached_data['data'] ) && is_array( $cached_data['data'] ) ) {
-			// Search for the case in cached data
+			// Debug: Log some sample case data to understand structure
+			if ( WP_DEBUG && WP_DEBUG_LOG && count( $cached_data['data'] ) > 0 ) {
+				$sample_case = $cached_data['data'][0];
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log( 'find_case_by_id: Sample case structure - ID: ' . ( $sample_case['id'] ?? 'N/A' ) );
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log( 'find_case_by_id: Sample case seoSuffixUrl: ' . ( $sample_case['seoSuffixUrl'] ?? 'N/A' ) );
+				if ( isset( $sample_case['caseDetails'] ) && is_array( $sample_case['caseDetails'] ) && count( $sample_case['caseDetails'] ) > 0 ) {
+					$detail = $sample_case['caseDetails'][0];
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+					error_log( 'find_case_by_id: Sample caseDetail seoSuffixUrl: ' . ( $detail['seoSuffixUrl'] ?? 'N/A' ) );
+				}
+			}
+			
+			// Search for the case in cached data - try ALL methods for robust matching
 			foreach ( $cached_data['data'] as $case ) {
-				// First, try by numeric ID if the identifier is numeric
-				if ( $is_numeric_id ) {
-					if ( isset( $case['id'] ) && strval( $case['id'] ) === strval( $case_id ) ) {
-						if ( WP_DEBUG ) {
-							error_log( 'find_case_by_id: Found case by numeric ID in cache' );
-						}
-						return $case;
+				// Method 1: Try by numeric ID if identifier looks numeric
+				if ( $is_numeric_id && isset( $case['id'] ) && strval( $case['id'] ) === strval( $case_id ) ) {
+					if ( WP_DEBUG ) {
+						error_log( 'find_case_by_id: Found case by numeric ID in cache' );
 					}
+					return $case;
 				}
 
-				// Always also check by SEO suffix URL (even for numeric-looking identifiers)
-				// Check at root level first
+				// Method 2: Try by SEO suffix URL at root level (always check regardless of numeric appearance)
 				if ( isset( $case['seoSuffixUrl'] ) && $case['seoSuffixUrl'] === $case_id ) {
 					if ( WP_DEBUG ) {
 						error_log( 'find_case_by_id: Found case by SEO suffix at root level in cache' );
@@ -1414,7 +1442,7 @@ class Ajax_Handlers {
 					return $case;
 				}
 
-				// Then check in caseDetails array
+				// Method 3: Try by SEO suffix URL in caseDetails array
 				if ( isset( $case['caseDetails'] ) && is_array( $case['caseDetails'] ) ) {
 					foreach ( $case['caseDetails'] as $detail ) {
 						if ( isset( $detail['seoSuffixUrl'] ) && $detail['seoSuffixUrl'] === $case_id ) {
@@ -1425,26 +1453,99 @@ class Ajax_Handlers {
 						}
 					}
 				}
+
+				// Method 4: FALLBACK - If identifier looks numeric but no numeric ID match, 
+				// try to find case with a seoSuffixUrl that matches and extract actual case ID
+				if ( $is_numeric_id && ! empty( $case['caseDetails'] ) && is_array( $case['caseDetails'] ) ) {
+					foreach ( $case['caseDetails'] as $detail ) {
+						if ( isset( $detail['seoSuffixUrl'] ) && $detail['seoSuffixUrl'] === $case_id ) {
+							if ( WP_DEBUG ) {
+								error_log( 'find_case_by_id: FALLBACK - Found numeric-looking seoSuffixUrl in cache, actual case ID: ' . ( $case['id'] ?? 'N/A' ) );
+							}
+							return $case;
+						}
+					}
+				}
 			}
 		}
 
-		// If not found in cache, try to fetch all cases
-		$all_cases = Data_Fetcher::get_all_cases_for_filtering( $api_token, (string) $website_property_id );
+		// If not found in the main cache, also try the unfiltered cache (all cases)
+		if ( empty( $case_data ) ) {
+			$unfiltered_cache_key = \BRAGBookGallery\Includes\Extend\Cache_Manager::get_all_cases_cache_key( $api_token, (string) $website_property_id );
+			$unfiltered_cached_data = get_transient( $unfiltered_cache_key );
 
-		if ( ! empty( $all_cases['data'] ) ) {
-			foreach ( $all_cases['data'] as $case ) {
-				// First, try by numeric ID if the identifier is numeric
-				if ( $is_numeric_id ) {
-					if ( isset( $case['id'] ) && strval( $case['id'] ) === strval( $case_id ) ) {
+			if ( WP_DEBUG ) {
+				error_log( 'find_case_by_id: Trying unfiltered cache key: ' . $unfiltered_cache_key );
+				error_log( 'find_case_by_id: Unfiltered cache has ' . ( isset( $unfiltered_cached_data['data'] ) ? count( $unfiltered_cached_data['data'] ) : 0 ) . ' cases' );
+			}
+
+			if ( $unfiltered_cached_data && isset( $unfiltered_cached_data['data'] ) && is_array( $unfiltered_cached_data['data'] ) ) {
+				foreach ( $unfiltered_cached_data['data'] as $case ) {
+					// Method 1: Try by numeric ID if identifier looks numeric
+					if ( $is_numeric_id && isset( $case['id'] ) && strval( $case['id'] ) === strval( $case_id ) ) {
 						if ( WP_DEBUG ) {
-							error_log( 'find_case_by_id: Found case by numeric ID from API' );
+							error_log( 'find_case_by_id: Found case by numeric ID in unfiltered cache' );
 						}
 						return $case;
 					}
+
+					// Method 2: Try by SEO suffix URL at root level
+					if ( isset( $case['seoSuffixUrl'] ) && $case['seoSuffixUrl'] === $case_id ) {
+						if ( WP_DEBUG ) {
+							error_log( 'find_case_by_id: Found case by SEO suffix at root level in unfiltered cache' );
+						}
+						return $case;
+					}
+
+					// Method 3: Try by SEO suffix URL in caseDetails array
+					if ( isset( $case['caseDetails'] ) && is_array( $case['caseDetails'] ) ) {
+						foreach ( $case['caseDetails'] as $detail ) {
+							if ( isset( $detail['seoSuffixUrl'] ) && $detail['seoSuffixUrl'] === $case_id ) {
+								if ( WP_DEBUG ) {
+									error_log( 'find_case_by_id: Found case by SEO suffix in caseDetails in unfiltered cache' );
+								}
+								return $case;
+							}
+						}
+					}
+
+					// Method 4: FALLBACK - If identifier looks numeric but no numeric ID match
+					if ( $is_numeric_id && ! empty( $case['caseDetails'] ) && is_array( $case['caseDetails'] ) ) {
+						foreach ( $case['caseDetails'] as $detail ) {
+							if ( isset( $detail['seoSuffixUrl'] ) && $detail['seoSuffixUrl'] === $case_id ) {
+								if ( WP_DEBUG ) {
+									error_log( 'find_case_by_id: FALLBACK - Found numeric-looking seoSuffixUrl in unfiltered cache, actual case ID: ' . ( $case['id'] ?? 'N/A' ) );
+								}
+								return $case;
+							}
+						}
+					}
+				}
+			}
+		}
+
+		// If not found in cache, try to fetch all cases from API
+		if ( WP_DEBUG ) {
+			error_log( 'find_case_by_id: Case not found in any cache, fetching from API' );
+		}
+		
+		$all_cases = Data_Fetcher::get_all_cases_for_filtering( $api_token, (string) $website_property_id );
+
+		if ( WP_DEBUG ) {
+			error_log( 'find_case_by_id: API returned ' . ( isset( $all_cases['data'] ) ? count( $all_cases['data'] ) : 0 ) . ' cases' );
+		}
+
+		if ( ! empty( $all_cases['data'] ) ) {
+			foreach ( $all_cases['data'] as $case ) {
+				// Method 1: Try by numeric ID if identifier looks numeric
+				if ( $is_numeric_id && isset( $case['id'] ) && strval( $case['id'] ) === strval( $case_id ) ) {
+					if ( WP_DEBUG ) {
+						error_log( 'find_case_by_id: Found case by numeric ID from API' );
+					}
+					return $case;
 				}
 
-				// Always also check by SEO suffix URL (even for numeric-looking identifiers)
-				// Check at root level first
+				// Method 2: Try by SEO suffix URL at root level (always check regardless of numeric appearance)
 				if ( isset( $case['seoSuffixUrl'] ) && $case['seoSuffixUrl'] === $case_id ) {
 					if ( WP_DEBUG ) {
 						error_log( 'find_case_by_id: Found case by SEO suffix at root level from API' );
@@ -1452,7 +1553,7 @@ class Ajax_Handlers {
 					return $case;
 				}
 
-				// Then check in caseDetails array
+				// Method 3: Try by SEO suffix URL in caseDetails array
 				if ( isset( $case['caseDetails'] ) && is_array( $case['caseDetails'] ) ) {
 					foreach ( $case['caseDetails'] as $detail ) {
 						if ( isset( $detail['seoSuffixUrl'] ) && $detail['seoSuffixUrl'] === $case_id ) {
@@ -1463,11 +1564,65 @@ class Ajax_Handlers {
 						}
 					}
 				}
+
+				// Method 4: FALLBACK - If identifier looks numeric but no numeric ID match
+				if ( $is_numeric_id && ! empty( $case['caseDetails'] ) && is_array( $case['caseDetails'] ) ) {
+					foreach ( $case['caseDetails'] as $detail ) {
+						if ( isset( $detail['seoSuffixUrl'] ) && $detail['seoSuffixUrl'] === $case_id ) {
+							if ( WP_DEBUG ) {
+								error_log( 'find_case_by_id: FALLBACK - Found numeric-looking seoSuffixUrl from API, actual case ID: ' . ( $case['id'] ?? 'N/A' ) );
+							}
+							return $case;
+						}
+					}
+				}
+			}
+		}
+
+		// Try direct case lookup by case number if it looks numeric
+		if ( $is_numeric_id ) {
+			if ( WP_DEBUG ) {
+				error_log( 'find_case_by_id: Trying direct case lookup by case number: ' . $case_id );
+			}
+			
+			// Clear any malformed cache entries for this case first
+			$malformed_cache_keys = [
+				'brag_book_gallery_transient_api_case_[0,"' . $case_id . '"]',
+				'brag_book_gallery_transient_api_case_["' . $case_id . '",null]',
+				'brag_book_gallery_transient_api_case_["' . $case_id . '",""]',
+			];
+			
+			foreach ( $malformed_cache_keys as $key ) {
+				if ( get_transient( $key ) !== false ) {
+					delete_transient( $key );
+					if ( WP_DEBUG ) {
+						error_log( 'find_case_by_id: Cleared malformed cache key: ' . $key );
+					}
+				}
+			}
+			
+			$endpoints = new Endpoints();
+			// Try without procedure IDs first, then with facelift procedure ID as fallback
+			$direct_case = $endpoints->get_case_by_number( $api_token, $website_property_id, $case_id );
+			
+			if ( empty( $direct_case ) && WP_DEBUG ) {
+				error_log( 'find_case_by_id: Direct lookup failed, trying with facelift procedure ID' );
+				// Facelift procedure ID is 7053 based on the debug logs
+				$direct_case = $endpoints->get_case_by_number( $api_token, $website_property_id, $case_id, [7053] );
+			}
+			
+			if ( ! empty( $direct_case ) && is_array( $direct_case ) ) {
+				if ( WP_DEBUG ) {
+					error_log( 'find_case_by_id: Found case via direct case lookup!' );
+				}
+				return $direct_case;
+			} elseif ( WP_DEBUG ) {
+				error_log( 'find_case_by_id: Direct case lookup failed for case: ' . $case_id );
 			}
 		}
 
 		// Try using Endpoints as last resort
-		$endpoints = new Endpoints();
+		$endpoints = isset( $endpoints ) ? $endpoints : new Endpoints();
 		$filter_body = [
 			'apiTokens' => [ $api_token ],
 			'websitePropertyIds' => [ $website_property_id ],
@@ -1482,18 +1637,15 @@ class Ajax_Handlers {
 
 			if ( ! empty( $response_data['data'] ) ) {
 				foreach ( $response_data['data'] as $case ) {
-					// First, try by numeric ID if the identifier is numeric
-					if ( $is_numeric_id ) {
-						if ( isset( $case['id'] ) && strval( $case['id'] ) === strval( $case_id ) ) {
-							if ( WP_DEBUG ) {
-								error_log( 'find_case_by_id: Found case by numeric ID in last resort' );
-							}
-							return $case;
+					// Method 1: Try by numeric ID if identifier looks numeric
+					if ( $is_numeric_id && isset( $case['id'] ) && strval( $case['id'] ) === strval( $case_id ) ) {
+						if ( WP_DEBUG ) {
+							error_log( 'find_case_by_id: Found case by numeric ID in last resort' );
 						}
+						return $case;
 					}
 
-					// Always also check by SEO suffix URL (even for numeric-looking identifiers)
-					// Check at root level first
+					// Method 2: Try by SEO suffix URL at root level (always check regardless of numeric appearance)
 					if ( isset( $case['seoSuffixUrl'] ) && $case['seoSuffixUrl'] === $case_id ) {
 						if ( WP_DEBUG ) {
 							error_log( 'find_case_by_id: Found case by SEO suffix at root level in last resort' );
@@ -1501,7 +1653,7 @@ class Ajax_Handlers {
 						return $case;
 					}
 
-					// Then check in caseDetails array
+					// Method 3: Try by SEO suffix URL in caseDetails array
 					if ( isset( $case['caseDetails'] ) && is_array( $case['caseDetails'] ) ) {
 						foreach ( $case['caseDetails'] as $detail ) {
 							if ( isset( $detail['seoSuffixUrl'] ) && $detail['seoSuffixUrl'] === $case_id ) {
@@ -1512,6 +1664,41 @@ class Ajax_Handlers {
 							}
 						}
 					}
+
+					// Method 4: FALLBACK - If identifier looks numeric but no numeric ID match
+					if ( $is_numeric_id && ! empty( $case['caseDetails'] ) && is_array( $case['caseDetails'] ) ) {
+						foreach ( $case['caseDetails'] as $detail ) {
+							if ( isset( $detail['seoSuffixUrl'] ) && $detail['seoSuffixUrl'] === $case_id ) {
+								if ( WP_DEBUG ) {
+									error_log( 'find_case_by_id: FALLBACK - Found numeric-looking seoSuffixUrl in last resort, actual case ID: ' . ( $case['id'] ?? 'N/A' ) );
+								}
+								return $case;
+							}
+						}
+					}
+				}
+			}
+		}
+
+		// Debug logging for case not found
+		if ( WP_DEBUG && WP_DEBUG_LOG ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			error_log( 'find_case_by_id: Case not found anywhere for identifier: ' . $case_id );
+			// Let's also check if any cases have seoSuffixUrl values that are similar
+			if ( $cached_data && isset( $cached_data['data'] ) && is_array( $cached_data['data'] ) ) {
+				$similar_cases = [];
+				foreach ( array_slice( $cached_data['data'], 0, 5 ) as $case ) { // Check first 5 cases
+					if ( isset( $case['caseDetails'] ) && is_array( $case['caseDetails'] ) ) {
+						foreach ( $case['caseDetails'] as $detail ) {
+							if ( isset( $detail['seoSuffixUrl'] ) ) {
+								$similar_cases[] = 'Case ID ' . ( $case['id'] ?? 'N/A' ) . ' has seoSuffixUrl: ' . $detail['seoSuffixUrl'];
+							}
+						}
+					}
+				}
+				if ( ! empty( $similar_cases ) ) {
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+					error_log( 'find_case_by_id: Sample seoSuffixUrls in cache: ' . implode( ', ', $similar_cases ) );
 				}
 			}
 		}
@@ -1645,7 +1832,7 @@ class Ajax_Handlers {
 
 				// Prepare AJAX data
 				const formData = new FormData();
-				formData.append("action", "brag_book_load_more_cases");
+				formData.append("action", "brag_book_gallery_load_more_cases");
 				formData.append("nonce", "' . wp_create_nonce( 'brag_book_gallery_nonce' ) . '");
 				formData.append("start_page", startPage);
 				formData.append("procedure_ids", procedureIds);
@@ -2266,6 +2453,32 @@ class Ajax_Handlers {
 		}
 
 		return false;
+	}
+
+	/**
+	 * AJAX handler for clearing legacy cache with old prefixes.
+	 *
+	 * @since 3.2.2
+	 * @return void
+	 */
+	public static function ajax_clear_legacy_cache(): void {
+		// Verify nonce
+		if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'brag_book_gallery_cache_management' ) ) {
+			wp_send_json_error( 'Security check failed' );
+		}
+
+		// Check user capability
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( 'Insufficient permissions' );
+		}
+
+		try {
+			$cache_manager = new \BRAGBookGallery\Includes\Admin\Debug_Tools\Cache_Management();
+			$result = $cache_manager->clear_legacy_transients();
+			wp_send_json_success( $result );
+		} catch ( Exception $e ) {
+			wp_send_json_error( $e->getMessage() );
+		}
 	}
 
 }

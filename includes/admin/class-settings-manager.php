@@ -112,6 +112,7 @@ class Settings_Manager {
 
 		// Register AJAX handler for cache clearing.
 		add_action( 'wp_ajax_brag_book_gallery_clear_all_cache', array( $this, 'handle_clear_all_cache' ) );
+		add_action( 'wp_ajax_brag_book_clear_legacy_cache', array( 'BRAGBookGallery\Includes\Extend\Ajax_Handlers', 'ajax_clear_legacy_cache' ) );
 	}
 
 	/**

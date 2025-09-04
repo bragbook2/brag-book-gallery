@@ -48,66 +48,53 @@ if ( ! defined( 'ABSPATH' ) ) {
  * - Real-time metrics tracking
  *
  * Transient Keys Used Throughout the Plugin:
+ * All transients use the standardized prefix: brag_book_gallery_transient_
  *
  * API/Data Transients:
- * - brag_book_gallery_sidebar_{hash}        : Sidebar data from API
- * - brag_book_gallery_cases_{hash}          : Cases data from API
- * - brag_book_gallery_all_cases_{hash}      : All cases data
- * - brag_book_gallery_filtered_cases_{hash} : Filtered cases data
- * - brag_book_gallery_carousel_{hash}       : Carousel data
- * - brag_book_gallery_carousel_case_{id}    : Individual carousel case
- * - brag_book_gallery_api_{hash}            : General API responses
- * - brag_book_gallery_procedure_{hash}      : Procedure data
- * - brag_book_gallery_case_seo_{suffix}     : SEO case data
- * - brag_book_gallery_combined_sidebar_{hash} : Combined sidebar data
+ * - brag_book_gallery_transient_sidebar_{hash}        : Sidebar data from API
+ * - brag_book_gallery_transient_cases_{hash}          : Cases data from API
+ * - brag_book_gallery_transient_all_cases_{hash}      : All cases data
+ * - brag_book_gallery_transient_carousel_{hash}       : Carousel data
+ * - brag_book_gallery_transient_carousel_case_{hash}  : Individual carousel case
+ * - brag_book_gallery_transient_api_{type}_{hash}     : General API responses
+ * - brag_book_gallery_transient_combined_sidebar_{hash} : Combined sidebar data for SEO
  *
  * Sync/Migration Transients:
- * - brag_book_gallery_sync_status           : Sync operation status
- * - brag_book_gallery_sync_progress         : Sync operation progress
- * - brag_book_gallery_sync_lock             : Sync operation lock
- * - brag_book_gallery_force_update_all      : Force update flag
- * - brag_book_gallery_force_update_cases    : Force update case list
- * - brag_book_gallery_migration_status      : Migration status
- * - brag_book_gallery_migration_{hash}      : Migration data cache
- * - brag_book_gallery_migration_rate_limit_{hash} : Migration rate limiting
+ * - brag_book_gallery_transient_sync_status           : Sync operation status
+ * - brag_book_gallery_transient_sync_progress         : Sync operation progress
+ * - brag_book_gallery_transient_sync_lock             : Sync operation lock
+ * - brag_book_gallery_transient_force_update_all      : Force update all flag
+ * - brag_book_gallery_transient_force_update_cases    : Force update specific cases
+ * - brag_book_gallery_transient_migration_status      : Migration status
+ * - brag_book_gallery_transient_migration_{hash}      : Migration data cache
+ * - brag_book_gallery_transient_migration_rate_limit_{hash} : Migration rate limiting
  *
- * Sitemap Transients:
- * - brag_book_gallery_sitemap_content       : Sitemap content cache
- * - brag_book_gallery_sitemap_last_modified : Sitemap modification time
+ * SEO/Sitemap Transients:
+ * - brag_book_gallery_transient_sitemap_content       : Sitemap content cache
+ * - brag_book_gallery_transient_sitemap_last_modified : Sitemap modification time
  *
  * Taxonomy Transients:
- * - brag_book_gallery_terms_{hash}          : Taxonomy terms cache
- * - brag_book_gallery_{taxonomy}_terms      : Specific taxonomy terms
- * - brag_book_gallery_{taxonomy}_hierarchy  : Taxonomy hierarchy
- * - brag_book_gallery_term_{id}             : Individual term data
+ * - brag_book_gallery_transient_{taxonomy}_terms      : Specific taxonomy terms
+ * - brag_book_gallery_transient_{taxonomy}_hierarchy  : Taxonomy hierarchy
+ * - brag_book_gallery_transient_term_{id}             : Individual term data
+ * - brag_book_gallery_transient_{cache_key}           : General taxonomy cache
  *
  * Rate Limiting Transients:
- * - brag_book_gallery_rate_limit_{hash}     : API rate limiting
- * - brag_book_gallery_seo_rate_limit_{hash} : SEO operation rate limiting
- * - brag_book_gallery_mode_rate_limit_{hash} : Mode operation rate limiting
+ * - brag_book_gallery_transient_rate_limit_{hash}     : API rate limiting
+ * - brag_book_gallery_transient_mode_rate_limit_{hash} : Mode operation rate limiting
  *
  * Mode Management Transients:
- * - brag_book_gallery_mode_{hash}           : Mode data cache
+ * - brag_book_gallery_transient_mode_{hash}           : Mode data cache
  *
  * Notice/UI Transients:
- * - brag_book_gallery_show_rewrite_notice   : Rewrite rules notice flag
- *
- * Image/Media Transients:
- * - brag_book_gallery_image_{hash}          : Image data cache
- * - brag_book_gallery_attachment_{hash}     : Attachment data cache
- *
- * Circuit Breaker/API Health:
- * - brag_book_gallery_circuit_{endpoint}    : Circuit breaker status
- * - brag_book_gallery_failures_{endpoint}   : API failure count
+ * - brag_book_gallery_transient_show_rewrite_notice   : Rewrite rules notice flag
  *
  * Consultation/Form Transients:
- * - brag_book_gallery_consultation_hourly_{ip} : Hourly submission limit
- * - brag_book_gallery_consultation_daily_{ip}  : Daily submission limit
+ * - brag_book_gallery_transient_consultation_hourly_{hash} : Hourly submission limit
+ * - brag_book_gallery_transient_consultation_daily_{hash}  : Daily submission limit
  *
- * System/Debug Transients:
- * - brag_book_gallery_debug_report          : Debug system report
- * - brag_book_gallery_last_flush            : Last rewrite rules flush
- * - brag_book_gallery_validation_{hash}     : Data validation cache
+ * Plugin Update Transients:
+ * - {plugin_slug}_github_update_check                 : GitHub update check cache
  *
  * Note: {hash} represents dynamic MD5 hashes based on parameters
  *       {id} represents numeric IDs
@@ -123,7 +110,7 @@ class Cache_Management {
 	 * @since 3.0.0
 	 * @var string
 	 */
-	private const CACHE_PREFIX = 'brag_book_gallery_';
+	private const CACHE_PREFIX = 'brag_book_gallery_transient_';
 
 	/**
 	 * Maximum size for inline data display (in bytes).
@@ -189,9 +176,13 @@ class Cache_Management {
 		$total_items = $cache_result['total'];
 		$total_pages = $cache_result['pages'];
 		$total_size = $this->calculate_total_size( $cached_items );
+
+		// Debug output
+		if ( WP_DEBUG ) {
+			error_log( 'Cache Management Debug - Total items: ' . $total_items . ', Items on page: ' . count( $cached_items ) );
+		}
 		?>
 		<div class="tool-section">
-			<h3><?php esc_html_e( 'Cache Management', 'brag-book-gallery' ); ?></h3>
 			<p><?php esc_html_e( 'View and manage all cached data for the BRAGBook Gallery plugin.', 'brag-book-gallery' ); ?></p>
 
 			<!-- Cache Statistics -->
@@ -220,9 +211,8 @@ class Cache_Management {
 					<svg xmlns="http://www.w3.org/2000/svg" height="20" viewBox="0 -960 960 960" width="20" fill="currentColor"><path d="m336-280 144-144 144 144 56-56-144-144 144-144-56-56-144 144-144-144-56 56 144 144-144 144 56 56ZM480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Z"/></svg>
 					<?php esc_html_e( 'Clear All Cache', 'brag-book-gallery' ); ?>
 				</button>
-				<button type="button" class="button button-primary" id="clear-gallery-cache" style="background: #0073aa;">
-					<svg xmlns="http://www.w3.org/2000/svg" height="20" viewBox="0 -960 960 960" width="20" fill="currentColor"><path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-480H200v480Zm40-80h480L570-480 450-320l-90-120-120 160Zm320-160q25 0 42.5-17.5T620-500q0-25-17.5-42.5T560-560q-25 0-42.5 17.5T500-500q0 25 17.5 42.5T560-440Z"/></svg>
-					<?php esc_html_e( 'Clear Gallery API Cache', 'brag-book-gallery' ); ?>
+				<button type="button" class="button button-secondary" id="cleanup-expired-transients" style="background: #8a6b3a; color: white;">
+					<?php esc_html_e( 'Cleanup Expired Transients', 'brag-book-gallery' ); ?>
 				</button>
 				<span id="cache-action-status"></span>
 			</div>
@@ -251,7 +241,9 @@ class Cache_Management {
 									</td>
 									<td class="key-column">
 										<div class="cache-key-wrapper">
-											<div class="cache-key-name"><?php echo esc_html( $this->format_cache_key( $item['key'] ) ); ?></div>
+											<div class="cache-key-name" title="Database key: _transient_<?php echo esc_attr( $item['key'] ); ?>">
+												<?php echo esc_html( $item['key'] ); ?>
+											</div>
 											<div class="cache-key-full"><?php echo esc_html( $item['key'] ); ?></div>
 										</div>
 									</td>
@@ -537,8 +529,8 @@ class Cache_Management {
 				this.disabled = true;
 
 				const response = await ajaxPost({
-					action: 'brag_book_debug_tool',
-					nonce: '<?php echo wp_create_nonce( 'brag_book_debug_tools' ); ?>',
+					action: 'brag_book_gallery_debug_tool',
+					nonce: '<?php echo wp_create_nonce( 'brag_book_gallery_debug_tools' ); ?>',
 					tool: 'cache-management',
 					tool_action: 'delete_items',
 					keys: selectedKeys
@@ -572,8 +564,8 @@ class Cache_Management {
 				this.disabled = true;
 
 				const response = await ajaxPost({
-					action: 'brag_book_debug_tool',
-					nonce: '<?php echo wp_create_nonce( 'brag_book_debug_tools' ); ?>',
+					action: 'brag_book_gallery_debug_tool',
+					nonce: '<?php echo wp_create_nonce( 'brag_book_gallery_debug_tools' ); ?>',
 					tool: 'cache-management',
 					tool_action: 'clear_all'
 				});
@@ -607,8 +599,8 @@ class Cache_Management {
 					}
 
 					const response = await ajaxPost({
-						action: 'brag_book_debug_tool',
-						nonce: '<?php echo wp_create_nonce( 'brag_book_debug_tools' ); ?>',
+						action: 'brag_book_gallery_debug_tool',
+						nonce: '<?php echo wp_create_nonce( 'brag_book_gallery_debug_tools' ); ?>',
 						tool: 'cache-management',
 						tool_action: 'delete_items',
 						keys: [key]
@@ -632,69 +624,14 @@ class Cache_Management {
 				});
 			});
 
-			// Clear Gallery Cache button (API cache specifically)
-			const clearGalleryCacheBtn = document.getElementById('clear-gallery-cache');
-			clearGalleryCacheBtn?.addEventListener('click', async function() {
-				const confirmed = await confirmDialog(
-					'<?php esc_html_e( 'Are you sure you want to clear the gallery API cache? This will force fresh data to be fetched from the API.', 'brag-book-gallery' ); ?>',
-					'<?php esc_html_e( 'Clear Gallery API Cache', 'brag-book-gallery' ); ?>'
-				);
-
-				if (!confirmed) {
-					return;
-				}
-
-				this.disabled = true;
-				this.textContent = '<?php esc_html_e( 'Clearing...', 'brag-book-gallery' ); ?>';
-
-				try {
-					const formData = new FormData();
-					formData.append('action', 'brag_book_gallery_clear_cache');
-					formData.append('nonce', '<?php echo wp_create_nonce( 'brag_book_gallery_clear_cache' ); ?>');
-
-					const response = await fetch(ajaxurl, {
-						method: 'POST',
-						body: formData
-					});
-
-					const data = await response.json();
-
-					if (data.success) {
-						this.textContent = '<?php esc_html_e( 'Cache Cleared ✓', 'brag-book-gallery' ); ?>';
-						updateStatus('<?php esc_html_e( 'Gallery cache cleared successfully!', 'brag-book-gallery' ); ?>', 'success');
-
-						// Refresh the cache list after a moment
-						setTimeout(() => {
-							this.textContent = '<?php esc_html_e( 'Clear Gallery Cache', 'brag-book-gallery' ); ?>';
-							this.disabled = false;
-							document.getElementById('refresh-cache-list')?.click();
-						}, 2000);
-					} else {
-						await alertDialog(
-							'<?php esc_html_e( 'Failed to clear gallery cache:', 'brag-book-gallery' ); ?> ' + (data.data || 'Unknown error'),
-							'<?php esc_html_e( 'Error', 'brag-book-gallery' ); ?>'
-						);
-						this.textContent = '<?php esc_html_e( 'Clear Gallery API Cache', 'brag-book-gallery' ); ?>';
-						this.disabled = false;
-					}
-				} catch (error) {
-					await alertDialog(
-						'<?php esc_html_e( 'Error clearing gallery cache:', 'brag-book-gallery' ); ?> ' + error,
-						'<?php esc_html_e( 'Error', 'brag-book-gallery' ); ?>'
-					);
-					this.textContent = '<?php esc_html_e( 'Clear Gallery API Cache', 'brag-book-gallery' ); ?>';
-					this.disabled = false;
-				}
-			});
-
 			// View cache data
 			document.querySelectorAll('.view-cache-data').forEach(viewBtn => {
 				viewBtn.addEventListener('click', async function() {
 					const key = this.dataset.key;
 
 					const response = await ajaxPost({
-						action: 'brag_book_debug_tool',
-						nonce: '<?php echo wp_create_nonce( 'brag_book_debug_tools' ); ?>',
+						action: 'brag_book_gallery_debug_tool',
+						nonce: '<?php echo wp_create_nonce( 'brag_book_gallery_debug_tools' ); ?>',
 						tool: 'cache-management',
 						tool_action: 'get_data',
 						key: key
@@ -703,7 +640,39 @@ class Cache_Management {
 					if (response.success) {
 						const contentElement = document.getElementById('cache-data-content');
 						if (contentElement) {
-							contentElement.textContent = JSON.stringify(response.data, null, 2);
+							// The response.data contains the actual cache data
+							let content = '';
+
+							// Convert the data to a readable string
+							if (typeof response.data === 'object' && response.data !== null) {
+								// If it's already an object, stringify it as JSON
+								try {
+									content = JSON.stringify(response.data, null, 2);
+									contentElement.classList.add('json-formatted');
+								} catch (e) {
+									content = String(response.data);
+									contentElement.classList.remove('json-formatted', 'serialized-data');
+								}
+							} else {
+								// For strings, try to parse as JSON first
+								content = String(response.data);
+								try {
+									const parsed = JSON.parse(content);
+									content = JSON.stringify(parsed, null, 2);
+									contentElement.classList.add('json-formatted');
+								} catch (e) {
+									// Check if it's a serialized PHP array or object
+									if (content.includes('a:') || content.includes('O:') || content.includes('s:')) {
+										// It's serialized data, keep as-is but add class for styling
+										contentElement.classList.add('serialized-data');
+									} else {
+										// Plain text or other format
+										contentElement.classList.remove('json-formatted', 'serialized-data');
+									}
+								}
+							}
+
+							contentElement.textContent = content;
 						}
 						const modal = document.getElementById('cache-data-modal');
 						if (modal) {
@@ -758,9 +727,57 @@ class Cache_Management {
 
 				setTimeout(() => fadeOut(statusElement), 3000);
 			};
+
+			// Cleanup expired transients
+			document.getElementById('cleanup-expired-transients')?.addEventListener('click', async function() {
+				const confirmed = await confirmDialog(
+					'<?php esc_html_e( 'Are you sure you want to cleanup expired transients? This will remove all expired cache entries from the database.', 'brag-book-gallery' ); ?>',
+					'<?php esc_html_e( 'Cleanup Expired Transients', 'brag-book-gallery' ); ?>'
+				);
+				if (!confirmed) {
+					return;
+				}
+
+				this.disabled = true;
+				const originalText = this.textContent;
+				this.textContent = '<?php esc_html_e( 'Cleaning up...', 'brag-book-gallery' ); ?>';
+
+				try {
+					const response = await ajaxPost({
+						action: 'brag_book_gallery_debug_tool',
+						nonce: '<?php echo wp_create_nonce( 'brag_book_gallery_debug_tools' ); ?>',
+						tool: 'cache-management',
+						tool_action: 'cleanup_expired'
+					});
+
+					if (response.success) {
+						await alertDialog(
+							response.data || '<?php esc_html_e( 'Expired transients cleaned up successfully.', 'brag-book-gallery' ); ?>',
+							'<?php esc_html_e( 'Success', 'brag-book-gallery' ); ?>'
+						);
+						showStatus('<?php esc_html_e( 'Cleanup completed successfully', 'brag-book-gallery' ); ?>', 'success');
+						location.reload();
+					} else {
+						await alertDialog(
+							response.data || '<?php esc_html_e( 'Error cleaning up expired transients.', 'brag-book-gallery' ); ?>',
+							'<?php esc_html_e( 'Error', 'brag-book-gallery' ); ?>'
+						);
+						showStatus('<?php esc_html_e( 'Cleanup failed', 'brag-book-gallery' ); ?>', 'error');
+					}
+				} catch (error) {
+					await alertDialog(
+						'<?php esc_html_e( 'Error cleaning up expired transients:', 'brag-book-gallery' ); ?> ' + error,
+						'<?php esc_html_e( 'Error', 'brag-book-gallery' ); ?>'
+					);
+					showStatus('<?php esc_html_e( 'Cleanup failed', 'brag-book-gallery' ); ?>', 'error');
+				} finally {
+					this.textContent = originalText;
+					this.disabled = false;
+				}
+			});
 		});
 		</script>
-		
+
 		<style>
 		/* Clean Cache Table Styles */
 		.cache-table-wrapper {
@@ -1196,6 +1213,94 @@ class Cache_Management {
 				grid-template-columns: 1fr;
 			}
 		}
+
+		/* Cache Data Dialog Styles */
+		.cache-data-dialog {
+			width: 90vw;
+			height: 80vh;
+			max-width: 720px; /* Set max-width to 720px as requested */
+			border: 1px solid #d1d5db;
+			border-radius: 8px;
+			padding: 0;
+			box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+		}
+
+		.cache-data-dialog form {
+			display: flex;
+			flex-direction: column;
+			height: 100%;
+			margin: 0;
+		}
+
+		.cache-data-dialog h3 {
+			margin: 0 0 16px 0;
+			padding: 20px 20px 0 20px;
+			font-size: 18px;
+			font-weight: 600;
+			color: #1f2937;
+		}
+
+		.cache-data-dialog .modal-actions {
+			padding: 0 20px 16px 20px;
+			display: flex;
+			gap: 8px;
+			justify-content: flex-end;
+		}
+
+		.cache-data-dialog pre {
+			flex: 1;
+			background: #1e1e1e; /* Dark background for code editor feel */
+			color: #d4d4d4; /* Light text */
+			padding: 20px;
+			margin: 0 20px 20px 20px;
+			border: 1px solid #3e3e42;
+			border-radius: 6px;
+			overflow: auto;
+			white-space: pre-wrap;
+			word-wrap: break-word;
+			font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', 'Fira Mono', 'Droid Sans Mono', 'Consolas', monospace;
+			font-size: 13px;
+			line-height: 1.5;
+			tab-size: 2;
+		}
+
+		/* JSON syntax highlighting */
+		.cache-data-dialog pre.json-formatted {
+			background: #1e1e1e;
+			color: #d4d4d4;
+		}
+
+		/* Serialized data styling */
+		.cache-data-dialog pre.serialized-data {
+			background: #f8f8f2;
+			color: #272822;
+			border-color: #e6db74;
+		}
+
+		/* Scrollbar styling for the code area */
+		.cache-data-dialog pre::-webkit-scrollbar {
+			width: 8px;
+			height: 8px;
+		}
+
+		.cache-data-dialog pre::-webkit-scrollbar-track {
+			background: #2d2d30;
+		}
+
+		.cache-data-dialog pre::-webkit-scrollbar-thumb {
+			background: #424245;
+			border-radius: 4px;
+		}
+
+		.cache-data-dialog pre::-webkit-scrollbar-thumb:hover {
+			background: #4c4c50;
+		}
+
+		/* Dialog backdrop */
+		.cache-data-dialog::backdrop {
+			background: rgba(0, 0, 0, 0.5);
+			backdrop-filter: blur(4px);
+		}
 		</style>
 		<?php
 	}
@@ -1213,70 +1318,44 @@ class Cache_Management {
 		$start_time = microtime( true );
 
 		try {
-			global $wpdb;
+			// Parse arguments like transients-manager
+			$items_per_page = self::ITEMS_PER_PAGE;
+			$offset = ( $page - 1 ) * $items_per_page;
+
+			// Get transients using the same approach as transients-manager
+			$transients = $this->get_plugin_transients( [
+				'search' => $search,
+				'offset' => $offset,
+				'number' => $items_per_page
+			] );
 
 			$items = [];
 
-			// Get transients from database
-			$transients = $wpdb->get_results(
-				$wpdb->prepare(
-					"SELECT option_name, option_value
-					FROM {$wpdb->options}
-					WHERE option_name LIKE %s
-					OR option_name LIKE %s
-					ORDER BY option_name",
-					'_transient_' . self::CACHE_PREFIX . '%',
-					'_transient_timeout_' . self::CACHE_PREFIX . '%'
-				)
-			);
-
-			$transient_data = [];
-			$transient_timeouts = [];
-
 			foreach ( $transients as $transient ) {
-				if ( str_starts_with( $transient->option_name, '_transient_timeout_' ) ) {
-					$key = str_replace( '_transient_timeout_', '', $transient->option_name );
-					$transient_timeouts[ $key ] = $transient->option_value;
-				} else {
-					$key = str_replace( '_transient_', '', $transient->option_name );
-					$transient_data[ $key ] = $transient->option_value;
-				}
-			}
-
-			foreach ( $transient_data as $key => $value ) {
-				// Apply search filter
-				if ( ! empty( $search ) && stripos( $key, $search ) === false ) {
-					continue;
-				}
-
-				$item_type = $this->determine_cache_type( $key );
+				// Get the real transient name (like transients-manager does)
+				$transient_name = $this->get_transient_name( $transient );
 
 				// Apply type filter
+				$item_type = $this->determine_cache_type( $transient_name );
 				if ( ! empty( $type ) && $item_type !== $type ) {
 					continue;
 				}
 
-				$expiration_value = isset( $transient_timeouts[ $key ] ) ? (int) $transient_timeouts[ $key ] : null;
-				
+				// Get expiration time
+				$expiration_value = $this->get_transient_expiration_time( $transient );
+
 				$items[] = [
-					'key'        => $key,
+					'key'        => $transient_name,
 					'type'       => $item_type,
-					'size'       => strlen( $value ),
+					'size'       => strlen( $transient->option_value ),
 					'expiration' => $expiration_value,
 					'created'    => $this->estimate_creation_time( $expiration_value ),
 				];
 			}
 
-			// Sort by size (largest first)
-			usort( $items, fn( $a, $b ) => $b['size'] <=> $a['size'] );
-
-			// Calculate pagination
-			$total = count( $items );
-			$pages = (int) ceil( $total / self::ITEMS_PER_PAGE );
-			$offset = ( $page - 1 ) * self::ITEMS_PER_PAGE;
-
-			// Slice for current page
-			$items = array_slice( $items, $offset, self::ITEMS_PER_PAGE );
+			// Get total count for pagination
+			$total = $this->get_total_plugin_transients( $search );
+			$pages = (int) ceil( $total / $items_per_page );
 
 			$this->track_performance( 'get_cached_items', microtime( true ) - $start_time );
 
@@ -1305,14 +1384,160 @@ class Cache_Management {
 	 */
 	private function determine_cache_type( string $key ): string {
 		return match ( true ) {
-			str_contains( $key, 'sidebar' )  => __( 'Sidebar Data', 'brag-book-gallery' ),
-			str_contains( $key, 'cases' )    => __( 'Cases Data', 'brag-book-gallery' ),
-			str_contains( $key, 'carousel' ) => __( 'Carousel Data', 'brag-book-gallery' ),
-			str_contains( $key, 'api' )      => __( 'API Response', 'brag-book-gallery' ),
-			str_contains( $key, 'sync' )     => __( 'Sync Data', 'brag-book-gallery' ),
-			str_contains( $key, 'meta' )     => __( 'Metadata', 'brag-book-gallery' ),
-			default                          => __( 'General', 'brag-book-gallery' ),
+			// API and Data Transients
+			str_contains( $key, 'api' )              => __( 'API Response', 'brag-book-gallery' ),
+			str_contains( $key, 'sidebar' )          => __( 'Sidebar Data', 'brag-book-gallery' ),
+			str_contains( $key, 'cases' )            => __( 'Cases Data', 'brag-book-gallery' ),
+			str_contains( $key, 'carousel' )         => __( 'Carousel Data', 'brag-book-gallery' ),
+
+			// Sync and Migration
+			str_contains( $key, 'sync' )             => __( 'Sync Data', 'brag-book-gallery' ),
+			str_contains( $key, 'migration' )        => __( 'Migration Data', 'brag-book-gallery' ),
+			str_contains( $key, 'force_update' )     => __( 'Force Update', 'brag-book-gallery' ),
+
+			// Rate Limiting
+			str_contains( $key, 'rate_limit' )       => __( 'Rate Limiting', 'brag-book-gallery' ),
+
+			// SEO and Sitemaps
+			str_contains( $key, 'sitemap' )          => __( 'SEO Sitemap', 'brag-book-gallery' ),
+			str_contains( $key, 'combined_sidebar' ) => __( 'SEO Data', 'brag-book-gallery' ),
+
+			// Forms and Validation
+			str_contains( $key, 'consultation' )     => __( 'Consultation Form', 'brag-book-gallery' ),
+
+			// Taxonomy System
+			str_contains( $key, 'term' )             => __( 'Taxonomy Data', 'brag-book-gallery' ),
+			str_contains( $key, '_terms' )           => __( 'Taxonomy Terms', 'brag-book-gallery' ),
+			str_contains( $key, '_hierarchy' )       => __( 'Taxonomy Hierarchy', 'brag-book-gallery' ),
+
+			// Mode and System
+			str_contains( $key, 'mode' )             => __( 'Mode Data', 'brag-book-gallery' ),
+			str_contains( $key, 'rewrite_notice' )   => __( 'UI Notice', 'brag-book-gallery' ),
+
+			// Plugin Updates
+			str_contains( $key, 'github_update' )    => __( 'Plugin Update', 'brag-book-gallery' ),
+
+			// Metadata and General
+			str_contains( $key, 'meta' )             => __( 'Metadata', 'brag-book-gallery' ),
+			default                                  => __( 'General', 'brag-book-gallery' ),
 		};
+	}
+
+	/**
+	 * Get plugin transients from the database (like transients-manager)
+	 *
+	 * @since 3.0.0
+	 * @param array $args Query arguments.
+	 * @return array|int Returns array of transients or count as int when count=true
+	 */
+	private function get_plugin_transients( $args = [] ) {
+		global $wpdb;
+
+		// Parse arguments
+		$r = wp_parse_args( $args, [
+			'offset' => 0,
+			'number' => 30,
+			'search' => '',
+			'count'  => false
+		] );
+
+		// Escape LIKE parts for plugin transients only
+		$plugin_prefix = '%' . $wpdb->esc_like( '_transient_' . self::CACHE_PREFIX ) . '%';
+		$timeout_prefix = '%' . $wpdb->esc_like( '_transient_timeout_' . self::CACHE_PREFIX ) . '%';
+
+		// SELECT
+		$sql = [ 'SELECT' ];
+
+		// COUNT or data
+		if ( ! empty( $r['count'] ) ) {
+			$sql[] = 'count(option_id)';
+		} else {
+			$sql[] = '*';
+		}
+
+		// FROM with plugin-specific filtering
+		$sql[] = "FROM {$wpdb->options} WHERE option_name LIKE %s AND option_name NOT LIKE %s";
+
+		// Search within plugin transients
+		if ( ! empty( $r['search'] ) ) {
+			$search = '%' . $wpdb->esc_like( $r['search'] ) . '%';
+			$sql[] = $wpdb->prepare( "AND option_name LIKE %s", $search );
+		}
+
+		// Limits and ordering
+		if ( empty( $r['count'] ) ) {
+			$offset = absint( $r['offset'] );
+			$number = absint( $r['number'] );
+			$sql[] = $wpdb->prepare( "ORDER BY option_id DESC LIMIT %d, %d", $offset, $number );
+		}
+
+		// Combine SQL parts
+		$query = implode( ' ', $sql );
+
+		// Prepare with plugin prefix and timeout exclusion
+		$prepared = $wpdb->prepare( $query, $plugin_prefix, $timeout_prefix );
+
+		// Execute query
+		if ( empty( $r['count'] ) ) {
+			$transients = $wpdb->get_results( $prepared );
+
+			// Debug output
+			if ( WP_DEBUG ) {
+				error_log( 'Cache Management Debug - Query: ' . $prepared );
+				error_log( 'Cache Management Debug - Found transients: ' . count( $transients ?: [] ) );
+			}
+
+			return $transients ?: [];
+		} else {
+			$count = $wpdb->get_var( $prepared );
+			return (int) ( $count ?: 0 );
+		}
+	}
+
+	/**
+	 * Get total count of plugin transients
+	 *
+	 * @since 3.0.0
+	 * @param string $search Search term.
+	 * @return int
+	 */
+	private function get_total_plugin_transients( string $search = '' ): int {
+		$count = $this->get_plugin_transients( [
+			'count'  => true,
+			'search' => $search
+		] );
+
+		return absint( $count );
+	}
+
+	/**
+	 * Get transient name from transient object (like transients-manager)
+	 *
+	 * @since 3.0.0
+	 * @param object $transient Database transient object.
+	 * @return string
+	 */
+	private function get_transient_name( $transient ): string {
+		if ( empty( $transient->option_name ) ) {
+			return '';
+		}
+
+		// Remove _transient_ prefix (position 11)
+		return substr( $transient->option_name, 11 );
+	}
+
+	/**
+	 * Get transient expiration time (like transients-manager)
+	 *
+	 * @since 3.0.0
+	 * @param object $transient Database transient object.
+	 * @return int|null
+	 */
+	private function get_transient_expiration_time( $transient ): ?int {
+		$name = $this->get_transient_name( $transient );
+		$time = get_option( "_transient_timeout_{$name}" );
+
+		return $time ? (int) $time : null;
 	}
 
 	/**
@@ -1423,12 +1648,13 @@ class Cache_Management {
 			}
 
 			$result = match ( $action ) {
-				'get_data'     => $this->get_cache_data( $data['key'] ?? '' ),
-				'delete_items' => $this->delete_cache_items( $data['keys'] ?? [] ),
-				'clear_all'    => $this->clear_all_cache(),
-				'export'       => $this->export_cache_data(),
-				'get_stats'    => $this->get_cache_statistics(),
-				default        => throw new Exception( 'Invalid action: ' . $action ),
+				'get_data'         => $this->get_cache_data( $data['key'] ?? '' ),
+				'delete_items'     => $this->delete_cache_items( $data['keys'] ?? [] ),
+				'clear_all'        => $this->clear_all_cache(),
+				'export'           => $this->export_cache_data(),
+				'get_stats'        => $this->get_cache_statistics(),
+				'cleanup_expired'  => $this->cleanup_expired_transients(),
+				default            => throw new Exception( 'Invalid action: ' . $action ),
 			};
 
 			$this->track_performance( 'execute_' . $action, microtime( true ) - $start_time );
@@ -1579,6 +1805,128 @@ class Cache_Management {
 		} catch ( Exception $e ) {
 			$this->log_error( 'clear_all_cache', $e->getMessage() );
 			throw new Exception( __( 'Failed to clear cache', 'brag-book-gallery' ) );
+		}
+	}
+
+	/**
+	 * Cleanup expired transients manually.
+	 *
+	 * Triggers the scheduled transient cleanup immediately.
+	 * This is the same cleanup that runs automatically via cron.
+	 *
+	 * @since 3.2.0
+	 * @return string Result message
+	 * @throws Exception If cleanup fails
+	 */
+	private function cleanup_expired_transients(): string {
+		$start_time = microtime( true );
+
+		try {
+			// Get Setup instance and run cleanup
+			$setup = \BRAGBookGallery\Includes\Core\Setup::get_instance();
+
+			if ( method_exists( $setup, 'cleanup_expired_transients' ) ) {
+				$setup->cleanup_expired_transients();
+			} else {
+				throw new Exception( __( 'Cleanup method not available', 'brag-book-gallery' ) );
+			}
+
+			$this->track_performance( 'cleanup_expired_transients', microtime( true ) - $start_time );
+
+			/**
+			 * Fires after expired transients cleanup is manually triggered.
+			 *
+			 * @since 3.2.0
+			 */
+			do_action( 'brag_book_gallery_manual_transients_cleanup' );
+
+			return __( 'Successfully cleaned up expired transients from the database.', 'brag-book-gallery' );
+
+		} catch ( Exception $e ) {
+			$this->log_error( 'cleanup_expired_transients', $e->getMessage() );
+			throw new Exception( __( 'Failed to cleanup expired transients: ', 'brag-book-gallery' ) . $e->getMessage() );
+		}
+	}
+
+	/**
+	 * Clean up legacy transients with old prefixes
+	 *
+	 * Removes transients that were created before the prefix standardization.
+	 * This method looks for transients using old naming patterns and removes them.
+	 *
+	 * @since 3.2.2
+	 * @return string Result message
+	 * @throws Exception If cleanup fails
+	 */
+	public function clear_legacy_transients(): string {
+		$start_time = microtime( true );
+
+		try {
+			global $wpdb;
+
+			// Old prefixes that were used before standardization
+			$old_prefixes = [
+				'_transient_brag_book_sidebar_%',
+				'_transient_brag_book_cases_%',
+				'_transient_brag_book_carousel_%',
+				'_transient_brag_book_gallery_sidebar_%',
+				'_transient_brag_book_gallery_cases_%',
+				'_transient_brag_book_gallery_carousel_%',
+				'_transient_brag_book_gallery_api_%',
+				'_transient_brag_book_gallery_sync_%',
+				'_transient_brag_book_carousel_case_%',
+				'_transient_consultation_%',
+				// Add timeout patterns
+				'_transient_timeout_brag_book_sidebar_%',
+				'_transient_timeout_brag_book_cases_%',
+				'_transient_timeout_brag_book_carousel_%',
+				'_transient_timeout_brag_book_gallery_sidebar_%',
+				'_transient_timeout_brag_book_gallery_cases_%',
+				'_transient_timeout_brag_book_gallery_carousel_%',
+				'_transient_timeout_brag_book_gallery_api_%',
+				'_transient_timeout_brag_book_gallery_sync_%',
+				'_transient_timeout_brag_book_carousel_case_%',
+				'_transient_timeout_consultation_%',
+			];
+
+			$total_deleted = 0;
+
+			foreach ( $old_prefixes as $prefix ) {
+				$deleted = $wpdb->query(
+					$wpdb->prepare(
+						"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",
+						$prefix
+					)
+				);
+
+				if ( $deleted !== false ) {
+					$total_deleted += $deleted;
+				}
+			}
+
+			// Clear object cache
+			if ( function_exists( 'wp_cache_flush' ) ) {
+				wp_cache_flush();
+			}
+
+			/**
+			 * Fires after legacy cache is cleared.
+			 *
+			 * @since 3.2.2
+			 * @param int $total_deleted Number of items deleted.
+			 */
+			do_action( 'brag_book_gallery_legacy_cache_cleared', $total_deleted );
+
+			$this->track_performance( 'clear_legacy_transients', microtime( true ) - $start_time );
+
+			return sprintf(
+				__( 'Successfully cleared legacy cache. %d items removed.', 'brag-book-gallery' ),
+				$total_deleted
+			);
+
+		} catch ( Exception $e ) {
+			$this->log_error( 'clear_legacy_transients', $e->getMessage() );
+			throw new Exception( __( 'Failed to clear legacy cache', 'brag-book-gallery' ) );
 		}
 	}
 

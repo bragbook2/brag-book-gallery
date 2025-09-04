@@ -187,12 +187,12 @@ final class URL_Router {
 
 		// Determine mode and apply appropriate rules
 		$is_javascript_mode = $this->mode_manager->is_javascript_mode();
-		
+
 		if ( $is_javascript_mode ) {
 			// JavaScript mode rules delegated to avoid conflicts
 			return;
 		}
-		
+
 		$this->add_local_mode_rules();
 	}
 
@@ -214,7 +214,7 @@ final class URL_Router {
 	 */
 	private function add_javascript_mode_rules(): void {
 		$gallery_base = $this->get_gallery_base();
-		
+
 		if ( empty( $gallery_base ) ) {
 			return;
 		}
@@ -225,42 +225,42 @@ final class URL_Router {
 		// Main gallery index
 		add_rewrite_rule(
 			"^{$escaped_base}/?$",
-			'index.php?brag_gallery_view=index',
+			'index.php?brag_book_gallery_view=index',
 			'top'
 		);
 
 		// Category/Procedure view with sanitized slug
 		add_rewrite_rule(
 			"^{$escaped_base}/([^/]+)/?$",
-			'index.php?brag_gallery_view=category&brag_gallery_slug=$matches[1]',
+			'index.php?brag_book_gallery_view=category&brag_gallery_slug=$matches[1]',
 			'top'
 		);
 
 		// Individual case with category context
 		add_rewrite_rule(
 			"^{$escaped_base}/([^/]+)/([^/]+)/?$",
-			'index.php?brag_gallery_view=single&brag_gallery_category=$matches[1]&brag_gallery_case=$matches[2]',
+			'index.php?brag_book_gallery_view=single&brag_gallery_category=$matches[1]&brag_book_gallery_cae=$matches[2]',
 			'top'
 		);
 
 		// Search functionality
 		add_rewrite_rule(
 			"^{$escaped_base}/search/([^/]+)/?$",
-			'index.php?brag_gallery_view=search&brag_gallery_search=$matches[1]',
+			'index.php?brag_book_gallery_view=search&brag_gallery_search=$matches[1]',
 			'top'
 		);
 
 		// Pagination for index
 		add_rewrite_rule(
 			"^{$escaped_base}/page/([0-9]+)/?$",
-			'index.php?brag_gallery_view=index&brag_gallery_page=$matches[1]',
+			'index.php?brag_book_gallery_view=index&brag_gallery_page=$matches[1]',
 			'top'
 		);
 
 		// Pagination for categories
 		add_rewrite_rule(
 			"^{$escaped_base}/([^/]+)/page/([0-9]+)/?$",
-			'index.php?brag_gallery_view=category&brag_gallery_slug=$matches[1]&brag_gallery_page=$matches[2]',
+			'index.php?brag_book_gallery_view=category&brag_gallery_slug=$matches[1]&brag_gallery_page=$matches[2]',
 			'top'
 		);
 	}
@@ -326,10 +326,10 @@ final class URL_Router {
 	 * and request handling. Essential for virtual URL support.
 	 *
 	 * Registered Variables:
-	 * - brag_gallery_view: View type (index, category, single, search)
+	 * - brag_book_gallery_view: View type (index, category, single, search)
 	 * - brag_gallery_slug: Category or procedure slug
 	 * - brag_gallery_category: Category context for cases
-	 * - brag_gallery_case: Individual case identifier
+	 * - brag_book_gallery_cae: Individual case identifier
 	 * - brag_gallery_search: Search term
 	 * - brag_gallery_page: Pagination number
 	 * - brag_gallery_filter: Additional filters
@@ -340,10 +340,10 @@ final class URL_Router {
 	 */
 	public function add_query_vars( array $vars ): array {
 		$gallery_vars = [
-			'brag_gallery_view',
+			'brag_book_gallery_view',
 			'brag_gallery_slug',
 			'brag_gallery_category',
-			'brag_gallery_case',
+			'brag_book_gallery_cae',
 			'brag_gallery_search',
 			'brag_gallery_page',
 			'brag_gallery_filter',
@@ -396,11 +396,11 @@ final class URL_Router {
 	 * @return void
 	 */
 	private function parse_javascript_mode_request( \WP $wp ): void {
-		if ( ! isset( $wp->query_vars['brag_gallery_view'] ) ) {
+		if ( ! isset( $wp->query_vars['brag_book_gallery_view'] ) ) {
 			return;
 		}
 
-		$view = sanitize_text_field( $wp->query_vars['brag_gallery_view'] );
+		$view = sanitize_text_field( $wp->query_vars['brag_book_gallery_view'] );
 
 		// Route to appropriate handler using PHP 8.2 match
 		match ( $view ) {
@@ -424,12 +424,12 @@ final class URL_Router {
 	 */
 	private function handle_gallery_index( \WP $wp ): void {
 		$wp->query_vars['is_gallery_index'] = true;
-		
+
 		// Sanitize and validate pagination
-		$page = isset( $wp->query_vars['brag_gallery_page'] ) 
-			? absint( $wp->query_vars['brag_gallery_page'] ) 
+		$page = isset( $wp->query_vars['brag_gallery_page'] )
+			? absint( $wp->query_vars['brag_gallery_page'] )
 			: 1;
-		
+
 		$wp->query_vars['gallery_page'] = max( 1, $page );
 	}
 
@@ -451,12 +451,12 @@ final class URL_Router {
 		if ( ! empty( $slug ) ) {
 			$wp->query_vars['is_gallery_category'] = true;
 			$wp->query_vars['gallery_category_slug'] = $slug;
-			
+
 			// Validate pagination
 			$page = isset( $wp->query_vars['brag_gallery_page'] )
 				? absint( $wp->query_vars['brag_gallery_page'] )
 				: 1;
-			
+
 			$wp->query_vars['gallery_page'] = max( 1, $page );
 		}
 	}
@@ -475,9 +475,9 @@ final class URL_Router {
 		$category = isset( $wp->query_vars['brag_gallery_category'] )
 			? sanitize_title( $wp->query_vars['brag_gallery_category'] )
 			: '';
-		
-		$case = isset( $wp->query_vars['brag_gallery_case'] )
-			? sanitize_title( $wp->query_vars['brag_gallery_case'] )
+
+		$case = isset( $wp->query_vars['brag_book_gallery_cae'] )
+			? sanitize_title( $wp->query_vars['brag_book_gallery_cae'] )
 			: '';
 
 		if ( ! empty( $category ) && ! empty( $case ) ) {
@@ -745,7 +745,7 @@ final class URL_Router {
 				Gallery_Taxonomies::PROCEDURE_TAXONOMY => 'procedure',
 				default => 'category',
 			};
-			
+
 			return $this->generate_url( $term->term_id, $type, 'javascript' );
 		}
 
@@ -774,7 +774,7 @@ final class URL_Router {
 		// Get and sanitize request URI
 		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Used for comparison only
 		$request_uri = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : '';
-		
+
 		if ( empty( $request_uri ) ) {
 			return;
 		}
@@ -1000,7 +1000,7 @@ final class URL_Router {
 
 		// Try primary option
 		$base = get_option( 'brag_book_gallery_page_slug', '' );
-		
+
 		// Fall back to secondary option or default
 		if ( empty( $base ) ) {
 			$base = get_option( 'brag_book_gallery_base_slug', 'gallery' );
@@ -1008,7 +1008,7 @@ final class URL_Router {
 
 		// Sanitize and cache
 		$this->gallery_base_cache = sanitize_title( trim( (string) $base, '/' ) ) ?: 'gallery';
-		
+
 		return $this->gallery_base_cache;
 	}
 
@@ -1047,7 +1047,7 @@ final class URL_Router {
 
 		// Detect gallery context using match expression
 		$queried_object = get_queried_object();
-		
+
 		return match ( true ) {
 			is_singular( Gallery_Post_Type::POST_TYPE ) && $queried_object instanceof \WP_Post => array_merge( $info, [
 				'is_gallery_request' => true,
@@ -1071,9 +1071,9 @@ final class URL_Router {
 				'object_id'          => $queried_object->term_id,
 				'object'             => $queried_object,
 			] ),
-			isset( $wp_query->query_vars['brag_gallery_view'] ) => array_merge( $info, [
+			isset( $wp_query->query_vars['brag_book_gallery_view'] ) => array_merge( $info, [
 				'is_gallery_request' => true,
-				'type'               => sanitize_text_field( $wp_query->query_vars['brag_gallery_view'] ),
+				'type'               => sanitize_text_field( $wp_query->query_vars['brag_book_gallery_view'] ),
 			] ),
 			default => $info,
 		};
@@ -1150,11 +1150,11 @@ final class URL_Router {
 		// Add primary category if available
 		if ( class_exists( Gallery_Taxonomies::class ) ) {
 			$categories = get_the_terms( $post->ID, Gallery_Taxonomies::CATEGORY_TAXONOMY );
-			
+
 			if ( is_array( $categories ) && ! empty( $categories[0] ) && $categories[0] instanceof \WP_Term ) {
 				$category = $categories[0];
 				$mode = $this->mode_manager?->get_current_mode() ?? 'local';
-				
+
 				$breadcrumbs[] = [
 					'title'   => esc_html( $category->name ),
 					'url'     => $this->generate_category_url( $category->term_id, $mode ),
@@ -1246,7 +1246,7 @@ final class URL_Router {
 	 */
 	private function add_procedure_breadcrumbs( array &$breadcrumbs, \WP_Term $term ): void {
 		$mode = $this->mode_manager?->get_current_mode() ?? 'local';
-		
+
 		// Add current procedure
 		$breadcrumbs[] = [
 			'title'   => esc_html( $term->name ),
@@ -1267,7 +1267,7 @@ final class URL_Router {
 	public function flush_rewrite_rules(): void {
 		// Clear gallery base cache
 		$this->gallery_base_cache = null;
-		
+
 		// Soft flush for performance
 		flush_rewrite_rules( false );
 	}
@@ -1316,7 +1316,7 @@ final class URL_Router {
 	public function generate_search_url( string $search_term ): string {
 		// Sanitize and encode search term
 		$search_term = sanitize_text_field( $search_term );
-		
+
 		if ( empty( $search_term ) ) {
 			return $this->get_gallery_index_url();
 		}
@@ -1324,12 +1324,12 @@ final class URL_Router {
 		// Generate mode-specific search URL
 		if ( $this->mode_manager && $this->mode_manager->is_local_mode() ) {
 			if ( class_exists( Gallery_Post_Type::class ) ) {
-				return add_query_arg( 
+				return add_query_arg(
 					[
 						'post_type' => Gallery_Post_Type::POST_TYPE,
 						's'         => $search_term,
-					], 
-					home_url( '/' ) 
+					],
+					home_url( '/' )
 				);
 			}
 		}
@@ -1337,7 +1337,7 @@ final class URL_Router {
 		// JavaScript mode or fallback
 		$gallery_base = $this->get_gallery_base();
 		$encoded_term = urlencode( $search_term );
-		
+
 		return home_url( "/{$gallery_base}/search/{$encoded_term}/" );
 	}
 }

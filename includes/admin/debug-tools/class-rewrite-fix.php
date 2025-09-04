@@ -64,7 +64,7 @@ final class Rewrite_Fix {
 	 * @since 3.0.0
 	 * @var string
 	 */
-	private const CACHE_PREFIX = 'brag_book_rewrite_fix_';
+	private const CACHE_PREFIX = 'brag_book_gallery_transient_rewrite_fix_';
 
 	/**
 	 * Cache duration in seconds (1 hour).
@@ -255,7 +255,7 @@ final class Rewrite_Fix {
 				);
 			}
 			?>
-			<div class="rewrite-fix-tool" data-nonce="<?php echo esc_attr( wp_create_nonce( 'brag_book_debug_tools' ) ); ?>">
+			<div class="rewrite-fix-tool" data-nonce="<?php echo esc_attr( wp_create_nonce( 'brag_book_gallery_debug_tools' ) ); ?>">
 				<h2><?php esc_html_e( 'Live Site Rewrite Rules Fix', 'brag-book-gallery' ); ?></h2>
 
 				<div class="tool-section">
@@ -772,7 +772,7 @@ final class Rewrite_Fix {
 			}
 
 			// Check if we have cached sidebar data
-			$cache_key = 'brag_book_gallery_sidebar_data_' . md5( $api_token . $website_property_id );
+			$cache_key = 'brag_book_gallery_transient_sidebar_data_' . $api_token . $website_property_id;
 			$sidebar_data = get_transient( $cache_key );
 
 			if ( false === $sidebar_data ) {
@@ -844,7 +844,7 @@ final class Rewrite_Fix {
 	private function get_real_case_id( string $api_token, string $website_property_id, ?int $procedure_id = null ): ?string {
 		try {
 			// Check if we have cached cases data
-			$cache_key = 'brag_book_gallery_cases_sample_' . md5( $api_token . $website_property_id . ( $procedure_id ?? 'all' ) );
+			$cache_key = 'brag_book_gallery_transient_cases_sample_' . $api_token . $website_property_id . ( $procedure_id ?? 'all' );
 			$cached_case_id = get_transient( $cache_key );
 
 			if ( false !== $cached_case_id ) {

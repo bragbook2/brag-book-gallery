@@ -673,7 +673,7 @@ class Rewrite_Rules_Handler {
 		}
 
 		// Check display condition via transient
-		if ( ! get_transient( 'brag_book_gallery_show_rewrite_notice' ) ) {
+		if ( ! get_transient( 'brag_book_gallery_transient_show_rewrite_notice' ) ) {
 			return;
 		}
 
@@ -820,7 +820,7 @@ class Rewrite_Rules_Handler {
 			flush_rewrite_rules();
 
 			// Clear related transients
-			delete_transient( 'brag_book_gallery_show_rewrite_notice' );
+			delete_transient( 'brag_book_gallery_transient_show_rewrite_notice' );
 
 			// Clear object cache for gallery pages
 			wp_cache_delete( self::CACHE_KEY_GALLERY_PAGES, self::CACHE_GROUP );

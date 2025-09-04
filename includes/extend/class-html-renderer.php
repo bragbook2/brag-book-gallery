@@ -1032,7 +1032,7 @@ final class HTML_Renderer {
 	 * @return string Complete slide HTML.
 	 */
 	private static function render_carousel_slide( array $photo_data, array $case_data, array $slide_data, string $case_url, bool $is_standalone = false ): string {
-		$slide_wrapper = self::render_slide_wrapper( $slide_data );
+		$slide_wrapper = self::render_slide_wrapper( $slide_data, $case_data );
 		$link_open = ! empty( $case_url ) ? self::render_link_open( $case_url, $photo_data['alt_text'] ) : '';
 		$link_close = ! empty( $case_url ) ? '</a>' : '';
 		$nudity_warning = $photo_data['has_nudity'] ? self::render_nudity_warning() : '';
@@ -1063,10 +1063,30 @@ final class HTML_Renderer {
 	 *
 	 * @return string Wrapper HTML.
 	 */
-	private static function render_slide_wrapper( array $slide_data ): string {
+	private static function render_slide_wrapper( array $slide_data, array $case_data = [] ): string {
+		$data_attributes = sprintf(
+			'data-slide="%s"',
+			esc_attr( $slide_data['id'] )
+		);
+		
+		// Add case debugging data attributes
+		if ( ! empty( $case_data ) ) {
+			$data_attributes .= sprintf(
+				' data-case-id="%s"',
+				esc_attr( $case_data['id'] ?? '' )
+			);
+			
+			if ( ! empty( $case_data['seo_suffix'] ) ) {
+				$data_attributes .= sprintf(
+					' data-seo-suffix="%s"',
+					esc_attr( $case_data['seo_suffix'] )
+				);
+			}
+		}
+		
 		return sprintf(
-			'<div class="brag-book-gallery-carousel-item" data-slide="%s" role="group" aria-roledescription="slide" aria-label="%s">',
-			esc_attr( $slide_data['id'] ),
+			'<div class="brag-book-gallery-carousel-item" %s role="group" aria-roledescription="slide" aria-label="%s">',
+			$data_attributes,
 			esc_attr( $slide_data['aria_label'] )
 		);
 	}

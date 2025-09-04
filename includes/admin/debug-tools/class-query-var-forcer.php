@@ -43,7 +43,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * Core Responsibilities:
  * - 404 error interception and recovery
- * - Query variable injection and modification  
+ * - Query variable injection and modification
  * - URL pattern recognition and parsing
  * - Debug information logging
  * - Performance optimization through caching
@@ -92,21 +92,21 @@ class Query_Var_Forcer {
 		try {
 			// Set debug mode based on environment
 			self::$debug_mode = defined( 'WP_DEBUG' ) && WP_DEBUG;
-			
+
 			// Hook early to catch 404s with priority
 			add_action( 'template_redirect', [ __CLASS__, 'force_gallery_query_vars' ], 1 );
 			add_filter( 'request', [ __CLASS__, 'modify_request_vars' ], 1 );
 			add_action( 'parse_request', [ __CLASS__, 'debug_parse_request' ], 1 );
-			
+
 			// Additional hooks for comprehensive coverage
 			add_filter( 'query_vars', [ __CLASS__, 'register_custom_query_vars' ] );
 			add_action( 'pre_get_posts', [ __CLASS__, 'modify_main_query' ], 5 );
-			
+
 			// Clear cache on relevant actions
 			add_action( 'save_post_page', [ __CLASS__, 'clear_cache' ] );
 			add_action( 'update_option_brag_book_gallery_page_id', [ __CLASS__, 'clear_cache' ] );
 			add_action( 'update_option_brag_book_gallery_page_slug', [ __CLASS__, 'clear_cache' ] );
-			
+
 		} catch ( Exception $e ) {
 			self::log_error( 'Initialization failed', $e->getMessage() );
 		}
@@ -137,7 +137,7 @@ class Query_Var_Forcer {
 			}
 
 			// Check cache first
-			$cache_key = 'forced_vars_' . md5( $request_uri );
+			$cache_key = 'brag_book-gallery_transient_forced_vars_' . $request_uri;
 			if ( isset( self::$cache[ $cache_key ] ) ) {
 				self::apply_forced_query_vars( $wp_query, self::$cache[ $cache_key ] );
 				return;
@@ -196,7 +196,7 @@ class Query_Var_Forcer {
 			if ( current_user_can( 'manage_options' ) && self::$debug_mode ) {
 				self::add_admin_debug_notice( $forced_data );
 			}
-			
+
 		} catch ( Exception $e ) {
 			self::log_error( 'Failed to force gallery query vars', $e->getMessage() );
 		}
@@ -221,14 +221,14 @@ class Query_Var_Forcer {
 			}
 
 			// Check cache
-			$cache_key = 'modified_vars_' . md5( $request_path );
+			$cache_key = 'brag_book_gallery_transient_modified_vars_' . $request_path;
 			$cached = wp_cache_get( $cache_key, self::CACHE_GROUP );
 			if ( false !== $cached ) {
 				return array_merge( $query_vars, $cached );
 			}
 
 			$path_parts = explode( '/', $request_path );
-			
+
 			// Get gallery slugs with caching
 			$gallery_slugs = wp_cache_get( 'all_slugs', self::CACHE_GROUP );
 			if ( false === $gallery_slugs ) {
@@ -251,13 +251,13 @@ class Query_Var_Forcer {
 
 				// Add custom query vars
 				$custom_vars = self::extract_query_vars( $path_parts );
-				
+
 				// Cache the custom vars
 				wp_cache_set( $cache_key, $custom_vars, self::CACHE_GROUP, self::CACHE_TTL );
 
 				// Merge custom vars into query vars
 				$query_vars = array_merge( $query_vars, $custom_vars );
-				
+
 				self::log_debug( 'Modified request vars', [
 					'path' => $request_path,
 					'custom_vars' => $custom_vars,
@@ -265,7 +265,7 @@ class Query_Var_Forcer {
 			}
 
 			return $query_vars;
-			
+
 		} catch ( Exception $e ) {
 			self::log_error( 'Failed to modify request vars', $e->getMessage() );
 			return $query_vars;
@@ -294,7 +294,7 @@ class Query_Var_Forcer {
 			}
 
 			$path_parts = explode( '/', $request_uri );
-			
+
 			// Get gallery slugs with caching
 			$gallery_slugs = wp_cache_get( 'all_slugs', self::CACHE_GROUP );
 			if ( false === $gallery_slugs ) {
@@ -312,7 +312,7 @@ class Query_Var_Forcer {
 					'gallery_slugs' => $gallery_slugs,
 				] );
 			}
-			
+
 		} catch ( Exception $e ) {
 			self::log_error( 'Debug parse request failed', $e->getMessage() );
 		}
@@ -333,7 +333,7 @@ class Query_Var_Forcer {
 			'favorites_page',
 			'gallery_page',
 		];
-		
+
 		return array_merge( $vars, $custom_vars );
 	}
 
@@ -348,14 +348,14 @@ class Query_Var_Forcer {
 		if ( ! $query->is_main_query() || is_admin() ) {
 			return;
 		}
-		
+
 		try {
 			// Check if this is a gallery page query
 			$page_id = $query->get( 'page_id' );
 			if ( ! $page_id ) {
 				return;
 			}
-			
+
 			$gallery_page_id = absint( get_option( 'brag_book_gallery_page_id', 0 ) );
 			if ( $page_id === $gallery_page_id ) {
 				// Ensure proper query flags
@@ -363,13 +363,13 @@ class Query_Var_Forcer {
 				$query->is_singular = true;
 				$query->is_archive = false;
 				$query->is_404 = false;
-				
+
 				self::log_debug( 'Modified main query for gallery page', [
 					'page_id' => $page_id,
 					'query_vars' => $query->query_vars,
 				] );
 			}
-			
+
 		} catch ( Exception $e ) {
 			self::log_error( 'Failed to modify main query', $e->getMessage() );
 		}
@@ -388,17 +388,17 @@ class Query_Var_Forcer {
 		if ( isset( self::$cache[ $cache_key ] ) ) {
 			return self::$cache[ $cache_key ];
 		}
-		
+
 		// Check WP cache
 		$page = wp_cache_get( $cache_key, self::CACHE_GROUP );
 		if ( false !== $page ) {
 			self::$cache[ $cache_key ] = $page;
 			return $page;
 		}
-		
+
 		// Find the page
 		$page = get_page_by_path( $slug );
-		
+
 		if ( ! $page ) {
 			// Fallback: check for gallery page ID option
 			$page_id = absint( get_option( 'brag_book_gallery_page_id', 0 ) );
@@ -413,11 +413,11 @@ class Query_Var_Forcer {
 			}
 			return null;
 		}
-		
+
 		// Update caches
 		wp_cache_set( $cache_key, $page, self::CACHE_GROUP, self::CACHE_TTL );
 		self::$cache[ $cache_key ] = $page;
-		
+
 		return $page;
 	}
 
@@ -431,7 +431,7 @@ class Query_Var_Forcer {
 	private static function extract_query_vars( array $path_parts ): array {
 		// Sanitize path parts
 		$path_parts = array_map( 'sanitize_title', $path_parts );
-		
+
 		return match ( true ) {
 			// Case detail: /gallery/procedure-name/case-id
 			isset( $path_parts[1], $path_parts[2] ) && is_numeric( $path_parts[2] ) => [
@@ -444,7 +444,7 @@ class Query_Var_Forcer {
 				'favorites_page' => 1,
 				'gallery_page' => 'favorites',
 			],
-			// Procedure page: /gallery/procedure-name  
+			// Procedure page: /gallery/procedure-name
 			isset( $path_parts[1] ) => [
 				'filter_procedure' => $path_parts[1],
 				'gallery_page' => 'procedure',
@@ -467,7 +467,7 @@ class Query_Var_Forcer {
 	private static function apply_forced_query_vars( WP_Query $wp_query, array $forced_data ): void {
 		$page = $forced_data['page'];
 		$query_vars = $forced_data['query_vars'];
-		
+
 		// Reset the query to show this page
 		$wp_query->is_404 = false;
 		$wp_query->is_page = true;
@@ -475,12 +475,12 @@ class Query_Var_Forcer {
 		$wp_query->is_archive = false;
 		$wp_query->queried_object = $page;
 		$wp_query->queried_object_id = $page->ID;
-		
+
 		// Apply query vars
 		foreach ( $query_vars as $key => $value ) {
 			set_query_var( $key, $value );
 		}
-		
+
 		// Force the page to load with 200 status
 		status_header( 200 );
 	}
@@ -495,11 +495,11 @@ class Query_Var_Forcer {
 		if ( ! isset( $_SERVER['REQUEST_URI'] ) ) {
 			return '';
 		}
-		
+
 		$request_uri = wp_unslash( $_SERVER['REQUEST_URI'] );
 		$request_uri = filter_var( $request_uri, FILTER_SANITIZE_URL );
 		$request_uri = trim( parse_url( $request_uri, PHP_URL_PATH ) ?? '', '/' );
-		
+
 		return sanitize_text_field( $request_uri );
 	}
 
@@ -513,12 +513,12 @@ class Query_Var_Forcer {
 	private static function extract_request_path( array $query_vars ): string {
 		// Try to get from query vars first
 		$request_path = $query_vars['pagename'] ?? '';
-		
+
 		// Fallback to request URI
 		if ( empty( $request_path ) ) {
 			$request_path = self::get_sanitized_request_uri();
 		}
-		
+
 		return $request_path;
 	}
 
@@ -532,7 +532,7 @@ class Query_Var_Forcer {
 	private static function add_admin_debug_notice( array $forced_data ): void {
 		$gallery_slug = $forced_data['gallery_slug'] ?? '';
 		$query_vars = $forced_data['query_vars'] ?? [];
-		
+
 		add_action( 'wp_footer', static function() use ( $gallery_slug, $query_vars ): void {
 			?>
 			<div style="position: fixed; bottom: 0; right: 0; background: #ff9800; color: white; padding: 15px; z-index: 99999; max-width: 450px; border-radius: 4px 0 0 0; box-shadow: -2px -2px 5px rgba(0,0,0,0.2);">
@@ -581,12 +581,12 @@ class Query_Var_Forcer {
 		if ( ! self::$debug_mode ) {
 			return;
 		}
-		
+
 		$log_message = self::DEBUG_LOG_PREFIX . ' ' . $message;
 		if ( ! empty( $context ) ) {
 			$log_message .= ' | Context: ' . wp_json_encode( $context );
 		}
-		
+
 		error_log( $log_message );
 	}
 

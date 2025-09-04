@@ -32,7 +32,7 @@ use WP_Query;
  *
  * Features:
  * - Comprehensive form validation with field length limits
- * - Dual API/local storage strategy for data reliability  
+ * - Dual API/local storage strategy for data reliability
  * - AJAX-powered admin interface with pagination
  * - VIP-compliant caching and performance optimization
  * - Security-first approach with nonce validation and input sanitization
@@ -62,18 +62,18 @@ use WP_Query;
  * @since   3.0.0
  * @package BRAGBookGallery\Includes\Core
  * @author  Candace Crowe Design <bragbook@candacecrowe.com>
- * 
+ *
  * @uses    Trait_Api           For external API communication utilities (includes Trait_Sanitizer)
  * @uses    Trait_Tools         For common utility functions
- * 
+ *
  * @example
  * ```php
  * // Initialize consultation handler
  * $consultation = new Consultation();
- * 
+ *
  * // Display admin entries page
  * $consultation->display_form_entries();
- * 
+ *
  * // Handle AJAX form submission (called via WordPress hooks)
  * $consultation->handle_form_submission();
  * ```
@@ -201,11 +201,11 @@ class Consultation {
 	 *
 	 * Registered AJAX Actions:
 	 * - consultation-pagination-load-posts: Handles paginated entry loading
-	 * - handle_form_submission: Processes consultation form submissions  
+	 * - handle_form_submission: Processes consultation form submissions
 	 * - delete_consultation_entry: Manages consultation deletion (admin only)
 	 *
 	 * Hook Strategy:
-	 * - Uses both authenticated (wp_ajax_) and non-authenticated (wp_ajax_nopriv_) 
+	 * - Uses both authenticated (wp_ajax_) and non-authenticated (wp_ajax_nopriv_)
 	 *   hooks for form submission to support logged-out users
 	 * - Admin-only actions use wp_ajax_ only for security
 	 * - Callback methods use array syntax for better IDE support
@@ -216,12 +216,12 @@ class Consultation {
 	 * - Minimal memory footprint during initialization
 	 *
 	 * @since 3.0.0
-	 * 
+	 *
 	 * @see add_action() For WordPress hook registration
 	 * @see wp_ajax_{$action} WordPress AJAX hook pattern
-	 * 
+	 *
 	 * @return void
-	 * 
+	 *
 	 * @example
 	 * ```php
 	 * // Automatic initialization when class is instantiated
@@ -240,7 +240,7 @@ class Consultation {
 
 		// Delete entry AJAX handler (admin only).
 		add_action( 'wp_ajax_' . self::AJAX_DELETE, [ $this, 'handle_delete_entry' ] );
-		
+
 		// Get consultation details AJAX handler (admin only).
 		add_action( 'wp_ajax_consultation-get-details', [ $this, 'handle_get_details' ] );
 	}
@@ -326,7 +326,7 @@ class Consultation {
 			if ( $post_id ) {
 				// Clear consultation count cache.
 				wp_cache_delete( 'consultation_count', self::CACHE_GROUP );
-				
+
 				wp_send_json_success(
 					esc_html__( 'Thank you for your consultation request!', 'brag-book-gallery' )
 				);
@@ -370,8 +370,8 @@ class Consultation {
 			'post_type'    => self::POST_TYPE,
 			'post_status'  => 'publish',
 			'meta_input'   => [
-				'bb_email' => sanitize_email( $email ),
-				'bb_phone' => sanitize_text_field( $phone ),
+				'brag_book_gallery_email' => sanitize_email( $email ),
+				'brag_book_gallery_phone' => sanitize_text_field( $phone ),
 			],
 		];
 
@@ -437,19 +437,19 @@ class Consultation {
 	 * ```
 	 *
 	 * @since 3.0.0
-	 * 
+	 *
 	 * @global array $_POST    Form submission data
 	 * @global array $_SERVER  Server environment variables
-	 * 
+	 *
 	 * @uses wp_verify_nonce()        For security validation
-	 * @uses wp_get_referer()         For gallery context detection  
+	 * @uses wp_get_referer()         For gallery context detection
 	 * @uses wp_send_json_success()   For successful response
 	 * @uses wp_send_json_error()     For error response
-	 * 
+	 *
 	 * @throws None Handles all exceptions internally
-	 * 
+	 *
 	 * @return void Outputs JSON response via wp_send_json_* and exits
-	 * 
+	 *
 	 * @example
 	 * ```javascript
 	 * // Frontend JavaScript usage
@@ -460,7 +460,7 @@ class Consultation {
 	 * formData.append('email', 'john@example.com');
 	 * formData.append('phone', '555-0123');
 	 * formData.append('description', 'Consultation request...');
-	 * 
+	 *
 	 * fetch(ajaxurl, { method: 'POST', body: formData })
 	 *   .then(response => response.json())
 	 *   .then(data => console.log(data.success ? 'Success!' : data.data));
@@ -553,7 +553,7 @@ class Consultation {
 					}
 					$this->send_to_single_gallery_api( $submission_data, $config, $gallery_context['index'] );
 				}
-				
+
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 					do_action( 'qm/debug', 'Consultation successfully sent to BRAG book API' );
 				}
@@ -656,7 +656,7 @@ class Consultation {
 	private function validate_field_lengths( array $form_data ): true|WP_Error {
 		foreach ( $form_data as $field => $value ) {
 			$max_length = self::MAX_FIELD_LENGTHS[ $field ] ?? null;
-			
+
 			if ( null === $max_length ) {
 				continue;
 			}
@@ -712,7 +712,7 @@ class Consultation {
 
 		// Create structured error object.
 		$wp_error = new WP_Error( $error_code, $error_message, $context );
-		
+
 		// Add severity data for downstream handling.
 		$wp_error->add_data( [ 'severity' => $severity ], $error_code );
 
@@ -787,7 +787,7 @@ class Consultation {
 		}
 
 		$nonce_value = sanitize_text_field( wp_unslash( $_POST['nonce'] ) );
-		
+
 		// Try multiple nonce types for compatibility.
 		$nonce_types = [
 			'consultation_form_nonce',
@@ -801,9 +801,9 @@ class Consultation {
 		}
 
 		return $this->handle_error(
-			'invalid_nonce', 
+			'invalid_nonce',
 			esc_html__( 'Security verification failed.', 'brag-book-gallery' ),
-			[ 
+			[
 				'context' => 'form_submission',
 				'tried_types' => $nonce_types,
 			]
@@ -826,9 +826,9 @@ class Consultation {
 		$ip_hash = md5( $client_ip );
 
 		// Check hourly limit.
-		$hourly_key = "consultation_hourly_{$ip_hash}";
+		$hourly_key = "brag_book_gallery_transient_consultation_hourly_{$ip_hash}";
 		$hourly_count = (int) get_transient( $hourly_key );
-		
+
 		if ( $hourly_count >= self::RATE_LIMITS['submissions_per_hour'] ) {
 			return $this->handle_error(
 				'rate_limit_hourly',
@@ -842,9 +842,9 @@ class Consultation {
 		}
 
 		// Check daily limit.
-		$daily_key = "consultation_daily_{$ip_hash}";
+		$daily_key = "brag_book_gallery_transient_consultation_daily_{$ip_hash}";
 		$daily_count = (int) get_transient( $daily_key );
-		
+
 		if ( $daily_count >= self::RATE_LIMITS['submissions_per_day'] ) {
 			return $this->handle_error(
 				'rate_limit_daily',
@@ -889,12 +889,12 @@ class Consultation {
 		foreach ( $ip_keys as $key ) {
 			if ( ! empty( $_SERVER[ $key ] ) ) {
 				$ip = sanitize_text_field( wp_unslash( $_SERVER[ $key ] ) );
-				
+
 				// Handle comma-separated IPs (first is usually the real client IP).
 				if ( str_contains( $ip, ',' ) ) {
 					$ip = trim( explode( ',', $ip )[0] );
 				}
-				
+
 				// Validate IP format.
 				if ( filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE ) ) {
 					return $ip;
@@ -919,13 +919,13 @@ class Consultation {
 	 */
 	private function validate_content_security( array $form_data ): true|WP_Error {
 		$combined_content = implode( ' ', $form_data );
-		
+
 		foreach ( self::SUSPICIOUS_PATTERNS as $pattern ) {
 			if ( preg_match( $pattern, $combined_content ) ) {
 				return $this->handle_error(
 					'suspicious_content',
 					esc_html__( 'Content contains suspicious patterns and cannot be submitted.', 'brag-book-gallery' ),
-					[ 
+					[
 						'pattern' => $pattern,
 						'content' => wp_kses( $combined_content, [] ), // Strip all HTML for logging
 					],
@@ -947,7 +947,7 @@ class Consultation {
 	 * Configuration Structure:
 	 * - api_tokens: Array of API authentication tokens (one per gallery)
 	 * - website_property_ids: Array of property identifiers (mapped to tokens)
-	 * - gallery_pages: Stored gallery page configuration 
+	 * - gallery_pages: Stored gallery page configuration
 	 * - brag_book_gallery_page_slug: Main gallery page URL slug
 	 *
 	 * Validation Strategy:
@@ -976,31 +976,31 @@ class Consultation {
 	 * - Graceful handling of missing or malformed options
 	 *
 	 * @since 3.0.0
-	 * 
+	 *
 	 * @global bool WP_DEBUG    WordPress debug flag
-	 * 
+	 *
 	 * @uses get_option()        WordPress options API (cached)
 	 * @uses do_action()         VIP-compliant debug logging
 	 * @uses esc_html__()        Internationalization support
-	 * 
+	 *
 	 * @return array{
 	 *     api_tokens: array<string>,
-	 *     website_property_ids: array<string>,  
+	 *     website_property_ids: array<string>,
 	 *     gallery_pages: array<string>,
 	 *     brag_book_gallery_page_slug: string
 	 * }|WP_Error Configuration array with typed structure or validation error
-	 * 
+	 *
 	 * @example
 	 * ```php
 	 * $config = $this->get_api_configuration();
-	 * 
+	 *
 	 * if ( is_wp_error( $config ) ) {
 	 *     // Handle configuration error
 	 *     $error_message = $config->get_error_message();
 	 *     wp_send_json_error( $error_message );
 	 *     return;
 	 * }
-	 * 
+	 *
 	 * // Use configuration
 	 * $token = $config['api_tokens'][0];
 	 * $property_id = $config['website_property_ids'][0];
@@ -1046,7 +1046,7 @@ class Consultation {
 		return [
 			'api_tokens'                  => (array) $api_tokens,
 			'website_property_ids'        => (array) $website_property_ids,
-			'gallery_pages'               => (array) get_option( 'bb_gallery_stored_pages', [] ),
+			'gallery_pages'               => (array) get_option( 'brag_book_gallery_stored_pages', [] ),
 			'brag_book_gallery_page_slug' => (string) get_option( 'brag_book_gallery_page_slug', '' ),
 		];
 	}
@@ -1132,7 +1132,7 @@ class Consultation {
 	 */
 	private function send_to_single_gallery_api( array $data, array $config, int $index ): void {
 		// Validate configuration exists for index.
-		if ( ! isset( $config['api_tokens'][ $index ] ) || 
+		if ( ! isset( $config['api_tokens'][ $index ] ) ||
 			 ! isset( $config['website_property_ids'][ $index ] ) ) {
 			throw new \Exception( 'Gallery configuration not found.' );
 		}
@@ -1238,7 +1238,7 @@ class Consultation {
 		// Check for API errors in response.
 		if ( isset( $response_data['error'] ) ||
 			 ( isset( $response_data['success'] ) && false === $response_data['success'] ) ) {
-			$error_msg = isset( $response_data['message'] ) ? $response_data['message'] : 
+			$error_msg = isset( $response_data['message'] ) ? $response_data['message'] :
 						( isset( $response_data['error'] ) ? $response_data['error'] : 'API submission failed' );
 			throw new \Exception( 'API submission was not successful: ' . $error_msg );
 		}
@@ -1257,7 +1257,7 @@ class Consultation {
 	 */
 	public function handle_pagination_request(): void {
 		// Verify nonce for security (VIP requirement).
-		if ( ! isset( $_POST['nonce'] ) || 
+		if ( ! isset( $_POST['nonce'] ) ||
 			 ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'consultation_pagination_nonce' ) ) {
 			wp_send_json_error( esc_html__( 'Security verification failed.', 'brag-book-gallery' ) );
 			return;
@@ -1307,7 +1307,7 @@ class Consultation {
 		}
 
 		// Verify nonce for security (VIP requirement).
-		if ( ! isset( $_POST['nonce'] ) || 
+		if ( ! isset( $_POST['nonce'] ) ||
 			 ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'consultation_delete_nonce' ) ) {
 			wp_send_json_error( esc_html__( 'Security verification failed.', 'brag-book-gallery' ) );
 			return;
@@ -1335,8 +1335,8 @@ class Consultation {
 			// Clear cache after deletion.
 			wp_cache_delete( 'consultation_count', self::CACHE_GROUP );
 			wp_cache_delete( 'consultation_entries_' . $post_id, self::CACHE_GROUP );
-			
-			wp_send_json_success( 
+
+			wp_send_json_success(
 				[
 					'message' => esc_html__( 'Entry deleted successfully.', 'brag-book-gallery' ),
 					'post_id' => $post_id,
@@ -1363,7 +1363,7 @@ class Consultation {
 		}
 
 		// Verify nonce for security.
-		if ( ! isset( $_POST['nonce'] ) || 
+		if ( ! isset( $_POST['nonce'] ) ||
 			 ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'consultation_pagination_nonce' ) ) {
 			wp_send_json_error( esc_html__( 'Security verification failed.', 'brag-book-gallery' ) );
 			return;
@@ -1444,8 +1444,8 @@ class Consultation {
 	 */
 	private function get_consultation_entries( int $page ): array {
 		// Create cache key.
-		$cache_key = 'consultation_entries_page_' . $page;
-		
+		$cache_key = 'brag_book_gallery_transient_consultation_entries_page_' . $page;
+
 		// Try to get from cache first.
 		$cached = wp_cache_get( $cache_key, self::CACHE_GROUP );
 		if ( false !== $cached ) {
@@ -1526,18 +1526,18 @@ class Consultation {
 		// Process each entry.
 		foreach ( $entries as $post ) {
 			// Get post meta data.
-			$email = get_post_meta( $post->ID, 'bb_email', true );
-			$phone = get_post_meta( $post->ID, 'bb_phone', true );
-			$date  = mysql2date( 
-				get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), 
-				$post->post_date 
+			$email = get_post_meta( $post->ID, 'brag_book_gallery_email', true );
+			$phone = get_post_meta( $post->ID, 'brag_book_gallery_phone', true );
+			$date  = mysql2date(
+				get_option( 'date_format' ) . ' ' . get_option( 'time_format' ),
+				$post->post_date
 			);
 
 			// Truncate long descriptions for better display.
 			$description      = $post->post_content;
 			$full_description = $description;
 			$truncate_length  = 150;
-			
+
 			if ( strlen( $description ) > $truncate_length ) {
 				$description = substr( $description, 0, $truncate_length ) . '...';
 			}
@@ -1609,7 +1609,7 @@ class Consultation {
 			return '';
 		}
 
-		$html = '<div class="bb-universal-pagination"><ul>';
+		$html = '<div class="brag-book-gallery-universal-pagination"><ul>';
 
 		// Items count display.
 		$html .= sprintf(
@@ -1699,7 +1699,7 @@ class Consultation {
 	 * Renders a comprehensive consultation management interface featuring:
 	 * - Responsive data table with sortable columns
 	 * - AJAX-powered pagination for handling large datasets
-	 * - Real-time search and filtering capabilities  
+	 * - Real-time search and filtering capabilities
 	 * - HTML5 modal dialogs for detailed consultation viewing
 	 * - Bulk actions with confirmation dialogs
 	 * - Accessibility-compliant markup and keyboard navigation
@@ -1741,20 +1741,20 @@ class Consultation {
 	 * - Dashboard widget compatibility
 	 *
 	 * @since 3.0.0
-	 * 
+	 *
 	 * @uses wp_create_nonce()    For CSRF protection
 	 * @uses esc_html__()         For internationalization
 	 * @uses admin_url()          For WordPress admin URLs
-	 * 
+	 *
 	 * @return void Outputs complete HTML admin interface
-	 * 
+	 *
 	 * @example
 	 * ```php
 	 * // Called via WordPress admin menu system
 	 * add_submenu_page(
 	 *     'brag-book-gallery-settings',
 	 *     __( 'Consultations', 'brag-book-gallery' ),
-	 *     __( 'Consultations', 'brag-book-gallery' ), 
+	 *     __( 'Consultations', 'brag-book-gallery' ),
 	 *     'manage_options',
 	 *     'brag-book-gallery-consultation',
 	 *     [ $this, 'display_form_entries' ]
@@ -1765,7 +1765,7 @@ class Consultation {
 		// Generate nonces for security.
 		$nonce        = wp_create_nonce( 'consultation_pagination_nonce' );
 		$delete_nonce = wp_create_nonce( 'consultation_delete_nonce' );
-		
+
 		// Include admin display template.
 		$this->render_admin_page( $nonce, $delete_nonce );
 	}
@@ -1790,13 +1790,13 @@ class Consultation {
 
 			<div class="brag-book-gallery-section">
 				<h2><?php esc_html_e( 'Consultation Entries', 'brag-book-gallery' ); ?></h2>
-				
+
 				<?php $this->render_admin_scripts( $nonce, $delete_nonce ); ?>
 
-				<div class="bb_pag_loading" style="display: none;">
+				<div class="brag-book-gallery-page-loading" style="display: none;">
 					<p><?php esc_html_e( 'Loading consultation entries...', 'brag-book-gallery' ); ?></p>
 				</div>
-				
+
 				<table class="wp-list-table widefat fixed striped consultation-entries" style="width: 100%;">
 					<thead>
 					<tr>
@@ -1808,7 +1808,7 @@ class Consultation {
 						<th style="width: 10%; text-align: center;"><?php esc_html_e( 'Actions', 'brag-book-gallery' ); ?></th>
 					</tr>
 					</thead>
-					<tbody class="bb_universal_container">
+					<tbody class="brag_book_gallery_universal_container">
 					<tr>
 						<td colspan="6" style="text-align: center;">
 							<?php esc_html_e( 'Loading consultation entries...', 'brag-book-gallery' ); ?>
@@ -1816,7 +1816,7 @@ class Consultation {
 					</tr>
 					</tbody>
 				</table>
-				<div class="bb-pagination-nav" style="margin-top: 20px;"></div>
+				<div class="brag-book-gallery-pagination-nav" style="margin-top: 20px;"></div>
 			</div>
 		</div>
 		<?php
@@ -1847,7 +1847,7 @@ class Consultation {
 
 			/**
 			 * Fade in effect for element
-			 * 
+			 *
 			 * @param {HTMLElement} element Element to fade in.
 			 * @param {number} duration Duration in milliseconds.
 			 */
@@ -1883,9 +1883,9 @@ class Consultation {
 			 * @param {number} page Page number to load.
 			 */
 			const loadConsultationPosts = async function( page ) {
-				const loadingDiv = document.querySelector( '.bb_pag_loading' );
-				const container = document.querySelector( '.bb_universal_container' );
-				const paginationNav = document.querySelector( '.bb-pagination-nav' );
+				const loadingDiv = document.querySelector( '.brag-book-gallery-page-loading' );
+				const container = document.querySelector( '.brag_book_gallery_universal_container' );
+				const paginationNav = document.querySelector( '.brag-book-gallery-pagination-nav' );
 
 				// Show loading state.
 				if ( loadingDiv ) {
@@ -1967,11 +1967,11 @@ class Consultation {
 						const row = button.closest( 'tr' );
 						row.style.transition = 'opacity 0.3s';
 						row.style.opacity = '0';
-						
+
 						setTimeout( function() {
 							row.remove();
 							// Check if table is empty.
-							const tbody = document.querySelector( '.bb_universal_container' );
+							const tbody = document.querySelector( '.brag_book_gallery_universal_container' );
 							if ( tbody && tbody.children.length === 0 ) {
 								tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px;">No consultation entries found.</td></tr>';
 							}
@@ -2148,7 +2148,7 @@ class Consultation {
 			// Handle pagination and button clicks using event delegation.
 			document.addEventListener( 'click', function( event ) {
 				// Check if clicked element is an active pagination button.
-				const activeButton = event.target.closest( '.bb-universal-pagination li.active' );
+				const activeButton = event.target.closest( '.brag-book-gallery-universal-pagination li.active' );
 				if ( activeButton ) {
 					const page = parseInt( activeButton.getAttribute( 'p' ), 10 );
 					if ( ! isNaN( page ) ) {
@@ -2203,9 +2203,9 @@ class Consultation {
 			</div>
 			<div class="brag-book-gallery-header-right">
 				<span class="brag-book-gallery-version-badge">
-					<?php 
+					<?php
 					/* translators: %s: Plugin version number */
-					printf( esc_html__( 'v%s', 'brag-book-gallery' ), esc_html( $plugin_version ) ); 
+					printf( esc_html__( 'v%s', 'brag-book-gallery' ), esc_html( $plugin_version ) );
 					?>
 				</span>
 			</div>

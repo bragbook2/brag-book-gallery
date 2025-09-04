@@ -232,7 +232,7 @@ trait Trait_Api {
 				$response_code >= 500 => 'server_error',
 				default => 'api_error',
 			};
-			
+
 			$error_message = sprintf(
 				/* translators: 1: HTTP status code, 2: API endpoint */
 				esc_html__(
@@ -243,10 +243,10 @@ trait Trait_Api {
 				$endpoint
 			);
 			$this->log_api_error( $endpoint, $error_message, [ 'status' => $response_code ] );
-			
+
 			// Record failure for circuit breaker
 			$this->record_api_failure( $endpoint );
-			
+
 			return new WP_Error(
 				$error_type,
 				$error_message,
@@ -284,10 +284,10 @@ trait Trait_Api {
 
 		// Record success for circuit breaker
 		$this->record_api_success( $endpoint );
-		
+
 		// Track performance metrics
 		$this->track_api_performance( $endpoint, $response );
-		
+
 		return [
 			'code' => $response_code,
 			'data' => $data,
@@ -308,12 +308,12 @@ trait Trait_Api {
 		if ( ! empty( $params ) ) {
 			$endpoint .= '?' . http_build_query( $params );
 		}
-		
+
 		// Check cache if TTL provided
-		$cache_key = 'get_' . md5( $endpoint );
+		$cache_key = 'brag_book_galley_transient_get_' . $endpoint;
 		if ( $cache_ttl > 0 ) {
 			$cached = $this->get_cached_api_response( $cache_key );
-			
+
 			if ( false !== $cached ) {
 				return $cached;
 			}
@@ -324,12 +324,12 @@ trait Trait_Api {
 			args: [],
 			method: 'GET'
 		);
-		
+
 		// Cache successful response
 		if ( $cache_ttl > 0 && ! is_wp_error( $response ) ) {
 			$this->cache_api_response( $cache_key, $response, $cache_ttl );
 		}
-		
+
 		return $response;
 	}
 
@@ -356,7 +356,7 @@ trait Trait_Api {
 				);
 			}
 		}
-		
+
 		return $this->make_api_request(
 			endpoint: $endpoint,
 			args: [ 'body' => $body ],
@@ -378,7 +378,7 @@ trait Trait_Api {
 		mixed $data,
 		int $expiration = 1800
 	): bool {
-		$cache_key = 'brag_book_gallery_api_' . md5( $cache_key );
+		$cache_key = 'brag_book_gallery_transient_api_' . $cache_key;
 		return set_transient( $cache_key, $data, $expiration );
 	}
 
@@ -390,7 +390,7 @@ trait Trait_Api {
 	 * @return mixed Cached data or false if not found.
 	 */
 	protected function get_cached_api_response( string $cache_key ): mixed {
-		$cache_key = 'brag_book_gallery_api_' . md5( $cache_key );
+		$cache_key = 'brag_book_gallery_transient_api_' . $cache_key;
 		return get_transient( $cache_key );
 	}
 
@@ -406,12 +406,12 @@ trait Trait_Api {
 
 		if ( ! empty( $pattern ) ) {
 			// Clear specific pattern including timeout transients
-			$cache_pattern = '_transient_brag_book_gallery_api_%' . $pattern . '%';
-			$timeout_pattern = '_transient_timeout_brag_book_gallery_api_%' . $pattern . '%';
+			$cache_pattern = '_transient_brag_book_gallery_transient_api_%' . $pattern . '%';
+			$timeout_pattern = '_transient_timeout_brag_book_gallery_transient_api_%' . $pattern . '%';
 		} else {
 			// Clear all API cache including timeout transients
-			$cache_pattern = '_transient_brag_book_gallery_api_%';
-			$timeout_pattern = '_transient_timeout_brag_book_gallery_api_%';
+			$cache_pattern = '_transient_brag_book_gallery_transient_api_%';
+			$timeout_pattern = '_transient_timeout_brag_book_gallery_transient_api_%';
 		}
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
@@ -449,12 +449,12 @@ trait Trait_Api {
 			'context'  => $context,
 			'time'     => current_time( 'mysql' ),
 		];
-		
+
 		// Limit error log size
 		if ( count( $this->error_log ) > 100 ) {
 			array_shift( $this->error_log );
 		}
-		
+
 		if ( ! defined( 'WP_DEBUG' ) || ! WP_DEBUG ) {
 			return;
 		}
@@ -498,12 +498,12 @@ trait Trait_Api {
 					)
 				);
 			}
-			
+
 			// Validate field type if specified
 			if ( isset( $field_types[ $field ] ) ) {
 				$expected_type = $field_types[ $field ];
 				$actual_type = gettype( $response['data'][ $field ] );
-				
+
 				if ( $actual_type !== $expected_type ) {
 					return new WP_Error(
 						'invalid_type',
@@ -541,7 +541,7 @@ trait Trait_Api {
 			if ( ! empty( $allowed_params ) ) {
 				$params = array_intersect_key( $params, array_flip( $allowed_params ) );
 			}
-			
+
 			// Sanitize parameters
 			$params = array_map( function( $value ) {
 				return match ( gettype( $value ) ) {
@@ -551,7 +551,7 @@ trait Trait_Api {
 					default   => (string) $value,
 				};
 			}, $params );
-			
+
 			$query_string = http_build_query( $params );
 			$endpoint .= ( str_contains( $endpoint, '?' ) ? '&' : '?' ) . $query_string;
 		}
@@ -567,7 +567,7 @@ trait Trait_Api {
 	 * @return bool True if request can proceed, false if rate limited.
 	 */
 	protected function check_rate_limit( string $endpoint ): bool {
-		$transient_key = 'brag_book_gallery_rate_limit_' . md5( $endpoint );
+		$transient_key = 'brag_book_gallery_transient_rate_limit_' . $endpoint;
 		$current_count = get_transient( $transient_key );
 
 		if ( false === $current_count ) {
@@ -597,41 +597,41 @@ trait Trait_Api {
 	 * @param int    $max_retries Maximum retry attempts.
 	 * @return array|WP_Error Response data or error.
 	 */
-	protected function api_request_with_retry( 
-		string $endpoint, 
-		array $args = [], 
+	protected function api_request_with_retry(
+		string $endpoint,
+		array $args = [],
 		string $method = 'GET',
-		int $max_retries = self::MAX_RETRY_ATTEMPTS 
+		int $max_retries = self::MAX_RETRY_ATTEMPTS
 	): array|WP_Error {
 		$attempt = 0;
 		$last_error = null;
-		
+
 		while ( $attempt < $max_retries ) {
 			$attempt++;
-			
+
 			// Check circuit breaker
 			if ( ! $this->is_circuit_open( $endpoint ) ) {
 				$response = $this->make_api_request( $endpoint, $args, $method );
-				
+
 				if ( ! is_wp_error( $response ) ) {
 					return $response;
 				}
-				
+
 				$last_error = $response;
-				
+
 				// Check if error is retryable
 				if ( ! $this->is_retryable_error( $response ) ) {
 					break;
 				}
 			}
-			
+
 			// Exponential backoff
 			if ( $attempt < $max_retries ) {
 				$delay = min( 1000 * pow( 2, $attempt - 1 ), 10000 ); // Max 10 seconds
 				usleep( $delay * 1000 ); // Convert to microseconds
 			}
 		}
-		
+
 		return $last_error ?? new WP_Error(
 			'max_retries_exceeded',
 			sprintf(
@@ -655,7 +655,7 @@ trait Trait_Api {
 			'server_error',
 			'rate_limit_exceeded',
 		];
-		
+
 		return in_array( $error->get_error_code(), $retryable_codes, true );
 	}
 
@@ -667,9 +667,9 @@ trait Trait_Api {
 	 * @return bool True if circuit is open (requests blocked).
 	 */
 	protected function is_circuit_open( string $endpoint ): bool {
-		$circuit_key = 'brag_book_gallery_circuit_' . md5( $endpoint );
+		$circuit_key = 'brag_book_gallery_transient_circuit_' . $endpoint;
 		$circuit_status = get_transient( $circuit_key );
-		
+
 		return $circuit_status === 'open';
 	}
 
@@ -681,18 +681,18 @@ trait Trait_Api {
 	 * @return void
 	 */
 	protected function record_api_failure( string $endpoint ): void {
-		$failure_key = 'brag_book_gallery_failures_' . md5( $endpoint );
+		$failure_key = 'brag_book_gallery_transient_failures_' . $endpoint;
 		$failures = get_transient( $failure_key ) ?: 0;
 		$failures++;
-		
+
 		if ( $failures >= self::CIRCUIT_BREAKER_THRESHOLD ) {
 			// Open circuit
-			$circuit_key = 'brag_book_gallery_circuit_' . md5( $endpoint );
+			$circuit_key = 'brag_book_gallery_transient_circuit_' . $endpoint;
 			set_transient( $circuit_key, 'open', self::CIRCUIT_BREAKER_TIMEOUT );
-			
+
 			// Reset failure count
 			delete_transient( $failure_key );
-			
+
 			$this->log_api_error( $endpoint, 'Circuit breaker opened', [ 'failures' => $failures ] );
 		} else {
 			set_transient( $failure_key, $failures, 300 ); // 5 minute window
@@ -708,11 +708,11 @@ trait Trait_Api {
 	 */
 	protected function record_api_success( string $endpoint ): void {
 		// Reset failure count on success
-		$failure_key = 'brag_book_gallery_failures_' . md5( $endpoint );
+		$failure_key = 'brag_book_gallery_transient_failures_' . $endpoint;
 		delete_transient( $failure_key );
-		
+
 		// Close circuit if it was open
-		$circuit_key = 'brag_book_gallery_circuit_' . md5( $endpoint );
+		$circuit_key = 'brag_book_gallery_circuit_' . $endpoint;
 		if ( get_transient( $circuit_key ) === 'open' ) {
 			delete_transient( $circuit_key );
 			$this->log_api_error( $endpoint, 'Circuit breaker closed', [ 'status' => 'success' ] );
@@ -737,10 +737,10 @@ trait Trait_Api {
 				'last_request' => '',
 			];
 		}
-		
+
 		// Extract timing from response - estimate based on timeout
 		$total_time = $response['http_response']->info['total_time'] ?? 0.5;
-		
+
 		$metrics = &$this->api_metrics[ $endpoint ];
 		$metrics['count']++;
 		$metrics['total_time'] += $total_time;
@@ -769,12 +769,12 @@ trait Trait_Api {
 	 */
 	protected function api_batch( array $requests ): array {
 		$responses = [];
-		
+
 		foreach ( $requests as $index => $request ) {
 			$endpoint = $request['endpoint'] ?? '';
 			$method = $request['method'] ?? 'GET';
 			$args = $request['args'] ?? [];
-			
+
 			if ( empty( $endpoint ) ) {
 				$responses[ $index ] = new WP_Error(
 					'missing_endpoint',
@@ -782,16 +782,16 @@ trait Trait_Api {
 				);
 				continue;
 			}
-			
+
 			// Make request
 			$responses[ $index ] = $this->make_api_request( $endpoint, $args, $method );
-			
+
 			// Small delay between requests to avoid overwhelming the server
 			if ( $index < count( $requests ) - 1 ) {
 				usleep( 100000 ); // 100ms
 			}
 		}
-		
+
 		return $responses;
 	}
 
@@ -805,25 +805,25 @@ trait Trait_Api {
 	 */
 	protected function sanitize_api_data( mixed $data, array $schema = [] ): mixed {
 		if ( is_array( $data ) ) {
-			return array_map( 
+			return array_map(
 				fn( $item ) => $this->sanitize_api_data( $item, $schema ),
 				$data
 			);
 		}
-		
+
 		if ( is_string( $data ) ) {
 			return sanitize_text_field( $data );
 		}
-		
+
 		if ( is_bool( $data ) || is_numeric( $data ) || is_null( $data ) ) {
 			return $data;
 		}
-		
+
 		// For objects, convert to array and sanitize
 		if ( is_object( $data ) ) {
 			return $this->sanitize_api_data( (array) $data, $schema );
 		}
-		
+
 		return null;
 	}
 }

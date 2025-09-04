@@ -191,14 +191,14 @@ The plugin follows a modular architecture with clear separation of concerns:
   - WP-CLI: `wp transient delete --all`
 
 ### AJAX Endpoints
-- `brag_book_load_more_cases`: Load additional cases with pagination
-- `brag_book_load_filtered_cases`: Load specific cases by IDs for filtering
-- `brag_book_load_filtered_gallery`: Load filtered gallery content
+- `brag_book_gallery_load_more_cases`: Load additional cases with pagination
+- `brag_book_gallery_load_filtered_cases`: Load specific cases by IDs for filtering
+- `brag_book_gallery_load_filtered_gallery`: Load filtered gallery content
 - `brag_book_gallery_clear_cache`: Clear all gallery transient cache
 - `brag_book_load_case_details`: Load individual case details
-- `brag_book_load_case_details_html`: Load case details HTML content
+- `brag_book_gallery_load_case_details_html`: Load case details HTML content
 - `brag_book_simple_case_handler`: Handle simple case operations
-- `brag_book_flush_rewrite_rules`: Flush WordPress rewrite rules
+- `brag_book_gallery_flush_rewrite_rules`: Flush WordPress rewrite rules
 
 ## Shortcodes
 
@@ -247,7 +247,7 @@ The plugin follows a modular architecture with clear separation of concerns:
 
 ### Favorites
 ```
-[brag_book_favorites]
+[brag_book_gallery_favorites]
 ```
 - Displays user's favorited cases
 - Uses localStorage for persistent favorites

@@ -383,7 +383,7 @@ final class Carousel_Shortcode_Handler {
 					}
 				}
 			}
-			
+
 			// Fallback: convert slug to title case
 			return ucwords( str_replace( array( '-', '_' ), ' ', $config['procedure_slug'] ) );
 		}
@@ -413,7 +413,7 @@ final class Carousel_Shortcode_Handler {
 		}
 
 		// Try to get from cache first.
-		$cache_key = 'procedure_id_' . md5( $slug . $api_token . $website_property_id );
+		$cache_key = 'brag_book_gallery_procedure_id_' . $slug . '_' . $api_token . '_' . $website_property_id;
 		$cached_id = wp_cache_get( $cache_key, self::CACHE_GROUP );
 		if ( false !== $cached_id ) {
 			return $cached_id > 0 ? $cached_id : null;
@@ -521,7 +521,7 @@ final class Carousel_Shortcode_Handler {
 					</div>
 				<?php endif; ?>
 			</div>
-			
+
 			<div class="brag-book-gallery-carousel-content">
 				<div class="brag-book-gallery-carousel-track"
 					 data-carousel-track="<?php echo esc_attr( $carousel_id ); ?>"
@@ -577,11 +577,11 @@ final class Carousel_Shortcode_Handler {
 	 */
 	private static function render_navigation_button( string $direction ): string {
 		$is_prev = 'prev' === $direction;
-		$label = $is_prev ? 
-			__( 'Previous slide', 'brag-book-gallery' ) : 
+		$label = $is_prev ?
+			__( 'Previous slide', 'brag-book-gallery' ) :
 			__( 'Next slide', 'brag-book-gallery' );
-		$path = $is_prev ? 
-			'M400-240 160-480l240-240 56 58-142 142h486v80H314l142 142-56 58Z' : 
+		$path = $is_prev ?
+			'M400-240 160-480l240-240 56 58-142 142h486v80H314l142 142-56 58Z' :
 			'm560-240-56-58 142-142H160v-80h486L504-662l56-58 240 240-240 240Z';
 
 		return sprintf(
@@ -654,7 +654,7 @@ final class Carousel_Shortcode_Handler {
 
 			// Take only the first photo from this case to ensure variety.
 			$photo = $photo_sets[0];
-			
+
 			++ $slide_index;
 			++ $slide_count;
 			$html_parts[] = HTML_Renderer::generate_carousel_slide_from_photo(
