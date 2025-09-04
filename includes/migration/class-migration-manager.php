@@ -56,7 +56,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * ## Usage Example
  * ```php
  * $migration_manager = new Migration_Manager();
- * 
+ *
  * // Migrate to Local mode with custom options
  * $success = $migration_manager->migrate_to_local([
  *     'preserve_settings' => true,
@@ -64,7 +64,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  *     'cleanup_after' => false,
  *     'batch_size' => 50,
  * ]);
- * 
+ *
  * if (!$success) {
  *     $status = $migration_manager->get_migration_status();
  *     error_log('Migration failed: ' . $status['message']);
@@ -689,7 +689,7 @@ class Migration_Manager {
 		update_option( self::MIGRATION_STATUS_OPTION, $status_data );
 
 		// Set transient for real-time status checking
-		set_transient( 'brag_book_gallery_migration_status', $status, HOUR_IN_SECONDS );
+		set_transient( 'brag_book_gallery_transient_migration_status', $status, HOUR_IN_SECONDS );
 	}
 
 	/**
@@ -792,8 +792,8 @@ class Migration_Manager {
 
 		$wpdb->query(
 			"DELETE FROM {$wpdb->options}
-			 WHERE option_name LIKE '_transient_brag_book_gallery_%'
-			 OR option_name LIKE '_transient_timeout_brag_book_gallery_%'"
+			 WHERE option_name LIKE '_transient_brag_book_gallery_transient_%'
+			 OR option_name LIKE '_transient_timeout_brag_book_gallery_transient_%'"
 		);
 
 		// Clear object cache
@@ -1357,7 +1357,7 @@ class Migration_Manager {
 		}
 
 		// Validate conflicting options
-		if ( isset( $options['preserve_data'] ) && $options['preserve_data'] === false && 
+		if ( isset( $options['preserve_data'] ) && $options['preserve_data'] === false &&
 			 isset( $options['archive_posts'] ) && $options['archive_posts'] === true ) {
 			$errors[] = 'archive_posts cannot be true when preserve_data is false';
 		}
@@ -1521,7 +1521,7 @@ class Migration_Manager {
 	 * @return bool True if within limits, false if rate limited
 	 */
 	private function check_rate_limit( string $operation, int $limit = 3, int $window = 300 ): bool {
-		$transient_key = 'brag_book_migration_rate_limit_' . md5( $operation . get_current_user_id() );
+		$transient_key = 'brag_book_gallery_transient_migration_rate_limit_' . $operation . '_' . get_current_user_id();
 		$attempts = get_transient( $transient_key );
 
 		if ( $attempts === false ) {
@@ -1650,7 +1650,7 @@ class Migration_Manager {
 		}
 
 		// Check WordPress transient cache
-		$transient_key = 'brag_book_migration_' . md5( $key );
+		$transient_key = 'brag_book_gallery_transient_migration_' . $key;
 		$cached_data = get_transient( $transient_key );
 
 		if ( $cached_data !== false ) {
@@ -1683,7 +1683,7 @@ class Migration_Manager {
 		$this->migration_cache[ $key ] = $data;
 
 		// Store in WordPress transient cache
-		$transient_key = 'brag_book_migration_' . md5( $key );
+		$transient_key = 'brag_book_gallery_transient_migration_' . $key;
 		set_transient( $transient_key, $data, $ttl );
 	}
 
@@ -1710,18 +1710,18 @@ class Migration_Manager {
 		global $wpdb;
 		if ( $pattern === null ) {
 			$wpdb->query(
-				"DELETE FROM {$wpdb->options} 
-				 WHERE option_name LIKE '_transient_brag_book_migration_%' 
-				 OR option_name LIKE '_transient_timeout_brag_book_migration_%'"
+				"DELETE FROM {$wpdb->options}
+				 WHERE option_name LIKE '_transient_brag_book_gallery_transient_migration_%'
+				 OR option_name LIKE '_transient_timeout_brag_book_gallery_transient_migration_%'"
 			);
 		} else {
 			$pattern_md5 = md5( $pattern );
 			$wpdb->query( $wpdb->prepare(
-				"DELETE FROM {$wpdb->options} 
-				 WHERE option_name LIKE %s 
+				"DELETE FROM {$wpdb->options}
+				 WHERE option_name LIKE %s
 				 OR option_name LIKE %s",
-				'_transient_brag_book_migration_%' . $pattern_md5 . '%',
-				'_transient_timeout_brag_book_migration_%' . $pattern_md5 . '%'
+				'_transient_brag_book_gallery_transient_migration_%' . $pattern_md5 . '%',
+				'_transient_timeout_brag_book_gallery_transient_migration_%' . $pattern_md5 . '%'
 			) );
 		}
 	}
@@ -1799,7 +1799,7 @@ class Migration_Manager {
 
 		try {
 			$result = $operation();
-			
+
 			// Commit all changes
 			$wpdb->query( 'COMMIT' );
 

@@ -81,7 +81,7 @@ final class Sitemap {
 	 * Note: The following properties are inherited from traits:
 	 * - $memory_cache from Trait_Api
 	 * - $validation_errors from Trait_Sanitizer (via Trait_Api)
-	 * 
+	 *
 	 * @since 3.0.0
 	 */
 	public function __construct() {
@@ -169,16 +169,16 @@ final class Sitemap {
 	public function check_sitemap_request(): void {
 		$request_uri = $_SERVER['REQUEST_URI'] ?? '';
 		$sitemap_path = '/' . $this->sitemap_filename;
-		
+
 		// Check if this is a sitemap request
 		if ( strpos( $request_uri, $sitemap_path ) === false ) {
 			return;
 		}
-		
+
 		// We need to wait for WordPress to be ready, so register a high priority action
 		add_action( 'template_redirect', array( $this, 'serve_sitemap_immediately' ), 1 );
 	}
-	
+
 	/**
 	 * Add sitemap rewrite rule
 	 *
@@ -247,37 +247,37 @@ final class Sitemap {
 		while ( ob_get_level() ) {
 			ob_end_clean();
 		}
-		
+
 		// Start a new buffer to capture any errant output
 		ob_start();
-		
+
 		$sitemap_content = $this->get_sitemap_content();
-		
+
 		// Clean the buffer again in case get_sitemap_content produced output
 		ob_clean();
-		
+
 		if ( empty( $sitemap_content ) ) {
 			status_header( 404 );
 			exit;
 		}
-		
+
 		// Remove any potential whitespace or BOM
 		$sitemap_content = trim( $sitemap_content );
-		
+
 		// Set appropriate headers
 		header( 'Content-Type: application/xml; charset=UTF-8' );
 		header( 'X-Robots-Tag: noindex' );
-		
+
 		// Set caching headers
 		$cache_time = 6 * HOUR_IN_SECONDS;
 		header( 'Cache-Control: max-age=' . $cache_time );
 		header( 'Expires: ' . gmdate( 'D, d M Y H:i:s', time() + $cache_time ) . ' GMT' );
-		
+
 		// Output sitemap and exit
 		echo $sitemap_content;
 		exit;
 	}
-	
+
 	/**
 	 * Serve sitemap when requested (legacy method kept for compatibility)
 	 *
@@ -300,10 +300,10 @@ final class Sitemap {
 	 */
 	public function generate_sitemap(): string {
 		try {
-			$cache_key = 'brag_book_gallery_sitemap_content';
+			$cache_key = 'brag_book_gallery_transient_sitemap_content';
 			$cached_content = get_transient( $cache_key );
 
-			if ( false !== $cached_content && ! empty( $cached_content ) ) {
+			if ( ! empty( $cached_content ) ) {
 				$this->track_performance( 'sitemap_generate', 'cache_hit' );
 				return $cached_content;
 			}
@@ -335,7 +335,7 @@ final class Sitemap {
 			}
 
 			return $xml;
-			
+
 		} catch ( \Exception $e ) {
 			$this->log_error( 'Sitemap generation failed', [
 				'error' => $e->getMessage(),
@@ -352,7 +352,7 @@ final class Sitemap {
 	 * @return string Sitemap XML content.
 	 */
 	private function get_sitemap_content(): string {
-		$cached_content = get_transient( 'brag_book_gallery_sitemap_content' );
+		$cached_content = get_transient( 'brag_book_gallery_transient_sitemap_content' );
 
 		if ( false !== $cached_content ) {
 			return $cached_content;
@@ -426,7 +426,7 @@ final class Sitemap {
 
 			// Sanitize response data
 			return $this->sanitize_sitemap_data( $response['data'] );
-			
+
 		} catch ( \Exception $e ) {
 			$this->log_error( 'Failed to retrieve sitemap data', [
 				'error' => $e->getMessage()
@@ -444,24 +444,24 @@ final class Sitemap {
 	private function build_basic_sitemap(): string {
 		$xml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
 		$xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
-		
+
 		// Get gallery mode and slug
 		$mode = get_option( 'brag_book_gallery_mode', 'default' );
 		$gallery_slug = get_option( 'brag_book_gallery_page_slug', 'gallery' );
-		
+
 		// Handle array or string slug
 		if ( is_array( $gallery_slug ) ) {
 			$gallery_slugs = $gallery_slug;
 		} else {
 			$gallery_slugs = array( $gallery_slug );
 		}
-		
+
 		// Add entry for each gallery page
 		foreach ( $gallery_slugs as $slug ) {
 			if ( empty( $slug ) ) {
 				continue;
 			}
-			
+
 			$gallery_url = home_url( '/' . $slug . '/' );
 			$xml .= '  <url>' . "\n";
 			$xml .= '    <loc>' . esc_url( $gallery_url ) . '</loc>' . "\n";
@@ -470,12 +470,12 @@ final class Sitemap {
 			$xml .= '    <priority>0.8</priority>' . "\n";
 			$xml .= '  </url>' . "\n";
 		}
-		
+
 		$xml .= '</urlset>' . "\n";
-		
+
 		return $xml;
 	}
-	
+
 	/**
 	 * Build sitemap XML from data
 	 *
@@ -499,7 +499,7 @@ final class Sitemap {
 
 		// Get gallery mode to determine how to handle slugs with PHP 8.2 features
 		$mode = get_option( 'brag_book_gallery_mode', 'default' );
-		
+
 		// Use match expression for mode handling (PHP 8.0+)
 		match ( $mode ) {
 			'local' => $this->build_local_mode_sitemap( $xml, $sitemap_data ),
@@ -522,7 +522,7 @@ final class Sitemap {
 	private function build_local_mode_sitemap( string &$xml, array $sitemap_data ): void {
 		// Local mode: Multiple galleries with array of slugs using modern syntax
 		$gallery_slugs = get_option( 'brag_book_gallery_page_slug', [] );
-		
+
 		// Ensure it's an array using null coalescing
 		$gallery_slugs = is_array( $gallery_slugs ) ? $gallery_slugs : [ $gallery_slugs ];
 
@@ -568,7 +568,7 @@ final class Sitemap {
 	private function build_default_mode_sitemap( string &$xml, array $sitemap_data ): void {
 		// Default mode: Single gallery with string slug
 		$gallery_slug = get_option( 'brag_book_gallery_page_slug', 'gallery' );
-		
+
 		// If it's an array, get the first element using modern array function
 		if ( is_array( $gallery_slug ) ) {
 			$gallery_slug = ! empty( $gallery_slug ) ? reset( $gallery_slug ) : 'gallery';
@@ -784,7 +784,7 @@ final class Sitemap {
 	 * @return string Last modified date in ISO 8601 format.
 	 */
 	private function get_sitemap_last_modified(): string {
-		$cache_key = 'brag_book_gallery_sitemap_last_modified';
+		$cache_key = 'brag_book_gallery_transient_sitemap_last_modified';
 		$last_modified = get_transient( $cache_key );
 
 		if ( false !== $last_modified ) {
@@ -805,8 +805,8 @@ final class Sitemap {
 	 * @return void
 	 */
 	public function clear_sitemap_cache(): void {
-		delete_transient( 'brag_book_gallery_sitemap_content' );
-		delete_transient( 'brag_book_gallery_sitemap_last_modified' );
+		delete_transient( 'brag_book_gallery_transient_sitemap_content' );
+		delete_transient( 'brag_book_gallery_transient_sitemap_last_modified' );
 
 		// Clear any API cache that might affect sitemap data.
 		$this->clear_api_cache( 'sitemap' );
@@ -842,7 +842,7 @@ final class Sitemap {
 	 * @return bool True if cached, false otherwise.
 	 */
 	public function is_sitemap_cached(): bool {
-		return false !== get_transient( 'brag_book_gallery_sitemap_content' );
+		return false !== get_transient( 'brag_book_gallery_transient_sitemap_content' );
 	}
 
 	/**
@@ -886,7 +886,7 @@ final class Sitemap {
 	 */
 	private function log_error( string $message, array $context = [] ): void {
 		$error_id = uniqid( 'sitemap_error_', true );
-		
+
 		$this->validation_errors[ $error_id ] = [
 			'message' => $message,
 			'context' => $context,
@@ -945,9 +945,9 @@ final class Sitemap {
 
 		// Limit metrics storage to prevent memory issues
 		if ( count( $this->performance_metrics[ $operation ] ) > 100 ) {
-			$this->performance_metrics[ $operation ] = array_slice( 
-				$this->performance_metrics[ $operation ], 
-				-100 
+			$this->performance_metrics[ $operation ] = array_slice(
+				$this->performance_metrics[ $operation ],
+				-100
 			);
 		}
 	}
@@ -969,9 +969,9 @@ final class Sitemap {
 		// Use libxml to validate XML
 		$prev_errors = libxml_use_internal_errors( true );
 		$doc = new \DOMDocument();
-		
+
 		$valid = $doc->loadXML( $xml );
-		
+
 		if ( ! $valid ) {
 			$errors = libxml_get_errors();
 			foreach ( $errors as $error ) {
@@ -1000,7 +1000,7 @@ final class Sitemap {
 	private function get_fallback_sitemap(): string {
 		$xml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
 		$xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
-		
+
 		// Add main site URL as fallback
 		$xml .= '  <url>' . "\n";
 		$xml .= '    <loc>' . esc_url( home_url( '/' ) ) . '</loc>' . "\n";
@@ -1008,7 +1008,7 @@ final class Sitemap {
 		$xml .= '    <changefreq>daily</changefreq>' . "\n";
 		$xml .= '    <priority>1.0</priority>' . "\n";
 		$xml .= '  </url>' . "\n";
-		
+
 		// Try to add gallery page if available
 		$gallery_slug = get_option( 'brag_book_gallery_page_slug', 'gallery' );
 		if ( ! empty( $gallery_slug ) ) {
@@ -1022,9 +1022,9 @@ final class Sitemap {
 				$xml .= '  </url>' . "\n";
 			}
 		}
-		
+
 		$xml .= '</urlset>' . "\n";
-		
+
 		return $xml;
 	}
 
@@ -1043,7 +1043,7 @@ final class Sitemap {
 		}
 
 		$url = esc_url_raw( $url );
-		
+
 		// Ensure URL is from current site
 		if ( ! str_starts_with( $url, home_url() ) ) {
 			$this->log_error( 'Invalid URL domain', [ 'url' => $url ] );
@@ -1152,7 +1152,7 @@ final class Sitemap {
 							return null;
 						}
 						$image = (object) $image;
-						
+
 						if ( isset( $image->url ) ) {
 							$image->url = esc_url_raw( $image->url );
 						}
@@ -1162,10 +1162,10 @@ final class Sitemap {
 						if ( isset( $image->title ) ) {
 							$image->title = sanitize_text_field( $image->title );
 						}
-						
+
 						return $image;
 					}, $item->images );
-					
+
 					$item->images = array_filter( $item->images );
 				}
 
@@ -1192,11 +1192,11 @@ final class Sitemap {
 	 * @since 3.0.0
 	 */
 	private function is_rate_limited( string $identifier, int $limit = 10, int $window = 60 ): bool {
-		$cache_key = 'brag_book_rate_limit_' . md5( $identifier );
+		$cache_key = 'brag_book_gallery_transient_rate_limit_' . $identifier;
 		$requests = get_transient( $cache_key ) ?: 0;
 
 		if ( $requests >= $limit ) {
-			$this->log_warning( 'Rate limit exceeded', [ 
+			$this->log_warning( 'Rate limit exceeded', [
 				'identifier' => $identifier,
 				'requests' => $requests,
 				'limit' => $limit
@@ -1221,7 +1221,7 @@ final class Sitemap {
 	 */
 	private function get_cached_data( string $cache_key, callable $callback, int $ttl = self::CACHE_TTL_SITEMAP ) {
 		$start_time = microtime( true );
-		
+
 		// Check memory cache first (fastest)
 		if ( isset( $this->memory_cache[ $cache_key ] ) ) {
 			$this->track_performance( 'cache_lookup', 'memory_hit' );
@@ -1239,19 +1239,19 @@ final class Sitemap {
 		// Generate data if not cached
 		try {
 			$data = $callback();
-			
+
 			// Store in both cache levels
 			$this->memory_cache[ $cache_key ] = $data;
 			set_transient( $cache_key, $data, $ttl );
-			
+
 			$duration = microtime( true ) - $start_time;
 			if ( $duration > 1.0 ) { // Log slow operations
 				$this->log_warning( 'Slow sitemap generation', [ 'duration' => $duration ] );
 			}
-			
+
 			$this->track_performance( 'cache_lookup', 'generated' );
 			return $data;
-			
+
 		} catch ( \Exception $e ) {
 			$this->log_error( 'Cache callback failed', [
 				'cache_key' => $cache_key,
@@ -1271,12 +1271,12 @@ final class Sitemap {
 	 */
 	private function optimize_memory(): void {
 		$max_cache_entries = 20;
-		
+
 		// Clean memory cache if too large
 		if ( count( $this->memory_cache ) > $max_cache_entries ) {
 			$this->memory_cache = array_slice( $this->memory_cache, -$max_cache_entries, null, true );
 		}
-		
+
 		// Clean performance metrics if too large
 		foreach ( $this->performance_metrics as $operation => &$metrics ) {
 			if ( count( $metrics ) > 100 ) {
@@ -1297,10 +1297,10 @@ final class Sitemap {
 		try {
 			// Pre-generate sitemap content
 			$this->generate_sitemap();
-			
+
 			// Optimize memory after generation
 			$this->optimize_memory();
-			
+
 			$this->log_warning( 'Sitemap cache warmed successfully' );
 		} catch ( \Exception $e ) {
 			$this->log_error( 'Cache warm-up failed', [ 'error' => $e->getMessage() ] );
@@ -1324,7 +1324,7 @@ final class Sitemap {
 
 		foreach ( $this->performance_metrics as $operation => $data ) {
 			$hits = $misses = $generated = 0;
-			
+
 			foreach ( $data as $entry ) {
 				match ( $entry['result'] ?? '' ) {
 					'memory_hit', 'transient_hit', 'cache_hit' => $hits++,
@@ -1333,7 +1333,7 @@ final class Sitemap {
 					default => null
 				};
 			}
-			
+
 			$total = count( $data );
 			$metrics['operations'][ $operation ] = [
 				'total' => $total,
@@ -1359,10 +1359,10 @@ final class Sitemap {
 	 */
 	private function batch_process_urls( array $urls, int $batch_size = 100 ): \Generator {
 		$chunks = array_chunk( $urls, $batch_size );
-		
+
 		foreach ( $chunks as $chunk ) {
 			yield $chunk;
-			
+
 			// Free up memory between batches
 			if ( memory_get_usage( true ) > 100 * 1024 * 1024 ) { // 100MB threshold
 				$this->optimize_memory();

@@ -4,7 +4,7 @@
 // admin / status
 // -----------------------------------------------------------------------------
 
-.bb-api-row {
+.brag-book-gallery-api-row {
 	background: var(--slate-50);
 	border: none;
 	border-radius: var(--rounded-lg);
@@ -12,7 +12,7 @@
 	margin-block-end: var(--space-4);
 }
 
-.bb-api-row-header {
+.brag-book-gallery-api-row-header {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
@@ -21,11 +21,11 @@
 	border-block-end: var(--space-px) solid var(--slate-200);
 }
 
-.bb-api-row-header h3 {
+.brag-book-gallery-api-row-header h3 {
 	margin: 0;
 }
 
-.bb-api-status {
+.brag-book-gallery-api-status {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--space-2);
@@ -39,7 +39,7 @@
 	width: auto;
 }
 
-.api-token-field .bb-api-token {
+.api-token-field .brag-book-gallery-api-token {
 	padding-right: 45px !important;
 }
 
@@ -64,18 +64,18 @@
 }
 
 /* API Button Styling */
-.bb-validate-api {
+.brag-book-gallery-validate-api {
 	background: var(--slate-900) !important;
 	border-color: var(--slate-900) !important;
 	color: white !important;
 }
 
-.bb-validate-api:hover {
+.brag-book-gallery-validate-api:hover {
 	background: var(--slate-800) !important;
 	border-color: var(--slate-800) !important;
 }
 
-.bb-remove-api-row {
+.brag-book-gallery-remove-api-row {
 	color: var(--red-600) !important;
 }
 

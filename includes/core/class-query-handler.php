@@ -277,7 +277,7 @@ class Query_Handler {
 	 * @return string Cache key.
 	 */
 	private function build_cache_key( string $prefix, array $args ): string {
-		return $prefix . '_' . md5( wp_json_encode( $args ) );
+		return $prefix . '_' . wp_json_encode( $args );
 	}
 
 	/**
@@ -364,7 +364,7 @@ class Query_Handler {
 		$args = wp_parse_args( $args, $defaults );
 
 		// Build cache key.
-		$cache_key = 'gallery_' . md5( wp_json_encode( array( $id_or_slug, $args ) ) );
+		$cache_key = 'brag_book_gallery_transient_gallery_' . wp_json_encode( array( $id_or_slug, $args ) );
 
 		// Try to get from cache.
 		if ( $args['cache'] ) {
@@ -539,7 +539,7 @@ class Query_Handler {
 		$limit = min( max( absint( $limit ), 1 ), 50 );
 
 		// Build cache key.
-		$cache_key = 'featured_galleries_' . $limit;
+		$cache_key = 'brag_book_gallery_featured_galleries_' . $limit;
 		$cached = wp_cache_get( $cache_key, self::CACHE_GROUP );
 
 		if ( false !== $cached ) {
@@ -630,7 +630,7 @@ class Query_Handler {
 		}
 
 		// Build cache key.
-		$cache_key = 'related_galleries_' . $post_id . '_' . $limit;
+		$cache_key = 'brag_book_gallery_related_galleries_' . $post_id . '_' . $limit;
 		$cached = wp_cache_get( $cache_key, self::CACHE_GROUP );
 
 		if ( false !== $cached ) {
@@ -703,7 +703,7 @@ class Query_Handler {
 	 */
 	public function get_gallery_stats(): array {
 		// Try cache first.
-		$cache_key = 'gallery_stats';
+		$cache_key = 'brag_book_gallery_transient_gallery_stats';
 		$cached = wp_cache_get( $cache_key, self::CACHE_GROUP );
 
 		if ( false !== $cached ) {

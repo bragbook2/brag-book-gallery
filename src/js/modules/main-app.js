@@ -358,7 +358,7 @@ class BRAGbookGalleryApp {
 
 			// Prepare request parameters - use the HTML version
 			const requestParams = {
-				action: 'brag_book_load_case_details_html',
+				action: 'brag_book_gallery_load_case_details_html',
 				case_id: caseId,
 				procedure_slug: procedureSlug,
 				procedure_name: procedureName,
@@ -1210,7 +1210,7 @@ class BRAGbookGalleryApp {
 		if (filteredGallery) {
 			// Trigger AJAX reload with no filters
 			const formData = new FormData();
-			formData.append('action', 'brag_book_load_filtered_gallery');
+			formData.append('action', 'brag_book_gallery_load_filtered_gallery');
 			formData.append('nonce', window.bragBookGalleryAjax?.nonce || '');
 			formData.append('procedure_ids', ''); // Empty procedure IDs = show all
 			formData.append('has_nudity', document.body.classList.contains('nudity-accepted') ? '1' : '0');

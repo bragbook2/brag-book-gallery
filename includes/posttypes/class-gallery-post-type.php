@@ -199,7 +199,7 @@ class Gallery_Post_Type {
 	 * @return string The validated current mode
 	 */
 	private function get_validated_mode(): string {
-		$cache_key = 'brag_gallery_current_mode_validated';
+		$cache_key = 'brag_book_gallery_transient_current_mode_validated';
 
 		// Check memory cache first
 		if ( isset( $this->memory_cache[ $cache_key ] ) ) {

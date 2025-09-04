@@ -100,8 +100,8 @@ class Cache_Manager {
 		$deleted = $wpdb->query(
 			$wpdb->prepare(
 				"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
-				'%transient_brag_book_%',
-				'%transient_timeout_brag_book_%'
+				'%transient_brag_book_gallery_transient_%',
+				'%transient_timeout_brag_book_gallery_transient_%'
 			)
 		);
 
@@ -124,7 +124,7 @@ class Cache_Manager {
 
 		// Clear any persistent object cache
 		if ( function_exists( 'wp_cache_delete_group' ) ) {
-			wp_cache_delete_group( 'brag_book_gallery' );
+			wp_cache_delete_group( 'brag_book_gallery_transient' );
 		}
 
 		return [
@@ -259,10 +259,10 @@ class Cache_Manager {
 	public static function get_sidebar_cache_key( string $api_token ): string {
 		// Validate input
 		if ( empty( trim( $api_token ) ) ) {
-			return 'brag_book_sidebar_default';
+			return 'brag_book_gallery_transient_sidebar_default';
 		}
 
-		return sprintf( 'brag_book_sidebar_%s', md5( $api_token ) );
+		return sprintf( 'brag_book_gallery_transient_sidebar_%s', $api_token );
 	}
 
 	/**
@@ -294,7 +294,7 @@ class Cache_Manager {
 	): string {
 		// Build base key components
 		$key_parts = [
-			'brag_book_cases',
+			'brag_book_gallery_transient_cases',
 			md5( $api_token ),
 			sanitize_key( $website_property_id ),
 		];
@@ -305,7 +305,7 @@ class Cache_Manager {
 			$clean_ids = array_map( 'absint', $procedure_ids );
 			$clean_ids = array_filter( $clean_ids ); // Remove zero/invalid IDs
 			sort( $clean_ids, SORT_NUMERIC );
-			
+
 			if ( ! empty( $clean_ids ) ) {
 				$key_parts[] = 'procs_' . implode( '_', $clean_ids );
 			}
@@ -334,11 +334,11 @@ class Cache_Manager {
 	public static function get_all_cases_cache_key( string $api_token, string $website_property_id ): string {
 		// Validate inputs and provide fallback
 		if ( empty( trim( $api_token ) ) || empty( trim( $website_property_id ) ) ) {
-			return 'brag_book_all_cases_default';
+			return 'brag_book_gallery_transient_all_cases_default';
 		}
 
 		// Create secure cache key using combined hash
-		return sprintf( 'brag_book_all_cases_%s', md5( $api_token . $website_property_id ) );
+		return sprintf( 'brag_book_gallery_transient_all_cases_%s', $api_token . '_' . $website_property_id );
 	}
 
 	/**
@@ -384,7 +384,67 @@ class Cache_Manager {
 		];
 
 		$hash_string = implode( '|', $hash_components );
-		return sprintf( 'brag_book_carousel_%s', md5( $hash_string ) );
+		return sprintf( 'brag_book_gallery_transient_carousel_%s', $hash_string );
+	}
+
+	/**
+	 * Clear cache entries for a specific API token
+	 *
+	 * Removes all cache entries associated with a specific API token.
+	 * This is useful when API credentials change and related cache should be invalidated.
+	 *
+	 * @since 3.0.0
+	 * @param string $api_token API token to clear cache for.
+	 * @return array{success: bool, message: string, count?: int} Result of cache clearing operation.
+	 */
+	public static function clear_cache_by_api_token( string $api_token ): array {
+		global $wpdb;
+
+		if ( empty( trim( $api_token ) ) ) {
+			return [
+				'success' => false,
+				'message' => __( 'Invalid API token provided', 'brag-book-gallery' ),
+				'count' => 0,
+			];
+		}
+
+		$token_hash = md5( $api_token );
+
+		// Clear cache entries containing this token hash
+		$deleted = $wpdb->query(
+			$wpdb->prepare(
+				"DELETE FROM {$wpdb->options} WHERE (option_name LIKE %s OR option_name LIKE %s) AND (option_name LIKE %s OR option_name LIKE %s)",
+				'%transient_brag_book_gallery_transient_%',
+				'%transient_timeout_brag_book_gallery_transient_%',
+				'%' . $token_hash . '%',
+				'%' . $token_hash . '%'
+			)
+		);
+
+		if ( false === $deleted ) {
+			return [
+				'success' => false,
+				'message' => __( 'Failed to clear API token cache due to database error', 'brag-book-gallery' ),
+				'count' => 0,
+			];
+		}
+
+		$transient_count = (int) ( $deleted / 2 );
+
+		// Clear WordPress object cache
+		if ( function_exists( 'wp_cache_flush' ) ) {
+			wp_cache_flush();
+		}
+
+		return [
+			'success' => true,
+			'message' => sprintf(
+				/* translators: %d: number of cache entries cleared for API token */
+				_n( 'Cleared %d cache entry for API token', 'Cleared %d cache entries for API token', $transient_count, 'brag-book-gallery' ),
+				$transient_count
+			),
+			'count' => $transient_count,
+		];
 	}
 
 	/**
@@ -463,11 +523,11 @@ class Cache_Manager {
 	private static function get_cache_pattern_by_type( string $type ): string {
 		// Use PHP 8.2 match for cleaner type-based pattern generation
 		return match ( strtolower( trim( $type ) ) ) {
-			'sidebar' => '%transient_%brag_book_sidebar_%',
-			'cases' => '%transient_%brag_book_cases_%',
-			'carousel' => '%transient_%brag_book_carousel_%',
-			'all_cases' => '%transient_%brag_book_all_cases_%',
-			default => '%transient_%brag_book_%',
+			'sidebar' => '%transient_%brag_book_gallery_transient_sidebar_%',
+			'cases' => '%transient_%brag_book_gallery_transient_cases_%',
+			'carousel' => '%transient_%brag_book_gallery_transient_carousel_%',
+			'all_cases' => '%transient_%brag_book_gallery_transient_all_cases_%',
+			default => '%transient_%brag_book_gallery_transient_%',
 		};
 	}
 }

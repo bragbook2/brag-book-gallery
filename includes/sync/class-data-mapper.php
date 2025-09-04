@@ -224,7 +224,7 @@ final class Data_Mapper {
 
 			// Handle parent category with validation
 			if ( ! empty( $api_data['parentId'] ) ) {
-				$cache_key = "parent_term_{$api_data['parentId']}";
+				$cache_key = "brag_book_gallery_transient_parent_term_{$api_data['parentId']}";
 
 				$parent_term = $this->get_cached_or_generate(
 					$cache_key,
@@ -266,7 +266,7 @@ final class Data_Mapper {
 
 			// Generate new sync hash with caching
 			$case_id = $api_data['id'] ?? 'unknown';
-			$cache_key = "sync_hash_{$case_id}";
+			$cache_key = "brag_book_gallery_transient_sync_hash_{$case_id}";
 			$new_hash = $this->get_cached_or_generate(
 				$cache_key,
 				fn() => $this->generate_sync_hash( $api_data ),
@@ -858,14 +858,14 @@ final class Data_Mapper {
 	 * @param int      $ttl Cache TTL in seconds.
 	 * @return mixed Cached or generated data.
 	 */
-	private function get_cached_or_generate( string $cache_key, callable $generator, int $ttl = self::CACHE_TTL_MEDIUM ) {
+	private function get_cached_or_generate( string $cache_key, callable $generator, int $ttl = self::CACHE_TTL_MEDIUM ): mixed {
 		// Check memory cache first
 		if ( isset( $this->memory_cache[ $cache_key ] ) ) {
 			return $this->memory_cache[ $cache_key ];
 		}
 
 		// Check WordPress transient cache
-		$transient_key = 'brag_mapper_' . md5( $cache_key );
+		$transient_key = 'brag_book_gallery_transient_mapper_' . $cache_key;
 		$cached = get_transient( $transient_key );
 
 		if ( false !== $cached ) {

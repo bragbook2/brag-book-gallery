@@ -90,7 +90,7 @@ final class Setup {
 	 */
 	private const ADMIN_PAGES = [
 		'toplevel_page_brag-book-gallery-settings',
-		'brag-book-gallery_page_bb-consultation',
+		'brag-book-gallery_page_brag-book-gallery-consultation',
 		'admin_page_brag-book-gallery-settings',
 	];
 
@@ -101,14 +101,14 @@ final class Setup {
 	 * @var array<int, string> AJAX actions to exclude from cache.
 	 */
 	private const LITESPEED_AJAX_EXCLUSIONS = [
-		'brag_book_load_filtered_gallery',
+		'brag_book_gallery_load_filtered_gallery',
 		'brag_book_gallery_load_case',
-		'load_case_details',
-		'brag_book_load_case_details_html',
-		'brag_book_load_more_cases',
-		'brag_book_load_filtered_cases',
+		'brag_book_gallery_load_case_details',
+		'brag_book_gallery_load_case_details_html',
+		'brag_book_gallery_load_more_cases',
+		'brag_book_gallery_load_filtered_cases',
 		'brag_book_gallery_clear_cache',
-		'brag_book_flush_rewrite_rules',
+		'brag_book_gallery_flush_rewrite_rules',
 	];
 
 	/**
@@ -199,7 +199,7 @@ final class Setup {
 	 *
 	 * @since 3.0.0
 	 * @return self Plugin instance.
-	 * 
+	 *
 	 * @example
 	 * ```php
 	 * $setup = Setup::get_instance();
@@ -223,9 +223,9 @@ final class Setup {
 	 * @since 3.0.0
 	 * @param string $plugin_file Absolute path to main plugin file.
 	 * @return void
-	 * 
+	 *
 	 * @throws \WP_Error If plugin file is invalid.
-	 * 
+	 *
 	 * @example
 	 * ```php
 	 * // From main plugin file
@@ -297,6 +297,7 @@ final class Setup {
 
 		// Cron events
 		add_action( 'brag_book_gallery_delayed_rewrite_flush', [ $this, 'handle_delayed_rewrite_flush' ] );
+		add_action( 'brag_book_gallery_cleanup_expired_transients', [ $this, 'cleanup_expired_transients' ] );
 
 		// Cache exclusions
 		$this->setup_litespeed_exclusions();
@@ -691,7 +692,7 @@ final class Setup {
 	 *
 	 * @since 3.0.0
 	 * @return bool True if on gallery page.
-	 * 
+	 *
 	 * @example
 	 * ```php
 	 * if ( $this->is_gallery_page() ) {
@@ -715,7 +716,7 @@ final class Setup {
 
 		// Check against all gallery page IDs
 		$result = $this->check_gallery_page_ids( $current_page_id );
-		
+
 		// Cache and return result
 		$this->cache['is_gallery_page'] = $result;
 		return $result;
@@ -730,7 +731,7 @@ final class Setup {
 	 * @since 3.0.0
 	 * @param string $hook_suffix Current admin page hook suffix.
 	 * @return bool True if on plugin admin page.
-	 * 
+	 *
 	 * @example
 	 * ```php
 	 * if ( $this->is_plugin_admin_page( $hook_suffix ) ) {
@@ -923,6 +924,9 @@ final class Setup {
 		Rewrite_Rules_Handler::custom_rewrite_rules();
 		flush_rewrite_rules();
 
+		// Schedule daily transient cleanup at 1 AM
+		$this->schedule_transient_cleanup();
+
 		/**
 		 * Fires when the plugin is activated.
 		 *
@@ -994,8 +998,8 @@ final class Setup {
 		// Set defaults only if not already set.
 		$defaults = array(
 			'brag_book_gallery_version'  => self::VERSION,
-			'bb_seo_plugin_selector'     => 0,
-			'bb_favorite_caseIds_count'  => 0,
+			'brag_book_gallery_seo_plugin_selector'     => 0,
+			'brag_book_gallery_favorite_caseIds_count'  => 0,
 		);
 
 		foreach ( $defaults as $option => $value ) {
@@ -1018,6 +1022,94 @@ final class Setup {
 	}
 
 	/**
+	 * Schedule transient cleanup cron job.
+	 *
+	 * Schedules a daily cron job to run at 1am to clean up expired transients.
+	 * Compatible with WP Engine and other managed hosting providers.
+	 *
+	 * @since 3.2.0
+	 *
+	 * @return void
+	 */
+	private function schedule_transient_cleanup(): void {
+		// Check if event is already scheduled
+		if ( ! wp_next_scheduled( 'brag_book_gallery_cleanup_expired_transients' ) ) {
+			// Schedule for 1am daily (using server timezone)
+			$tomorrow_1am = strtotime( 'tomorrow 1am' );
+			wp_schedule_event( $tomorrow_1am, 'daily', 'brag_book_gallery_cleanup_expired_transients' );
+		}
+	}
+
+	/**
+	 * Cleanup expired transients.
+	 *
+	 * Removes all expired transients from the database to prevent bloat.
+	 * This method is called by the scheduled cron job.
+	 *
+	 * @since 3.2.0
+	 *
+	 * @return void
+	 */
+	public function cleanup_expired_transients(): void {
+		global $wpdb;
+
+		// Delete expired transients (timeout < current time)
+		$current_time = time();
+
+		// Delete expired transient options
+		$wpdb->query(
+			$wpdb->prepare(
+				"DELETE FROM {$wpdb->options}
+				 WHERE option_name LIKE '_transient_timeout_%'
+				 AND option_value < %d",
+				$current_time
+			)
+		);
+
+		// Delete orphaned transients (transients without timeouts)
+		$wpdb->query(
+			"DELETE FROM {$wpdb->options}
+			 WHERE option_name LIKE '_transient_%'
+			 AND option_name NOT LIKE '_transient_timeout_%'
+			 AND NOT EXISTS (
+				 SELECT 1 FROM {$wpdb->options} o2
+				 WHERE o2.option_name = CONCAT('_transient_timeout_', SUBSTRING(option_name, 12))
+			 )"
+		);
+
+		// For multisite, also clean site transients
+		if ( is_multisite() ) {
+			// Delete expired site transients
+			$wpdb->query(
+				$wpdb->prepare(
+					"DELETE FROM {$wpdb->sitemeta}
+					 WHERE meta_key LIKE '_site_transient_timeout_%'
+					 AND meta_value < %d",
+					$current_time
+				)
+			);
+
+			// Delete orphaned site transients
+			$wpdb->query(
+				"DELETE FROM {$wpdb->sitemeta}
+				 WHERE meta_key LIKE '_site_transient_%'
+				 AND meta_key NOT LIKE '_site_transient_timeout_%'
+				 AND NOT EXISTS (
+					 SELECT 1 FROM {$wpdb->sitemeta} sm2
+					 WHERE sm2.meta_key = CONCAT('_site_transient_timeout_', SUBSTRING(meta_key, 17))
+				 )"
+			);
+		}
+
+		/**
+		 * Fires after expired transients have been cleaned up.
+		 *
+		 * @since 3.2.0
+		 */
+		do_action( 'brag_book_gallery_transients_cleaned' );
+	}
+
+	/**
 	 * Clear scheduled events
 	 *
 	 * Removes all scheduled cron events created by the plugin.
@@ -1029,6 +1121,7 @@ final class Setup {
 	private function clear_scheduled_events(): void {
 		// Clear any scheduled cron events.
 		wp_clear_scheduled_hook( 'brag_book_gallery_daily_cleanup' );
+		wp_clear_scheduled_hook( 'brag_book_gallery_cleanup_expired_transients' );
 
 		/**
 		 * Fires when scheduled events are being cleared.
@@ -1047,7 +1140,7 @@ final class Setup {
 	 * @since 3.0.0
 	 * @param string $service Service identifier.
 	 * @return object|null Service instance or null.
-	 * 
+	 *
 	 * @example
 	 * ```php
 	 * $settings = $setup->get_service( 'settings_manager' );
@@ -1194,7 +1287,7 @@ final class Setup {
 		// Get all gallery page IDs
 		$gallery_page_ids = array_map(
 			'absint',
-			(array) get_option( 'bb_gallery_stored_pages_ids', [] )
+			(array) get_option( 'brag_book_gallery_gallery_stored_pages_ids', [] )
 		);
 
 		$main_gallery_page_id = absint(
@@ -1240,10 +1333,10 @@ final class Setup {
 			$old_version
 		);
 
-		do_action( 'qm/debug', sprintf( 
+		do_action( 'qm/debug', sprintf(
 			'Version upgrade triggered: %s -> %s',
 			$old_version,
-			self::VERSION 
+			self::VERSION
 		) );
 	}
 
@@ -1285,7 +1378,7 @@ final class Setup {
 	 */
 	public function filter_rest_api_cache( bool $cache, string $request_route ): bool {
 		$request_route = sanitize_text_field( $request_route );
-		
+
 		if ( str_contains( $request_route, 'brag-book-gallery' ) ) {
 			return false;
 		}
@@ -1311,12 +1404,12 @@ final class Setup {
 		try {
 			// Flush rewrite rules
 			flush_rewrite_rules();
-			
+
 			// Clear any object cache to ensure fresh data
 			if ( function_exists( 'wp_cache_flush' ) ) {
 				wp_cache_flush();
 			}
-			
+
 			// Log for debugging
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 				error_log( 'BRAGBook Gallery: Delayed rewrite rules flush completed' );

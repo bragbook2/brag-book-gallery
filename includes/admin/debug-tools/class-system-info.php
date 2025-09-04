@@ -10,10 +10,10 @@
  * @subpackage Admin\Debug_Tools
  * @since      3.0.0
  * @version    3.0.0
- * 
+ *
  * @author     BRAGBook Team
  * @license    GPL-2.0-or-later
- * 
+ *
  * @see \BRAGBookGallery\Admin\Debug_Tools\Gallery_Checker For gallery diagnostics
  * @see \BRAGBookGallery\Admin\Debug_Tools\Rewrite_Debug For rewrite rule debugging
  * @see phpinfo() PHP's built-in information function for additional details
@@ -67,7 +67,7 @@ final class System_Info {
 	 * @since 3.0.0
 	 * @var string
 	 */
-	private const CACHE_PREFIX = 'brag_book_sysinfo_';
+	private const CACHE_PREFIX = 'brag_book_gallery_transient_sysinfo_';
 
 	/**
 	 * Cache duration in seconds (5 minutes).
@@ -156,11 +156,11 @@ final class System_Info {
 			</div>
 
 				<textarea id="system-info-output" readonly style="width: 100%; height: 500px; font-family: monospace; font-size: 12px; background: #f5f5f5; padding: 15px; border: 1px solid #ddd; resize: vertical;" aria-label="<?php esc_attr_e( 'System Information Output', 'brag-book-gallery' ); ?>"><?php echo esc_textarea( $system_info ); ?></textarea>
-				
+
 				<!-- Performance Metrics -->
 				<div class="performance-metrics" style="margin-top: 10px; padding: 10px; background: #f0f8ff; border-left: 4px solid #0073aa;">
 					<small>
-						<?php 
+						<?php
 						printf(
 							/* translators: %s: Time in seconds */
 							esc_html__( 'System information generated in %s seconds', 'brag-book-gallery' ),
@@ -185,7 +185,7 @@ final class System_Info {
 					return new Promise(function(resolve) {
 						element.style.display = 'block';
 						element.style.opacity = '0';
-						
+
 						setTimeout(function() {
 							element.style.transition = 'opacity ' + duration + 'ms';
 							element.style.opacity = '1';
@@ -193,7 +193,7 @@ final class System_Info {
 						}, 10);
 					});
 				};
-				
+
 				/**
 				 * Modern fade-out effect with ES5 compatibility.
 				 *
@@ -206,7 +206,7 @@ final class System_Info {
 					return new Promise(function(resolve) {
 						element.style.transition = 'opacity ' + duration + 'ms';
 						element.style.opacity = '0';
-						
+
 						setTimeout(function() {
 							element.style.display = 'none';
 							resolve();
@@ -214,7 +214,7 @@ final class System_Info {
 					});
 				};
 
-				
+
 				/**
 				 * Show copy status with modern async handling.
 				 *
@@ -225,7 +225,7 @@ final class System_Info {
 					if (success === undefined) success = true;
 					const statusElement = document.getElementById('copy-status');
 					if (!statusElement) return;
-					
+
 					if (success) {
 						await fadeIn(statusElement);
 						setTimeout(async function() {
@@ -235,7 +235,7 @@ final class System_Info {
 						alert('<?php echo esc_js( __( 'Failed to copy. Please select and copy manually.', 'brag-book-gallery' ) ); ?>');
 					}
 				};
-				
+
 				/**
 				 * Modern clipboard copy with fallback support.
 				 *
@@ -249,7 +249,7 @@ final class System_Info {
 							await navigator.clipboard.writeText(text);
 							return true;
 						}
-						
+
 						// Fallback to execCommand
 						const textarea = document.getElementById('system-info-output');
 						if (textarea) {
@@ -257,48 +257,48 @@ final class System_Info {
 							textarea.setSelectionRange(0, 99999);
 							return document.execCommand('copy');
 						}
-						
+
 						return false;
 					} catch (error) {
 						console.error('Copy failed:', error);
 						return false;
 					}
 				};
-				
+
 				// Copy button handler
 				const copyBtn = document.getElementById('copy-system-info');
 				if (copyBtn) {
 					copyBtn.addEventListener('click', async function() {
 						const textarea = document.getElementById('system-info-output');
 						if (!textarea) return;
-						
+
 						const success = await copyToClipboard(textarea.value);
 						await showCopyStatus(success);
 					});
 				}
 
-				
+
 				// Download button handler with modern approach
 				const downloadBtn = document.getElementById('download-system-info');
 				if (downloadBtn) {
 					downloadBtn.addEventListener('click', function() {
 						const textarea = document.getElementById('system-info-output');
 						if (!textarea) return;
-						
+
 						try {
 							const text = textarea.value;
 							const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
 							const url = URL.createObjectURL(blob);
-							
+
 							const a = document.createElement('a');
 							a.href = url;
 							a.download = 'bragbook-system-info-' + new Date().toISOString().slice(0, 10) + '.txt';
 							a.style.display = 'none';
-							
+
 							document.body.appendChild(a);
 							a.click();
 							document.body.removeChild(a);
-							
+
 							// Clean up the object URL
 							setTimeout(function() { URL.revokeObjectURL(url); }, 100);
 						} catch (error) {
@@ -461,7 +461,7 @@ final class System_Info {
 
 		} catch ( Exception $e ) {
 			$this->handle_error( $e, __METHOD__ );
-			return '=== ERROR GENERATING SYSTEM INFORMATION ===' . "\n" . 
+			return '=== ERROR GENERATING SYSTEM INFORMATION ===' . "\n" .
 				   'Error: ' . $e->getMessage();
 		}
 	}
@@ -888,13 +888,13 @@ final class System_Info {
 
 			$info[] = 'Permalink Structure: ' . ( get_option( 'permalink_structure' ) ?: 'Default' );
 			$info[] = 'Show on Front: ' . get_option( 'show_on_front', 'posts' );
-			
+
 			// Get page titles for front/blog pages
 			$front_page_id = get_option( 'page_on_front' );
 			$blog_page_id = get_option( 'page_for_posts' );
 			$info[] = 'Page on Front: ' . ( $front_page_id ? get_the_title( $front_page_id ) . ' (ID: ' . $front_page_id . ')' : 'Not Set' );
 			$info[] = 'Page for Posts: ' . ( $blog_page_id ? get_the_title( $blog_page_id ) . ' (ID: ' . $blog_page_id . ')' : 'Not Set' );
-			
+
 			$info[] = 'Blog Charset: ' . get_option( 'blog_charset', 'UTF-8' );
 			$info[] = 'Users Can Register: ' . ( get_option( 'users_can_register' ) ? 'Yes' : 'No' );
 			$info[] = 'Default Role: ' . get_option( 'default_role', 'subscriber' );
@@ -921,7 +921,7 @@ final class System_Info {
 			return 'WordPress settings unavailable: ' . $e->getMessage();
 		}
 	}
-	
+
 	/**
 	 * Parse user agent to extract browser information.
 	 *
@@ -945,7 +945,7 @@ final class System_Info {
 			default => ['Unknown', '']
 		};
 	}
-	
+
 	/**
 	 * Parse user agent to extract operating system information.
 	 *

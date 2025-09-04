@@ -183,7 +183,7 @@ class Settings_Api extends Settings_Base {
 					</div>
 				<?php endif; ?>
 
-				<div id="bb-api-rows">
+				<div id="brag-book-gallery-api-rows">
 					<?php
 					// Ensure at least one row is shown.
 					if ( empty( $api_tokens ) ) {
@@ -192,10 +192,10 @@ class Settings_Api extends Settings_Base {
 					}
 					?>
 					<?php foreach ( $api_tokens as $index => $token ) : ?>
-							<div class="bb-api-row" data-index="<?php echo esc_attr( $index ); ?>">
-								<div class="bb-api-row-header">
+							<div class="brag-book-gallery-api-row" data-index="<?php echo esc_attr( $index ); ?>">
+								<div class="brag-book-gallery-api-row-header">
 									<h3><?php esc_html_e( 'Connection', 'brag-book-gallery' ); ?> <span class="connection-number"><?php echo esc_html( $index + 1 ); ?></span></h3>
-									<span class="bb-api-status" data-index="<?php echo esc_attr( $index ); ?>"></span>
+									<span class="brag-book-gallery-api-status" data-index="<?php echo esc_attr( $index ); ?>"></span>
 								</div>
 								<table class="form-table brag-book-gallery-form-table">
 									<tr>
@@ -208,7 +208,7 @@ class Settings_Api extends Settings_Base {
 												       name="brag_book_gallery_api_token[]"
 												       value="<?php echo esc_attr( $token ); ?>"
 												       placeholder="<?php esc_attr_e( 'Enter your API token', 'brag-book-gallery' ); ?>"
-												       class="regular-text bb-api-token"/>
+												       class="regular-text brag-book-gallery-api-token"/>
 												<button type="button"
 												        class="toggle-api-token"
 												        title="<?php esc_attr_e( 'Toggle visibility', 'brag-book-gallery' ); ?>">
@@ -233,19 +233,19 @@ class Settings_Api extends Settings_Base {
 											       name="brag_book_gallery_website_property_id[]"
 											       value="<?php echo esc_attr( $property_id_value ); ?>"
 											       placeholder="<?php esc_attr_e( 'Enter your website property ID', 'brag-book-gallery' ); ?>"
-											       class="regular-text bb-websiteproperty-id"/>
+											       class="regular-text brag-book-gallery-websiteproperty-id"/>
 										</td>
 									</tr>
 									<tr>
 										<th scope="row"></th>
 										<td>
 											<button type="button"
-											        class="button button-primary bb-validate-api"
+											        class="button button-primary brag-book-gallery-validate-api"
 											        data-index="<?php echo esc_attr( $index ); ?>">
 												<?php esc_html_e( 'Validate & Save', 'brag-book-gallery' ); ?>
 											</button>
 											<button type="button"
-											        class="button button-secondary button-link-delete bb-remove-api-row"
+											        class="button button-secondary button-link-delete brag-book-gallery-remove-api-row"
 											        data-index="<?php echo esc_attr( $index ); ?>">
 												<?php esc_html_e( 'Remove Connection', 'brag-book-gallery' ); ?>
 											</button>
@@ -257,7 +257,7 @@ class Settings_Api extends Settings_Base {
 				</div>
 
 				<p class="add-api-connection">
-					<button type="button" id="bb-add-api-row" class="button button-secondary">
+					<button type="button" id="brag-book-gallery-add-api-row" class="button button-secondary">
 						<svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="currentColor"><path d="M450-290h60v-160h160v-60H510v-160h-60v160H290v60h160v160Zm30.07 190q-78.84 0-148.21-29.92t-120.68-81.21q-51.31-51.29-81.25-120.63Q100-401.1 100-479.93q0-78.84 29.92-148.21t81.21-120.68q51.29-51.31 120.63-81.25Q401.1-860 479.93-860q78.84 0 148.21 29.92t120.68 81.21q51.31 51.29 81.25 120.63Q860-558.9 860-480.07q0 78.84-29.92 148.21t-81.21 120.68q-51.29 51.31-120.63 81.25Q558.9-100 480.07-100Zm-.07-60q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z"/></svg>
 						<?php esc_html_e( 'Add New Connection', 'brag-book-gallery' ); ?>
 					</button>
@@ -576,7 +576,7 @@ class Settings_Api extends Settings_Base {
 				if (!button) return;
 
 				const field = button.closest('.api-token-field');
-				const input = field.querySelector('.bb-api-token');
+				const input = field.querySelector('.brag-book-gallery-api-token');
 				const icon = button.querySelector('.dashicons');
 
 				const isPassword = input.type === 'password';
@@ -592,7 +592,7 @@ class Settings_Api extends Settings_Base {
 			 * @since 3.0.0
 			 */
 			const renumberConnections = () => {
-				const rows = document.querySelectorAll('.bb-api-row');
+				const rows = document.querySelectorAll('.brag-book-gallery-api-row');
 				rows.forEach((row, index) => {
 					const numberSpan = row.querySelector('.connection-number');
 					if (numberSpan) {
@@ -607,20 +607,20 @@ class Settings_Api extends Settings_Base {
 			 * @since 3.0.0
 			 */
 			const handleAddConnection = () => {
-				const rows = document.querySelectorAll('.bb-api-row');
+				const rows = document.querySelectorAll('.brag-book-gallery-api-row');
 				const connectionNumber = rows.length + 1;
 
 				const newRowHTML = `
-					<div class="bb-api-row" data-index="${apiRowIndex}">
-						<div class="bb-api-row-header">
+					<div class="brag-book-gallery-api-row" data-index="${apiRowIndex}">
+						<div class="brag-book-gallery-api-row-header">
 							<h3><?php esc_html_e( "Connection", "brag-book-gallery" ); ?> <span class="connection-number">${connectionNumber}</span></h3>
-							<span class="bb-api-status" data-index="${apiRowIndex}"></span>
+							<span class="brag-book-gallery-api-status" data-index="${apiRowIndex}"></span>
 						</div>
 						<table class="form-table brag-book-gallery-form-table">
 							<tr>
 								<th scope="row"><label><?php esc_html_e( "API Token", "brag-book-gallery" ); ?></label></th>
 								<td><div class="api-token-field">
-									<input type="password" name="brag_book_gallery_api_token[]" placeholder="<?php esc_attr_e( "Enter your API token", "brag-book-gallery" ); ?>" class="regular-text bb-api-token"/>
+									<input type="password" name="brag_book_gallery_api_token[]" placeholder="<?php esc_attr_e( "Enter your API token", "brag-book-gallery" ); ?>" class="regular-text brag-book-gallery-api-token"/>
 									<button type="button" class="toggle-api-token" title="<?php esc_attr_e( "Toggle visibility", "brag-book-gallery" ); ?>">
 										<span class="dashicons dashicons-visibility"></span>
 									</button>
@@ -628,19 +628,19 @@ class Settings_Api extends Settings_Base {
 							</tr>
 							<tr>
 								<th scope="row"><label><?php esc_html_e( "Website Property ID", "brag-book-gallery" ); ?></label></th>
-								<td><input type="text" name="brag_book_gallery_website_property_id[]" placeholder="<?php esc_attr_e( "Enter your website property ID", "brag-book-gallery" ); ?>" class="regular-text bb-websiteproperty-id"/></td>
+								<td><input type="text" name="brag_book_gallery_website_property_id[]" placeholder="<?php esc_attr_e( "Enter your website property ID", "brag-book-gallery" ); ?>" class="regular-text brag-book-gallery-websiteproperty-id"/></td>
 							</tr>
 							<tr>
 								<th scope="row"></th>
 								<td>
-									<button type="button" class="button bb-validate-api" data-index="${apiRowIndex}"><?php esc_html_e( "Validate & Save", "brag-book-gallery" ); ?></button>
-									<button type="button" class="button button-link-delete bb-remove-api-row" data-index="${apiRowIndex}"><?php esc_html_e( "Remove Connection", "brag-book-gallery" ); ?></button>
+									<button type="button" class="button brag-book-gallery-validate-api" data-index="${apiRowIndex}"><?php esc_html_e( "Validate & Save", "brag-book-gallery" ); ?></button>
+									<button type="button" class="button button-link-delete brag-book-gallery-remove-api-row" data-index="${apiRowIndex}"><?php esc_html_e( "Remove Connection", "brag-book-gallery" ); ?></button>
 								</td>
 							</tr>
 						</table>
 					</div>`;
 
-				const container = document.getElementById('bb-api-rows');
+				const container = document.getElementById('brag-book-gallery-api-rows');
 				if (container) {
 					container.insertAdjacentHTML('beforeend', newRowHTML);
 				}
@@ -654,24 +654,24 @@ class Settings_Api extends Settings_Base {
 			 * @since 3.0.0
 			 */
 			const handleRemoveConnection = async (e) => {
-				const btn = e.target.closest('.bb-remove-api-row');
+				const btn = e.target.closest('.brag-book-gallery-remove-api-row');
 				if (!btn) return;
 
 				e.preventDefault();
-				const row = btn.closest('.bb-api-row');
+				const row = btn.closest('.brag-book-gallery-api-row');
 				const index = btn.dataset.index || row.dataset.index;
-				const apiToken = row.querySelector('.bb-api-token').value;
+				const apiToken = row.querySelector('.brag-book-gallery-api-token').value;
 
 				// If fields are empty, just remove the row from UI
 				if (!apiToken || apiToken.trim() === '') {
-					const rows = document.querySelectorAll('.bb-api-row');
+					const rows = document.querySelectorAll('.brag-book-gallery-api-row');
 					if (rows.length > 1) {
 						row.remove();
 						renumberConnections();
 					} else {
 						// Clear the fields of the last row
 						row.querySelectorAll('input').forEach(input => input.value = '');
-						const status = row.querySelector('.bb-api-status');
+						const status = row.querySelector('.brag-book-gallery-api-status');
 						if (status) status.innerHTML = '';
 					}
 					return;
@@ -740,7 +740,7 @@ class Settings_Api extends Settings_Base {
 			 * @since 3.0.0
 			 */
 			const handleValidateConnection = async (e) => {
-				const btn = e.target.closest('.bb-validate-api');
+				const btn = e.target.closest('.brag-book-gallery-validate-api');
 				if (!btn) return;
 
 				// Prevent duplicate calls if already processing
@@ -753,10 +753,10 @@ class Settings_Api extends Settings_Base {
 				console.log('BRAG book Gallery: handleValidateConnection called', e);
 
 				const index = btn.dataset.index;
-				const row = btn.closest('.bb-api-row');
-				const status = row.querySelector('.bb-api-status');
-				const apiToken = row.querySelector('.bb-api-token').value;
-				const propertyId = row.querySelector('.bb-websiteproperty-id').value;
+				const row = btn.closest('.brag-book-gallery-api-row');
+				const status = row.querySelector('.brag-book-gallery-api-status');
+				const apiToken = row.querySelector('.brag-book-gallery-api-token').value;
+				const propertyId = row.querySelector('.brag-book-gallery-websiteproperty-id').value;
 
 				if (!apiToken || !propertyId) {
 					showDialog(
@@ -829,7 +829,7 @@ class Settings_Api extends Settings_Base {
 			 * @since 3.0.0
 			 */
 			const handleTestAllConnections = () => {
-				const validateButtons = document.querySelectorAll('.bb-validate-api');
+				const validateButtons = document.querySelectorAll('.brag-book-gallery-validate-api');
 				validateButtons.forEach(button => button.click());
 			};
 
@@ -843,7 +843,7 @@ class Settings_Api extends Settings_Base {
 				initializeDialogPolyfill();
 
 				// Add connection button
-				const addButton = document.getElementById('bb-add-api-row');
+				const addButton = document.getElementById('brag-book-gallery-add-api-row');
 				if (addButton) {
 					addButton.addEventListener('click', handleAddConnection);
 				}
@@ -856,12 +856,12 @@ class Settings_Api extends Settings_Base {
 					}
 
 					// Remove connection
-					if (e.target.closest('.bb-remove-api-row')) {
+					if (e.target.closest('.brag-book-gallery-remove-api-row')) {
 						handleRemoveConnection(e);
 					}
 
 					// Validate connection
-					if (e.target.closest('.bb-validate-api')) {
+					if (e.target.closest('.brag-book-gallery-validate-api')) {
 						handleValidateConnection(e);
 					}
 				});
@@ -962,9 +962,24 @@ class Settings_Api extends Settings_Base {
 			$this->add_notice( __( 'No API tokens to save (all fields were empty).', 'brag-book-gallery' ), 'warning' );
 		}
 
+		// Get old API tokens for cache clearing
+		$old_api_tokens = get_option( 'brag_book_gallery_api_token', [] );
+		
 		// Update API connection data atomically
 		update_option( 'brag_book_gallery_api_token', $api_tokens );
 		update_option( 'brag_book_gallery_website_property_id', $website_property_ids );
+		
+		// Clear cache for changed API tokens
+		if ( $old_api_tokens !== $api_tokens ) {
+			// Clear cache for old tokens that were changed
+			foreach ( $old_api_tokens as $old_token ) {
+				if ( ! empty( $old_token ) && ! in_array( $old_token, $api_tokens, true ) ) {
+					\BRAGBookGallery\Includes\Extend\Cache_Manager::clear_cache_by_api_token( $old_token );
+				}
+			}
+			// Also clear all cache to ensure consistency
+			\BRAGBookGallery\Includes\Extend\Cache_Manager::clear_all_cache();
+		}
 
 		// Process and validate connection settings
 		if ( isset( $_POST['api_timeout'] ) ) {

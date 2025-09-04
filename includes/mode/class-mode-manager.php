@@ -96,7 +96,7 @@ class Mode_Manager {
 	 */
 	public const MODE_DEFAULT = 'default';
 	public const MODE_LOCAL = 'local';
-	
+
 	/**
 	 * Legacy mode constant for backwards compatibility
 	 * @deprecated 3.0.0 Use MODE_DEFAULT instead
@@ -370,7 +370,7 @@ class Mode_Manager {
 	 * @return bool
 	 */
 	private function is_sync_running(): bool {
-		$sync_status = get_transient( 'brag_book_gallery_sync_status' );
+		$sync_status = get_transient( 'brag_book_gallery_transient_sync_status' );
 		return $sync_status === 'running';
 	}
 
@@ -912,7 +912,7 @@ class Mode_Manager {
 	 * @return bool True if within limits, false if rate limited
 	 */
 	private function check_rate_limit( string $operation, int $limit = 5, int $window = 300 ): bool {
-		$transient_key = 'brag_book_mode_rate_limit_' . md5( $operation . get_current_user_id() );
+		$transient_key = 'brag_book_gallery_transient_mode_rate_limit_' . $operation . '_' . get_current_user_id();
 		$attempts = get_transient( $transient_key );
 
 		if ( $attempts === false ) {
@@ -1051,7 +1051,7 @@ class Mode_Manager {
 		}
 
 		// Check WordPress transient cache
-		$transient_key = 'brag_book_mode_' . md5( $key );
+		$transient_key = 'brag_book_gallery_transient_mode_' . $key;
 		$cached_data = get_transient( $transient_key );
 
 		if ( $cached_data !== false ) {
@@ -1084,7 +1084,7 @@ class Mode_Manager {
 		$this->mode_cache[ $key ] = $data;
 
 		// Store in WordPress transient cache
-		$transient_key = 'brag_book_mode_' . md5( $key );
+		$transient_key = 'brag_book_gallery_transient_mode_' . $key;
 		set_transient( $transient_key, $data, $ttl );
 	}
 

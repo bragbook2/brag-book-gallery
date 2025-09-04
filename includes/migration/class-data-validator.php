@@ -63,17 +63,17 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @since   3.0.0
  * @package BRAGBookGallery\Includes\Migration
  * @author  Candace Crowe Design <info@candacecrowe.com>
- * 
+ *
  * @uses    Database                For sync data operations
  * @uses    Gallery_Post_Type       For post type constants
  * @uses    Gallery_Taxonomies      For taxonomy constants
  * @uses    Mode_Manager            For mode detection
- * 
+ *
  * @example
  * ```php
  * // Initialize validator
  * $validator = new Data_Validator();
- * 
+ *
  * // Run comprehensive data integrity check
  * $integrity_report = $validator->check_data_integrity();
  * if ( ! $integrity_report['overall_valid'] ) {
@@ -84,7 +84,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  *         }
  *     }
  * }
- * 
+ *
  * // Validate specific migration
  * $migration_result = $validator->validate_migration( 'local' );
  * if ( $migration_result['valid'] ) {
@@ -207,7 +207,7 @@ class Data_Validator {
 	 * @since 3.0.0
 	 * @var string
 	 */
-	private const CACHE_GROUP = 'data_validator';
+	private const CACHE_GROUP = 'brag_book_gallery_transient_data_validator';
 
 	/**
 	 * Cache expiration time (1 hour)
@@ -238,9 +238,9 @@ class Data_Validator {
 	 * 3. Confirms required post types and taxonomies are registered
 	 *
 	 * @since 3.0.0
-	 * 
+	 *
 	 * @throws \RuntimeException If critical dependencies are missing
-	 * 
+	 *
 	 * @example
 	 * ```php
 	 * try {
@@ -286,7 +286,7 @@ class Data_Validator {
 	 *
 	 * @since 3.0.0
 	 *
-	 * @param string                   $error_code      Unique error identifier  
+	 * @param string                   $error_code      Unique error identifier
 	 * @param string                   $error_message   Human-readable error description
 	 * @param array<string, mixed>     $context         Additional error context data
 	 * @param string                   $severity        Error severity ('critical'|'warning'|'info')
@@ -340,7 +340,7 @@ class Data_Validator {
 			$this->log_validation_error(
 				'invalid_parameter_type',
 				"Parameter '{$parameter_name}' expected {$expected_type}, got " . gettype( $value ),
-				[ 
+				[
 					'parameter' => $parameter_name,
 					'expected' => $expected_type,
 					'actual' => gettype( $value ),
@@ -370,12 +370,12 @@ class Data_Validator {
 	private function validate_string_security( string $content, string $field_type = 'meta_value' ): bool {
 		// Check length limits to prevent buffer overflow attacks.
 		$max_length = self::MAX_STRING_LENGTHS[ $field_type ] ?? self::MAX_STRING_LENGTHS['meta_value'];
-		
+
 		if ( strlen( $content ) > $max_length ) {
 			$this->log_validation_error(
 				'content_too_long',
 				"Content exceeds maximum length for field type '{$field_type}'",
-				[ 
+				[
 					'field_type' => $field_type,
 					'content_length' => strlen( $content ),
 					'max_length' => $max_length,
@@ -391,7 +391,7 @@ class Data_Validator {
 				$this->log_validation_error(
 					'suspicious_content_detected',
 					'Content contains potentially malicious patterns',
-					[ 
+					[
 						'pattern' => $pattern,
 						'field_type' => $field_type,
 						'content_sample' => substr( $content, 0, 100 ), // Safe sample
@@ -472,14 +472,14 @@ class Data_Validator {
 	private function validate_json_security( string $json_string, int $max_depth = 10 ): bool {
 		// Attempt to decode JSON with depth limit.
 		$decoded = json_decode( $json_string, true, $max_depth );
-		
+
 		// Check for JSON parsing errors.
 		$json_error = json_last_error();
 		if ( JSON_ERROR_NONE !== $json_error ) {
 			$this->log_validation_error(
 				'invalid_json_format',
 				'JSON parsing failed: ' . json_last_error_msg(),
-				[ 
+				[
 					'json_error_code' => $json_error,
 					'json_sample' => substr( $json_string, 0, 100 ),
 				],
@@ -512,7 +512,7 @@ class Data_Validator {
 				if ( is_string( $key ) && ! $this->validate_string_security( $key, 'meta_value' ) ) {
 					return false;
 				}
-				
+
 				// Recursively validate values.
 				if ( ! $this->validate_nested_data_security( $value ) ) {
 					return false;
@@ -558,7 +558,7 @@ class Data_Validator {
 
 		// Execute validation and cache result.
 		$result = $validation();
-		
+
 		// Cache in both memory and transient.
 		$this->validation_cache[ $cache_key ] = $result;
 		set_transient( self::CACHE_GROUP . '_' . $cache_key, $result, self::CACHE_EXPIRATION );
@@ -600,7 +600,7 @@ class Data_Validator {
 		if ( null === $pattern ) {
 			// Clear all validation cache.
 			$this->validation_cache = [];
-			
+
 			// Clear WordPress transient cache (approximate - WordPress doesn't provide pattern delete).
 			wp_cache_flush_group( self::CACHE_GROUP );
 		} else {
@@ -637,7 +637,7 @@ class Data_Validator {
 		$results = [];
 		foreach ( $posts_data as $index => $post_data ) {
 			$cache_key = $this->build_cache_key( 'validate_post_data', $post_data );
-			
+
 			$results[ $index ] = $this->get_cached_validation(
 				$cache_key,
 				fn() => $this->validate_post_data( $post_data )
@@ -665,7 +665,7 @@ class Data_Validator {
 	 * @param array<string, mixed> $data Post data array to validate
 	 *
 	 * @return bool True if all validation rules pass, false otherwise
-	 * 
+	 *
 	 * @example
 	 * ```php
 	 * $post_data = [
@@ -677,7 +677,7 @@ class Data_Validator {
 	 *         '_brag_patient_info' => '{"age": 30, "gender": "F"}'
 	 *     ]
 	 * ];
-	 * 
+	 *
 	 * if ( $validator->validate_post_data( $post_data ) ) {
 	 *     // Proceed with post creation/update
 	 * }
@@ -781,7 +781,7 @@ class Data_Validator {
 		if ( isset( $data['slug'] ) && ! empty( $data['slug'] ) ) {
 			$original_slug = $data['slug'];
 			$sanitized_slug = sanitize_title( $original_slug );
-			
+
 			// Slug validation using match expression.
 			$slug_valid = match ( true ) {
 				$sanitized_slug !== $original_slug => false,
@@ -811,7 +811,7 @@ class Data_Validator {
 	 * @return array{
 	 *     valid: bool,
 	 *     errors: array<string>,
-	 *     warnings: array<string>, 
+	 *     warnings: array<string>,
 	 *     stats: array<string, mixed>
 	 * } Comprehensive validation results with typed structure
 	 */
@@ -845,7 +845,7 @@ class Data_Validator {
 	 *
 	 * Validation Components:
 	 * - Posts: Title validation, duplicate slug detection, post type verification
-	 * - Taxonomies: Term name validation, slug uniqueness, parent relationships  
+	 * - Taxonomies: Term name validation, slug uniqueness, parent relationships
 	 * - Meta: JSON integrity, required field presence, data type validation
 	 * - Images: File existence, attachment validity, media library integrity
 	 * - Sync: Database table existence, orphaned record detection, consistency checks
@@ -874,17 +874,17 @@ class Data_Validator {
 	 *         warnings: array<string>
 	 *     }>
 	 * } Comprehensive integrity validation results
-	 * 
+	 *
 	 * @example
 	 * ```php
 	 * $validator = new Data_Validator();
 	 * $integrity = $validator->check_data_integrity();
-	 * 
+	 *
 	 * if ( ! $integrity['overall_valid'] ) {
 	 *     error_log( "Data integrity issues found:" );
 	 *     error_log( "Errors: {$integrity['total_errors']}" );
 	 *     error_log( "Warnings: {$integrity['total_warnings']}" );
-	 *     
+	 *
 	 *     // Handle specific component failures
 	 *     foreach ( $integrity['checks'] as $component => $result ) {
 	 *         if ( ! $result['valid'] ) {
@@ -976,9 +976,9 @@ class Data_Validator {
 		// Check for posts with missing required meta
 		$posts_with_issues = $this->check_posts_missing_meta();
 		if ( ! empty( $posts_with_issues ) ) {
-			$result['warnings'][] = sprintf( 
-				'%d posts are missing required metadata', 
-				count( $posts_with_issues ) 
+			$result['warnings'][] = sprintf(
+				'%d posts are missing required metadata',
+				count( $posts_with_issues )
 			);
 			$result['stats']['posts_missing_meta'] = count( $posts_with_issues );
 		}
@@ -986,9 +986,9 @@ class Data_Validator {
 		// Check for broken images
 		$broken_images = $this->check_broken_images();
 		if ( ! empty( $broken_images ) ) {
-			$result['warnings'][] = sprintf( 
-				'%d posts have broken or missing images', 
-				count( $broken_images ) 
+			$result['warnings'][] = sprintf(
+				'%d posts have broken or missing images',
+				count( $broken_images )
 			);
 			$result['stats']['posts_with_broken_images'] = count( $broken_images );
 		}
@@ -1036,9 +1036,9 @@ class Data_Validator {
 
 		// If posts are still published in JavaScript mode, that might be a problem
 		if ( $published_posts > 0 ) {
-			$result['warnings'][] = sprintf( 
-				'%d gallery posts are still published (consider archiving them)', 
-				$published_posts 
+			$result['warnings'][] = sprintf(
+				'%d gallery posts are still published (consider archiving them)',
+				$published_posts
 			);
 		}
 
@@ -1180,10 +1180,10 @@ class Data_Validator {
 
 			foreach ( $json_meta_fields as $meta_key ) {
 				$meta_value = get_post_meta( $post_id, $meta_key, true );
-				
+
 				if ( ! empty( $meta_value ) && is_string( $meta_value ) ) {
 					$decoded = json_decode( $meta_value, true );
-					
+
 					if ( json_last_error() !== JSON_ERROR_NONE ) {
 						$result['errors'][] = "Post {$post_id} has invalid JSON in {$meta_key}";
 						$result['valid'] = false;
@@ -1229,7 +1229,7 @@ class Data_Validator {
 			if ( has_post_thumbnail( $post_id ) ) {
 				$thumbnail_id = get_post_thumbnail_id( $post_id );
 				$attachment = get_post( $thumbnail_id );
-				
+
 				if ( ! $attachment ) {
 					$result['errors'][] = "Post {$post_id} has invalid featured image reference";
 					$result['valid'] = false;
@@ -1306,9 +1306,9 @@ class Data_Validator {
 
 		// Check for orphaned mappings
 		if ( $tables_exist ) {
-			$orphaned_mappings = $wpdb->get_var( 
-				"SELECT COUNT(*) FROM {$case_map_table} cm 
-				 LEFT JOIN {$wpdb->posts} p ON cm.post_id = p.ID 
+			$orphaned_mappings = $wpdb->get_var(
+				"SELECT COUNT(*) FROM {$case_map_table} cm
+				 LEFT JOIN {$wpdb->posts} p ON cm.post_id = p.ID
 				 WHERE p.ID IS NULL"
 			);
 
@@ -1330,10 +1330,10 @@ class Data_Validator {
 	private function validate_post_meta( array $meta_data ): bool {
 		// Check for required meta fields in local mode
 		$mode_manager = \BRAGBookGallery\Includes\Mode\Mode_Manager::get_instance();
-		
+
 		if ( $mode_manager->is_local_mode() ) {
 			$required_meta = array( '_brag_case_id' );
-			
+
 			foreach ( $required_meta as $meta_key ) {
 				if ( ! isset( $meta_data[ $meta_key ] ) || empty( $meta_data[ $meta_key ] ) ) {
 					return false;
@@ -1371,11 +1371,11 @@ class Data_Validator {
 	private function check_posts_missing_meta(): array {
 		global $wpdb;
 
-		$posts_with_issues = $wpdb->get_col( 
+		$posts_with_issues = $wpdb->get_col(
 			$wpdb->prepare(
-				"SELECT p.ID FROM {$wpdb->posts} p 
+				"SELECT p.ID FROM {$wpdb->posts} p
 				 LEFT JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id AND pm.meta_key = '_brag_case_id'
-				 WHERE p.post_type = %s 
+				 WHERE p.post_type = %s
 				 AND p.post_status = 'publish'
 				 AND pm.meta_value IS NULL",
 				Gallery_Post_Type::POST_TYPE
@@ -1408,7 +1408,7 @@ class Data_Validator {
 			if ( has_post_thumbnail( $post_id ) ) {
 				$thumbnail_id = get_post_thumbnail_id( $post_id );
 				$file_path = get_attached_file( $thumbnail_id );
-				
+
 				if ( ! $file_path || ! file_exists( $file_path ) ) {
 					$has_broken_images = true;
 				}
@@ -1494,19 +1494,19 @@ class Data_Validator {
 	 *     failed: int,
 	 *     messages: array<string>
 	 * } Comprehensive repair operation results
-	 * 
+	 *
 	 * @example
 	 * ```php
 	 * $validator = new Data_Validator();
 	 * $repair_results = $validator->fix_data_issues();
-	 * 
+	 *
 	 * if ( $repair_results['fixed'] > 0 ) {
 	 *     error_log( "Successfully fixed {$repair_results['fixed']} issues" );
 	 *     foreach ( $repair_results['messages'] as $message ) {
 	 *         error_log( "Repair: {$message}" );
 	 *     }
 	 * }
-	 * 
+	 *
 	 * if ( $repair_results['failed'] > 0 ) {
 	 *     error_log( "Failed to fix {$repair_results['failed']} issues" );
 	 * }
@@ -1525,7 +1525,7 @@ class Data_Validator {
 			// Generate a temporary case ID
 			$temp_case_id = 'temp_' . $post_id . '_' . time();
 			update_post_meta( $post_id, '_brag_case_id', $temp_case_id );
-			
+
 			$results['fixed']++;
 			$results['messages'][] = "Added temporary case ID for post {$post_id}";
 		}
@@ -1559,7 +1559,7 @@ class Data_Validator {
 			if ( in_array( $post->post_name, $slugs_seen, true ) ) {
 				// Generate new unique slug
 				$new_slug = wp_unique_post_slug( $post->post_name . '-' . $post->ID, $post->ID, $post->post_status, Gallery_Post_Type::POST_TYPE, $post->post_parent );
-				
+
 				wp_update_post( array(
 					'ID' => $post->ID,
 					'post_name' => $new_slug,
@@ -1593,14 +1593,14 @@ class Data_Validator {
 		foreach ( $posts as $post_id ) {
 			foreach ( $json_meta_fields as $meta_key ) {
 				$meta_value = get_post_meta( $post_id, $meta_key, true );
-				
+
 				if ( ! empty( $meta_value ) && is_string( $meta_value ) ) {
 					$decoded = json_decode( $meta_value, true );
-					
+
 					if ( json_last_error() !== JSON_ERROR_NONE ) {
 						// Try to fix or remove broken JSON
 						delete_post_meta( $post_id, $meta_key );
-						
+
 						$results['fixed']++;
 						$results['messages'][] = "Removed broken JSON in post {$post_id} meta field: {$meta_key}";
 					}

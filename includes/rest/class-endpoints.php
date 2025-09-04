@@ -336,11 +336,11 @@ class Endpoints {
 				$this->log_error( 'Invalid mode configured: ' . $mode );
 				return null;
 			}
-			
+
 			// Get API configuration with comprehensive validation
 			$api_token_option = get_option( 'brag_book_gallery_api_token', [] );
 			$website_property_id_option = get_option( 'brag_book_gallery_website_property_id', [] );
-			
+
 			if ( ! is_array( $api_token_option ) || ! is_array( $website_property_id_option ) ) {
 				$this->log_error( 'Invalid API configuration format' );
 				return null;
@@ -348,24 +348,24 @@ class Endpoints {
 
 			$api_token = $api_token_option[ $mode ] ?? '';
 			$website_property_id = $website_property_id_option[ $mode ] ?? '';
-			
+
 			if ( empty( $api_token ) || empty( $website_property_id ) ) {
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 					do_action( 'qm/debug', 'BRAG Book Gallery: Missing API token or website property ID for mode: ' . $mode );
 				}
 				return null;
 			}
-		
+
 		// Get the API base URL from settings
 		$api_base_url = get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' );
-		
+
 		// Build API URL with case ID
-		$api_url = sprintf( 
-			'%s%s', 
-			$api_base_url, 
+		$api_url = sprintf(
+			'%s%s',
+			$api_base_url,
 			sprintf( self::API_ENDPOINTS['case_detail'], $case_id )
 		);
-		
+
 		// Add query parameters
 		$api_url = add_query_arg(
 			[
@@ -374,13 +374,13 @@ class Endpoints {
 			],
 			$api_url
 		);
-		
+
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 			do_action( 'qm/debug', 'BRAG Book Gallery: Fetching case ' . $case_id . ' from: ' . $api_url );
 			do_action( 'qm/debug', 'BRAG Book Gallery: API Token length: ' . strlen( $api_token ) );
 			do_action( 'qm/debug', 'BRAG Book Gallery: Website Property ID: ' . $website_property_id );
 		}
-		
+
 		// Make API request
 		$response = wp_remote_get(
 			$api_url,
@@ -391,14 +391,14 @@ class Endpoints {
 				],
 			]
 		);
-		
+
 		if ( is_wp_error( $response ) ) {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 				do_action( 'qm/debug', 'BRAG Book Gallery: API error for case ' . $case_id . ': ' . $response->get_error_message() );
 			}
 			return null;
 		}
-		
+
 		$response_code = wp_remote_retrieve_response_code( $response );
 		if ( $response_code !== 200 ) {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
@@ -407,9 +407,9 @@ class Endpoints {
 			}
 			return null;
 		}
-		
+
 			$response_body = wp_remote_retrieve_body( $response );
-			
+
 			// Validate response body is not empty
 			if ( empty( $response_body ) ) {
 				$this->log_error( 'Empty response body received for case: ' . $case_id );
@@ -417,7 +417,7 @@ class Endpoints {
 			}
 
 			return $response_body;
-		
+
 		} catch ( \Exception $e ) {
 			$this->log_error( 'Unexpected error in get_case_details: ' . $e->getMessage() );
 			return null;
@@ -1109,7 +1109,7 @@ class Endpoints {
 	 */
 	private function generate_cache_key( string $type, mixed $data ): string {
 		$key_data = is_array( $data ) ? wp_json_encode( $data ) : (string) $data;
-		return 'brag_book_gallery_api_' . $type . '_' . md5( $key_data );
+		return 'brag_book_gallery_transient_api_' . $type . '_' . $key_data;
 	}
 
 	/**
@@ -1378,8 +1378,8 @@ class Endpoints {
 					"DELETE FROM {$wpdb->options}
 					WHERE option_name LIKE %s
 					OR option_name LIKE %s",
-					'_transient_brag_book_gallery_api_%',
-					'_transient_timeout_brag_book_gallery_api_%'
+					'_transient_brag_book_gallery_transient_api_%',
+					'_transient_timeout_brag_book_gallery_transient_api_%'
 				)
 			);
 		} else {
@@ -1390,8 +1390,8 @@ class Endpoints {
 					"DELETE FROM {$wpdb->options}
 					WHERE option_name LIKE %s
 					OR option_name LIKE %s",
-					'_transient_brag_book_gallery_api_' . $type . '_%',
-					'_transient_timeout_brag_book_gallery_api_' . $type . '_%'
+					'_transient_brag_book_gallery_transient_api_' . $type . '_%',
+					'_transient_timeout_brag_book_gallery_transient_api_' . $type . '_%'
 				)
 			);
 		}
@@ -1848,7 +1848,7 @@ class Endpoints {
 	 * @return bool True if under limit, false if rate limited
 	 */
 	private function check_rate_limit( string $identifier, int $limit = 100, int $window = 3600 ): bool {
-		$cache_key = 'brag_book_rate_limit_' . md5( $identifier );
+		$cache_key = 'brag_book_gallery_transient_rate_limit_' . $identifier;
 		$current_requests = get_transient( $cache_key );
 
 		if ( $current_requests === false ) {

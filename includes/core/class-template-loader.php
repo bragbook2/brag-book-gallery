@@ -129,7 +129,7 @@ final class Template_Loader {
 		if ( class_exists( Mode_Manager::class ) ) {
 			$this->mode_manager = Mode_Manager::get_instance();
 		}
-		
+
 		$this->template_path = self::get_plugin_path() . 'templates/';
 		$this->init();
 	}
@@ -156,10 +156,10 @@ final class Template_Loader {
 		add_filter( 'single_template_hierarchy', [ $this, 'add_single_templates' ], 10, 1 );
 		add_filter( 'archive_template_hierarchy', [ $this, 'add_archive_templates' ], 10, 1 );
 		add_filter( 'taxonomy_template_hierarchy', [ $this, 'add_taxonomy_templates' ], 10, 1 );
-		
+
 		// JavaScript mode handling with early priority
 		add_action( 'template_redirect', [ $this, 'handle_javascript_mode_requests' ], 5 );
-		
+
 		// Template variables and body classes
 		add_action( 'wp', [ $this, 'setup_template_vars' ], 10 );
 		add_filter( 'body_class', [ $this, 'add_body_classes' ], 10, 1 );
@@ -338,11 +338,11 @@ final class Template_Loader {
 		}
 
 		global $wp_query;
-		
+
 		// Get and sanitize request URI
 		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Used for comparison only
 		$request_uri = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : '';
-		
+
 		if ( empty( $request_uri ) ) {
 			return;
 		}
@@ -361,7 +361,7 @@ final class Template_Loader {
 		// Set base query vars
 		$wp_query->set( 'brag_gallery_mode', 'javascript' );
 		$wp_query->set( 'brag_gallery_path', $path_parts );
-		
+
 		// Determine view type using match expression
 		match ( count( $path_parts ) ) {
 			0 => $this->set_index_view( $wp_query ),
@@ -382,7 +382,7 @@ final class Template_Loader {
 	 * @return void
 	 */
 	private function set_index_view( \WP_Query $wp_query ): void {
-		$wp_query->set( 'brag_gallery_view', 'index' );
+		$wp_query->set( 'brag_book_gallery_view', 'index' );
 	}
 
 	/**
@@ -394,7 +394,7 @@ final class Template_Loader {
 	 * @return void
 	 */
 	private function set_category_view( \WP_Query $wp_query, string $slug ): void {
-		$wp_query->set( 'brag_gallery_view', 'category' );
+		$wp_query->set( 'brag_book_gallery_view', 'category' );
 		$wp_query->set( 'brag_gallery_slug', sanitize_title( $slug ) );
 	}
 
@@ -408,9 +408,9 @@ final class Template_Loader {
 	 * @return void
 	 */
 	private function set_single_view( \WP_Query $wp_query, string $category, string $case ): void {
-		$wp_query->set( 'brag_gallery_view', 'single' );
+		$wp_query->set( 'brag_book_gallery_view', 'single' );
 		$wp_query->set( 'brag_gallery_category', sanitize_title( $category ) );
-		$wp_query->set( 'brag_gallery_case', sanitize_title( $case ) );
+		$wp_query->set( 'brag_book_gallery_cae', sanitize_title( $case ) );
 	}
 
 	/**
@@ -442,10 +442,10 @@ final class Template_Loader {
 	public function get_template( string $template_name, string $mode = '' ): string {
 		// Auto-detect mode if not specified
 		$mode = ! empty( $mode ) ? $mode : ( $this->mode_manager?->is_local_mode() ? 'local' : 'javascript' );
-		
+
 		// Build template path
 		$template_file = sprintf( '%s-mode/%s', $mode, $template_name );
-		
+
 		return $this->locate_template( $template_file ) ?: '';
 	}
 
@@ -490,7 +490,7 @@ final class Template_Loader {
 			// phpcs:ignore WordPress.PHP.DontExtract.extract_extract -- Safe with EXTR_SKIP
 			extract( $variables, EXTR_SKIP );
 		}
-		
+
 		include $template;
 	}
 
@@ -525,7 +525,7 @@ final class Template_Loader {
 
 			// Search for template
 			$located = $this->search_template_locations( $template_name );
-			
+
 			if ( $located ) {
 				// Cache the result
 				$this->template_cache[ $template_name ] = $located;
@@ -641,7 +641,7 @@ final class Template_Loader {
 		}
 
 		$taxonomy = get_query_var( 'taxonomy' );
-		
+
 		// Check if gallery taxonomy
 		$gallery_taxonomies = [
 			Gallery_Taxonomies::CATEGORY_TAXONOMY,
@@ -683,7 +683,7 @@ final class Template_Loader {
 
 		$current_mode = $this->mode_manager?->get_current_mode() ?? 'local';
 		$brag_gallery_mode = $current_mode;
-		
+
 		// Initialize base data
 		$brag_gallery_data = [
 			'mode'               => $current_mode,
@@ -760,7 +760,7 @@ final class Template_Loader {
 	private function is_virtual_gallery_url(): bool {
 		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Used for comparison only
 		$request_uri = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : '';
-		
+
 		if ( empty( $request_uri ) ) {
 			return false;
 		}
@@ -781,10 +781,10 @@ final class Template_Loader {
 	private function get_gallery_base_url(): string {
 		// Get from settings with default fallback
 		$base = get_option( 'brag_book_gallery_base_url', '/gallery/' );
-		
+
 		// Sanitize and normalize with slashes
 		$base = sanitize_title( trim( (string) $base, '/' ) ) ?: 'gallery';
-		
+
 		return '/' . $base . '/';
 	}
 
@@ -802,19 +802,19 @@ final class Template_Loader {
 	 */
 	public function get_template_part( string $slug, string $name = '', array $variables = [] ): void {
 		$mode = $this->mode_manager?->is_local_mode() ? 'local' : 'javascript';
-		
+
 		// Build template hierarchy
 		$templates = [];
-		
+
 		if ( ! empty( $name ) ) {
 			$templates[] = sprintf( '%s-mode/%s-%s.php', $mode, $slug, $name );
 		}
-		
+
 		$templates[] = sprintf( '%s-mode/%s.php', $mode, $slug );
-		
+
 		// Locate and include template
 		$template = $this->locate_template( $templates );
-		
+
 		if ( $template && file_exists( $template ) ) {
 			$this->include_template( $template, $variables );
 		}
@@ -833,7 +833,7 @@ final class Template_Loader {
 	 */
 	public function render_template( string $template_name, array $variables = [] ): string {
 		$template = $this->get_template( $template_name );
-		
+
 		if ( empty( $template ) || ! file_exists( $template ) ) {
 			return '';
 		}
@@ -856,14 +856,14 @@ final class Template_Loader {
 	public function get_available_templates(): array {
 		$mode = $this->mode_manager?->is_local_mode() ? 'local' : 'javascript';
 		$template_dir = $this->template_path . $mode . '-mode/';
-		
+
 		if ( ! is_dir( $template_dir ) ) {
 			return [];
 		}
 
 		// Scan directory for PHP files
 		$files = scandir( $template_dir );
-		
+
 		if ( ! is_array( $files ) ) {
 			return [];
 		}
@@ -908,11 +908,11 @@ final class Template_Loader {
 
 		// Add base gallery class
 		$classes[] = 'brag-book-gallery';
-		
+
 		// Add mode-specific class
 		$mode = $this->mode_manager?->get_current_mode() ?? 'local';
 		$classes[] = 'brag-gallery-' . sanitize_html_class( $mode );
-		
+
 		// Add content-type classes
 		if ( class_exists( Gallery_Post_Type::class ) && class_exists( Gallery_Taxonomies::class ) ) {
 			$classes = array_merge( $classes, $this->get_content_type_classes() );

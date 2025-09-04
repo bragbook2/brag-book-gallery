@@ -910,6 +910,8 @@ final class Gallery_Shortcode_Handler {
 			$attributes['data-favorites-page'] = 'true';
 		}
 
+		$attributes['id'] = 'brag-book-gallery';
+
 		return $attributes;
 	}
 

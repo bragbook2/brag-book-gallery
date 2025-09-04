@@ -225,15 +225,15 @@ trait Trait_Tools {
 	 * @access  public
 	 */
 	public function get_plugin_basename(): string {
-		$cache_key = 'plugin_basename';
-		
+		$cache_key = 'brag_book_gallery_transient_plugin_basename';
+
 		if ( isset( self::$path_cache[ $cache_key ] ) ) {
 			return self::$path_cache[ $cache_key ];
 		}
-		
+
 		$basename = plugin_basename( $this->get_plugin_path() );
 		self::$path_cache[ $cache_key ] = $basename;
-		
+
 		return $basename;
 	}
 
@@ -250,12 +250,12 @@ trait Trait_Tools {
 	 */
 	public function get_sub_dir_path( string $dir_name, bool $create = false ): string|false {
 		$start_time = microtime( true );
-		
+
 		try {
 			// Sanitize directory name
 			$dir_name = $this->sanitize_path( $dir_name );
 			$full_path = $this->get_plugin_path() . $dir_name;
-			
+
 			// Create directory if requested
 			if ( $create && ! is_dir( $full_path ) ) {
 				if ( ! wp_mkdir_p( $full_path ) ) {
@@ -263,11 +263,11 @@ trait Trait_Tools {
 					return false;
 				}
 			}
-			
+
 			$this->track_performance( 'get_sub_dir_path', microtime( true ) - $start_time );
-			
+
 			return $full_path;
-			
+
 		} catch ( Exception $e ) {
 			$this->log_error( 'get_sub_dir_path', $e->getMessage() );
 			return false;
@@ -457,8 +457,8 @@ trait Trait_Tools {
 	 * @access public
 	 */
 	public function get_plugin_info( string $value ): string {
-		$cache_key = 'plugin_info_' . md5( serialize( func_get_args() ) );
-		
+		$cache_key = 'brag_book_gallery_transient_plugin_info_' . serialize( func_get_args() );
+
 		if ( isset( self::$path_cache[ $cache_key ] ) ) {
 			return self::$path_cache[ $cache_key ];
 		}
@@ -479,7 +479,7 @@ trait Trait_Tools {
 		];
 
 		$plugin_file = trailingslashit( $this->get_plugin_path() ) . 'brag-book-gallery.php';
-		
+
 		if ( ! file_exists( $plugin_file ) ) {
 			$this->log_error( 'get_plugin_info', 'Plugin file not found: ' . $plugin_file );
 			return '';
@@ -493,7 +493,7 @@ trait Trait_Tools {
 
 		$result = $plugin_info[ $value ] ?? '';
 		self::$path_cache[ $cache_key ] = $result;
-		
+
 		return $result;
 	}
 
@@ -539,7 +539,7 @@ trait Trait_Tools {
 	 */
 	private function set_constants(): void {
 		$start_time = microtime( true );
-		
+
 		try {
 			$name = strtolower( $this->get_plugin_info_value( 'Name' ) );
 			$slug = str_replace( ' ', '-', $name );
@@ -571,9 +571,9 @@ trait Trait_Tools {
 					$this->constants['timeout'] = apply_filters( $slug . '_timeout', 60 );
 				}, 1 );
 			}
-			
+
 			$this->track_performance( 'set_constants', microtime( true ) - $start_time );
-			
+
 		} catch ( Exception $e ) {
 			$this->log_error( 'set_constants', $e->getMessage() );
 			// Set minimal constants on error
@@ -599,19 +599,19 @@ trait Trait_Tools {
 	 * @access public
 	 */
 	public function get_path( string $request, bool $screen = false, array $path = [] ): string {
-		$cache_key = 'path_' . md5( serialize( func_get_args() ) );
-		
+		$cache_key = 'brag_book_gallery_transient_path_' . serialize( func_get_args() );
+
 		if ( isset( self::$path_cache[ $cache_key ] ) ) {
 			return self::$path_cache[ $cache_key ];
 		}
-		
+
 		$path['url']     = trailingslashit( $this->get_plugin_url() );
 		$path['dir']     = $screen ? trailingslashit( 'admin' ) : '';
 		$path['request'] = trailingslashit( $request );
 
 		$result = esc_url_raw( implode( '', array_filter( $path ) ) );
 		self::$path_cache[ $cache_key ] = $result;
-		
+
 		return $result;
 	}
 
@@ -647,12 +647,12 @@ trait Trait_Tools {
 			'message' => $message,
 			'time'    => current_time( 'mysql' ),
 		];
-		
+
 		// Limit error log size
 		if ( count( $this->error_log ) > 100 ) {
 			array_shift( $this->error_log );
 		}
-		
+
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 			error_log( sprintf( '[BRAGBook Tools] %s: %s', $context, $message ) );
 		}
@@ -675,7 +675,7 @@ trait Trait_Tools {
 				'max'     => 0,
 			];
 		}
-		
+
 		$metrics = &$this->performance_metrics[ $operation ];
 		$metrics['count']++;
 		$metrics['total'] += $duration;
@@ -695,12 +695,12 @@ trait Trait_Tools {
 	public static function get_versioned_asset_url( string $asset_path, ?string $version = null ): string {
 		$url = self::get_asset_url( $asset_path );
 		$version = $version ?? self::get_version();
-		
+
 		if ( ! empty( $version ) ) {
 			$separator = str_contains( $url, '?' ) ? '&' : '?';
 			$url .= $separator . 'ver=' . $version;
 		}
-		
+
 		return $url;
 	}
 
@@ -714,11 +714,11 @@ trait Trait_Tools {
 	public static function is_safe_path( string $path ): bool {
 		$plugin_path = realpath( self::get_plugin_path() );
 		$check_path = realpath( $path );
-		
+
 		if ( $plugin_path === false || $check_path === false ) {
 			return false;
 		}
-		
+
 		return str_starts_with( $check_path, $plugin_path );
 	}
 
@@ -741,10 +741,10 @@ trait Trait_Tools {
 	public function check_compatibility(): array {
 		$wp_version = get_bloginfo( 'version' );
 		$php_version = PHP_VERSION;
-		
+
 		$requires_wp = $this->get_plugin_info_value( 'RequiresWP' ) ?: '6.0';
 		$requires_php = $this->get_plugin_info_value( 'RequiresPHP' ) ?: '8.2';
-		
+
 		return [
 			'wp_compatible'  => version_compare( $wp_version, $requires_wp, '>=' ),
 			'php_compatible' => version_compare( $php_version, $requires_php, '>=' ),

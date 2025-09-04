@@ -122,14 +122,14 @@ class Settings_Consultation extends Settings_Base {
 			tabLinks.forEach(link => {
 				link.addEventListener('click', function(e) {
 					e.preventDefault();
-					
+
 					// Remove active class from all tabs and panels
 					tabLinks.forEach(l => l.classList.remove('active'));
 					tabPanels.forEach(panel => panel.classList.remove('active'));
-					
+
 					// Add active class to clicked tab
 					this.classList.add('active');
-					
+
 					// Show corresponding panel
 					const targetId = this.getAttribute('href').substring(1);
 					const targetPanel = document.getElementById(targetId);
@@ -143,12 +143,12 @@ class Settings_Consultation extends Settings_Base {
 			const currentView = new URLSearchParams(window.location.search).get('view') || 'entries';
 			const defaultTab = document.querySelector(`.brag-book-gallery-side-tabs a[href="#${currentView}"]`);
 			const defaultPanel = document.getElementById(currentView);
-			
+
 			if (defaultTab && defaultPanel) {
 				// Remove any existing active classes
 				tabLinks.forEach(l => l.classList.remove('active'));
 				tabPanels.forEach(panel => panel.classList.remove('active'));
-				
+
 				// Set active tab and panel
 				defaultTab.classList.add('active');
 				defaultPanel.classList.add('active');
@@ -236,7 +236,7 @@ class Settings_Consultation extends Settings_Base {
 				<h3><?php esc_html_e( 'Consultation Entries', 'brag-book-gallery' ); ?></h3>
 			</div>
 
-			<div class="bb_pag_loading" style="display: none;">
+			<div class="brag_book_gallery_pag_loading" style="display: none;">
 				<p><?php esc_html_e( 'Loading consultation entries...', 'brag-book-gallery' ); ?></p>
 			</div>
 
@@ -252,7 +252,7 @@ class Settings_Consultation extends Settings_Base {
 							<th><?php esc_html_e( 'Actions', 'brag-book-gallery' ); ?></th>
 						</tr>
 					</thead>
-					<tbody class="bb_universal_container">
+					<tbody class="brag_book_gallery_universal_container">
 						<tr>
 							<td colspan="6" style="text-align: center; padding: 2rem;">
 								<?php esc_html_e( 'Loading consultation entries...', 'brag-book-gallery' ); ?>
@@ -261,7 +261,7 @@ class Settings_Consultation extends Settings_Base {
 					</tbody>
 				</table>
 			</div>
-			<div class="bb-pagination-nav"></div>
+			<div class="brag-book-gallery-pagination-nav"></div>
 		</div>
 
 		<!-- Consultation Details Dialog -->
@@ -291,9 +291,9 @@ class Settings_Consultation extends Settings_Base {
 			const deleteNonce = <?php echo wp_json_encode( $delete_nonce ); ?>;
 
 			const loadConsultationPosts = async ( page ) => {
-				const loadingDiv = document.querySelector( '.bb_pag_loading' );
-				const container = document.querySelector( '.bb_universal_container' );
-				const paginationNav = document.querySelector( '.bb-pagination-nav' );
+				const loadingDiv = document.querySelector( '.brag_book_gallery_pag_loading' );
+				const container = document.querySelector( '.brag_book_gallery_universal_container' );
+				const paginationNav = document.querySelector( '.brag-book-gallery-pagination-nav' );
 
 				if ( loadingDiv ) loadingDiv.style.display = 'block';
 				if ( container ) container.innerHTML = '<tr><td colspan="6" style="text-align: center;">Loading...</td></tr>';
@@ -331,14 +331,14 @@ class Settings_Consultation extends Settings_Base {
 
 			// Handle pagination clicks
 			document.addEventListener( 'click', ( event ) => {
-				const activeButton = event.target.closest( '.bb-universal-pagination li.active' );
+				const activeButton = event.target.closest( '.brag-book-gallery-universal-pagination li.active' );
 				if ( activeButton ) {
 					const page = parseInt( activeButton.getAttribute( 'p' ), 10 );
 					if ( !isNaN( page ) ) {
 						loadConsultationPosts( page );
 					}
 				}
-				
+
 				// Handle view consultation clicks
 				const viewButton = event.target.closest( '.view-consultation' );
 				if ( viewButton ) {
@@ -347,31 +347,31 @@ class Settings_Consultation extends Settings_Base {
 					viewConsultationDetails( postId );
 				}
 			});
-			
+
 			// View consultation details function
 			const viewConsultationDetails = async ( postId ) => {
 				const dialog = document.getElementById( 'consultationDetailsDialog' );
 				const body = document.getElementById( 'consultationDetailsBody' );
-				
+
 				if ( !dialog || !body ) return;
-				
+
 				body.innerHTML = '<p style="text-align: center; padding: 20px;"><?php echo esc_js( __( 'Loading...', 'brag-book-gallery' ) ); ?></p>';
 				dialog.showModal();
-				
+
 				const formData = new FormData();
 				formData.append( 'post_id', postId );
 				formData.append( 'nonce', nonce );
 				formData.append( 'action', 'consultation-get-details' );
-				
+
 				try {
 					const response = await fetch( ajaxurl, {
 						method: 'POST',
 						body: formData,
 						credentials: 'same-origin'
 					});
-					
+
 					const data = await response.json();
-					
+
 					if ( data.success ) {
 						body.innerHTML = data.data.html;
 					} else {

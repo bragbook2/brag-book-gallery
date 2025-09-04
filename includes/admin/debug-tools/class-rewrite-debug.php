@@ -98,7 +98,7 @@ class Rewrite_Debug {
 				<div id="regenerate-result"></div>
 			</div>
 		</div>
-		
+
 		<script>
 		document.addEventListener('DOMContentLoaded', function() {
 			/**
@@ -109,7 +109,7 @@ class Rewrite_Debug {
 					this.initElements();
 					this.bindEvents();
 				}
-				
+
 				/**
 				 * Initialize DOM elements
 				 */
@@ -122,7 +122,7 @@ class Rewrite_Debug {
 					this.regenerateBtn = document.getElementById('regenerate-rules');
 					this.regenerateResult = document.getElementById('regenerate-result');
 				}
-				
+
 				/**
 				 * Bind event handlers
 				 */
@@ -136,28 +136,28 @@ class Rewrite_Debug {
 					});
 					this.regenerateBtn?.addEventListener('click', () => this.regenerateRules());
 				}
-				
+
 				/**
 				 * Load rewrite rules via AJAX
 				 */
 				async loadRewriteRules() {
 					this.loadRulesBtn.disabled = true;
 					this.rulesContent.innerHTML = '<p>Loading...</p>';
-					
+
 					try {
 						const formData = new FormData();
-						formData.append('action', 'brag_book_debug_tool');
-						formData.append('nonce', '<?php echo wp_create_nonce( 'brag_book_debug_tools' ); ?>');
+						formData.append('action', 'brag_book_gallery_debug_tool');
+						formData.append('nonce', '<?php echo wp_create_nonce( 'brag_book_gallery_debug_tools' ); ?>');
 						formData.append('tool', 'rewrite-debug');
 						formData.append('tool_action', 'get_rules');
-						
+
 						const response = await fetch(ajaxurl, {
 							method: 'POST',
 							body: formData
 						});
-						
+
 						const data = await response.json();
-						
+
 						if (data.success) {
 							this.rulesContent.innerHTML = data.data;
 						} else {
@@ -169,7 +169,7 @@ class Rewrite_Debug {
 						this.loadRulesBtn.disabled = false;
 					}
 				}
-				
+
 				/**
 				 * Test URL parsing
 				 */
@@ -179,25 +179,25 @@ class Rewrite_Debug {
 						this.testUrlResult.innerHTML = '<p style="color: red;">Please enter a URL to test</p>';
 						return;
 					}
-					
+
 					this.testUrlBtn.disabled = true;
 					this.testUrlResult.innerHTML = '<p>Testing...</p>';
-					
+
 					try {
 						const formData = new FormData();
-						formData.append('action', 'brag_book_debug_tool');
-						formData.append('nonce', '<?php echo wp_create_nonce( 'brag_book_debug_tools' ); ?>');
+						formData.append('action', 'brag_book_gallery_debug_tool');
+						formData.append('nonce', '<?php echo wp_create_nonce( 'brag_book_gallery_debug_tools' ); ?>');
 						formData.append('tool', 'rewrite-debug');
 						formData.append('tool_action', 'test_url');
 						formData.append('test_url', testUrl);
-						
+
 						const response = await fetch(ajaxurl, {
 							method: 'POST',
 							body: formData
 						});
-						
+
 						const data = await response.json();
-						
+
 						if (data.success) {
 							this.testUrlResult.innerHTML = data.data;
 						} else {
@@ -209,7 +209,7 @@ class Rewrite_Debug {
 						this.testUrlBtn.disabled = false;
 					}
 				}
-				
+
 				/**
 				 * Regenerate rewrite rules
 				 */
@@ -217,24 +217,24 @@ class Rewrite_Debug {
 					if (!confirm('Are you sure you want to regenerate rewrite rules?')) {
 						return;
 					}
-					
+
 					this.regenerateBtn.disabled = true;
 					this.regenerateResult.innerHTML = '<p>Regenerating...</p>';
-					
+
 					try {
 						const formData = new FormData();
-						formData.append('action', 'brag_book_debug_tool');
-						formData.append('nonce', '<?php echo wp_create_nonce( 'brag_book_debug_tools' ); ?>');
+						formData.append('action', 'brag_book_gallery_debug_tool');
+						formData.append('nonce', '<?php echo wp_create_nonce( 'brag_book_gallery_debug_tools' ); ?>');
 						formData.append('tool', 'rewrite-debug');
 						formData.append('tool_action', 'regenerate');
-						
+
 						const response = await fetch(ajaxurl, {
 							method: 'POST',
 							body: formData
 						});
-						
+
 						const data = await response.json();
-						
+
 						if (data.success) {
 							this.regenerateResult.innerHTML = `<p style="color: green;">${data.data}</p>`;
 						} else {
@@ -247,7 +247,7 @@ class Rewrite_Debug {
 					}
 				}
 			}
-			
+
 			// Initialize the tool
 			new RewriteDebugTool();
 		});
@@ -266,7 +266,7 @@ class Rewrite_Debug {
 	 */
 	private function render_settings(): void {
 		$start_time = microtime( true );
-		
+
 		try {
 			// Use helper function to get the first slug with caching
 			$cache_key = 'settings_data';
@@ -283,7 +283,7 @@ class Rewrite_Debug {
 				];
 				$this->cache[ $cache_key ] = $settings_data;
 			}
-			
+
 			$brag_book_gallery_page_slug = $settings_data['gallery_slug'];
 			$permalink_structure = $settings_data['permalink_structure'];
 			?>
@@ -324,9 +324,9 @@ class Rewrite_Debug {
 			</table>
 		</div>
 		<?php
-			
+
 			$this->performance_metrics['render_settings'] = microtime( true ) - $start_time;
-			
+
 		} catch ( Exception $e ) {
 			error_log( '[BRAGBook Rewrite Debug] Error rendering settings: ' . $e->getMessage() );
 			echo '<p class="error">' . esc_html__( 'Error loading settings', 'brag-book-gallery' ) . '</p>';
@@ -454,16 +454,16 @@ class Rewrite_Debug {
 			'filter_procedure',  // Procedure filter (actively used)
 			'filter_category',   // Category filter (actively used)
 			'favorites_page',    // Favorites page indicator (actively used)
-			'brag_gallery_view', // URL Router gallery view (actively used)
-			'brag_gallery_case', // URL Router gallery case (actively used)
+			'brag_book_gallery_view', // URL Router gallery view (actively used)
+			'brag_book_gallery_cae', // URL Router gallery case (actively used)
 		];
-		
+
 		// Debug information - show all registered query vars
 		$current_vars = array_merge( $wp->public_query_vars, $wp->private_query_vars );
 		$all_filtered_vars = apply_filters( 'query_vars', $current_vars );
 		$gallery_specific_vars = array_filter( $all_filtered_vars, function( $var ) {
-			return strpos( $var, 'brag' ) !== false || 
-				   strpos( $var, 'procedure' ) !== false || 
+			return strpos( $var, 'brag' ) !== false ||
+				   strpos( $var, 'procedure' ) !== false ||
 				   strpos( $var, 'case' ) !== false ||
 				   strpos( $var, 'favorite' ) !== false;
 		});
@@ -472,7 +472,7 @@ class Rewrite_Debug {
 			<?php if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) : ?>
 			<details style="margin-bottom: 20px;">
 				<summary style="cursor: pointer; font-weight: 600; color: #666;">
-					<?php esc_html_e( 'Debug: All Gallery-Related Query Variables', 'brag-book-gallery' ); ?> 
+					<?php esc_html_e( 'Debug: All Gallery-Related Query Variables', 'brag-book-gallery' ); ?>
 					<small>(<?php echo count( $gallery_specific_vars ); ?> found)</small>
 				</summary>
 				<div style="background: #f5f5f5; padding: 10px; margin-top: 10px; font-family: monospace; font-size: 12px;">
@@ -487,7 +487,7 @@ class Rewrite_Debug {
 				</div>
 			</details>
 			<?php endif; ?>
-			
+
 			<table class="rewrite-table query-vars-table">
 				<thead>
 					<tr>
@@ -500,13 +500,13 @@ class Rewrite_Debug {
 					<?php
 					// Comprehensive check for query variable registration
 					$registered_vars = apply_filters( 'query_vars', [] );
-					
+
 					// Check multiple sources for query variable registration
 					$is_registered = in_array( $var, $wp->public_query_vars, true ) ||
 									in_array( $var, $wp->private_query_vars, true ) ||
 									in_array( $var, $registered_vars, true ) ||
 									isset( $wp->extra_query_vars[ $var ] );
-					
+
 					// Additional check: Try to get the filtered query vars directly
 					if ( ! $is_registered ) {
 						$all_query_vars = [];

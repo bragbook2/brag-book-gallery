@@ -68,7 +68,7 @@ class Debug_Tools {
 		$this->register_tools();
 
 		// Register AJAX handlers - these need to be available even before user check
-		add_action( 'wp_ajax_brag_book_debug_tool', [ $this, 'handle_ajax_request' ] );
+		add_action( 'wp_ajax_brag_book_gallery_debug_tool', [ $this, 'handle_ajax_request' ] );
 	}
 
 	/**
@@ -94,7 +94,7 @@ class Debug_Tools {
 	 */
 	public function handle_ajax_request(): void {
 		// Verify nonce
-		if ( ! check_ajax_referer( 'brag_book_debug_tools', 'nonce', false ) ) {
+		if ( ! check_ajax_referer( 'brag_book_gallery_debug_tools', 'nonce', false ) ) {
 			wp_send_json_error( 'Invalid nonce' );
 		}
 

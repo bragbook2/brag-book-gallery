@@ -571,7 +571,7 @@ class Assets {
 	 */
 	private function is_bragbook_page(): bool {
 		// Check memory cache first for performance
-		$cache_key = 'bragbook_page_check';
+		$cache_key = 'brag_book_gallery_transient_page_check';
 		if ( isset( $this->memory_cache[ $cache_key ] ) ) {
 			return $this->memory_cache[ $cache_key ];
 		}
@@ -622,7 +622,7 @@ class Assets {
 	 */
 	private function is_bragbook_admin_page( string $hook_suffix ): bool {
 		// Check memory cache first for performance
-		$cache_key = "admin_page_check_{$hook_suffix}";
+		$cache_key = "brag_book_gallery_transient_admin_page_check_{$hook_suffix}";
 		if ( isset( $this->memory_cache[ $cache_key ] ) ) {
 			return $this->memory_cache[ $cache_key ];
 		}
@@ -764,7 +764,7 @@ class Assets {
 	 */
 	private function is_jquery_already_overridden(): bool {
 		global $wp_scripts;
-		return isset( $wp_scripts->registered['jquery'] ) && 
+		return isset( $wp_scripts->registered['jquery'] ) &&
 		       str_contains( $wp_scripts->registered['jquery']->src ?? '', 'jquery.com' );
 	}
 
