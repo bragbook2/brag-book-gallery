@@ -548,7 +548,7 @@ class On_Page {
 				$this->track_cache_performance( 'case_data', true, 'memory' );
 			} else {
 				// Check transient cache
-				$data = get_transient( $cache_key );
+				$data = brag_book_get_cache( $cache_key );
 
 				if ( $data !== false ) {
 					$this->memory_cache[ $cache_key ] = $data;
@@ -568,7 +568,7 @@ class On_Page {
 					// Cache valid responses with intelligent TTL
 					if ( ! empty( $data ) ) {
 						$cache_duration = $this->get_cache_duration_for_data_type( 'case_data' );
-						set_transient( $cache_key, $data, $cache_duration );
+						brag_book_set_cache( $cache_key, $data, $cache_duration );
 						$this->memory_cache[ $cache_key ] = $data;
 						$this->track_cache_performance( 'case_data', false, 'api', $fetch_duration );
 					}
@@ -733,7 +733,7 @@ class On_Page {
 		}
 
 		// Check transient cache
-		$sidebar_data = get_transient( $cache_key );
+		$sidebar_data = brag_book_get_cache( $cache_key );
 		if ( $sidebar_data !== false ) {
 			// If cached data is already processed (array), return it
 			if ( is_array( $sidebar_data ) ) {
@@ -818,7 +818,7 @@ class On_Page {
 		// Cache the processed result with intelligent TTL
 		if ( ! empty( $sidebar_data ) ) {
 			$cache_duration = $this->get_cache_duration_for_data_type( 'sidebar' );
-			set_transient( $cache_key, $result, $cache_duration );
+			brag_book_set_cache( $cache_key, $result, $cache_duration );
 			$this->memory_cache[ $cache_key ] = $result;
 			$this->track_cache_performance( 'sidebar', false, 'api', $fetch_duration );
 		}
@@ -1343,11 +1343,11 @@ class On_Page {
 	 */
 	private function check_rate_limit( string $identifier, int $limit = 50, int $window = 3600 ): bool {
 		$cache_key = 'brag_book_gallery_transient_seo_rate_limit_' . $identifier;
-		$current_count = get_transient( $cache_key );
+		$current_count = brag_book_get_cache( $cache_key );
 
 		if ( $current_count === false ) {
 			// First operation in window
-			set_transient( $cache_key, 1, $window );
+			brag_book_set_cache( $cache_key, 1, $window );
 			return true;
 		}
 
@@ -1358,7 +1358,7 @@ class On_Page {
 		}
 
 		// Increment counter
-		set_transient( $cache_key, $current_count + 1, $window );
+		brag_book_set_cache( $cache_key, $current_count + 1, $window );
 		return true;
 	}
 

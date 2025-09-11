@@ -180,7 +180,6 @@ class Settings_Consultation extends Settings_Base {
 						<?php endif; ?>
 					</a>
 				</li>
-				<li><a href="#settings"><?php esc_html_e( 'Settings', 'brag-book-gallery' ); ?></a></li>
 				<li><a href="#stats"><?php esc_html_e( 'Statistics', 'brag-book-gallery' ); ?></a></li>
 				<li><a href="#export"><?php esc_html_e( 'Export', 'brag-book-gallery' ); ?></a></li>
 			</ul>
@@ -201,10 +200,6 @@ class Settings_Consultation extends Settings_Base {
 			<?php $this->render_consultation_entries(); ?>
 		</div>
 
-		<!-- Settings Tab -->
-		<div id="settings" class="brag-book-gallery-tab-panel">
-			<?php $this->render_consultation_settings(); ?>
-		</div>
 
 		<!-- Statistics Tab -->
 		<div id="stats" class="brag-book-gallery-tab-panel">
@@ -240,21 +235,21 @@ class Settings_Consultation extends Settings_Base {
 				<p><?php esc_html_e( 'Loading consultation entries...', 'brag-book-gallery' ); ?></p>
 			</div>
 
-			<div class="table-container">
-				<table class="consultation-entries">
-					<thead>
-						<tr>
-							<th><?php esc_html_e( 'Name', 'brag-book-gallery' ); ?></th>
-							<th><?php esc_html_e( 'Email', 'brag-book-gallery' ); ?></th>
-							<th><?php esc_html_e( 'Phone', 'brag-book-gallery' ); ?></th>
-							<th><?php esc_html_e( 'Date', 'brag-book-gallery' ); ?></th>
-							<th><?php esc_html_e( 'Message', 'brag-book-gallery' ); ?></th>
-							<th><?php esc_html_e( 'Actions', 'brag-book-gallery' ); ?></th>
+			<div class="brag-book-consultation-table-wrapper">
+				<table class="brag-book-consultation-table">
+					<thead class="brag-book-consultation-table-head">
+						<tr class="brag-book-consultation-table-row brag-book-consultation-table-row--head">
+							<th class="brag-book-consultation-table-header brag-book-consultation-table-header--name"><?php esc_html_e( 'Name', 'brag-book-gallery' ); ?></th>
+							<th class="brag-book-consultation-table-header brag-book-consultation-table-header--email"><?php esc_html_e( 'Email', 'brag-book-gallery' ); ?></th>
+							<th class="brag-book-consultation-table-header brag-book-consultation-table-header--phone"><?php esc_html_e( 'Phone', 'brag-book-gallery' ); ?></th>
+							<th class="brag-book-consultation-table-header brag-book-consultation-table-header--date"><?php esc_html_e( 'Date', 'brag-book-gallery' ); ?></th>
+							<th class="brag-book-consultation-table-header brag-book-consultation-table-header--message"><?php esc_html_e( 'Message', 'brag-book-gallery' ); ?></th>
+							<th class="brag-book-consultation-table-header brag-book-consultation-table-header--actions"><?php esc_html_e( 'Actions', 'brag-book-gallery' ); ?></th>
 						</tr>
 					</thead>
-					<tbody class="brag_book_gallery_universal_container">
-						<tr>
-							<td colspan="6" style="text-align: center; padding: 2rem;">
+					<tbody class="brag-book-consultation-table-body brag_book_gallery_universal_container">
+						<tr class="brag-book-consultation-table-row brag-book-consultation-table-row--loading">
+							<td class="brag-book-consultation-table-cell brag-book-consultation-table-cell--loading" colspan="6">
 								<?php esc_html_e( 'Loading consultation entries...', 'brag-book-gallery' ); ?>
 							</td>
 						</tr>
@@ -277,6 +272,10 @@ class Settings_Consultation extends Settings_Base {
 					<!-- Content will be loaded here -->
 				</div>
 				<div class="consultation-dialog-footer">
+					<button type="button" class="button button-primary reply-email" id="replyEmailButton" style="display: none;">
+						<span class="dashicons dashicons-email-alt"></span>
+						<?php esc_html_e( 'Reply via Email', 'brag-book-gallery' ); ?>
+					</button>
 					<button type="button" class="button button-secondary" onclick="document.getElementById('consultationDetailsDialog').close()">
 						<?php esc_html_e( 'Close', 'brag-book-gallery' ); ?>
 					</button>
@@ -296,7 +295,7 @@ class Settings_Consultation extends Settings_Base {
 				const paginationNav = document.querySelector( '.brag-book-gallery-pagination-nav' );
 
 				if ( loadingDiv ) loadingDiv.style.display = 'block';
-				if ( container ) container.innerHTML = '<tr><td colspan="6" style="text-align: center;">Loading...</td></tr>';
+				if ( container ) container.innerHTML = '<tr class="brag-book-consultation-table-row brag-book-consultation-table-row--loading"><td class="brag-book-consultation-table-cell brag-book-consultation-table-cell--loading" colspan="6">Loading...</td></tr>';
 
 				const formData = new FormData();
 				formData.append( 'page', page );
@@ -316,11 +315,11 @@ class Settings_Consultation extends Settings_Base {
 						container.innerHTML = data.data.message;
 						paginationNav.innerHTML = data.data.pagination;
 					} else {
-						container.innerHTML = `<tr><td colspan="6">${data.data || 'Error loading data'}</td></tr>`;
+						container.innerHTML = `<tr class="brag-book-consultation-table-row"><td class="brag-book-consultation-table-cell brag-book-consultation-table-cell--loading" colspan="6">${data.data || 'Error loading data'}</td></tr>`;
 					}
 				} catch ( error ) {
 					console.error( 'Error loading consultation entries:', error );
-					container.innerHTML = '<tr><td colspan="6">Failed to load consultation entries.</td></tr>';
+					container.innerHTML = '<tr class="brag-book-consultation-table-row"><td class="brag-book-consultation-table-cell brag-book-consultation-table-cell--loading" colspan="6">Failed to load consultation entries.</td></tr>';
 				} finally {
 					if ( loadingDiv ) loadingDiv.style.display = 'none';
 				}
@@ -352,8 +351,14 @@ class Settings_Consultation extends Settings_Base {
 			const viewConsultationDetails = async ( postId ) => {
 				const dialog = document.getElementById( 'consultationDetailsDialog' );
 				const body = document.getElementById( 'consultationDetailsBody' );
+				const replyButton = document.getElementById( 'replyEmailButton' );
 
 				if ( !dialog || !body ) return;
+
+				// Hide reply button initially
+				if ( replyButton ) {
+					replyButton.style.display = 'none';
+				}
 
 				body.innerHTML = '<p style="text-align: center; padding: 20px;"><?php echo esc_js( __( 'Loading...', 'brag-book-gallery' ) ); ?></p>';
 				dialog.showModal();
@@ -374,6 +379,16 @@ class Settings_Consultation extends Settings_Base {
 
 					if ( data.success ) {
 						body.innerHTML = data.data.html;
+						
+						// Show reply button and set up email functionality
+						if ( replyButton && data.data.email ) {
+							replyButton.style.display = 'inline-flex';
+							replyButton.onclick = function() {
+								const subject = encodeURIComponent( '<?php echo esc_js( __( 'Re: Your Consultation Request', 'brag-book-gallery' ) ); ?>' );
+								const body = encodeURIComponent( '<?php echo esc_js( __( 'Thank you for your consultation request. We will be in touch soon.', 'brag-book-gallery' ) ); ?>' );
+								window.location.href = `mailto:${data.data.email}?subject=${subject}&body=${body}`;
+							};
+						}
 					} else {
 						body.innerHTML = '<p style="color: red; padding: 20px;">' + ( data.data || '<?php echo esc_js( __( 'Error loading consultation details', 'brag-book-gallery' ) ); ?>' ) + '</p>';
 					}
@@ -387,206 +402,7 @@ class Settings_Consultation extends Settings_Base {
 		<?php
 	}
 
-	/**
-	 * Render consultation settings view
-	 *
-	 * Displays configuration options for consultation forms including
-	 * notification settings, form field configuration, and API integration.
-	 *
-	 * @since 3.0.0
-	 * @return void
-	 */
-	private function render_consultation_settings(): void {
-		// Handle form submission
-		if ( isset( $_POST['submit'] ) && $this->save_settings( 'brag_book_gallery_consultation_settings', 'brag_book_gallery_consultation_nonce' ) ) {
-			$this->save_consultation_settings();
-		}
 
-		// Get current settings
-		$enabled = get_option( 'brag_book_gallery_consultation_enabled', false );
-		$notification_email = get_option( 'brag_book_gallery_consultation_email', get_option( 'admin_email' ) );
-		$auto_respond = get_option( 'brag_book_gallery_consultation_auto_respond', false );
-		$response_message = get_option( 'brag_book_gallery_consultation_response', __( 'Thank you for your consultation request. We will contact you soon.', 'brag-book-gallery' ) );
-		$form_title = get_option( 'brag_book_gallery_consultation_form_title', __( 'Request a Consultation', 'brag-book-gallery' ) );
-		$button_text = get_option( 'brag_book_gallery_consultation_button_text', __( 'Submit Request', 'brag-book-gallery' ) );
-		?>
-
-		<div class="brag-book-gallery-section">
-			<h2><?php esc_html_e( 'Consultation Settings', 'brag-book-gallery' ); ?></h2>
-
-			<?php settings_errors( $this->page_slug ); ?>
-
-			<form method="post" action="">
-				<?php wp_nonce_field( 'brag_book_gallery_consultation_settings', 'brag_book_gallery_consultation_nonce' ); ?>
-
-				<table class="form-table brag-book-gallery-form-table">
-					<tr>
-						<th scope="row">
-							<label for="brag_book_gallery_consultation_enabled" class="brag-book-toggle-label">
-								<?php esc_html_e( 'Enable Consultation Forms', 'brag-book-gallery' ); ?>
-							</label>
-						</th>
-						<td>
-							<label class="brag-book-toggle-switch">
-								<input type="hidden" name="brag_book_gallery_consultation_enabled" value="0" />
-								<input type="checkbox"
-									   id="brag_book_gallery_consultation_enabled"
-									   name="brag_book_gallery_consultation_enabled"
-									   value="1"
-									   <?php checked( $enabled, true ); ?> />
-								<span class="brag-book-toggle-slider"></span>
-							</label>
-							<p class="description">
-								<?php esc_html_e( 'Enable consultation request forms on gallery pages.', 'brag-book-gallery' ); ?>
-							</p>
-						</td>
-					</tr>
-
-					<tr>
-						<th scope="row">
-							<label for="brag_book_gallery_consultation_email">
-								<?php esc_html_e( 'Notification Email', 'brag-book-gallery' ); ?>
-							</label>
-						</th>
-						<td>
-							<input type="email"
-								   id="brag_book_gallery_consultation_email"
-								   name="brag_book_gallery_consultation_email"
-								   value="<?php echo esc_attr( $notification_email ); ?>"
-								   class="regular-text" />
-							<p class="description">
-								<?php esc_html_e( 'Email address to receive consultation notifications.', 'brag-book-gallery' ); ?>
-							</p>
-						</td>
-					</tr>
-
-					<tr>
-						<th scope="row">
-							<label for="brag_book_gallery_consultation_form_title">
-								<?php esc_html_e( 'Form Title', 'brag-book-gallery' ); ?>
-							</label>
-						</th>
-						<td>
-							<input type="text"
-								   id="brag_book_gallery_consultation_form_title"
-								   name="brag_book_gallery_consultation_form_title"
-								   value="<?php echo esc_attr( $form_title ); ?>"
-								   class="regular-text" />
-							<p class="description">
-								<?php esc_html_e( 'Title displayed above the consultation form.', 'brag-book-gallery' ); ?>
-							</p>
-						</td>
-					</tr>
-
-					<tr>
-						<th scope="row">
-							<label for="brag_book_gallery_consultation_button_text">
-								<?php esc_html_e( 'Submit Button Text', 'brag-book-gallery' ); ?>
-							</label>
-						</th>
-						<td>
-							<input type="text"
-								   id="brag_book_gallery_consultation_button_text"
-								   name="brag_book_gallery_consultation_button_text"
-								   value="<?php echo esc_attr( $button_text ); ?>"
-								   class="regular-text" />
-							<p class="description">
-								<?php esc_html_e( 'Text for the form submit button.', 'brag-book-gallery' ); ?>
-							</p>
-						</td>
-					</tr>
-
-					<tr>
-						<th scope="row">
-							<label for="brag_book_gallery_consultation_auto_respond" class="brag-book-toggle-label">
-								<?php esc_html_e( 'Auto-Response', 'brag-book-gallery' ); ?>
-							</label>
-						</th>
-						<td>
-							<label class="brag-book-toggle-switch">
-								<input type="hidden" name="brag_book_gallery_consultation_auto_respond" value="0" />
-								<input type="checkbox"
-									   id="brag_book_gallery_consultation_auto_respond"
-									   name="brag_book_gallery_consultation_auto_respond"
-									   value="1"
-									   <?php checked( $auto_respond, true ); ?> />
-								<span class="brag-book-toggle-slider"></span>
-							</label>
-							<p class="description">
-								<?php esc_html_e( 'Send automatic response to consultation requests', 'brag-book-gallery' ); ?>
-							</p>
-						</td>
-					</tr>
-
-					<tr>
-						<th scope="row">
-							<label for="brag_book_gallery_consultation_response">
-								<?php esc_html_e( 'Response Message', 'brag-book-gallery' ); ?>
-							</label>
-						</th>
-						<td>
-							<textarea id="brag_book_gallery_consultation_response"
-									  name="brag_book_gallery_consultation_response"
-									  rows="5"
-									  class="large-text"><?php echo esc_textarea( $response_message ); ?></textarea>
-							<p class="description">
-								<?php esc_html_e( 'Message displayed or sent after form submission.', 'brag-book-gallery' ); ?>
-							</p>
-						</td>
-					</tr>
-				</table>
-
-				<?php submit_button( __( 'Save Settings', 'brag-book-gallery' ) ); ?>
-			</form>
-		</div>
-		<?php
-	}
-
-	/**
-	 * Save consultation settings
-	 *
-	 * Processes and saves consultation configuration options.
-	 *
-	 * @since 3.0.0
-	 * @return void
-	 */
-	private function save_consultation_settings(): void {
-		// Save enabled state
-		$enabled = isset( $_POST['brag_book_gallery_consultation_enabled'] ) && $_POST['brag_book_gallery_consultation_enabled'] === '1';
-		update_option( 'brag_book_gallery_consultation_enabled', $enabled );
-
-		// Save notification email
-		if ( isset( $_POST['brag_book_gallery_consultation_email'] ) ) {
-			$email = sanitize_email( $_POST['brag_book_gallery_consultation_email'] );
-			if ( is_email( $email ) ) {
-				update_option( 'brag_book_gallery_consultation_email', $email );
-			}
-		}
-
-		// Save form title
-		if ( isset( $_POST['brag_book_gallery_consultation_form_title'] ) ) {
-			$form_title = sanitize_text_field( $_POST['brag_book_gallery_consultation_form_title'] );
-			update_option( 'brag_book_gallery_consultation_form_title', $form_title );
-		}
-
-		// Save button text
-		if ( isset( $_POST['brag_book_gallery_consultation_button_text'] ) ) {
-			$button_text = sanitize_text_field( $_POST['brag_book_gallery_consultation_button_text'] );
-			update_option( 'brag_book_gallery_consultation_button_text', $button_text );
-		}
-
-		// Save auto-response settings
-		$auto_respond = isset( $_POST['brag_book_gallery_consultation_auto_respond'] ) && $_POST['brag_book_gallery_consultation_auto_respond'] === '1';
-		update_option( 'brag_book_gallery_consultation_auto_respond', $auto_respond );
-
-		// Save response message
-		if ( isset( $_POST['brag_book_gallery_consultation_response'] ) ) {
-			$response = wp_kses_post( $_POST['brag_book_gallery_consultation_response'] );
-			update_option( 'brag_book_gallery_consultation_response', $response );
-		}
-
-		$this->add_notice( __( 'Consultation settings saved successfully.', 'brag-book-gallery' ), 'success' );
-	}
 
 	/**
 	 * Render admin page wrapper

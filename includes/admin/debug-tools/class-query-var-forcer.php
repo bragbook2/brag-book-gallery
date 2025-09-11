@@ -150,12 +150,8 @@ class Query_Var_Forcer {
 				return;
 			}
 
-			// Get gallery slugs with caching
-			$gallery_slugs = wp_cache_get( 'all_slugs', self::CACHE_GROUP );
-			if ( false === $gallery_slugs ) {
-				$gallery_slugs = Slug_Helper::get_all_gallery_page_slugs();
-				wp_cache_set( 'all_slugs', $gallery_slugs, self::CACHE_GROUP, self::CACHE_TTL );
-			}
+			// Caching disabled
+			$gallery_slugs = Slug_Helper::get_all_gallery_page_slugs();
 
 			if ( ! in_array( $path_parts[0], $gallery_slugs, true ) ) {
 				return;
@@ -220,21 +216,12 @@ class Query_Var_Forcer {
 				return $query_vars;
 			}
 
-			// Check cache
-			$cache_key = 'brag_book_gallery_transient_modified_vars_' . $request_path;
-			$cached = wp_cache_get( $cache_key, self::CACHE_GROUP );
-			if ( false !== $cached ) {
-				return array_merge( $query_vars, $cached );
-			}
+			// Caching disabled
 
 			$path_parts = explode( '/', $request_path );
 
-			// Get gallery slugs with caching
-			$gallery_slugs = wp_cache_get( 'all_slugs', self::CACHE_GROUP );
-			if ( false === $gallery_slugs ) {
-				$gallery_slugs = Slug_Helper::get_all_gallery_page_slugs();
-				wp_cache_set( 'all_slugs', $gallery_slugs, self::CACHE_GROUP, self::CACHE_TTL );
-			}
+			// Caching disabled
+			$gallery_slugs = Slug_Helper::get_all_gallery_page_slugs();
 
 			// Check if this is a gallery page
 			if ( ! in_array( $path_parts[0], $gallery_slugs, true ) ) {
@@ -252,8 +239,7 @@ class Query_Var_Forcer {
 				// Add custom query vars
 				$custom_vars = self::extract_query_vars( $path_parts );
 
-				// Cache the custom vars
-				wp_cache_set( $cache_key, $custom_vars, self::CACHE_GROUP, self::CACHE_TTL );
+				// Caching disabled
 
 				// Merge custom vars into query vars
 				$query_vars = array_merge( $query_vars, $custom_vars );
@@ -295,12 +281,8 @@ class Query_Var_Forcer {
 
 			$path_parts = explode( '/', $request_uri );
 
-			// Get gallery slugs with caching
-			$gallery_slugs = wp_cache_get( 'all_slugs', self::CACHE_GROUP );
-			if ( false === $gallery_slugs ) {
-				$gallery_slugs = Slug_Helper::get_all_gallery_page_slugs();
-				wp_cache_set( 'all_slugs', $gallery_slugs, self::CACHE_GROUP, self::CACHE_TTL );
-			}
+			// Caching disabled
+			$gallery_slugs = Slug_Helper::get_all_gallery_page_slugs();
 
 			if ( ! empty( $path_parts[0] ) && in_array( $path_parts[0], $gallery_slugs, true ) ) {
 				self::log_debug( 'Gallery Request Parse', [
@@ -389,12 +371,7 @@ class Query_Var_Forcer {
 			return self::$cache[ $cache_key ];
 		}
 
-		// Check WP cache
-		$page = wp_cache_get( $cache_key, self::CACHE_GROUP );
-		if ( false !== $page ) {
-			self::$cache[ $cache_key ] = $page;
-			return $page;
-		}
+		// Caching disabled
 
 		// Find the page
 		$page = get_page_by_path( $slug );
@@ -405,8 +382,7 @@ class Query_Var_Forcer {
 			if ( $page_id ) {
 				$page = get_post( $page_id );
 				if ( $page && $page->post_name === $slug ) {
-					// Update caches
-					wp_cache_set( $cache_key, $page, self::CACHE_GROUP, self::CACHE_TTL );
+					// Caching disabled
 					self::$cache[ $cache_key ] = $page;
 					return $page;
 				}
@@ -414,8 +390,7 @@ class Query_Var_Forcer {
 			return null;
 		}
 
-		// Update caches
-		wp_cache_set( $cache_key, $page, self::CACHE_GROUP, self::CACHE_TTL );
+		// Caching disabled
 		self::$cache[ $cache_key ] = $page;
 
 		return $page;
@@ -565,7 +540,7 @@ class Query_Var_Forcer {
 	 */
 	public static function clear_cache(): void {
 		self::$cache = [];
-		wp_cache_flush_group( self::CACHE_GROUP );
+		// Caching disabled
 		self::log_debug( 'Caches cleared' );
 	}
 

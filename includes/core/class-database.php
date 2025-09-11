@@ -486,13 +486,7 @@ class Database {
 		// Sanitize and limit the input.
 		$limit = min( absint( $limit ), 100 );
 
-		// Try to get from cache first.
-		$cache_key = 'brag_book_gallery_transient_recent_sync_logs_' . $limit;
-		$cached = wp_cache_get( $cache_key, self::CACHE_GROUP );
-
-		if ( false !== $cached ) {
-			return $cached;
-		}
+		// Caching disabled
 
 		$table_name = $this->get_sync_log_table();
 
@@ -508,8 +502,7 @@ class Database {
 		// Ensure we return an array.
 		$results = is_array( $results ) ? $results : array();
 
-		// Cache the results.
-		wp_cache_set( $cache_key, $results, self::CACHE_GROUP, self::CACHE_EXPIRATION );
+		// Caching disabled
 
 		return $results;
 	}
@@ -609,13 +602,7 @@ class Database {
 			return null;
 		}
 
-		// Try cache first.
-		$cache_key = 'brag_book_gallery_transient_post_id_' . $api_case_id . '_' . $api_token;
-		$cached = wp_cache_get( $cache_key, self::CACHE_GROUP );
-
-		if ( false !== $cached ) {
-			return (int) $cached;
-		}
+		// Caching disabled
 
 		$table_name = $this->get_case_map_table();
 
@@ -630,8 +617,7 @@ class Database {
 		);
 
 		if ( $post_id ) {
-			// Cache the result.
-			wp_cache_set( $cache_key, $post_id, self::CACHE_GROUP, self::CACHE_EXPIRATION );
+			// Caching disabled
 			return (int) $post_id;
 		}
 
@@ -656,13 +642,7 @@ class Database {
 			return null;
 		}
 
-		// Try cache first.
-		$cache_key = 'brag_book_gallery_sync_hash_' . $api_case_id . '_' . $api_token;
-		$cached = wp_cache_get( $cache_key, self::CACHE_GROUP );
-
-		if ( false !== $cached ) {
-			return (string) $cached;
-		}
+		// Caching disabled
 
 		$table_name = $this->get_case_map_table();
 
@@ -677,8 +657,7 @@ class Database {
 		);
 
 		if ( $sync_hash ) {
-			// Cache the result.
-			wp_cache_set( $cache_key, $sync_hash, self::CACHE_GROUP, self::CACHE_EXPIRATION );
+			// Caching disabled
 			return (string) $sync_hash;
 		}
 
@@ -731,11 +710,7 @@ class Database {
 	 * @return array Array containing sync statistics.
 	 */
 	public function get_sync_stats(): array {
-		// Try cache first.
-		$cached = wp_cache_get( 'sync_stats', self::CACHE_GROUP );
-		if ( false !== $cached ) {
-			return $cached;
-		}
+		// Caching disabled
 
 		$sync_log_table = $this->get_sync_log_table();
 		$case_map_table = $this->get_case_map_table();
@@ -794,8 +769,7 @@ class Database {
 			'last_sync'          => $last_sync,
 		);
 
-		// Cache the results.
-		wp_cache_set( 'sync_stats', $stats, self::CACHE_GROUP, self::CACHE_EXPIRATION );
+		// Caching disabled
 
 		return $stats;
 	}
@@ -830,9 +804,7 @@ class Database {
 			)
 		);
 
-		// Clear caches after cleanup.
-		wp_cache_delete( 'recent_sync_logs', self::CACHE_GROUP );
-		wp_cache_delete( 'sync_stats', self::CACHE_GROUP );
+		// Caching disabled
 
 		return absint( $deleted );
 	}
@@ -856,12 +828,7 @@ class Database {
 
 		$token_hash = md5( $api_token );
 
-		// Clear specific case caches.
-		wp_cache_delete( 'post_id_' . $api_case_id . '_' . $token_hash, self::CACHE_GROUP );
-		wp_cache_delete( 'sync_hash_' . $api_case_id . '_' . $token_hash, self::CACHE_GROUP );
-
-		// Clear aggregated stats.
-		wp_cache_delete( 'sync_stats', self::CACHE_GROUP );
+		// Caching disabled
 	}
 
 	/**
@@ -976,9 +943,7 @@ class Database {
 			'recent_sync_logs_50',
 		];
 
-		foreach ( $cache_keys as $key ) {
-			wp_cache_delete( $key, self::CACHE_GROUP );
-		}
+		// Caching disabled
 	}
 
 	/**

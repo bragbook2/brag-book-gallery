@@ -66,6 +66,7 @@ declare( strict_types=1 );
 namespace BRAGBookGallery\Includes\Extend;
 
 use BRAGBookGallery\Includes\Core\Slug_Helper;
+use BRAGBookGallery\Includes\Extend\Cache_Manager;
 
 // Prevent direct access.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -156,9 +157,43 @@ final class Cases_Shortcode_Handler {
 		$procedure_title  = sanitize_text_field( get_query_var( 'procedure_title', '' ) );
 		$case_suffix      = sanitize_text_field( get_query_var( 'case_suffix', '' ) );
 
+		// Debug logging for procedure detection
+		if ( WP_DEBUG ) {
+			error_log( 'BRAGBook: Cases handler - filter_procedure: ' . $filter_procedure );
+			error_log( 'BRAGBook: Cases handler - procedure_title: ' . $procedure_title );
+			error_log( 'BRAGBook: Cases handler - case_suffix: ' . $case_suffix );
+			error_log( 'BRAGBook: Cases handler - REQUEST_URI: ' . ( $_SERVER['REQUEST_URI'] ?? 'not set' ) );
+		}
+
 		// If we have procedure_title but not filter_procedure (case detail URL), use procedure_title for filtering.
 		if ( empty( $filter_procedure ) && ! empty( $procedure_title ) ) {
 			$filter_procedure = $procedure_title;
+		}
+
+		// FALLBACK: If query vars aren't set, try to extract from URL directly
+		if ( empty( $filter_procedure ) && ! empty( $_SERVER['REQUEST_URI'] ) ) {
+			$current_url = sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) );
+			$path_segments = array_filter( explode( '/', $current_url ) );
+			
+			// Look for pattern: /gallery/procedure-name/ or /gallery-slug/procedure-name/
+			if ( count( $path_segments ) >= 2 ) {
+				$gallery_segment = $path_segments[0];
+				$procedure_segment = $path_segments[1];
+				
+				// Check if first segment looks like a gallery (contains "gallery" or is a known gallery slug)
+				if ( stripos( $gallery_segment, 'gallery' ) !== false || 
+					 in_array( $gallery_segment, [ 'before-after', 'cases', 'results' ] ) ) {
+					$filter_procedure = sanitize_title( $procedure_segment );
+					if ( WP_DEBUG ) {
+						error_log( 'BRAGBook: Cases handler - Extracted procedure from URL: ' . $filter_procedure );
+					}
+				}
+			}
+		}
+
+		// Final debug log for what will be used
+		if ( WP_DEBUG ) {
+			error_log( 'BRAGBook: Cases handler - Final filter_procedure: ' . $filter_procedure );
 		}
 
 		// Debug logging if enabled.
@@ -167,9 +202,16 @@ final class Cases_Shortcode_Handler {
 		// Use case_suffix which now contains both numeric IDs and SEO suffixes.
 		$case_identifier = ! empty( $case_suffix ) ? $case_suffix : '';
 
-		// If we have a case identifier, show single case.
+		// If we have a case identifier, load the main gallery and let JavaScript handle case loading
 		if ( ! empty( $case_identifier ) ) {
-			return self::render_single_case( $case_identifier, $atts );
+			// Instead of rendering the case via PHP, load the main gallery with data attributes
+			// that JavaScript can detect to automatically load the case
+			$gallery_atts = $atts;
+			$gallery_atts['data_case_id'] = $case_identifier;
+			$gallery_atts['data_procedure_slug'] = $procedure_title;
+			
+			// Load the main gallery shortcode which will be handled by JavaScript
+			return Gallery_Shortcode_Handler::handle( $gallery_atts );
 		}
 
 		// Validate required fields.
@@ -183,8 +225,12 @@ final class Cases_Shortcode_Handler {
 		// Get procedure IDs based on filter.
 		$procedure_ids = self::get_procedure_ids_for_filter( $filter_procedure, $atts );
 
-		// When filtering by procedure, load ALL cases for that procedure to enable proper filtering.
-		$initial_load_size = ! empty( $filter_procedure ) ? 200 : 10;
+		// Get items per page setting
+		$items_per_page = absint( get_option( 'brag_book_gallery_items_per_page', '10' ) );
+		
+		// When filtering by procedure, load enough cases for pagination plus some buffer
+		// but avoid loading excessive amounts on initial page load for performance
+		$initial_load_size = ! empty( $filter_procedure ) ? min( 200, $items_per_page * 5 ) : $items_per_page;
 
 		// Get cases from API.
 		$cases_data = Data_Fetcher::get_cases_from_api(
@@ -497,6 +543,21 @@ final class Cases_Shortcode_Handler {
 		$columns      = absint( $atts['columns'] ) ?: self::DEFAULT_COLUMNS;
 		$show_details = filter_var( $atts['show_details'], FILTER_VALIDATE_BOOLEAN );
 
+		// Get items per page setting for pagination
+		$items_per_page = absint( get_option( 'brag_book_gallery_items_per_page', '10' ) );
+		
+		// Only render the first page of cases
+		$cases_to_render = array_slice( $cases, 0, $items_per_page );
+		$total_cases = count( $cases );
+
+		// Debug logging
+		if ( WP_DEBUG ) {
+			error_log( 'BRAGBook: render_cases_grid - Total cases: ' . $total_cases );
+			error_log( 'BRAGBook: render_cases_grid - Items per page: ' . $items_per_page );
+			error_log( 'BRAGBook: render_cases_grid - Cases to render: ' . count( $cases_to_render ) );
+			error_log( 'BRAGBook: render_cases_grid - Filter procedure: ' . $filter_procedure );
+		}
+
 		// Start output with proper container structure.
 		$output = '<div class="brag-book-gallery-cases-container">';
 		$output .= '<div class="brag-book-gallery-cases-grid" data-columns="' . esc_attr( $columns ) . '">';
@@ -511,9 +572,13 @@ final class Cases_Shortcode_Handler {
 			$sidebar_data = Data_Fetcher::get_sidebar_data( $api_tokens[0] );
 		}
 
-		foreach ( $cases as $case ) {
-			// Check if this case has nudity based on its procedure IDs
-			$case_has_nudity = self::case_has_nudity_with_sidebar( $case, $sidebar_data );
+		// Check if the current procedure has nudity flag set - applies to ALL cases in this view
+		// Note: Nudity detection will be handled by JavaScript using data-nudity attributes
+		$procedure_has_nudity = self::procedure_has_nudity( $filter_procedure );
+
+		foreach ( $cases_to_render as $case ) {
+			// Use procedure nudity setting for this case
+			$case_has_nudity = $procedure_has_nudity;
 
 			// Render each case card.
 			$output .= self::render_case_card(
@@ -525,9 +590,35 @@ final class Cases_Shortcode_Handler {
 		}
 
 		$output .= '</div>'; // Close .brag-book-gallery-cases-grid
+
+		// Add Load More button if there are more cases than items_per_page
+		if ( $total_cases > $items_per_page ) {
+			// Get procedure IDs for the load more button
+			$procedure_ids = '';
+			if ( ! empty( $filter_procedure ) ) {
+				$procedure_ids_array = self::get_procedure_ids_for_filter( $filter_procedure, $atts );
+				$procedure_ids = implode( ',', $procedure_ids_array );
+			}
+			
+			// Check if infinite scroll is enabled
+			$infinite_scroll = get_option( 'brag_book_gallery_infinite_scroll', 'no' );
+			$button_style = ( $infinite_scroll === 'yes' ) ? ' style="display: none;"' : '';
+			
+			$output .= '<div class="brag-book-gallery-load-more-container">';
+			$output .= '<button class="brag-book-gallery-button brag-book-gallery-button--load-more" ';
+			$output .= 'data-action="load-more" ';
+			$output .= 'data-start-page="2" ';
+			$output .= 'data-procedure-ids="' . esc_attr( $procedure_ids ) . '" ';
+			$output .= 'data-procedure-name="' . esc_attr( $filter_procedure ) . '" ';
+			$output .= 'onclick="loadMoreCasesFromCache(this)"' . $button_style . '>';
+			$output .= esc_html__( 'Load More', 'brag-book-gallery' );
+			$output .= '</button>';
+			$output .= '</div>';
+		}
+
 		$output .= '</div>'; // Close .brag-book-gallery-cases-container
 
-		// Add pagination if available.
+		// Add pagination if available (for API-level pagination).
 		if ( ! empty( $cases_data['pagination'] ) ) {
 			$gallery_slug = Slug_Helper::get_first_gallery_page_slug( 'gallery' );
 			$base_path    = get_site_url() . '/' . $gallery_slug;
@@ -599,7 +690,7 @@ final class Cases_Shortcode_Handler {
 	 */
 	private static function get_case_from_cache( string $case_id, array $atts ): ?array {
 		$cache_key   = 'brag_book_gallery_transient_all_cases_' . $atts['api_token'] . '_' . $atts['website_property_id'];
-		$cached_data = get_transient( $cache_key );
+		$cached_data = Cache_Manager::get( $cache_key );
 
 		// Check if cache exists and has valid data.
 		if ( ! $cached_data || ! isset( $cached_data['data'] ) || ! is_array( $cached_data['data'] ) || empty( $cached_data['data'] ) ) {
@@ -907,13 +998,37 @@ final class Cases_Shortcode_Handler {
 			}
 		}
 
-		// Get procedure name
+		// Get procedure name - prioritize the procedure context from the current filter/URL
 		$procedure_name = 'Case';
 		if ( ! empty( $procedure_context ) ) {
+			// Use the procedure context passed from AJAX (this maintains the current page context)
 			$procedure_name = ucwords( str_replace( '-', ' ', $procedure_context ) );
 		} elseif ( ! empty( $case['procedures'] ) && is_array( $case['procedures'] ) ) {
-			$first_procedure = reset( $case['procedures'] );
-			$procedure_name = $first_procedure['name'] ?? 'Case';
+			// Try to find procedure that matches current page context first
+			$current_procedure = null;
+			$current_path = $_SERVER['REQUEST_URI'] ?? '';
+			$path_segments = array_filter( explode( '/', $current_path ) );
+			$url_procedure_slug = count( $path_segments ) >= 3 ? $path_segments[2] : '';
+			
+			// Look for procedure that matches current URL slug
+			if ( ! empty( $url_procedure_slug ) ) {
+				foreach ( $case['procedures'] as $procedure ) {
+					if ( ! empty( $procedure['name'] ) ) {
+						$proc_slug = sanitize_title( $procedure['name'] );
+						if ( $proc_slug === $url_procedure_slug ) {
+							$current_procedure = $procedure;
+							break;
+						}
+					}
+				}
+			}
+			
+			// Fall back to first procedure if no match found
+			if ( ! $current_procedure ) {
+				$current_procedure = reset( $case['procedures'] );
+			}
+			
+			$procedure_name = $current_procedure['name'] ?? 'Case';
 		}
 
 		// Build HTML
@@ -928,17 +1043,19 @@ final class Cases_Shortcode_Handler {
             <div class="brag-book-gallery-image-container">
                 <div class="brag-book-gallery-skeleton-loader" style="display: none;"></div>';
 
-		// Favorites button
-		$html .= sprintf(
-			'<div class="brag-book-gallery-item-actions">
-            <button class="brag-book-gallery-favorite-button" data-favorited="false" data-item-id="case-%s" aria-label="Add to favorites">
-                <svg fill="rgba(255, 255, 255, 0.5)" stroke="white" stroke-width="2" viewBox="0 0 24 24">
-                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-                </svg>
-            </button>
-        </div>',
-			esc_attr( $case_id )
-		);
+		// Favorites button - only if favorites are enabled
+		if ( \BRAGBookGallery\Includes\Core\Settings_Helper::is_favorites_enabled() ) {
+			$html .= sprintf(
+				'<div class="brag-book-gallery-item-actions">
+				<button class="brag-book-gallery-favorite-button" data-favorited="false" data-item-id="case-%s" aria-label="Add to favorites">
+					<svg fill="rgba(255, 255, 255, 0.5)" stroke="white" stroke-width="2" viewBox="0 0 24 24">
+						<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+					</svg>
+				</button>
+			</div>',
+				esc_attr( $case_id )
+			);
+		}
 
 		// Case link with image
 		$html .= sprintf(
@@ -1050,11 +1167,6 @@ final class Cases_Shortcode_Handler {
 			esc_attr( $procedure_ids )
 		);
 
-		// Add nudity warning if needed.
-		if ( $procedure_nudity ) {
-			$html .= self::render_nudity_warning();
-		}
-
 		// Get case URL.
 		$case_url = self::get_case_url( $case_info, $procedure_context, $case );
 
@@ -1067,7 +1179,7 @@ final class Cases_Shortcode_Handler {
 
 			if ( 'before_after' === $image_display_mode ) {
 				// Show both before and after images.
-				$html .= '<div class="case-images before-after">';
+				$html .= '<div class="brag-book-gallery-case-images before-after">';
 				if ( ! empty( $first_photo['beforePhoto'] ) ) {
 					$html .= sprintf(
 						'<img src="%s" alt="%s" class="before-image" />',
@@ -1088,12 +1200,22 @@ final class Cases_Shortcode_Handler {
 				$image_url = $first_photo['afterPhoto'] ?? $first_photo['beforePhoto'] ?? '';
 				if ( ! empty( $image_url ) ) {
 					$html .= sprintf(
-						'<div class="case-image"><img src="%s" alt="%s" /></div>',
+						'<div class="brag-book-gallery-case-images"><img src="%s" alt="%s" /></div>',
 						esc_url( $image_url ),
 						esc_attr__( 'Case Image', 'brag-book-gallery' )
 					);
 				}
 			}
+		}
+
+		// Add nudity warning only if the current procedure has nudity.
+		if ( $procedure_nudity ) {
+			if ( WP_DEBUG ) {
+				error_log( 'BRAGBook: render_case_card - Adding nudity warning for case: ' . $case_info['case_id'] . ' (procedure has nudity)' );
+			}
+			$html .= self::render_nudity_warning();
+		} elseif ( WP_DEBUG ) {
+			error_log( 'BRAGBook: render_case_card - NOT adding nudity warning for case: ' . $case_info['case_id'] . ' (procedure_nudity = false)' );
 		}
 
 		// Add case title if available.
@@ -1447,6 +1569,28 @@ final class Cases_Shortcode_Handler {
 			}
 		}
 
+		return false;
+	}
+
+	/**
+	 * Check if the current procedure being viewed has nudity flag set to true.
+	 *
+	 * This method will be handled by JavaScript which can check the data-nudity 
+	 * attribute on the active procedure link. For server-side rendering, we'll 
+	 * pass the procedure context and let JavaScript handle the nudity detection.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @param string $filter_procedure Current procedure being viewed.
+	 *
+	 * @return bool Always returns false for server-side rendering (JS will handle it).
+	 */
+	private static function procedure_has_nudity( string $filter_procedure ): bool {
+		// This will be handled by JavaScript using data-nudity attributes
+		// Return false for server-side rendering to avoid complexity
+		if ( WP_DEBUG ) {
+			error_log( 'BRAGBook: procedure_has_nudity - Deferring to JavaScript for procedure: ' . $filter_procedure );
+		}
 		return false;
 	}
 

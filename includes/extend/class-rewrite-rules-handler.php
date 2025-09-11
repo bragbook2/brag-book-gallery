@@ -58,6 +58,7 @@ declare(strict_types=1);
 
 namespace BRAGBookGallery\Includes\Extend;
 
+use BRAGBookGallery\Includes\Extend\Cache_Manager;
 use WP_Post;
 
 // Prevent direct access.
@@ -378,11 +379,7 @@ class Rewrite_Rules_Handler {
 	private static function find_pages_with_gallery_shortcode(): array {
 		global $wpdb;
 
-		// Check cache first for performance optimization
-		$cached_pages = wp_cache_get( self::CACHE_KEY_GALLERY_PAGES, self::CACHE_GROUP );
-		if ( false !== $cached_pages && is_array( $cached_pages ) ) {
-			return $cached_pages;
-		}
+		// Caching disabled
 
 		// Execute VIP-compliant database query with proper preparation
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Required for LIKE query with shortcode detection, caching handled manually
@@ -402,8 +399,7 @@ class Rewrite_Rules_Handler {
 		// Validate and process results with type safety
 		$result = is_array( $pages ) ? $pages : [];
 
-		// Cache results with appropriate expiration
-		wp_cache_set( self::CACHE_KEY_GALLERY_PAGES, $result, self::CACHE_GROUP, HOUR_IN_SECONDS );
+		// Caching disabled
 
 		return $result;
 	}
@@ -490,24 +486,28 @@ class Rewrite_Rules_Handler {
 			return;
 		}
 
-		$rewrite_rules = array(
-			// My Favorites page: /gallery/myfavorites.
-			array(
+		$rewrite_rules = array();
+
+		// Add My Favorites page rewrite rule only if favorites are enabled
+		if ( \BRAGBookGallery\Includes\Core\Settings_Helper::is_favorites_enabled() ) {
+			$rewrite_rules[] = array(
 				'regex' => "^{$page_slug}/myfavorites/?$",
 				'query' => "{$base_query}&favorites_page=1",
-			),
-			// Case detail: /gallery/procedure-name/identifier.
-			// This single pattern captures both numeric IDs and SEO suffixes.
-			// The identifier can contain letters, numbers, hyphens, underscores, and dots.
-			array(
-				'regex' => "^{$page_slug}/([^/]+)/([a-zA-Z0-9\-_\.]+)/?$",
-				'query' => "{$base_query}&procedure_title=\$matches[1]&case_suffix=\$matches[2]",
-			),
-			// Procedure page: /gallery/procedure-name.
-			array(
-				'regex' => "^{$page_slug}/([^/]+)/?$",
-				'query' => "{$base_query}&filter_procedure=\$matches[1]",
-			),
+			);
+		}
+
+		// Case detail: /gallery/procedure-name/identifier.
+		// This single pattern captures both numeric IDs and SEO suffixes.
+		// The identifier can contain letters, numbers, hyphens, underscores, and dots.
+		$rewrite_rules[] = array(
+			'regex' => "^{$page_slug}/([^/]+)/([a-zA-Z0-9\-_\.]+)/?$",
+			'query' => "{$base_query}&procedure_title=\$matches[1]&case_suffix=\$matches[2]",
+		);
+
+		// Procedure page: /gallery/procedure-name.
+		$rewrite_rules[] = array(
+			'regex' => "^{$page_slug}/([^/]+)/?$",
+			'query' => "{$base_query}&filter_procedure=\$matches[1]",
 		);
 
 		foreach ( $rewrite_rules as $rule ) {
@@ -627,8 +627,7 @@ class Rewrite_Rules_Handler {
 				// Clean up the flag option
 				delete_option( 'brag_book_gallery_flush_rewrite_rules' );
 
-				// Clear related caches
-				wp_cache_delete( self::CACHE_KEY_GALLERY_PAGES, self::CACHE_GROUP );
+				// Caching disabled
 
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
 					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
@@ -673,7 +672,7 @@ class Rewrite_Rules_Handler {
 		}
 
 		// Check display condition via transient
-		if ( ! get_transient( 'brag_book_gallery_transient_show_rewrite_notice' ) ) {
+		if ( ! Cache_Manager::get( 'show_rewrite_notice' ) ) {
 			return;
 		}
 
@@ -820,10 +819,9 @@ class Rewrite_Rules_Handler {
 			flush_rewrite_rules();
 
 			// Clear related transients
-			delete_transient( 'brag_book_gallery_transient_show_rewrite_notice' );
+			Cache_Manager::delete( 'show_rewrite_notice' );
 
-			// Clear object cache for gallery pages
-			wp_cache_delete( self::CACHE_KEY_GALLERY_PAGES, self::CACHE_GROUP );
+			// Caching disabled
 
 			// Log success if debugging is enabled
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {

@@ -324,7 +324,7 @@ class Settings_Mode extends Settings_Base {
 									<th><?php esc_html_e( 'Sync Status', 'brag-book-gallery' ); ?></th>
 									<td>
 										<?php
-										$sync_status = get_transient( 'brag_book_gallery_transient_sync_status' );
+										$sync_status = brag_book_get_cache( 'brag_book_gallery_transient_sync_status' );
 										if ( $sync_status === 'running' ) {
 											echo '<span class="dashicons dashicons-update spin"></span> ' . esc_html__( 'Running', 'brag-book-gallery' );
 										} else {

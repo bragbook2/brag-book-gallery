@@ -167,11 +167,13 @@ class Cache_Management {
 	 * @return void
 	 */
 	public function render(): void {
+		// Get cache information from the enhanced Cache_Manager
+		$cache_info = \BRAGBookGallery\Includes\Extend\Cache_Manager::get_all_cache_items();
+		$cache_stats = \BRAGBookGallery\Includes\Extend\Cache_Manager::get_cache_statistics();
+		
 		$page = isset( $_GET['cache_page'] ) ? max( 1, absint( $_GET['cache_page'] ) ) : 1;
-		$search = isset( $_GET['cache_search'] ) ? sanitize_text_field( wp_unslash( $_GET['cache_search'] ) ) : '';
-		$type_filter = isset( $_GET['cache_type'] ) ? sanitize_text_field( wp_unslash( $_GET['cache_type'] ) ) : '';
 
-		$cache_result = $this->get_cached_items( $page, $search, $type_filter );
+		$cache_result = $this->get_cached_items( $page );
 		$cached_items = $cache_result['items'];
 		$total_items = $cache_result['total'];
 		$total_pages = $cache_result['pages'];
@@ -188,14 +190,48 @@ class Cache_Management {
 			<!-- Cache Statistics -->
 			<div class="cache-stats">
 				<h4><?php esc_html_e( 'Cache Statistics', 'brag-book-gallery' ); ?></h4>
+				
+				<!-- Cache Environment Info -->
+				<?php if ( $cache_info['wp_engine'] ) : ?>
+					<div class="cache-environment-notice">
+						<h5><strong><?php esc_html_e( '🚀 WP Engine Detected', 'brag-book-gallery' ); ?></strong></h5>
+						<p><?php esc_html_e( 'Using optimized WP Engine object cache for better performance.', 'brag-book-gallery' ); ?></p>
+						<p><small><?php esc_html_e( 'Note: WP Engine object cache items cannot be individually listed, but are automatically managed. The table below shows transient cache items only.', 'brag-book-gallery' ); ?></small></p>
+					</div>
+				<?php endif; ?>
+				
 				<ul>
-					<li><?php printf( esc_html__( 'Total Cached Items: %d', 'brag-book-gallery' ), $total_items ); ?></li>
-					<li><?php printf( esc_html__( 'Current Page Items: %d', 'brag-book-gallery' ), count( $cached_items ) ); ?></li>
-					<li><?php printf( esc_html__( 'Total Cache Size: %s', 'brag-book-gallery' ), $this->format_bytes( $total_size ) ); ?></li>
-					<li><?php printf( esc_html__( 'Cache Duration Setting: %d seconds', 'brag-book-gallery' ), get_option( 'brag_book_gallery_cache_duration', self::CACHE_TTL_LONG ) ); ?></li>
+					<li><?php printf( esc_html__( 'Database Transients: %d items', 'brag-book-gallery' ), $total_items ); ?></li>
+					<li><?php printf( esc_html__( 'Visible on Page: %d items', 'brag-book-gallery' ), count( $cached_items ) ); ?></li>
+					<li><?php printf( esc_html__( 'Transient Cache Size: %s', 'brag-book-gallery' ), $this->format_bytes( $total_size ) ); ?></li>
+					<?php if ( $cache_info['wp_engine'] ) : ?>
+						<li><?php esc_html_e( '🚀 WP Engine Object Cache: Active', 'brag-book-gallery' ); ?></li>
+						<li><?php printf( esc_html__( 'Object Cache Group: %s', 'brag-book-gallery' ), esc_html( $cache_info['wp_cache']['group'] ?? 'brag_book_gallery' ) ); ?></li>
+						<li><?php esc_html_e( 'Cache Strategy: Object Cache + Transients', 'brag-book-gallery' ); ?></li>
+					<?php else : ?>
+						<li><?php esc_html_e( 'Cache Strategy: Transients Only', 'brag-book-gallery' ); ?></li>
+					<?php endif; ?>
+					<li><?php printf( esc_html__( 'Cache Duration: %d seconds', 'brag-book-gallery' ), \BRAGBookGallery\Includes\Extend\Cache_Manager::get_cache_duration() ); ?></li>
 					<li><?php printf( esc_html__( 'Page %d of %d', 'brag-book-gallery' ), $page, max( 1, $total_pages ) ); ?></li>
 				</ul>
+
+				<!-- Cache Types Breakdown -->
+				<?php if ( ! empty( $cache_stats['types'] ) ) : ?>
+					<div class="cache-types-breakdown">
+						<h5><?php esc_html_e( 'Cache Types', 'brag-book-gallery' ); ?></h5>
+						<div class="cache-types-grid">
+							<?php foreach ( $cache_stats['types'] as $type => $data ) : ?>
+								<div class="cache-type-item">
+									<span class="cache-type-name"><?php echo esc_html( $type ); ?></span>
+									<span class="cache-type-count"><?php echo absint( $data['count'] ); ?> items</span>
+									<span class="cache-type-size"><?php echo esc_html( $this->format_bytes( $data['size'] ) ); ?></span>
+								</div>
+							<?php endforeach; ?>
+						</div>
+					</div>
+				<?php endif; ?>
 			</div>
+
 
 			<!-- Action Buttons -->
 			<div class="cache-actions">
@@ -214,6 +250,11 @@ class Cache_Management {
 				<button type="button" class="button button-secondary" id="cleanup-expired-transients" style="background: #8a6b3a; color: white;">
 					<?php esc_html_e( 'Cleanup Expired Transients', 'brag-book-gallery' ); ?>
 				</button>
+				<?php if ( function_exists( 'brag_book_is_wp_engine' ) && brag_book_is_wp_engine() ) : ?>
+					<button type="button" class="button button-secondary" id="cleanup-wp-cache" style="background: #059669; color: white;">
+						<?php esc_html_e( 'Clear WP Engine Cache', 'brag-book-gallery' ); ?>
+					</button>
+				<?php endif; ?>
 				<span id="cache-action-status"></span>
 			</div>
 
@@ -227,6 +268,7 @@ class Cache_Management {
 									<input type="checkbox" id="select-all-cache" class="cache-checkbox" />
 								</th>
 								<th class="key-column"><?php esc_html_e( 'Cache Key', 'brag-book-gallery' ); ?></th>
+								<th class="source-column"><?php esc_html_e( 'Source', 'brag-book-gallery' ); ?></th>
 								<th class="type-column"><?php esc_html_e( 'Type', 'brag-book-gallery' ); ?></th>
 								<th class="size-column"><?php esc_html_e( 'Size', 'brag-book-gallery' ); ?></th>
 								<th class="expiration-column"><?php esc_html_e( 'Expiration', 'brag-book-gallery' ); ?></th>
@@ -235,6 +277,13 @@ class Cache_Management {
 						</thead>
 						<tbody>
 							<?php foreach ( $cached_items as $item ) : ?>
+								<?php 
+								// Determine cache source - for now, all visible items are transients
+								// WP Engine object cache items cannot be enumerated individually
+								$cache_source = 'transient';
+								$source_label = __( 'Transient', 'brag-book-gallery' );
+								$source_class = 'cache-source-transient';
+								?>
 								<tr class="cache-row" data-cache-key="<?php echo esc_attr( $item['key'] ); ?>">
 									<td class="checkbox-column">
 										<input type="checkbox" class="cache-item-checkbox cache-checkbox" value="<?php echo esc_attr( $item['key'] ); ?>" />
@@ -246,6 +295,11 @@ class Cache_Management {
 											</div>
 											<div class="cache-key-full"><?php echo esc_html( $item['key'] ); ?></div>
 										</div>
+									</td>
+									<td class="source-column">
+										<span class="cache-source-badge <?php echo esc_attr( $source_class ); ?>">
+											<?php echo esc_html( $source_label ); ?>
+										</span>
 									</td>
 									<td class="type-column">
 										<span class="cache-type-badge"><?php echo esc_html( $item['type'] ); ?></span>
@@ -775,6 +829,54 @@ class Cache_Management {
 					this.disabled = false;
 				}
 			});
+
+			// WP Engine Cache cleanup
+			document.getElementById('cleanup-wp-cache')?.addEventListener('click', async function() {
+				const confirmed = await confirmDialog(
+					'<?php esc_html_e( 'Are you sure you want to clear WP Engine object cache? This will remove all plugin cache items from memory.', 'brag-book-gallery' ); ?>',
+					'<?php esc_html_e( 'Clear WP Engine Cache', 'brag-book-gallery' ); ?>'
+				);
+				if (!confirmed) {
+					return;
+				}
+
+				this.disabled = true;
+				const originalText = this.textContent;
+				this.textContent = '<?php esc_html_e( 'Clearing cache...', 'brag-book-gallery' ); ?>';
+
+				try {
+					const response = await ajaxPost({
+						action: 'brag_book_gallery_debug_tool',
+						nonce: '<?php echo wp_create_nonce( 'brag_book_gallery_debug_tools' ); ?>',
+						tool: 'cache-management',
+						tool_action: 'cleanup_wp_cache'
+					});
+
+					if (response.success) {
+						await alertDialog(
+							response.data || '<?php esc_html_e( 'WP Engine cache cleared successfully.', 'brag-book-gallery' ); ?>',
+							'<?php esc_html_e( 'Success', 'brag-book-gallery' ); ?>'
+						);
+						showStatus('<?php esc_html_e( 'WP Engine cache cleared successfully', 'brag-book-gallery' ); ?>', 'success');
+						location.reload();
+					} else {
+						await alertDialog(
+							response.data || '<?php esc_html_e( 'Error clearing WP Engine cache.', 'brag-book-gallery' ); ?>',
+							'<?php esc_html_e( 'Error', 'brag-book-gallery' ); ?>'
+						);
+						showStatus('<?php esc_html_e( 'Cache clear failed', 'brag-book-gallery' ); ?>', 'error');
+					}
+				} catch (error) {
+					await alertDialog(
+						'<?php esc_html_e( 'Error clearing WP Engine cache:', 'brag-book-gallery' ); ?> ' + error,
+						'<?php esc_html_e( 'Error', 'brag-book-gallery' ); ?>'
+					);
+					showStatus('<?php esc_html_e( 'Cache clear failed', 'brag-book-gallery' ); ?>', 'error');
+				} finally {
+					this.textContent = originalText;
+					this.disabled = false;
+				}
+			});
 		});
 		</script>
 
@@ -844,8 +946,9 @@ class Cache_Management {
 
 		/* Column Specific Styles */
 		.checkbox-column {
-			width: 3rem;
+			width: 40px;
 			text-align: center;
+			padding: 0.5rem 0.25rem !important;
 		}
 
 		.cache-checkbox {
@@ -877,8 +980,8 @@ class Cache_Management {
 		}
 
 		.key-column {
-			min-width: 200px;
-			max-width: 300px;
+			width: 35%;
+			min-width: 250px;
 		}
 
 		.cache-key-wrapper {
@@ -904,16 +1007,42 @@ class Cache_Management {
 			word-break: break-all;
 		}
 
+		.source-column {
+			width: 80px;
+		}
+
+		.cache-source-badge {
+			display: inline-block;
+			padding: 0.125rem 0.5rem;
+			border-radius: 9999px;
+			font-size: 0.6875rem;
+			font-weight: 500;
+			text-transform: uppercase;
+			letter-spacing: 0.025em;
+		}
+
+		.cache-source-transient {
+			background: #fef3c7;
+			color: #92400e;
+			border: 1px solid #fbbf24;
+		}
+
+		.cache-source-wp-cache {
+			background: #d1fae5;
+			color: #065f46;
+			border: 1px solid #10b981;
+		}
+
 		.type-column {
-			width: 120px;
+			width: 110px;
 		}
 
 		.type-column span,
 		.cache-type-badge {
 			display: inline-block;
-			padding: 0.25rem 0.75rem;
+			padding: 0.125rem 0.5rem;
 			border-radius: 9999px;
-			font-size: 0.75rem;
+			font-size: 0.6875rem;
 			font-weight: 500;
 			background: #eff6ff;
 			color: #1d4ed8;
@@ -921,7 +1050,7 @@ class Cache_Management {
 		}
 
 		.size-column {
-			width: 100px;
+			width: 80px;
 			text-align: right;
 		}
 
@@ -937,7 +1066,7 @@ class Cache_Management {
 		}
 
 		.expiration-column {
-			width: 160px;
+			width: 140px;
 		}
 
 		.cache-expiration-wrapper {
@@ -970,7 +1099,7 @@ class Cache_Management {
 		}
 
 		.actions-column {
-			width: 140px;
+			width: 100px;
 		}
 
 		.cache-actions-wrapper {
@@ -998,23 +1127,25 @@ class Cache_Management {
 		}
 
 		.cache-btn-view {
-			color: #3b82f6;
+			background: #3b82f6;
+			color: white;
 			border-color: #3b82f6;
 		}
 
 		.cache-btn-view:hover {
-			background: #3b82f6;
-			color: white;
+			background: #2563eb;
+			border-color: #2563eb;
 		}
 
 		.cache-btn-delete {
-			color: #dc2626;
+			background: #dc2626;
+			color: white;
 			border-color: #dc2626;
 		}
 
 		.cache-btn-delete:hover {
-			background: #dc2626;
-			color: white;
+			background: #b91c1c;
+			border-color: #b91c1c;
 		}
 
 		.cache-btn svg {
@@ -1136,6 +1267,13 @@ class Cache_Management {
 			font-weight: 600;
 		}
 
+		.cache-stats h5 {
+			margin: 1rem 0 0.5rem;
+			color: #1f2937;
+			font-size: 0.9rem;
+			font-weight: 600;
+		}
+
 		.cache-stats ul {
 			margin: 0;
 			padding: 0;
@@ -1153,6 +1291,74 @@ class Cache_Management {
 			color: #374151;
 			font-size: 0.875rem;
 			box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+		}
+
+		/* WP Engine Notice */
+		.cache-environment-notice {
+			background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+			color: white;
+			padding: 1rem;
+			border-radius: 0.5rem;
+			margin-bottom: 1rem;
+			box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+		}
+
+		.cache-environment-notice h5 {
+			margin: 0 0 0.5rem;
+			color: white;
+			font-size: 1rem;
+		}
+
+		.cache-environment-notice p {
+			margin: 0;
+			color: rgba(255, 255, 255, 0.9);
+			font-size: 0.875rem;
+		}
+
+		/* Cache Types Breakdown */
+		.cache-types-breakdown {
+			margin-top: 1rem;
+		}
+
+		.cache-types-grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+			gap: 0.75rem;
+			margin-top: 0.5rem;
+		}
+
+		.cache-type-item {
+			background: white;
+			border: 1px solid #e5e7eb;
+			border-radius: 0.5rem;
+			padding: 0.75rem;
+			display: flex;
+			flex-direction: column;
+			gap: 0.25rem;
+			transition: all 0.2s ease;
+		}
+
+		.cache-type-item:hover {
+			border-color: #3b82f6;
+			box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+		}
+
+		.cache-type-name {
+			font-weight: 600;
+			color: #1f2937;
+			font-size: 0.875rem;
+		}
+
+		.cache-type-count {
+			color: #3b82f6;
+			font-size: 0.8125rem;
+			font-weight: 500;
+		}
+
+		.cache-type-size {
+			color: #059669;
+			font-size: 0.75rem;
+			font-weight: 500;
 		}
 
 		/* Status Messages */
@@ -1301,20 +1507,19 @@ class Cache_Management {
 			background: rgba(0, 0, 0, 0.5);
 			backdrop-filter: blur(4px);
 		}
+
 		</style>
 		<?php
 	}
 
 	/**
-	 * Get all cached items for the plugin with pagination and filtering
+	 * Get all cached items for the plugin with pagination
 	 *
 	 * @since 3.0.0
-	 * @param int    $page Page number for pagination.
-	 * @param string $search Search term.
-	 * @param string $type Filter by type.
+	 * @param int $page Page number for pagination.
 	 * @return array{items: array, total: int, pages: int}
 	 */
-	private function get_cached_items( int $page = 1, string $search = '', string $type = '' ): array {
+	private function get_cached_items( int $page = 1 ): array {
 		$start_time = microtime( true );
 
 		try {
@@ -1324,7 +1529,7 @@ class Cache_Management {
 
 			// Get transients using the same approach as transients-manager
 			$transients = $this->get_plugin_transients( [
-				'search' => $search,
+				'search' => '',
 				'offset' => $offset,
 				'number' => $items_per_page
 			] );
@@ -1335,11 +1540,8 @@ class Cache_Management {
 				// Get the real transient name (like transients-manager does)
 				$transient_name = $this->get_transient_name( $transient );
 
-				// Apply type filter
+				// Get item type
 				$item_type = $this->determine_cache_type( $transient_name );
-				if ( ! empty( $type ) && $item_type !== $type ) {
-					continue;
-				}
 
 				// Get expiration time
 				$expiration_value = $this->get_transient_expiration_time( $transient );
@@ -1354,7 +1556,7 @@ class Cache_Management {
 			}
 
 			// Get total count for pagination
-			$total = $this->get_total_plugin_transients( $search );
+			$total = $this->get_total_plugin_transients( '' );
 			$pages = (int) ceil( $total / $items_per_page );
 
 			$this->track_performance( 'get_cached_items', microtime( true ) - $start_time );
@@ -1654,6 +1856,7 @@ class Cache_Management {
 				'export'           => $this->export_cache_data(),
 				'get_stats'        => $this->get_cache_statistics(),
 				'cleanup_expired'  => $this->cleanup_expired_transients(),
+				'cleanup_wp_cache' => $this->cleanup_wp_cache(),
 				default            => throw new Exception( 'Invalid action: ' . $action ),
 			};
 
@@ -1685,7 +1888,7 @@ class Cache_Management {
 			throw new Exception( __( 'Invalid cache key', 'brag-book-gallery' ) );
 		}
 
-		$data = get_transient( $key );
+		$data = brag_book_get_cache( $key );
 
 		if ( false === $data ) {
 			throw new Exception( __( 'Cache item not found or expired', 'brag-book-gallery' ) );
@@ -1731,7 +1934,7 @@ class Cache_Management {
 				continue;
 			}
 
-			if ( delete_transient( $key ) ) {
+			if ( brag_book_delete_cache( $key ) ) {
 				$deleted++;
 
 				/**
@@ -1763,6 +1966,7 @@ class Cache_Management {
 
 	/**
 	 * Clear all plugin cache with performance tracking.
+	 * Uses the enhanced Cache_Manager for both transients and WP Engine cache.
 	 *
 	 * @since 3.0.0
 	 * @return string Success message.
@@ -1771,36 +1975,25 @@ class Cache_Management {
 		$start_time = microtime( true );
 
 		try {
-			global $wpdb;
+			// Use the enhanced Cache_Manager that handles both transients and WP Engine cache
+			$result = \BRAGBookGallery\Includes\Extend\Cache_Manager::clear_all_cache();
 
-			// Delete all transients with our prefix
-			$deleted = $wpdb->query(
-				$wpdb->prepare(
-					"DELETE FROM {$wpdb->options}
-					WHERE option_name LIKE %s
-					OR option_name LIKE %s",
-					'_transient_' . self::CACHE_PREFIX . '%',
-					'_transient_timeout_' . self::CACHE_PREFIX . '%'
-				)
-			);
-
-			// Clear object cache
-			wp_cache_flush();
+			if ( ! $result['success'] ) {
+				throw new Exception( $result['message'] );
+			}
 
 			/**
 			 * Fires after all cache is cleared.
 			 *
 			 * @since 3.0.0
-			 * @param int $deleted Number of items deleted.
+			 * @param int  $deleted   Number of items deleted.
+			 * @param bool $wp_engine Whether WP Engine cache was also cleared.
 			 */
-			do_action( 'brag_book_gallery_cache_cleared', $deleted );
+			do_action( 'brag_book_gallery_cache_cleared', $result['count'], $result['wp_engine'] );
 
 			$this->track_performance( 'clear_all_cache', microtime( true ) - $start_time );
 
-			return sprintf(
-				__( 'Successfully cleared all cache. %d items removed.', 'brag-book-gallery' ),
-				(int) ( $deleted / 2 ) // Divide by 2 since we delete both transient and timeout
-			);
+			return $result['message'];
 
 		} catch ( Exception $e ) {
 			$this->log_error( 'clear_all_cache', $e->getMessage() );
@@ -1845,6 +2038,45 @@ class Cache_Management {
 		} catch ( Exception $e ) {
 			$this->log_error( 'cleanup_expired_transients', $e->getMessage() );
 			throw new Exception( __( 'Failed to cleanup expired transients: ', 'brag-book-gallery' ) . $e->getMessage() );
+		}
+	}
+
+	/**
+	 * Cleanup WP Engine object cache
+	 *
+	 * Manually trigger the WP Engine cache cleanup method from the Setup class.
+	 *
+	 * @since 3.2.4
+	 * @return string Result message
+	 * @throws Exception If cleanup fails
+	 */
+	private function cleanup_wp_cache(): string {
+		$start_time = microtime( true );
+
+		try {
+			// Get Setup instance and run WP Cache cleanup
+			$setup = \BRAGBookGallery\Includes\Core\Setup::get_instance();
+
+			if ( method_exists( $setup, 'cleanup_wp_cache' ) ) {
+				$setup->cleanup_wp_cache();
+			} else {
+				throw new Exception( __( 'WP Cache cleanup method not available', 'brag-book-gallery' ) );
+			}
+
+			$this->track_performance( 'cleanup_wp_cache', microtime( true ) - $start_time );
+
+			/**
+			 * Fires after WP Cache cleanup is manually triggered.
+			 *
+			 * @since 3.2.4
+			 */
+			do_action( 'brag_book_gallery_manual_wp_cache_cleanup' );
+
+			return __( 'Successfully cleared WP Engine object cache.', 'brag-book-gallery' );
+
+		} catch ( Exception $e ) {
+			$this->log_error( 'cleanup_wp_cache', $e->getMessage() );
+			throw new Exception( __( 'Failed to clear WP Engine cache: ', 'brag-book-gallery' ) . $e->getMessage() );
 		}
 	}
 

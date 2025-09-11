@@ -29,7 +29,21 @@ class BRAGbookGalleryApp {
 	 * Initialize all gallery components in sequence
 	 */
 	async init() {
-		// Initialize core components
+		// Check if this is a direct case URL first and handle it
+		if (await this.handleDirectCaseUrl()) {
+			// If we're loading a case directly, skip normal gallery initialization
+			// but still initialize essential components
+			this.initializeDialogs();
+			this.initializeMobileMenu();
+			this.initializeCaseLinks();
+			this.initializeNudityWarning();
+			this.initializeShareManager();
+			this.initializeFavorites();
+			this.initializeCasePreloading();
+			return;
+		}
+
+		// Initialize core components for normal gallery view
 		this.initializeCarousels();
 		this.initializeDialogs();
 		this.initializeFilters();
@@ -40,6 +54,7 @@ class BRAGbookGalleryApp {
 		this.initializeConsultationForm();
 		this.initializeCaseLinks();
 		this.initializeNudityWarning();
+		this.initializeCasePreloading();
 
 		// Auto-activate favorites view if on favorites page
 		const galleryContent = document.getElementById('gallery-content');
@@ -255,6 +270,14 @@ class BRAGbookGalleryApp {
 				const procedureIds = caseLink.dataset.procedureIds;
 
 				if (caseId) {
+					// Show immediate visual feedback on the clicked card
+					const caseCard = caseLink.closest('.brag-book-gallery-case-card');
+					if (caseCard) {
+						caseCard.style.opacity = '0.6';
+						caseCard.style.transform = 'scale(0.98)';
+						caseCard.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+					}
+
 					// Load case details via AJAX
 					this.loadCaseDetails(caseId, caseLink.href, true, procedureIds);
 				}
@@ -272,9 +295,91 @@ class BRAGbookGalleryApp {
 					const procedureIds = caseLinkInCard.dataset.procedureIds || caseCard.dataset.procedureIds;
 
 					if (caseId) {
+						// Show immediate visual feedback on the clicked card
+						caseCard.style.opacity = '0.6';
+						caseCard.style.transform = 'scale(0.98)';
+						caseCard.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+
 						this.loadCaseDetails(caseId, caseLinkInCard.href, true, procedureIds);
 					}
 				}
+			}
+
+			// Check if click is on a navigation button (next/previous)
+			// But exclude summary elements which also use .brag-book-gallery-nav-button
+			const navButton = e.target.closest('.brag-book-gallery-nav-button');
+			if (navButton && !navButton.closest('summary')) {
+				e.preventDefault();
+				e.stopPropagation();
+
+				// Extract case ID from the URL
+				const href = navButton.href;
+				if (href) {
+					const url = new URL(href);
+					const pathSegments = url.pathname.split('/').filter(s => s);
+					
+					// URL format: /gallery/procedure-slug/case-id/
+					if (pathSegments.length >= 3) {
+						const caseId = pathSegments[pathSegments.length - 1];
+						const procedureSlug = pathSegments[pathSegments.length - 2];
+						
+						// Try multiple methods to get procedure IDs for context preservation
+						let procedureIds = '';
+						
+						// Method 1: Try to get from current case's data attributes
+						const currentCaseElement = document.querySelector('[data-case-id]');
+						if (currentCaseElement && currentCaseElement.dataset.procedureIds) {
+							procedureIds = currentCaseElement.dataset.procedureIds;
+							console.log('Using procedure IDs from current case element:', procedureIds);
+						}
+						
+						// Method 2: Look up procedure IDs from sidebar data
+						if (!procedureIds) {
+							const currentSidebarData = window.bragBookGalleryConfig?.sidebarData;
+							if (currentSidebarData && procedureSlug) {
+								for (const category of Object.values(currentSidebarData)) {
+									if (category.procedures) {
+										for (const procedure of category.procedures) {
+											if (procedure.slug === procedureSlug) {
+												procedureIds = procedure.ids ? procedure.ids.join(',') : '';
+												console.log('Using procedure IDs from sidebar data:', procedureIds);
+												break;
+											}
+										}
+									}
+									if (procedureIds) break;
+								}
+							}
+						}
+						
+						// Method 3: Try to extract from current page URL context
+						if (!procedureIds) {
+							const currentPathSegments = window.location.pathname.split('/').filter(s => s);
+							if (currentPathSegments.length >= 2) {
+								const currentProcedureSlug = currentPathSegments[currentPathSegments.length - 2];
+								if (currentProcedureSlug === procedureSlug) {
+									// Same procedure context, try to find any case with procedure IDs
+									const anyCase = document.querySelector('[data-procedure-ids]');
+									if (anyCase && anyCase.dataset.procedureIds) {
+										procedureIds = anyCase.dataset.procedureIds;
+										console.log('Using procedure IDs from any case element:', procedureIds);
+									}
+								}
+							}
+						}
+
+						if (caseId) {
+							// Show visual feedback on the navigation button
+							navButton.style.opacity = '0.7';
+							navButton.style.transition = 'opacity 0.2s ease';
+							
+							// Load case details via AJAX with preserved procedure context
+							console.log(`Loading case ${caseId} with procedure context: ${procedureIds}`);
+							this.loadCaseDetails(caseId, href, true, procedureIds);
+						}
+					}
+				}
+				return;
 			}
 		});
 
@@ -293,11 +398,63 @@ class BRAGbookGalleryApp {
 		});
 	}
 
+	/**
+	 * Check if current URL is a direct case URL and load it immediately
+	 * Returns true if a case was loaded, false otherwise
+	 */
+	async handleDirectCaseUrl() {
+		const currentPath = window.location.pathname;
+		const pathSegments = currentPath.split('/').filter(s => s);
+		
+		// Check if this looks like a case URL: /gallery/procedure-slug/case-id
+		// We need at least 3 segments and the last should be numeric
+		if (pathSegments.length >= 3) {
+			const lastSegment = pathSegments[pathSegments.length - 1];
+			
+			// Check if the last segment is a numeric case ID
+			if (/^\d+$/.test(lastSegment)) {
+				const caseId = lastSegment;
+				const procedureSlug = pathSegments[pathSegments.length - 2]; // Get procedure slug from URL
+				const galleryContent = document.getElementById('gallery-content');
+				
+				if (galleryContent) {
+					try {
+						// Try to get procedure IDs from sidebar data
+						let procedureIds = null;
+						if (window.bragBookGalleryConfig?.sidebarData && procedureSlug) {
+							procedureIds = this.getProcedureIdsFromSlug(procedureSlug);
+							if (procedureIds) {
+								console.log(`🔗 Direct case load with procedure context: case ${caseId}, procedure ${procedureSlug}, IDs: ${procedureIds}`);
+							}
+						}
+						
+						// Load case details directly without gallery initialization
+						await this.loadCaseDetails(caseId, window.location.href, false, procedureIds);
+						return true;
+					} catch (error) {
+						console.warn('Failed to load direct case URL:', error);
+						// Fall back to normal gallery loading
+						return false;
+					}
+				}
+			}
+		}
+		
+		return false;
+	}
+
 	async loadCaseDetails(caseId, url, updateHistory = true, procedureIds = null) {
 		const galleryContent = document.getElementById('gallery-content');
 		if (!galleryContent) {
 			return;
 		}
+
+		// Debounce multiple case loads
+		if (this.currentCaseLoad) {
+			console.log('Debouncing case load request');
+			return;
+		}
+		this.currentCaseLoad = caseId;
 
 		// If procedureIds not provided, try to get from the case card
 		if (!procedureIds) {
@@ -307,14 +464,16 @@ class BRAGbookGalleryApp {
 			}
 		}
 
-
-		// Show loading state
-		galleryContent.innerHTML = '<div class="brag-book-gallery-loading">Loading case details...</div>';
-
-		// Update browser URL without page reload (only if not coming from popstate)
+		// Update browser URL IMMEDIATELY to prevent showing procedure page
 		if (updateHistory && window.history && window.history.pushState) {
 			window.history.pushState({ caseId: caseId }, '', url);
 		}
+
+		// Show loading state (same as procedures page)
+		galleryContent.innerHTML = '<div class="brag-book-gallery-loading">Loading case details...</div>';
+
+		// Scroll to top to show loading state
+		window.scrollTo({ top: 0, behavior: 'smooth' });
 
 		try {
 			// Check for config
@@ -322,9 +481,66 @@ class BRAGbookGalleryApp {
 				throw new Error('Configuration not loaded');
 			}
 
-			// Extract procedure slug from the URL
-			// URL format: /gallery/procedure-slug/case-id
-			const pathSegments = url ? new URL(url).pathname.split('/').filter(s => s) : window.location.pathname.split('/').filter(s => s);
+			// Check preload cache first for instant loading
+			if (this.casePreloadCache && this.casePreloadCache.has(caseId)) {
+				const cachedData = this.casePreloadCache.get(caseId);
+				if (cachedData && cachedData !== 'loading') {
+					console.log(`⚡ Loading case ${caseId} from preload cache`);
+					galleryContent.innerHTML = cachedData;
+					
+					// Set active state on sidebar
+					this.setActiveSidebarForCase(caseId);
+					
+					// Scroll to top of gallery content area smoothly
+					const wrapper = document.querySelector('.brag-book-gallery-wrapper');
+					if (wrapper) {
+						wrapper.scrollIntoView({ behavior: 'smooth', block: 'start' });
+					} else {
+						galleryContent.scrollIntoView({ behavior: 'smooth', block: 'start' });
+					}
+					// Clear debounce flag
+					this.currentCaseLoad = null;
+					return;
+				}
+			}
+
+			// Use AJAX method for consistent server-side HTML rendering
+			// Direct API disabled to ensure consistent CSS and HTML structure
+			console.log('🔄 Using AJAX method for consistent server-side HTML rendering');
+
+			// AJAX method (ensures PHP-generated HTML)
+			await this.loadCaseDetailsViaAjax(caseId, url, procedureIds);
+
+		} catch (error) {
+			let errorMessage = 'Failed to load case details. Please try again.';
+
+			// If we have a more specific error message, show it
+			if (error.message) {
+				errorMessage += '<br><small>' + error.message + '</small>';
+			}
+
+			galleryContent.innerHTML = '<div class="brag-book-gallery-error">' + errorMessage + '</div>';
+		} finally {
+			// Always clear debounce flag
+			this.currentCaseLoad = null;
+		}
+	}
+
+	/**
+	 * Fallback method to load case details via traditional AJAX
+	 * @param {string} caseId - The case ID to load
+	 * @param {string} url - The case URL
+	 * @param {string} procedureIds - Comma-separated procedure IDs
+	 */
+	async loadCaseDetailsViaAjax(caseId, url, procedureIds) {
+		const galleryContent = document.getElementById('gallery-content');
+		if (!galleryContent) {
+			return;
+		}
+
+		try {
+			// Extract procedure slug from URL
+			const pathSegments = window.location.pathname.split('/').filter(s => s);
 			const procedureSlug = pathSegments.length > 2 ? pathSegments[pathSegments.length - 2] : '';
 
 			// Try to get the procedure name from the sidebar data
@@ -368,6 +584,9 @@ class BRAGbookGalleryApp {
 			// Add procedure IDs if available
 			if (procedureIds) {
 				requestParams.procedure_ids = procedureIds;
+				console.log(`🔗 AJAX call with procedure context: case ${caseId}, procedure IDs ${procedureIds}`);
+			} else {
+				console.warn(`⚠️ AJAX call WITHOUT procedure context: case ${caseId} (no procedure IDs provided)`);
 			}
 
 			// Make AJAX request to load case details
@@ -379,7 +598,6 @@ class BRAGbookGalleryApp {
 				body: new URLSearchParams(requestParams)
 			});
 
-
 			if (!response.ok) {
 				throw new Error(`HTTP error! status: ${response.status}`);
 			}
@@ -387,8 +605,18 @@ class BRAGbookGalleryApp {
 			const data = await response.json();
 
 			if (data.success && data.data && data.data.html) {
+				console.log(`✅ AJAX response received for case ${caseId}:`, {
+					hasHtml: !!data.data.html,
+					hasSeo: !!data.data.seo,
+					hasNavigation: data.data.html.includes('brag-book-gallery-case-nav-buttons'),
+					htmlLength: data.data.html.length
+				});
+				
 				// Display the HTML directly from the server
 				galleryContent.innerHTML = data.data.html;
+				
+				// Set active state on sidebar
+				this.setActiveSidebarForCase(caseId);
 
 				// Scroll to top of gallery content area smoothly
 				const wrapper = document.querySelector('.brag-book-gallery-wrapper');
@@ -433,13 +661,18 @@ class BRAGbookGalleryApp {
 					}
 				}
 
+				// Store successful result in preload cache for future use
+				if (this.casePreloadCache && caseId) {
+					this.casePreloadCache.set(caseId, data.data.html);
+				}
+
 				// Re-initialize any necessary event handlers for the new content
 				this.initializeCaseDetailThumbnails();
 			} else {
 				throw new Error(data.data?.message || data.data || data.message || 'Failed to load case details');
 			}
 		} catch (error) {
-			let errorMessage = 'Failed to load case details. Please try again.';
+			let errorMessage = 'Failed to load case details via AJAX. Please try again.';
 
 			// If we have a more specific error message, show it
 			if (error.message) {
@@ -447,6 +680,9 @@ class BRAGbookGalleryApp {
 			}
 
 			galleryContent.innerHTML = '<div class="brag-book-gallery-error">' + errorMessage + '</div>';
+		} finally {
+			// Always clear debounce flag
+			this.currentCaseLoad = null;
 		}
 	}
 
@@ -1775,6 +2011,1039 @@ class BRAGbookGalleryApp {
 	 */
 	initializeNudityWarning() {
 		this.components.nudityWarningManager = new NudityWarningManager();
+	}
+
+	/**
+	 * Initialize case preloading for improved performance
+	 */
+	initializeCasePreloading() {
+		// Preload cache to store case data
+		this.casePreloadCache = new Map();
+		
+		// Optimize image loading for visible cases
+		this.optimizeImageLoading();
+		
+		// Add intersection observer for visible cases
+		this.setupCasePreloadObserver();
+		
+		// Preload first few visible cases after a short delay
+		setTimeout(() => {
+			this.preloadVisibleCases();
+		}, 1000);
+	}
+
+	/**
+	 * Optimize image loading for better performance
+	 */
+	optimizeImageLoading() {
+		// Convert first 3 case images to eager loading with high priority
+		const caseImages = document.querySelectorAll('.brag-book-gallery-case-card img');
+		Array.from(caseImages).slice(0, 3).forEach((img, index) => {
+			img.loading = 'eager';
+			img.setAttribute('fetchpriority', 'high');
+			
+			// Add preload link for critical images
+			if (index === 0) {
+				const link = document.createElement('link');
+				link.rel = 'preload';
+				link.as = 'image';
+				link.href = img.src;
+				link.fetchPriority = 'high';
+				document.head.appendChild(link);
+			}
+		});
+
+		// Add image loading optimization for new content
+		this.setupImageLoadingOptimization();
+	}
+
+	/**
+	 * Set up automatic image loading optimization for dynamically loaded content
+	 */
+	setupImageLoadingOptimization() {
+		// Create a mutation observer to optimize images in new content
+		this.imageOptimizationObserver = new MutationObserver((mutations) => {
+			mutations.forEach((mutation) => {
+				mutation.addedNodes.forEach((node) => {
+					if (node.nodeType === Node.ELEMENT_NODE) {
+						// Find case images in the new content
+						const newImages = node.querySelectorAll ? 
+							node.querySelectorAll('.brag-book-gallery-case-card img') : [];
+						
+						// Optimize first few images in new content
+						Array.from(newImages).slice(0, 2).forEach(img => {
+							img.loading = 'eager';
+							img.setAttribute('fetchpriority', 'high');
+						});
+					}
+				});
+			});
+		});
+
+		// Observe the gallery content area for changes
+		const galleryContent = document.getElementById('gallery-content');
+		if (galleryContent) {
+			this.imageOptimizationObserver.observe(galleryContent, {
+				childList: true,
+				subtree: true
+			});
+		}
+	}
+
+	/**
+	 * Set up intersection observer to preload cases as they become visible
+	 */
+	setupCasePreloadObserver() {
+		if (!window.IntersectionObserver) return;
+
+		this.caseObserver = new IntersectionObserver((entries) => {
+			entries.forEach(entry => {
+				if (entry.isIntersecting) {
+					const caseCard = entry.target;
+					const caseId = caseCard.dataset.caseId;
+					const procedureIds = caseCard.dataset.procedureIds;
+					
+					if (caseId && !this.casePreloadCache.has(caseId)) {
+						// Preload this case in the background
+						this.preloadCase(caseId, procedureIds);
+					}
+				}
+			});
+		}, {
+			// Trigger when case is 50% visible
+			threshold: 0.5,
+			// Start preloading 200px before the case becomes visible
+			rootMargin: '200px'
+		});
+
+		// Observe all case cards
+		document.querySelectorAll('.brag-book-gallery-case-card').forEach(card => {
+			this.caseObserver.observe(card);
+		});
+	}
+
+	/**
+	 * Preload visible cases for instant loading
+	 */
+	preloadVisibleCases() {
+		const visibleCases = document.querySelectorAll('.brag-book-gallery-case-card');
+		
+		// Preload first 3 visible cases
+		Array.from(visibleCases).slice(0, 3).forEach(card => {
+			const caseId = card.dataset.caseId;
+			const procedureIds = card.dataset.procedureIds;
+			
+			if (caseId && !this.casePreloadCache.has(caseId)) {
+				this.preloadCase(caseId, procedureIds);
+			}
+		});
+	}
+
+	/**
+	 * Preload a specific case in the background
+	 */
+	async preloadCase(caseId, procedureIds) {
+		if (this.casePreloadCache.has(caseId)) return;
+		
+		// Mark as being preloaded to avoid duplicates
+		this.casePreloadCache.set(caseId, 'loading');
+		
+		try {
+			// Use the same direct API method but store result in cache
+			const result = await this.loadCaseDetailsDirectly(caseId, procedureIds);
+			if (result) {
+				this.casePreloadCache.set(caseId, result);
+				console.log(`✅ Preloaded case ${caseId}`);
+			} else {
+				// If direct API fails, try AJAX preload
+				const ajaxResult = await this.preloadCaseViaAjax(caseId, procedureIds);
+				if (ajaxResult) {
+					this.casePreloadCache.set(caseId, ajaxResult);
+					console.log(`✅ Preloaded case ${caseId} via AJAX`);
+				}
+			}
+		} catch (error) {
+			// Remove failed preload marker
+			this.casePreloadCache.delete(caseId);
+			console.warn(`Failed to preload case ${caseId}:`, error);
+		}
+	}
+
+	/**
+	 * Preload case via AJAX (fallback method)
+	 */
+	async preloadCaseViaAjax(caseId, procedureIds) {
+		try {
+			// Extract procedure slug from current location
+			const pathSegments = window.location.pathname.split('/').filter(s => s);
+			const procedureSlug = pathSegments.length > 1 ? pathSegments[pathSegments.length - 1] : '';
+
+			// Get procedure name for context
+			let procedureName = '';
+			const activeLink = document.querySelector(`.brag-book-gallery-nav-link[data-procedure="${procedureSlug}"]`);
+			if (activeLink) {
+				const label = activeLink.querySelector('.brag-book-gallery-filter-option-label');
+				if (label) {
+					procedureName = label.textContent.trim();
+				}
+			}
+
+			const requestParams = {
+				action: 'brag_book_gallery_load_case_details_html',
+				case_id: caseId,
+				procedure_slug: procedureSlug,
+				procedure_name: procedureName,
+				nonce: bragBookGalleryConfig.nonce || ''
+			};
+
+			if (procedureIds) {
+				requestParams.procedure_ids = procedureIds;
+			}
+
+			const response = await fetch(bragBookGalleryConfig.ajaxUrl, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/x-www-form-urlencoded',
+				},
+				body: new URLSearchParams(requestParams)
+			});
+
+			if (!response.ok) return null;
+
+			const data = await response.json();
+			
+			if (data.success && data.data && data.data.html) {
+				return data.data.html;
+			}
+			
+			return null;
+		} catch (error) {
+			console.warn('AJAX preload failed:', error);
+			return null;
+		}
+	}
+
+	/**
+	 * Load case details directly from API for faster performance
+	 * Bypasses PHP processing for speed
+	 */
+	async loadCaseDetailsDirectly(caseId, procedureIds = null) {
+		const ajaxUrl = bragBookGalleryConfig.ajaxUrl || '/wp-admin/admin-ajax.php';
+		const nonce = bragBookGalleryConfig.nonce || '';
+		const apiToken = bragBookGalleryConfig.apiToken || '';
+		const websitePropertyId = bragBookGalleryConfig.websitePropertyId || '';
+		
+		if (!ajaxUrl || !nonce || !apiToken || !websitePropertyId) {
+			throw new Error('Missing API configuration for case details');
+		}
+		
+		try {
+			// Build the endpoint URL - use correct API endpoint (matching PHP implementation)
+			const endpoint = `/api/plugin/combine/cases/${caseId}`;
+			
+			// Build request body as JSON (matching Insomnia working example)
+			const requestBody = {
+				apiTokens: [apiToken],
+				count: 1,  // Required parameter for case details endpoint
+				websitePropertyIds: [parseInt(websitePropertyId)]
+			};
+			
+			// Add procedure IDs if available
+			if (procedureIds) {
+				const procedureIdArray = procedureIds.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+				if (procedureIdArray.length > 0) {
+					requestBody.procedureIds = procedureIdArray;
+					console.log(`🔗 Direct API call with procedure context: case ${caseId}, procedure IDs ${procedureIdArray.join(',')}`);
+				} else {
+					console.warn(`⚠️ Direct API call WITHOUT procedure context: case ${caseId} (invalid procedure IDs: ${procedureIds})`);
+				}
+			} else {
+				console.warn(`⚠️ Direct API call WITHOUT procedure context: case ${caseId} (no procedure IDs provided)`);
+			}
+			
+			// Use CORS-safe proxy for case details endpoint with POST method and JSON body
+			console.log(`🌐 Making API proxy request to endpoint: ${endpoint} with POST data:`, requestBody);
+			const formData = new FormData();
+			formData.append('action', 'brag_book_api_proxy');
+			formData.append('nonce', nonce);
+			formData.append('endpoint', endpoint);
+			formData.append('method', 'POST');
+			formData.append('body', JSON.stringify(requestBody));
+			formData.append('timeout', '3');
+			
+			// Set aggressive timeout for faster failure detection
+			const controller = new AbortController();
+			const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+			
+			const response = await fetch(ajaxUrl, {
+				method: 'POST',
+				body: formData,
+				signal: controller.signal
+			});
+			
+			clearTimeout(timeoutId);
+			
+			if (!response.ok) {
+				throw new Error(`Proxy response ${response.status}`);
+			}
+			
+			const result = await response.json();
+			
+			console.log('🔍 Full API proxy response:', result);
+			
+			if (!result.success || !result.data || !result.data.data) {
+				console.error('Direct API response structure:', result);
+				console.error('Expected: result.success =', result.success);
+				console.error('Expected: result.data =', result.data);
+				console.error('Expected: result.data.data =', result.data?.data);
+				
+				// Let's also check what the actual API returned
+				if (result.data && result.data.status) {
+					console.error('🚨 API returned HTTP status:', result.data.status);
+					console.error('🚨 API error message:', result.data.message);
+					console.error('🚨 API debug info:', result.data.debug);
+				}
+				
+				throw new Error(result.data?.message || 'Case details proxy request failed');
+			}
+			
+			// Check if we got HTML response (like AJAX method)
+			if (result.data && result.data.html) {
+				console.log('✅ Direct API returned HTML content');
+				return result.data.html;
+			}
+			
+			// Fallback: if we got raw data, try to process it
+			const data = result.data.data;
+			if (!data || !data.data || !data.data[0]) {
+				console.warn('Direct API returned unexpected data structure');
+				return null;
+			}
+			
+			console.warn('⚠️ Direct API returned raw data, falling back to JavaScript rendering');
+			const caseData = data.data[0];
+			return this.generateCaseDetailHTML(caseData);
+			
+		} catch (error) {
+			console.warn('Direct API call failed:', error);
+			return null;
+		}
+	}
+
+	/**
+	 * Generate HTML for case details from API data
+	 * Matches PHP HTML_Renderer::render_case_details_html() structure exactly
+	 */
+	generateCaseDetailHTML(caseData) {
+		const caseId = caseData.id || '';
+		
+		// Extract procedure data using method that matches PHP implementation
+		const procedureData = this.extractProcedureDataForDetails(caseData);
+		const seoData = this.extractSEOData(caseData);
+		const navigationData = caseData.navigation || null;
+		
+		// Extract current procedure info from URL
+		const pathSegments = window.location.pathname.split('/').filter(s => s);
+		const procedureSlug = pathSegments.length > 2 ? pathSegments[pathSegments.length - 2] : '';
+		const procedureName = procedureData.name || '';
+		
+		// Extract procedure IDs for data attributes (matching PHP implementation exactly)
+		let procedureIdsAttr = '';
+		if (caseData.procedureIds && Array.isArray(caseData.procedureIds)) {
+			const procedureIdsClean = caseData.procedureIds.map(id => parseInt(id)).filter(id => !isNaN(id));
+			procedureIdsAttr = ` data-procedure-ids="${this.escapeHtml(procedureIdsClean.join(','))}"`;
+		}
+
+		// Add procedure slug attribute if available
+		const procedureSlugAttr = procedureSlug ? ` data-procedure="${this.escapeHtml(procedureSlug)}"` : '';
+
+		// Build complete HTML structure matching PHP exactly (single line, no extra whitespace)
+		return `<div class="brag-book-gallery-case-detail-view" data-case-id="${this.escapeHtml(caseId)}"${procedureIdsAttr}${procedureSlugAttr}>${this.renderCaseHeader(procedureData, seoData, caseId, procedureSlug, procedureName, navigationData)}${this.renderCaseImages(caseData, procedureData, caseId)}${this.renderCaseDetailsCards(caseData)}</div>`;
+	}
+
+	/**
+	 * Extract procedure data from case data for details view (matching PHP method exactly)
+	 */
+	extractProcedureDataForDetails(caseData) {
+		let procedureName = '';
+		let procedureSlug = '';
+		let procedureIds = [];
+
+		// Check for procedures array with objects (matching PHP logic)
+		if (caseData.procedures && Array.isArray(caseData.procedures) && caseData.procedures.length > 0) {
+			const firstProcedure = caseData.procedures[0];
+			
+			if (firstProcedure.name) {
+				const rawProcedureName = firstProcedure.name;
+				procedureName = this.formatProcedureDisplayName(rawProcedureName);
+				procedureSlug = this.sanitizeTitle(rawProcedureName);
+			} else if (firstProcedure.id) {
+				procedureIds.push(parseInt(firstProcedure.id));
+			}
+		} else if (caseData.procedureIds && Array.isArray(caseData.procedureIds)) {
+			procedureIds = caseData.procedureIds.map(id => parseInt(id)).filter(id => !isNaN(id));
+		}
+
+		return {
+			name: procedureName,
+			slug: procedureSlug,
+			ids: procedureIds,
+			procedures: caseData.procedures || []
+		};
+	}
+
+	/**
+	 * Format procedure display name (matching PHP method)
+	 */
+	formatProcedureDisplayName(procedureName) {
+		if (!procedureName) return '';
+		return procedureName.trim();
+	}
+
+	/**
+	 * Sanitize title for URL-safe slug (matching PHP sanitize_title)
+	 */
+	sanitizeTitle(title) {
+		if (!title) return '';
+		
+		return title
+			.toLowerCase()
+			.trim()
+			.replace(/[^a-z0-9\s-]/g, '') // Remove special characters
+			.replace(/\s+/g, '-') // Replace spaces with hyphens
+			.replace(/-+/g, '-') // Replace multiple hyphens with single
+			.replace(/^-|-$/g, ''); // Remove leading/trailing hyphens
+	}
+
+	/**
+	 * Extract procedure data from case data (original method)
+	 */
+	extractProcedureData(caseData) {
+		let procedureName = '';
+		let procedureSlug = '';
+		let procedureIds = [];
+
+		// Check for procedures array with objects
+		if (caseData.procedures && Array.isArray(caseData.procedures) && caseData.procedures.length > 0) {
+			const firstProcedure = caseData.procedures[0];
+			if (firstProcedure.name) {
+				procedureName = firstProcedure.name;
+			}
+			if (firstProcedure.slugName) {
+				procedureSlug = firstProcedure.slugName;
+			}
+			
+			// Collect all procedure IDs
+			procedureIds = caseData.procedures.map(proc => proc.id).filter(id => id);
+		}
+
+		// Fallback: check for procedureIds array
+		if (procedureIds.length === 0 && caseData.procedureIds && Array.isArray(caseData.procedureIds)) {
+			procedureIds = caseData.procedureIds;
+		}
+
+		return {
+			procedureName,
+			procedureSlug,
+			procedureIds,
+			hasProcedures: procedureIds.length > 0
+		};
+	}
+
+	/**
+	 * Extract SEO data from case data (matches PHP method)
+	 */
+	extractSEOData(caseData) {
+		const title = caseData.seoTitle || `Case ${caseData.id}`;
+		const description = caseData.seoDescription || '';
+		const keywords = caseData.seoKeywords || '';
+		
+		return {
+			title,
+			description,
+			keywords
+		};
+	}
+
+	/**
+	 * Render case header with navigation (matches PHP render_case_header)
+	 */
+	renderCaseHeader(procedureData, seoData, caseId, procedureSlug, procedureName, navigationData) {
+		const gallerySlug = this.getGallerySlug();
+		const basePath = '/' + gallerySlug.replace(/^\/+/, '');
+		
+		// Build back URL and text
+		let backUrl = basePath + '/';
+		let backText = '← Back to Gallery';
+		
+		if (procedureSlug) {
+			backUrl = basePath + '/' + procedureSlug + '/';
+			if (procedureName) {
+				backText = `← Back to ${procedureName}`;
+			}
+		}
+
+		// Build navigation buttons
+		const navigationButtons = this.buildNavigationButtons(navigationData, procedureSlug);
+		
+		// Build title content
+		const titleContent = this.buildTitleContent(seoData, procedureData, caseId, procedureName);
+
+		return `
+			<div class="brag-book-gallery-case-detail-header">
+				<div class="brag-book-gallery-case-navigation">
+					<a href="${this.escapeHtml(backUrl)}" class="brag-book-gallery-back-button" rel="nofollow">
+						${this.escapeHtml(backText)}
+					</a>
+					${navigationButtons}
+				</div>
+				${titleContent}
+			</div>
+		`;
+	}
+
+	/**
+	 * Build navigation buttons for previous/next cases
+	 */
+	buildNavigationButtons(navigationData, procedureSlug) {
+		if (!navigationData) {
+			return '';
+		}
+
+		const gallerySlug = this.getGallerySlug();
+		const basePath = '/' + gallerySlug.replace(/^\/+/, '');
+		let html = '<div class="brag-book-gallery-case-nav-buttons">';
+
+		// Previous case button
+		if (navigationData.previous) {
+			const prevCase = navigationData.previous;
+			const prevUrl = procedureSlug ? 
+				`${basePath}/${procedureSlug}/${prevCase.id}/` : 
+				`${basePath}/case/${prevCase.id}/`;
+			
+			html += `
+				<a href="${this.escapeHtml(prevUrl)}" class="brag-book-gallery-nav-button brag-book-gallery-prev-case" rel="prev nofollow">
+					<span class="brag-book-gallery-nav-arrow">←</span>
+					<span class="brag-book-gallery-nav-text">Previous Case</span>
+				</a>
+			`;
+		}
+
+		// Next case button  
+		if (navigationData.next) {
+			const nextCase = navigationData.next;
+			const nextUrl = procedureSlug ?
+				`${basePath}/${procedureSlug}/${nextCase.id}/` :
+				`${basePath}/case/${nextCase.id}/`;
+			
+			html += `
+				<a href="${this.escapeHtml(nextUrl)}" class="brag-book-gallery-nav-button brag-book-gallery-next-case" rel="next nofollow">
+					<span class="brag-book-gallery-nav-text">Next Case</span>
+					<span class="brag-book-gallery-nav-arrow">→</span>
+				</a>
+			`;
+		}
+
+		return html + '</div>';
+	}
+
+	/**
+	 * Build title content section
+	 */
+	buildTitleContent(seoData, procedureData, caseId, procedureName) {
+		const displayTitle = procedureName || procedureData.procedureName || 'Case Study';
+		
+		return `
+			<div class="brag-book-gallery-case-title-section">
+				<h1 class="brag-book-gallery-case-title">${this.escapeHtml(displayTitle)}</h1>
+				<div class="brag-book-gallery-case-subtitle">Case #${this.escapeHtml(caseId)}</div>
+			</div>
+		`;
+	}
+
+	/**
+	 * Render case images section (matches PHP render_case_images)
+	 */
+	renderCaseImages(caseData, procedureData, caseId) {
+		if (!caseData.photoSets || !Array.isArray(caseData.photoSets) || caseData.photoSets.length === 0) {
+			return this.renderNoImagesSection();
+		}
+
+		const mainViewer = this.renderMainImageViewer(caseData.photoSets, procedureData, caseId);
+		const thumbnails = caseData.photoSets.length > 1 ? this.renderThumbnails(caseData.photoSets) : '';
+
+		return `
+			<div class="brag-book-gallery-brag-book-gallery-case-content">
+				<div class="brag-book-gallery-case-images-section">
+					<div class="brag-book-gallery-case-images-layout">
+						${mainViewer}
+						${thumbnails}
+					</div>
+				</div>
+		`;
+	}
+
+	/**
+	 * Render no images available section
+	 */
+	renderNoImagesSection() {
+		return `
+			<div class="brag-book-gallery-case-images-section">
+				<div class="brag-book-gallery-no-images">
+					<p>No images available for this case.</p>
+				</div>
+			</div>
+		`;
+	}
+
+	/**
+	 * Render main image viewer
+	 */
+	renderMainImageViewer(photoSets, procedureData, caseId) {
+		if (!photoSets || photoSets.length === 0) {
+			return '';
+		}
+
+		const firstPhotoSet = photoSets[0];
+		const beforeImage = firstPhotoSet.beforeLocationUrl || '';
+		const afterImage = firstPhotoSet.afterLocationUrl1 || '';
+		const processedImage = firstPhotoSet.postProcessedImageLocation || '';
+
+		// Use processed image first, then before, then after
+		const mainImage = processedImage || beforeImage || afterImage;
+		
+		if (!mainImage) {
+			return this.renderNoImagesSection();
+		}
+
+		const procedureTitle = procedureData.procedureName || 'Case Study';
+
+		return `
+			<div class="brag-book-gallery-main-image-viewer">
+				<div class="brag-book-gallery-main-image-container" data-photoset-index="0">
+					<img src="${this.escapeHtml(mainImage)}" 
+						 alt="${this.escapeHtml(procedureTitle)} - Case ${this.escapeHtml(caseId)}" 
+						 class="brag-book-gallery-main-image" 
+						 loading="lazy">
+				</div>
+			</div>
+		`;
+	}
+
+	/**
+	 * Render thumbnails for multiple photosets
+	 */
+	renderThumbnails(photoSets) {
+		if (!photoSets || photoSets.length <= 1) {
+			return '';
+		}
+
+		const thumbnailsHTML = photoSets.map((photoSet, index) => {
+			const thumbImage = photoSet.postProcessedImageLocation || 
+							  photoSet.beforeLocationUrl || 
+							  photoSet.afterLocationUrl1 || '';
+			
+			if (!thumbImage) {
+				return '';
+			}
+
+			const isActive = index === 0 ? ' active' : '';
+			
+			return `
+				<div class="brag-book-gallery-thumbnail${isActive}" data-photoset-index="${index}">
+					<img src="${this.escapeHtml(thumbImage)}" 
+						 alt="Thumbnail ${index + 1}" 
+						 loading="lazy">
+				</div>
+			`;
+		}).filter(html => html).join('');
+
+		return `
+			<div class="brag-book-gallery-thumbnails-section">
+				<div class="brag-book-gallery-thumbnails-grid">
+					${thumbnailsHTML}
+				</div>
+			</div>
+		`;
+	}
+
+	/**
+	 * Render case details cards section (matches PHP render_case_details_cards)
+	 */
+	renderCaseDetailsCards(caseData) {
+		const html = `
+			<div class="brag-book-gallery-case-card-details-section">
+				<div class="brag-book-gallery-case-card-details-grid">
+					${this.renderProceduresCard(caseData)}
+					${this.renderPatientDetailsCard(caseData)}
+					${this.renderProcedureDetailsCard(caseData)}
+					${this.renderCaseNotesCard(caseData)}
+				</div>
+			</div>
+		`;
+		
+		return html + '</div>'; // Close case-content
+	}
+
+	/**
+	 * Render procedures performed card
+	 */
+	renderProceduresCard(caseData) {
+		if (!caseData.procedures || !Array.isArray(caseData.procedures) || caseData.procedures.length === 0) {
+			return '';
+		}
+
+		const proceduresList = caseData.procedures.map(procedure => 
+			`<li>${this.escapeHtml(procedure.name || 'Unknown Procedure')}</li>`
+		).join('');
+
+		return `
+			<div class="brag-book-gallery-detail-card">
+				<h3 class="brag-book-gallery-detail-card-title">Procedures Performed</h3>
+				<div class="brag-book-gallery-detail-card-content">
+					<ul class="brag-book-gallery-procedures-list">
+						${proceduresList}
+					</ul>
+				</div>
+			</div>
+		`;
+	}
+
+	/**
+	 * Render patient details card
+	 */
+	renderPatientDetailsCard(caseData) {
+		const patientDetails = [];
+		
+		if (caseData.age) {
+			patientDetails.push(`<div class="brag-book-gallery-detail-row"><span class="brag-book-gallery-detail-label">Age:</span> <span class="brag-book-gallery-detail-value">${this.escapeHtml(String(caseData.age))}</span></div>`);
+		}
+		if (caseData.gender) {
+			patientDetails.push(`<div class="brag-book-gallery-detail-row"><span class="brag-book-gallery-detail-label">Gender:</span> <span class="brag-book-gallery-detail-value">${this.escapeHtml(caseData.gender)}</span></div>`);
+		}
+		if (caseData.ethnicity) {
+			patientDetails.push(`<div class="brag-book-gallery-detail-row"><span class="brag-book-gallery-detail-label">Ethnicity:</span> <span class="brag-book-gallery-detail-value">${this.escapeHtml(caseData.ethnicity)}</span></div>`);
+		}
+		if (caseData.height) {
+			patientDetails.push(`<div class="brag-book-gallery-detail-row"><span class="brag-book-gallery-detail-label">Height:</span> <span class="brag-book-gallery-detail-value">${this.escapeHtml(caseData.height)}</span></div>`);
+		}
+		if (caseData.weight) {
+			patientDetails.push(`<div class="brag-book-gallery-detail-row"><span class="brag-book-gallery-detail-label">Weight:</span> <span class="brag-book-gallery-detail-value">${this.escapeHtml(caseData.weight)}</span></div>`);
+		}
+
+		if (patientDetails.length === 0) {
+			return '';
+		}
+
+		return `
+			<div class="brag-book-gallery-detail-card">
+				<h3 class="brag-book-gallery-detail-card-title">Patient Information</h3>
+				<div class="brag-book-gallery-detail-card-content">
+					${patientDetails.join('')}
+				</div>
+			</div>
+		`;
+	}
+
+	/**
+	 * Render procedure details card
+	 */
+	renderProcedureDetailsCard(caseData) {
+		const procedureDetails = [];
+		
+		if (caseData.surgeryDate) {
+			procedureDetails.push(`<div class="brag-book-gallery-detail-row"><span class="brag-book-gallery-detail-label">Surgery Date:</span> <span class="brag-book-gallery-detail-value">${this.escapeHtml(caseData.surgeryDate)}</span></div>`);
+		}
+		if (caseData.followUpDate) {
+			procedureDetails.push(`<div class="brag-book-gallery-detail-row"><span class="brag-book-gallery-detail-label">Follow-up Date:</span> <span class="brag-book-gallery-detail-value">${this.escapeHtml(caseData.followUpDate)}</span></div>`);
+		}
+		if (caseData.surgeon) {
+			procedureDetails.push(`<div class="brag-book-gallery-detail-row"><span class="brag-book-gallery-detail-label">Surgeon:</span> <span class="brag-book-gallery-detail-value">${this.escapeHtml(caseData.surgeon)}</span></div>`);
+		}
+		if (caseData.location) {
+			procedureDetails.push(`<div class="brag-book-gallery-detail-row"><span class="brag-book-gallery-detail-label">Location:</span> <span class="brag-book-gallery-detail-value">${this.escapeHtml(caseData.location)}</span></div>`);
+		}
+
+		if (procedureDetails.length === 0) {
+			return '';
+		}
+
+		return `
+			<div class="brag-book-gallery-detail-card">
+				<h3 class="brag-book-gallery-detail-card-title">Procedure Details</h3>
+				<div class="brag-book-gallery-detail-card-content">
+					${procedureDetails.join('')}
+				</div>
+			</div>
+		`;
+	}
+
+	/**
+	 * Render case notes card
+	 */
+	renderCaseNotesCard(caseData) {
+		const notes = caseData.notes || caseData.description || caseData.caseNotes || '';
+		
+		if (!notes) {
+			return '';
+		}
+
+		return `
+			<div class="brag-book-gallery-detail-card brag-book-gallery-case-notes-card">
+				<h3 class="brag-book-gallery-detail-card-title">Case Notes</h3>
+				<div class="brag-book-gallery-detail-card-content">
+					<div class="brag-book-gallery-case-notes-content">
+						${this.escapeHtml(notes).replace(/\n/g, '<br>')}
+					</div>
+				</div>
+			</div>
+		`;
+	}
+
+	/**
+	 * Get gallery slug from configuration or default
+	 */
+	getGallerySlug() {
+		const config = window.bragBookGalleryConfig || {};
+		return config.gallerySlug || 'gallery';
+	}
+
+	/**
+	 * Escape HTML characters for safe output
+	 */
+	escapeHtml(text) {
+		if (!text) return '';
+		
+		const div = document.createElement('div');
+		div.textContent = text;
+		return div.innerHTML;
+	}
+
+	/**
+	 * Update SEO meta tags for case details
+	 */
+	updateCaseDetailsSEO(caseData, procedureName) {
+		if (!caseData) return;
+
+		const caseId = caseData.id || '';
+		const title = procedureName ? 
+			`${procedureName} Case ${caseId} - Before & After` : 
+			`Case ${caseId} - Before & After`;
+		
+		// Update page title
+		document.title = title;
+		
+		// Update meta description
+		let description = `View before and after photos for Case ${caseId}`;
+		if (procedureName) {
+			description = `${procedureName} before and after photos - Case ${caseId}. See real patient results.`;
+		}
+		
+		this.updateMetaTag('description', description);
+		
+		// Update canonical URL
+		const canonicalUrl = window.location.href;
+		this.updateLinkTag('canonical', canonicalUrl);
+		
+		// Add structured data for case details
+		this.addCaseStructuredData(caseData, procedureName);
+	}
+
+	/**
+	 * Update or create meta tag
+	 */
+	updateMetaTag(name, content) {
+		let metaTag = document.querySelector(`meta[name="${name}"]`);
+		if (!metaTag) {
+			metaTag = document.createElement('meta');
+			metaTag.setAttribute('name', name);
+			document.head.appendChild(metaTag);
+		}
+		metaTag.setAttribute('content', content);
+	}
+
+	/**
+	 * Update or create link tag
+	 */
+	updateLinkTag(rel, href) {
+		let linkTag = document.querySelector(`link[rel="${rel}"]`);
+		if (!linkTag) {
+			linkTag = document.createElement('link');
+			linkTag.setAttribute('rel', rel);
+			document.head.appendChild(linkTag);
+		}
+		linkTag.setAttribute('href', href);
+	}
+
+	/**
+	 * Add structured data for case details
+	 */
+	addCaseStructuredData(caseData, procedureName) {
+		const structuredData = {
+			"@context": "https://schema.org",
+			"@type": "MedicalProcedure",
+			"name": procedureName || "Medical Procedure",
+			"identifier": caseData.id,
+			"image": [],
+			"description": `Before and after case study for ${procedureName || 'medical procedure'}`
+		};
+
+		// Add images to structured data
+		if (caseData.photoSets && Array.isArray(caseData.photoSets)) {
+			caseData.photoSets.forEach(photoSet => {
+				if (photoSet.postProcessedImageLocation) {
+					structuredData.image.push(photoSet.postProcessedImageLocation);
+				} else if (photoSet.beforeLocationUrl) {
+					structuredData.image.push(photoSet.beforeLocationUrl);
+				} else if (photoSet.afterLocationUrl1) {
+					structuredData.image.push(photoSet.afterLocationUrl1);
+				}
+			});
+		}
+
+		// Remove existing structured data script
+		const existingScript = document.querySelector('script[data-case-structured-data]');
+		if (existingScript) {
+			existingScript.remove();
+		}
+
+		// Add new structured data script
+		const script = document.createElement('script');
+		script.type = 'application/ld+json';
+		script.setAttribute('data-case-structured-data', 'true');
+		script.textContent = JSON.stringify(structuredData);
+		document.head.appendChild(script);
+	}
+
+	/**
+	 * Initialize thumbnail navigation functionality
+	 */
+	initializeThumbnailNavigation() {
+		// Add click handlers for thumbnails
+		const thumbnails = document.querySelectorAll('.brag-book-gallery-thumbnail');
+		const mainImage = document.querySelector('.brag-book-gallery-main-image');
+		
+		if (!mainImage || thumbnails.length === 0) {
+			return;
+		}
+
+		thumbnails.forEach((thumbnail, index) => {
+			thumbnail.addEventListener('click', (e) => {
+				e.preventDefault();
+				
+				// Remove active class from all thumbnails
+				thumbnails.forEach(thumb => thumb.classList.remove('active'));
+				
+				// Add active class to clicked thumbnail
+				thumbnail.classList.add('active');
+				
+				// Update main image
+				const thumbnailImg = thumbnail.querySelector('img');
+				if (thumbnailImg && thumbnailImg.src) {
+					mainImage.src = thumbnailImg.src;
+					mainImage.alt = thumbnailImg.alt || `Case image ${index + 1}`;
+					
+					// Update photoset index data attribute
+					const mainContainer = document.querySelector('.brag-book-gallery-main-image-container');
+					if (mainContainer) {
+						mainContainer.setAttribute('data-photoset-index', index.toString());
+					}
+				}
+			});
+		});
+	}
+
+	/**
+	 * Get procedure IDs from procedure slug using sidebar data
+	 * @param {string} procedureSlug - The procedure slug to look up
+	 * @returns {string|null} - Comma-separated procedure IDs or null if not found
+	 */
+	getProcedureIdsFromSlug(procedureSlug) {
+		if (!procedureSlug) {
+			return null;
+		}
+
+		// Debug: Log procedure ID lookup
+		console.log('🔍 Looking up procedure IDs for slug:', procedureSlug);
+
+		// Try to get from sidebar data first
+		if (window.bragBookGalleryConfig?.sidebarData) {
+			const sidebarData = window.bragBookGalleryConfig.sidebarData;
+			
+			// Search through categories for the procedure
+			for (const category of Object.values(sidebarData)) {
+				if (category.procedures) {
+					for (const procedure of category.procedures) {
+						if (procedure.slug === procedureSlug) {
+							console.log('✅ Found procedure IDs from sidebar data:', procedure.ids);
+							// Return comma-separated IDs if available
+							return procedure.ids ? procedure.ids.join(',') : null;
+						}
+					}
+				}
+			}
+		}
+
+		// Fallback: Look for procedure data in page elements
+		console.log('🔍 Checking page elements for procedure context...');
+		
+		// First, check if we're on a case details page - look for the case detail view container
+		const caseDetailView = document.querySelector('.brag-book-gallery-case-detail-view');
+		if (caseDetailView && caseDetailView.dataset.procedureIds) {
+			console.log('✅ Found procedure IDs from case detail view:', caseDetailView.dataset.procedureIds);
+			return caseDetailView.dataset.procedureIds;
+		}
+		
+		// Check if there's a procedure link in the DOM that matches the slug
+		const procedureLink = document.querySelector(`[data-procedure="${procedureSlug}"]`);
+		if (procedureLink && procedureLink.dataset.procedureIds) {
+			console.log('✅ Found procedure IDs from DOM element:', procedureLink.dataset.procedureIds);
+			return procedureLink.dataset.procedureIds;
+		}
+		
+		console.warn(`⚠️ Could not find procedure IDs for slug: ${procedureSlug}`);
+		return null;
+	}
+
+	/**
+	 * Set active state on sidebar for the current case's procedure
+	 * @param {string} caseId - The case ID to identify procedure context from
+	 */
+	setActiveSidebarForCase(caseId) {
+		try {
+			// Extract procedure slug from current URL
+			const pathSegments = window.location.pathname.split('/').filter(s => s);
+			const procedureSlug = pathSegments.length > 2 ? pathSegments[pathSegments.length - 2] : '';
+			
+			if (!procedureSlug) {
+				console.log('No procedure slug found in URL, cannot set sidebar active state');
+				return;
+			}
+
+			// Clear any existing active states
+			const allNavLinks = document.querySelectorAll('.brag-book-gallery-nav-link');
+			allNavLinks.forEach(link => {
+				link.classList.remove('brag-book-gallery-active');
+			});
+
+			// Find and activate the matching procedure link
+			const targetLink = document.querySelector(`.brag-book-gallery-nav-link[data-procedure="${procedureSlug}"]`);
+			if (targetLink) {
+				targetLink.classList.add('brag-book-gallery-active');
+				
+				// Also activate the parent item if it exists
+				const parentItem = targetLink.closest('.brag-book-gallery-nav-list-submenu__item');
+				if (parentItem) {
+					parentItem.classList.add('brag-book-gallery-active');
+				}
+				
+				console.log(`✅ Set sidebar active state for procedure: ${procedureSlug}`);
+			} else {
+				console.warn(`⚠️ Could not find sidebar link for procedure: ${procedureSlug}`);
+			}
+		} catch (error) {
+			console.error('Error setting sidebar active state:', error);
+		}
 	}
 }
 

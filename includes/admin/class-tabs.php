@@ -197,6 +197,13 @@ class Tabs {
 			'visible' => true,
 		);
 
+		$tabs['changelog'] = array(
+			'title' => __( 'Changelog', 'brag-book-gallery' ),
+			'url' => admin_url( 'admin.php?page=brag-book-gallery-changelog' ),
+			'icon' => '',
+			'visible' => true,
+		);
+
 		return $tabs;
 	}
 

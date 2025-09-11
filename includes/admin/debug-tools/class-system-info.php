@@ -339,7 +339,7 @@ final class System_Info {
 	private function get_cached_system_info(): string {
 		try {
 			// Check cache first
-			$cached = get_transient( self::CACHE_PREFIX . 'report' );
+			$cached = brag_book_get_cache( self::CACHE_PREFIX . 'report' );
 			if ( false !== $cached && is_string( $cached ) ) {
 				return $cached;
 			}
@@ -348,7 +348,7 @@ final class System_Info {
 			$system_info = $this->generate_system_info();
 
 			// Cache for future requests
-			set_transient( self::CACHE_PREFIX . 'report', $system_info, self::CACHE_DURATION );
+			brag_book_set_cache( self::CACHE_PREFIX . 'report', $system_info, self::CACHE_DURATION );
 
 			return $system_info;
 

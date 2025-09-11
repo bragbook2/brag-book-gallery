@@ -27,6 +27,7 @@ declare(strict_types=1);
 namespace BRAGBookGallery\Includes\Sync;
 
 use BRAGBookGallery\Includes\PostTypes\Gallery_Post_Type;
+use BRAGBookGallery\Includes\Extend\Cache_Manager;
 use WP_Post;
 use WP_Term;
 
@@ -224,7 +225,7 @@ final class Data_Mapper {
 
 			// Handle parent category with validation
 			if ( ! empty( $api_data['parentId'] ) ) {
-				$cache_key = "brag_book_gallery_transient_parent_term_{$api_data['parentId']}";
+				$cache_key = "parent_term_{$api_data['parentId']}";
 
 				$parent_term = $this->get_cached_or_generate(
 					$cache_key,
@@ -266,7 +267,7 @@ final class Data_Mapper {
 
 			// Generate new sync hash with caching
 			$case_id = $api_data['id'] ?? 'unknown';
-			$cache_key = "brag_book_gallery_transient_sync_hash_{$case_id}";
+			$cache_key = "sync_hash_{$case_id}";
 			$new_hash = $this->get_cached_or_generate(
 				$cache_key,
 				fn() => $this->generate_sync_hash( $api_data ),
@@ -865,8 +866,8 @@ final class Data_Mapper {
 		}
 
 		// Check WordPress transient cache
-		$transient_key = 'brag_book_gallery_transient_mapper_' . $cache_key;
-		$cached = get_transient( $transient_key );
+		$transient_key = 'mapper_' . $cache_key;
+		$cached = Cache_Manager::get( $transient_key );
 
 		if ( false !== $cached ) {
 			$this->memory_cache[ $cache_key ] = $cached;
@@ -878,7 +879,7 @@ final class Data_Mapper {
 
 		// Store in both caches
 		$this->memory_cache[ $cache_key ] = $data;
-		set_transient( $transient_key, $data, $ttl );
+		Cache_Manager::set( $transient_key, $data, $ttl );
 
 		return $data;
 	}

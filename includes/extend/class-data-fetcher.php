@@ -542,14 +542,14 @@ class Data_Fetcher {
 
 			// Cache by case ID
 			$case_cache_key = 'brag_book_gallery_transient_carousel_case_' . $api_token . '_' . $case['id'];
-			set_transient( $case_cache_key, $case, 30 * MINUTE_IN_SECONDS );
+			Cache_Manager::set( $case_cache_key, $case, 30 * MINUTE_IN_SECONDS );
 
 			// Also cache by seoSuffixUrl if it exists
 			if ( ! empty( $case['caseDetails'] ) && is_array( $case['caseDetails'] ) ) {
 				foreach ( $case['caseDetails'] as $detail ) {
 					if ( ! empty( $detail['seoSuffixUrl'] ) ) {
 						$seo_cache_key = 'brag_book_gallery_transient_carousel_case_' . $api_token . '_' . $detail['seoSuffixUrl'];
-						set_transient( $seo_cache_key, $case, 30 * MINUTE_IN_SECONDS );
+						Cache_Manager::set( $seo_cache_key, $case, 30 * MINUTE_IN_SECONDS );
 
 						if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
 							// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
@@ -562,7 +562,7 @@ class Data_Fetcher {
 			// Also check for seoSuffixUrl at root level
 			if ( ! empty( $case['seoSuffixUrl'] ) ) {
 				$seo_cache_key = 'brag_book_gallery_transient_carousel_case_' .  $api_token . '_' . $case['seoSuffixUrl'];
-				set_transient( $seo_cache_key, $case, 30 * MINUTE_IN_SECONDS );
+				Cache_Manager::set( $seo_cache_key, $case, 30 * MINUTE_IN_SECONDS );
 
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
 					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
@@ -593,7 +593,7 @@ class Data_Fetcher {
 
 		// Try to get from cache using the identifier (could be ID or seoSuffixUrl)
 		$case_cache_key = 'brag_book_gallery_transient_carousel_case_' . $case_identifier;
-		$cached_case = get_transient( $case_cache_key );
+		$cached_case = Cache_Manager::get( $case_cache_key );
 
 		if ( $cached_case !== false ) {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {

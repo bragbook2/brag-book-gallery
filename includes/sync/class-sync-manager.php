@@ -29,6 +29,7 @@ declare(strict_types=1);
 namespace BRAGBookGallery\Includes\Sync;
 
 use BRAGBookGallery\Includes\Core\Database;
+use BRAGBookGallery\Includes\Extend\Cache_Manager;
 use BRAGBookGallery\Includes\PostTypes\Gallery_Post_Type;
 use BRAGBookGallery\Includes\Taxonomies\Gallery_Taxonomies;
 use WP_REST_Request;
@@ -788,7 +789,7 @@ final class Sync_Manager {
 	 * @return bool True if sync is running.
 	 */
 	public function is_sync_running(): bool {
-		return get_transient( 'brag_book_gallery_transient_sync_status' ) === 'running';
+		return Cache_Manager::get( 'brag_book_gallery_transient_sync_status' ) === 'running';
 	}
 
 	/**
@@ -816,7 +817,7 @@ final class Sync_Manager {
 	 * @return bool Success status.
 	 */
 	public function cancel_sync(): bool {
-		delete_transient( 'brag_book_gallery_transient_sync_status' );
+		Cache_Manager::delete( 'brag_book_gallery_transient_sync_status' );
 		
 		if ( $this->current_sync_log_id ) {
 			$this->database->update_sync_log( $this->current_sync_log_id, 'failed', 0, 0, 'Cancelled by user' );
@@ -1048,16 +1049,16 @@ final class Sync_Manager {
 		$lock_value = wp_generate_uuid4();
 		
 		// Try to set lock with timeout
-		if ( set_transient( $lock_key, $lock_value, self::SYNC_LOCK_TIMEOUT ) ) {
+		if ( Cache_Manager::set( $lock_key, $lock_value, self::SYNC_LOCK_TIMEOUT ) ) {
 			$this->memory_cache['sync_lock'] = $lock_value;
 			return true;
 		}
 		
 		// Check if existing lock has expired
-		$existing = get_transient( $lock_key );
+		$existing = Cache_Manager::get( $lock_key );
 		if ( false === $existing ) {
 			// Lock expired, try again
-			return set_transient( $lock_key, $lock_value, self::SYNC_LOCK_TIMEOUT );
+			return Cache_Manager::set( $lock_key, $lock_value, self::SYNC_LOCK_TIMEOUT );
 		}
 		
 		return false;
@@ -1069,7 +1070,7 @@ final class Sync_Manager {
 	 * @since 3.0.0
 	 */
 	private function release_sync_lock(): void {
-		delete_transient( 'brag_book_gallery_transient_sync_lock' );
+		Cache_Manager::delete( 'brag_book_gallery_transient_sync_lock' );
 		unset( $this->memory_cache['sync_lock'] );
 	}
 
@@ -1087,7 +1088,7 @@ final class Sync_Manager {
 			'started_at' => current_time( 'mysql' ),
 		];
 		
-		set_transient( 'brag_book_gallery_transient_sync_progress', $this->sync_progress, HOUR_IN_SECONDS );
+		Cache_Manager::set( 'brag_book_gallery_transient_sync_progress', $this->sync_progress, HOUR_IN_SECONDS );
 	}
 
 	/**
@@ -1107,7 +1108,7 @@ final class Sync_Manager {
 			$this->sync_progress['percentage'] = round( ( $current / $total ) * 100, 2 );
 		}
 		
-		set_transient( 'brag_book_gallery_transient_sync_progress', $this->sync_progress, HOUR_IN_SECONDS );
+		Cache_Manager::set( 'brag_book_gallery_transient_sync_progress', $this->sync_progress, HOUR_IN_SECONDS );
 	}
 
 	/**
@@ -1119,14 +1120,14 @@ final class Sync_Manager {
 	 */
 	private function should_force_update( int $case_id ): bool {
 		// Check if case is in force update list
-		$force_list = get_transient( 'brag_book_gallery_transient_force_update_cases' );
+		$force_list = Cache_Manager::get( 'brag_book_gallery_transient_force_update_cases' );
 		
 		if ( is_array( $force_list ) && in_array( $case_id, $force_list, true ) ) {
 			return true;
 		}
 		
 		// Check if force update all is enabled
-		return (bool) get_transient( 'brag_book_gallery_transient_force_update_all' );
+		return (bool) Cache_Manager::get( 'brag_book_gallery_transient_force_update_all' );
 	}
 
 	/**
@@ -1204,8 +1205,8 @@ final class Sync_Manager {
 			);
 		}
 		
-		delete_transient( 'brag_book_gallery_transient_sync_status' );
-		delete_transient( 'brag_book_gallery_transient_sync_progress' );
+		Cache_Manager::delete( 'brag_book_gallery_transient_sync_status' );
+		Cache_Manager::delete( 'brag_book_gallery_transient_sync_progress' );
 	}
 
 	/**
@@ -1281,7 +1282,7 @@ final class Sync_Manager {
 			wp_send_json_error( 'Security check failed.' );
 		}
 		
-		$progress = get_transient( 'brag_book_gallery_transient_sync_progress' );
+		$progress = Cache_Manager::get( 'brag_book_gallery_transient_sync_progress' );
 		
 		if ( false === $progress ) {
 			$progress = [

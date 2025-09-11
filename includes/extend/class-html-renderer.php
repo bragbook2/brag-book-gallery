@@ -310,10 +310,15 @@ final class HTML_Renderer {
 		);
 		$procedures_list = self::render_procedures_list( $category_data['procedures'], $category_info['slug'] );
 
-		// Assemble final category HTML with proper escaping
+		// Check if navigation menus should be expanded by default
+		$expand_nav_menus = get_option( 'brag_book_gallery_expand_nav_menus', false );
+
+		// Assemble final category HTML with proper escaping using semantic details/summary
+		$open_attribute = $expand_nav_menus ? ' open' : '';
 		return sprintf(
-			'<div class="brag-book-gallery-nav-list__item" data-category="%s" data-expanded="false">%s%s</div>',
+			'<details class="brag-book-gallery-nav-list__item" data-category="%s"%s>%s%s</details>',
 			esc_attr( $category_info['slug'] ),
+			$open_attribute,
 			$filter_button,
 			$procedures_list
 		);
@@ -337,7 +342,7 @@ final class HTML_Renderer {
 		$toggle_icon = self::render_toggle_icon();
 
 		return sprintf(
-			'<button class="brag-book-gallery-nav-button" data-category="%s" data-expanded="false" aria-label="%s">%s%s</button>',
+			'<summary class="brag-book-gallery-nav-button" data-category="%s" aria-label="%s">%s%s</summary>',
 			esc_attr( $category_slug ),
 			/* translators: %s: category name */
 			esc_attr( sprintf( __( '%s category filter', 'brag-book-gallery' ), $category_name ) ),
@@ -359,11 +364,21 @@ final class HTML_Renderer {
 	 * @return string Label HTML.
 	 */
 	private static function render_category_button_label( string $category_name, int $total_cases ): string {
-		return sprintf(
-			'<div class="brag-book-gallery-nav-button__label"><span>%s</span><span class="brag-book-gallery-filter-count">(%d)</span></div>',
-			esc_html( $category_name ),
-			$total_cases
-		);
+		// Check if filter counts should be displayed
+		$show_filter_counts = get_option( 'brag_book_gallery_show_filter_counts', true );
+
+		if ( $show_filter_counts ) {
+			return sprintf(
+				'<div class="brag-book-gallery-nav-button__label"><span>%s</span><span class="brag-book-gallery-filter-count">(%d)</span></div>',
+				esc_html( $category_name ),
+				$total_cases
+			);
+		} else {
+			return sprintf(
+				'<div class="brag-book-gallery-nav-button__label"><span>%s</span></div>',
+				esc_html( $category_name )
+			);
+		}
 	}
 
 	/**
@@ -402,7 +417,7 @@ final class HTML_Renderer {
 		}
 
 		return sprintf(
-			'<ul class="brag-book-gallery-nav-list-submenu" data-expanded="false">%s</ul>',
+			'<ul class="brag-book-gallery-nav-list-submenu">%s</ul>',
 			implode( '', $procedure_items )
 		);
 	}
@@ -548,11 +563,21 @@ final class HTML_Renderer {
 	 * @return string Content HTML.
 	 */
 	private static function render_link_content( array $procedure_data ): string {
-		return sprintf(
-			'<span class="brag-book-gallery-filter-option-label">%s</span><span class="brag-book-gallery-filter-count">(%d)</span>',
-			esc_html( $procedure_data['name'] ),
-			$procedure_data['case_count']
-		);
+		// Check if filter counts should be displayed
+		$show_filter_counts = get_option( 'brag_book_gallery_show_filter_counts', true );
+
+		if ( $show_filter_counts ) {
+			return sprintf(
+				'<span class="brag-book-gallery-filter-option-label">%s</span><span class="brag-book-gallery-filter-count">(%d)</span>',
+				esc_html( $procedure_data['name'] ),
+				$procedure_data['case_count']
+			);
+		} else {
+			return sprintf(
+				'<span class="brag-book-gallery-filter-option-label">%s</span>',
+				esc_html( $procedure_data['name'] )
+			);
+		}
 	}
 
 	/**
@@ -653,8 +678,13 @@ final class HTML_Renderer {
 		$filter_button = self::render_filter_button();
 		$filter_submenu = self::render_filter_submenu();
 
+		// Check if navigation menus should be expanded by default
+		$expand_nav_menus = get_option( 'brag_book_gallery_expand_nav_menus', false );
+
+		$open_attribute = $expand_nav_menus ? ' open' : '';
 		return sprintf(
-			'<div class="brag-book-gallery-nav-list__item" data-category="body" data-expanded="false">%s%s</div>',
+			'<details class="brag-book-gallery-nav-list__item" data-category="body"%s>%s%s</details>',
+			$open_attribute,
 			$filter_button,
 			$filter_submenu
 		);
@@ -674,7 +704,7 @@ final class HTML_Renderer {
 		$toggle_icon = self::render_toggle_icon();
 
 		return sprintf(
-			'<button class="brag-book-gallery-nav-button" data-category="body" data-expanded="false" aria-label="%s">%s%s</button>',
+			'<summary class="brag-book-gallery-nav-button" data-category="body" aria-label="%s">%s%s</summary>',
 			esc_attr__( 'Body category filter', 'brag-book-gallery' ),
 			$button_label,
 			$toggle_icon
@@ -691,10 +721,20 @@ final class HTML_Renderer {
 	 * @return string Label HTML.
 	 */
 	private static function render_button_label(): string {
-		return sprintf(
-			'<div class="brag-book-gallery-nav-button__label"><span>%s</span><span class="brag-book-gallery-filter-count">(0)</span></div>',
-			esc_html__( 'Body', 'brag-book-gallery' )
-		);
+		// Check if filter counts should be displayed
+		$show_filter_counts = get_option( 'brag_book_gallery_show_filter_counts', true );
+
+		if ( $show_filter_counts ) {
+			return sprintf(
+				'<div class="brag-book-gallery-nav-button__label"><span>%s</span><span class="brag-book-gallery-filter-count">(0)</span></div>',
+				esc_html__( 'Body', 'brag-book-gallery' )
+			);
+		} else {
+			return sprintf(
+				'<div class="brag-book-gallery-nav-button__label"><span>%s</span></div>',
+				esc_html__( 'Body', 'brag-book-gallery' )
+			);
+		}
 	}
 
 	/**
@@ -708,7 +748,7 @@ final class HTML_Renderer {
 	 */
 	private static function render_filter_submenu(): string {
 		return sprintf(
-			'<div class="brag-book-gallery-nav-list-submenu" data-expanded="false"><p class="no-procedures">%s</p></div>',
+			'<div class="brag-book-gallery-nav-list-submenu"><p class="no-procedures">%s</p></div>',
 			esc_html__( 'No procedures available', 'brag-book-gallery' )
 		);
 	}
@@ -854,6 +894,7 @@ final class HTML_Renderer {
 	 * @param int    $slide_index    Slide index.
 	 * @param string $procedure_slug Procedure slug.
 	 * @param bool   $is_standalone  Whether this is a standalone carousel (no action buttons).
+	 * @param array  $config         Optional carousel configuration for nudity override.
 	 *
 	 * @return string Slide HTML.
 	 */
@@ -862,9 +903,10 @@ final class HTML_Renderer {
 		array $case,
 		int $slide_index,
 		string $procedure_slug = '',
-		bool $is_standalone = false
+		bool $is_standalone = false,
+		array $config = []
 	): string {
-		$photo_data = self::extract_photo_data( $photo );
+		$photo_data = self::extract_photo_data( $photo, $config );
 		$case_data = self::extract_case_data_for_carousel( $case );
 		$slide_data = self::build_slide_data( $photo_data, $case_data, $slide_index );
 		$case_url = self::build_case_url( $case_data, $procedure_slug );
@@ -879,11 +921,12 @@ final class HTML_Renderer {
 	 *
 	 * @since 3.0.0
 	 *
-	 * @param array $photo Photo data.
+	 * @param array $photo  Photo data.
+	 * @param array $config Optional configuration for nudity override.
 	 *
 	 * @return array Processed photo data.
 	 */
-	private static function extract_photo_data( array $photo ): array {
+	private static function extract_photo_data( array $photo, array $config = [] ): array {
 		$image_url = $photo['postProcessedImageLocation'] ??
 					 $photo['url'] ??
 					 $photo['originalBeforeLocation'] ?? '';
@@ -892,7 +935,15 @@ final class HTML_Renderer {
 			? sanitize_text_field( $photo['seoAltText'] )
 			: __( 'Before and after procedure result', 'brag-book-gallery' );
 
-		$has_nudity = ! empty( $photo['hasNudity'] ) || ! empty( $photo['nudity'] );
+		// Check for nudity - either from photo data OR carousel-level override
+		$has_nudity = false;
+		if ( ! empty( $config['nudity'] ) ) {
+			// If carousel nudity parameter is true, always show nudity warning
+			$has_nudity = true;
+		} else {
+			// Otherwise, use photo's individual nudity flag
+			$has_nudity = ! empty( $photo['hasNudity'] ) || ! empty( $photo['nudity'] );
+		}
 
 		return array(
 			'id'         => sanitize_text_field( $photo['id'] ?? '' ),
@@ -1033,9 +1084,9 @@ final class HTML_Renderer {
 	 */
 	private static function render_carousel_slide( array $photo_data, array $case_data, array $slide_data, string $case_url, bool $is_standalone = false ): string {
 		$slide_wrapper = self::render_slide_wrapper( $slide_data, $case_data );
+		$nudity_warning = $photo_data['has_nudity'] ? self::render_nudity_warning() : '';
 		$link_open = ! empty( $case_url ) ? self::render_link_open( $case_url, $photo_data['alt_text'] ) : '';
 		$link_close = ! empty( $case_url ) ? '</a>' : '';
-		$nudity_warning = $photo_data['has_nudity'] ? self::render_nudity_warning() : '';
 		$image_element = self::render_image_element( $photo_data );
 
 		// Only render action buttons for non-standalone carousels
@@ -1044,8 +1095,8 @@ final class HTML_Renderer {
 		return sprintf(
 			'%s%s%s%s%s%s</div>',
 			$slide_wrapper,
-			$link_open,
 			$nudity_warning,
+			$link_open,
 			$image_element,
 			$link_close,
 			$action_buttons
@@ -1068,14 +1119,14 @@ final class HTML_Renderer {
 			'data-slide="%s"',
 			esc_attr( $slide_data['id'] )
 		);
-		
+
 		// Add case debugging data attributes
 		if ( ! empty( $case_data ) ) {
 			$data_attributes .= sprintf(
 				' data-case-id="%s"',
 				esc_attr( $case_data['id'] ?? '' )
 			);
-			
+
 			if ( ! empty( $case_data['seo_suffix'] ) ) {
 				$data_attributes .= sprintf(
 					' data-seo-suffix="%s"',
@@ -1083,7 +1134,7 @@ final class HTML_Renderer {
 				);
 			}
 		}
-		
+
 		return sprintf(
 			'<div class="brag-book-gallery-carousel-item" %s role="group" aria-roledescription="slide" aria-label="%s">',
 			$data_attributes,
@@ -1123,7 +1174,7 @@ final class HTML_Renderer {
 	 */
 	private static function render_nudity_warning(): string {
 		return sprintf(
-			'<div class="brag-book-gallery-nudity-warning"><div class="brag-book-gallery-nudity-warning-content"><h4 class="brag-book-gallery-nudity-warning-title">%s</h4><p class="brag-book-gallery-nudity-warning-caption">%s</p><button class="brag-book-gallery-nudity-warning-button" type="button">%s</button></div></div>',
+			'<div class="brag-book-gallery-nudity-warning" data-nudity-warning="true"><div class="brag-book-gallery-nudity-warning-content"><h4 class="brag-book-gallery-nudity-warning-title">%s</h4><p class="brag-book-gallery-nudity-warning-caption">%s</p><button class="brag-book-gallery-nudity-warning-button" type="button">%s</button></div></div>',
 			esc_html__( 'WARNING: Contains Nudity', 'brag-book-gallery' ),
 			esc_html__( 'If you are offended by such material or are under 18 years of age. Please do not proceed.', 'brag-book-gallery' ),
 			esc_html__( 'Proceed', 'brag-book-gallery' )
@@ -1165,6 +1216,11 @@ final class HTML_Renderer {
 	 * @return string Action buttons HTML.
 	 */
 	private static function render_carousel_action_buttons( string $case_id ): string {
+		// Check if favorites functionality is enabled
+		if ( ! \BRAGBookGallery\Includes\Core\Settings_Helper::is_favorites_enabled() ) {
+			return '';
+		}
+
 		return sprintf(
 			'<div class="brag-book-gallery-item-actions"><button class="brag-book-gallery-favorite-button" data-favorited="false" data-item-id="%s" aria-label="%s"><svg fill="rgba(255, 255, 255, 0.5)" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button></div>',
 			esc_attr( sprintf( 'case-%s', $case_id ) ),
@@ -1284,10 +1340,34 @@ final class HTML_Renderer {
 		$seo_data = self::extract_seo_data( $case_data );
 		$case_id = sanitize_text_field( $case_data['id'] ?? '' );
 
-		// Build complete HTML structure.
+		// Extract navigation data from case_data
+		$navigation_data = $case_data['navigation'] ?? null;
+		
+		if ( WP_DEBUG && WP_DEBUG_LOG ) {
+			error_log( 'render_case_details_html: Case data keys: ' . implode( ', ', array_keys( $case_data ) ) );
+			error_log( 'render_case_details_html: Navigation data extracted: ' . print_r( $navigation_data, true ) );
+			error_log( 'render_case_details_html: Has navigation key: ' . ( isset( $case_data['navigation'] ) ? 'YES' : 'NO' ) );
+		}
+
+		// Extract procedure IDs for data attributes
+		$procedure_ids_attr = '';
+		if ( ! empty( $case_data['procedureIds'] ) && is_array( $case_data['procedureIds'] ) ) {
+			$procedure_ids_clean = array_map( 'absint', $case_data['procedureIds'] );
+			$procedure_ids_attr = sprintf( ' data-procedure-ids="%s"', esc_attr( implode( ',', $procedure_ids_clean ) ) );
+		}
+
+		// Add procedure slug attribute if available
+		$procedure_slug_attr = ! empty( $procedure_slug ) 
+			? sprintf( ' data-procedure="%s"', esc_attr( $procedure_slug ) ) 
+			: '';
+
+		// Build complete HTML structure with procedure context attributes
 		$html = sprintf(
-			'<div class="brag-book-gallery-case-detail-view">%s%s%s</div>',
-			self::render_case_header( $procedure_data, $seo_data, $case_id, $procedure_slug, $procedure_name ),
+			'<div class="brag-book-gallery-case-detail-view" data-case-id="%s"%s%s>%s%s%s</div>',
+			esc_attr( $case_id ),
+			$procedure_ids_attr,
+			$procedure_slug_attr,
+			self::render_case_header( $procedure_data, $seo_data, $case_id, $procedure_slug, $procedure_name, $navigation_data ),
 			self::render_case_images( $case_data, $procedure_data, $case_id ),
 			self::render_case_details_cards( $case_data )
 		);
@@ -1318,14 +1398,36 @@ final class HTML_Renderer {
 
 		// Check for procedures array with objects.
 		if ( ! empty( $case_data['procedures'] ) && is_array( $case_data['procedures'] ) ) {
-			$first_procedure = reset( $case_data['procedures'] );
+			// Try to find procedure that matches current page context first
+			$current_procedure = null;
+			$current_path = $_SERVER['REQUEST_URI'] ?? '';
+			$path_segments = array_filter( explode( '/', $current_path ) );
+			$url_procedure_slug = count( $path_segments ) >= 3 ? $path_segments[2] : '';
+			
+			// Look for procedure that matches current URL slug
+			if ( ! empty( $url_procedure_slug ) ) {
+				foreach ( $case_data['procedures'] as $procedure ) {
+					if ( ! empty( $procedure['name'] ) ) {
+						$proc_slug = sanitize_title( $procedure['name'] );
+						if ( $proc_slug === $url_procedure_slug ) {
+							$current_procedure = $procedure;
+							break;
+						}
+					}
+				}
+			}
+			
+			// Fall back to first procedure if no match found
+			if ( ! $current_procedure ) {
+				$current_procedure = reset( $case_data['procedures'] );
+			}
 
-			if ( ! empty( $first_procedure['name'] ) ) {
-				$raw_procedure_name = sanitize_text_field( $first_procedure['name'] );
+			if ( ! empty( $current_procedure['name'] ) ) {
+				$raw_procedure_name = sanitize_text_field( $current_procedure['name'] );
 				$procedure_name = self::format_procedure_display_name( $raw_procedure_name );
 				$procedure_slug = sanitize_title( $raw_procedure_name );
-			} elseif ( ! empty( $first_procedure['id'] ) ) {
-				$procedure_ids[] = absint( $first_procedure['id'] );
+			} elseif ( ! empty( $current_procedure['id'] ) ) {
+				$procedure_ids[] = absint( $current_procedure['id'] );
 			}
 		} elseif ( ! empty( $case_data['procedureIds'] ) && is_array( $case_data['procedureIds'] ) ) {
 			$procedure_ids = array_map( 'absint', $case_data['procedureIds'] );
@@ -1439,13 +1541,16 @@ final class HTML_Renderer {
 	 *
 	 * @since 3.0.0
 	 *
-	 * @param array  $procedure_data Procedure data.
+	 * @param array  $procedure_data  Procedure data.
 	 * @param array  $seo_data       SEO data.
 	 * @param string $case_id        Case ID.
+	 * @param string $procedure_slug Procedure slug.
+	 * @param string $procedure_name Procedure name.
+	 * @param array|null $navigation_data Navigation data with previous/next case info.
 	 *
 	 * @return string Header HTML.
 	 */
-	private static function render_case_header( array $procedure_data, array $seo_data, string $case_id, string $procedure_slug = '', string $procedure_name = '' ): string {
+	private static function render_case_header( array $procedure_data, array $seo_data, string $case_id, string $procedure_slug = '', string $procedure_name = '', ?array $navigation_data = null ): string {
 		$gallery_slug = self::get_gallery_slug();
 		$base_path = '/' . ltrim( $gallery_slug, '/' );
 
@@ -1462,11 +1567,35 @@ final class HTML_Renderer {
 
 		$title_content = self::build_title_content( $seo_data, $procedure_data, $case_id, $procedure_slug, $procedure_name );
 
+		// Build navigation buttons HTML
+		if ( WP_DEBUG && WP_DEBUG_LOG ) {
+			error_log( 'HTML_Renderer: Building navigation buttons' );
+			error_log( 'HTML_Renderer: Navigation data: ' . print_r( $navigation_data, true ) );
+			error_log( 'HTML_Renderer: Procedure slug: ' . $procedure_slug );
+			error_log( 'HTML_Renderer: Base path: ' . $base_path );
+		}
+		
+		$navigation_buttons = self::build_navigation_buttons( $navigation_data, $procedure_slug, $base_path );
+		
+		if ( WP_DEBUG && WP_DEBUG_LOG ) {
+			error_log( 'HTML_Renderer: Navigation buttons HTML length: ' . strlen( $navigation_buttons ) );
+			error_log( 'HTML_Renderer: Navigation buttons HTML: ' . $navigation_buttons );
+		}
+
 		return sprintf(
-			'<div class="brag-book-gallery-brag-book-gallery-case-header-section"><div class="brag-book-gallery-case-navigation"><a href="%s" class="brag-book-gallery-back-link">%s</a></div><div class="brag-book-gallery-brag-book-gallery-case-header"><h2 class="brag-book-gallery-content-title">%s</h2></div></div>',
+			'<div class="brag-book-gallery-brag-book-gallery-case-header-section">
+				<div class="brag-book-gallery-case-navigation">
+					<a href="%s" class="brag-book-gallery-back-link">%s</a>
+				</div>
+				<div class="brag-book-gallery-brag-book-gallery-case-header">
+					<h2 class="brag-book-gallery-content-title">%s</h2>
+					%s
+				</div>
+			</div>',
 			esc_url( $back_url ),
 			esc_html( $back_text ),
-			$title_content // Already escaped in build_title_content
+			$title_content, // Already escaped in build_title_content
+			$navigation_buttons
 		);
 	}
 
@@ -1505,6 +1634,112 @@ final class HTML_Renderer {
 		}
 
 		return $title;
+	}
+
+	/**
+	 * Build navigation buttons for case header
+	 *
+	 * Creates previous/next navigation buttons based on navigation data.
+	 *
+	 * @since 3.2.4
+	 *
+	 * @param array|null $navigation_data Navigation data with previous/next case info.
+	 * @param string     $procedure_slug  Current procedure slug.
+	 * @param string     $base_path       Base gallery path.
+	 *
+	 * @return string Navigation buttons HTML.
+	 */
+	private static function build_navigation_buttons( ?array $navigation_data, string $procedure_slug, string $base_path ): string {
+		if ( WP_DEBUG && WP_DEBUG_LOG ) {
+			error_log( 'build_navigation_buttons: Called with navigation_data: ' . print_r( $navigation_data, true ) );
+			error_log( 'build_navigation_buttons: procedure_slug: ' . $procedure_slug );
+			error_log( 'build_navigation_buttons: base_path: ' . $base_path );
+		}
+		
+		// Return empty string if no navigation data
+		if ( empty( $navigation_data ) ) {
+			if ( WP_DEBUG && WP_DEBUG_LOG ) {
+				error_log( 'build_navigation_buttons: Navigation data is empty, returning empty string' );
+			}
+			return '';
+		}
+
+		$buttons_html = '<div class="brag-book-gallery-case-nav-buttons">';
+		$site_url     = home_url();
+
+		// Previous button
+		if ( WP_DEBUG && WP_DEBUG_LOG ) {
+			error_log( 'build_navigation_buttons: Checking previous button' );
+			error_log( 'build_navigation_buttons: Previous data exists: ' . ( ! empty( $navigation_data['previous'] ) ? 'YES' : 'NO' ) );
+			if ( ! empty( $navigation_data['previous'] ) ) {
+				error_log( 'build_navigation_buttons: Previous slug exists: ' . ( ! empty( $navigation_data['previous']['slug'] ) ? 'YES (' . $navigation_data['previous']['slug'] . ')' : 'NO' ) );
+			}
+		}
+		
+		if ( ! empty( $navigation_data['previous'] ) && ! empty( $navigation_data['previous']['slug'] ) ) {
+			// Check if navigation data includes procedure slug, otherwise use current procedure slug
+			$prev_procedure_slug = ! empty( $navigation_data['previous']['procedureSlug'] ) ? 
+				$navigation_data['previous']['procedureSlug'] : 
+				$procedure_slug;
+				
+			// Build URL: site_url + base_path + procedure_slug + case_slug
+			$prev_url = $site_url . $base_path . '/' . $prev_procedure_slug . '/' . $navigation_data['previous']['slug'] . '/';
+			
+			if ( WP_DEBUG && WP_DEBUG_LOG ) {
+				error_log( 'build_navigation_buttons: Previous URL: ' . $prev_url );
+			}
+
+			$buttons_html .= sprintf(
+				'<a href="%s" class="brag-book-gallery-nav-button brag-book-gallery-nav-button--prev" title="%s">' .
+				'<svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">' .
+				'<path fill-rule="evenodd" d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"/>' .
+				'</svg>' .
+				'<span class="brag-book-gallery-nav-text">%s</span>' .
+				'</a>',
+				esc_url( $prev_url ),
+				esc_attr__( 'Previous case', 'brag-book-gallery' ),
+				esc_html__( 'Previous', 'brag-book-gallery' )
+			);
+		}
+
+		// Next button
+		if ( WP_DEBUG && WP_DEBUG_LOG ) {
+			error_log( 'build_navigation_buttons: Checking next button' );
+			error_log( 'build_navigation_buttons: Next data exists: ' . ( ! empty( $navigation_data['next'] ) ? 'YES' : 'NO' ) );
+			if ( ! empty( $navigation_data['next'] ) ) {
+				error_log( 'build_navigation_buttons: Next slug exists: ' . ( ! empty( $navigation_data['next']['slug'] ) ? 'YES (' . $navigation_data['next']['slug'] . ')' : 'NO' ) );
+			}
+		}
+		
+		if ( ! empty( $navigation_data['next'] ) && ! empty( $navigation_data['next']['slug'] ) ) {
+			// Check if navigation data includes procedure slug, otherwise use current procedure slug
+			$next_procedure_slug = ! empty( $navigation_data['next']['procedureSlug'] ) ? 
+				$navigation_data['next']['procedureSlug'] : 
+				$procedure_slug;
+				
+			// Build URL: site_url + base_path + procedure_slug + case_slug
+			$next_url = $site_url . $base_path . '/' . $next_procedure_slug . '/' . $navigation_data['next']['slug'] . '/';
+			
+			if ( WP_DEBUG && WP_DEBUG_LOG ) {
+				error_log( 'build_navigation_buttons: Next URL: ' . $next_url );
+			}
+
+			$buttons_html .= sprintf(
+				'<a href="%s" class="brag-book-gallery-nav-button brag-book-gallery-nav-button--next" title="%s">' .
+				'<span class="brag-book-gallery-nav-text">%s</span>' .
+				'<svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">' .
+				'<path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/>' .
+				'</svg>' .
+				'</a>',
+				esc_url( $next_url ),
+				esc_attr__( 'Next case', 'brag-book-gallery' ),
+				esc_html__( 'Next', 'brag-book-gallery' )
+			);
+		}
+
+		$buttons_html .= '</div>';
+
+		return $buttons_html;
 	}
 
 	/**
@@ -1619,21 +1854,30 @@ final class HTML_Renderer {
 	 * @return string Action buttons HTML.
 	 */
 	private static function render_case_action_buttons( string $case_id ): string {
-		$favorite_button = sprintf(
-			'<button class="brag-book-gallery-favorite-button" data-favorited="false" data-item-id="case_%s_main" aria-label="%s"><svg fill="rgba(255, 255, 255, 0.5)" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>',
-			esc_attr( $case_id ),
-			esc_attr__( 'Add to favorites', 'brag-book-gallery' )
-		);
-
-		$enable_sharing = get_option( 'brag_book_gallery_enable_sharing', 'no' );
+		$favorite_button = '';
 		$share_button = '';
 
+		// Add favorite button only if favorites are enabled
+		if ( \BRAGBookGallery\Includes\Core\Settings_Helper::is_favorites_enabled() ) {
+			$favorite_button = sprintf(
+				'<button class="brag-book-gallery-favorite-button" data-favorited="false" data-item-id="case_%s_main" aria-label="%s"><svg fill="rgba(255, 255, 255, 0.5)" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>',
+				esc_attr( $case_id ),
+				esc_attr__( 'Add to favorites', 'brag-book-gallery' )
+			);
+		}
+
+		$enable_sharing = get_option( 'brag_book_gallery_enable_sharing', 'no' );
 		if ( 'yes' === $enable_sharing ) {
 			$share_button = sprintf(
 				'<button class="brag-book-gallery-share-button" data-item-id="case_%s_main" aria-label="%s"><svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M672.22-100q-44.91 0-76.26-31.41-31.34-31.41-31.34-76.28 0-6 4.15-29.16L284.31-404.31q-14.46 15-34.36 23.5t-42.64 8.5q-44.71 0-76.01-31.54Q100-435.39 100-480q0-44.61 31.3-76.15 31.3-31.54 76.01-31.54 22.74 0 42.64 8.5 19.9 8.5 34.36 23.5l284.46-167.08q-2.38-7.38-3.27-14.46-.88-7.08-.88-15.08 0-44.87 31.43-76.28Q627.49-860 672.4-860t76.25 31.44Q780-797.13 780-752.22q0 44.91-31.41 76.26-31.41 31.34-76.28 31.34-22.85 0-42.5-8.69Q610.15-662 595.69-677L311.23-509.54q2.38 7.39 3.27 14.46.88 7.08.88 15.08t-.88 15.08q-.89 7.07-3.27 14.46L595.69-283q14.46-15 34.12-23.69 19.65-8.69 42.5-8.69 44.87 0 76.28 31.43Q780-252.51 780-207.6t-31.44 76.25Q717.13-100 672.22-100Zm.09-60q20.27 0 33.98-13.71Q720-187.42 720-207.69q0-20.27-13.71-33.98-13.71-13.72-33.98-13.72-20.27 0-33.98 13.72-13.72 13.71-13.72 33.98 0 20.27 13.72 33.98Q652.04-160 672.31-160Zm-465-272.31q20.43 0 34.25-13.71 13.83-13.71 13.83-33.98 0-20.27-13.83-33.98-13.82-13.71-34.25-13.71-20.11 0-33.71 13.71Q160-500.27 160-480q0 20.27 13.6 33.98 13.6 13.71 33.71 13.71Zm465-272.3q20.27 0 33.98-13.72Q720-732.04 720-752.31q0-20.27-13.71-33.98Q692.58-800 672.31-800q-20.27 0-33.98 13.71-13.72 13.71-13.72 33.98 0 20.27 13.72 33.98 13.71 13.72 33.98 13.72Zm0 496.92ZM207.69-480Zm464.62-272.31Z"/></svg></button>',
 				esc_attr( $case_id ),
 				esc_attr__( 'Share this image', 'brag-book-gallery' )
 			);
+		}
+
+		// Only render container if we have buttons to show
+		if ( empty( $favorite_button ) && empty( $share_button ) ) {
+			return '';
 		}
 
 		return sprintf( '<div class="brag-book-gallery-item-actions">%s%s</div>', $favorite_button, $share_button );
@@ -2242,12 +2486,22 @@ final class HTML_Renderer {
 			// Check if this case has nudity based on its procedure IDs
 			$case_has_nudity = self::case_has_nudity( $case );
 
+			// Try to extract procedure context from current URL or case data
+			$procedure_context = '';
+			if ( isset( $_SERVER['REQUEST_URI'] ) ) {
+				$current_path = sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) );
+				$path_segments = array_filter( explode( '/', $current_path ) );
+				if ( count( $path_segments ) >= 2 ) {
+					$procedure_context = sanitize_title( $path_segments[1] );
+				}
+			}
+
 			// Use reflection to call protected method from Shortcodes class.
 			$shortcodes_class = 'BRAGBookGallery\Includes\Extend\Shortcodes';
 			$method = new \ReflectionMethod( $shortcodes_class, 'render_ajax_gallery_case_card' );
 			$method->setAccessible( true );
 
-			return $method->invoke( null, $case, $image_display_mode, $case_has_nudity, '' );
+			return $method->invoke( null, $case, $image_display_mode, $case_has_nudity, $procedure_context );
 		} catch ( \Exception $e ) {
 			self::log_debug( sprintf( 'Error rendering favorite case card: %s', $e->getMessage() ) );
 			return self::render_fallback_case_card( $case );
@@ -2270,12 +2524,22 @@ final class HTML_Renderer {
 			// Check if this case has nudity based on its procedure IDs
 			$case_has_nudity = self::case_has_nudity_with_sidebar( $case, $sidebar_data );
 
+			// Try to extract procedure context from current URL or case data
+			$procedure_context = '';
+			if ( isset( $_SERVER['REQUEST_URI'] ) ) {
+				$current_path = sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) );
+				$path_segments = array_filter( explode( '/', $current_path ) );
+				if ( count( $path_segments ) >= 2 ) {
+					$procedure_context = sanitize_title( $path_segments[1] );
+				}
+			}
+
 			// Use reflection to call protected method from Shortcodes class.
 			$shortcodes_class = 'BRAGBookGallery\Includes\Extend\Shortcodes';
 			$method = new \ReflectionMethod( $shortcodes_class, 'render_ajax_gallery_case_card' );
 			$method->setAccessible( true );
 
-			return $method->invoke( null, $case, $image_display_mode, $case_has_nudity, '' );
+			return $method->invoke( null, $case, $image_display_mode, $case_has_nudity, $procedure_context );
 		} catch ( \Exception $e ) {
 			self::log_debug( sprintf( 'Error rendering favorite case card: %s', $e->getMessage() ) );
 			return self::render_fallback_case_card( $case );

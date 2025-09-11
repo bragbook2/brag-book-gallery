@@ -19,6 +19,7 @@ namespace BRAGBookGallery\Includes\Migration;
 use BRAGBookGallery\Includes\PostTypes\Gallery_Post_Type;
 use BRAGBookGallery\Includes\Taxonomies\Gallery_Taxonomies;
 use BRAGBookGallery\Includes\Core\Database;
+use BRAGBookGallery\Includes\Extend\Cache_Manager;
 
 // Prevent direct access
 if ( ! defined( 'ABSPATH' ) ) {
@@ -549,7 +550,7 @@ class Data_Validator {
 		}
 
 		// Check WordPress transient cache.
-		$cached_result = get_transient( self::CACHE_GROUP . '_' . $cache_key );
+		$cached_result = Cache_Manager::get( self::CACHE_GROUP . '_' . $cache_key );
 		if ( false !== $cached_result ) {
 			// Store in memory cache for this request.
 			$this->validation_cache[ $cache_key ] = $cached_result;
@@ -561,7 +562,7 @@ class Data_Validator {
 
 		// Cache in both memory and transient.
 		$this->validation_cache[ $cache_key ] = $result;
-		set_transient( self::CACHE_GROUP . '_' . $cache_key, $result, self::CACHE_EXPIRATION );
+		Cache_Manager::set( self::CACHE_GROUP . '_' . $cache_key, $result, self::CACHE_EXPIRATION );
 
 		return $result;
 	}

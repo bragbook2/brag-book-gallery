@@ -77,7 +77,7 @@ class Settings_Debug extends Settings_Base {
 		// Initialize Debug Tools for AJAX handlers
 		// Must be initialized always, not just during AJAX, so the action is registered
 		// The autoloader will handle loading the class
-		\BRAGBookGallery\Includes\Admin\Debug_Tools::get_instance();
+		\BRAGBookGallery\Includes\Admin\Settings_Debug_Tools::get_instance();
 	}
 
 	/**
@@ -269,8 +269,8 @@ class Settings_Debug extends Settings_Base {
 				<li><a href="#system-status"><?php esc_html_e( 'System Status', 'brag-book-gallery' ); ?></a></li>
 				<li><a href="#debug-logs"><?php esc_html_e( 'Debug Logs', 'brag-book-gallery' ); ?></a></li>
 				<li><a href="#database-info"><?php esc_html_e( 'Database Info', 'brag-book-gallery' ); ?></a></li>
-				<li><a href="#export-import"><?php esc_html_e( 'Export & Import', 'brag-book-gallery' ); ?></a></li>
-				<li><a href="#cache-management"><?php esc_html_e( 'Cache Management', 'brag-book-gallery' ); ?></a></li>
+				<li style="display:none;"><a href="#export-import"><?php esc_html_e( 'Export & Import', 'brag-book-gallery' ); ?></a></li>
+				<li style="display:none;"><a href="#cache-management"><?php esc_html_e( 'Cache Management', 'brag-book-gallery' ); ?></a></li>
 				<li><a href="#api-test"><?php esc_html_e( 'API Test', 'brag-book-gallery' ); ?></a></li>
 				<li><a href="#diagnostic-tools"><?php esc_html_e( 'Diagnostic Tools', 'brag-book-gallery' ); ?></a></li>
 				<li><a href="#flush-rules"><?php esc_html_e( 'Flush Rules', 'brag-book-gallery' ); ?></a></li>
@@ -437,8 +437,6 @@ class Settings_Debug extends Settings_Base {
 				<?php esc_html_e( 'Advanced diagnostic tools for troubleshooting and debugging gallery functionality.', 'brag-book-gallery' ); ?>
 			</p>
 
-			<hr/>
-
 			<!-- Gallery Checker Section -->
 			<div class="diagnostic-section gallery-checker-section">
 				<?php
@@ -446,8 +444,6 @@ class Settings_Debug extends Settings_Base {
 				$gallery_checker_tool->render();
 				?>
 			</div>
-
-			<hr/>
 
 			<!-- Rewrite Debug Section -->
 			<div class="diagnostic-section rewrite-debug-section">
@@ -457,15 +453,6 @@ class Settings_Debug extends Settings_Base {
 				?>
 			</div>
 
-			<hr/>
-
-			<!-- Rewrite Fix Section -->
-			<div class="diagnostic-section rewrite-fix-section">
-				<?php
-				$rewrite_fix_tool = new \BRAGBookGallery\Includes\Admin\Debug_Tools\Rewrite_Fix();
-				$rewrite_fix_tool->render();
-				?>
-			</div>
 		</div>
 
 		<!-- Flush Rules Tab -->
@@ -1457,12 +1444,12 @@ class Settings_Debug extends Settings_Base {
 	 */
 	private function render_diagnostic_tools(): void {
 		// Load debug tools if not already loaded
-		if ( ! class_exists( '\BRAGBookGallery\Includes\Admin\Debug_Tools' ) ) {
-			require_once __DIR__ . '/class-debug-tools.php';
+		if ( ! class_exists( '\BRAGBookGallery\Includes\Admin\Settings_Debug_Tools' ) ) {
+			require_once __DIR__ . '/class-settings-debug-tools.php';
 		}
 
 		// Get debug tools instance
-		$debug_tools = \BRAGBookGallery\Includes\Admin\Debug_Tools::get_instance();
+		$debug_tools = \BRAGBookGallery\Includes\Admin\Settings_Debug_Tools::get_instance();
 
 		// Enqueue necessary scripts and styles
 		$plugin_dir_url = plugin_dir_url( dirname( dirname( __FILE__ ) ) );
@@ -1567,9 +1554,6 @@ class Settings_Debug extends Settings_Base {
 						<a href="#rewrite-debug" class="brag-book-gallery-tab-link brag-book-debug-tab-link" data-tab-target="rewrite-debug"><?php esc_html_e( 'Rewrite Debug', 'brag-book-gallery' ); ?></a>
 					</li>
 					<li class="brag-book-gallery-tab-item brag-book-debug-tab-item">
-						<a href="#rewrite-fix" class="brag-book-gallery-tab-link brag-book-debug-tab-link" data-tab-target="rewrite-fix"><?php esc_html_e( 'Rewrite Fix', 'brag-book-gallery' ); ?></a>
-					</li>
-					<li class="brag-book-gallery-tab-item brag-book-debug-tab-item">
 						<a href="#rewrite-flush" class="brag-book-gallery-tab-link brag-book-debug-tab-link" data-tab-target="rewrite-flush"><?php esc_html_e( 'Flush Rules', 'brag-book-gallery' ); ?></a>
 					</li>
 				</ul>
@@ -1580,14 +1564,12 @@ class Settings_Debug extends Settings_Base {
 				// Load tool classes
 				require_once __DIR__ . '/debug-tools/class-gallery-checker.php';
 				require_once __DIR__ . '/debug-tools/class-rewrite-debug.php';
-				require_once __DIR__ . '/debug-tools/class-rewrite-fix.php';
 				require_once __DIR__ . '/debug-tools/class-rewrite-flush.php';
 
 				// Initialize tools
 				$tools = [
 					'gallery-checker'  => new \BRAGBookGallery\Includes\Admin\Debug_Tools\Gallery_Checker(),
 					'rewrite-debug'    => new \BRAGBookGallery\Includes\Admin\Debug_Tools\Rewrite_Debug(),
-					'rewrite-fix'      => new \BRAGBookGallery\Includes\Admin\Debug_Tools\Rewrite_Fix(),
 					'rewrite-flush'    => new \BRAGBookGallery\Includes\Admin\Debug_Tools\Rewrite_Flush(),
 				];
 				?>
@@ -1600,9 +1582,6 @@ class Settings_Debug extends Settings_Base {
 					<?php $tools['rewrite-debug']->render(); ?>
 				</div>
 
-				<div id="rewrite-fix" class="tool-panel">
-					<?php $tools['rewrite-fix']->render(); ?>
-				</div>
 
 				<div id="rewrite-flush" class="tool-panel">
 					<?php $tools['rewrite-flush']->render(); ?>

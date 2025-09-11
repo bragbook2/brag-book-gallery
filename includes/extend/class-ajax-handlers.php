@@ -19,6 +19,7 @@ declare(strict_types=1);
 namespace BRAGBookGallery\Includes\Extend;
 
 use BRAGBookGallery\Includes\REST\Endpoints;
+use BRAGBookGallery\Includes\Extend\Cache_Manager;
 use Exception;
 
 /**
@@ -134,6 +135,10 @@ class Ajax_Handlers {
 		// Rewrite rules
 		add_action( 'wp_ajax_brag_book_gallery_flush_rewrite_rules', [ __CLASS__, 'ajax_flush_rewrite_rules' ] );
 
+		// CORS-safe API proxy endpoints
+		add_action( 'wp_ajax_brag_book_api_proxy', [ __CLASS__, 'ajax_api_proxy' ] );
+		add_action( 'wp_ajax_nopriv_brag_book_api_proxy', [ __CLASS__, 'ajax_api_proxy' ] );
+
 		// Favorites
 		add_action( 'wp_ajax_brag_book_add_favorite', [ __CLASS__, 'ajax_add_favorite' ] );
 		add_action( 'wp_ajax_nopriv_brag_book_add_favorite', [ __CLASS__, 'ajax_add_favorite' ] );
@@ -181,7 +186,7 @@ class Ajax_Handlers {
 			};
 
 			// Clear the notice
-			delete_transient( 'brag_book_gallery_transient_show_rewrite_notice' );
+			Cache_Manager::delete( 'show_rewrite_notice' );
 
 			// Clear any caches
 			if ( function_exists( 'wp_cache_flush' ) ) {
@@ -192,7 +197,7 @@ class Ajax_Handlers {
 			wp_send_json_success( $message );
 
 			// Clear the notice
-			delete_transient( 'brag_book_gallery_transient_show_rewrite_notice' );
+			Cache_Manager::delete( 'show_rewrite_notice' );
 
 			// Clear any caches
 			if ( function_exists( 'wp_cache_flush' ) ) {
@@ -592,9 +597,15 @@ class Ajax_Handlers {
 					// Get sidebar data once for nudity checking
 					$sidebar_data = Data_Fetcher::get_sidebar_data( $api_tokens[0] );
 
+					// Check if the current procedure has nudity flag set - applies to ALL cases in this view
+					$procedure_has_nudity = self::procedure_has_nudity( $procedure_name, $sidebar_data );
+
 					foreach ( $cases_to_render as $case ) {
-						// Determine if this specific case has nudity based on its procedure IDs
-						$case_has_nudity = self::case_has_nudity_with_sidebar( $case, $sidebar_data );
+						// For procedure-specific views, use procedure-level nudity flag for ALL cases
+						// For general views, fall back to individual case checking
+						$case_has_nudity = ! empty( $procedure_name ) 
+							? $procedure_has_nudity 
+							: self::case_has_nudity_with_sidebar( $case, $sidebar_data );
 
 
 						// Use reflection to access the render_ajax_gallery_case_card method
@@ -897,7 +908,11 @@ class Ajax_Handlers {
 
 			if ( WP_DEBUG && WP_DEBUG_LOG ) {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'BRAGBook Gallery HTML: Received procedure IDs: ' . wp_json_encode( $procedure_ids ) );
+				error_log( 'BRAGBook Gallery HTML: Received procedure IDs from request: ' . wp_json_encode( $procedure_ids ) );
+			}
+		} else {
+			if ( WP_DEBUG && WP_DEBUG_LOG ) {
+				error_log( 'BRAGBook Gallery HTML: No procedure IDs provided in request' );
 			}
 		}
 
@@ -913,16 +928,189 @@ class Ajax_Handlers {
 		$api_token = $api_tokens[0];
 		$website_property_id = intval( $website_property_ids[0] );
 
-		// First, try to find the case using our helper function which handles both numeric IDs and SEO suffixes
-		$case_data = self::find_case_by_id( $case_id, $api_token, $website_property_id );
+		// First, try to get case details from the direct API endpoint which includes navigation data
+		$endpoints = new Endpoints();
+		$case_data = null;
+		
+		if ( WP_DEBUG && WP_DEBUG_LOG ) {
+			error_log( 'AJAX Handler: Attempting get_case_details for case_id: ' . $case_id );
+		}
+		
+		$case_details_response = $endpoints->get_case_details( $case_id );
+		
+		if ( WP_DEBUG && WP_DEBUG_LOG ) {
+			error_log( 'AJAX Handler: get_case_details response empty: ' . ( empty( $case_details_response ) ? 'YES' : 'NO' ) );
+			if ( ! empty( $case_details_response ) ) {
+				error_log( 'AJAX Handler: get_case_details response length: ' . strlen( $case_details_response ) );
+				error_log( 'AJAX Handler: get_case_details response preview: ' . substr( $case_details_response, 0, 200 ) . '...' );
+			}
+		}
+		
+		if ( ! empty( $case_details_response ) ) {
+			$decoded_response = json_decode( $case_details_response, true );
+			if ( json_last_error() === JSON_ERROR_NONE && ! empty( $decoded_response ) ) {
+				// Handle the API response structure: data is nested in 'data' array
+				if ( isset( $decoded_response['data'] ) && is_array( $decoded_response['data'] ) && ! empty( $decoded_response['data'][0] ) ) {
+					$case_data = $decoded_response['data'][0];
+					// Check if navigation data is at the root level of the response
+					if ( empty( $case_data['navigation'] ) && ! empty( $decoded_response['navigation'] ) ) {
+						$case_data['navigation'] = $decoded_response['navigation'];
+						if ( WP_DEBUG ) {
+							error_log( 'AJAX Handler: Found navigation data at response root level and added to case data' );
+						}
+					}
+				} else {
+					// Fallback if data is at root level
+					$case_data = $decoded_response;
+				}
+				
+				if ( WP_DEBUG ) {
+					error_log( 'Got case data with navigation from get_case_details: ' . ( isset( $case_data['navigation'] ) ? 'YES' : 'NO' ) );
+					if ( isset( $case_data['navigation'] ) ) {
+						error_log( 'Navigation data from API: ' . print_r( $case_data['navigation'], true ) );
+					} else {
+						error_log( 'AJAX Handler: No navigation in case data. Response keys: ' . implode( ', ', array_keys( $decoded_response ) ) );
+						if ( isset( $decoded_response['data'][0] ) ) {
+							error_log( 'AJAX Handler: Case data keys: ' . implode( ', ', array_keys( $decoded_response['data'][0] ) ) );
+						}
+					}
+				}
+			}
+		}
 
-		// If not found and we have procedure IDs, try the direct API method with numeric ID only
+		// Fallback to find_case_by_id if direct API call failed
+		if ( empty( $case_data ) ) {
+			if ( WP_DEBUG && WP_DEBUG_LOG ) {
+				error_log( 'AJAX Handler: get_case_details failed, trying find_case_by_id fallback' );
+			}
+			$case_data = self::find_case_by_id( $case_id, $api_token, $website_property_id );
+			if ( WP_DEBUG && WP_DEBUG_LOG ) {
+				error_log( 'AJAX Handler: find_case_by_id result: ' . ( ! empty( $case_data ) ? 'SUCCESS (has navigation: ' . ( isset( $case_data['navigation'] ) ? 'YES' : 'NO' ) . ')' : 'FAILED' ) );
+			}
+		}
+
+		// If still not found and we have procedure IDs, try the legacy API method with numeric ID only
 		if ( empty( $case_data ) && ! empty( $procedure_ids ) && is_numeric( $case_id ) ) {
-			$endpoints = new Endpoints();
+			if ( WP_DEBUG && WP_DEBUG_LOG ) {
+				error_log( 'AJAX Handler: find_case_by_id failed, trying get_case_by_number with procedure IDs: ' . implode( ',', $procedure_ids ) );
+			}
 			$case_data = $endpoints->get_case_by_number( $api_token, $website_property_id, $case_id, $procedure_ids );
+			if ( WP_DEBUG && WP_DEBUG_LOG ) {
+				error_log( 'AJAX Handler: get_case_by_number result: ' . ( ! empty( $case_data ) ? 'SUCCESS (has navigation: ' . ( isset( $case_data['navigation'] ) ? 'YES' : 'NO' ) . ')' : 'FAILED' ) );
+			}
 		}
 
 		if ( ! empty( $case_data ) && is_array( $case_data ) ) {
+			// Debug current state of procedure IDs
+			if ( WP_DEBUG ) {
+				error_log( 'AJAX Handler: Current procedure_ids state: ' . ( empty( $procedure_ids ) ? 'EMPTY' : 'HAS VALUES: ' . implode( ',', $procedure_ids ) ) );
+				error_log( 'AJAX Handler: Case data has procedureIds: ' . ( ! empty( $case_data['procedureIds'] ) ? 'YES: ' . implode( ',', $case_data['procedureIds'] ) : 'NO' ) );
+			}
+			
+			// Extract procedure IDs from case data if not provided
+			if ( empty( $procedure_ids ) && ! empty( $case_data['procedureIds'] ) ) {
+				$procedure_ids = array_map( 'intval', $case_data['procedureIds'] );
+				if ( WP_DEBUG ) {
+					error_log( 'AJAX Handler: Extracted procedure IDs from case data: ' . implode( ',', $procedure_ids ) );
+				}
+			}
+			
+			// Also try to filter procedure IDs based on the requested procedure slug
+			if ( ! empty( $procedure_ids ) && ! empty( $procedure_slug ) && ! empty( $case_data['procedures'] ) ) {
+				$matching_procedure_ids = [];
+				foreach ( $case_data['procedures'] as $procedure ) {
+					if ( isset( $procedure['slugName'] ) && $procedure['slugName'] === $procedure_slug ) {
+						$matching_procedure_ids[] = intval( $procedure['id'] );
+					}
+				}
+				if ( ! empty( $matching_procedure_ids ) ) {
+					$procedure_ids = $matching_procedure_ids;
+					if ( WP_DEBUG ) {
+						error_log( 'AJAX Handler: Filtered procedure IDs to match slug "' . $procedure_slug . '": ' . implode( ',', $procedure_ids ) );
+					}
+				}
+			}
+			
+			// If navigation data is missing and we have procedure IDs, generate navigation from procedure cases
+			if ( empty( $case_data['navigation'] ) && ! empty( $procedure_ids ) && ! empty( $case_data['id'] ) ) {
+				if ( WP_DEBUG ) {
+					error_log( 'AJAX Handler: Navigation data missing, generating from procedure cases for procedure IDs: ' . implode( ',', $procedure_ids ) );
+				}
+				
+				// Fetch all cases for this procedure to generate navigation
+				try {
+					$procedure_cases_data = Data_Fetcher::get_all_cases_for_filtering( $api_token, (string) $website_property_id, $procedure_ids );
+					if ( ! empty( $procedure_cases_data['data'] ) && is_array( $procedure_cases_data['data'] ) ) {
+						$navigation_data = self::generate_case_navigation( (string) $case_data['id'], $procedure_cases_data['data'], $procedure_slug );
+						if ( ! empty( $navigation_data ) ) {
+							$case_data['navigation'] = $navigation_data;
+							if ( WP_DEBUG ) {
+								error_log( 'AJAX Handler: Successfully generated navigation data from procedure cases' );
+								error_log( 'AJAX Handler: Navigation data: ' . print_r( $navigation_data, true ) );
+							}
+						}
+					}
+				} catch ( \Exception $e ) {
+					if ( WP_DEBUG ) {
+						error_log( 'AJAX Handler: Failed to generate navigation from procedure cases: ' . $e->getMessage() );
+					}
+				}
+			}
+			
+			// If still no navigation data and we have a case ID, try to fetch it from the direct API endpoint
+			if ( empty( $case_data['navigation'] ) && ! empty( $case_data['id'] ) ) {
+				if ( WP_DEBUG ) {
+					error_log( 'AJAX Handler: Navigation data still missing, attempting direct API fetch for case ID: ' . $case_data['id'] );
+				}
+				
+				$direct_case_data = $endpoints->get_case_details( (string) $case_data['id'] );
+				if ( ! empty( $direct_case_data ) ) {
+					$decoded_direct_data = json_decode( $direct_case_data, true );
+					if ( json_last_error() === JSON_ERROR_NONE ) {
+						// Handle the API response structure: data is nested in 'data' array
+						$direct_case_info = null;
+						if ( isset( $decoded_direct_data['data'] ) && is_array( $decoded_direct_data['data'] ) && ! empty( $decoded_direct_data['data'][0] ) ) {
+							$direct_case_info = $decoded_direct_data['data'][0];
+						} else {
+							// Fallback if data is at root level
+							$direct_case_info = $decoded_direct_data;
+						}
+						
+						if ( ! empty( $direct_case_info['navigation'] ) ) {
+							$case_data['navigation'] = $direct_case_info['navigation'];
+							if ( WP_DEBUG ) {
+								error_log( 'AJAX Handler: Successfully added navigation data from direct API call' );
+								error_log( 'AJAX Handler: Navigation data: ' . print_r( $direct_case_info['navigation'], true ) );
+							}
+						} else {
+							if ( WP_DEBUG ) {
+								error_log( 'AJAX Handler: Direct API call succeeded but no navigation data found' );
+								error_log( 'AJAX Handler: Direct API response structure: ' . print_r( array_keys( $decoded_direct_data ), true ) );
+								if ( $direct_case_info ) {
+									error_log( 'AJAX Handler: Direct case info keys: ' . implode( ', ', array_keys( $direct_case_info ) ) );
+								}
+							}
+						}
+					} else {
+						if ( WP_DEBUG ) {
+							error_log( 'AJAX Handler: JSON decode error: ' . json_last_error_msg() );
+						}
+					}
+				} else {
+					if ( WP_DEBUG ) {
+						error_log( 'AJAX Handler: Direct API call returned empty response for case ID: ' . $case_data['id'] );
+					}
+				}
+			} else {
+				if ( WP_DEBUG ) {
+					$nav_status = empty( $case_data['navigation'] ) ? 'MISSING' : 'PRESENT';
+					error_log( 'AJAX Handler: Navigation data status: ' . $nav_status . ' for case ID: ' . ( $case_data['id'] ?? 'unknown' ) );
+					if ( ! empty( $case_data['navigation'] ) ) {
+						error_log( 'AJAX Handler: Existing navigation data: ' . print_r( $case_data['navigation'], true ) );
+					}
+				}
+			}
+
 			// Track case view for analytics (fire and forget - don't let failures affect the response)
 			$view_tracked = false;
 			$view_tracking_error = null;
@@ -949,6 +1137,25 @@ class Ajax_Handlers {
 						error_log( 'BRAGBook Gallery: Failed to track view for case ID ' . $case_id . ': ' . $e->getMessage() );
 					}
 				}
+			}
+
+			// Debug log the case data before passing to renderer
+			if ( WP_DEBUG && WP_DEBUG_LOG ) {
+				error_log( 'AJAX Handler: About to render case details' );
+				error_log( 'AJAX Handler: Case data keys: ' . implode( ', ', array_keys( $case_data ) ) );
+				error_log( 'AJAX Handler: Has navigation in case_data: ' . ( isset( $case_data['navigation'] ) ? 'YES' : 'NO' ) );
+				if ( isset( $case_data['navigation'] ) ) {
+					error_log( 'AJAX Handler: Navigation data: ' . print_r( $case_data['navigation'], true ) );
+					if ( isset( $case_data['navigation']['previous'] ) ) {
+						error_log( 'AJAX Handler: Previous case data: ' . print_r( $case_data['navigation']['previous'], true ) );
+					}
+					if ( isset( $case_data['navigation']['next'] ) ) {
+						error_log( 'AJAX Handler: Next case data: ' . print_r( $case_data['navigation']['next'], true ) );
+					}
+				} else {
+					error_log( 'AJAX Handler: WARNING - No navigation data found in case_data' );
+				}
+				error_log( 'AJAX Handler: Procedure slug: ' . $procedure_slug );
 			}
 
 			// Generate HTML and SEO data for case details using HTML_Renderer class method
@@ -1027,10 +1234,79 @@ class Ajax_Handlers {
 		$api_token = $api_tokens[0];
 		$website_property_id = intval( $website_property_ids[0] );
 
-		// Try to get case data
-		$case_data = self::find_case_by_id( $case_id, $api_token, $website_property_id );
+		// First, try to get case details from the direct API endpoint which includes navigation data
+		$endpoints = new Endpoints();
+		$case_data = null;
+		$case_details_response = $endpoints->get_case_details( $case_id );
+		
+		if ( ! empty( $case_details_response ) ) {
+			$decoded_response = json_decode( $case_details_response, true );
+			if ( json_last_error() === JSON_ERROR_NONE && ! empty( $decoded_response ) ) {
+				// Handle the API response structure: data is nested in 'data' array
+				if ( isset( $decoded_response['data'] ) && is_array( $decoded_response['data'] ) && ! empty( $decoded_response['data'][0] ) ) {
+					$case_data = $decoded_response['data'][0];
+				} else {
+					// Fallback if data is at root level
+					$case_data = $decoded_response;
+				}
+				
+				if ( WP_DEBUG ) {
+					error_log( 'Got case data with navigation from get_case_details: ' . ( isset( $case_data['navigation'] ) ? 'YES' : 'NO' ) );
+					if ( isset( $case_data['navigation'] ) ) {
+						error_log( 'Navigation data from API: ' . print_r( $case_data['navigation'], true ) );
+					}
+				}
+			}
+		}
+
+		// Fallback to find_case_by_id if direct API call failed
+		if ( empty( $case_data ) ) {
+			$case_data = self::find_case_by_id( $case_id, $api_token, $website_property_id );
+		}
 
 		if ( ! empty( $case_data ) && is_array( $case_data ) ) {
+			// If navigation data is missing and we have a case ID, try to fetch it from the direct API endpoint
+			if ( empty( $case_data['navigation'] ) && ! empty( $case_data['id'] ) ) {
+				if ( WP_DEBUG ) {
+					error_log( 'HTML Handler: Navigation data missing, attempting to fetch for case ID: ' . $case_data['id'] );
+				}
+				
+				$direct_case_data = $endpoints->get_case_details( (string) $case_data['id'] );
+				if ( ! empty( $direct_case_data ) ) {
+					$decoded_direct_data = json_decode( $direct_case_data, true );
+					if ( json_last_error() === JSON_ERROR_NONE ) {
+						if ( ! empty( $decoded_direct_data['navigation'] ) ) {
+							$case_data['navigation'] = $decoded_direct_data['navigation'];
+							if ( WP_DEBUG ) {
+								error_log( 'HTML Handler: Successfully added navigation data from direct API call' );
+								error_log( 'HTML Handler: Navigation data: ' . print_r( $decoded_direct_data['navigation'], true ) );
+							}
+						} else {
+							if ( WP_DEBUG ) {
+								error_log( 'HTML Handler: Direct API call succeeded but no navigation data found' );
+								error_log( 'HTML Handler: Direct API response keys: ' . implode( ', ', array_keys( $decoded_direct_data ) ) );
+							}
+						}
+					} else {
+						if ( WP_DEBUG ) {
+							error_log( 'HTML Handler: JSON decode error: ' . json_last_error_msg() );
+						}
+					}
+				} else {
+					if ( WP_DEBUG ) {
+						error_log( 'HTML Handler: Direct API call returned empty response for case ID: ' . $case_data['id'] );
+					}
+				}
+			} else {
+				if ( WP_DEBUG ) {
+					$nav_status = empty( $case_data['navigation'] ) ? 'MISSING' : 'PRESENT';
+					error_log( 'HTML Handler: Navigation data status: ' . $nav_status . ' for case ID: ' . ( $case_data['id'] ?? 'unknown' ) );
+					if ( ! empty( $case_data['navigation'] ) ) {
+						error_log( 'HTML Handler: Existing navigation data: ' . print_r( $case_data['navigation'], true ) );
+					}
+				}
+			}
+
 			// Generate HTML and SEO data for case details using HTML_Renderer class method
 			$result = HTML_Renderer::render_case_details_html( $case_data, $procedure_slug, $procedure_name );
 
@@ -1098,7 +1374,7 @@ class Ajax_Handlers {
 
 		$deleted = 0;
 		foreach ( $keys as $key ) {
-			if ( delete_transient( $key ) ) {
+			if ( Cache_Manager::delete( $key ) ) {
 				$deleted++;
 			}
 		}
@@ -1131,7 +1407,7 @@ class Ajax_Handlers {
 		}
 
 		// Get the cache data
-		$data = get_transient( $key );
+		$data = Cache_Manager::get( $key );
 
 		if ( false === $data ) {
 			wp_send_json_error( 'Cache item not found or expired' );
@@ -1162,6 +1438,7 @@ class Ajax_Handlers {
 		$start_page = isset( $_POST['start_page'] ) ? intval( $_POST['start_page'] ) : 2;
 		$procedure_ids = isset( $_POST['procedure_ids'] ) ? array_map( 'intval', explode( ',', sanitize_text_field( wp_unslash( $_POST['procedure_ids'] ) ) ) ) : [];
 		$procedure_name = isset( $_POST['procedure_name'] ) ? sanitize_text_field( wp_unslash( $_POST['procedure_name'] ) ) : '';
+		$load_all = isset( $_POST['load_all'] ) && $_POST['load_all'] === '1';
 
 		// Get already loaded case IDs to prevent duplicates
 		$loaded_case_ids = isset( $_POST['loaded_ids'] ) ? array_map( 'trim', explode( ',', sanitize_text_field( wp_unslash( $_POST['loaded_ids'] ) ) ) ) : [];
@@ -1190,11 +1467,47 @@ class Ajax_Handlers {
 				'procedureIds'       => $procedure_ids,
 			];
 
-			// Fetch the specific page
-			$has_more = false;
-			$filter_body['count'] = $start_page; // 'count' is the page number in this API
+			if ( $load_all ) {
+				// Load all cases by fetching all available pages
+				$page = 1;
+				do {
+					$filter_body['count'] = $page;
+					$response = $endpoints->get_pagination_data( $filter_body );
+					
+					if ( ! empty( $response ) ) {
+						$page_data = json_decode( $response, true );
+						
+						if ( is_array( $page_data ) && ! empty( $page_data['data'] ) ) {
+							foreach ( $page_data['data'] as $case ) {
+								$case_id = isset( $case['id'] ) ? strval( $case['id'] ) : '';
+								if ( ! empty( $case_id ) ) {
+									$all_cases[] = $case;
+								}
+							}
+							$page++;
+							
+							// Check if we've loaded all available cases
+							if ( count( $page_data['data'] ) < $cases_per_page ) {
+								break; // This was the last page
+							}
+						} else {
+							break; // No more data
+						}
+					} else {
+						break; // API error
+					}
+				} while ( $page <= 100 ); // Safety limit to prevent infinite loops
+				
+				// For load_all, return just the case data without HTML
+				wp_send_json_success( $all_cases );
+				return;
+			} else {
+				// Fetch the specific page
+				$has_more = false;
+				$filter_body['count'] = $start_page; // 'count' is the page number in this API
 
-			$response = $endpoints->get_pagination_data( $filter_body );
+				$response = $endpoints->get_pagination_data( $filter_body );
+			}
 
 			if ( ! empty( $response ) ) {
 				$page_data = json_decode( $response, true );
@@ -1233,9 +1546,15 @@ class Ajax_Handlers {
 			// Get sidebar data once for nudity checking
 			$sidebar_data = Data_Fetcher::get_sidebar_data( $api_tokens[0] );
 
+			// Check if the current procedure has nudity flag set - applies to ALL cases in this view
+			$procedure_has_nudity = self::procedure_has_nudity( $procedure_name, $sidebar_data );
+
 			foreach ( $all_cases as $case ) {
-				// Determine if this specific case has nudity based on its procedure IDs
-				$case_has_nudity = self::case_has_nudity_with_sidebar( $case, $sidebar_data );
+				// For procedure-specific views, use procedure-level nudity flag for ALL cases
+				// For general views, fall back to individual case checking
+				$case_has_nudity = ! empty( $procedure_name ) 
+					? $procedure_has_nudity 
+					: self::case_has_nudity_with_sidebar( $case, $sidebar_data );
 
 				// Use reflection to access the private method from Shortcodes class
 				$method = new \ReflectionMethod( Shortcodes::class, 'render_ajax_gallery_case_card' );
@@ -1275,6 +1594,18 @@ class Ajax_Handlers {
 		// Get case IDs from request
 		$case_ids_str = isset( $_POST['case_ids'] ) ? sanitize_text_field( wp_unslash( $_POST['case_ids'] ) ) : '';
 
+		// Get procedure context from request if available
+		$procedure_context = isset( $_POST['procedure_name'] ) ? sanitize_text_field( wp_unslash( $_POST['procedure_name'] ) ) : '';
+		
+		// Also try to get from referrer URL if not in POST data
+		if ( empty( $procedure_context ) && isset( $_SERVER['HTTP_REFERER'] ) ) {
+			$referer = esc_url_raw( wp_unslash( $_SERVER['HTTP_REFERER'] ) );
+			$path_segments = array_filter( explode( '/', parse_url( $referer, PHP_URL_PATH ) ) );
+			if ( count( $path_segments ) >= 2 ) {
+				$procedure_context = sanitize_title( $path_segments[1] ); // Assumes /gallery/procedure-name/ structure
+			}
+		}
+
 		// Get pagination parameters
 		$page = isset( $_POST['page'] ) ? absint( $_POST['page'] ) : 1;
 		$items_per_page = absint( get_option( 'brag_book_gallery_items_per_page', '10' ) );
@@ -1307,8 +1638,8 @@ class Ajax_Handlers {
 
 		try {
 			// Get cached cases data
-			$cache_key = 'brag_book_gallery_transient_cases_' . $api_token . $website_property_id;
-			$cached_data = get_transient( $cache_key );
+			$cache_key = 'cases_' . $api_token . $website_property_id;
+			$cached_data = Cache_Manager::get( $cache_key );
 
 			$html = '';
 			$cases_found = 0;
@@ -1320,6 +1651,9 @@ class Ajax_Handlers {
 				$sidebar_data = Data_Fetcher::get_sidebar_data( $api_tokens[0] );
 			}
 
+			// Check if the current procedure has nudity flag set - applies to ALL cases in this view
+			$procedure_has_nudity = self::procedure_has_nudity( $procedure_context, $sidebar_data );
+
 			if ( $cached_data && isset( $cached_data['data'] ) ) {
 				// Look for the requested cases in our cached data - ONLY THE PAGINATED ONES
 				foreach ( $cached_data['data'] as $case ) {
@@ -1327,14 +1661,17 @@ class Ajax_Handlers {
 						// Get image display mode
 						$image_display_mode = get_option( 'brag_book_gallery_image_display_mode', 'single' );
 
-						// Check if this case's procedure has nudity based on procedure IDs
-						$case_nudity = self::case_has_nudity_with_sidebar( $case, $sidebar_data );
+						// For procedure-specific views, use procedure-level nudity flag for ALL cases
+						// For general views, fall back to individual case checking
+						$case_nudity = ! empty( $procedure_context ) 
+							? $procedure_has_nudity 
+							: self::case_has_nudity_with_sidebar( $case, $sidebar_data );
 
 						// Render the case card using Shortcodes class method
 						// Use reflection to access the private method
 						$method = new \ReflectionMethod( Shortcodes::class, 'render_ajax_gallery_case_card' );
 						$method->setAccessible( true );
-						$html .= $method->invoke( null, $case, $image_display_mode, $case_nudity, '' );
+						$html .= $method->invoke( null, $case, $image_display_mode, $case_nudity, $procedure_context );
 						$cases_found++;
 					}
 				}
@@ -1398,8 +1735,8 @@ class Ajax_Handlers {
 		}
 
 		// Next, try to get the case from cached data
-		$cache_key = 'brag_book_gallery_transient_all_cases_' . $api_token . '_' . $website_property_id;
-		$cached_data = get_transient( $cache_key );
+		$cache_key = 'all_cases_' . $api_token . '_' . $website_property_id;
+		$cached_data = Cache_Manager::get( $cache_key );
 		$case_data = null;
 
 		// Check if case_id is numeric (traditional ID) or alphanumeric (SEO suffix)
@@ -1472,7 +1809,7 @@ class Ajax_Handlers {
 		// If not found in the main cache, also try the unfiltered cache (all cases)
 		if ( empty( $case_data ) ) {
 			$unfiltered_cache_key = \BRAGBookGallery\Includes\Extend\Cache_Manager::get_all_cases_cache_key( $api_token, (string) $website_property_id );
-			$unfiltered_cached_data = get_transient( $unfiltered_cache_key );
+			$unfiltered_cached_data = Cache_Manager::get( $unfiltered_cache_key );
 
 			if ( WP_DEBUG ) {
 				error_log( 'find_case_by_id: Trying unfiltered cache key: ' . $unfiltered_cache_key );
@@ -1593,8 +1930,8 @@ class Ajax_Handlers {
 			];
 			
 			foreach ( $malformed_cache_keys as $key ) {
-				if ( get_transient( $key ) !== false ) {
-					delete_transient( $key );
+				if ( Cache_Manager::get( $key ) !== false ) {
+					Cache_Manager::delete( $key );
 					if ( WP_DEBUG ) {
 						error_log( 'find_case_by_id: Cleared malformed cache key: ' . $key );
 					}
@@ -2479,6 +2816,298 @@ class Ajax_Handlers {
 		} catch ( Exception $e ) {
 			wp_send_json_error( $e->getMessage() );
 		}
+	}
+
+	/**
+	 * CORS-safe API proxy for direct frontend calls.
+	 *
+	 * Provides a WordPress AJAX endpoint that proxies requests to the external API,
+	 * bypassing CORS restrictions while maintaining the performance benefits of
+	 * reduced server-side processing.
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	public static function ajax_api_proxy(): void {
+		// Set no-cache headers first
+		self::set_no_cache_headers();
+
+		// Validate and sanitize request data
+		$request_data = self::validate_and_sanitize_request( [
+			'nonce' => 'brag_book_gallery_nonce',
+			'required_fields' => [ 'endpoint', 'method' ],
+			'optional_fields' => [ 'body', 'timeout' ],
+		] );
+
+		if ( is_wp_error( $request_data ) ) {
+			wp_send_json_error( [
+				'message' => $request_data->get_error_message(),
+				'debug' => WP_DEBUG ? $request_data->get_error_data() : null,
+			] );
+			return;
+		}
+
+		// Extract sanitized parameters
+		$endpoint = $request_data['endpoint'] ?? '';
+		$method = strtoupper( $request_data['method'] ?? 'GET' );
+		$body = $request_data['body'] ?? '';
+		$timeout = absint( $request_data['timeout'] ?? 8 );
+
+		// Validate endpoint (security check)
+		$allowed_endpoints = [
+			'/api/plugin/combine/cases',
+			'/api/plugin/combine/sidebar',
+			'/api/plugin/combine/cases/',
+			'/case/',
+		];
+
+		$endpoint_allowed = false;
+		foreach ( $allowed_endpoints as $allowed ) {
+			if ( strpos( $endpoint, $allowed ) === 0 ) {
+				$endpoint_allowed = true;
+				break;
+			}
+		}
+
+		// Special handling for case details with query parameters
+		if ( ! $endpoint_allowed && preg_match( '#^/api/plugin/combine/cases/[0-9]+(\?|$)#', $endpoint ) ) {
+			$endpoint_allowed = true;
+		}
+		
+		// Special handling for direct case endpoint with query parameters
+		if ( ! $endpoint_allowed && preg_match( '#^/case/[0-9]+(\?|$)#', $endpoint ) ) {
+			$endpoint_allowed = true;
+		}
+
+		if ( ! $endpoint_allowed ) {
+			wp_send_json_error( [
+				'message' => __( 'Endpoint not allowed.', 'brag-book-gallery' ),
+				'debug' => WP_DEBUG ? [ 'endpoint' => $endpoint ] : null,
+			] );
+			return;
+		}
+
+		// Validate method
+		$allowed_methods = [ 'GET', 'POST' ];
+		if ( ! in_array( $method, $allowed_methods, true ) ) {
+			wp_send_json_error( [
+				'message' => __( 'HTTP method not allowed.', 'brag-book-gallery' ),
+			] );
+			return;
+		}
+
+		try {
+			// Get API base URL
+			$api_base_url = get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' );
+			$full_url = rtrim( $api_base_url, '/' ) . $endpoint;
+
+			// Prepare request arguments
+			$args = [
+				'method' => $method,
+				'timeout' => min( $timeout, 30 ), // Cap at 30 seconds
+				'headers' => [
+					'Content-Type' => 'application/json',
+					'User-Agent' => 'BRAGBook-Gallery-Plugin/' . get_option( 'brag_book_gallery_version', '3.0.0' ),
+				],
+			];
+
+			// Add body for POST requests
+			if ( $method === 'POST' && ! empty( $body ) ) {
+				// Validate JSON
+				$decoded_body = json_decode( $body, true );
+				if ( json_last_error() !== JSON_ERROR_NONE ) {
+					wp_send_json_error( [
+						'message' => __( 'Invalid JSON in request body.', 'brag-book-gallery' ),
+					] );
+					return;
+				}
+				$args['body'] = $body;
+			}
+
+			// Make the API request
+			$response = wp_remote_request( $full_url, $args );
+
+			// Check for WordPress HTTP errors
+			if ( is_wp_error( $response ) ) {
+				wp_send_json_error( [
+					'message' => __( 'API request failed.', 'brag-book-gallery' ),
+					'error' => $response->get_error_message(),
+				] );
+				return;
+			}
+
+			// Get response data
+			$response_code = wp_remote_retrieve_response_code( $response );
+			$response_body = wp_remote_retrieve_body( $response );
+
+			// Check HTTP status
+			if ( $response_code < 200 || $response_code >= 300 ) {
+				wp_send_json_error( [
+					'message' => __( 'API returned error status.', 'brag-book-gallery' ),
+					'status' => $response_code,
+					'debug' => WP_DEBUG ? $response_body : null,
+				] );
+				return;
+			}
+
+			// Validate JSON response
+			$response_data = json_decode( $response_body, true );
+			if ( json_last_error() !== JSON_ERROR_NONE ) {
+				wp_send_json_error( [
+					'message' => __( 'Invalid JSON response from API.', 'brag-book-gallery' ),
+					'debug' => WP_DEBUG ? $response_body : null,
+				] );
+				return;
+			}
+
+			// Return the proxied response
+			wp_send_json_success( [
+				'data' => $response_data,
+				'status' => $response_code,
+				'endpoint' => $endpoint,
+			] );
+
+		} catch ( \Throwable $e ) {
+			wp_send_json_error( [
+				'message' => __( 'Proxy request failed.', 'brag-book-gallery' ),
+				'error' => $e->getMessage(),
+				'debug' => WP_DEBUG ? [
+					'file' => $e->getFile(),
+					'line' => $e->getLine(),
+				] : null,
+			] );
+		}
+	}
+
+	/**
+	 * Generate navigation data for a case within a procedure's case list
+	 *
+	 * @param string $current_case_id Current case ID
+	 * @param array  $procedure_cases Array of all cases for the procedure
+	 * @param string $procedure_slug  Procedure slug for URL generation
+	 *
+	 * @return array|null Navigation data with previous/next case info or null if not found
+	 */
+	private static function generate_case_navigation( string $current_case_id, array $procedure_cases, string $procedure_slug ): ?array {
+		if ( empty( $procedure_cases ) || empty( $current_case_id ) ) {
+			return null;
+		}
+
+		// Find the current case position in the list
+		$current_index = null;
+		foreach ( $procedure_cases as $index => $case ) {
+			$case_id = (string) ( $case['id'] ?? '' );
+			if ( $case_id === $current_case_id ) {
+				$current_index = $index;
+				break;
+			}
+		}
+
+		if ( $current_index === null ) {
+			if ( WP_DEBUG ) {
+				error_log( 'generate_case_navigation: Current case ID ' . $current_case_id . ' not found in procedure cases' );
+			}
+			return null;
+		}
+
+		$navigation = [];
+
+		// Get previous case
+		if ( $current_index > 0 ) {
+			$prev_case = $procedure_cases[ $current_index - 1 ];
+			$prev_case_id = (string) ( $prev_case['id'] ?? '' );
+			
+			// Try to get SEO suffix, fallback to case ID
+			$prev_slug = '';
+			if ( ! empty( $prev_case['caseDetails'][0]['seoSuffixUrl'] ) ) {
+				$prev_slug = $prev_case['caseDetails'][0]['seoSuffixUrl'];
+			} else {
+				$prev_slug = $prev_case_id;
+			}
+
+			if ( ! empty( $prev_slug ) ) {
+				$navigation['previous'] = [
+					'id' => $prev_case_id,
+					'slug' => $prev_slug,
+					'procedureSlug' => $procedure_slug,
+				];
+			}
+		}
+
+		// Get next case
+		if ( $current_index < count( $procedure_cases ) - 1 ) {
+			$next_case = $procedure_cases[ $current_index + 1 ];
+			$next_case_id = (string) ( $next_case['id'] ?? '' );
+			
+			// Try to get SEO suffix, fallback to case ID
+			$next_slug = '';
+			if ( ! empty( $next_case['caseDetails'][0]['seoSuffixUrl'] ) ) {
+				$next_slug = $next_case['caseDetails'][0]['seoSuffixUrl'];
+			} else {
+				$next_slug = $next_case_id;
+			}
+
+			if ( ! empty( $next_slug ) ) {
+				$navigation['next'] = [
+					'id' => $next_case_id,
+					'slug' => $next_slug,
+					'procedureSlug' => $procedure_slug,
+				];
+			}
+		}
+
+		if ( WP_DEBUG ) {
+			error_log( 'generate_case_navigation: Generated navigation for case ' . $current_case_id . ' at index ' . $current_index . ' of ' . count( $procedure_cases ) . ' cases' );
+			error_log( 'generate_case_navigation: Has previous: ' . ( ! empty( $navigation['previous'] ) ? 'YES' : 'NO' ) );
+			error_log( 'generate_case_navigation: Has next: ' . ( ! empty( $navigation['next'] ) ? 'YES' : 'NO' ) );
+		}
+
+		return ! empty( $navigation ) ? $navigation : null;
+	}
+
+	/**
+	 * Check if the current procedure being viewed has nudity flag set to true.
+	 *
+	 * For procedure-specific views (like /cases/tummy-tuck/), ALL cases should show 
+	 * nudity warnings if the procedure itself has nudity=true in sidebar data.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @param string     $filter_procedure Current procedure being viewed.
+	 * @param array|null $sidebar_data     Pre-fetched sidebar data.
+	 *
+	 * @return bool True if the current procedure has nudity flag set.
+	 */
+	private static function procedure_has_nudity( string $filter_procedure, $sidebar_data ): bool {
+		// If no procedure filter or no sidebar data, return false
+		if ( empty( $filter_procedure ) || empty( $sidebar_data['data'] ) ) {
+			return false;
+		}
+
+		// Find the procedure by slug/name in sidebar data
+		foreach ( $sidebar_data['data'] as $procedure ) {
+			if ( empty( $procedure['name'] ) ) {
+				continue;
+			}
+
+			// Method 1: Check if the slugName field matches directly
+			if ( ! empty( $procedure['slugName'] ) && $procedure['slugName'] === $filter_procedure ) {
+				return ! empty( $procedure['nudity'] );
+			}
+
+			// Method 2: Check if procedure slug matches (convert name to slug for comparison)
+			$procedure_slug = sanitize_title( $procedure['name'] );
+			if ( $procedure_slug === $filter_procedure ) {
+				return ! empty( $procedure['nudity'] );
+			}
+
+			// Method 3: Also check direct name match (case-insensitive)
+			if ( strcasecmp( $procedure['name'], str_replace( '-', ' ', $filter_procedure ) ) === 0 ) {
+				return ! empty( $procedure['nudity'] );
+			}
+		}
+
+		return false;
 	}
 
 }

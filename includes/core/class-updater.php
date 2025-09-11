@@ -13,6 +13,7 @@
 declare( strict_types=1 );
 
 namespace BRAGBookGallery\Includes\Core;
+use BRAGBookGallery\Includes\Extend\Cache_Manager;
 use WP_Error;
 
 final class Updater {
@@ -117,7 +118,7 @@ final class Updater {
 
 		// Check cache first (VIP compatible)
 		$cache_key = $this->get_cache_key();
-		$cached_response = get_transient($cache_key);
+		$cached_response = Cache_Manager::get($cache_key);
 
 		if ($cached_response !== false && is_array($cached_response)) {
 			$this->github_response = $cached_response;
@@ -136,7 +137,7 @@ final class Updater {
 		$this->github_version = $this->extract_version($response);
 
 		// Cache the response
-		set_transient($cache_key, $response, self::CACHE_EXPIRATION);
+		Cache_Manager::set($cache_key, $response, self::CACHE_EXPIRATION);
 	}
 
 	/**
@@ -151,7 +152,7 @@ final class Updater {
 	 */
 	public function clear_cache(): void {
 		if ($this->username && $this->repository) {
-			delete_transient($this->get_cache_key());
+			Cache_Manager::delete($this->get_cache_key());
 		}
 		$this->github_response = null;
 		$this->github_version = null;

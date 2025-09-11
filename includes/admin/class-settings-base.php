@@ -257,6 +257,7 @@ abstract class Settings_Base {
 			'brag-book-gallery-consultation'   => 'consultation',
 			'brag-book-gallery-help'           => 'help',
 			'brag-book-gallery-debug'          => 'debug',
+			'brag-book-gallery-changelog'      => 'changelog',
 		);
 
 		$current_tab = isset( $page_to_tab[ $current_page ] ) ? $page_to_tab[ $current_page ] : 'general';

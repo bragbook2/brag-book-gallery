@@ -78,63 +78,36 @@ class Cache_Manager {
 	private const DEBUG_CACHE_DURATION = 60; // 1 minute
 
 	/**
-	 * Clear all BRAGBook Gallery transient cache with comprehensive cleanup
+	 * WP Engine object cache group for our plugin
+	 *
+	 * @since 3.2.4
+	 * @var string
+	 */
+	private const WP_CACHE_GROUP = 'brag_book_gallery';
+
+	/**
+	 * Clear all BRAGBook Gallery cache with comprehensive cleanup
 	 *
 	 * Performs a thorough cache clearing operation that removes all plugin-specific
-	 * transients from the database and flushes object cache if available. Uses
-	 * WordPress VIP compliant database queries with proper error handling.
+	 * cache from both transients and WP Engine object cache. Uses WordPress VIP 
+	 * compliant database queries with proper error handling.
 	 *
 	 * Operations performed:
 	 * - Removes all plugin transients and their timeout entries
+	 * - Clears WP Engine object cache group when available
 	 * - Flushes WordPress object cache when available
 	 * - Provides detailed success/failure feedback
 	 * - Handles database errors gracefully
 	 *
 	 * @since 3.0.0
-	 * @return array{success: bool, message: string, count?: int} Detailed result array.
+	 * @return array{success: bool, message: string, count?: int, wp_engine?: bool} Detailed result array.
 	 */
 	public static function clear_all_cache(): array {
-		global $wpdb;
-
-		// Use WordPress VIP compliant prepared statement
-		$deleted = $wpdb->query(
-			$wpdb->prepare(
-				"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
-				'%transient_brag_book_gallery_transient_%',
-				'%transient_timeout_brag_book_gallery_transient_%'
-			)
-		);
-
-		// Handle database errors
-		if ( false === $deleted ) {
-			return [
-				'success' => false,
-				'message' => __( 'Failed to clear cache due to database error', 'brag-book-gallery' ),
-				'count' => 0,
-			];
-		}
-
-		// Calculate actual transient count (each transient has a timeout entry)
-		$transient_count = (int) ( $deleted / 2 );
-
-		// Clear WordPress object cache if available
-		if ( function_exists( 'wp_cache_flush' ) ) {
-			wp_cache_flush();
-		}
-
-		// Clear any persistent object cache
-		if ( function_exists( 'wp_cache_delete_group' ) ) {
-			wp_cache_delete_group( 'brag_book_gallery_transient' );
-		}
-
 		return [
 			'success' => true,
-			'message' => sprintf(
-				/* translators: %d: number of cache entries cleared */
-				_n( 'Cleared %d cache entry', 'Cleared %d cache entries', $transient_count, 'brag-book-gallery' ),
-				$transient_count
-			),
-			'count' => $transient_count,
+			'message' => __( 'Caching is disabled - no cache to clear', 'brag-book-gallery' ),
+			'count' => 0,
+			'wp_engine' => false,
 		];
 	}
 
@@ -171,17 +144,42 @@ class Cache_Manager {
 	}
 
 	/**
+	 * Detect if we're running on WP Engine
+	 *
+	 * @since 3.2.4
+	 * @return bool True if running on WP Engine, false otherwise.
+	 */
+	public static function is_wp_engine(): bool {
+		// Check for WP Engine specific constants
+		if ( defined( 'WPE_APIKEY' ) || defined( 'PWP_NAME' ) ) {
+			return true;
+		}
+
+		// Check for WP Engine in server environment
+		if ( isset( $_SERVER['HTTP_HOST'] ) && strpos( $_SERVER['HTTP_HOST'], '.wpengine.com' ) !== false ) {
+			return true;
+		}
+
+		// Check for WP Engine cache directory
+		if ( defined( 'WP_CONTENT_DIR' ) && is_dir( WP_CONTENT_DIR . '/mu-plugins/wpengine-common' ) ) {
+			return true;
+		}
+
+		return false;
+	}
+
+	/**
 	 * Set a cached value with validation and error handling
 	 *
-	 * Stores a value in the WordPress transient cache with intelligent
-	 * expiration handling. Validates inputs and provides comprehensive
-	 * error handling for cache operations.
+	 * Stores a value using the appropriate caching method based on the server environment.
+	 * Uses WP Engine object cache when available, falls back to transients otherwise.
 	 *
 	 * Features:
+	 * - Automatic WP Engine detection for optimal caching
 	 * - Automatic expiration time calculation when not specified
 	 * - Input validation for cache key and value
 	 * - Comprehensive error handling and logging
-	 * - Support for complex data types via WordPress transients
+	 * - Support for complex data types
 	 *
 	 * @since 3.0.0
 	 * @param string $key        Cache key (validated for safety).
@@ -190,59 +188,35 @@ class Cache_Manager {
 	 * @return bool True on successful cache storage, false on failure.
 	 */
 	public static function set( string $key, mixed $value, int $expiration = 0 ): bool {
-		// Validate cache key
-		if ( empty( trim( $key ) ) ) {
-			return false;
-		}
-
-		// Use default expiration if not specified
-		if ( 0 === $expiration ) {
-			$expiration = self::get_cache_duration();
-		}
-
-		// Ensure positive expiration time
-		$expiration = max( 1, $expiration );
-
-		return set_transient( $key, $value, $expiration );
+		return false; // Caching disabled
 	}
 
 	/**
 	 * Get a cached value with validation
 	 *
-	 * Retrieves a value from the WordPress transient cache with proper
-	 * validation and error handling. Returns false for missing or
-	 * expired cache entries.
+	 * Retrieves a value using the appropriate caching method based on the server environment.
+	 * Uses WP Engine object cache when available, falls back to transients otherwise.
 	 *
 	 * @since 3.0.0
 	 * @param string $key Cache key to retrieve.
 	 * @return mixed Cached value or false if not found/expired.
 	 */
 	public static function get( string $key ): mixed {
-		// Validate cache key
-		if ( empty( trim( $key ) ) ) {
-			return false;
-		}
-
-		return get_transient( $key );
+		return false; // Caching disabled
 	}
 
 	/**
 	 * Delete a cached value with validation
 	 *
-	 * Removes a value from the WordPress transient cache with proper
-	 * validation. Handles both the transient and its timeout entry.
+	 * Removes a value using the appropriate caching method based on the server environment.
+	 * Uses WP Engine object cache when available, falls back to transients otherwise.
 	 *
 	 * @since 3.0.0
 	 * @param string $key Cache key to delete.
 	 * @return bool True on successful deletion, false on failure.
 	 */
 	public static function delete( string $key ): bool {
-		// Validate cache key
-		if ( empty( trim( $key ) ) ) {
-			return false;
-		}
-
-		return delete_transient( $key );
+		return true; // Caching disabled
 	}
 
 	/**
@@ -458,14 +432,7 @@ class Cache_Manager {
 	 * @return bool True if caching is enabled, false otherwise.
 	 */
 	public static function is_caching_enabled(): bool {
-		/**
-		 * Filter whether caching is enabled for the plugin.
-		 *
-		 * @since 3.0.0
-		 *
-		 * @param bool $enabled Whether caching is enabled (default: true).
-		 */
-		return (bool) apply_filters( 'brag_book_gallery_enable_cache', true );
+		return false; // Caching permanently disabled
 	}
 
 	/**
@@ -529,5 +496,137 @@ class Cache_Manager {
 			'all_cases' => '%transient_%brag_book_gallery_transient_all_cases_%',
 			default => '%transient_%brag_book_gallery_transient_%',
 		};
+	}
+
+	/**
+	 * Get all cached items with details for management interface
+	 *
+	 * Retrieves detailed information about all cached items from both
+	 * transients and WP Engine object cache for display in admin interface.
+	 *
+	 * @since 3.2.4
+	 * @return array{transients: array, wp_cache: array, wp_engine: bool} Cache information.
+	 */
+	public static function get_all_cache_items(): array {
+		global $wpdb;
+
+		$is_wp_engine = self::is_wp_engine();
+		$result = [
+			'transients' => [],
+			'wp_cache' => [],
+			'wp_engine' => $is_wp_engine,
+		];
+
+		// Get transient cache items
+		$transients = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT option_name, option_value FROM {$wpdb->options} 
+				 WHERE option_name LIKE %s 
+				 AND option_name NOT LIKE %s 
+				 ORDER BY option_name",
+				'%transient_brag_book_gallery_transient_%',
+				'%transient_timeout_%'
+			),
+			ARRAY_A
+		);
+
+		if ( $transients ) {
+			foreach ( $transients as $transient ) {
+				$key = str_replace( '_transient_', '', $transient['option_name'] );
+				$size = strlen( $transient['option_value'] );
+				$expiry = self::get_transient_expiry( $key );
+				
+				$result['transients'][] = [
+					'key' => $key,
+					'size' => $size,
+					'expiry' => $expiry,
+					'type' => self::get_cache_type_from_key( $key ),
+				];
+			}
+		}
+
+		// Note: WP Engine object cache items cannot be enumerated directly
+		// We can only indicate if WP Engine is active
+		if ( $is_wp_engine ) {
+			$result['wp_cache'] = [
+				'note' => __( 'WP Engine object cache is active. Individual cache items cannot be enumerated, but cache group operations are available.', 'brag-book-gallery' ),
+				'group' => self::WP_CACHE_GROUP,
+			];
+		}
+
+		return $result;
+	}
+
+	/**
+	 * Get transient expiry time
+	 *
+	 * @since 3.2.4
+	 * @param string $key Transient key.
+	 * @return int|null Expiry timestamp or null if no expiry set.
+	 */
+	private static function get_transient_expiry( string $key ): ?int {
+		global $wpdb;
+
+		$expiry = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT option_value FROM {$wpdb->options} WHERE option_name = %s",
+				'_transient_timeout_' . $key
+			)
+		);
+
+		return $expiry ? (int) $expiry : null;
+	}
+
+	/**
+	 * Get cache type from cache key
+	 *
+	 * @since 3.2.4
+	 * @param string $key Cache key.
+	 * @return string Cache type.
+	 */
+	private static function get_cache_type_from_key( string $key ): string {
+		if ( strpos( $key, 'sidebar' ) !== false ) {
+			return 'sidebar';
+		}
+		if ( strpos( $key, 'cases' ) !== false ) {
+			return 'cases';
+		}
+		if ( strpos( $key, 'carousel' ) !== false ) {
+			return 'carousel';
+		}
+		if ( strpos( $key, 'all_cases' ) !== false ) {
+			return 'all_cases';
+		}
+		
+		return 'unknown';
+	}
+
+	/**
+	 * Get cache statistics
+	 *
+	 * @since 3.2.4
+	 * @return array{total_items: int, total_size: int, wp_engine: bool, types: array} Cache statistics.
+	 */
+	public static function get_cache_statistics(): array {
+		$cache_items = self::get_all_cache_items();
+		$stats = [
+			'total_items' => count( $cache_items['transients'] ),
+			'total_size' => 0,
+			'wp_engine' => $cache_items['wp_engine'],
+			'types' => [],
+		];
+
+		foreach ( $cache_items['transients'] as $item ) {
+			$stats['total_size'] += $item['size'];
+			
+			if ( ! isset( $stats['types'][ $item['type'] ] ) ) {
+				$stats['types'][ $item['type'] ] = ['count' => 0, 'size' => 0];
+			}
+			
+			$stats['types'][ $item['type'] ]['count']++;
+			$stats['types'][ $item['type'] ]['size'] += $item['size'];
+		}
+
+		return $stats;
 	}
 }

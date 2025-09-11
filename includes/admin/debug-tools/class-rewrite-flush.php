@@ -216,7 +216,7 @@ final class Rewrite_Flush {
 			}
 
 			// Check recent flush operations
-			$last_flush = get_transient( self::CACHE_PREFIX . 'last_flush' );
+			$last_flush = brag_book_get_cache( self::CACHE_PREFIX . 'last_flush' );
 			if ( $last_flush && ( time() - $last_flush['time'] ) < 60 ) {
 				$this->show_admin_notice(
 					sprintf(
@@ -828,7 +828,7 @@ final class Rewrite_Flush {
 						<?php endif; ?>
 						<?php
 						// Show last flush time if available
-						$last_flush = get_transient( self::CACHE_PREFIX . 'last_flush' );
+						$last_flush = brag_book_get_cache( self::CACHE_PREFIX . 'last_flush' );
 						if ( $last_flush ) :
 						?>
 						<p class="status-hint" style="margin-top: 10px; font-size: 11px;">
@@ -874,7 +874,7 @@ final class Rewrite_Flush {
 			}
 
 			// Rate limiting check
-			$last_flush = get_transient( self::CACHE_PREFIX . 'last_flush' );
+			$last_flush = brag_book_get_cache( self::CACHE_PREFIX . 'last_flush' );
 			if ( $last_flush && ( time() - $last_flush['time'] ) < 10 && in_array( $action, [ 'flush', 'standalone' ], true ) ) {
 				throw new Exception( __( 'Please wait before flushing again', 'brag-book-gallery' ) );
 			}
@@ -889,7 +889,7 @@ final class Rewrite_Flush {
 
 			// Track flush operations
 			if ( in_array( $action, [ 'flush', 'standalone' ], true ) ) {
-				set_transient(
+				brag_book_set_cache(
 					self::CACHE_PREFIX . 'last_flush',
 					[
 						'time' => time(),
@@ -1001,13 +1001,12 @@ final class Rewrite_Flush {
 			// Register query vars
 			global $wp;
 			$query_vars = [ 
-				'procedure_title', 
-				'case_suffix', 
-				'filter_procedure', 
-				'filter_category', 
-				'favorites_page', 
-				'brag_book_gallery_view', 
-				'brag_book_gallery_case' 
+				'procedure_title',    // Procedure name in case detail URLs
+				'case_suffix',        // Case identifier (ID or SEO suffix)
+				'favorites_section',  // Legacy favorites section indicator
+				'filter_category',    // Category filter parameter
+				'filter_procedure',   // Procedure filter parameter
+				'favorites_page',     // Favorites page indicator
 			];
 			foreach ( $query_vars as $var ) {
 				$wp->add_query_var( $var );
@@ -1141,13 +1140,12 @@ final class Rewrite_Flush {
 			$output .= '<h4>' . __( 'Step 2: Register Query Variables', 'brag-book-gallery' ) . '</h4>';
 			global $wp;
 			$query_vars = [ 
-				'procedure_title', 
-				'case_suffix', 
-				'filter_procedure', 
-				'filter_category', 
-				'favorites_page', 
-				'brag_book_gallery_view', 
-				'brag_book_gallery_case' 
+				'procedure_title',    // Procedure name in case detail URLs
+				'case_suffix',        // Case identifier (ID or SEO suffix)
+				'favorites_section',  // Legacy favorites section indicator
+				'filter_category',    // Category filter parameter
+				'filter_procedure',   // Procedure filter parameter
+				'favorites_page',     // Favorites page indicator
 			];
 			foreach ( $query_vars as $var ) {
 				$wp->add_query_var( $var );
@@ -1179,13 +1177,12 @@ final class Rewrite_Flush {
 			$output .= '<h4>' . __( 'Registered Query Variables:', 'brag-book-gallery' ) . '</h4>';
 			$output .= '<ul>';
 			$query_vars = [
-				'procedure_title' => __( 'Used for case detail URLs with procedure names', 'brag-book-gallery' ),
-				'case_suffix' => __( 'Used for case URL suffixes and identifiers', 'brag-book-gallery' ),
-				'filter_procedure' => __( 'Used for procedure filtering in gallery views', 'brag-book-gallery' ),
+				'procedure_title' => __( 'Used for procedure names in case detail URLs', 'brag-book-gallery' ),
+				'case_suffix' => __( 'Used for case identifiers (ID or SEO suffix)', 'brag-book-gallery' ),
+				'favorites_section' => __( 'Used for legacy favorites section indicator', 'brag-book-gallery' ),
 				'filter_category' => __( 'Used for category filtering in gallery views', 'brag-book-gallery' ),
+				'filter_procedure' => __( 'Used for procedure filtering in gallery views', 'brag-book-gallery' ),
 				'favorites_page' => __( 'Used for favorites page detection and routing', 'brag-book-gallery' ),
-				'brag_book_gallery_view' => __( 'Used for gallery view type control', 'brag-book-gallery' ),
-				'brag_book_gallery_case' => __( 'Used for individual case page routing', 'brag-book-gallery' ),
 			];
 			foreach ( $query_vars as $var => $description ) {
 				$output .= '<li><code>' . esc_html( $var ) . '</code> - ' . esc_html( $description ) . '</li>';
@@ -1307,15 +1304,14 @@ final class Rewrite_Flush {
 				}
 			}
 
-			// Check query vars
+			// Check query vars (must match Rewrite_Rules_Handler::QUERY_VARS)
 			$required_vars = [ 
-				'procedure_title', 
-				'case_suffix', 
-				'filter_procedure', 
-				'filter_category', 
-				'favorites_page', 
-				'brag_book_gallery_view', 
-				'brag_book_gallery_case' 
+				'procedure_title',    // Procedure name in case detail URLs
+				'case_suffix',        // Case identifier (ID or SEO suffix)
+				'favorites_section',  // Legacy favorites section indicator
+				'filter_category',    // Category filter parameter
+				'filter_procedure',   // Procedure filter parameter
+				'favorites_page',     // Favorites page indicator
 			];
 			$missing_vars = [];
 			$registered_vars = [];
@@ -1395,39 +1391,54 @@ final class Rewrite_Flush {
 	private function test_gallery_urls(): string {
 		try {
 			$output = '<div class="url-test-results">';
-			$output .= '<h4>' . __( 'URL Test Results:', 'brag-book-gallery' ) . '</h4>';
+			$output .= '<h4>' . __( 'Gallery URL Patterns:', 'brag-book-gallery' ) . '</h4>';
 
 			$gallery_slugs = $this->get_gallery_slugs();
 			if ( empty( $gallery_slugs ) ) {
-				$output .= '<p>' . __( 'No gallery slugs configured for testing.', 'brag-book-gallery' ) . '</p>';
+				$output .= '<p>' . __( 'No gallery slugs configured. URL patterns will be available once a gallery page is set up.', 'brag-book-gallery' ) . '</p>';
 				return $output . '</div>';
 			}
 
+			$site_url = home_url();
 			$first_slug = reset( $gallery_slugs );
-			$test_urls = [
-				'Gallery Home' => home_url( '/' . $first_slug . '/' ),
-				'Procedure Filter' => home_url( '/' . $first_slug . '/tummy-tuck/' ),
-				'Case Detail' => home_url( '/' . $first_slug . '/tummy-tuck/12345/' ),
-				'Favorites' => home_url( '/' . $first_slug . '/myfavorites/' ),
-			];
+			
+			// Generate comprehensive URL lists from real API data
+			$url_patterns = $this->generate_comprehensive_url_patterns( $site_url, $first_slug );
 
-			$output .= '<table style="width: 100%; border-collapse: collapse;">';
+			$output .= '<div style="margin-bottom: 20px;">';
+			$output .= '<p>' . __( 'The following URL patterns are available for your gallery:', 'brag-book-gallery' ) . '</p>';
+			$output .= '<p><strong>' . __( 'Current gallery slug:', 'brag-book-gallery' ) . '</strong> <code>' . esc_html( $first_slug ) . '</code></p>';
+			$output .= '</div>';
+
+			$output .= '<table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">';
 			$output .= '<thead><tr>';
-			$output .= '<th style="text-align: left; padding: 8px; border-bottom: 1px solid #ddd;">' . __( 'URL Type', 'brag-book-gallery' ) . '</th>';
-			$output .= '<th style="text-align: left; padding: 8px; border-bottom: 1px solid #ddd;">' . __( 'URL', 'brag-book-gallery' ) . '</th>';
-			$output .= '<th style="text-align: left; padding: 8px; border-bottom: 1px solid #ddd;">' . __( 'Status', 'brag-book-gallery' ) . '</th>';
+			$output .= '<th style="text-align: left; padding: 12px; border-bottom: 2px solid #ddd; background-color: #f9f9f9;">' . __( 'URL Pattern', 'brag-book-gallery' ) . '</th>';
+			$output .= '<th style="text-align: left; padding: 12px; border-bottom: 2px solid #ddd; background-color: #f9f9f9;">' . __( 'Live Example', 'brag-book-gallery' ) . '</th>';
+			$output .= '<th style="text-align: left; padding: 12px; border-bottom: 2px solid #ddd; background-color: #f9f9f9;">' . __( 'Description', 'brag-book-gallery' ) . '</th>';
 			$output .= '</tr></thead><tbody>';
 
-			foreach ( $test_urls as $type => $url ) {
-				$status = $this->test_single_url( $url );
-				$output .= '<tr>';
-				$output .= '<td style="padding: 8px;">' . esc_html( $type ) . '</td>';
-				$output .= '<td style="padding: 8px;"><a href="' . esc_url( $url ) . '" target="_blank">' . esc_html( $url ) . '</a></td>';
-				$output .= '<td style="padding: 8px;">' . $status . '</td>';
+			foreach ( $url_patterns as $type => $pattern_data ) {
+				$status = $this->test_single_url( $pattern_data['example'] );
+				$output .= '<tr style="border-bottom: 1px solid #eee;">';
+				$output .= '<td style="padding: 12px; vertical-align: top;"><strong>' . esc_html( $type ) . '</strong><br><code style="background: #f0f0f0; padding: 2px 4px; border-radius: 3px; font-size: 12px;">' . esc_html( $pattern_data['pattern'] ) . '</code></td>';
+				$output .= '<td style="padding: 12px; vertical-align: top;"><a href="' . esc_url( $pattern_data['example'] ) . '" target="_blank" style="text-decoration: none;">' . esc_html( $pattern_data['example'] ) . '</a><br><small style="color: #666;">' . $status . '</small></td>';
+				$output .= '<td style="padding: 12px; vertical-align: top; color: #666;">' . esc_html( $pattern_data['description'] ) . '</td>';
 				$output .= '</tr>';
 			}
 
 			$output .= '</tbody></table>';
+			
+			$output .= '<div style="background: #f0f8ff; padding: 15px; border-left: 4px solid #0073aa; margin-top: 20px;">';
+			$output .= '<h5 style="margin-top: 0;">' . __( 'Pattern Variables (Live Examples):', 'brag-book-gallery' ) . '</h5>';
+			$output .= '<ul style="margin-bottom: 0;">';
+			$output .= '<li><code>{site_url}</code> - ' . __( 'Your site\'s base URL', 'brag-book-gallery' ) . ' (<code>' . esc_html( $site_url ) . '</code>)</li>';
+			$output .= '<li><code>{gallery_slug}</code> - ' . __( 'Your gallery page slug', 'brag-book-gallery' ) . ' (<code>' . esc_html( $first_slug ) . '</code>)</li>';
+			$output .= '<li><code>{procedure-name}</code> - ' . __( 'Real procedure from your API', 'brag-book-gallery' ) . ' (<code>' . esc_html( $api_data['procedure_slug'] ) . '</code>)</li>';
+			$output .= '<li><code>{case-identifier}</code> - ' . __( 'Real case from your API', 'brag-book-gallery' ) . ' (<code>' . esc_html( $api_data['case_identifier'] ) . '</code>)</li>';
+			$output .= '</ul>';
+			$output .= '<p style="margin: 10px 0 0 0; font-style: italic; color: #666;">' . __( 'Examples above use real data from your configured API token and website property ID.', 'brag-book-gallery' ) . '</p>';
+			$output .= '</div>';
+			
 			$output .= '</div>';
 
 			return $output;
@@ -1509,11 +1520,361 @@ final class Rewrite_Flush {
 	 * @return array<string> Gallery slugs.
 	 */
 	private function get_gallery_slugs(): array {
-		$slugs = get_option( 'brag_book_gallery_gallery_page_slug', [] );
-		if ( ! is_array( $slugs ) ) {
-			$slugs = [ $slugs ];
+		$slugs = [];
+
+		// 1. Use the same method as rewrite rules handler - primary source
+		if ( class_exists( '\BRAGBookGallery\Includes\Core\Slug_Helper' ) ) {
+			$gallery_page_slugs = \BRAGBookGallery\Includes\Core\Slug_Helper::get_all_gallery_page_slugs();
+			if ( is_array( $gallery_page_slugs ) ) {
+				$slugs = array_merge( $slugs, $gallery_page_slugs );
+			}
 		}
-		return array_filter( $slugs );
+
+		// 2. Auto-detect pages with gallery shortcode (same as rewrite rules handler)
+		if ( class_exists( '\BRAGBookGallery\Includes\Extend\Rewrite_Rules_Handler' ) ) {
+			// Use reflection to access private method if needed, or duplicate the logic
+			$pages = $this->find_pages_with_shortcode();
+			foreach ( $pages as $page ) {
+				if ( ! empty( $page->post_name ) ) {
+					$slugs[] = $page->post_name;
+				}
+			}
+		}
+
+		// 3. Check legacy options as fallback
+		$gallery_option_slugs = get_option( 'brag_book_gallery_gallery_page_slug', [] );
+		if ( ! is_array( $gallery_option_slugs ) ) {
+			$gallery_option_slugs = [ $gallery_option_slugs ];
+		}
+		$slugs = array_merge( $slugs, $gallery_option_slugs );
+
+		// 4. Check stored pages option
+		$stored_pages = get_option( 'brag_book_gallery_stored_pages', [] );
+		if ( is_array( $stored_pages ) ) {
+			foreach ( $stored_pages as $page_path ) {
+				$page_slug = basename( trim( $page_path, '/' ) );
+				if ( ! empty( $page_slug ) ) {
+					$slugs[] = $page_slug;
+				}
+			}
+		}
+
+		// Remove duplicates and empty values
+		$slugs = array_unique( array_filter( $slugs ) );
+		
+		return $slugs;
+	}
+
+	/**
+	 * Get real API data for test URL examples
+	 *
+	 * @since 3.0.0
+	 * @return array Array with real procedure and case data for URL examples.
+	 */
+	private function get_real_api_data(): array {
+		// Default fallback values
+		$defaults = [
+			'procedure_slug' => 'tummy-tuck',
+			'procedure_name' => 'Tummy Tuck',
+			'case_identifier' => '12345',
+			'case_title' => 'Sample Case',
+		];
+
+		try {
+			// Get API configuration
+			$api_tokens = get_option( 'brag_book_gallery_api_token', [] );
+			$website_property_ids = get_option( 'brag_book_gallery_website_property_id', [] );
+
+			if ( empty( $api_tokens[0] ) || empty( $website_property_ids[0] ) ) {
+				return $defaults;
+			}
+
+			// Try to get sidebar data which contains procedure information
+			if ( class_exists( '\BRAGBookGallery\Includes\Extend\Data_Fetcher' ) ) {
+				$sidebar_data = \BRAGBookGallery\Includes\Extend\Data_Fetcher::get_sidebar_data( $api_tokens[0] );
+				
+				if ( ! empty( $sidebar_data ) && isset( $sidebar_data['data'] ) && is_array( $sidebar_data['data'] ) ) {
+					// Extract first procedure from any category for example
+					foreach ( $sidebar_data['data'] as $category ) {
+						if ( isset( $category['procedures'] ) && is_array( $category['procedures'] ) && ! empty( $category['procedures'] ) ) {
+							$first_procedure = reset( $category['procedures'] );
+							if ( ! empty( $first_procedure['slug'] ) ) {
+								$defaults['procedure_slug'] = $first_procedure['slug'];
+								$defaults['procedure_name'] = $first_procedure['name'] ?? $first_procedure['slug'];
+								break; // Found a procedure, stop looking
+							}
+						}
+					}
+				}
+			}
+
+			// Try to get case data for a real case example
+			if ( class_exists( '\BRAGBookGallery\Includes\Extend\Data_Fetcher' ) ) {
+				$cases_data = \BRAGBookGallery\Includes\Extend\Data_Fetcher::get_cases_from_api( $api_tokens[0], (string) intval( $website_property_ids[0] ), [], 1, 1 );
+				
+				if ( ! empty( $cases_data ) && isset( $cases_data['data'] ) && is_array( $cases_data['data'] ) && ! empty( $cases_data['data'] ) ) {
+					$first_case = reset( $cases_data['data'] );
+					
+					// Use case ID as identifier
+					if ( ! empty( $first_case['id'] ) ) {
+						$defaults['case_identifier'] = $first_case['id'];
+					}
+					
+					// Try to get a better case title
+					if ( ! empty( $first_case['caseDetails'] ) && is_array( $first_case['caseDetails'] ) ) {
+						$first_detail = reset( $first_case['caseDetails'] );
+						if ( ! empty( $first_detail['seoHeadline'] ) ) {
+							$defaults['case_title'] = $first_detail['seoHeadline'];
+						} elseif ( ! empty( $first_detail['seoPageTitle'] ) ) {
+							$defaults['case_title'] = $first_detail['seoPageTitle'];
+						}
+					}
+					
+					// Use seoSuffixUrl if available for more SEO-friendly URLs
+					if ( ! empty( $first_case['seoSuffixUrl'] ) ) {
+						$defaults['case_identifier'] = $first_case['seoSuffixUrl'];
+					} elseif ( ! empty( $first_case['caseDetails'] ) && is_array( $first_case['caseDetails'] ) ) {
+						$first_detail = reset( $first_case['caseDetails'] );
+						if ( ! empty( $first_detail['seoSuffixUrl'] ) ) {
+							$defaults['case_identifier'] = $first_detail['seoSuffixUrl'];
+						}
+					}
+				}
+			}
+
+		} catch ( Exception $e ) {
+			// If anything fails, just return defaults
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'BRAGBook Gallery Test URLs: Failed to get real API data - ' . $e->getMessage() );
+			}
+		}
+
+		return $defaults;
+	}
+
+	/**
+	 * Generate comprehensive URL patterns with all procedures and cases from API
+	 *
+	 * @since 3.0.0
+	 * @param string $site_url The site URL.
+	 * @param string $gallery_slug The gallery slug.
+	 * @return array Comprehensive array of URL patterns with all procedures and cases.
+	 */
+	private function generate_comprehensive_url_patterns( string $site_url, string $gallery_slug ): array {
+		$url_patterns = [];
+
+		try {
+			// Get API configuration
+			$api_tokens = get_option( 'brag_book_gallery_api_token', [] );
+			$website_property_ids = get_option( 'brag_book_gallery_website_property_id', [] );
+
+			if ( empty( $api_tokens[0] ) || empty( $website_property_ids[0] ) ) {
+				// Fallback to basic patterns if no API config
+				return $this->get_basic_url_patterns( $site_url, $gallery_slug );
+			}
+
+			// Add gallery home
+			$url_patterns['Gallery Home'] = [
+				'pattern' => '{site_url}/{gallery_slug}/',
+				'example' => $site_url . '/' . $gallery_slug . '/',
+				'description' => __( 'Main gallery page showing all cases with filters', 'brag-book-gallery' )
+			];
+
+			// Get sidebar data for all procedures
+			if ( class_exists( '\BRAGBookGallery\Includes\Extend\Data_Fetcher' ) ) {
+				$sidebar_data = \BRAGBookGallery\Includes\Extend\Data_Fetcher::get_sidebar_data( $api_tokens[0] );
+				
+				// Debug sidebar data structure
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+					error_log( 'Debug URL Patterns - Sidebar data structure: ' . print_r( $sidebar_data, true ) );
+				}
+				
+				if ( ! empty( $sidebar_data ) && isset( $sidebar_data['data'] ) && is_array( $sidebar_data['data'] ) ) {
+					$procedure_count = 0;
+					
+					// Add all procedure filter URLs
+					foreach ( $sidebar_data['data'] as $category_key => $category ) {
+						if ( isset( $category['procedures'] ) && is_array( $category['procedures'] ) ) {
+							foreach ( $category['procedures'] as $procedure ) {
+								if ( ! empty( $procedure['slug'] ) ) {
+									$procedure_count++;
+									$url_patterns['Procedure: ' . ( $procedure['name'] ?? $procedure['slug'] )] = [
+										'pattern' => '{site_url}/{gallery_slug}/{procedure-slug}/',
+										'example' => $site_url . '/' . $gallery_slug . '/' . $procedure['slug'] . '/',
+										'description' => sprintf( 
+											__( 'Gallery filtered by %s procedure (%d cases)', 'brag-book-gallery' ), 
+											$procedure['name'] ?? $procedure['slug'],
+											$procedure['caseCount'] ?? 0
+										)
+									];
+								}
+							}
+						}
+					}
+					
+					// Debug procedure count
+					if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+						error_log( 'Debug URL Patterns - Found ' . $procedure_count . ' procedures' );
+					}
+				} else {
+					// Debug empty sidebar data
+					if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+						error_log( 'Debug URL Patterns - No sidebar data or invalid structure' );
+					}
+				}
+
+				// Get some case examples (first 20 cases to avoid overwhelming the display)
+				$cases_data = \BRAGBookGallery\Includes\Extend\Data_Fetcher::get_cases_from_api( 
+					$api_tokens[0], 
+					(string) intval( $website_property_ids[0] ), 
+					[], 
+					20, 
+					1 
+				);
+				
+				// Debug cases data structure
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+					error_log( 'Debug URL Patterns - Cases data structure: ' . print_r( $cases_data, true ) );
+				}
+				
+				if ( ! empty( $cases_data ) && isset( $cases_data['data'] ) && is_array( $cases_data['data'] ) ) {
+					$case_count = 0;
+					
+					foreach ( $cases_data['data'] as $case ) {
+						if ( ! empty( $case['id'] ) && ! empty( $case['procedureNames'] ) ) {
+							$case_count++;
+							
+							// Get case identifier (prefer seoSuffixUrl)
+							$case_identifier = $case['seoSuffixUrl'] ?? $case['id'];
+							
+							// Get procedure slug from case data
+							$procedure_slug = 'unknown';
+							if ( ! empty( $case['caseDetails'] ) && is_array( $case['caseDetails'] ) ) {
+								$first_detail = reset( $case['caseDetails'] );
+								if ( ! empty( $first_detail['procedureSlug'] ) ) {
+									$procedure_slug = $first_detail['procedureSlug'];
+								}
+							}
+							
+							// Create case title
+							$case_title = sprintf( '%s Case %s', $case['procedureNames'][0] ?? 'Unknown', $case['id'] );
+							if ( ! empty( $case['caseDetails'] ) && is_array( $case['caseDetails'] ) ) {
+								$first_detail = reset( $case['caseDetails'] );
+								if ( ! empty( $first_detail['seoHeadline'] ) ) {
+									$case_title = $first_detail['seoHeadline'];
+								}
+							}
+							
+							$url_patterns['Case: ' . $case_title] = [
+								'pattern' => '{site_url}/{gallery_slug}/{procedure-slug}/{case-identifier}/',
+								'example' => $site_url . '/' . $gallery_slug . '/' . $procedure_slug . '/' . $case_identifier . '/',
+								'description' => sprintf( 
+									__( 'Individual case detail view for Case ID %s', 'brag-book-gallery' ), 
+									$case['id'] 
+								)
+							];
+							
+							// Limit to first 20 cases to avoid overwhelming the display
+							if ( $case_count >= 20 ) {
+								$url_patterns['... and more cases'] = [
+									'pattern' => '{site_url}/{gallery_slug}/{procedure-slug}/{case-identifier}/',
+									'example' => '... additional case URLs available ...',
+									'description' => sprintf( 
+										__( 'Total cases available: %d (showing first 20)', 'brag-book-gallery' ),
+										$cases_data['totalCount'] ?? 'unknown'
+									)
+								];
+								break;
+							}
+						}
+					}
+				}
+			}
+
+			// Add favorites page
+			$url_patterns['Favorites Page'] = [
+				'pattern' => '{site_url}/{gallery_slug}/myfavorites/',
+				'example' => $site_url . '/' . $gallery_slug . '/myfavorites/',
+				'description' => __( 'User favorites collection (if favorites are enabled)', 'brag-book-gallery' )
+			];
+
+		} catch ( Exception $e ) {
+			// If anything fails, return basic patterns
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'BRAGBook Gallery Test URLs: Failed to generate comprehensive patterns - ' . $e->getMessage() );
+			}
+			return $this->get_basic_url_patterns( $site_url, $gallery_slug );
+		}
+
+		// Debug final URL patterns count
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( 'Debug URL Patterns - Generated ' . count( $url_patterns ) . ' total URL patterns' );
+			error_log( 'Debug URL Patterns - Pattern keys: ' . implode( ', ', array_keys( $url_patterns ) ) );
+		}
+
+		return $url_patterns;
+	}
+
+	/**
+	 * Get basic URL patterns as fallback
+	 *
+	 * @since 3.0.0
+	 * @param string $site_url The site URL.
+	 * @param string $gallery_slug The gallery slug.
+	 * @return array Basic URL patterns.
+	 */
+	private function get_basic_url_patterns( string $site_url, string $gallery_slug ): array {
+		$api_data = $this->get_real_api_data();
+		
+		return [
+			'Gallery Home' => [
+				'pattern' => '{site_url}/{gallery_slug}/',
+				'example' => $site_url . '/' . $gallery_slug . '/',
+				'description' => __( 'Main gallery page showing all cases with filters', 'brag-book-gallery' )
+			],
+			'Procedure Filter (Example)' => [
+				'pattern' => '{site_url}/{gallery_slug}/{procedure-name}/',
+				'example' => $site_url . '/' . $gallery_slug . '/' . $api_data['procedure_slug'] . '/',
+				'description' => __( 'Gallery filtered by specific procedure', 'brag-book-gallery' ) . ( $api_data['procedure_name'] ? ' (' . $api_data['procedure_name'] . ')' : '' )
+			],
+			'Case Detail (Example)' => [
+				'pattern' => '{site_url}/{gallery_slug}/{procedure-name}/{case-identifier}/',
+				'example' => $site_url . '/' . $gallery_slug . '/' . $api_data['procedure_slug'] . '/' . $api_data['case_identifier'] . '/',
+				'description' => __( 'Individual case detail view with before/after images', 'brag-book-gallery' ) . ( $api_data['case_title'] ? ' (' . $api_data['case_title'] . ')' : '' )
+			],
+			'Favorites Page' => [
+				'pattern' => '{site_url}/{gallery_slug}/myfavorites/',
+				'example' => $site_url . '/' . $gallery_slug . '/myfavorites/',
+				'description' => __( 'User favorites collection (if favorites are enabled)', 'brag-book-gallery' )
+			],
+		];
+	}
+
+	/**
+	 * Find pages with gallery shortcode
+	 *
+	 * @since 3.0.0
+	 * @return array Array of page objects containing the gallery shortcode.
+	 */
+	private function find_pages_with_shortcode(): array {
+		global $wpdb;
+
+		// Execute database query to find pages with gallery shortcode
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Required for LIKE query with shortcode detection
+		$pages = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT ID, post_name, post_title, post_content
+				FROM {$wpdb->posts}
+				WHERE post_type = %s
+				AND post_status = %s
+				AND post_content LIKE %s",
+				'page',
+				'publish',
+				'%[brag_book_gallery%'
+			)
+		);
+
+		return is_array( $pages ) ? $pages : [];
 	}
 
 	/**
@@ -1527,10 +1888,13 @@ final class Rewrite_Flush {
 		$gallery_slugs = $this->get_gallery_slugs();
 		$first_slug = ! empty( $gallery_slugs ) ? reset( $gallery_slugs ) : 'gallery';
 
+		// Get real API data for examples
+		$api_data = $this->get_real_api_data();
+
 		$urls = [
 			__( 'Gallery Home', 'brag-book-gallery' ) => home_url( '/' . $first_slug . '/' ),
-			__( 'Procedure Filter', 'brag-book-gallery' ) => home_url( '/' . $first_slug . '/breast-augmentation/' ),
-			__( 'Case Details', 'brag-book-gallery' ) => home_url( '/' . $first_slug . '/breast-augmentation/12345/' ),
+			__( 'Procedure Filter', 'brag-book-gallery' ) => home_url( '/' . $first_slug . '/' . $api_data['procedure_slug'] . '/' ),
+			__( 'Case Details', 'brag-book-gallery' ) => home_url( '/' . $first_slug . '/' . $api_data['procedure_slug'] . '/' . $api_data['case_identifier'] . '/' ),
 			__( 'Favorites', 'brag-book-gallery' ) => home_url( '/' . $first_slug . '/myfavorites/' ),
 		];
 
@@ -1583,7 +1947,7 @@ final class Rewrite_Flush {
 		];
 
 		foreach ( $transients as $transient ) {
-			delete_transient( $transient );
+			brag_book_delete_cache( $transient );
 		}
 	}
 

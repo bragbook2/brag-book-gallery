@@ -28,6 +28,7 @@ declare(strict_types=1);
 namespace BRAGBookGallery\Includes\REST;
 
 use BRAGBookGallery\Includes\Core\Setup;
+use BRAGBookGallery\Includes\Extend\Cache_Manager;
 use WP_Error;
 
 // Prevent direct access
@@ -67,7 +68,7 @@ class Endpoints {
 	 * @since 3.0.0
 	 * @var int
 	 */
-	private const API_TIMEOUT = 30;
+	private const API_TIMEOUT = 8;
 
 	/**
 	 * Cache TTL constants for different cache types
@@ -330,30 +331,30 @@ class Endpoints {
 			// Sanitize case ID
 			$case_id = sanitize_text_field( $case_id );
 
-			// Get current mode with validation
-			$mode = get_option( 'brag_book_gallery_mode', 'local' );
-			if ( ! in_array( $mode, [ 'local', 'staging', 'production' ], true ) ) {
-				$this->log_error( 'Invalid mode configured: ' . $mode );
-				return null;
+			// Get API configuration using the same method as AJAX handlers
+			$api_tokens = get_option( 'brag_book_gallery_api_token', [] );
+			$website_property_ids = get_option( 'brag_book_gallery_website_property_id', [] );
+
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'get_case_details: Retrieved API tokens: ' . print_r( $api_tokens, true ) );
+				error_log( 'get_case_details: Retrieved website property IDs: ' . print_r( $website_property_ids, true ) );
 			}
 
-			// Get API configuration with comprehensive validation
-			$api_token_option = get_option( 'brag_book_gallery_api_token', [] );
-			$website_property_id_option = get_option( 'brag_book_gallery_website_property_id', [] );
-
-			if ( ! is_array( $api_token_option ) || ! is_array( $website_property_id_option ) ) {
-				$this->log_error( 'Invalid API configuration format' );
-				return null;
-			}
-
-			$api_token = $api_token_option[ $mode ] ?? '';
-			$website_property_id = $website_property_id_option[ $mode ] ?? '';
-
-			if ( empty( $api_token ) || empty( $website_property_id ) ) {
+			if ( empty( $api_tokens[0] ) || empty( $website_property_ids[0] ) ) {
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-					do_action( 'qm/debug', 'BRAG Book Gallery: Missing API token or website property ID for mode: ' . $mode );
+					error_log( 'BRAGBook Gallery: get_case_details - Missing API configuration' );
+					error_log( 'BRAGBook Gallery: API tokens empty: ' . ( empty( $api_tokens[0] ) ? 'YES' : 'NO' ) );
+					error_log( 'BRAGBook Gallery: Website property IDs empty: ' . ( empty( $website_property_ids[0] ) ? 'YES' : 'NO' ) );
 				}
 				return null;
+			}
+
+			$api_token = $api_tokens[0];
+			$website_property_id = intval( $website_property_ids[0] );
+
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'get_case_details: Using API token (first 10): ' . substr( $api_token, 0, 10 ) );
+				error_log( 'get_case_details: Using website property ID: ' . $website_property_id );
 			}
 
 		// Get the API base URL from settings
@@ -1314,7 +1315,7 @@ class Endpoints {
 		// The carousel endpoint doesn't use the standard make_api_request method
 
 		// Check cache first
-		$cached_response = get_transient( $cache_key );
+		$cached_response = Cache_Manager::get( $cache_key );
 		if ( $cached_response !== false ) {
 			return $cached_response;
 		}
@@ -1346,7 +1347,7 @@ class Endpoints {
 		// Cache successful response with optimized TTL
 		if ( ! empty( $response_body ) ) {
 			$cache_duration = $this->get_cache_duration_for_endpoint( 'carousel' );
-			$this->set_cached_response( $cache_key, $response_body, $cache_duration );
+			Cache_Manager::set( $cache_key, $response_body, $cache_duration );
 		}
 
 		return $response_body;
@@ -1372,28 +1373,10 @@ class Endpoints {
 
 		if ( empty( $type ) ) {
 			// Clear all BRAG book API cache including timeout transients
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-			$result = $wpdb->query(
-				$wpdb->prepare(
-					"DELETE FROM {$wpdb->options}
-					WHERE option_name LIKE %s
-					OR option_name LIKE %s",
-					'_transient_brag_book_gallery_transient_api_%',
-					'_transient_timeout_brag_book_gallery_transient_api_%'
-				)
-			);
+			$result = Cache_Manager::delete_pattern( 'brag_book_gallery_transient_api_*' );
 		} else {
 			// Clear specific type including timeout transients
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-			$result = $wpdb->query(
-				$wpdb->prepare(
-					"DELETE FROM {$wpdb->options}
-					WHERE option_name LIKE %s
-					OR option_name LIKE %s",
-					'_transient_brag_book_gallery_transient_api_' . $type . '_%',
-					'_transient_timeout_brag_book_gallery_transient_api_' . $type . '_%'
-				)
-			);
+			$result = Cache_Manager::delete_pattern( 'brag_book_gallery_transient_api_' . $type . '_*' );
 		}
 
 		// Clear object cache as well
@@ -1699,7 +1682,7 @@ class Endpoints {
 		}
 
 		// Check WordPress transient cache
-		$cached_data = get_transient( $cache_key );
+		$cached_data = Cache_Manager::get( $cache_key );
 		if ( $cached_data !== false ) {
 			// Store in memory cache for subsequent requests
 			$this->memory_cache[ $cache_key ] = $cached_data;
@@ -1727,7 +1710,7 @@ class Endpoints {
 		$this->memory_cache[ $cache_key ] = $data;
 
 		// Store in WordPress transient cache
-		set_transient( $cache_key, $data, $duration );
+		Cache_Manager::set( $cache_key, $data, $duration );
 	}
 
 	/**
@@ -1849,11 +1832,11 @@ class Endpoints {
 	 */
 	private function check_rate_limit( string $identifier, int $limit = 100, int $window = 3600 ): bool {
 		$cache_key = 'brag_book_gallery_transient_rate_limit_' . $identifier;
-		$current_requests = get_transient( $cache_key );
+		$current_requests = Cache_Manager::get( $cache_key );
 
 		if ( $current_requests === false ) {
 			// First request in window
-			set_transient( $cache_key, 1, $window );
+			Cache_Manager::set( $cache_key, 1, $window );
 			return true;
 		}
 
@@ -1864,7 +1847,7 @@ class Endpoints {
 		}
 
 		// Increment counter
-		set_transient( $cache_key, $current_requests + 1, $window );
+		Cache_Manager::set( $cache_key, $current_requests + 1, $window );
 		return true;
 	}
 
