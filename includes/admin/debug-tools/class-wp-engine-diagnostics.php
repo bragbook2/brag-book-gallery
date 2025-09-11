@@ -629,6 +629,17 @@ class WP_Engine_Diagnostics {
 			case 'force_rewrite_registration':
 				return Rewrite_Rules_Handler::force_rewrite_rules_registration();
 
+			case 'manual_rewrite_registration':
+				$slug = sanitize_text_field( $data['gallery_slug'] ?? '' );
+				if ( empty( $slug ) ) {
+					return [
+						'success' => false,
+						'message' => 'Gallery slug is required',
+						'actions' => []
+					];
+				}
+				return Rewrite_Rules_Handler::manual_rewrite_rules_registration( $slug );
+
 			case 'run_diagnostics':
 			default:
 				return self::run_diagnostics();
