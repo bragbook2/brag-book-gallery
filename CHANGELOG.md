@@ -4,7 +4,46 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.2.4] - 2025-09-08 (Current Release)
+## [3.2.5] - 2025-09-11 (Current Release)
+
+### Added
+- **WP Engine Diagnostics Tool**: Comprehensive diagnostic system specifically designed for WP Engine hosting environments
+  - Environment detection and compatibility checking for WP Engine servers
+  - Rewrite rules testing and validation with URL pattern matching
+  - Query variable registration verification and debugging
+  - Cache status analysis including object cache and WP Engine-specific caching
+  - Automated recommendations for optimization and troubleshooting
+  - AJAX-powered interface for real-time diagnostics
+- **Enhanced WP Engine Cache Support**: Improved cache helper functions with proper WP Engine object cache integration
+  - Automatic WP Engine environment detection via multiple methods
+  - Comprehensive cache clearing functions for all WP Engine cache layers
+  - Intelligent fallback to WordPress transients when object cache unavailable
+
+### Fixed
+- **Critical 500 Error Resolution**: Fixed circular dependency in SEO On_Page class causing crashes on WP Engine
+  - Resolved infinite loop in URL parsing error logging that caused server crashes
+  - Enhanced URL parsing with WP Engine-specific header fallbacks (HTTP_X_ORIGINAL_URL, HTTP_X_REWRITE_URL)
+  - Added multiple layers of error handling to prevent system failures
+  - Improved graceful degradation when URL parsing encounters issues
+- **Missing Class Import**: Fixed "Cache_Manager not found" error in SEO_Manager class
+  - Added missing namespace import for BRAGBookGallery\Includes\Extend\Cache_Manager
+  - Resolved all Cache_Manager method calls throughout SEO functionality
+- **Custom CSS Duplication**: Fixed custom CSS being output multiple times per page
+  - Eliminated duplicate CSS injection from carousel shortcode handler
+  - Centralized all custom CSS injection through Asset_Manager for consistency
+  - Improved deduplication logic to prevent circular CSS output
+
+### Enhanced
+- **WP Engine Compatibility**: Comprehensive improvements for WP Engine hosting environments
+  - Enhanced rewrite rules handling with automatic WP Engine cache clearing
+  - Improved error resilience for managed hosting constraints
+  - Multiple server environment detection methods for better compatibility
+- **Error Handling**: Robust error handling and logging improvements
+  - Prevented circular dependencies in error logging systems
+  - Enhanced graceful degradation for component failures
+  - Improved debugging capabilities for production environments
+
+## [3.2.4] - 2025-09-08
 
 ### Added
 - **New Settings Features**:

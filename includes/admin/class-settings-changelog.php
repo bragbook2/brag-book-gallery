@@ -91,6 +91,58 @@ class Settings_Changelog extends Settings_Base {
 				</div>
 			</div>
 
+			<!-- Version 3.2.5 -->
+			<div class="brag-book-gallery-section">
+				<div class="brag-book-gallery-changelog-version">
+					<h3>
+						<span class="version-badge version-patch">v3.2.5</span>
+						<?php esc_html_e( 'September 11, 2025', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Current Release', 'brag-book-gallery' ); ?>
+					</h3>
+					<div class="brag-book-gallery-card">
+						<h4><?php esc_html_e( '🎉 New Features', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'WP Engine Diagnostics Tool: Comprehensive diagnostic system specifically designed for WP Engine hosting environments', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Environment detection and compatibility checking for WP Engine servers', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Rewrite rules testing and validation with URL pattern matching', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Query variable registration verification and debugging', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Cache status analysis including object cache and WP Engine-specific caching', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Automated recommendations for optimization and troubleshooting', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'AJAX-powered interface for real-time diagnostics', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Enhanced WP Engine Cache Support: Improved cache helper functions with proper WP Engine object cache integration', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Automatic WP Engine environment detection via multiple methods', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Comprehensive cache clearing functions for all WP Engine cache layers', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Intelligent fallback to WordPress transients when object cache unavailable', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '🐛 Critical Bug Fixes', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Critical 500 Error Resolution: Fixed circular dependency in SEO On_Page class causing crashes on WP Engine', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Resolved infinite loop in URL parsing error logging that caused server crashes', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Enhanced URL parsing with WP Engine-specific header fallbacks (HTTP_X_ORIGINAL_URL, HTTP_X_REWRITE_URL)', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Added multiple layers of error handling to prevent system failures', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Improved graceful degradation when URL parsing encounters issues', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Missing Class Import: Fixed "Cache_Manager not found" error in SEO_Manager class', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Added missing namespace import for BRAGBookGallery\\Includes\\Extend\\Cache_Manager', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Resolved all Cache_Manager method calls throughout SEO functionality', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Custom CSS Duplication: Fixed custom CSS being output multiple times per page', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Eliminated duplicate CSS injection from carousel shortcode handler', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Centralized all custom CSS injection through Asset_Manager for consistency', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Improved deduplication logic to prevent circular CSS output', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '⚡ Enhanced WP Engine Compatibility', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Comprehensive improvements for WP Engine hosting environments', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Enhanced rewrite rules handling with automatic WP Engine cache clearing', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Improved error resilience for managed hosting constraints', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Multiple server environment detection methods for better compatibility', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Robust error handling and logging improvements', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Prevented circular dependencies in error logging systems', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Enhanced graceful degradation for component failures', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Improved debugging capabilities for production environments', 'brag-book-gallery' ); ?></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
 			<!-- Version 3.2.4 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">

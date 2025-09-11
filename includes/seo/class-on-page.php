@@ -219,30 +219,67 @@ class On_Page {
 	 */
 	private function parse_current_url(): array {
 		try {
-			// Safely get and validate REQUEST_URI
-			$request_uri = $_SERVER['REQUEST_URI'] ?? '';
+			// Safely get and validate REQUEST_URI with fallback for WP Engine
+			$request_uri = '';
+			if ( isset( $_SERVER['REQUEST_URI'] ) ) {
+				$request_uri = $_SERVER['REQUEST_URI'];
+			} elseif ( isset( $_SERVER['HTTP_X_ORIGINAL_URL'] ) ) {
+				// WP Engine sometimes uses this header
+				$request_uri = $_SERVER['HTTP_X_ORIGINAL_URL'];
+			} elseif ( isset( $_SERVER['HTTP_X_REWRITE_URL'] ) ) {
+				// Another fallback for some hosting environments
+				$request_uri = $_SERVER['HTTP_X_REWRITE_URL'];
+			}
 
-			// Security validation for malicious patterns
-			if ( ! $this->is_safe_request_uri( $request_uri ) ) {
-				$this->log_validation_error( 'Potentially malicious REQUEST_URI detected' );
+			// If still empty, try to construct from other variables
+			if ( empty( $request_uri ) && isset( $_SERVER['SCRIPT_NAME'] ) ) {
+				$request_uri = $_SERVER['SCRIPT_NAME'];
+				if ( isset( $_SERVER['QUERY_STRING'] ) && ! empty( $_SERVER['QUERY_STRING'] ) ) {
+					$request_uri .= '?' . $_SERVER['QUERY_STRING'];
+				}
+			}
+
+			// Final fallback - return empty array if we can't determine the URL
+			if ( empty( $request_uri ) ) {
+				return [];
+			}
+
+			// Security validation for malicious patterns - use try/catch to prevent errors
+			try {
+				if ( ! $this->is_safe_request_uri( $request_uri ) ) {
+					$this->log_validation_error( 'Potentially malicious REQUEST_URI detected' );
+					return [];
+				}
+			} catch ( \Exception $e ) {
+				// If security validation fails, return empty array for safety
 				return [];
 			}
 
 			// Remove query parameters and sanitize
 			$url_without_query = strtok( $request_uri, '?' );
-			$clean_url         = trim( $url_without_query, '/' );
+			if ( $url_without_query === false ) {
+				$url_without_query = $request_uri;
+			}
+			
+			$clean_url = trim( $url_without_query, '/' );
 
 			// Additional validation for URL structure
 			if ( empty( $clean_url ) ) {
 				return [];
 			}
 
-			// Split and validate each URL segment
+			// Split and validate each URL segment with error handling
 			$url_parts = explode( '/', $clean_url );
-			return array_map( [ $this, 'sanitize_url_segment' ], $url_parts );
+			
+			try {
+				return array_map( [ $this, 'sanitize_url_segment' ], $url_parts );
+			} catch ( \Exception $e ) {
+				// If URL segment sanitization fails, return basic parts
+				return array_map( 'sanitize_title', $url_parts );
+			}
 
 		} catch ( \Exception $e ) {
-			$this->log_validation_error( 'Error parsing URL: ' . $e->getMessage() );
+			// Don't log here to prevent circular dependency - just return empty array
 			return [];
 		}
 	}
@@ -268,44 +305,75 @@ class On_Page {
 	 * } Complete configuration array with typed structure
 	 */
 	private function get_seo_configuration(): array {
-		// Use helper to get the first slug
-		$page_slug = \BRAGBookGallery\Includes\Core\Slug_Helper::get_first_gallery_page_slug( '' );
+		// Use helper to get the first slug with error handling
+		$page_slug = '';
+		try {
+			if ( class_exists( '\BRAGBookGallery\Includes\Core\Slug_Helper' ) ) {
+				$page_slug = \BRAGBookGallery\Includes\Core\Slug_Helper::get_first_gallery_page_slug( '' );
+			}
+		} catch ( \Exception $e ) {
+			// Fallback to direct option access if Slug_Helper fails
+			$page_slug_option = get_option( 'brag_book_gallery_page_slug', 'gallery' );
+			if ( is_array( $page_slug_option ) && ! empty( $page_slug_option ) ) {
+				$page_slug = sanitize_title( (string) reset( $page_slug_option ) );
+			} elseif ( is_string( $page_slug_option ) && ! empty( $page_slug_option ) ) {
+				$page_slug = sanitize_title( $page_slug_option );
+			} else {
+				$page_slug = 'gallery';
+			}
+		}
 
-		return [
-			'brag_book_gallery_page_slug'    => $page_slug,
-			'brag_book_gallery_page_id' => (int) get_option(
-				'brag_book_gallery_page_id',
-				0
-			),
-			'api_tokens'              => (array) get_option(
-				'brag_book_gallery_api_token',
-				array()
-			),
-			'website_property_ids'    => (array) get_option(
-				'brag_book_gallery_website_property_id',
-				array()
-			),
-			'gallery_slugs'           => (array) get_option(
-				'brag_book_gallery_gallery_page_slug',
-				array()
-			),
-			'seo_titles'              => (array) get_option(
-				'brag_book_gallery_seo_page_title',
-				array()
-			),
-			'seo_descriptions'        => (array) get_option(
-				'brag_book_gallery_seo_page_description',
-				array()
-			),
-			'brag_book_gallery_seo_title'       => (string) get_option(
-				'brag_book_gallery_seo_page_title',
-				''
-			),
-			'brag_book_gallery_seo_description' => (string) get_option(
-				'brag_book_gallery_seo_page_description',
-				''
-			),
-		];
+		// Safely get all options with fallbacks
+		try {
+			return [
+				'brag_book_gallery_page_slug'    => $page_slug,
+				'brag_book_gallery_page_id' => (int) get_option(
+					'brag_book_gallery_page_id',
+					0
+				),
+				'api_tokens'              => (array) get_option(
+					'brag_book_gallery_api_token',
+					array()
+				),
+				'website_property_ids'    => (array) get_option(
+					'brag_book_gallery_website_property_id',
+					array()
+				),
+				'gallery_slugs'           => (array) get_option(
+					'brag_book_gallery_gallery_page_slug',
+					array()
+				),
+				'seo_titles'              => (array) get_option(
+					'brag_book_gallery_seo_page_title',
+					array()
+				),
+				'seo_descriptions'        => (array) get_option(
+					'brag_book_gallery_seo_page_description',
+					array()
+				),
+				'brag_book_gallery_seo_title'       => (string) get_option(
+					'brag_book_gallery_seo_page_title',
+					''
+				),
+				'brag_book_gallery_seo_description' => (string) get_option(
+					'brag_book_gallery_seo_page_description',
+					''
+				),
+			];
+		} catch ( \Exception $e ) {
+			// Return minimal configuration if options retrieval fails
+			return [
+				'brag_book_gallery_page_slug'    => 'gallery',
+				'brag_book_gallery_page_id' => 0,
+				'api_tokens'              => array(),
+				'website_property_ids'    => array(),
+				'gallery_slugs'           => array(),
+				'seo_titles'              => array(),
+				'seo_descriptions'        => array(),
+				'brag_book_gallery_seo_title'       => '',
+				'brag_book_gallery_seo_description' => '',
+			];
+		}
 	}
 
 	/**
@@ -1149,11 +1217,20 @@ class On_Page {
 	 */
 	private function log_validation_error( string $message, array $context = [] ): void {
 		$timestamp = current_time( 'mysql' );
+		
+		// Safely get URL without triggering circular dependency
+		$safe_url = '';
+		try {
+			$safe_url = $_SERVER['REQUEST_URI'] ?? '';
+		} catch ( Exception $e ) {
+			$safe_url = 'URL_PARSE_ERROR';
+		}
+		
 		$error_entry = [
 			'timestamp' => $timestamp,
 			'message'   => $message,
 			'context'   => $context,
-			'url'       => $this->get_current_url(),
+			'url'       => $safe_url,
 		];
 
 		// Store in memory for debugging

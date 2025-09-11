@@ -627,7 +627,10 @@ class Rewrite_Rules_Handler {
 				// Clean up the flag option
 				delete_option( 'brag_book_gallery_flush_rewrite_rules' );
 
-				// Caching disabled
+				// Clear WP Engine cache to ensure rewrite rules take effect
+				if ( function_exists( 'brag_book_clear_all_cache' ) ) {
+					brag_book_clear_all_cache();
+				}
 
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
 					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
@@ -821,7 +824,10 @@ class Rewrite_Rules_Handler {
 			// Clear related transients
 			Cache_Manager::delete( 'show_rewrite_notice' );
 
-			// Caching disabled
+			// Clear WP Engine cache to ensure rewrite rules take effect immediately
+			if ( function_exists( 'brag_book_clear_all_cache' ) ) {
+				brag_book_clear_all_cache();
+			}
 
 			// Log success if debugging is enabled
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
