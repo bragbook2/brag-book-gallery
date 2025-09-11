@@ -610,4 +610,28 @@ class WP_Engine_Diagnostics {
 		<?php
 		return ob_get_clean();
 	}
+
+	/**
+	 * Execute diagnostic actions
+	 *
+	 * @since 3.2.5
+	 * @param string $action Action to perform
+	 * @param array  $data   Action data
+	 * @return array|string Action result
+	 */
+	public function execute( string $action, array $data ): array|string {
+		// Security validation
+		if ( ! current_user_can( 'manage_options' ) ) {
+			throw new \Exception( __( 'Insufficient permissions', 'brag-book-gallery' ) );
+		}
+
+		switch ( $action ) {
+			case 'force_rewrite_registration':
+				return Rewrite_Rules_Handler::force_rewrite_rules_registration();
+
+			case 'run_diagnostics':
+			default:
+				return self::run_diagnostics();
+		}
+	}
 }
