@@ -847,6 +847,9 @@ class FilterSystem {
 			// Set up event listeners for the new filter checkboxes
 			this.setupFilterEventListeners();
 
+			// Scroll to gallery wrapper after loading filtered content
+			this.scrollToGalleryWrapper();
+
 			// Note: Nudity warnings are now handled at render time based on data-nudity attribute
 		}
 	}
@@ -1309,6 +1312,22 @@ class FilterSystem {
 
 		// Reset URL to base
 		window.history.pushState({}, '', window.location.pathname);
+	}
+
+	/**
+	 * Scroll to gallery wrapper for better user experience
+	 * Accounts for websites with hero sections that may hide the gallery
+	 */
+	scrollToGalleryWrapper() {
+		const wrapper = document.querySelector('.brag-book-gallery-wrapper');
+		if (wrapper) {
+			// Use smooth scrolling with some offset for better UX
+			const offsetTop = wrapper.getBoundingClientRect().top + window.pageYOffset - 20;
+			window.scrollTo({
+				top: offsetTop,
+				behavior: 'smooth'
+			});
+		}
 	}
 }
 

@@ -1403,6 +1403,22 @@ function loadMoreCasesViaAjax(button, startPage, procedureIds, procedureName, ha
 }
 
 /**
+ * Scroll to gallery wrapper for better user experience
+ * Accounts for websites with hero sections that may hide the gallery
+ */
+function scrollToGalleryWrapper() {
+	const wrapper = document.querySelector('.brag-book-gallery-wrapper');
+	if (wrapper) {
+		// Use smooth scrolling with some offset for better UX
+		const offsetTop = wrapper.getBoundingClientRect().top + window.pageYOffset - 20;
+		window.scrollTo({
+			top: offsetTop,
+			behavior: 'smooth'
+		});
+	}
+}
+
+/**
  * Process the result from either direct API or AJAX for load more cases
  */
 function processLoadMoreResult(result, button, originalText, startPage) {
@@ -1438,6 +1454,9 @@ function processLoadMoreResult(result, button, originalText, startPage) {
 				// If no cards exist, add to the container
 				container.insertAdjacentHTML('beforeend', data.html);
 			}
+			
+			// Scroll to gallery wrapper after loading items
+			scrollToGalleryWrapper();
 		} else {
 			console.error('No HTML received from server');
 		}
@@ -2126,6 +2145,9 @@ window.loadMoreCasesFromCache = function(button) {
 				} else {
 					container.insertAdjacentHTML('beforeend', result.data.html);
 				}
+
+				// Scroll to gallery wrapper after loading items
+				scrollToGalleryWrapper();
 
 				// Update button for next page
 				const nextPage = parseInt(startPage) + 1;
