@@ -336,6 +336,81 @@ class Rewrite_Rules_Handler {
 	}
 
 	/**
+	 * Manual rewrite rules registration for specific slug
+	 * 
+	 * Bypasses all detection logic and directly registers rules for a given slug.
+	 * Use when automatic detection fails on WP Engine.
+	 *
+	 * @since 3.2.5
+	 * @param string $slug Gallery page slug
+	 * @return array Result with success status and actions performed
+	 */
+	public static function manual_rewrite_rules_registration( string $slug ): array {
+		$actions = [];
+		$success = true;
+
+		try {
+			if ( empty( $slug ) ) {
+				throw new \Exception( 'Gallery slug is required' );
+			}
+
+			// Sanitize slug
+			$slug = sanitize_title( $slug );
+			$actions[] = "Using gallery slug: {$slug}";
+
+			// 1. Clear existing cache
+			wp_cache_delete( 'rewrite_rules', 'options' );
+			$actions[] = 'Cleared rewrite rules cache';
+
+			// 2. Directly add gallery rules for this slug
+			self::add_gallery_rewrite_rules( $slug );
+			$actions[] = "Added gallery rewrite rules for: {$slug}";
+
+			// 3. Force flush
+			flush_rewrite_rules( true );
+			$actions[] = 'Flushed rewrite rules';
+
+			// 4. WP Engine cache clearing
+			if ( function_exists( 'brag_book_wp_engine_rewrite_fix' ) ) {
+				$wp_engine_result = brag_book_wp_engine_rewrite_fix();
+				$actions = array_merge( $actions, $wp_engine_result['actions'] );
+			}
+
+			// 5. Verify the specific rules were added
+			$rewrite_rules = get_option( 'rewrite_rules', [] );
+			$found_patterns = [];
+			
+			foreach ( $rewrite_rules as $pattern => $replacement ) {
+				if ( strpos( $pattern, $slug ) !== false && 
+					 ( strpos( $replacement, 'brag_book_gallery_case=' ) !== false || 
+					   strpos( $replacement, 'filter_procedure=' ) !== false ) ) {
+					$found_patterns[] = $pattern;
+				}
+			}
+
+			if ( ! empty( $found_patterns ) ) {
+				$actions[] = 'Gallery rules verified: ' . count( $found_patterns ) . ' patterns found';
+				$actions[] = 'Sample pattern: ' . reset( $found_patterns );
+			} else {
+				$actions[] = 'WARNING: No gallery rules found for this slug after registration';
+				$success = false;
+			}
+
+		} catch ( \Exception $e ) {
+			$actions[] = 'ERROR: ' . $e->getMessage();
+			$success = false;
+		}
+
+		return [
+			'success' => $success,
+			'message' => $success ? 
+				"Manual rewrite rules registration completed for slug: {$slug}" : 
+				"Manual rewrite rules registration failed for slug: {$slug}",
+			'actions' => $actions
+		];
+	}
+
+	/**
 	 * Register custom rewrite rules for gallery functionality
 	 *
 	 * Comprehensive rewrite rule registration implementing enterprise-grade
@@ -363,14 +438,29 @@ class Rewrite_Rules_Handler {
 		// Track processed slugs to prevent duplicate rules
 		$processed_slugs = [];
 
+		// Debug logging for WP Engine troubleshooting
+		$debug_enabled = defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG;
+		
+		if ( $debug_enabled ) {
+			error_log( 'BRAGBook Gallery: Starting rewrite rules registration' );
+		}
+
 		// Auto-detect pages with gallery shortcode for dynamic discovery
 		$pages_with_shortcode = self::find_pages_with_gallery_shortcode();
+		
+		if ( $debug_enabled ) {
+			error_log( 'BRAGBook Gallery: Found ' . count( $pages_with_shortcode ) . ' pages with shortcode' );
+		}
 
 		// Add rewrite rules for each detected page.
 		foreach ( $pages_with_shortcode as $page ) {
 			if ( ! empty( $page->post_name ) && ! in_array( $page->post_name, $processed_slugs, true ) ) {
 				self::add_gallery_rewrite_rules( $page->post_name );
 				$processed_slugs[] = $page->post_name;
+				
+				if ( $debug_enabled ) {
+					error_log( 'BRAGBook Gallery: Added rules for shortcode page: ' . $page->post_name );
+				}
 			}
 		}
 
@@ -381,14 +471,57 @@ class Rewrite_Rules_Handler {
 			// Try Slug_Helper first if class is available
 			if ( class_exists( '\BRAGBookGallery\Includes\Core\Slug_Helper' ) ) {
 				$gallery_page_slugs = \BRAGBookGallery\Includes\Core\Slug_Helper::get_all_gallery_page_slugs();
+				
+				if ( $debug_enabled ) {
+					error_log( 'BRAGBook Gallery: Slug_Helper returned: ' . print_r( $gallery_page_slugs, true ) );
+				}
 			}
 		} catch ( \Exception $e ) {
+			if ( $debug_enabled ) {
+				error_log( 'BRAGBook Gallery: Slug_Helper failed: ' . $e->getMessage() );
+			}
+			
 			// If Slug_Helper fails, get directly from option
 			$page_slug_option = get_option( 'brag_book_gallery_page_slug', '' );
 			if ( is_array( $page_slug_option ) && ! empty( $page_slug_option ) ) {
 				$gallery_page_slugs = array_map( 'sanitize_title', $page_slug_option );
 			} elseif ( is_string( $page_slug_option ) && ! empty( $page_slug_option ) ) {
 				$gallery_page_slugs = [ sanitize_title( $page_slug_option ) ];
+			}
+			
+			if ( $debug_enabled ) {
+				error_log( 'BRAGBook Gallery: Direct option fallback: ' . print_r( $gallery_page_slugs, true ) );
+			}
+		}
+
+		// WP Engine specific: Also check all known option variations
+		if ( empty( $gallery_page_slugs ) ) {
+			$fallback_options = [
+				'brag_book_gallery_page_slug',
+				'brag_book_gallery_gallery_page_slug', 
+				'brag_book_gallery_page_id'
+			];
+			
+			foreach ( $fallback_options as $option_name ) {
+				$option_value = get_option( $option_name, '' );
+				
+				if ( $option_name === 'brag_book_gallery_page_id' && ! empty( $option_value ) ) {
+					// Convert page ID to slug
+					$page_slug = self::get_page_slug_from_id( absint( $option_value ) );
+					if ( ! empty( $page_slug ) ) {
+						$gallery_page_slugs[] = $page_slug;
+					}
+				} elseif ( ! empty( $option_value ) ) {
+					if ( is_array( $option_value ) ) {
+						$gallery_page_slugs = array_merge( $gallery_page_slugs, array_map( 'sanitize_title', $option_value ) );
+					} else {
+						$gallery_page_slugs[] = sanitize_title( $option_value );
+					}
+				}
+			}
+			
+			if ( $debug_enabled ) {
+				error_log( 'BRAGBook Gallery: Fallback options search: ' . print_r( $gallery_page_slugs, true ) );
 			}
 		}
 
@@ -397,6 +530,10 @@ class Rewrite_Rules_Handler {
 			if ( ! empty( $slug ) && ! in_array( $slug, $processed_slugs, true ) ) {
 				self::add_gallery_rewrite_rules( $slug );
 				$processed_slugs[] = $slug;
+				
+				if ( $debug_enabled ) {
+					error_log( 'BRAGBook Gallery: Added rules for slug: ' . $slug );
+				}
 			}
 		}
 
@@ -436,6 +573,22 @@ class Rewrite_Rules_Handler {
 
 		// Add combined gallery rules.
 		self::add_combined_gallery_rewrite_rules();
+
+		// Final debug logging
+		if ( $debug_enabled ) {
+			error_log( 'BRAGBook Gallery: Processed ' . count( $processed_slugs ) . ' total slugs: ' . implode( ', ', $processed_slugs ) );
+			
+			// Check if any rules were actually added
+			$rewrite_rules = get_option( 'rewrite_rules', [] );
+			$gallery_rules_found = 0;
+			foreach ( $rewrite_rules as $pattern => $replacement ) {
+				if ( strpos( $replacement, 'brag_book_gallery_case=' ) !== false || 
+					 strpos( $replacement, 'filter_procedure=' ) !== false ) {
+					$gallery_rules_found++;
+				}
+			}
+			error_log( 'BRAGBook Gallery: Found ' . $gallery_rules_found . ' gallery rules in rewrite_rules option' );
+		}
 
 		/**
 		 * Fires after custom rewrite rules are registered.
