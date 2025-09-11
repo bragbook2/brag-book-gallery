@@ -1,0 +1,145 @@
+=== BRAGBook Gallery Changelog ===
+
+= 3.2.8 (2025-09-11) =
+
+Added:
+* Delete All Rewrite Rules - New functionality in Flush Rules debug tool to completely remove all rewrite rules
+  - Aggressive deletion mechanism with multiple methods to ensure complete removal
+  - Direct database deletion using SQL queries
+  - Temporary blocking of WordPress rule regeneration (60 seconds)
+  - Confirmation count showing exactly how many rules were deleted
+  - Detailed logging of deletion operations
+
+Fixed:
+* Rewrite Rules Detection - Fixed gallery rules detection in flush rules tool
+  - Updated to detect modern query variables (brag_book_gallery_view, brag_gallery_slug, etc.)
+  - Fixed issue where gallery rules were showing as 0 when they actually existed
+  - Added support for both legacy and current query variable patterns
+* Verify Rules Function - Enhanced to check database directly without triggering regeneration
+  - Uses direct SQL query to check if rules exist
+  - Shows clear success message when rules are deleted
+  - Prevents WordPress from auto-regenerating rules during verification
+
+Improved:
+* Rewrite Flush Tool - Enhanced user interface and feedback
+  - Added "Danger Zone" section for destructive operations
+  - Double confirmation required for delete all rules operation
+  - Shows deletion history with exact counts (total and gallery-specific)
+  - Better error handling with detailed error messages
+  - Visual status indicators for rule presence/absence
+
+= 3.2.7 (2025-09-11) =
+
+Added:
+* Dual Caching System - Implemented comprehensive dual caching strategy for optimal performance
+  - All data types (sidebar, cases, individual case, carousel) now use both WP Engine object cache AND transients
+  - Automatic fallback mechanism ensures data persistence across cache flushes
+  - Intelligent cache retrieval checks object cache first (faster), falls back to transients if needed
+* Legacy Transient Cleanup - Added dedicated cleanup functionality for old transient patterns
+  - New "Clear Legacy Transients" button in Cache Management debug tool
+  - Removes obsolete transient patterns from previous plugin versions
+  - Automatic detection and cleanup of orphaned cache entries
+
+Fixed:
+* Cache Management Tool - Resolved critical issues with cache viewing and management
+  - Fixed double-prefixing issue preventing cache data from being viewed
+  - Updated queries to detect both old and new transient naming patterns
+  - Corrected delete operations to handle various key formats
+  - Fixed clear_all_cache() method that was returning static message instead of clearing cache
+* Cache Helper Functions - Enhanced to provide true dual caching
+  - brag_book_set_cache() now stores in BOTH wp_cache and transients
+  - brag_book_get_cache() checks wp_cache first, falls back to transients
+  - brag_book_delete_cache() removes from BOTH cache layers
+* Case Details API - Fixed POST method with JSON body
+  - Changed from GET with query params to POST with JSON body
+  - Wrapped parameters in 'items' object as expected by API
+  - Applied cache-first approach for better performance
+
+Improved:
+* Cache Query Performance - Optimized database queries for cache management
+  - Updated SQL queries to search for multiple transient patterns efficiently
+  - Improved pagination for large cache datasets
+  - Enhanced cache statistics calculation
+* Cache Management UI - Better display and organization
+  - Simplified cache type categories (sidebar, cases, case, carousel, misc)
+  - Nice name formatting for cache keys
+  - Better visual organization of cache items
+* URL Routing - Better WP Engine compatibility
+  - Implemented rewrite_rules_array filter for URL routing
+  - Added fallback URL parsing for WP Engine environments
+  - Enhanced query vars registration
+
+= 3.2.6 (2025-09-11) =
+
+Fixed:
+* Cache Management Debug Tools - Enhanced cache view functionality with comprehensive diagnostic logging
+  - Added detailed debug logging for cache management view operations
+  - Implemented database validation checks for transient cache items
+  - Added expiration timestamp validation for cache debugging
+  - Improved error reporting for cache retrieval issues
+
+= 3.2.5 (2025-09-11) =
+
+Added:
+* WP Engine Diagnostics Tool - Comprehensive diagnostic system specifically designed for WP Engine hosting environments
+  - Environment detection and compatibility checking for WP Engine servers
+  - Rewrite rules testing and validation with URL pattern matching
+  - Query variable registration verification and debugging
+  - Object cache status monitoring and performance metrics
+  - API endpoint connectivity testing with detailed response analysis
+  - Cache mechanism validation for both object and transient caches
+  - Hosting-specific optimizations and recommendations
+* Enhanced URL Routing - Improved compatibility with WP Engine's infrastructure
+  - Implemented fallback URL parsing for environments with restricted rewrite capabilities
+  - Added comprehensive query variable registration with validation
+  - Enhanced parse_request handling for custom gallery routes
+  - Improved handling of myfavorites and case detail pages
+  - Better support for pagination and filtering parameters
+
+Fixed:
+* WP Engine URL Routing - Resolved issues specific to WP Engine hosting
+  - Fixed custom rewrite rules not being recognized on WP Engine
+  - Corrected query variable registration timing issues
+  - Resolved conflicts with WP Engine's caching layer
+  - Fixed 404 errors on gallery pages in WP Engine environments
+* Case Details Loading - Improved reliability on cached environments
+  - Enhanced case detail API calls for better cache compatibility
+  - Fixed case loading issues when object cache is enabled
+  - Improved error handling for API timeouts
+
+= 3.2.4 (2025-09-10) =
+
+Fixed:
+* Case Details Modal - Fixed responsive display issues on mobile devices
+* API Error Handling - Improved error messages for better debugging
+
+= 3.2.3 (2025-09-10) =
+
+Added:
+* Debug Tools - New suite of debugging utilities
+* System Info Export - Export system configuration for support
+
+Fixed:
+* JavaScript Loading - Resolved conflicts with other plugins
+* Gallery Filtering - Fixed issue with multiple filter selections
+
+= 3.2.2 (2025-09-09) =
+
+Improved:
+* Performance - Optimized database queries for faster page loads
+* Caching - Enhanced cache management for better performance
+
+= 3.2.1 (2025-09-09) =
+
+Fixed:
+* Installation - Resolved activation issues on certain hosting environments
+* Compatibility - Fixed PHP 8.2 compatibility warnings
+
+= 3.2.0 (2025-09-08) =
+
+Added:
+* Major UI Overhaul - Completely redesigned admin interface
+* Advanced Debug Tools - Comprehensive debugging suite
+* Improved Performance - Significant speed improvements
+
+For complete version history, see CHANGELOG.md

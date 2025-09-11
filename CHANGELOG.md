@@ -4,7 +4,35 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.2.7] - 2025-09-11 (Current Release)
+## [3.2.8] - 2025-09-11 (Current Release)
+
+### Added
+- **Delete All Rewrite Rules**: New functionality in Flush Rules debug tool to completely remove all rewrite rules
+  - Aggressive deletion mechanism with multiple methods to ensure complete removal
+  - Direct database deletion using SQL queries
+  - Temporary blocking of WordPress rule regeneration (60 seconds)
+  - Confirmation count showing exactly how many rules were deleted
+  - Detailed logging of deletion operations
+
+### Fixed
+- **Rewrite Rules Detection**: Fixed gallery rules detection in flush rules tool
+  - Updated to detect modern query variables (brag_book_gallery_view, brag_gallery_slug, etc.)
+  - Fixed issue where gallery rules were showing as 0 when they actually existed
+  - Added support for both legacy and current query variable patterns
+- **Verify Rules Function**: Enhanced to check database directly without triggering regeneration
+  - Uses direct SQL query to check if rules exist
+  - Shows clear success message when rules are deleted
+  - Prevents WordPress from auto-regenerating rules during verification
+
+### Improved
+- **Rewrite Flush Tool**: Enhanced user interface and feedback
+  - Added "Danger Zone" section for destructive operations
+  - Double confirmation required for delete all rules operation
+  - Shows deletion history with exact counts (total and gallery-specific)
+  - Better error handling with detailed error messages
+  - Visual status indicators for rule presence/absence
+
+## [3.2.7] - 2025-09-11
 
 ### Added
 - **Dual Caching System**: Implemented comprehensive dual caching strategy for optimal performance
