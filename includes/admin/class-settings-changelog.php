@@ -91,12 +91,32 @@ class Settings_Changelog extends Settings_Base {
 				</div>
 			</div>
 
+			<!-- Version 3.2.6 -->
+			<div class="brag-book-gallery-section">
+				<div class="brag-book-gallery-changelog-version">
+					<h3>
+						<span class="version-badge version-patch">v3.2.6</span>
+						<?php esc_html_e( 'September 11, 2025', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Current Release', 'brag-book-gallery' ); ?>
+					</h3>
+					<div class="brag-book-gallery-card">
+						<h4><?php esc_html_e( '🛠️ Bug Fixes & Improvements', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Cache Management Debug Tools: Enhanced cache view functionality with comprehensive diagnostic logging', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Added detailed debug logging for cache management view operations', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Implemented database validation checks for transient cache items', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Added expiration timestamp validation for cache debugging', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Improved error reporting for cache retrieval issues', 'brag-book-gallery' ); ?></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
 			<!-- Version 3.2.5 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">
 					<h3>
 						<span class="version-badge version-patch">v3.2.5</span>
-						<?php esc_html_e( 'September 11, 2025', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Current Release', 'brag-book-gallery' ); ?>
+						<?php esc_html_e( 'September 11, 2025', 'brag-book-gallery' ); ?>
 					</h3>
 					<div class="brag-book-gallery-card">
 						<h4><?php esc_html_e( '🎉 New Features', 'brag-book-gallery' ); ?></h4>

@@ -655,7 +655,7 @@ class WP_Engine_Diagnostics {
 	/**
 	 * Check for redirections that might interfere with rewrite rules
 	 *
-	 * @since 3.2.5
+	 * @since 3.2.6
 	 * @return array Redirection check results
 	 */
 	private static function check_redirections(): array {
@@ -787,7 +787,7 @@ class WP_Engine_Diagnostics {
 	/**
 	 * Execute diagnostic actions
 	 *
-	 * @since 3.2.5
+	 * @since 3.2.6
 	 * @param string $action Action to perform
 	 * @param array  $data   Action data
 	 * @return array|string Action result

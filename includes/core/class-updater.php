@@ -20,7 +20,6 @@ final class Updater {
 	private const API_BASE_URL = 'https://api.github.com/repos/%s/%s/releases/latest';
 	private const CACHE_KEY = 'brag_book_gallery_github_release';
 	private const CACHE_EXPIRATION = 3600; // 1 hour
-
 	private readonly string $file;
 	private readonly string $basename;
 	private ?array $plugin = null;
@@ -59,7 +58,7 @@ final class Updater {
 		if ($this->plugin !== null) {
 			return;
 		}
-		
+
 		if (!function_exists('get_plugin_data')) {
 			require_once ABSPATH . 'wp-admin/includes/plugin.php';
 		}
@@ -274,7 +273,7 @@ final class Updater {
 
 		// Ensure plugin data is loaded
 		$this->set_plugin_properties();
-		
+
 		$this->get_repository_info();
 
 		if (!$this->github_version || !$this->github_response) {
@@ -377,7 +376,7 @@ final class Updater {
 
 		// Ensure plugin data is loaded
 		$this->set_plugin_properties();
-		
+
 		$this->get_repository_info();
 
 		if (!$this->github_response || !$this->github_version) {
@@ -465,15 +464,15 @@ final class Updater {
 		// If we're in a git repository, don't move/delete anything
 		if ($this->is_development_environment()) {
 			$this->log_error('Skipping after_install in development environment');
-			
+
 			// Clear cache after update
 			$this->clear_cache();
-			
+
 			// Reactivate if it was active
 			if ($this->active) {
 				activate_plugin($this->basename);
 			}
-			
+
 			return $response;
 		}
 
@@ -490,15 +489,15 @@ final class Updater {
 		if ($wp_filesystem->exists($destination . '/brag-book-gallery.php')) {
 			// Plugin files already exist in the correct location
 			$this->log_error('Plugin files already exist in destination, skipping move');
-			
+
 			// Clear cache after update
 			$this->clear_cache();
-			
+
 			// Reactivate if it was active
 			if ($this->active) {
 				activate_plugin($this->basename);
 			}
-			
+
 			return $result;
 		}
 
@@ -513,15 +512,15 @@ final class Updater {
 		// SAFETY CHECK: Verify the extracted directory is not the same as destination
 		if (realpath($extracted_dir) === realpath($destination)) {
 			$this->log_error('Extracted directory is the same as destination, skipping move');
-			
+
 			// Clear cache after update
 			$this->clear_cache();
-			
+
 			// Reactivate if it was active
 			if ($this->active) {
 				activate_plugin($this->basename);
 			}
-			
+
 			return $result;
 		}
 
@@ -536,7 +535,7 @@ final class Updater {
 			WP_CONTENT_DIR . '/upgrade',
 			WP_CONTENT_DIR . '/upgrade-temp-backup',
 		];
-		
+
 		$is_temp_location = false;
 		foreach ($temp_dirs as $temp_dir) {
 			if (strpos($extracted_dir, $temp_dir) === 0) {
@@ -544,7 +543,7 @@ final class Updater {
 				break;
 			}
 		}
-		
+
 		if (!$is_temp_location) {
 			$this->log_error('Extracted directory is not in a temporary location, skipping move for safety');
 			return $response;
@@ -580,12 +579,12 @@ final class Updater {
 	 */
 	private function is_development_environment(): bool {
 		$plugin_dir = dirname($this->file);
-		
+
 		// Check for .git directory
 		if (file_exists($plugin_dir . '/.git')) {
 			return true;
 		}
-		
+
 		// Check for common development files
 		$dev_files = [
 			'/.gitignore',
@@ -594,29 +593,29 @@ final class Updater {
 			'/webpack.config.js',
 			'/CLAUDE.md',
 		];
-		
+
 		foreach ($dev_files as $dev_file) {
 			if (file_exists($plugin_dir . $dev_file)) {
 				return true;
 			}
 		}
-		
+
 		// Check if WP_DEBUG is enabled
 		if (defined('WP_DEBUG') && WP_DEBUG) {
 			return true;
 		}
-		
+
 		// Check for Local by Flywheel environment
 		if (defined('WP_LOCAL_DEV') && WP_LOCAL_DEV) {
 			return true;
 		}
-		
+
 		// Check if running on localhost
 		$is_localhost = in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1'], true);
 		if ($is_localhost) {
 			return true;
 		}
-		
+
 		return false;
 	}
 

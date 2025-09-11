@@ -346,25 +346,7 @@ class Data_Fetcher {
 	 * @return array All cases data.
 	 */
 	public static function get_all_cases_for_filtering( string $api_token, string $website_property_id, array $procedure_ids = [] ): array {
-		// Check cache first - include procedure IDs in cache key
-		if ( ! empty( $procedure_ids ) ) {
-			$cache_key = 'brag_book_gallery_transient_filtered_cases_' . $api_token . '_' . $website_property_id . implode( ',', $procedure_ids );
-		} else {
-			$cache_key = Cache_Manager::get_all_cases_cache_key( $api_token, $website_property_id );
-		}
-
-		if ( Cache_Manager::is_caching_enabled() ) {
-			$cached_data = Cache_Manager::get( $cache_key );
-			if ( $cached_data !== false ) {
-				if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
-					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-					error_log( 'BRAGBook: Using cached data for cases' );
-					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-					error_log( 'BRAGBook: Cached data has ' . ( isset( $cached_data['data'] ) ? count( $cached_data['data'] ) : 0 ) . ' cases' );
-				}
-				return $cached_data;
-			}
-		}
+		// Fetch directly from API without caching
 
 		try {
 			$endpoints = new Endpoints();
@@ -442,10 +424,7 @@ class Data_Fetcher {
 				'total' => count( $all_cases ),
 			];
 
-			// Cache the result if we have data
-			if ( Cache_Manager::is_caching_enabled() && count( $all_cases ) > 0 ) {
-				Cache_Manager::set( $cache_key, $result );
-			}
+			// Return result directly without caching
 
 			return $result;
 
@@ -470,16 +449,20 @@ class Data_Fetcher {
 			return [];
 		}
 
-		// Check cache
-		$cache_key = Cache_Manager::get_carousel_cache_key(
-			$config['api_token'],
-			$config['website_property_id'] ?? '',
-			$config['limit'] ?? 10,
-			(string) ( $config['procedure_id'] ?? '' ),
-			(string) ( $config['member_id'] ?? '' )
-		);
-
-		if ( Cache_Manager::is_caching_enabled() ) {
+		// Check cases list cache if procedure is specified
+		$procedure_name = '';
+		$cache_key = '';
+		
+		if ( ! empty( $config['procedure_id'] ) ) {
+			// Try to get procedure name from procedure_id for caching
+			if ( ! empty( $config['sidebar_data'] ) ) {
+				$procedure_info = self::find_procedure_by_id( $config['sidebar_data'], intval( $config['procedure_id'] ) );
+				$procedure_name = $procedure_info['slug'] ?? $procedure_info['name'] ?? '';
+			}
+		}
+		
+		if ( ! empty( $procedure_name ) && Cache_Manager::is_caching_enabled() ) {
+			$cache_key = Cache_Manager::get_cases_by_procedure_cache_key( $procedure_name );
 			$cached_data = Cache_Manager::get( $cache_key );
 			if ( $cached_data !== false ) {
 				return $cached_data;
@@ -502,12 +485,13 @@ class Data_Fetcher {
 				$decoded = json_decode( $carousel_response, true, 512, JSON_THROW_ON_ERROR );
 				$result = is_array( $decoded ) ? $decoded : [];
 
-				// Cache the result
-				if ( Cache_Manager::is_caching_enabled() && ! empty( $result ) ) {
-					Cache_Manager::set( $cache_key, $result );
-
-					// Also cache individual carousel cases for lookup
-					self::cache_carousel_cases( $result, $config['api_token'] );
+				// Cache cases list if procedure name is available
+				if ( ! empty( $cache_key ) && Cache_Manager::is_caching_enabled() ) {
+					Cache_Manager::set( $cache_key, $result, HOUR_IN_SECONDS );
+					if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+						// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+						error_log( 'Cached cases list for procedure: ' . $procedure_name );
+					}
 				}
 
 				return $result;
@@ -531,87 +515,10 @@ class Data_Fetcher {
 	 * @return void
 	 */
 	private static function cache_carousel_cases( array $carousel_data, string $api_token ): void {
-		if ( ! isset( $carousel_data['data'] ) || ! is_array( $carousel_data['data'] ) ) {
-			return;
-		}
-
-		foreach ( $carousel_data['data'] as $case ) {
-			if ( ! isset( $case['id'] ) ) {
-				continue;
-			}
-
-			// Cache by case ID
-			$case_cache_key = 'brag_book_gallery_transient_carousel_case_' . $api_token . '_' . $case['id'];
-			Cache_Manager::set( $case_cache_key, $case, 30 * MINUTE_IN_SECONDS );
-
-			// Also cache by seoSuffixUrl if it exists
-			if ( ! empty( $case['caseDetails'] ) && is_array( $case['caseDetails'] ) ) {
-				foreach ( $case['caseDetails'] as $detail ) {
-					if ( ! empty( $detail['seoSuffixUrl'] ) ) {
-						$seo_cache_key = 'brag_book_gallery_transient_carousel_case_' . $api_token . '_' . $detail['seoSuffixUrl'];
-						Cache_Manager::set( $seo_cache_key, $case, 30 * MINUTE_IN_SECONDS );
-
-						if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
-							// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-							error_log( 'Cached carousel case by seoSuffixUrl: ' . $detail['seoSuffixUrl'] . ' for case ID: ' . $case['id'] );
-						}
-					}
-				}
-			}
-
-			// Also check for seoSuffixUrl at root level
-			if ( ! empty( $case['seoSuffixUrl'] ) ) {
-				$seo_cache_key = 'brag_book_gallery_transient_carousel_case_' .  $api_token . '_' . $case['seoSuffixUrl'];
-				Cache_Manager::set( $seo_cache_key, $case, 30 * MINUTE_IN_SECONDS );
-
-				if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
-					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-					error_log( 'Cached carousel case by root seoSuffixUrl: ' . $case['seoSuffixUrl'] . ' for case ID: ' . $case['id'] );
-				}
-			}
-
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
-				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'Cached carousel case ID: ' . $case['id'] );
-			}
-		}
+		// Carousel caching disabled - no longer caching individual cases
+		return;
 	}
 
-	/**
-	 * Get carousel case from cache.
-	 *
-	 * @since 3.0.0
-	 * @param string $case_identifier Case ID or seoSuffixUrl to retrieve.
-	 * @param string $api_token API token for cache key.
-	 * @return array|null Case data or null if not found.
-	 */
-	public static function get_carousel_case_from_cache( string $case_identifier, string $api_token ): ?array {
-		if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
-			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'Looking for carousel case with identifier: ' . $case_identifier );
-		}
-
-		// Try to get from cache using the identifier (could be ID or seoSuffixUrl)
-		$case_cache_key = 'brag_book_gallery_transient_carousel_case_' . $case_identifier;
-		$cached_case = Cache_Manager::get( $case_cache_key );
-
-		if ( $cached_case !== false ) {
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
-				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'Found carousel case in cache for identifier: ' . $case_identifier );
-				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'Carousel case data has ID: ' . ( $cached_case['id'] ?? 'N/A' ) );
-			}
-			return $cached_case;
-		}
-
-		if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
-			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'Carousel case NOT found in cache for identifier: ' . $case_identifier );
-		}
-
-		return null;
-	}
 
 	/**
 	 * Find procedure by slug in sidebar data.

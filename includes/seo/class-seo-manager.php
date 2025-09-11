@@ -525,7 +525,7 @@ final class SEO_Manager {
 	private function get_procedure_data( string $procedure_slug, bool $is_combine ): ?array {
 
 		// Cache key based on procedure slug and combine status.
-		$cache_key   = 'brag_book_gallery_transient_procedure_' . $procedure_slug . ( $is_combine ? '_combine' : '_single' );
+		$cache_key   = 'brag_book_gallery_seo_procedure_' . $procedure_slug . ( $is_combine ? '_combine' : '_single' );
 
 		// Check cache first.
 		$cached_data = Cache_Manager::get( $cache_key );
@@ -584,7 +584,7 @@ final class SEO_Manager {
 	private function get_case_seo_data( string $case_id_or_slug, array $procedure_data, bool $is_combine ): ?array {
 
 		// Cache key based on case identifier and procedure data.
-		$cache_key   = 'brag_book_gallery_case_seo_' .$case_id_or_slug . serialize( $procedure_data );
+		$cache_key   = 'brag_book_gallery_seo_case_' .$case_id_or_slug . serialize( $procedure_data );
 
 		// Check cache first.
 		$cached_data = Cache_Manager::get( $cache_key );
@@ -715,7 +715,7 @@ final class SEO_Manager {
 	 */
 	private function get_combined_sidebar_data( array $api_tokens ): array {
 
-		$cache_key   = 'brag_book_gallery_transient_combined_sidebar_' . serialize( $api_tokens );
+		$cache_key   = 'brag_book_gallery_seo_combined_sidebar_' . serialize( $api_tokens );
 		$cached_data = Cache_Manager::get( $cache_key );
 
 		if ( false !== $cached_data ) {
@@ -772,7 +772,7 @@ final class SEO_Manager {
 	 */
 	private function get_sidebar_data( string $api_token ): array {
 
-		$cache_key   = 'brag_book_gallery_transient_sidebar_' . $api_token;
+		$cache_key   = 'brag_book_gallery_seo_sidebar_' . $api_token;
 
 		$cached_data = Cache_Manager::get( $cache_key );
 
@@ -1886,7 +1886,7 @@ final class SEO_Manager {
 			$api_tokens = get_option( 'brag_book_gallery_api_token', [] );
 			if ( ! empty( $api_tokens ) && is_array( $api_tokens ) ) {
 				$this->get_cached_data(
-					'brag_book_gallery_transient_combined_sidebar_' . serialize( $api_tokens ),
+					'brag_book_gallery_seo_combined_sidebar_' . serialize( $api_tokens ),
 					fn() => $this->get_combined_sidebar_data( $api_tokens ),
 					self::CACHE_TTL_LONG,
 					'warm_up'

@@ -48,16 +48,17 @@ if ( ! defined( 'ABSPATH' ) ) {
  * - Real-time metrics tracking
  *
  * Transient Keys Used Throughout the Plugin:
- * All transients use the standardized prefix: brag_book_gallery_transient_
+ * All transients use the standardized prefix: brag_book_gallery
+ * These are stored in WordPress as _transient_brag_book_gallery_*
  *
  * API/Data Transients:
- * - brag_book_gallery_transient_sidebar_{hash}        : Sidebar data from API
- * - brag_book_gallery_transient_cases_{hash}          : Cases data from API
- * - brag_book_gallery_transient_all_cases_{hash}      : All cases data
- * - brag_book_gallery_transient_carousel_{hash}       : Carousel data
- * - brag_book_gallery_transient_carousel_case_{hash}  : Individual carousel case
+ * - brag_book_gallery_sidebar                         : Sidebar data from API
+ * - brag_book_gallery_cases_{procedure}               : Cases list by procedure/carousel
+ * - brag_book_gallery_case_{procedure}_{case_suffix}  : Individual case view data (24-hour TTL)
+ * - brag_book_gallery_all_cases_{hash}                : All cases data
  * - brag_book_gallery_transient_api_{type}_{hash}     : General API responses
- * - brag_book_gallery_transient_combined_sidebar_{hash} : Combined sidebar data for SEO
+ * - brag_book_gallery_seo_combined_sidebar_{hash}     : Combined sidebar data for SEO
+ * - brag_book_gallery_transient_sysinfo_report        : System information report
  *
  * Sync/Migration Transients:
  * - brag_book_gallery_transient_sync_status           : Sync operation status
@@ -110,7 +111,7 @@ class Cache_Management {
 	 * @since 3.0.0
 	 * @var string
 	 */
-	private const CACHE_PREFIX = 'brag_book_gallery_transient_';
+	private const CACHE_PREFIX = 'brag_book_gallery';
 
 	/**
 	 * Maximum size for inline data display (in bytes).
@@ -1589,8 +1590,8 @@ class Cache_Management {
 			// API and Data Transients
 			str_contains( $key, 'api' )              => __( 'API Response', 'brag-book-gallery' ),
 			str_contains( $key, 'sidebar' )          => __( 'Sidebar Data', 'brag-book-gallery' ),
-			str_contains( $key, 'cases' )            => __( 'Cases Data', 'brag-book-gallery' ),
-			str_contains( $key, 'carousel' )         => __( 'Carousel Data', 'brag-book-gallery' ),
+			str_contains( $key, 'case_' ) && ! str_contains( $key, 'cases_' ) => __( 'Individual Case Data', 'brag-book-gallery' ),
+			str_contains( $key, 'cases_' )           => __( 'Cases List Data', 'brag-book-gallery' ),
 
 			// Sync and Migration
 			str_contains( $key, 'sync' )             => __( 'Sync Data', 'brag-book-gallery' ),
@@ -1606,6 +1607,9 @@ class Cache_Management {
 
 			// Forms and Validation
 			str_contains( $key, 'consultation' )     => __( 'Consultation Form', 'brag-book-gallery' ),
+
+			// Debug and System Tools
+			str_contains( $key, 'sysinfo' )          => __( 'System Information', 'brag-book-gallery' ),
 
 			// Taxonomy System
 			str_contains( $key, 'term' )             => __( 'Taxonomy Data', 'brag-book-gallery' ),
@@ -2100,24 +2104,18 @@ class Cache_Management {
 			$old_prefixes = [
 				'_transient_brag_book_sidebar_%',
 				'_transient_brag_book_cases_%',
-				'_transient_brag_book_carousel_%',
 				'_transient_brag_book_gallery_sidebar_%',
 				'_transient_brag_book_gallery_cases_%',
-				'_transient_brag_book_gallery_carousel_%',
 				'_transient_brag_book_gallery_api_%',
 				'_transient_brag_book_gallery_sync_%',
-				'_transient_brag_book_carousel_case_%',
 				'_transient_consultation_%',
 				// Add timeout patterns
 				'_transient_timeout_brag_book_sidebar_%',
 				'_transient_timeout_brag_book_cases_%',
-				'_transient_timeout_brag_book_carousel_%',
 				'_transient_timeout_brag_book_gallery_sidebar_%',
 				'_transient_timeout_brag_book_gallery_cases_%',
-				'_transient_timeout_brag_book_gallery_carousel_%',
 				'_transient_timeout_brag_book_gallery_api_%',
 				'_transient_timeout_brag_book_gallery_sync_%',
-				'_transient_timeout_brag_book_carousel_case_%',
 				'_transient_timeout_consultation_%',
 			];
 

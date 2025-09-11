@@ -26,6 +26,7 @@ namespace BRAGBookGallery\Includes\Admin\Debug_Tools;
 use WP_Error;
 use Exception;
 use Throwable;
+use BRAGBookGallery\Includes\Extend\Cache_Manager;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -62,12 +63,12 @@ final class System_Info {
 	private array $metrics = [];
 
 	/**
-	 * Cache key prefix for transient operations.
+	 * Cache key for system info report.
 	 *
 	 * @since 3.0.0
 	 * @var string
 	 */
-	private const CACHE_PREFIX = 'brag_book_gallery_transient_sysinfo_';
+	private const CACHE_KEY = 'brag_book_gallery_transient_sysinfo_report';
 
 	/**
 	 * Cache duration in seconds (5 minutes).
@@ -339,16 +340,20 @@ final class System_Info {
 	private function get_cached_system_info(): string {
 		try {
 			// Check cache first
-			$cached = brag_book_get_cache( self::CACHE_PREFIX . 'report' );
-			if ( false !== $cached && is_string( $cached ) ) {
-				return $cached;
+			if ( Cache_Manager::is_caching_enabled() ) {
+				$cached = Cache_Manager::get( self::CACHE_KEY );
+				if ( false !== $cached && is_string( $cached ) ) {
+					return $cached;
+				}
 			}
 
 			// Generate new system info
 			$system_info = $this->generate_system_info();
 
 			// Cache for future requests
-			brag_book_set_cache( self::CACHE_PREFIX . 'report', $system_info, self::CACHE_DURATION );
+			if ( Cache_Manager::is_caching_enabled() ) {
+				Cache_Manager::set( self::CACHE_KEY, $system_info, self::CACHE_DURATION );
+			}
 
 			return $system_info;
 

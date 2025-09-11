@@ -793,30 +793,7 @@ class On_Page {
 	 * @since 3.0.0
 	 */
 	public function get_procedure_data_from_sidebar( string|array $api_tokens, string $procedure_slug, bool $is_combine ): array {
-		// Enhanced caching with memory layer and intelligent TTL
-		$cache_key = $this->generate_cache_key( 'sidebar', [
-			'procedure_slug' => $procedure_slug,
-			'is_combine'     => $is_combine,
-			'tokens'         => is_array( $api_tokens ) ? implode( '|', $api_tokens ) : $api_tokens
-		] );
-
-		// Check memory cache first
-		if ( isset( $this->memory_cache[ $cache_key ] ) ) {
-			$this->track_cache_performance( 'sidebar', true, 'memory' );
-			return $this->memory_cache[ $cache_key ];
-		}
-
-		// Check transient cache
-		$sidebar_data = brag_book_get_cache( $cache_key );
-		if ( $sidebar_data !== false ) {
-			// If cached data is already processed (array), return it
-			if ( is_array( $sidebar_data ) ) {
-				$this->memory_cache[ $cache_key ] = $sidebar_data;
-				$this->track_cache_performance( 'sidebar', true, 'transient' );
-				return $sidebar_data;
-			}
-			// If cached data is raw JSON string, continue to process it below
-		}
+		// Fetch sidebar data directly from API
 
 		// Fetch from API with performance tracking
 		$start_time = microtime( true );
@@ -889,13 +866,7 @@ class On_Page {
 			];
 		}
 
-		// Cache the processed result with intelligent TTL
-		if ( ! empty( $sidebar_data ) ) {
-			$cache_duration = $this->get_cache_duration_for_data_type( 'sidebar' );
-			brag_book_set_cache( $cache_key, $result, $cache_duration );
-			$this->memory_cache[ $cache_key ] = $result;
-			$this->track_cache_performance( 'sidebar', false, 'api', $fetch_duration );
-		}
+		// Return result directly without caching
 
 		return $result;
 	}

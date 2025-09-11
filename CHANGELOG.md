@@ -4,7 +4,16 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.2.5] - 2025-09-11 (Current Release)
+## [3.2.6] - 2025-09-11 (Current Release)
+
+### Fixed
+- **Cache Management Debug Tools**: Enhanced cache view functionality with comprehensive diagnostic logging
+  - Added detailed debug logging for cache management view operations
+  - Implemented database validation checks for transient cache items
+  - Added expiration timestamp validation for cache debugging
+  - Improved error reporting for cache retrieval issues
+
+## [3.2.5] - 2025-09-11
 
 ### Added
 - **WP Engine Diagnostics Tool**: Comprehensive diagnostic system specifically designed for WP Engine hosting environments
