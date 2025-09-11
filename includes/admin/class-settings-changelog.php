@@ -91,12 +91,56 @@ class Settings_Changelog extends Settings_Base {
 				</div>
 			</div>
 
+			<!-- Version 3.2.7 -->
+			<div class="brag-book-gallery-section">
+				<div class="brag-book-gallery-changelog-version">
+					<h3>
+						<span class="version-badge version-patch">v3.2.7</span>
+						<?php esc_html_e( 'September 11, 2025', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Current Release', 'brag-book-gallery' ); ?>
+					</h3>
+					<div class="brag-book-gallery-card">
+						<h4><?php esc_html_e( '🎉 New Features', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Dual Caching System: Implemented comprehensive dual caching strategy for optimal performance', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'All data types (sidebar, cases, individual case, carousel) now use both WP Engine object cache AND transients', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Automatic fallback mechanism ensures data persistence across cache flushes', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Intelligent cache retrieval checks object cache first (faster), falls back to transients if needed', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Legacy Transient Cleanup: Added dedicated cleanup functionality for old transient patterns', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'New "Clear Legacy Transients" button in Cache Management debug tool', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Removes obsolete transient patterns from previous plugin versions', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Automatic detection and cleanup of orphaned cache entries', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '🐛 Bug Fixes', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Cache Management Tool: Resolved critical issues with cache viewing and management', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Fixed double-prefixing issue preventing cache data from being viewed', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Updated queries to detect both old and new transient naming patterns', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Corrected delete operations to handle various key formats', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Fixed clear_all_cache() method that was returning static message instead of clearing cache', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Cache Helper Functions: Enhanced to provide true dual caching', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'brag_book_set_cache() now stores in BOTH wp_cache and transients', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'brag_book_get_cache() checks wp_cache first, falls back to transients', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'brag_book_delete_cache() removes from BOTH cache layers', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '⚡ Performance Improvements', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Cache Query Performance: Optimized database queries for cache management', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Updated SQL queries to search for multiple transient patterns efficiently', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Improved pagination for large cache datasets', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Enhanced cache statistics calculation', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Sub-millisecond cache retrieval on WP Engine with object cache', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Redundant storage ensures data availability even after cache flushes', 'brag-book-gallery' ); ?></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
 			<!-- Version 3.2.6 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">
 					<h3>
 						<span class="version-badge version-patch">v3.2.6</span>
-						<?php esc_html_e( 'September 11, 2025', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Current Release', 'brag-book-gallery' ); ?>
+						<?php esc_html_e( 'September 11, 2025', 'brag-book-gallery' ); ?>
 					</h3>
 					<div class="brag-book-gallery-card">
 						<h4><?php esc_html_e( '🛠️ Bug Fixes & Improvements', 'brag-book-gallery' ); ?></h4>

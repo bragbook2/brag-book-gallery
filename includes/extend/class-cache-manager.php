@@ -103,11 +103,46 @@ class Cache_Manager {
 	 * @return array{success: bool, message: string, count?: int, wp_engine?: bool} Detailed result array.
 	 */
 	public static function clear_all_cache(): array {
+		global $wpdb;
+		
+		$is_wp_engine = self::is_wp_engine();
+		$count = 0;
+		
+		// Clear all plugin transients - both patterns
+		$deleted = $wpdb->query(
+			$wpdb->prepare(
+				"DELETE FROM {$wpdb->options} 
+				 WHERE (option_name LIKE %s OR option_name LIKE %s OR option_name LIKE %s OR option_name LIKE %s)",
+				'%transient_brag_book_gallery_transient_%',
+				'%transient_brag_book_gallery_%',
+				'%transient_timeout_brag_book_gallery_transient_%',
+				'%transient_timeout_brag_book_gallery_%'
+			)
+		);
+		
+		if ( $deleted !== false ) {
+			$count = intval( $deleted / 2 ); // Divide by 2 to account for timeout entries
+		}
+		
+		// Clear WP Engine object cache if available
+		if ( $is_wp_engine && function_exists( 'wp_cache_flush_group' ) ) {
+			wp_cache_flush_group( self::WP_CACHE_GROUP );
+		}
+		
+		// Also flush general WordPress cache
+		if ( function_exists( 'wp_cache_flush' ) ) {
+			wp_cache_flush();
+		}
+		
 		return [
 			'success' => true,
-			'message' => __( 'Caching is disabled - no cache to clear', 'brag-book-gallery' ),
-			'count' => 0,
-			'wp_engine' => false,
+			'message' => sprintf( 
+				__( 'Successfully cleared %d cache items%s', 'brag-book-gallery' ),
+				$count,
+				$is_wp_engine ? __( ' (including WP Engine object cache)', 'brag-book-gallery' ) : ''
+			),
+			'count' => $count,
+			'wp_engine' => $is_wp_engine,
 		];
 	}
 
@@ -586,14 +621,15 @@ class Cache_Manager {
 			'wp_engine' => $is_wp_engine,
 		];
 
-		// Get transient cache items
+		// Get transient cache items - search for both patterns
 		$transients = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT option_name, option_value FROM {$wpdb->options} 
-				 WHERE option_name LIKE %s 
+				 WHERE (option_name LIKE %s OR option_name LIKE %s)
 				 AND option_name NOT LIKE %s 
 				 ORDER BY option_name",
 				'%transient_brag_book_gallery_transient_%',
+				'%transient_brag_book_gallery_%',
 				'%transient_timeout_%'
 			),
 			ARRAY_A

@@ -43,7 +43,11 @@ if ( ! function_exists( 'brag_book_is_wp_engine' ) ) {
 
 if ( ! function_exists( 'brag_book_set_cache' ) ) {
 	/**
-	 * Set cache value with WP Engine support
+	 * Set cache value with dual caching support
+	 *
+	 * Uses both WP Engine object cache AND transients for redundancy.
+	 * This ensures data persistence across cache flushes and provides
+	 * optimal performance on WP Engine while maintaining compatibility.
 	 *
 	 * @since 3.2.4
 	 * @param string $key        Cache key.
@@ -52,28 +56,40 @@ if ( ! function_exists( 'brag_book_set_cache' ) ) {
 	 * @return bool True on success, false on failure.
 	 */
 	function brag_book_set_cache( string $key, mixed $value, int $expiration = 0 ): bool {
-		// Use WP Engine object cache if available
+		$success = false;
+		
+		// Set in WP Engine object cache if available
 		if ( brag_book_is_wp_engine() && function_exists( 'wp_cache_set' ) ) {
-			return wp_cache_set( $key, $value, 'brag_book_gallery', $expiration );
+			$success = wp_cache_set( $key, $value, 'brag_book_gallery', $expiration );
 		}
 		
-		// Fall back to WordPress transients
-		return set_transient( "brag_book_gallery_transient_{$key}", $value, $expiration );
+		// Always set in transients as well for persistence
+		$transient_success = set_transient( "brag_book_gallery_transient_{$key}", $value, $expiration );
+		
+		// Return true if either method succeeded
+		return $success || $transient_success;
 	}
 }
 
 if ( ! function_exists( 'brag_book_get_cache' ) ) {
 	/**
-	 * Get cache value with WP Engine support
+	 * Get cache value with dual caching support
+	 *
+	 * Checks WP Engine object cache first for performance,
+	 * then falls back to transients if not found.
+	 * This ensures data retrieval even if object cache was flushed.
 	 *
 	 * @since 3.2.4
 	 * @param string $key Cache key.
 	 * @return mixed Cached value or false if not found.
 	 */
 	function brag_book_get_cache( string $key ): mixed {
-		// Use WP Engine object cache if available
+		// Try WP Engine object cache first (faster)
 		if ( brag_book_is_wp_engine() && function_exists( 'wp_cache_get' ) ) {
-			return wp_cache_get( $key, 'brag_book_gallery' );
+			$value = wp_cache_get( $key, 'brag_book_gallery' );
+			if ( $value !== false ) {
+				return $value;
+			}
 		}
 		
 		// Fall back to WordPress transients
@@ -83,20 +99,28 @@ if ( ! function_exists( 'brag_book_get_cache' ) ) {
 
 if ( ! function_exists( 'brag_book_delete_cache' ) ) {
 	/**
-	 * Delete cache value with WP Engine support
+	 * Delete cache value with dual caching support
+	 *
+	 * Deletes from both WP Engine object cache AND transients
+	 * to ensure complete cache clearing.
 	 *
 	 * @since 3.2.4
 	 * @param string $key Cache key.
 	 * @return bool True on success, false on failure.
 	 */
 	function brag_book_delete_cache( string $key ): bool {
-		// Use WP Engine object cache if available
+		$success = false;
+		
+		// Delete from WP Engine object cache if available
 		if ( brag_book_is_wp_engine() && function_exists( 'wp_cache_delete' ) ) {
-			return wp_cache_delete( $key, 'brag_book_gallery' );
+			$success = wp_cache_delete( $key, 'brag_book_gallery' );
 		}
 		
-		// Fall back to WordPress transients
-		return delete_transient( "brag_book_gallery_transient_{$key}" );
+		// Always delete from transients as well
+		$transient_success = delete_transient( "brag_book_gallery_transient_{$key}" );
+		
+		// Return true if either method succeeded
+		return $success || $transient_success;
 	}
 }
 

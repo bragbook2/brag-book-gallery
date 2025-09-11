@@ -182,12 +182,12 @@ final class Gallery_Shortcode_Handler {
 
 		// Use case_suffix (which now contains both numeric IDs and SEO suffixes)
 		$initial_case_id = ! empty( $case_suffix ) ? $case_suffix : '';
-		
+
 		// Check for case ID from shortcode attributes (when called from Cases_Shortcode_Handler)
 		if ( empty( $initial_case_id ) && ! empty( $validated_atts['data_case_id'] ) ) {
 			$initial_case_id = $validated_atts['data_case_id'];
 		}
-		
+
 		// PERFORMANCE OPTIMIZATION: For case detail pages, render case details directly
 		// instead of loading full gallery first (but skip if loading via JavaScript)
 		$skip_fast_render = ! empty( $validated_atts['data_case_id'] ); // Skip when called from Cases_Shortcode_Handler
@@ -524,9 +524,15 @@ final class Gallery_Shortcode_Handler {
 						class="brag-book-gallery-button brag-book-gallery-button--full"
 						data-action="request-consultation"
 					>
-						Request a Consultation
+						<?php esc_html_e( 'Request a Consultation', 'brag-book-gallery' ); ?>
 					</button>
 					<?php endif; ?>
+                    <p class="brag-book-gallery-powered-by">
+                        <?php esc_html_e( 'Proudly powered by', 'brag-book-gallery' ); ?>
+                        <a href="https://bragbookgallery.com/" class="brag-book-gallery-powered-by-link" target="_blank" rel="noopener noreferrer">
+                            <?php esc_html_e('BRAG book Gallery', 'brag-book-gallery'); ?>
+                        </a>
+                    </p>
 				</div>
 
 				<div class="brag-book-gallery-main-content" role="region"
@@ -587,12 +593,6 @@ final class Gallery_Shortcode_Handler {
 						<?php
 					}
 					?>
-					<p class="brag-book-gallery-powered-by">
-						<?php esc_html_e( 'Proudly powered by', 'brag-book-gallery' ); ?>
-						<a href="https://bragbookgallery.com/" class="brag-book-gallery-powered-by-link" target="_blank" rel="noopener noreferrer">
-							<?php esc_html_e('BRAG book Gallery', 'brag-book-gallery'); ?>
-						</a>
-					</p>
 				</div>
 			</div>
 
@@ -1026,12 +1026,12 @@ final class Gallery_Shortcode_Handler {
 
 	/**
 	 * Render case details directly for fast initial page loads
-	 * 
+	 *
 	 * This method optimizes the initial page load for case detail URLs by:
 	 * 1. Making a direct API call to get only the specific case data
 	 * 2. Rendering minimal HTML with just the case details
 	 * 3. Including JavaScript to handle navigation and interactions
-	 * 
+	 *
 	 * @param string $case_id Case identifier (ID or SEO suffix)
 	 * @param string $procedure_title Procedure name from URL
 	 * @return string Fast-rendered case details HTML or empty string if failed
@@ -1041,45 +1041,45 @@ final class Gallery_Shortcode_Handler {
 			// Get API configuration
 			$api_tokens = get_option( 'brag_book_gallery_api_token', [] );
 			$website_property_ids = get_option( 'brag_book_gallery_website_property_id', [] );
-			
+
 			if ( empty( $api_tokens[0] ) || empty( $website_property_ids[0] ) ) {
 				return ''; // Fall back to normal rendering
 			}
-			
+
 			$api_token = $api_tokens[0];
 			$website_property_id = intval( $website_property_ids[0] );
-			
+
 			// Make direct API call with short timeout for speed
 			$api_base_url = get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' );
-			$api_url = sprintf( '%s/api/plugin/combine/cases/%s?apiToken=%s&websitePropertyId=%d', 
-				$api_base_url, 
-				urlencode( $case_id ), 
-				urlencode( $api_token ), 
-				$website_property_id 
+			$api_url = sprintf( '%s/api/plugin/combine/cases/%s?apiToken=%s&websitePropertyId=%d',
+				$api_base_url,
+				urlencode( $case_id ),
+				urlencode( $api_token ),
+				$website_property_id
 			);
-			
+
 			$response = wp_remote_get( $api_url, [
 				'timeout' => 5, // Fast timeout for initial page loads
 				'headers' => [ 'Accept' => 'application/json' ],
 			] );
-			
+
 			if ( is_wp_error( $response ) || wp_remote_retrieve_response_code( $response ) !== 200 ) {
 				return ''; // Fall back to normal rendering
 			}
-			
+
 			$data = json_decode( wp_remote_retrieve_body( $response ), true );
 			if ( empty( $data['data'][0] ) ) {
 				return ''; // Fall back to normal rendering
 			}
-			
+
 			$case_data = $data['data'][0];
-			
+
 			// Enqueue gallery assets for JavaScript functionality
 			Asset_Manager::enqueue_gallery_assets();
-			
+
 			// Generate fast case details HTML
 			return self::generate_fast_case_html( $case_data, $procedure_title );
-			
+
 		} catch ( \Exception $e ) {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 				error_log( 'Fast case rendering failed: ' . $e->getMessage() );
@@ -1096,11 +1096,11 @@ final class Gallery_Shortcode_Handler {
 		$images = $case_data['images'] ?? [];
 		$before_images = array_filter( $images, fn( $img ) => ( $img['type'] ?? '' ) === 'before' );
 		$after_images = array_filter( $images, fn( $img ) => ( $img['type'] ?? '' ) === 'after' );
-		
+
 		$age = ! empty( $case_data['age'] ) ? esc_html( $case_data['age'] ) : '';
 		$gender = ! empty( $case_data['gender'] ) ? esc_html( $case_data['gender'] ) : '';
 		$notes = ! empty( $case_data['notes'] ) ? wp_kses_post( $case_data['notes'] ) : '';
-		
+
 		ob_start();
 		?>
 		<div class="brag-book-gallery-wrapper">
@@ -1120,35 +1120,35 @@ final class Gallery_Shortcode_Handler {
 						</div>
 					<?php endif; ?>
 				</div>
-				
+
 				<div class="brag-book-gallery-case-images">
 					<?php if ( ! empty( $before_images ) ): ?>
 						<div class="brag-book-gallery-image-section">
 							<h3>Before</h3>
 							<div class="brag-book-gallery-image-grid">
 								<?php foreach ( $before_images as $image ): ?>
-									<img src="<?php echo esc_url( $image['url'] ?? '' ); ?>" 
-										 alt="Before - Case <?php echo $case_id; ?>" 
+									<img src="<?php echo esc_url( $image['url'] ?? '' ); ?>"
+										 alt="Before - Case <?php echo $case_id; ?>"
 										 loading="lazy">
 								<?php endforeach; ?>
 							</div>
 						</div>
 					<?php endif; ?>
-					
+
 					<?php if ( ! empty( $after_images ) ): ?>
 						<div class="brag-book-gallery-image-section">
 							<h3>After</h3>
 							<div class="brag-book-gallery-image-grid">
 								<?php foreach ( $after_images as $image ): ?>
-									<img src="<?php echo esc_url( $image['url'] ?? '' ); ?>" 
-										 alt="After - Case <?php echo $case_id; ?>" 
+									<img src="<?php echo esc_url( $image['url'] ?? '' ); ?>"
+										 alt="After - Case <?php echo $case_id; ?>"
 										 loading="lazy">
 								<?php endforeach; ?>
 							</div>
 						</div>
 					<?php endif; ?>
 				</div>
-				
+
 				<?php if ( $notes ): ?>
 					<div class="brag-book-gallery-case-notes">
 						<h3>Case Notes</h3>

@@ -251,6 +251,9 @@ class Cache_Management {
 				<button type="button" class="button button-secondary" id="cleanup-expired-transients" style="background: #8a6b3a; color: white;">
 					<?php esc_html_e( 'Cleanup Expired Transients', 'brag-book-gallery' ); ?>
 				</button>
+				<button type="button" class="button button-secondary" id="cleanup-legacy-transients" style="background: #7c3aed; color: white;">
+					<?php esc_html_e( 'Clear Legacy Transients', 'brag-book-gallery' ); ?>
+				</button>
 				<?php if ( function_exists( 'brag_book_is_wp_engine' ) && brag_book_is_wp_engine() ) : ?>
 					<button type="button" class="button button-secondary" id="cleanup-wp-cache" style="background: #059669; color: white;">
 						<?php esc_html_e( 'Clear WP Engine Cache', 'brag-book-gallery' ); ?>
@@ -873,6 +876,56 @@ class Cache_Management {
 						'<?php esc_html_e( 'Error', 'brag-book-gallery' ); ?>'
 					);
 					showStatus('<?php esc_html_e( 'Cache clear failed', 'brag-book-gallery' ); ?>', 'error');
+				} finally {
+					this.textContent = originalText;
+					this.disabled = false;
+				}
+			});
+
+			// Clear Legacy Transients
+			document.getElementById('cleanup-legacy-transients')?.addEventListener('click', async function() {
+				const confirmed = await confirmDialog(
+					'<?php esc_html_e( 'This will remove all old transient patterns (brag_book_sidebar_%, brag_book_cases_%, consultation_%, etc.) that were used before standardization. Continue?', 'brag-book-gallery' ); ?>',
+					'<?php esc_html_e( 'Clear Legacy Transients', 'brag-book-gallery' ); ?>'
+				);
+				if (!confirmed) {
+					return;
+				}
+
+				this.disabled = true;
+				const originalText = this.textContent;
+				this.textContent = '<?php esc_html_e( 'Clearing legacy transients...', 'brag-book-gallery' ); ?>';
+
+				try {
+					const response = await ajaxPost({
+						action: 'brag_book_clear_legacy_cache',
+						nonce: '<?php echo wp_create_nonce( 'brag_book_gallery_admin' ); ?>'
+					});
+
+					if (response.success) {
+						await alertDialog(
+							response.data || '<?php esc_html_e( 'Legacy transients cleared successfully.', 'brag-book-gallery' ); ?>',
+							'<?php esc_html_e( 'Success', 'brag-book-gallery' ); ?>'
+						);
+						showStatus('<?php esc_html_e( 'Legacy transients cleared successfully', 'brag-book-gallery' ); ?>', 'success');
+						setTimeout(() => {
+							const currentUrl = window.location.href.split('#')[0];
+							window.location.href = currentUrl + '#cache-management';
+							location.reload();
+						}, 1000);
+					} else {
+						await alertDialog(
+							response.data || '<?php esc_html_e( 'Error clearing legacy transients.', 'brag-book-gallery' ); ?>',
+							'<?php esc_html_e( 'Error', 'brag-book-gallery' ); ?>'
+						);
+						showStatus('<?php esc_html_e( 'Legacy clear failed', 'brag-book-gallery' ); ?>', 'error');
+					}
+				} catch (error) {
+					await alertDialog(
+						'<?php esc_html_e( 'Error clearing legacy transients:', 'brag-book-gallery' ); ?> ' + error,
+						'<?php esc_html_e( 'Error', 'brag-book-gallery' ); ?>'
+					);
+					showStatus('<?php esc_html_e( 'Legacy clear failed', 'brag-book-gallery' ); ?>', 'error');
 				} finally {
 					this.textContent = originalText;
 					this.disabled = false;
@@ -1647,10 +1700,11 @@ class Cache_Management {
 			'count'  => false
 		] );
 
-		// Escape LIKE parts for plugin transients only
-		$plugin_prefix = '%' . $wpdb->esc_like( '_transient_' . self::CACHE_PREFIX ) . '%';
-		$timeout_prefix = '%' . $wpdb->esc_like( '_transient_timeout_' . self::CACHE_PREFIX ) . '%';
-
+		// We need to search for both patterns:
+		// 1. _transient_brag_book_gallery_transient_% (new pattern with helper functions)
+		// 2. _transient_brag_book_gallery_% (direct transients without _transient_ suffix)
+		// But exclude timeout entries
+		
 		// SELECT
 		$sql = [ 'SELECT' ];
 
@@ -1661,8 +1715,8 @@ class Cache_Management {
 			$sql[] = '*';
 		}
 
-		// FROM with plugin-specific filtering
-		$sql[] = "FROM {$wpdb->options} WHERE option_name LIKE %s AND option_name NOT LIKE %s";
+		// FROM with plugin-specific filtering - search for both patterns
+		$sql[] = "FROM {$wpdb->options} WHERE (option_name LIKE %s OR option_name LIKE %s) AND option_name NOT LIKE %s";
 
 		// Search within plugin transients
 		if ( ! empty( $r['search'] ) ) {
@@ -1680,8 +1734,12 @@ class Cache_Management {
 		// Combine SQL parts
 		$query = implode( ' ', $sql );
 
-		// Prepare with plugin prefix and timeout exclusion
-		$prepared = $wpdb->prepare( $query, $plugin_prefix, $timeout_prefix );
+		// Prepare with both patterns and timeout exclusion
+		$pattern1 = '%' . $wpdb->esc_like( '_transient_brag_book_gallery_transient_' ) . '%';
+		$pattern2 = '%' . $wpdb->esc_like( '_transient_brag_book_gallery_' ) . '%';
+		$timeout_pattern = '%' . $wpdb->esc_like( '_transient_timeout_' ) . '%';
+		
+		$prepared = $wpdb->prepare( $query, $pattern1, $pattern2, $timeout_pattern );
 
 		// Execute query
 		if ( empty( $r['count'] ) ) {
@@ -1892,7 +1950,25 @@ class Cache_Management {
 			throw new Exception( __( 'Invalid cache key', 'brag-book-gallery' ) );
 		}
 
-		$data = brag_book_get_cache( $key );
+		// The key from the table already includes the full transient name
+		// We need to handle it differently based on whether it has the transient prefix
+		$data = false;
+		
+		// If the key already includes 'brag_book_gallery_transient_', we need to strip it
+		// before using brag_book_get_cache which adds its own prefix
+		if ( str_starts_with( $key, 'brag_book_gallery_transient_' ) ) {
+			// Remove the prefix since brag_book_get_cache will add it
+			$clean_key = substr( $key, strlen( 'brag_book_gallery_transient_' ) );
+			$data = brag_book_get_cache( $clean_key );
+		} else {
+			// Try direct transient get for keys without the prefix
+			$data = get_transient( $key );
+			
+			// If not found, try with the helper function
+			if ( $data === false ) {
+				$data = brag_book_get_cache( $key );
+			}
+		}
 
 		if ( false === $data ) {
 			throw new Exception( __( 'Cache item not found or expired', 'brag-book-gallery' ) );
@@ -1938,7 +2014,24 @@ class Cache_Management {
 				continue;
 			}
 
-			if ( brag_book_delete_cache( $key ) ) {
+			$delete_success = false;
+			
+			// Handle keys with the transient prefix
+			if ( str_starts_with( $key, 'brag_book_gallery_transient_' ) ) {
+				// Remove the prefix since brag_book_delete_cache will add it
+				$clean_key = substr( $key, strlen( 'brag_book_gallery_transient_' ) );
+				$delete_success = brag_book_delete_cache( $clean_key );
+			} else {
+				// Try deleting as direct transient first
+				$delete_success = delete_transient( $key );
+				
+				// Also try with the helper function
+				if ( ! $delete_success ) {
+					$delete_success = brag_book_delete_cache( $key );
+				}
+			}
+
+			if ( $delete_success ) {
 				$deleted++;
 
 				/**
