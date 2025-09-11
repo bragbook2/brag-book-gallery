@@ -1047,32 +1047,69 @@ final class Gallery_Shortcode_Handler {
 			}
 
 			$api_token = $api_tokens[0];
-			$website_property_id = intval( $website_property_ids[0] );
+			$website_property_id = (int) $website_property_ids[0];
 
-			// Make direct API call with short timeout for speed
-			$api_base_url = get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' );
-			$api_url = sprintf( '%s/api/plugin/combine/cases/%s?apiToken=%s&websitePropertyId=%d',
-				$api_base_url,
-				urlencode( $case_id ),
-				urlencode( $api_token ),
-				$website_property_id
-			);
-
-			$response = wp_remote_get( $api_url, [
-				'timeout' => 5, // Fast timeout for initial page loads
-				'headers' => [ 'Accept' => 'application/json' ],
-			] );
-
-			if ( is_wp_error( $response ) || wp_remote_retrieve_response_code( $response ) !== 200 ) {
-				return ''; // Fall back to normal rendering
+			// Check cache first if we have a procedure title
+			$case_data = null;
+			if ( ! empty( $procedure_title ) && Cache_Manager::is_caching_enabled() ) {
+				$case_cache_key = Cache_Manager::get_case_view_cache_key( $procedure_title, $case_id );
+				$cached_case = Cache_Manager::get( $case_cache_key );
+				
+				if ( $cached_case !== false ) {
+					$case_data = $cached_case;
+					if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+						error_log( 'Fast case render: Using cached data for ' . $case_cache_key );
+					}
+				}
 			}
 
-			$data = json_decode( wp_remote_retrieve_body( $response ), true );
-			if ( empty( $data['data'][0] ) ) {
-				return ''; // Fall back to normal rendering
-			}
+			// If not in cache, make API call
+			if ( empty( $case_data ) ) {
+				// Make direct API call with short timeout for speed
+				$api_base_url = get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' );
+				$api_url = sprintf( '%s/api/plugin/combine/cases/%s',
+					$api_base_url,
+					urlencode( $case_id )
+				);
 
-			$case_data = $data['data'][0];
+				// Prepare request body - API expects parameters wrapped in 'items'
+				$body = [
+					'items' => [
+						'apiToken' => $api_token,
+						'websitePropertyId' => $website_property_id,
+					],
+				];
+
+				$response = wp_remote_post( $api_url, [
+					'timeout' => 5, // Fast timeout for initial page loads
+					'headers' => [
+						'Accept' => 'application/json',
+						'Content-Type' => 'application/json',
+					],
+					'body' => wp_json_encode( $body ),
+				] );
+
+				if ( is_wp_error( $response ) || wp_remote_retrieve_response_code( $response ) !== 200 ) {
+					return ''; // Fall back to normal rendering
+				}
+
+				$data = json_decode( wp_remote_retrieve_body( $response ), true );
+				if ( empty( $data['data'][0] ) ) {
+					return ''; // Fall back to normal rendering
+				}
+
+				$case_data = $data['data'][0];
+
+				// Cache the case data for future use
+				if ( ! empty( $procedure_title ) && Cache_Manager::is_caching_enabled() ) {
+					$case_cache_key = Cache_Manager::get_case_view_cache_key( $procedure_title, $case_id );
+					Cache_Manager::set( $case_cache_key, $case_data, 24 * HOUR_IN_SECONDS );
+					
+					if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+						error_log( 'Fast case render: Cached data for ' . $case_cache_key );
+					}
+				}
+			}
 
 			// Enqueue gallery assets for JavaScript functionality
 			Asset_Manager::enqueue_gallery_assets();

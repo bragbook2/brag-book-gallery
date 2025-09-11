@@ -103,6 +103,22 @@ class Cache_Manager {
 	 * @return array{success: bool, message: string, count?: int, wp_engine?: bool} Detailed result array.
 	 */
 	public static function clear_all_cache(): array {
+		// Use the comprehensive cache clearing helper if available
+		if ( function_exists( 'brag_book_clear_all_cache' ) ) {
+			$success = brag_book_clear_all_cache();
+			$is_wp_engine = function_exists( 'brag_book_is_wp_engine' ) && brag_book_is_wp_engine();
+			
+			return [
+				'success' => $success,
+				'message' => $success 
+					? __( 'Successfully cleared all cache items', 'brag-book-gallery' ) . 
+					  ( $is_wp_engine ? __( ' (including WP Engine object cache)', 'brag-book-gallery' ) : '' )
+					: __( 'Failed to clear cache', 'brag-book-gallery' ),
+				'wp_engine' => $is_wp_engine,
+			];
+		}
+		
+		// Fallback to original implementation if helper not available
 		global $wpdb;
 		
 		$is_wp_engine = self::is_wp_engine();
@@ -242,18 +258,13 @@ class Cache_Manager {
 			$expiration = 12 * HOUR_IN_SECONDS; // 12 hours
 		}
 
-		$success = false;
-
-		// Try wp_cache_set first (object cache)
-		if ( function_exists( 'wp_cache_set' ) ) {
-			$success = wp_cache_set( $key, $value, 'brag_book_gallery', $expiration );
+		// Use the dual caching helper function for proper WP Engine support
+		if ( function_exists( 'brag_book_set_cache' ) ) {
+			return brag_book_set_cache( $key, $value, $expiration );
 		}
 
-		// Always set transient as fallback or primary cache
-		$transient_success = set_transient( $key, $value, $expiration );
-
-		// Return true if either method succeeded
-		return $success || $transient_success;
+		// Fallback to direct transient if helper not available
+		return set_transient( $key, $value, $expiration );
 	}
 
 	/**
@@ -282,25 +293,19 @@ class Cache_Manager {
 			return false;
 		}
 
-		if ( WP_DEBUG && WP_DEBUG_LOG ) {
-			error_log( 'Cache_Manager::get - Looking for key: ' . $key );
-		}
-
-		// Try wp_cache_get first (object cache)
-		if ( function_exists( 'wp_cache_get' ) ) {
-			$value = wp_cache_get( $key, 'brag_book_gallery' );
+		// Use the dual caching helper function for proper WP Engine support
+		if ( function_exists( 'brag_book_get_cache' ) ) {
+			$value = brag_book_get_cache( $key );
 			if ( WP_DEBUG && WP_DEBUG_LOG ) {
-				error_log( 'Cache_Manager::get - wp_cache_get result: ' . ( $value !== false ? 'FOUND' : 'NOT FOUND' ) );
+				error_log( 'Cache_Manager::get - Result: ' . ( $value !== false ? 'FOUND' : 'NOT FOUND' ) );
 			}
-			if ( $value !== false ) {
-				return $value;
-			}
+			return $value;
 		}
 
-		// Fallback to transient
+		// Fallback to direct transient if helper not available
 		$transient_result = get_transient( $key );
 		if ( WP_DEBUG && WP_DEBUG_LOG ) {
-			error_log( 'Cache_Manager::get - get_transient result: ' . ( $transient_result !== false ? 'FOUND' : 'NOT FOUND' ) );
+			error_log( 'Cache_Manager::get - Fallback transient result: ' . ( $transient_result !== false ? 'FOUND' : 'NOT FOUND' ) );
 		}
 		
 		return $transient_result;
@@ -326,18 +331,13 @@ class Cache_Manager {
 			return false;
 		}
 
-		$success = false;
-
-		// Try wp_cache_delete first (object cache)
-		if ( function_exists( 'wp_cache_delete' ) ) {
-			$success = wp_cache_delete( $key, 'brag_book_gallery' );
+		// Use the dual caching helper function for proper WP Engine support
+		if ( function_exists( 'brag_book_delete_cache' ) ) {
+			return brag_book_delete_cache( $key );
 		}
 
-		// Always delete transient as well
-		$transient_success = delete_transient( $key );
-
-		// Return true if either method succeeded
-		return $success || $transient_success;
+		// Fallback to direct transient deletion if helper not available
+		return delete_transient( $key );
 	}
 
 	/**
