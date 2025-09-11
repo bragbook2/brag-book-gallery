@@ -80,8 +80,14 @@ class Settings_General extends Settings_Base {
 			true
 		);
 
+		// Debug form submission
+		error_log( "BRAGBook Debug - POST submit: " . ( isset( $_POST['submit'] ) ? 'TRUE' : 'FALSE' ) );
+		error_log( "BRAGBook Debug - POST submit_css: " . ( isset( $_POST['submit_css'] ) ? 'TRUE' : 'FALSE' ) );
+		error_log( "BRAGBook Debug - POST submit_default: " . ( isset( $_POST['submit_default'] ) ? 'TRUE' : 'FALSE' ) );
+		
 		// Handle form submission
-		if ( isset( $_POST['submit'] ) && $this->save_settings( 'brag_book_gallery_general_settings', 'brag_book_gallery_general_nonce' ) ) {
+		if ( ( isset( $_POST['submit'] ) || isset( $_POST['submit_css'] ) ) && $this->save_settings( 'brag_book_gallery_general_settings', 'brag_book_gallery_general_nonce' ) ) {
+			error_log( "BRAGBook Debug - Calling save_general_settings()" );
 			$this->save_general_settings();
 		}
 
@@ -457,6 +463,17 @@ class Settings_General extends Settings_Base {
 		                       '<p>Our gallery is full of our real patients. Keep in mind results vary.</p>';
 		$landing_text = get_option( 'brag_book_gallery_landing_page_text', $default_landing_text );
 		$slug = \BRAGBookGallery\Includes\Core\Slug_Helper::get_first_gallery_page_slug( '' );
+		
+		// Get new toggle settings
+		$expand_nav_menus = get_option( 'brag_book_gallery_expand_nav_menus', false );
+		$show_filter_counts = get_option( 'brag_book_gallery_show_filter_counts', true );
+		$enable_favorites = get_option( 'brag_book_gallery_enable_favorites', true );
+		$enable_consultation = get_option( 'brag_book_gallery_enable_consultation', true );
+		
+		// Debug what's actually in the database
+		$raw_db_value = get_option( 'brag_book_gallery_enable_favorites', 'NOT_FOUND' );
+		error_log( "BRAGBook Debug - Raw DB value: " . print_r( $raw_db_value, true ) . " (type: " . gettype( $raw_db_value ) . ")" );
+		error_log( "BRAGBook Debug - Final enable_favorites: " . print_r( $enable_favorites, true ) . " (type: " . gettype( $enable_favorites ) . ")" );
 
 		// Show notice if not in default mode (for gallery settings section)
 		$mode_manager = \BRAGBookGallery\Includes\Mode\Mode_Manager::get_instance();
@@ -607,13 +624,120 @@ class Settings_General extends Settings_Base {
 						</p>
 					</td>
 				</tr>
+
+				<tr>
+					<th scope="row">
+						<label for="brag_book_gallery_expand_nav_menus">
+							<?php esc_html_e( 'Expand Navigation Menus', 'brag-book-gallery' ); ?>
+						</label>
+					</th>
+					<td>
+						<div class="brag-book-gallery-toggle-wrapper">
+							<label class="brag-book-gallery-toggle">
+								<input type="hidden" name="brag_book_gallery_expand_nav_menus" value="0" />
+								<input type="checkbox"
+								       id="brag_book_gallery_expand_nav_menus"
+								       name="brag_book_gallery_expand_nav_menus"
+								       value="1"
+								       <?php checked( $expand_nav_menus, true ); ?> />
+								<span class="brag-book-gallery-toggle-slider"></span>
+							</label>
+							<span class="brag-book-gallery-toggle-label">
+								<?php esc_html_e( 'Show navigation filter menus expanded by default', 'brag-book-gallery' ); ?>
+							</span>
+						</div>
+						<p class="description">
+							<?php esc_html_e( 'When enabled, all navigation filter menus will be expanded by default when users load the gallery page.', 'brag-book-gallery' ); ?>
+						</p>
+					</td>
+				</tr>
+
+				<tr>
+					<th scope="row">
+						<label for="brag_book_gallery_show_filter_counts">
+							<?php esc_html_e( 'Show Filter Counts', 'brag-book-gallery' ); ?>
+						</label>
+					</th>
+					<td>
+						<div class="brag-book-gallery-toggle-wrapper">
+							<label class="brag-book-gallery-toggle">
+								<input type="hidden" name="brag_book_gallery_show_filter_counts" value="0" />
+								<input type="checkbox"
+								       id="brag_book_gallery_show_filter_counts"
+								       name="brag_book_gallery_show_filter_counts"
+								       value="1"
+								       <?php checked( $show_filter_counts, true ); ?> />
+								<span class="brag-book-gallery-toggle-slider"></span>
+							</label>
+							<span class="brag-book-gallery-toggle-label">
+								<?php esc_html_e( 'Display case counts next to filter categories', 'brag-book-gallery' ); ?>
+							</span>
+						</div>
+						<p class="description">
+							<?php esc_html_e( 'Display the number of available items for each filter category (e.g., "Procedure (15)", "Age Group (8)").', 'brag-book-gallery' ); ?>
+						</p>
+					</td>
+				</tr>
+
+				<tr>
+					<th scope="row">
+						<label for="brag_book_gallery_enable_favorites">
+							<?php esc_html_e( 'Enable Favorites', 'brag-book-gallery' ); ?>
+						</label>
+					</th>
+					<td>
+						<div class="brag-book-gallery-toggle-wrapper">
+							<label class="brag-book-gallery-toggle">
+								<input type="hidden" name="brag_book_gallery_enable_favorites" value="0" />
+								<input type="checkbox"
+								       id="brag_book_gallery_enable_favorites"
+								       name="brag_book_gallery_enable_favorites"
+								       value="1"
+								       <?php checked( $enable_favorites, true ); ?> />
+								<span class="brag-book-gallery-toggle-slider"></span>
+							</label>
+							<span class="brag-book-gallery-toggle-label">
+								<?php esc_html_e( 'Allow users to save and manage favorite cases', 'brag-book-gallery' ); ?>
+							</span>
+						</div>
+						<p class="description">
+							<?php esc_html_e( 'When enabled, favorite buttons and the My Favorites page will be available. When disabled, all favorites functionality is hidden.', 'brag-book-gallery' ); ?>
+						</p>
+					</td>
+				</tr>
+
+				<tr>
+					<th scope="row">
+						<label for="brag_book_gallery_enable_consultation">
+							<?php esc_html_e( 'Enable Consultation Requests', 'brag-book-gallery' ); ?>
+						</label>
+					</th>
+					<td>
+						<div class="brag-book-gallery-toggle-wrapper">
+							<label class="brag-book-gallery-toggle">
+								<input type="hidden" name="brag_book_gallery_enable_consultation" value="0" />
+								<input type="checkbox"
+								       id="brag_book_gallery_enable_consultation"
+								       name="brag_book_gallery_enable_consultation"
+								       value="1"
+								       <?php checked( $enable_consultation, true ); ?> />
+								<span class="brag-book-gallery-toggle-slider"></span>
+							</label>
+							<span class="brag-book-gallery-toggle-label">
+								<?php esc_html_e( 'Display consultation request CTA and dialog forms', 'brag-book-gallery' ); ?>
+							</span>
+						</div>
+						<p class="description">
+							<?php esc_html_e( 'When enabled, the "Ready for the next step?" text, "Request a Consultation" button, and consultation dialog will be shown. When disabled, all consultation elements are hidden.', 'brag-book-gallery' ); ?>
+						</p>
+					</td>
+				</tr>
 			</table>
 
 			<div class="brag-book-gallery-tab-actions">
 				<button type="submit" name="submit" class="button button-primary button-large">
 					<?php esc_html_e( 'Save Display & Gallery Settings', 'brag-book-gallery' ); ?>
 				</button>
-				<input type="hidden" name="submit_default" value="1" />
 			</div>
 		</form>
 		<?php
@@ -942,7 +1066,7 @@ class Settings_General extends Settings_Base {
 			</table>
 
 			<div class="brag-book-gallery-tab-actions">
-				<button type="submit" name="submit" class="button button-primary button-large">
+				<button type="submit" name="submit_css" class="button button-primary button-large">
 					<?php esc_html_e( 'Save Custom CSS', 'brag-book-gallery' ); ?>
 				</button>
 			</div>
@@ -1324,6 +1448,46 @@ class Settings_General extends Settings_Base {
 		$items_per_page = isset( $_POST['brag_book_gallery_items_per_page'] ) ? absint( $_POST['brag_book_gallery_items_per_page'] ) : 10;
 		update_option( 'brag_book_gallery_items_per_page', $items_per_page );
 
+		// Navigation and Filter Settings
+		$expand_nav_menus = isset( $_POST['brag_book_gallery_expand_nav_menus'] ) && $_POST['brag_book_gallery_expand_nav_menus'] === '1';
+		update_option( 'brag_book_gallery_expand_nav_menus', $expand_nav_menus );
+
+		$show_filter_counts = isset( $_POST['brag_book_gallery_show_filter_counts'] ) && $_POST['brag_book_gallery_show_filter_counts'] === '1';
+		update_option( 'brag_book_gallery_show_filter_counts', $show_filter_counts );
+
+		// Debug favorites toggle processing
+		$raw_post_value = $_POST['brag_book_gallery_enable_favorites'] ?? 'NOT_SET';
+		$is_isset = isset( $_POST['brag_book_gallery_enable_favorites'] );
+		$equals_one = isset( $_POST['brag_book_gallery_enable_favorites'] ) && $_POST['brag_book_gallery_enable_favorites'] === '1';
+		
+		error_log( "BRAGBook Debug - Raw POST value: " . print_r( $raw_post_value, true ) );
+		error_log( "BRAGBook Debug - isset check: " . ( $is_isset ? 'TRUE' : 'FALSE' ) );
+		error_log( "BRAGBook Debug - equals '1' check: " . ( $equals_one ? 'TRUE' : 'FALSE' ) );
+		
+		$enable_favorites = isset( $_POST['brag_book_gallery_enable_favorites'] ) && $_POST['brag_book_gallery_enable_favorites'] === '1';
+		
+		error_log( "BRAGBook Debug - Final boolean value: " . ( $enable_favorites ? 'TRUE' : 'FALSE' ) );
+		error_log( "BRAGBook Debug - About to save to database..." );
+		
+		// Force the option to be created/updated even if value is false
+		delete_option( 'brag_book_gallery_enable_favorites' );
+		$update_result = add_option( 'brag_book_gallery_enable_favorites', $enable_favorites, '', 'no' );
+		
+		error_log( "BRAGBook Debug - Update result: " . ( $update_result ? 'SUCCESS' : 'NO_CHANGE_OR_FAIL' ) );
+		error_log( "BRAGBook Debug - Value now in DB: " . print_r( get_option( 'brag_book_gallery_enable_favorites' ), true ) );
+
+		// Consultation Settings
+		$enable_consultation = isset( $_POST['brag_book_gallery_enable_consultation'] ) && $_POST['brag_book_gallery_enable_consultation'] === '1';
+		
+		// Force the option to be created/updated even if value is false
+		delete_option( 'brag_book_gallery_enable_consultation' );
+		add_option( 'brag_book_gallery_enable_consultation', $enable_consultation, '', 'no' );
+
+		// Clear settings helper cache when favorites setting is updated
+		if ( class_exists( '\BRAGBookGallery\Includes\Core\Settings_Helper' ) ) {
+			\BRAGBookGallery\Includes\Core\Settings_Helper::clear_cache();
+		}
+
 		// Advanced Settings - Custom CSS with sanitization
 		if ( isset( $_POST['brag_book_gallery_custom_css'] ) ) {
 			// Sanitize CSS while preserving valid CSS syntax
@@ -1333,7 +1497,12 @@ class Settings_General extends Settings_Base {
 			update_option( 'brag_book_gallery_custom_css', $custom_css );
 		}
 
-		$this->add_notice( __( 'General settings saved successfully.', 'brag-book-gallery' ), 'success' );
+		// Only add notice if it was the main submit button, not the CSS one  
+		if ( isset( $_POST['submit'] ) ) {
+			$this->add_notice( __( 'General settings saved successfully.', 'brag-book-gallery' ), 'success' );
+		} elseif ( isset( $_POST['submit_css'] ) ) {
+			$this->add_notice( __( 'Custom CSS saved successfully.', 'brag-book-gallery' ), 'success' );
+		}
 	}
 
 	/**
@@ -1459,7 +1628,6 @@ class Settings_General extends Settings_Base {
 		update_option( 'brag_book_gallery_lazy_load', $lazy_load );
 
 		$this->add_notice( __( 'Gallery settings saved successfully.', 'brag-book-gallery' ) );
-		settings_errors( $this->page_slug );
 	}
 
 }

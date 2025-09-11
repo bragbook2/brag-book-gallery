@@ -29,6 +29,7 @@ declare(strict_types=1);
 namespace BRAGBookGallery\Includes\Taxonomies;
 
 use BRAGBookGallery\Includes\PostTypes\Gallery_Post_Type;
+use BRAGBookGallery\Includes\Extend\Cache_Manager;
 use WP_Term;
 use Exception;
 
@@ -632,8 +633,8 @@ final class Gallery_Taxonomies {
 		$this->clear_term_cache( $term_id, $taxonomy );
 
 		// Clear general taxonomy cache
-		delete_transient( 'brag_book_gallery_transient_' . $taxonomy . '_terms' );
-		delete_transient( 'brag_book_gallery_transient_' . $taxonomy . '_hierarchy' );
+		Cache_Manager::delete( 'brag_book_gallery_transient_' . $taxonomy . '_terms' );
+		Cache_Manager::delete( 'brag_book_gallery_transient_' . $taxonomy . '_hierarchy' );
 
 		// Clear memory cache
 		$this->memory_cache = [];
@@ -648,10 +649,7 @@ final class Gallery_Taxonomies {
 	 */
 	private function clear_term_cache( int $term_id, string $taxonomy ): void {
 		clean_term_cache( $term_id, $taxonomy );
-		delete_transient( 'brag_book_gallery_transient_term_' . $term_id );
-
-		// Clear related caches
-		wp_cache_delete( 'last_changed', 'terms' );
+		// Caching disabled
 	}
 
 	/**
@@ -847,7 +845,7 @@ final class Gallery_Taxonomies {
 		}
 
 		// Check transient cache
-		$cached = get_transient( 'brag_book_gallery_transient_' . $cache_key );
+		$cached = Cache_Manager::get( 'brag_book_gallery_transient_' . $cache_key );
 		if ( false !== $cached ) {
 			$this->memory_cache[ $cache_key ] = $cached;
 			return $cached;
@@ -867,7 +865,7 @@ final class Gallery_Taxonomies {
 		if ( ! is_wp_error( $terms ) ) {
 			// Cache the results
 			$this->memory_cache[ $cache_key ] = $terms;
-			set_transient( 'brag_book_gallery_transient_' . $cache_key, $terms, self::CACHE_TTL_MEDIUM );
+			Cache_Manager::set( 'brag_book_gallery_transient_' . $cache_key, $terms, self::CACHE_TTL_MEDIUM );
 		}
 
 		return is_wp_error( $terms ) ? [] : $terms;

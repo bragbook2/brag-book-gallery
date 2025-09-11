@@ -768,24 +768,36 @@ final class Shortcodes {
 		}
 
 		// Add action buttons matching original markup exactly
-		$html .= sprintf(
-			'<div class="brag-book-gallery-item-actions">
-				<button class="brag-book-gallery-favorite-button" data-favorited="false" data-item-id="%s" aria-label="%s">
+		$action_buttons = '';
+		
+		// Only add favorites button if favorites are enabled
+		if ( \BRAGBookGallery\Includes\Core\Settings_Helper::is_favorites_enabled() ) {
+			$action_buttons .= sprintf(
+				'<button class="brag-book-gallery-favorite-button" data-favorited="false" data-item-id="%s" aria-label="%s">
 					<svg fill="rgba(255, 255, 255, 0.5)" stroke="white" stroke-width="2" viewBox="0 0 24 24">
 						<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
 					</svg>
-				</button>
-				<button class="brag-book-gallery-share-button" data-item-id="%s" aria-label="%s">
-					<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor">
-						<path d="M672.22-100q-44.91 0-76.26-31.41-31.34-31.41-31.34-76.28 0-6 4.15-29.16L284.31-404.31q-14.46 15-34.36 23.5t-42.64 8.5q-44.71 0-76.01-31.54Q100-435.39 100-480q0-44.61 31.3-76.15 31.3-31.54 76.01-31.54 22.74 0 42.64 8.5 19.9 8.5 34.36 23.5l284.46-167.08q-2.38-7.38-3.27-14.46-.88-7.08-.88-15.08 0-44.87 31.43-76.28Q627.49-860 672.4-860t76.25 31.44Q780-797.13 780-752.22q0 44.91-31.41 76.26-31.41 31.34-76.28 31.34-22.85 0-42.5-8.69Q610.15-662 595.69-677L311.23-509.54q2.38 7.39 3.27 14.46.88 7.08.88 15.08t-.88 15.08q-.89 7.07-3.27 14.46L595.69-283q14.46-15 34.12-23.69 19.65-8.69 42.5-8.69 44.87 0 76.28 31.43Q780-252.51 780-207.6t-31.44 76.25Q717.13-100 672.22-100Z"/>
-					</svg>
-				</button>
-			</div>',
-			esc_attr( $item_id ),
-			esc_attr__( 'Add to favorites', 'brag-book-gallery' ),
+				</button>',
+				esc_attr( $item_id ),
+				esc_attr__( 'Add to favorites', 'brag-book-gallery' )
+			);
+		}
+		
+		// Add share button
+		$action_buttons .= sprintf(
+			'<button class="brag-book-gallery-share-button" data-item-id="%s" aria-label="%s">
+				<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor">
+					<path d="M672.22-100q-44.91 0-76.26-31.41-31.34-31.41-31.34-76.28 0-6 4.15-29.16L284.31-404.31q-14.46 15-34.36 23.5t-42.64 8.5q-44.71 0-76.01-31.54Q100-435.39 100-480q0-44.61 31.3-76.15 31.3-31.54 76.01-31.54 22.74 0 42.64 8.5 19.9 8.5 34.36 23.5l284.46-167.08q-2.38-7.38-3.27-14.46-.88-7.08-.88-15.08 0-44.87 31.43-76.28Q627.49-860 672.4-860t76.25 31.44Q780-797.13 780-752.22q0 44.91-31.41 76.26-31.41 31.34-76.28 31.34-22.85 0-42.5-8.69Q610.15-662 595.69-677L311.23-509.54q2.38 7.39 3.27 14.46.88 7.08.88 15.08t-.88 15.08q-.89 7.07-3.27 14.46L595.69-283q14.46-15 34.12-23.69 19.65-8.69 42.5-8.69 44.87 0 76.28 31.43Q780-252.51 780-207.6t-31.44 76.25Q717.13-100 672.22-100Z"/>
+				</svg>
+			</button>',
 			esc_attr( $item_id ),
 			esc_attr__( 'Share this image', 'brag-book-gallery' )
 		);
+		
+		// Only add the actions container if we have any buttons
+		if ( ! empty( $action_buttons ) ) {
+			$html .= sprintf( '<div class="brag-book-gallery-item-actions">%s</div>', $action_buttons );
+		}
 
 		$html .= '</div>';
 
@@ -968,6 +980,11 @@ final class Shortcodes {
 	 * @return string Rendered favorites interface HTML.
 	 */
 	public static function favorites_shortcode( array|string $atts = [] ): string {
+		// Check if favorites are enabled
+		if ( ! \BRAGBookGallery\Includes\Core\Settings_Helper::is_favorites_enabled() ) {
+			return '<div class="brag-book-gallery-error">' . esc_html__( 'Favorites functionality is currently disabled.', 'brag-book-gallery' ) . '</div>';
+		}
+
 		// Normalize attributes to array
 		$atts = is_array( $atts ) ? $atts : [];
 

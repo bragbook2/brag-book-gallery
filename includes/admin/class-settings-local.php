@@ -14,6 +14,8 @@ declare( strict_types=1 );
 
 namespace BRAGBookGallery\Includes\Admin;
 
+use BRAGBookGallery\Includes\Extend\Cache_Manager;
+
 if ( ! defined( 'WPINC' ) ) {
 	die( 'Restricted Access' );
 }
@@ -99,7 +101,7 @@ class Settings_Local extends Settings_Base {
 
 		// Get sync status
 		$last_sync      = get_option( 'brag_book_gallery_last_sync', '' );
-		$sync_status    = get_transient( 'brag_book_gallery_transient_sync_status' );
+		$sync_status    = Cache_Manager::get( 'sync_status' );
 
 		$this->render_header();
 
@@ -428,7 +430,7 @@ class Settings_Local extends Settings_Base {
 		}
 
 		// Set sync status
-		set_transient( 'brag_book_gallery_transient_sync_status', 'running', HOUR_IN_SECONDS );
+		Cache_Manager::set( 'sync_status', 'running', HOUR_IN_SECONDS );
 
 		// Schedule immediate sync
 		wp_schedule_single_event( time(), 'brag_book_gallery_sync_data' );

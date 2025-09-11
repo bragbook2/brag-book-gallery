@@ -253,6 +253,7 @@ final class Asset_Manager {
 			'apiToken'          => sanitize_text_field( $config['api_token'] ?? '' ),
 			'websitePropertyId' => sanitize_text_field( $config['website_property_id'] ?? '' ),
 			'apiEndpoint'       => esc_url_raw( get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' ) ),
+			'apiBaseUrl'        => esc_url_raw( get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' ) ),
 			'ajaxUrl'           => esc_url_raw( admin_url( 'admin-ajax.php' ) ),
 			'nonce'             => wp_create_nonce( 'brag_book_gallery_nonce' ),
 			'pluginUrl'         => esc_url_raw( $plugin_url ),

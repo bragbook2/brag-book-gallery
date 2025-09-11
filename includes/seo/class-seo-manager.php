@@ -527,7 +527,7 @@ final class SEO_Manager {
 		$cache_key   = 'brag_book_gallery_transient_procedure_' . $procedure_slug . ( $is_combine ? '_combine' : '_single' );
 
 		// Check cache first.
-		$cached_data = get_transient( $cache_key );
+		$cached_data = Cache_Manager::get( $cache_key );
 
 		if ( false !== $cached_data ) {
 			return $cached_data;
@@ -564,7 +564,7 @@ final class SEO_Manager {
 		$procedure_data = $this->find_procedure_in_sidebar( $sidebar_data, $procedure_slug );
 
 		if ( $procedure_data ) {
-			set_transient( $cache_key, $procedure_data, HOUR_IN_SECONDS );
+			Cache_Manager::set( $cache_key, $procedure_data, HOUR_IN_SECONDS );
 		}
 
 		return $procedure_data;
@@ -586,7 +586,7 @@ final class SEO_Manager {
 		$cache_key   = 'brag_book_gallery_case_seo_' .$case_id_or_slug . serialize( $procedure_data );
 
 		// Check cache first.
-		$cached_data = get_transient( $cache_key );
+		$cached_data = Cache_Manager::get( $cache_key );
 
 		if ( false !== $cached_data ) {
 			return $cached_data;
@@ -659,7 +659,7 @@ final class SEO_Manager {
 			'brag_book_gallery_seo_description' => $case_data['caseDetails'][0]['seoPageDescription'] ?? '',
 		];
 
-		set_transient( $cache_key, $seo_case_data, HOUR_IN_SECONDS );
+		Cache_Manager::set( $cache_key, $seo_case_data, HOUR_IN_SECONDS );
 
 		return $seo_case_data;
 	}
@@ -715,7 +715,7 @@ final class SEO_Manager {
 	private function get_combined_sidebar_data( array $api_tokens ): array {
 
 		$cache_key   = 'brag_book_gallery_transient_combined_sidebar_' . serialize( $api_tokens );
-		$cached_data = get_transient( $cache_key );
+		$cached_data = Cache_Manager::get( $cache_key );
 
 		if ( false !== $cached_data ) {
 			return $cached_data;
@@ -750,7 +750,7 @@ final class SEO_Manager {
 			}
 		}
 
-		set_transient( $cache_key, $combined_data, HOUR_IN_SECONDS );
+		Cache_Manager::set( $cache_key, $combined_data, HOUR_IN_SECONDS );
 
 		return $combined_data;
 	}
@@ -773,7 +773,7 @@ final class SEO_Manager {
 
 		$cache_key   = 'brag_book_gallery_transient_sidebar_' . $api_token;
 
-		$cached_data = get_transient( $cache_key );
+		$cached_data = Cache_Manager::get( $cache_key );
 
 		if ( false !== $cached_data ) {
 			return $cached_data;
@@ -789,7 +789,7 @@ final class SEO_Manager {
 		}
 
 		$sidebar_data = $response['data'];
-		set_transient( $cache_key, $sidebar_data, HOUR_IN_SECONDS );
+		Cache_Manager::set( $cache_key, $sidebar_data, HOUR_IN_SECONDS );
 
 		return $sidebar_data;
 	}
@@ -1607,7 +1607,7 @@ final class SEO_Manager {
 	 */
 	private function is_rate_limited( string $identifier, int $limit = 100, int $window = 3600 ): bool {
 		$cache_key = 'brag_book_gallery_transient_rate_limit_' . $identifier;
-		$requests = get_transient( $cache_key ) ?: 0;
+		$requests = Cache_Manager::get( $cache_key ) ?: 0;
 
 		if ( $requests >= $limit ) {
 			$this->log_error( 'Rate limit exceeded', [
@@ -1618,7 +1618,7 @@ final class SEO_Manager {
 			return true;
 		}
 
-		set_transient( $cache_key, $requests + 1, $window );
+		Cache_Manager::set( $cache_key, $requests + 1, $window );
 		return false;
 	}
 
@@ -1646,7 +1646,7 @@ final class SEO_Manager {
 		}
 
 		// Check transient cache (second fastest)
-		$cached_data = get_transient( $cache_key );
+		$cached_data = Cache_Manager::get( $cache_key );
 		if ( false !== $cached_data ) {
 			$this->memory_cache[ $cache_key ] = $cached_data;
 			$this->track_performance( $category, microtime( true ) - $start_time, 'transient_hit' );
@@ -1659,7 +1659,7 @@ final class SEO_Manager {
 
 			// Store in both cache levels
 			$this->memory_cache[ $cache_key ] = $data;
-			set_transient( $cache_key, $data, $ttl );
+			Cache_Manager::set( $cache_key, $data, $ttl );
 
 			$this->track_performance( $category, microtime( true ) - $start_time, 'cache_miss' );
 			return $data;
@@ -1751,7 +1751,7 @@ final class SEO_Manager {
 
 		// Only run cleanup occasionally to avoid performance impact
 		$cleanup_key = 'brag_book_seo_cleanup_last';
-		$last_cleanup = get_transient( $cleanup_key );
+		$last_cleanup = Cache_Manager::get( $cleanup_key );
 
 		if ( false !== $last_cleanup ) {
 			return; // Cleanup already performed recently
@@ -1775,11 +1775,11 @@ final class SEO_Manager {
 
 			foreach ( $expired_transients as $transient_name ) {
 				$transient_key = str_replace( '_transient_', '', $transient_name );
-				delete_transient( $transient_key );
+				Cache_Manager::delete( $transient_key );
 			}
 
 			// Mark cleanup as completed
-			set_transient( $cleanup_key, time(), DAY_IN_SECONDS );
+			Cache_Manager::set( $cleanup_key, time(), DAY_IN_SECONDS );
 
 		} catch ( \Exception $e ) {
 			$this->log_error( 'Transient cleanup failed', [ 'error' => $e->getMessage() ] );

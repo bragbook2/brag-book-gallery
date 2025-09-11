@@ -187,6 +187,7 @@ final class Carousel_Shortcode_Handler {
 				'show_pagination'     => 'true',
 				'auto_play'           => 'false',
 				'class'               => '',
+				'nudity'              => 'false'
 			],
 			$atts,
 			'brag_book_carousel'
@@ -347,6 +348,7 @@ final class Carousel_Shortcode_Handler {
 				'show_pagination'     => filter_var( $atts['show_pagination'] ?? true, FILTER_VALIDATE_BOOLEAN ),
 				'auto_play'           => filter_var( $atts['auto_play'] ?? false, FILTER_VALIDATE_BOOLEAN ),
 				'class'               => sanitize_html_class( (string) $atts['class'] ),
+				'nudity'              => filter_var( $atts['nudity'] ?? false, FILTER_VALIDATE_BOOLEAN ),
 			],
 		];
 	}
@@ -412,19 +414,10 @@ final class Carousel_Shortcode_Handler {
 			return null;
 		}
 
-		// Try to get from cache first.
-		$cache_key = 'brag_book_gallery_procedure_id_' . $slug . '_' . $api_token . '_' . $website_property_id;
-		$cached_id = wp_cache_get( $cache_key, self::CACHE_GROUP );
-		if ( false !== $cached_id ) {
-			return $cached_id > 0 ? $cached_id : null;
-		}
-
 		// Get sidebar data which contains procedure information.
 		$sidebar_data = Data_Fetcher::get_sidebar_data( $api_token );
 
 		if ( empty( $sidebar_data ) ) {
-			wp_cache_set( $cache_key, 0, self::CACHE_GROUP, self::CACHE_EXPIRATION );
-
 			return null;
 		}
 
@@ -440,8 +433,6 @@ final class Carousel_Shortcode_Handler {
 						// Return the first ID from the ids array.
 						if ( ! empty( $procedure['ids'] ) && is_array( $procedure['ids'] ) ) {
 							$id = absint( $procedure['ids'][0] );
-							wp_cache_set( $cache_key, $id, self::CACHE_GROUP, self::CACHE_EXPIRATION );
-
 							return $id;
 						}
 					}
@@ -449,8 +440,6 @@ final class Carousel_Shortcode_Handler {
 					if ( isset( $procedure['name'] ) && sanitize_title( $procedure['name'] ) === $slug ) {
 						if ( ! empty( $procedure['ids'] ) && is_array( $procedure['ids'] ) ) {
 							$id = absint( $procedure['ids'][0] );
-							wp_cache_set( $cache_key, $id, self::CACHE_GROUP, self::CACHE_EXPIRATION );
-
 							return $id;
 						}
 					}
@@ -458,9 +447,7 @@ final class Carousel_Shortcode_Handler {
 			}
 		}
 
-		// Not found - cache as 0.
-		wp_cache_set( $cache_key, 0, self::CACHE_GROUP, self::CACHE_EXPIRATION );
-
+		// Not found.
 		return null;
 	}
 
@@ -534,7 +521,7 @@ final class Carousel_Shortcode_Handler {
 					$items_data     = $carousel_data['data'] ?? $carousel_data;
 
 					// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- HTML is already escaped in method.
-					echo self::generate_carousel_items( $items_data, $limit, $procedure_slug );
+					echo self::generate_carousel_items( $items_data, $limit, $procedure_slug, $config );
 					?>
 				</div>
 			</div>
@@ -609,16 +596,18 @@ final class Carousel_Shortcode_Handler {
 	 * - Performance-optimized loop with early termination
 	 * - Proper input sanitization and validation
 	 * - Semantic HTML generation with accessibility support
+	 * - Nudity warning support with carousel-level override
 	 *
 	 * @since 3.0.0
 	 *
 	 * @param array<int, array<string, mixed>> $items Array of case items from API.
 	 * @param int $max_slides Maximum number of slides to generate.
 	 * @param string $procedure_slug Optional procedure slug for contextual information.
+	 * @param array<string, mixed> $config Optional carousel configuration.
 	 *
 	 * @return string Generated HTML for all carousel items.
 	 */
-	private static function generate_carousel_items( array $items, int $max_slides = 8, string $procedure_slug = '' ): string {
+	private static function generate_carousel_items( array $items, int $max_slides = 8, string $procedure_slug = '', array $config = [] ): string {
 		if ( empty( $items ) ) {
 			return '';
 		}
@@ -662,7 +651,8 @@ final class Carousel_Shortcode_Handler {
 				$case,
 				$slide_index,
 				$procedure_slug,
-				true // This is a standalone carousel
+				true, // This is a standalone carousel
+				$config // Pass carousel configuration
 			);
 		}
 

@@ -44,21 +44,13 @@ trait Trait_Cache_Handler {
 	 * @return bool True on success, false on failure
 	 */
 	protected function clear_plugin_cache(): bool {
-		$success = true;
-		
-		// Clear API cache transients.
-		$success = $this->clear_api_cache() && $success;
-		
-		// Clear gallery cache transients.
-		$success = $this->clear_gallery_cache() && $success;
-		
 		// Flush rewrite rules.
 		flush_rewrite_rules();
 		
 		// Trigger action for other components to clear their caches.
 		do_action( 'brag_book_gallery_cache_cleared' );
 		
-		return $success;
+		return true; // Caching disabled
 	}
 
 	/**
@@ -73,38 +65,7 @@ trait Trait_Cache_Handler {
 	 * @return bool True on success, false on failure
 	 */
 	protected function clear_api_cache(): bool {
-		global $wpdb;
-		
-		// Delete all transients with our API prefix.
-		$transient_patterns = array(
-			'brag_book_gallery_api_%',
-			'brag_book_gallery_filters_%',
-			'brag_book_gallery_transient_sidebar_%',
-			'brag_book_gallery_transient_cases_%',
-			'brag_book_gallery_transient_carousel_%',
-			'brag_book_gallery_transient_all_cases_%',
-			'brag_book_gallery_combine_%',
-		);
-		
-		$deleted = 0;
-		foreach ( $transient_patterns as $pattern ) {
-			$deleted += $wpdb->query(
-				$wpdb->prepare(
-					"DELETE FROM {$wpdb->options} 
-					WHERE option_name LIKE %s 
-					OR option_name LIKE %s",
-					'_transient_' . $pattern,
-					'_transient_timeout_' . $pattern
-				)
-			);
-		}
-		
-		// Clear object cache if available.
-		if ( function_exists( 'wp_cache_flush' ) ) {
-			wp_cache_flush();
-		}
-		
-		return $deleted > 0;
+		return true; // Caching disabled
 	}
 
 	/**
@@ -119,16 +80,7 @@ trait Trait_Cache_Handler {
 	 * @return bool True on success, false on failure
 	 */
 	protected function clear_gallery_cache(): bool {
-		global $wpdb;
-		
-		// Delete gallery-specific transients.
-		$deleted = $wpdb->query(
-			"DELETE FROM {$wpdb->options} 
-			WHERE option_name LIKE '_transient_brag_book_gallery_gallery_%' 
-			OR option_name LIKE '_transient_timeout_brag_book_gallery_gallery_%'"
-		);
-		
-		return $deleted > 0;
+		return true; // Caching disabled
 	}
 
 	/**
@@ -145,30 +97,7 @@ trait Trait_Cache_Handler {
 	 * @return bool True on success, false on failure
 	 */
 	protected function clear_cache_by_key( string $cache_key ): bool {
-		// Ensure cache_key is not empty to avoid issues
-		if ( empty( $cache_key ) ) {
-			return false;
-		}
-		
-		// Delete specific transient.
-		$deleted = delete_transient( $cache_key );
-		
-		// Also try to delete pattern-based transients.
-		if ( strpos( $cache_key, '%' ) !== false ) {
-			global $wpdb;
-			
-			$deleted = $wpdb->query(
-				$wpdb->prepare(
-					"DELETE FROM {$wpdb->options} 
-					WHERE option_name LIKE %s 
-					OR option_name LIKE %s",
-					'_transient_' . $cache_key,
-					'_transient_timeout_' . $cache_key
-				)
-			);
-		}
-		
-		return (bool) $deleted;
+		return true; // Caching disabled
 	}
 
 	/**
@@ -183,24 +112,10 @@ trait Trait_Cache_Handler {
 	 * @return array Cache statistics array
 	 */
 	protected function get_cache_stats(): array {
-		global $wpdb;
-		
-		// Count plugin transients.
-		$transient_count = $wpdb->get_var(
-			"SELECT COUNT(*) FROM {$wpdb->options} 
-			WHERE option_name LIKE '_transient_brag_book_gallery_%'"
-		);
-		
-		// Calculate approximate size.
-		$transient_size = $wpdb->get_var(
-			"SELECT SUM(LENGTH(option_value)) FROM {$wpdb->options} 
-			WHERE option_name LIKE '_transient_brag_book_gallery_%'"
-		);
-		
 		return array(
-			'count'      => intval( $transient_count ),
-			'size_bytes' => intval( $transient_size ),
-			'size_human' => size_format( intval( $transient_size ) ),
+			'count'      => 0,
+			'size_bytes' => 0,
+			'size_human' => '0 B',
 		);
 	}
 
@@ -218,12 +133,6 @@ trait Trait_Cache_Handler {
 	 * @return bool True if scheduled successfully, false otherwise
 	 */
 	protected function schedule_cache_cleanup( string $recurrence = 'daily' ): bool {
-		$hook = 'brag_book_gallery_cache_cleanup';
-		
-		// Clear any existing schedule.
-		wp_clear_scheduled_hook( $hook );
-		
-		// Schedule new cleanup.
-		return wp_schedule_event( time(), $recurrence, $hook );
+		return true; // Caching disabled
 	}
 }

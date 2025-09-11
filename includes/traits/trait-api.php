@@ -379,7 +379,7 @@ trait Trait_Api {
 		int $expiration = 1800
 	): bool {
 		$cache_key = 'brag_book_gallery_transient_api_' . $cache_key;
-		return set_transient( $cache_key, $data, $expiration );
+		return brag_book_set_cache( $cache_key, $data, $expiration );
 	}
 
 	/**
@@ -391,7 +391,7 @@ trait Trait_Api {
 	 */
 	protected function get_cached_api_response( string $cache_key ): mixed {
 		$cache_key = 'brag_book_gallery_transient_api_' . $cache_key;
-		return get_transient( $cache_key );
+		return brag_book_get_cache( $cache_key );
 	}
 
 	/**
@@ -568,10 +568,10 @@ trait Trait_Api {
 	 */
 	protected function check_rate_limit( string $endpoint ): bool {
 		$transient_key = 'brag_book_gallery_transient_rate_limit_' . $endpoint;
-		$current_count = get_transient( $transient_key );
+		$current_count = brag_book_get_cache( $transient_key );
 
 		if ( false === $current_count ) {
-			set_transient( $transient_key, 1, self::RATE_LIMIT_WINDOW );
+			brag_book_set_cache( $transient_key, 1, self::RATE_LIMIT_WINDOW );
 			return true;
 		}
 
@@ -583,7 +583,7 @@ trait Trait_Api {
 			return false;
 		}
 
-		set_transient( $transient_key, $current_count + 1, self::RATE_LIMIT_WINDOW );
+		brag_book_set_cache( $transient_key, $current_count + 1, self::RATE_LIMIT_WINDOW );
 		return true;
 	}
 
@@ -668,7 +668,7 @@ trait Trait_Api {
 	 */
 	protected function is_circuit_open( string $endpoint ): bool {
 		$circuit_key = 'brag_book_gallery_transient_circuit_' . $endpoint;
-		$circuit_status = get_transient( $circuit_key );
+		$circuit_status = brag_book_get_cache( $circuit_key );
 
 		return $circuit_status === 'open';
 	}
@@ -682,20 +682,20 @@ trait Trait_Api {
 	 */
 	protected function record_api_failure( string $endpoint ): void {
 		$failure_key = 'brag_book_gallery_transient_failures_' . $endpoint;
-		$failures = get_transient( $failure_key ) ?: 0;
+		$failures = brag_book_get_cache( $failure_key ) ?: 0;
 		$failures++;
 
 		if ( $failures >= self::CIRCUIT_BREAKER_THRESHOLD ) {
 			// Open circuit
 			$circuit_key = 'brag_book_gallery_transient_circuit_' . $endpoint;
-			set_transient( $circuit_key, 'open', self::CIRCUIT_BREAKER_TIMEOUT );
+			brag_book_set_cache( $circuit_key, 'open', self::CIRCUIT_BREAKER_TIMEOUT );
 
 			// Reset failure count
-			delete_transient( $failure_key );
+			brag_book_delete_cache( $failure_key );
 
 			$this->log_api_error( $endpoint, 'Circuit breaker opened', [ 'failures' => $failures ] );
 		} else {
-			set_transient( $failure_key, $failures, 300 ); // 5 minute window
+			brag_book_set_cache( $failure_key, $failures, 300 ); // 5 minute window
 		}
 	}
 
@@ -709,12 +709,12 @@ trait Trait_Api {
 	protected function record_api_success( string $endpoint ): void {
 		// Reset failure count on success
 		$failure_key = 'brag_book_gallery_transient_failures_' . $endpoint;
-		delete_transient( $failure_key );
+		brag_book_delete_cache( $failure_key );
 
 		// Close circuit if it was open
 		$circuit_key = 'brag_book_gallery_circuit_' . $endpoint;
-		if ( get_transient( $circuit_key ) === 'open' ) {
-			delete_transient( $circuit_key );
+		if ( brag_book_get_cache( $circuit_key ) === 'open' ) {
+			brag_book_delete_cache( $circuit_key );
 			$this->log_api_error( $endpoint, 'Circuit breaker closed', [ 'status' => 'success' ] );
 		}
 	}

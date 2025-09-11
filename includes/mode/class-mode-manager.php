@@ -16,6 +16,8 @@ declare(strict_types=1);
 
 namespace BRAGBookGallery\Includes\Mode;
 
+use BRAGBookGallery\Includes\Extend\Cache_Manager;
+
 // Prevent direct access
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -370,7 +372,7 @@ class Mode_Manager {
 	 * @return bool
 	 */
 	private function is_sync_running(): bool {
-		$sync_status = get_transient( 'brag_book_gallery_transient_sync_status' );
+		$sync_status = Cache_Manager::get( 'brag_book_gallery_transient_sync_status' );
 		return $sync_status === 'running';
 	}
 
@@ -913,11 +915,11 @@ class Mode_Manager {
 	 */
 	private function check_rate_limit( string $operation, int $limit = 5, int $window = 300 ): bool {
 		$transient_key = 'brag_book_gallery_transient_mode_rate_limit_' . $operation . '_' . get_current_user_id();
-		$attempts = get_transient( $transient_key );
+		$attempts = Cache_Manager::get( $transient_key );
 
 		if ( $attempts === false ) {
 			// First attempt within window
-			set_transient( $transient_key, 1, $window );
+			Cache_Manager::set( $transient_key, 1, $window );
 			return true;
 		}
 
@@ -932,7 +934,7 @@ class Mode_Manager {
 		}
 
 		// Increment attempt counter
-		set_transient( $transient_key, $attempts + 1, $window );
+		Cache_Manager::set( $transient_key, $attempts + 1, $window );
 		return true;
 	}
 
@@ -1052,7 +1054,7 @@ class Mode_Manager {
 
 		// Check WordPress transient cache
 		$transient_key = 'brag_book_gallery_transient_mode_' . $key;
-		$cached_data = get_transient( $transient_key );
+		$cached_data = Cache_Manager::get( $transient_key );
 
 		if ( $cached_data !== false ) {
 			// Store in memory cache for subsequent requests
@@ -1085,7 +1087,7 @@ class Mode_Manager {
 
 		// Store in WordPress transient cache
 		$transient_key = 'brag_book_gallery_transient_mode_' . $key;
-		set_transient( $transient_key, $data, $ttl );
+		Cache_Manager::set( $transient_key, $data, $ttl );
 	}
 
 	/**
@@ -1108,22 +1110,10 @@ class Mode_Manager {
 		}
 
 		// Clear transient cache
-		global $wpdb;
 		if ( $pattern === null ) {
-			$wpdb->query(
-				"DELETE FROM {$wpdb->options}
-				 WHERE option_name LIKE '_transient_brag_book_mode_%'
-				 OR option_name LIKE '_transient_timeout_brag_book_mode_%'"
-			);
+			Cache_Manager::delete_pattern( 'brag_book_gallery_transient_mode_*' );
 		} else {
-			$pattern_md5 = md5( $pattern );
-			$wpdb->query( $wpdb->prepare(
-				"DELETE FROM {$wpdb->options}
-				 WHERE option_name LIKE %s
-				 OR option_name LIKE %s",
-				'_transient_brag_book_mode_%' . $pattern_md5 . '%',
-				'_transient_timeout_brag_book_mode_%' . $pattern_md5 . '%'
-			) );
+			Cache_Manager::delete_pattern( 'brag_book_gallery_transient_mode_*' . $pattern . '*' );
 		}
 	}
 

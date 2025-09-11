@@ -289,6 +289,26 @@ class Menu {
 			'condition'   => true,
 		);
 
+		// Changelog (always visible).
+		$this->menu_config['submenus']['changelog'] = array(
+			'parent_slug' => 'brag-book-gallery-settings',
+			'page_title'  => __(
+				'Changelog & Version History',
+				'brag-book-gallery'
+			),
+			'menu_title'  => __(
+				'Changelog',
+				'brag-book-gallery'
+			),
+			'capability'  => 'manage_options',
+			'menu_slug'   => 'brag-book-gallery-changelog',
+			'callback'    => array(
+				$this->settings_pages['changelog'],
+				'render'
+			),
+			'condition'   => true,
+		);
+
 		// Debug (always visible).
 		$this->menu_config['submenus']['debug'] = array(
 			'parent_slug' => 'brag-book-gallery-settings',

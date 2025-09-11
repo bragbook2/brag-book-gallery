@@ -1,6 +1,6 @@
 {
 	"name": "brag-book-gallery",
-	"version": "3.2.3",
+	"version": "3.2.4",
 	"description": "BRAGBook Gallery WordPress Plugin",
 	"author": "Candace Crowe Design",
 	"license": "GPL-2.0-or-later",
@@ -31,11 +31,17 @@
 		"version:patch": "npm version patch --no-git-tag-version",
 		"version:minor": "npm version minor --no-git-tag-version",
 		"version:major": "npm version major --no-git-tag-version",
-		"github:release": "./release.sh"
+		"github:release": "./release.sh",
+		"test:e2e": "playwright test",
+		"test:e2e:ui": "playwright test --ui",
+		"test:e2e:debug": "playwright test --debug",
+		"test:e2e:headed": "playwright test --headed",
+		"test:install": "playwright install"
 	},
 	"devDependencies": {
 		"@babel/core": "^7.23.0",
 		"@babel/preset-env": "^7.23.0",
+		"@playwright/test": "^1.40.0",
 		"babel-loader": "^9.1.0",
 		"concurrently": "^8.2.0",
 		"eslint": "^8.55.0",

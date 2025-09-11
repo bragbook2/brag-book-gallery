@@ -63,34 +63,21 @@ class Rewrite_Debug {
 			<h2><?php esc_html_e( 'Rewrite Rules Debug', 'brag-book-gallery' ); ?></h2>
 
 			<div class="tool-section">
-				<h3><?php esc_html_e( 'Current Settings', 'brag-book-gallery' ); ?></h3>
-				<?php $this->render_settings(); ?>
-			</div>
-
-			<div class="tool-section">
 				<h3><?php esc_html_e( 'Pages with Gallery Shortcode', 'brag-book-gallery' ); ?></h3>
 				<?php $this->render_shortcode_pages(); ?>
-			</div>
 
-			<div class="tool-section">
 				<h3><?php esc_html_e( 'Gallery Rewrite Rules', 'brag-book-gallery' ); ?></h3>
 				<button class="button" id="load-rewrite-rules">
 					<?php esc_html_e( 'Load Rewrite Rules', 'brag-book-gallery' ); ?>
 				</button>
 				<div id="rewrite-rules-content"></div>
-			</div>
 
-			<div class="tool-section">
-				<h3><?php esc_html_e( 'Test URL Parsing', 'brag-book-gallery' ); ?></h3>
-				<?php $this->render_url_tester(); ?>
-			</div>
-
-			<div class="tool-section">
 				<h3><?php esc_html_e( 'Query Variables', 'brag-book-gallery' ); ?></h3>
 				<?php $this->render_query_vars(); ?>
-			</div>
 
-			<div class="tool-section">
+				<h3><?php esc_html_e( 'Test URL Parsing', 'brag-book-gallery' ); ?></h3>
+				<?php $this->render_url_tester(); ?>
+
 				<h3><?php esc_html_e( 'Actions', 'brag-book-gallery' ); ?></h3>
 				<button class="button button-primary" id="regenerate-rules">
 					<?php esc_html_e( 'Force Regenerate Rewrite Rules', 'brag-book-gallery' ); ?>

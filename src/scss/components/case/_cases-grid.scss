@@ -61,3 +61,93 @@
 		opacity: 1;
 	}
 }
+
+// Fast case detail styles for initial page loads
+.brag-book-gallery-case-detail-fast {
+	max-width: 1200px;
+	margin: 0 auto;
+	padding: var(--wp--custom--brag-book-gallery--spacer--lg);
+
+	.brag-book-gallery-case-detail-header {
+		margin-bottom: var(--wp--custom--brag-book-gallery--spacer--xl);
+		
+		.brag-book-gallery-case-detail-nav {
+			margin-bottom: var(--wp--custom--brag-book-gallery--spacer--md);
+		}
+		
+		.brag-book-gallery-back-button {
+			color: var(--wp--custom--brag-book-gallery--color--primary, #007cba);
+			text-decoration: none;
+			font-weight: 500;
+			
+			&:hover {
+				text-decoration: underline;
+			}
+		}
+		
+		h1 {
+			font-size: 2rem;
+			font-weight: 700;
+			margin: 0 0 var(--wp--custom--brag-book-gallery--spacer--sm);
+		}
+		
+		.brag-book-gallery-procedure-name {
+			font-size: 1.25rem;
+			color: var(--wp--custom--brag-book-gallery--color--grey, #666);
+			text-transform: capitalize;
+			margin-bottom: var(--wp--custom--brag-book-gallery--spacer--sm);
+		}
+		
+		.brag-book-gallery-case-meta {
+			display: flex;
+			gap: var(--wp--custom--brag-book-gallery--spacer--md, 16px);
+			
+			span {
+				padding: 4px 12px;
+				background: var(--wp--custom--brag-book-gallery--color--light-grey, #f0f0f0);
+				border-radius: 4px;
+				font-size: 0.875rem;
+			}
+		}
+	}
+	
+	.brag-book-gallery-case-images {
+		.brag-book-gallery-image-section {
+			margin-bottom: var(--wp--custom--brag-book-gallery--spacer--xl, 32px);
+			
+			h3 {
+				font-size: 1.25rem;
+				font-weight: 600;
+				margin-bottom: var(--wp--custom--brag-book-gallery--spacer--md, 16px);
+			}
+			
+			.brag-book-gallery-image-grid {
+				display: grid;
+				grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+				gap: var(--wp--custom--brag-book-gallery--spacer--md, 16px);
+				
+				img {
+					width: 100%;
+					height: auto;
+					border-radius: 8px;
+					box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+				}
+			}
+		}
+	}
+	
+	.brag-book-gallery-case-notes {
+		margin-top: var(--wp--custom--brag-book-gallery--spacer--xl, 32px);
+		
+		h3 {
+			font-size: 1.25rem;
+			font-weight: 600;
+			margin-bottom: var(--wp--custom--brag-book-gallery--spacer--md, 16px);
+		}
+		
+		.notes-content {
+			line-height: 1.6;
+			color: var(--wp--custom--brag-book-gallery--color--text, #333);
+		}
+	}
+}

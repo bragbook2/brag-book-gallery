@@ -23,14 +23,14 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * @since 3.0.0
  */
-class Debug_Tools {
+class Settings_Debug_Tools {
 
 	/**
 	 * Instance of this class
 	 *
-	 * @var Debug_Tools|null
+	 * @var Settings_Debug_Tools|null
 	 */
-	private static ?Debug_Tools $instance = null;
+	private static ?Settings_Debug_Tools $instance = null;
 
 	/**
 	 * Tool instances
@@ -42,9 +42,9 @@ class Debug_Tools {
 	/**
 	 * Get instance
 	 *
-	 * @return Debug_Tools
+	 * @return Settings_Debug_Tools
 	 */
-	public static function get_instance(): Debug_Tools {
+	public static function get_instance(): Settings_Debug_Tools {
 		if ( null === self::$instance ) {
 			self::$instance = new self();
 		}
@@ -80,7 +80,6 @@ class Debug_Tools {
 		// Initialize tools - classes are loaded via autoloader
 		$this->tools['gallery-checker']   = new Debug_Tools\Gallery_Checker();
 		$this->tools['rewrite-debug']     = new Debug_Tools\Rewrite_Debug();
-		$this->tools['rewrite-fix']       = new Debug_Tools\Rewrite_Fix();
 		$this->tools['rewrite-flush']     = new Debug_Tools\Rewrite_Flush();
 		$this->tools['cache-management']  = new Debug_Tools\Cache_Management();
 		$this->tools['system-info']       = new Debug_Tools\System_Info();

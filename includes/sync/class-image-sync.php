@@ -27,6 +27,7 @@ declare(strict_types=1);
 
 namespace BRAGBookGallery\Includes\Sync;
 
+use BRAGBookGallery\Includes\Extend\Cache_Manager;
 use WP_Error;
 use Exception;
 
@@ -881,7 +882,7 @@ final class Image_Sync {
 			return $this->memory_cache[ $cache_key ];
 		}
 
-		$cached = get_transient( $cache_key );
+		$cached = Cache_Manager::get( $cache_key );
 		return $cached ? (int) $cached : null;
 	}
 
@@ -894,7 +895,7 @@ final class Image_Sync {
 	 */
 	private function cache_attachment_id( string $cache_key, int $attachment_id ): void {
 		$this->memory_cache[ $cache_key ] = $attachment_id;
-		set_transient( $cache_key, $attachment_id, self::CACHE_TTL_LONG );
+		Cache_Manager::set( $cache_key, $attachment_id, self::CACHE_TTL_LONG );
 	}
 
 	/**

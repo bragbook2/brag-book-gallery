@@ -27,6 +27,7 @@ declare(strict_types=1);
 namespace BRAGBookGallery\Includes\SEO;
 
 use BRAGBookGallery\Includes\Traits\{Trait_Api, Trait_Tools};
+use BRAGBookGallery\Includes\Extend\Cache_Manager;
 
 if ( ! defined( 'WPINC' ) ) {
 	die( 'Restricted Access' );
@@ -301,7 +302,7 @@ final class Sitemap {
 	public function generate_sitemap(): string {
 		try {
 			$cache_key = 'brag_book_gallery_transient_sitemap_content';
-			$cached_content = get_transient( $cache_key );
+			$cached_content = Cache_Manager::get( $cache_key );
 
 			if ( ! empty( $cached_content ) ) {
 				$this->track_performance( 'sitemap_generate', 'cache_hit' );
@@ -326,7 +327,7 @@ final class Sitemap {
 
 			// Only cache if we have valid content
 			if ( ! empty( $xml ) ) {
-				set_transient(
+				Cache_Manager::set(
 					$cache_key,
 					$xml,
 					$this->cache_duration
@@ -352,7 +353,7 @@ final class Sitemap {
 	 * @return string Sitemap XML content.
 	 */
 	private function get_sitemap_content(): string {
-		$cached_content = get_transient( 'brag_book_gallery_transient_sitemap_content' );
+		$cached_content = Cache_Manager::get( 'brag_book_gallery_transient_sitemap_content' );
 
 		if ( false !== $cached_content ) {
 			return $cached_content;
@@ -785,7 +786,7 @@ final class Sitemap {
 	 */
 	private function get_sitemap_last_modified(): string {
 		$cache_key = 'brag_book_gallery_transient_sitemap_last_modified';
-		$last_modified = get_transient( $cache_key );
+		$last_modified = Cache_Manager::get( $cache_key );
 
 		if ( false !== $last_modified ) {
 			return $last_modified;
@@ -793,7 +794,7 @@ final class Sitemap {
 
 		// Get the latest modification date from API or use current time
 		$current_time = current_time( 'c' );
-		set_transient( $cache_key, $current_time, $this->cache_duration );
+		Cache_Manager::set( $cache_key, $current_time, $this->cache_duration );
 
 		return $current_time;
 	}
@@ -805,8 +806,8 @@ final class Sitemap {
 	 * @return void
 	 */
 	public function clear_sitemap_cache(): void {
-		delete_transient( 'brag_book_gallery_transient_sitemap_content' );
-		delete_transient( 'brag_book_gallery_transient_sitemap_last_modified' );
+		Cache_Manager::delete( 'brag_book_gallery_transient_sitemap_content' );
+		Cache_Manager::delete( 'brag_book_gallery_transient_sitemap_last_modified' );
 
 		// Clear any API cache that might affect sitemap data.
 		$this->clear_api_cache( 'sitemap' );
@@ -842,7 +843,7 @@ final class Sitemap {
 	 * @return bool True if cached, false otherwise.
 	 */
 	public function is_sitemap_cached(): bool {
-		return false !== get_transient( 'brag_book_gallery_transient_sitemap_content' );
+		return false !== Cache_Manager::get( 'brag_book_gallery_transient_sitemap_content' );
 	}
 
 	/**
@@ -1193,7 +1194,7 @@ final class Sitemap {
 	 */
 	private function is_rate_limited( string $identifier, int $limit = 10, int $window = 60 ): bool {
 		$cache_key = 'brag_book_gallery_transient_rate_limit_' . $identifier;
-		$requests = get_transient( $cache_key ) ?: 0;
+		$requests = Cache_Manager::get( $cache_key ) ?: 0;
 
 		if ( $requests >= $limit ) {
 			$this->log_warning( 'Rate limit exceeded', [
@@ -1204,7 +1205,7 @@ final class Sitemap {
 			return true;
 		}
 
-		set_transient( $cache_key, $requests + 1, $window );
+		Cache_Manager::set( $cache_key, $requests + 1, $window );
 		return false;
 	}
 
@@ -1229,7 +1230,7 @@ final class Sitemap {
 		}
 
 		// Check transient cache (second fastest)
-		$cached_data = get_transient( $cache_key );
+		$cached_data = Cache_Manager::get( $cache_key );
 		if ( false !== $cached_data ) {
 			$this->memory_cache[ $cache_key ] = $cached_data;
 			$this->track_performance( 'cache_lookup', 'transient_hit' );
@@ -1242,7 +1243,7 @@ final class Sitemap {
 
 			// Store in both cache levels
 			$this->memory_cache[ $cache_key ] = $data;
-			set_transient( $cache_key, $data, $ttl );
+			Cache_Manager::set( $cache_key, $data, $ttl );
 
 			$duration = microtime( true ) - $start_time;
 			if ( $duration > 1.0 ) { // Log slow operations

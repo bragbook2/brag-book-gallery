@@ -137,32 +137,16 @@ class Gallery_Checker {
 			<h2><?php esc_html_e( 'Gallery Page Setup Check', 'brag-book-gallery' ); ?></h2>
 
 			<div class="tool-section">
-				<h3><?php esc_html_e( 'Current Settings', 'brag-book-gallery' ); ?></h3>
-				<?php $this->render_current_settings(); ?>
-			</div>
-
-			<div class="tool-section">
-				<h3><?php esc_html_e( 'Page Status', 'brag-book-gallery' ); ?></h3>
-				<?php $this->render_page_status(); ?>
-			</div>
-
-			<div class="tool-section">
 				<h3><?php esc_html_e( 'Available Gallery Pages', 'brag-book-gallery' ); ?></h3>
 				<?php $this->render_available_pages(); ?>
-			</div>
 
-			<div class="tool-section">
-				<h3><?php esc_html_e( 'Actions', 'brag-book-gallery' ); ?></h3>
-				<button class="button button-primary" id="create-gallery-page">
-					<?php esc_html_e( 'Create Gallery Page', 'brag-book-gallery' ); ?>
-				</button>
-				<button class="button" id="update-gallery-slug">
-					<?php esc_html_e( 'Update Gallery Slug', 'brag-book-gallery' ); ?>
-				</button>
-				<div id="gallery-action-result"></div>
-			</div>
+				<hr/>
 
-			<div class="tool-section">
+				<h3><?php esc_html_e( 'Page Status', 'brag-book-gallery' ); ?></h3>
+				<?php $this->render_page_status(); ?>
+
+				<hr/>
+
 				<h3><?php esc_html_e( 'Active Rewrite Rules', 'brag-book-gallery' ); ?></h3>
 				<button class="button" id="show-gallery-rules">
 					<?php esc_html_e( 'Show Gallery Rules', 'brag-book-gallery' ); ?>
@@ -294,8 +278,34 @@ class Gallery_Checker {
 			$brag_book_gallery_page_slug = Slug_Helper::get_first_gallery_page_slug();
 			$brag_book_gallery_page_id = absint( get_option( 'brag_book_gallery_page_id', 0 ) );
 			$page = $brag_book_gallery_page_id ? get_post( $brag_book_gallery_page_id ) : null;
-		$page_url = $page ? get_permalink( $page->ID ) : null;
-		$edit_link = $page ? get_edit_post_link( $page->ID ) : null;
+
+			// Fallback: If no page found from options, search for pages with shortcode
+			$found_via_fallback = false;
+			if ( ! $page && empty( $brag_book_gallery_page_slug ) ) {
+				global $wpdb;
+				$shortcode_pattern = '%[' . self::SHORTCODE_NAME . '%';
+				$found_page = $wpdb->get_row(
+					$wpdb->prepare(
+						"SELECT ID, post_name, post_title, post_status, post_modified
+						FROM {$wpdb->posts}
+						WHERE post_content LIKE %s
+						AND post_type = 'page'
+						AND post_status = 'publish'
+						ORDER BY post_modified DESC
+						LIMIT 1",
+						$shortcode_pattern
+					)
+				);
+
+				if ( $found_page ) {
+					$page = get_post( $found_page->ID );
+					$brag_book_gallery_page_slug = $found_page->post_name;
+					$found_via_fallback = true;
+				}
+			}
+
+			$page_url = $page ? get_permalink( $page->ID ) : null;
+			$edit_link = $page ? get_edit_post_link( $page->ID ) : null;
 		?>
 		<div class="gallery-config-cards">
 			<!-- Gallery Page Card -->
@@ -324,6 +334,12 @@ class Gallery_Checker {
 								<span class="config-label"><?php esc_html_e( 'ID:', 'brag-book-gallery' ); ?></span>
 								<span class="config-value-badge">#<?php echo esc_html( $page->ID ); ?></span>
 							</div>
+							<?php if ( $found_via_fallback ) : ?>
+								<div class="config-item">
+									<span class="config-label"><?php esc_html_e( 'Status:', 'brag-book-gallery' ); ?></span>
+									<span class="config-value" style="color: #ff9800;"><?php esc_html_e( 'Found but not configured', 'brag-book-gallery' ); ?></span>
+								</div>
+							<?php endif; ?>
 						<?php endif; ?>
 					<?php else : ?>
 						<div class="config-empty">
@@ -377,6 +393,17 @@ class Gallery_Checker {
 							<div class="config-code">
 								<code>[brag_book_gallery]</code>
 							</div>
+							<?php if ( $found_via_fallback ) : ?>
+								<div class="config-status-warning">
+									<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+										<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+										<line x1="12" y1="9" x2="12" y2="13"></line>
+										<line x1="12" y1="17" x2="12.01" y2="17"></line>
+									</svg>
+									<span><?php esc_html_e( 'Page found but not configured', 'brag-book-gallery' ); ?></span>
+								</div>
+								<p class="config-hint"><?php esc_html_e( 'Use "Update Gallery Slug" button below to configure this page properly', 'brag-book-gallery' ); ?></p>
+							<?php endif; ?>
 						<?php else : ?>
 							<div class="config-status-warning">
 								<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -450,13 +477,39 @@ class Gallery_Checker {
 	private function render_page_status(): void {
 		// Use Slug_Helper to properly handle array/string format
 		$brag_book_gallery_page_slug = Slug_Helper::get_first_gallery_page_slug();
+		$page = null;
+		$found_via_fallback = false;
 
-		if ( ! $brag_book_gallery_page_slug ) {
+		if ( $brag_book_gallery_page_slug ) {
+			$page = get_page_by_path( $brag_book_gallery_page_slug );
+		} else {
+			// Fallback: If no slug configured, search for pages with shortcode
+			global $wpdb;
+			$shortcode_pattern = '%[' . self::SHORTCODE_NAME . '%';
+			$found_page = $wpdb->get_row(
+				$wpdb->prepare(
+					"SELECT ID, post_name, post_title, post_status, post_modified
+					FROM {$wpdb->posts}
+					WHERE post_content LIKE %s
+					AND post_type = 'page'
+					AND post_status = 'publish'
+					ORDER BY post_modified DESC
+					LIMIT 1",
+					$shortcode_pattern
+				)
+			);
+
+			if ( $found_page ) {
+				$page = get_post( $found_page->ID );
+				$brag_book_gallery_page_slug = $found_page->post_name;
+				$found_via_fallback = true;
+			}
+		}
+
+		if ( ! $brag_book_gallery_page_slug && ! $found_via_fallback ) {
 			echo '<p style="color: orange;">' . $this->get_warning_icon() . esc_html__( 'No gallery slug configured', 'brag-book-gallery' ) . '</p>';
 			return;
 		}
-
-		$page = get_page_by_path( $brag_book_gallery_page_slug );
 
 		if ( $page ) {
 			echo '<p style="color: green;">' . $this->get_check_icon( true ) . sprintf(
@@ -479,6 +532,12 @@ class Gallery_Checker {
 			$page_url = get_permalink( $page->ID );
 			if ( $page_url ) {
 				echo '<p>' . esc_html__( 'Page URL:', 'brag-book-gallery' ) . ' <a href="' . esc_url( $page_url ) . '" target="_blank">' . esc_url( $page_url ) . '</a></p>';
+			}
+
+			// Show warning if found via fallback
+			if ( $found_via_fallback ) {
+				echo '<p style="color: orange;">' . $this->get_warning_icon() . esc_html__( 'Warning: This page was found automatically but is not properly configured in settings.', 'brag-book-gallery' ) . '</p>';
+				echo '<p>' . esc_html__( 'Use the "Update Gallery Slug" button below to configure this page properly.', 'brag-book-gallery' ) . '</p>';
 			}
 		} else {
 			echo '<p style="color: red;">' . $this->get_check_icon( false ) . sprintf(
@@ -595,22 +654,6 @@ class Gallery_Checker {
 				</div>
 			<?php endforeach; ?>
 		</div>
-
-		<?php if ( ! empty( $pages ) ) : ?>
-			<?php $first_page = $pages[0]; ?>
-			<?php if ( $first_page->post_status === 'publish' ) : ?>
-				<h4><?php esc_html_e( 'Recommendation:', 'brag-book-gallery' ); ?></h4>
-				<p>
-					<?php
-					printf(
-						/* translators: %s: page slug */
-						esc_html__( 'You should set the gallery slug to: %s', 'brag-book-gallery' ),
-						'<code>' . esc_html( $first_page->post_name ) . '</code>'
-					);
-					?>
-				</p>
-			<?php endif; ?>
-		<?php endif; ?>
 		<?php
 		} catch ( Exception $e ) {
 			error_log( 'Gallery Checker render_available_pages error: ' . $e->getMessage() );

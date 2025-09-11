@@ -180,10 +180,25 @@ final class Gallery_Shortcode_Handler {
 			error_log( 'Current URL: ' . ( $_SERVER['REQUEST_URI'] ?? 'N/A' ) );
 		}
 
-		// For case detail pages, we'll load the full gallery with the case details loaded via JavaScript
-		// This ensures the filters sidebar remains visible
 		// Use case_suffix (which now contains both numeric IDs and SEO suffixes)
 		$initial_case_id = ! empty( $case_suffix ) ? $case_suffix : '';
+		
+		// Check for case ID from shortcode attributes (when called from Cases_Shortcode_Handler)
+		if ( empty( $initial_case_id ) && ! empty( $validated_atts['data_case_id'] ) ) {
+			$initial_case_id = $validated_atts['data_case_id'];
+		}
+		
+		// PERFORMANCE OPTIMIZATION: For case detail pages, render case details directly
+		// instead of loading full gallery first (but skip if loading via JavaScript)
+		$skip_fast_render = ! empty( $validated_atts['data_case_id'] ); // Skip when called from Cases_Shortcode_Handler
+		if ( ! empty( $initial_case_id ) && ! $skip_fast_render ) {
+			// Try to render case details directly for speed
+			$fast_case_html = self::render_case_details_fast( $initial_case_id, $procedure_title );
+			if ( ! empty( $fast_case_html ) ) {
+				return $fast_case_html;
+			}
+			// If fast rendering fails, fall back to normal gallery rendering
+		}
 
 		// For procedure filtering, we'll pass it to the main gallery JavaScript
 		// The JavaScript will handle applying the filter on load
@@ -469,6 +484,7 @@ final class Gallery_Shortcode_Handler {
 					</aside>
 
 					<!-- My Favorites Button -->
+					<?php if ( \BRAGBookGallery\Includes\Core\Settings_Helper::is_favorites_enabled() ) : ?>
 					<div class="brag-book-gallery-favorites-link-wrapper">
 						<?php
 						$gallery_slug = get_option( 'brag_book_gallery_page_slug', 'before-after' );
@@ -497,7 +513,9 @@ final class Gallery_Shortcode_Handler {
 							<span class="brag-book-gallery-favorites-count" data-favorites-count>(0)</span>
 						</a>
 					</div>
+					<?php endif; ?>
 
+					<?php if ( \BRAGBookGallery\Includes\Core\Settings_Helper::is_consultation_enabled() ): ?>
 					<p class="brag-book-gallery-consultation-text">
 						<strong>Ready for the next step?</strong><br/>Contact us
 						to request your consultation.
@@ -508,6 +526,7 @@ final class Gallery_Shortcode_Handler {
 					>
 						Request a Consultation
 					</button>
+					<?php endif; ?>
 				</div>
 
 				<div class="brag-book-gallery-main-content" role="region"
@@ -579,6 +598,7 @@ final class Gallery_Shortcode_Handler {
 
 			<!-- Share dropdown will be created dynamically by JavaScript -->
 
+			<?php if ( \BRAGBookGallery\Includes\Core\Settings_Helper::is_consultation_enabled() ): ?>
 			<dialog class="brag-book-gallery-dialog" id="consultationDialog">
 				<div class="brag-book-gallery-dialog-content">
 					<div class="brag-book-gallery-dialog-header">
@@ -646,8 +666,10 @@ final class Gallery_Shortcode_Handler {
 					</form>
 				</div>
 			</dialog>
+			<?php endif; ?>
 
 			<!-- Favorites Dialog -->
+			<?php if ( \BRAGBookGallery\Includes\Core\Settings_Helper::is_favorites_enabled() ) : ?>
 			<dialog class="brag-book-gallery-dialog" id="favoritesDialog">
 				<div class="brag-book-gallery-dialog-content">
 					<div class="brag-book-gallery-dialog-header">
@@ -722,6 +744,7 @@ final class Gallery_Shortcode_Handler {
 					</form>
 				</div>
 			</dialog>
+			<?php endif; ?>
 		</div>
 
 		<?php if ( ! empty( $all_cases_data['data'] ?? [] ) ) : ?>
@@ -773,6 +796,8 @@ final class Gallery_Shortcode_Handler {
 		// Define default attributes with proper types
 		$defaults = [
 			'website_property_id' => '',
+			'data_case_id' => '',
+			'data_procedure_slug' => '',
 		];
 
 		// Apply WordPress shortcode attribute parsing with defaults
@@ -781,6 +806,8 @@ final class Gallery_Shortcode_Handler {
 		// Validate and sanitize each attribute
 		return [
 			'website_property_id' => sanitize_text_field( $atts['website_property_id'] ),
+			'data_case_id' => sanitize_text_field( $atts['data_case_id'] ),
+			'data_procedure_slug' => sanitize_text_field( $atts['data_procedure_slug'] ),
 		];
 	}
 
@@ -995,5 +1022,142 @@ final class Gallery_Shortcode_Handler {
 			}
 			return [ 'data' => [] ];
 		}
+	}
+
+	/**
+	 * Render case details directly for fast initial page loads
+	 * 
+	 * This method optimizes the initial page load for case detail URLs by:
+	 * 1. Making a direct API call to get only the specific case data
+	 * 2. Rendering minimal HTML with just the case details
+	 * 3. Including JavaScript to handle navigation and interactions
+	 * 
+	 * @param string $case_id Case identifier (ID or SEO suffix)
+	 * @param string $procedure_title Procedure name from URL
+	 * @return string Fast-rendered case details HTML or empty string if failed
+	 */
+	private static function render_case_details_fast( string $case_id, string $procedure_title = '' ): string {
+		try {
+			// Get API configuration
+			$api_tokens = get_option( 'brag_book_gallery_api_token', [] );
+			$website_property_ids = get_option( 'brag_book_gallery_website_property_id', [] );
+			
+			if ( empty( $api_tokens[0] ) || empty( $website_property_ids[0] ) ) {
+				return ''; // Fall back to normal rendering
+			}
+			
+			$api_token = $api_tokens[0];
+			$website_property_id = intval( $website_property_ids[0] );
+			
+			// Make direct API call with short timeout for speed
+			$api_base_url = get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' );
+			$api_url = sprintf( '%s/api/plugin/combine/cases/%s?apiToken=%s&websitePropertyId=%d', 
+				$api_base_url, 
+				urlencode( $case_id ), 
+				urlencode( $api_token ), 
+				$website_property_id 
+			);
+			
+			$response = wp_remote_get( $api_url, [
+				'timeout' => 5, // Fast timeout for initial page loads
+				'headers' => [ 'Accept' => 'application/json' ],
+			] );
+			
+			if ( is_wp_error( $response ) || wp_remote_retrieve_response_code( $response ) !== 200 ) {
+				return ''; // Fall back to normal rendering
+			}
+			
+			$data = json_decode( wp_remote_retrieve_body( $response ), true );
+			if ( empty( $data['data'][0] ) ) {
+				return ''; // Fall back to normal rendering
+			}
+			
+			$case_data = $data['data'][0];
+			
+			// Enqueue gallery assets for JavaScript functionality
+			Asset_Manager::enqueue_gallery_assets();
+			
+			// Generate fast case details HTML
+			return self::generate_fast_case_html( $case_data, $procedure_title );
+			
+		} catch ( \Exception $e ) {
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'Fast case rendering failed: ' . $e->getMessage() );
+			}
+			return ''; // Fall back to normal rendering
+		}
+	}
+
+	/**
+	 * Generate HTML for fast case details rendering
+	 */
+	private static function generate_fast_case_html( array $case_data, string $procedure_title = '' ): string {
+		$case_id = esc_html( $case_data['id'] ?? '' );
+		$images = $case_data['images'] ?? [];
+		$before_images = array_filter( $images, fn( $img ) => ( $img['type'] ?? '' ) === 'before' );
+		$after_images = array_filter( $images, fn( $img ) => ( $img['type'] ?? '' ) === 'after' );
+		
+		$age = ! empty( $case_data['age'] ) ? esc_html( $case_data['age'] ) : '';
+		$gender = ! empty( $case_data['gender'] ) ? esc_html( $case_data['gender'] ) : '';
+		$notes = ! empty( $case_data['notes'] ) ? wp_kses_post( $case_data['notes'] ) : '';
+		
+		ob_start();
+		?>
+		<div class="brag-book-gallery-wrapper">
+			<div class="brag-book-gallery-case-detail-fast">
+				<div class="brag-book-gallery-case-detail-header">
+					<div class="brag-book-gallery-case-detail-nav">
+						<a href="javascript:history.back()" class="brag-book-gallery-back-button">← Back to Gallery</a>
+					</div>
+					<h1>Case #<?php echo $case_id; ?></h1>
+					<?php if ( ! empty( $procedure_title ) ): ?>
+						<div class="brag-book-gallery-procedure-name"><?php echo esc_html( str_replace( '-', ' ', $procedure_title ) ); ?></div>
+					<?php endif; ?>
+					<?php if ( $age || $gender ): ?>
+						<div class="brag-book-gallery-case-meta">
+							<?php if ( $age ): ?><span class="age"><?php echo $age; ?> years old</span><?php endif; ?>
+							<?php if ( $gender ): ?><span class="gender"><?php echo $gender; ?></span><?php endif; ?>
+						</div>
+					<?php endif; ?>
+				</div>
+				
+				<div class="brag-book-gallery-case-images">
+					<?php if ( ! empty( $before_images ) ): ?>
+						<div class="brag-book-gallery-image-section">
+							<h3>Before</h3>
+							<div class="brag-book-gallery-image-grid">
+								<?php foreach ( $before_images as $image ): ?>
+									<img src="<?php echo esc_url( $image['url'] ?? '' ); ?>" 
+										 alt="Before - Case <?php echo $case_id; ?>" 
+										 loading="lazy">
+								<?php endforeach; ?>
+							</div>
+						</div>
+					<?php endif; ?>
+					
+					<?php if ( ! empty( $after_images ) ): ?>
+						<div class="brag-book-gallery-image-section">
+							<h3>After</h3>
+							<div class="brag-book-gallery-image-grid">
+								<?php foreach ( $after_images as $image ): ?>
+									<img src="<?php echo esc_url( $image['url'] ?? '' ); ?>" 
+										 alt="After - Case <?php echo $case_id; ?>" 
+										 loading="lazy">
+								<?php endforeach; ?>
+							</div>
+						</div>
+					<?php endif; ?>
+				</div>
+				
+				<?php if ( $notes ): ?>
+					<div class="brag-book-gallery-case-notes">
+						<h3>Case Notes</h3>
+						<div class="notes-content"><?php echo $notes; ?></div>
+					</div>
+				<?php endif; ?>
+			</div>
+		</div>
+		<?php
+		return ob_get_clean();
 	}
 }

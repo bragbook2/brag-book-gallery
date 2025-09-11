@@ -176,6 +176,7 @@ class Settings_Manager {
 
 		$this->settings_pages['consultation'] = new Settings_Consultation();
 		$this->settings_pages['help']         = new Settings_Help();
+		$this->settings_pages['changelog']    = new Settings_Changelog();
 
 		// Initialize menu manager with settings pages.
 		$this->menu_manager = new Menu( $this->settings_pages );

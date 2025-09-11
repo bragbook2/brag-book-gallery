@@ -20,6 +20,7 @@ namespace BRAGBookGallery\Includes\Core;
 
 use BRAGBookGallery\Includes\Traits\Trait_Api;
 use BRAGBookGallery\Includes\Traits\Trait_Tools;
+use BRAGBookGallery\Includes\Extend\Cache_Manager;
 use WP_Error;
 use WP_Query;
 
@@ -324,8 +325,7 @@ class Consultation {
 			$post_id = $this->create_consultation_post( $name, $description, $email, $phone );
 
 			if ( $post_id ) {
-				// Clear consultation count cache.
-				wp_cache_delete( 'consultation_count', self::CACHE_GROUP );
+				// Caching disabled
 
 				wp_send_json_success(
 					esc_html__( 'Thank you for your consultation request!', 'brag-book-gallery' )
@@ -826,8 +826,8 @@ class Consultation {
 		$ip_hash = md5( $client_ip );
 
 		// Check hourly limit.
-		$hourly_key = "brag_book_gallery_transient_consultation_hourly_{$ip_hash}";
-		$hourly_count = (int) get_transient( $hourly_key );
+		$hourly_key = "consultation_hourly_{$ip_hash}";
+		$hourly_count = (int) Cache_Manager::get( $hourly_key );
 
 		if ( $hourly_count >= self::RATE_LIMITS['submissions_per_hour'] ) {
 			return $this->handle_error(
@@ -842,8 +842,8 @@ class Consultation {
 		}
 
 		// Check daily limit.
-		$daily_key = "brag_book_gallery_transient_consultation_daily_{$ip_hash}";
-		$daily_count = (int) get_transient( $daily_key );
+		$daily_key = "consultation_daily_{$ip_hash}";
+		$daily_count = (int) Cache_Manager::get( $daily_key );
 
 		if ( $daily_count >= self::RATE_LIMITS['submissions_per_day'] ) {
 			return $this->handle_error(
@@ -858,8 +858,8 @@ class Consultation {
 		}
 
 		// Update counters.
-		set_transient( $hourly_key, $hourly_count + 1, HOUR_IN_SECONDS );
-		set_transient( $daily_key, $daily_count + 1, DAY_IN_SECONDS );
+		Cache_Manager::set( $hourly_key, $hourly_count + 1, HOUR_IN_SECONDS );
+		Cache_Manager::set( $daily_key, $daily_count + 1, DAY_IN_SECONDS );
 
 		return true;
 	}
@@ -1332,9 +1332,7 @@ class Consultation {
 		$deleted = wp_delete_post( $post_id, true );
 
 		if ( $deleted ) {
-			// Clear cache after deletion.
-			wp_cache_delete( 'consultation_count', self::CACHE_GROUP );
-			wp_cache_delete( 'consultation_entries_' . $post_id, self::CACHE_GROUP );
+			// Caching disabled
 
 			wp_send_json_success(
 				[
@@ -1427,7 +1425,10 @@ class Consultation {
 		<?php
 		$html = ob_get_clean();
 
-		wp_send_json_success( [ 'html' => $html ] );
+		wp_send_json_success( [ 
+			'html' => $html,
+			'email' => $email 
+		] );
 	}
 
 	/**
@@ -1444,13 +1445,9 @@ class Consultation {
 	 */
 	private function get_consultation_entries( int $page ): array {
 		// Create cache key.
-		$cache_key = 'brag_book_gallery_transient_consultation_entries_page_' . $page;
+		$cache_key = 'consultation_entries_page_' . $page;
 
-		// Try to get from cache first.
-		$cached = wp_cache_get( $cache_key, self::CACHE_GROUP );
-		if ( false !== $cached ) {
-			return $cached;
-		}
+		// Caching disabled
 
 		// Calculate offset based on page number.
 		$offset = ( $page - 1 ) * self::ITEMS_PER_PAGE;
@@ -1468,8 +1465,7 @@ class Consultation {
 			]
 		);
 
-		// Cache the results.
-		wp_cache_set( $cache_key, $query->posts, self::CACHE_GROUP, self::CACHE_EXPIRATION );
+		// Caching disabled
 
 		return $query->posts;
 	}
@@ -1484,18 +1480,13 @@ class Consultation {
 	 * @return int Total number of consultation posts.
 	 */
 	private function get_total_consultation_count(): int {
-		// Try to get from cache first.
-		$cached = wp_cache_get( 'consultation_count', self::CACHE_GROUP );
-		if ( false !== $cached ) {
-			return (int) $cached;
-		}
+		// Caching disabled
 
 		// Use WordPress function to count posts.
 		$count_posts = wp_count_posts( self::POST_TYPE );
 		$count       = isset( $count_posts->publish ) ? (int) $count_posts->publish : 0;
 
-		// Cache the result.
-		wp_cache_set( 'consultation_count', $count, self::CACHE_GROUP, self::CACHE_EXPIRATION );
+		// Caching disabled
 
 		return $count;
 	}
@@ -1516,7 +1507,7 @@ class Consultation {
 		// Handle empty results.
 		if ( empty( $entries ) ) {
 			return sprintf(
-				'<tr><td colspan="6" style="text-align: center; padding: 20px;">%s</td></tr>',
+				'<tr class="brag-book-consultation-table-row"><td class="brag-book-consultation-table-cell brag-book-consultation-table-cell--loading" colspan="6">%s</td></tr>',
 				esc_html__( 'No consultation entries found.', 'brag-book-gallery' )
 			);
 		}
@@ -1544,16 +1535,16 @@ class Consultation {
 
 			// Build table row HTML with proper escaping.
 			$html .= sprintf(
-				'<tr class="consultation-row" data-id="%d">
-					<td class="consultation-name"><strong>%s</strong></td>
-					<td class="consultation-email"><a href="mailto:%s">%s</a></td>
-					<td class="consultation-phone"><a href="tel:%s">%s</a></td>
-					<td class="consultation-date">%s</td>
-					<td class="consultation-description">
+				'<tr class="brag-book-consultation-table-row consultation-row" data-id="%d">
+					<td class="brag-book-consultation-table-cell consultation-name"><strong>%s</strong></td>
+					<td class="brag-book-consultation-table-cell consultation-email"><a href="mailto:%s">%s</a></td>
+					<td class="brag-book-consultation-table-cell consultation-phone"><a href="tel:%s">%s</a></td>
+					<td class="brag-book-consultation-table-cell consultation-date">%s</td>
+					<td class="brag-book-consultation-table-cell consultation-description">
 						<div class="description-content">%s</div>
 						%s
 					</td>
-					<td class="consultation-actions">
+					<td class="brag-book-consultation-table-cell consultation-actions">
 						<button class="button button-small button-secondary view-consultation" data-id="%d" title="%s">
 							<span class="dashicons dashicons-visibility"></span> %s
 						</button>
