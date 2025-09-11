@@ -215,6 +215,23 @@ final class Rewrite_Flush {
 				);
 			}
 
+			// Check if rules were recently deleted
+			$deletion_info = get_transient( 'brag_book_gallery_rules_deleted' );
+			if ( $deletion_info ) {
+				if ( is_array( $deletion_info ) ) {
+					$message = sprintf(
+						__( 'Rewrite rules deletion complete: %d total rules deleted (%d were gallery rules). %d rules remaining. You may need to re-register custom rules and flush again.', 'brag-book-gallery' ),
+						$deletion_info['deleted_count'] ?? 0,
+						$deletion_info['gallery_count'] ?? 0,
+						$deletion_info['remaining'] ?? 0
+					);
+				} else {
+					$message = __( 'Rewrite rules were deleted. WordPress has regenerated default rules. You may need to re-register custom rules and flush again.', 'brag-book-gallery' );
+				}
+				$this->show_admin_notice( $message, 'warning' );
+				delete_transient( 'brag_book_gallery_rules_deleted' );
+			}
+
 			// Check recent flush operations
 			$last_flush = brag_book_get_cache( self::CACHE_PREFIX . 'last_flush' );
 			if ( $last_flush && ( time() - $last_flush['time'] ) < 60 ) {
@@ -331,6 +348,19 @@ final class Rewrite_Flush {
 						</div>
 					</div>
 				</dialog>
+
+				<div class="tool-section">
+					<h3><?php esc_html_e( 'Danger Zone', 'brag-book-gallery' ); ?></h3>
+					<div class="flush-option" style="border: 2px solid #dc3545; padding: 15px; border-radius: 4px; background-color: #fff5f5;">
+						<button class="button button-link-delete" id="delete-all-rules" style="background-color: #dc3545; border-color: #dc3545; color: white;">
+							<?php esc_html_e( 'Delete All Rewrite Rules', 'brag-book-gallery' ); ?>
+						</button>
+						<p class="description" style="color: #dc3545;">
+							<strong><?php esc_html_e( 'Warning:', 'brag-book-gallery' ); ?></strong> 
+							<?php esc_html_e( 'This will remove ALL rewrite rules from the database. WordPress will regenerate default rules on next page load, but custom rules will need to be re-registered.', 'brag-book-gallery' ); ?>
+						</p>
+					</div>
+				</div>
 
 				<div class="tool-section">
 					<h3><?php esc_html_e( 'Alternative Methods', 'brag-book-gallery' ); ?></h3>
@@ -641,6 +671,52 @@ final class Rewrite_Flush {
 						);
 					});
 				}
+
+				// Delete all rules handler
+				const deleteAllRulesBtn = document.getElementById('delete-all-rules');
+				if (deleteAllRulesBtn) {
+					deleteAllRulesBtn.addEventListener('click', async function() {
+						if (!confirm('<?php echo esc_js( __( 'WARNING: This will delete ALL rewrite rules from the database. WordPress will regenerate default rules, but custom rules will be lost. Are you absolutely sure?', 'brag-book-gallery' ) ); ?>')) {
+							return;
+						}
+
+						// Double confirmation for safety
+						if (!confirm('<?php echo esc_js( __( 'This action cannot be undone. Please confirm again to delete all rewrite rules.', 'brag-book-gallery' ) ); ?>')) {
+							return;
+						}
+
+						handleButtonState(deleteAllRulesBtn, true, 'Deleting...');
+						displayResult(resultDiv, 'Deleting all rewrite rules...', 'warning');
+
+						await ajaxRequest(
+							{
+								action: 'brag_book_gallery_delete_all_rewrite_rules',
+								nonce: '<?php echo esc_js( wp_create_nonce( 'brag_book_gallery_delete_rewrite_rules' ) ); ?>'
+							},
+							function(response) {
+								if (response.success) {
+									displayResult(resultDiv, response.data, 'success');
+									// Reload page after 2 seconds to show updated status
+									setTimeout(function() {
+										window.location.reload();
+									}, 2000);
+								} else {
+									// Better error handling
+									const errorMsg = typeof response.data === 'string' 
+										? response.data 
+										: (response.data?.message || JSON.stringify(response.data));
+									displayResult(resultDiv, 'Error: ' + errorMsg, 'error');
+								}
+							},
+							function(error) { 
+								// Better error handling for network/parse errors
+								const errorMsg = error?.message || error?.toString() || 'Failed to delete rewrite rules';
+								displayResult(resultDiv, errorMsg, 'error'); 
+							},
+							function() { handleButtonState(deleteAllRulesBtn, false); }
+						);
+					});
+				}
 			});
 			</script>
 			<?php
@@ -673,7 +749,16 @@ final class Rewrite_Flush {
 		try {
 			global $wp_rewrite;
 
-			$rules = $wp_rewrite->wp_rewrite_rules();
+			// Check if rewrite rules option exists at all
+			$rules_option = get_option( 'rewrite_rules' );
+			
+			// If the option is false or empty, WordPress hasn't regenerated yet
+			if ( $rules_option === false ) {
+				$rules = array();
+			} else {
+				$rules = $wp_rewrite->wp_rewrite_rules();
+			}
+			
 			$brag_book_gallery_page_slug = \BRAGBookGallery\Includes\Core\Slug_Helper::get_first_gallery_page_slug();
 			$gallery_rules_count = 0;
 			$rule_patterns = [];
@@ -682,6 +767,11 @@ final class Rewrite_Flush {
 				foreach ( $rules as $pattern => $query ) {
 					if (
 						( $brag_book_gallery_page_slug && str_contains( $pattern, $brag_book_gallery_page_slug ) ) ||
+						str_contains( $query, 'brag_book_gallery_view' ) ||
+						str_contains( $query, 'brag_gallery_slug' ) ||
+						str_contains( $query, 'brag_gallery_category' ) ||
+						str_contains( $query, 'brag_book_gallery_case' ) ||
+						str_contains( $query, 'favorites_page' ) ||
 						str_contains( $query, 'procedure_title' ) ||
 						str_contains( $query, 'case_id' )
 					) {
@@ -694,6 +784,18 @@ final class Rewrite_Flush {
 			$permalink_structure = get_option( 'permalink_structure' ) ?: 'Plain';
 			$has_pretty_permalinks = ! empty( get_option( 'permalink_structure' ) );
 			$hosting_provider = $this->detect_hosting_provider();
+			
+			// Special display if rules were completely deleted
+			if ( $rules_option === false ) {
+				?>
+				<div class="notice notice-warning" style="margin: 20px 0;">
+					<p>
+						<strong><?php esc_html_e( 'No rewrite rules found in database!', 'brag-book-gallery' ); ?></strong><br>
+						<?php esc_html_e( 'The rewrite_rules option has been completely deleted. WordPress will regenerate rules when needed.', 'brag-book-gallery' ); ?>
+					</p>
+				</div>
+				<?php
+			}
 			?>
 			<div class="status-cards-grid">
 				<!-- Rules Overview Card -->
@@ -1259,59 +1361,114 @@ final class Rewrite_Flush {
 	 */
 	private function verify_rules(): string {
 		try {
-			global $wp_rewrite, $wp;
+			global $wpdb, $wp;
 
 			$output = '<div class="rules-verification">';
 			$output .= '<h4>' . __( 'Verification Results:', 'brag-book-gallery' ) . '</h4>';
+			
+			// Check if rules were recently deleted
+			$deletion_info = get_transient( 'brag_book_gallery_rules_deleted' );
+			if ( $deletion_info && is_array( $deletion_info ) ) {
+				$output .= '<div style="background: #fff3cd; border: 1px solid #ffc107; padding: 10px; margin: 10px 0; border-radius: 4px;">';
+				$output .= '<strong>' . __( 'Recent Deletion:', 'brag-book-gallery' ) . '</strong> ';
+				$output .= sprintf(
+					__( '%d total rules deleted (%d were gallery rules).', 'brag-book-gallery' ),
+					$deletion_info['deleted_count'] ?? 0,
+					$deletion_info['gallery_count'] ?? 0
+				);
+				$output .= '</div>';
+			}
 
-			// Check if rules exist
-			$rules = $wp_rewrite->wp_rewrite_rules();
+			// Check if rules exist DIRECTLY in database without triggering regeneration
+			// Use direct SQL to avoid triggering WordPress filters
+			$rules_in_db = $wpdb->get_var( 
+				"SELECT option_value FROM {$wpdb->options} WHERE option_name = 'rewrite_rules' LIMIT 1" 
+			);
+			
+			if ( $rules_in_db === null ) {
+				// No rules in database at all
+				$output .= '<div style="background: #d4edda; border: 1px solid #28a745; padding: 15px; margin: 10px 0; border-radius: 4px;">';
+				$output .= '<p style="color: #28a745; margin: 0;"><strong>' . $this->get_check_icon( true ) . __( 'SUCCESS: No rewrite rules exist in the database!', 'brag-book-gallery' ) . '</strong></p>';
+				$output .= '<p style="margin: 5px 0 0 0;">' . __( 'The rewrite_rules option has been completely removed.', 'brag-book-gallery' ) . '</p>';
+				$output .= '<p style="margin: 5px 0 0 0; font-size: 12px; color: #666;">' . __( 'Note: WordPress will regenerate rules automatically when needed (on next page visit).', 'brag-book-gallery' ) . '</p>';
+				$output .= '</div>';
+				$output .= '</div>';
+				return $output;
+			}
+			
+			// Rules exist - unserialize and count them
+			$rules = maybe_unserialize( $rules_in_db );
+			if ( ! is_array( $rules ) ) {
+				$output .= '<p style="color: red;">' . $this->get_check_icon( false ) . __( 'Invalid rewrite rules format in database!', 'brag-book-gallery' ) . '</p>';
+				$output .= '</div>';
+				return $output;
+			}
 			if ( empty( $rules ) ) {
 				$output .= '<p style="color: red;">' . $this->get_check_icon( false ) . __( 'No rewrite rules found!', 'brag-book-gallery' ) . '</p>';
 				$output .= '<p>' . __( 'Recommendation: Perform a hard flush to regenerate rules.', 'brag-book-gallery' ) . '</p>';
 				return $output . '</div>';
 			}
 
-			$output .= '<p style="color: green;">' . $this->get_check_icon( true ) . sprintf(
-				/* translators: %d: Number of rules */
-				__( 'Found %d total rewrite rules', 'brag-book-gallery' ),
-				count( $rules )
-			) . '</p>';
+			// Successfully got rules from database
+			$rules_count = count( $rules );
+			$output .= '<p style="color: ' . ($rules_count > 0 ? 'blue' : 'red') . ';">' . 
+				($rules_count > 0 ? $this->get_info_icon() : $this->get_check_icon( false )) . 
+				sprintf(
+					/* translators: %d: Number of rules */
+					__( 'Database contains %d rewrite rules', 'brag-book-gallery' ),
+					$rules_count
+				) . '</p>';
 
 			// Check for gallery rules
 			$brag_book_gallery_page_slug = \BRAGBookGallery\Includes\Core\Slug_Helper::get_first_gallery_page_slug();
 			$gallery_rule_count = 0;
 			$sample_rules = [];
 
-			if ( $brag_book_gallery_page_slug ) {
-				foreach ( $rules as $pattern => $query ) {
-					if ( str_contains( $pattern, $brag_book_gallery_page_slug ) ) {
-						$gallery_rule_count++;
-						if ( count( $sample_rules ) < self::MAX_SAMPLE_RULES ) {
-							$sample_rules[ $pattern ] = $query;
-						}
+			foreach ( $rules as $pattern => $query ) {
+				if (
+					( $brag_book_gallery_page_slug && str_contains( $pattern, $brag_book_gallery_page_slug ) ) ||
+					str_contains( $query, 'brag_book_gallery_view' ) ||
+					str_contains( $query, 'brag_gallery_slug' ) ||
+					str_contains( $query, 'brag_gallery_category' ) ||
+					str_contains( $query, 'brag_book_gallery_case' ) ||
+					str_contains( $query, 'favorites_page' ) ||
+					str_contains( $query, 'procedure_title' ) ||
+					str_contains( $query, 'case_id' )
+				) {
+					$gallery_rule_count++;
+					if ( count( $sample_rules ) < self::MAX_SAMPLE_RULES ) {
+						$sample_rules[ $pattern ] = $query;
 					}
-				}
-
-				if ( $gallery_rule_count > 0 ) {
-					$output .= '<p style="color: green;">' . $this->get_check_icon( true ) . sprintf(
-						/* translators: %d: Number of gallery rules */
-						__( 'Found %d gallery rules', 'brag-book-gallery' ),
-						$gallery_rule_count
-					) . '</p>';
-				} else {
-					$output .= '<p style="color: red;">' . $this->get_check_icon( false ) . __( 'Gallery rules are missing', 'brag-book-gallery' ) . '</p>';
 				}
 			}
 
-			// Check query vars (must match Rewrite_Rules_Handler::QUERY_VARS)
+			if ( $gallery_rule_count > 0 ) {
+				$output .= '<p style="color: green;">' . $this->get_check_icon( true ) . sprintf(
+					/* translators: %d: Number of gallery rules */
+					__( 'Found %d gallery rules', 'brag-book-gallery' ),
+					$gallery_rule_count
+				) . '</p>';
+			} else {
+				$output .= '<p style="color: red;">' . $this->get_check_icon( false ) . __( 'Gallery rules are missing', 'brag-book-gallery' ) . '</p>';
+			}
+
+			// Check query vars (must match URL_Router and Rewrite_Rules_Handler)
 			$required_vars = [ 
-				'procedure_title',    // Procedure name in case detail URLs
-				'case_suffix',        // Case identifier (ID or SEO suffix)
-				'favorites_section',  // Legacy favorites section indicator
-				'filter_category',    // Category filter parameter
-				'filter_procedure',   // Procedure filter parameter
-				'favorites_page',     // Favorites page indicator
+				// URL Router vars
+				'brag_book_gallery_view',  // View type (index, category, single, search)
+				'brag_gallery_slug',        // Category or procedure slug
+				'brag_gallery_category',    // Category context for cases
+				'brag_book_gallery_case',   // Individual case identifier
+				'brag_gallery_search',      // Search term
+				'brag_gallery_page',        // Pagination number
+				'brag_gallery_filter',      // Additional filters
+				'favorites_page',           // Favorites page indicator
+				'filter_procedure',         // Procedure filter parameter
+				// Legacy Rewrite Rules Handler vars
+				'procedure_title',          // Procedure name in case detail URLs
+				'case_suffix',              // Case identifier (ID or SEO suffix)
+				'favorites_section',        // Legacy favorites section indicator
+				'filter_category',          // Category filter parameter
 			];
 			$missing_vars = [];
 			$registered_vars = [];

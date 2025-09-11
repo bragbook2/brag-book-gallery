@@ -99,6 +99,13 @@ class Ajax_Handlers {
 	 * @return void
 	 */
 	public static function register(): void {
+		// Block rewrite rules regeneration if deletion flag is set
+		if ( get_transient( 'brag_book_gallery_block_rules_regen' ) ) {
+			add_filter( 'option_rewrite_rules', '__return_false', PHP_INT_MAX );
+			add_filter( 'pre_option_rewrite_rules', '__return_false', PHP_INT_MAX );
+			add_filter( 'pre_update_option_rewrite_rules', '__return_false', PHP_INT_MAX );
+		}
+		
 		// Gallery filtering
 		add_action( 'wp_ajax_brag_book_gallery_load_filtered_gallery', [ __CLASS__, 'ajax_load_filtered_gallery' ] );
 		add_action( 'wp_ajax_nopriv_brag_book_gallery_load_filtered_gallery', [ __CLASS__, 'ajax_load_filtered_gallery' ] );
@@ -134,6 +141,7 @@ class Ajax_Handlers {
 
 		// Rewrite rules
 		add_action( 'wp_ajax_brag_book_gallery_flush_rewrite_rules', [ __CLASS__, 'ajax_flush_rewrite_rules' ] );
+		add_action( 'wp_ajax_brag_book_gallery_delete_all_rewrite_rules', [ __CLASS__, 'ajax_delete_all_rewrite_rules' ] );
 
 		// WP Engine diagnostics
 		add_action( 'wp_ajax_brag_book_gallery_wp_engine_diagnostics', [ __CLASS__, 'ajax_wp_engine_diagnostics' ] );
@@ -212,6 +220,220 @@ class Ajax_Handlers {
 
 		} catch ( Exception $e ) {
 			wp_send_json_error( __( 'Error flushing rules: ', 'brag-book-gallery' ) . $e->getMessage() );
+		}
+	}
+
+	/**
+	 * AJAX handler to delete all rewrite rules.
+	 *
+	 * Completely removes all rewrite rules from the database, forcing WordPress
+	 * to regenerate them on next page load. Custom rules will need to be re-registered.
+	 *
+	 * @since 3.2.8
+	 * @return void
+	 */
+	public static function ajax_delete_all_rewrite_rules(): void {
+		// Sanitize and validate nonce from request
+		$nonce = isset( $_POST['nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['nonce'] ) ) : '';
+		if ( ! wp_verify_nonce( $nonce, 'brag_book_gallery_delete_rewrite_rules' ) ) {
+			wp_send_json_error( __( 'Security check failed', 'brag-book-gallery' ) );
+			return;
+		}
+
+		// Verify user has administrative permissions
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( __( 'Insufficient permissions', 'brag-book-gallery' ) );
+			return;
+		}
+
+		try {
+			global $wp_rewrite, $wpdb;
+			
+			// Log the deletion attempt
+			error_log( 'BRAGBook Gallery: Starting rewrite rules deletion...' );
+			
+			// Get current rules count before deletion
+			$existing_rules = get_option( 'rewrite_rules' );
+			$rules_count = is_array( $existing_rules ) ? count( $existing_rules ) : 0;
+			
+			error_log( sprintf( 'BRAGBook Gallery: Found %d rules to delete', $rules_count ) );
+			
+			// Count gallery rules before deletion
+			$gallery_rules_count = 0;
+			if ( is_array( $existing_rules ) ) {
+				$gallery_page_slug = get_option( 'brag_book_gallery_page_slug', 'gallery' );
+				
+				// Handle if gallery_page_slug is an array
+				$slug_check = false;
+				if ( is_array( $gallery_page_slug ) ) {
+					$gallery_page_slug = reset( $gallery_page_slug ); // Get first slug
+				}
+				
+				foreach ( $existing_rules as $pattern => $query ) {
+					// Check if pattern contains gallery slug
+					if ( $gallery_page_slug && is_string( $gallery_page_slug ) ) {
+						$slug_check = str_contains( $pattern, $gallery_page_slug );
+					}
+					
+					if (
+						$slug_check ||
+						str_contains( $query, 'brag_book_gallery_view' ) ||
+						str_contains( $query, 'brag_gallery_slug' ) ||
+						str_contains( $query, 'brag_gallery_category' ) ||
+						str_contains( $query, 'brag_book_gallery_case' ) ||
+						str_contains( $query, 'favorites_page' ) ||
+						str_contains( $query, 'procedure_title' ) ||
+						str_contains( $query, 'case_id' )
+					) {
+						$gallery_rules_count++;
+					}
+				}
+			}
+			
+			// AGGRESSIVE DELETION - Ensure rules are completely removed
+			
+			// 1. First, prevent any WordPress hooks from regenerating
+			remove_all_actions( 'init' );
+			remove_all_actions( 'admin_init' );
+			remove_all_filters( 'rewrite_rules_array' );
+			remove_all_filters( 'option_rewrite_rules' );
+			remove_all_filters( 'pre_option_rewrite_rules' );
+			
+			// 2. Block WordPress from reading or setting rules
+			add_filter( 'option_rewrite_rules', '__return_false', PHP_INT_MAX );
+			add_filter( 'pre_option_rewrite_rules', '__return_false', PHP_INT_MAX );
+			add_filter( 'pre_update_option_rewrite_rules', '__return_false', PHP_INT_MAX );
+			
+			// 3. Delete using WordPress function
+			$deleted = delete_option( 'rewrite_rules' );
+			error_log( sprintf( 'BRAGBook Gallery: delete_option result: %s', var_export( $deleted, true ) ) );
+			
+			// 4. Force delete using direct database query
+			$sql_result = $wpdb->query( 
+				$wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name = %s", 'rewrite_rules' )
+			);
+			error_log( sprintf( 'BRAGBook Gallery: Direct SQL delete result: %d rows affected', $sql_result ) );
+			
+			// 5. Also delete from cache tables if they exist
+			$wpdb->query( 
+				$wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name = %s", '_transient_rewrite_rules' )
+			);
+			$wpdb->query( 
+				$wpdb->prepare( "DELETE FROM {$wpdb->options} WHERE option_name = %s", '_site_transient_rewrite_rules' )
+			);
+			
+			// Also delete from the WordPress rewrite object
+			if ( isset( $wp_rewrite ) && is_object( $wp_rewrite ) ) {
+				$wp_rewrite->rules = array();
+				$wp_rewrite->extra_rules = array();
+				$wp_rewrite->extra_rules_top = array();
+				$wp_rewrite->non_wp_rules = array();
+				$wp_rewrite->endpoints = array();
+				$wp_rewrite->use_trailing_slashes = true;
+				
+				// Prevent immediate regeneration
+				$wp_rewrite->matches = '';
+				$wp_rewrite->rewrite = array();
+			}
+			
+			// Clear any cached rules
+			wp_cache_delete( 'rewrite_rules', 'options' );
+			wp_cache_delete( 'alloptions', 'options' );
+			wp_cache_delete( 'notoptions', 'options' );
+			
+			// Delete any transients that might store rules
+			delete_transient( 'rewrite_rules' );
+			delete_site_transient( 'rewrite_rules' );
+			
+			// Clear object cache if available
+			if ( function_exists( 'wp_cache_flush' ) ) {
+				wp_cache_flush();
+			}
+			
+			// Clear WP Engine specific cache
+			if ( function_exists( 'wpe_param' ) && class_exists( 'WpeCommon' ) ) {
+				if ( method_exists( 'WpeCommon', 'purge_memcached' ) ) {
+					\WpeCommon::purge_memcached();
+				}
+				if ( method_exists( 'WpeCommon', 'clear_maxcdn_cache' ) ) {
+					\WpeCommon::clear_maxcdn_cache();
+				}
+			}
+			
+			// Force clear ALL caches
+			wp_cache_flush();
+			wp_cache_delete( 'rewrite_rules', 'options' );
+			wp_cache_delete( 'notoptions', 'options' );
+			wp_cache_delete( 'alloptions', 'options' );
+			
+			// Clear the runtime cache
+			wp_cache_delete( 'rewrite_rules', 'option' );
+			wp_cache_delete( 'rewrite_rules', 'default' );
+			
+			// Wait a moment to ensure database write is complete
+			usleep( 100000 ); // 0.1 second
+			
+			// Verify deletion - check directly in database with fresh connection
+			$check_sql = $wpdb->get_var( 
+				$wpdb->prepare( 
+					"SELECT option_value FROM {$wpdb->options} WHERE option_name = %s LIMIT 1",
+					'rewrite_rules'
+				)
+			);
+			
+			if ( $check_sql === null ) {
+				// Option doesn't exist - good!
+				$remaining_count = 0;
+				error_log( 'BRAGBook Gallery: Confirmed - rewrite_rules option deleted from database' );
+			} else {
+				// Option still exists, try to count rules
+				$remaining_rules = maybe_unserialize( $check_sql );
+				$remaining_count = is_array( $remaining_rules ) ? count( $remaining_rules ) : 0;
+				error_log( sprintf( 'BRAGBook Gallery: Warning - %d rules still exist after deletion', $remaining_count ) );
+			}
+			
+			// Log the action
+			error_log( sprintf( 
+				'BRAGBook Gallery: Delete operation complete. Originally %d rules (%d gallery). Remaining: %d. User: %s', 
+				$rules_count,
+				$gallery_rules_count,
+				$remaining_count,
+				wp_get_current_user()->user_login 
+			) );
+			
+			if ( $remaining_count === 0 ) {
+				$message = sprintf(
+					__( 'Successfully deleted ALL %d rewrite rules (%d were gallery rules). The database now has 0 rules. WordPress will regenerate default rules on next page load.', 'brag-book-gallery' ),
+					$rules_count,
+					$gallery_rules_count
+				);
+			} else {
+				$message = sprintf(
+					__( 'Deleted %d rules but %d rules still remain. You may need to clear additional caches.', 'brag-book-gallery' ),
+					$rules_count,
+					$remaining_count
+				);
+			}
+			
+			// Add a transient to indicate rules were deleted (5 minutes)
+			set_transient( 'brag_book_gallery_rules_deleted', [
+				'deleted_count' => $rules_count,
+				'gallery_count' => $gallery_rules_count,
+				'remaining' => $remaining_count,
+				'deleted_at' => time()
+			], 300 );
+			
+			// Set a flag to block rule regeneration temporarily
+			set_transient( 'brag_book_gallery_block_rules_regen', true, 60 );
+			
+			wp_send_json_success( $message );
+			
+		} catch ( Exception $e ) {
+			error_log( 'BRAGBook Gallery: Exception during deletion: ' . $e->getMessage() );
+			wp_send_json_error( __( 'Error deleting rewrite rules: ', 'brag-book-gallery' ) . $e->getMessage() );
+		} catch ( \Error $e ) {
+			error_log( 'BRAGBook Gallery: Fatal error during deletion: ' . $e->getMessage() );
+			wp_send_json_error( __( 'Fatal error deleting rewrite rules: ', 'brag-book-gallery' ) . $e->getMessage() );
 		}
 	}
 
