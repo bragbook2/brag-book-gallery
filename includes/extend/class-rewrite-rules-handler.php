@@ -151,10 +151,14 @@ class Rewrite_Rules_Handler {
 	 * @return void
 	 */
 	public static function register(): void {
-		// Register rewrite rules early for precedence
-		add_action( 'init', [ __CLASS__, 'custom_rewrite_rules' ], 5 );
-		add_action( 'init', [ __CLASS__, 'custom_rewrite_flush' ], 10 );
-		add_action( 'init', [ __CLASS__, 'register_query_vars' ], 10 );
+		// Register rewrite rules very early for precedence over SEO plugins
+		add_action( 'init', [ __CLASS__, 'custom_rewrite_rules' ], 1 );
+		add_action( 'init', [ __CLASS__, 'custom_rewrite_flush' ], 2 );
+		add_action( 'init', [ __CLASS__, 'register_query_vars' ], 1 );
+		
+		// Protect against plugin interference
+		add_action( 'init', [ __CLASS__, 'protect_gallery_urls' ], 1 );
+		add_action( 'wp', [ __CLASS__, 'handle_gallery_request' ], 1 );
 
 		// Register query variables filter
 		add_filter( 'query_vars', [ __CLASS__, 'add_query_vars' ], 10, 1 );
@@ -225,6 +229,25 @@ class Rewrite_Rules_Handler {
 		foreach ( self::QUERY_VARS as $var ) {
 			$wp->add_query_var( $var );
 		}
+		
+		// Ensure our query vars are always preserved against plugin interference
+		add_filter( 'query_vars', [ __CLASS__, 'force_gallery_query_vars' ], 999 );
+	}
+
+	/**
+	 * Force gallery query vars to always be registered
+	 *
+	 * @since 3.2.5
+	 * @param array $vars Existing query vars
+	 * @return array Modified query vars
+	 */
+	public static function force_gallery_query_vars( array $vars ): array {
+		foreach ( self::QUERY_VARS as $var ) {
+			if ( ! in_array( $var, $vars, true ) ) {
+				$vars[] = $var;
+			}
+		}
+		return $vars;
 	}
 
 	/**
@@ -408,6 +431,203 @@ class Rewrite_Rules_Handler {
 				"Manual rewrite rules registration failed for slug: {$slug}",
 			'actions' => $actions
 		];
+	}
+
+	/**
+	 * Protect gallery URLs from being redirected by other plugins
+	 *
+	 * Prevents SEO plugins, redirect plugins, and WordPress canonical
+	 * redirects from interfering with gallery rewrite rules.
+	 *
+	 * @since 3.2.5
+	 * @return void
+	 */
+	public static function protect_gallery_urls(): void {
+		// Get all gallery slugs that need protection
+		$gallery_slugs = self::get_all_gallery_slugs();
+		
+		if ( empty( $gallery_slugs ) ) {
+			return;
+		}
+
+		// Disable canonical redirects for gallery URLs
+		add_action( 'template_redirect', function() use ( $gallery_slugs ) {
+			$request_uri = $_SERVER['REQUEST_URI'] ?? '';
+			
+			foreach ( $gallery_slugs as $slug ) {
+				if ( strpos( $request_uri, "/{$slug}/" ) !== false ) {
+					// Remove canonical redirect for gallery pages
+					remove_action( 'template_redirect', 'redirect_canonical' );
+					
+					// Remove Yoast SEO redirects
+					if ( class_exists( 'WPSEO_Frontend' ) ) {
+						remove_action( 'template_redirect', array( 'WPSEO_Frontend', 'clean_permalink' ), 1 );
+					}
+					
+					// Remove RankMath redirects
+					if ( class_exists( 'RankMath\Frontend\Redirector' ) ) {
+						remove_action( 'template_redirect', array( 'RankMath\Frontend\Redirector', 'redirect' ), 11 );
+					}
+					
+					// Remove Redirection plugin redirects for our URLs
+					if ( class_exists( 'Red_Flusher' ) ) {
+						add_filter( 'redirection_url_target', function( $target, $url ) use ( $gallery_slugs ) {
+							foreach ( $gallery_slugs as $slug ) {
+								if ( strpos( $url, "/{$slug}/" ) !== false ) {
+									return false; // Don't redirect gallery URLs
+								}
+							}
+							return $target;
+						}, 10, 2 );
+					}
+					break;
+				}
+			}
+		}, 1 );
+
+		// Force our rewrite rules to be processed first
+		add_filter( 'rewrite_rules_array', [ __CLASS__, 'prioritize_gallery_rules' ], 1 );
+	}
+
+	/**
+	 * Handle gallery requests and ensure proper routing
+	 *
+	 * @since 3.2.5
+	 * @return void
+	 */
+	public static function handle_gallery_request(): void {
+		global $wp;
+		
+		// Check if this is a gallery request
+		$request_uri = $_SERVER['REQUEST_URI'] ?? '';
+		$gallery_slugs = self::get_all_gallery_slugs();
+		
+		foreach ( $gallery_slugs as $slug ) {
+			if ( strpos( $request_uri, "/{$slug}/" ) !== false ) {
+				// This is a gallery URL - make sure our query vars are set
+				
+				// Check for favorites page
+				if ( strpos( $request_uri, "/{$slug}/myfavorites/" ) !== false ) {
+					$wp->set_query_var( 'favorites_page', '1' );
+					$wp->set_query_var( 'brag_book_gallery_case', '' );
+					$wp->set_query_var( 'filter_procedure', '' );
+					return;
+				}
+				
+				// Parse the URL to set appropriate query vars
+				$url_parts = explode( '/', trim( $request_uri, '/' ) );
+				$slug_index = array_search( $slug, $url_parts );
+				
+				if ( $slug_index !== false && isset( $url_parts[ $slug_index + 1 ] ) ) {
+					$procedure = $url_parts[ $slug_index + 1 ];
+					
+					if ( isset( $url_parts[ $slug_index + 2 ] ) ) {
+						// Case detail page
+						$case_id = $url_parts[ $slug_index + 2 ];
+						$wp->set_query_var( 'brag_book_gallery_case', $case_id );
+						$wp->set_query_var( 'filter_procedure', $procedure );
+					} else {
+						// Procedure filter page
+						$wp->set_query_var( 'filter_procedure', $procedure );
+						$wp->set_query_var( 'brag_book_gallery_case', '' );
+					}
+				}
+				break;
+			}
+		}
+	}
+
+	/**
+	 * Prioritize gallery rewrite rules over other plugins
+	 *
+	 * @since 3.2.5
+	 * @param array $rules All rewrite rules
+	 * @return array Modified rules with gallery rules first
+	 */
+	public static function prioritize_gallery_rules( array $rules ): array {
+		$gallery_rules = [];
+		$other_rules = [];
+		
+		// Separate gallery rules from other rules
+		foreach ( $rules as $pattern => $query ) {
+			if ( strpos( $query, 'brag_book_gallery_case=' ) !== false || 
+				 strpos( $query, 'filter_procedure=' ) !== false ||
+				 strpos( $query, 'favorites_page=' ) !== false ) {
+				$gallery_rules[ $pattern ] = $query;
+			} else {
+				$other_rules[ $pattern ] = $query;
+			}
+		}
+		
+		// Return gallery rules first, then other rules
+		return array_merge( $gallery_rules, $other_rules );
+	}
+
+	/**
+	 * Get all gallery slugs for protection
+	 *
+	 * @since 3.2.5
+	 * @return array Array of gallery slugs
+	 */
+	private static function get_all_gallery_slugs(): array {
+		static $cached_slugs = null;
+		
+		if ( $cached_slugs !== null ) {
+			return $cached_slugs;
+		}
+		
+		$slugs = [];
+		
+		// Try multiple detection methods
+		try {
+			// 1. Slug Helper method
+			if ( class_exists( '\BRAGBookGallery\Includes\Core\Slug_Helper' ) ) {
+				$helper_slugs = \BRAGBookGallery\Includes\Core\Slug_Helper::get_all_gallery_page_slugs();
+				$slugs = array_merge( $slugs, $helper_slugs );
+			}
+		} catch ( \Exception $e ) {
+			// Ignore errors
+		}
+		
+		// 2. Direct option access
+		$option_sources = [
+			'brag_book_gallery_page_slug',
+			'brag_book_gallery_gallery_page_slug'
+		];
+		
+		foreach ( $option_sources as $option ) {
+			$value = get_option( $option, '' );
+			if ( ! empty( $value ) ) {
+				if ( is_array( $value ) ) {
+					$slugs = array_merge( $slugs, $value );
+				} else {
+					$slugs[] = $value;
+				}
+			}
+		}
+		
+		// 3. Page ID conversion
+		$page_id = get_option( 'brag_book_gallery_page_id', 0 );
+		if ( ! empty( $page_id ) ) {
+			$page_slug = self::get_page_slug_from_id( absint( $page_id ) );
+			if ( ! empty( $page_slug ) ) {
+				$slugs[] = $page_slug;
+			}
+		}
+		
+		// 4. Shortcode detection
+		$pages_with_shortcode = self::find_pages_with_gallery_shortcode();
+		foreach ( $pages_with_shortcode as $page ) {
+			if ( ! empty( $page->post_name ) ) {
+				$slugs[] = $page->post_name;
+			}
+		}
+		
+		// Clean and deduplicate
+		$slugs = array_unique( array_filter( array_map( 'sanitize_title', $slugs ) ) );
+		
+		$cached_slugs = $slugs;
+		return $slugs;
 	}
 
 	/**
@@ -737,13 +957,18 @@ class Rewrite_Rules_Handler {
 
 		$rewrite_rules = array();
 
-		// Add My Favorites page rewrite rule only if favorites are enabled
-		if ( \BRAGBookGallery\Includes\Core\Settings_Helper::is_favorites_enabled() ) {
-			$rewrite_rules[] = array(
-				'regex' => "^{$page_slug}/myfavorites/?$",
-				'query' => "{$base_query}&favorites_page=1",
-			);
-		}
+		// Always add My Favorites page rewrite rule to prevent 404s
+		// Note: Access control is handled in the template, not by omitting the rule
+		$rewrite_rules[] = array(
+			'regex' => "^{$page_slug}/myfavorites/?$",
+			'query' => "{$base_query}&favorites_page=1",
+		);
+		
+		// Additional variations to catch redirects and trailing slash issues
+		$rewrite_rules[] = array(
+			'regex' => "^{$page_slug}/myfavorites$",
+			'query' => "{$base_query}&favorites_page=1",
+		);
 
 		// Case detail: /gallery/procedure-name/identifier.
 		// This single pattern captures both numeric IDs and SEO suffixes.
