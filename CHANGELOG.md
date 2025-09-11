@@ -4,7 +4,36 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.2.6] - 2025-09-11 (Current Release)
+## [3.2.7] - 2025-09-11 (Current Release)
+
+### Added
+- **Dual Caching System**: Implemented comprehensive dual caching strategy for optimal performance
+  - All data types (sidebar, cases, individual case, carousel) now use both WP Engine object cache AND transients
+  - Automatic fallback mechanism ensures data persistence across cache flushes
+  - Intelligent cache retrieval checks object cache first (faster), falls back to transients if needed
+- **Legacy Transient Cleanup**: Added dedicated cleanup functionality for old transient patterns
+  - New "Clear Legacy Transients" button in Cache Management debug tool
+  - Removes obsolete transient patterns from previous plugin versions
+  - Automatic detection and cleanup of orphaned cache entries
+
+### Fixed
+- **Cache Management Tool**: Resolved critical issues with cache viewing and management
+  - Fixed double-prefixing issue preventing cache data from being viewed
+  - Updated queries to detect both old and new transient naming patterns
+  - Corrected delete operations to handle various key formats
+  - Fixed clear_all_cache() method that was returning static message instead of clearing cache
+- **Cache Helper Functions**: Enhanced to provide true dual caching
+  - brag_book_set_cache() now stores in BOTH wp_cache and transients
+  - brag_book_get_cache() checks wp_cache first, falls back to transients
+  - brag_book_delete_cache() removes from BOTH cache layers
+
+### Improved
+- **Cache Query Performance**: Optimized database queries for cache management
+  - Updated SQL queries to search for multiple transient patterns efficiently
+  - Improved pagination for large cache datasets
+  - Enhanced cache statistics calculation
+
+## [3.2.6] - 2025-09-11
 
 ### Fixed
 - **Cache Management Debug Tools**: Enhanced cache view functionality with comprehensive diagnostic logging
