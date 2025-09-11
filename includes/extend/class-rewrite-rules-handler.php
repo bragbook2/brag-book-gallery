@@ -279,6 +279,86 @@ class Rewrite_Rules_Handler {
 	 *
 	 * @return void
 	 */
+	public static function force_rewrite_rules_registration(): array {
+		$actions = [];
+		$success = true;
+
+		try {
+			// 1. Clear existing rewrite rules cache
+			wp_cache_delete( 'rewrite_rules', 'options' );
+			$actions[] = 'Cleared rewrite rules cache';
+
+			// 2. Force re-register our custom rules
+			self::custom_rewrite_rules();
+			$actions[] = 'Re-registered custom rewrite rules';
+
+			// 3. Perform hard flush
+			flush_rewrite_rules( true );
+			$actions[] = 'Performed hard rewrite rules flush';
+
+			// 4. WP Engine specific cache clearing
+			if ( function_exists( 'brag_book_wp_engine_rewrite_fix' ) ) {
+				$wp_engine_result = brag_book_wp_engine_rewrite_fix();
+				$actions = array_merge( $actions, $wp_engine_result['actions'] );
+			}
+
+			// 5. Verify rules were added by checking for our pattern
+			$rewrite_rules = get_option( 'rewrite_rules', [] );
+			$gallery_rules_found = false;
+			
+			foreach ( $rewrite_rules as $pattern => $replacement ) {
+				if ( strpos( $replacement, 'brag_book_gallery_case=' ) !== false || 
+					 strpos( $replacement, 'filter_procedure=' ) !== false ) {
+					$gallery_rules_found = true;
+					break;
+				}
+			}
+
+			if ( $gallery_rules_found ) {
+				$actions[] = 'Gallery rewrite rules verified as present';
+			} else {
+				$actions[] = 'WARNING: Gallery rewrite rules still missing after forced registration';
+				$success = false;
+			}
+
+		} catch ( \Exception $e ) {
+			$actions[] = 'ERROR: ' . $e->getMessage();
+			$success = false;
+		}
+
+		return [
+			'success' => $success,
+			'message' => $success ? 
+				'Forced rewrite rules registration completed successfully' : 
+				'Forced rewrite rules registration encountered issues',
+			'actions' => $actions
+		];
+	}
+
+	/**
+	 * Register custom rewrite rules for gallery functionality
+	 *
+	 * Comprehensive rewrite rule registration implementing enterprise-grade
+	 * URL routing with WordPress VIP standards and PHP 8.2+ optimizations.
+	 * Handles multiple discovery methods and duplicate prevention for
+	 * robust gallery page detection and rule registration.
+	 *
+	 * Registration Methods (in order of precedence):
+	 * 1. Auto-discovery via shortcode content scanning
+	 * 2. Settings-based slug configuration with helper
+	 * 3. Legacy option handling with backwards compatibility 
+	 * 4. Combined gallery rules from page ID option
+	 *
+	 * Processing Features:
+	 * - Duplicate slug prevention with tracking
+	 * - Multiple fallback mechanisms for robustness
+	 * - Efficient processing with early returns
+	 * - Hook integration for extensibility
+	 *
+	 * @since 3.0.0
+	 *
+	 * @return void
+	 */
 	public static function custom_rewrite_rules(): void {
 		// Track processed slugs to prevent duplicate rules
 		$processed_slugs = [];
@@ -295,8 +375,24 @@ class Rewrite_Rules_Handler {
 		}
 
 		// Check for brag_book_gallery_page_slug option (used in settings).
-		// Use the helper to get all slugs (handles both array and string formats).
-		$gallery_page_slugs = \BRAGBookGallery\Includes\Core\Slug_Helper::get_all_gallery_page_slugs();
+		// Use robust fallback approach to avoid initialization issues.
+		$gallery_page_slugs = [];
+		try {
+			// Try Slug_Helper first if class is available
+			if ( class_exists( '\BRAGBookGallery\Includes\Core\Slug_Helper' ) ) {
+				$gallery_page_slugs = \BRAGBookGallery\Includes\Core\Slug_Helper::get_all_gallery_page_slugs();
+			}
+		} catch ( \Exception $e ) {
+			// If Slug_Helper fails, get directly from option
+			$page_slug_option = get_option( 'brag_book_gallery_page_slug', '' );
+			if ( is_array( $page_slug_option ) && ! empty( $page_slug_option ) ) {
+				$gallery_page_slugs = array_map( 'sanitize_title', $page_slug_option );
+			} elseif ( is_string( $page_slug_option ) && ! empty( $page_slug_option ) ) {
+				$gallery_page_slugs = [ sanitize_title( $page_slug_option ) ];
+			}
+		}
+
+		// Process gallery page slugs
 		foreach ( $gallery_page_slugs as $slug ) {
 			if ( ! empty( $slug ) && ! in_array( $slug, $processed_slugs, true ) ) {
 				self::add_gallery_rewrite_rules( $slug );
