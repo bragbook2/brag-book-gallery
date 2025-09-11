@@ -346,7 +346,18 @@ class Data_Fetcher {
 	 * @return array All cases data.
 	 */
 	public static function get_all_cases_for_filtering( string $api_token, string $website_property_id, array $procedure_ids = [] ): array {
-		// Fetch directly from API without caching
+		// Check cache first
+		$cache_key = 'all_cases_' . md5( $api_token . '_' . $website_property_id . '_' . implode( ',', $procedure_ids ) );
+		
+		if ( Cache_Manager::is_caching_enabled() ) {
+			$cached_data = Cache_Manager::get( $cache_key );
+			if ( $cached_data !== false ) {
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+					error_log( 'BRAGBook: Using cached cases data for filtering' );
+				}
+				return $cached_data;
+			}
+		}
 
 		try {
 			$endpoints = new Endpoints();
@@ -424,7 +435,13 @@ class Data_Fetcher {
 				'total' => count( $all_cases ),
 			];
 
-			// Return result directly without caching
+			// Cache the result for future use
+			if ( Cache_Manager::is_caching_enabled() && ! empty( $result['data'] ) ) {
+				Cache_Manager::set( $cache_key, $result, HOUR_IN_SECONDS );
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+					error_log( 'BRAGBook: Cached ' . count( $all_cases ) . ' cases for filtering' );
+				}
+			}
 
 			return $result;
 

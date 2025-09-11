@@ -294,8 +294,8 @@ class Cache_Management {
 									</td>
 									<td class="key-column">
 										<div class="cache-key-wrapper">
-											<div class="cache-key-name" title="Database key: _transient_<?php echo esc_attr( $item['key'] ); ?>">
-												<?php echo esc_html( $item['key'] ); ?>
+											<div class="cache-key-name" title="Full key: <?php echo esc_attr( $item['key'] ); ?>">
+												<?php echo esc_html( $this->format_cache_key_nice_name( $item['key'] ) ); ?>
 											</div>
 											<div class="cache-key-full"><?php echo esc_html( $item['key'] ); ?></div>
 										</div>
@@ -1639,47 +1639,77 @@ class Cache_Management {
 	 * @return string
 	 */
 	private function determine_cache_type( string $key ): string {
+		// Simplified categories: Sidebar, Cases, Case, Carousel, Misc
 		return match ( true ) {
-			// API and Data Transients
-			str_contains( $key, 'api' )              => __( 'API Response', 'brag-book-gallery' ),
-			str_contains( $key, 'sidebar' )          => __( 'Sidebar Data', 'brag-book-gallery' ),
-			str_contains( $key, 'case_' ) && ! str_contains( $key, 'cases_' ) => __( 'Individual Case Data', 'brag-book-gallery' ),
-			str_contains( $key, 'cases_' )           => __( 'Cases List Data', 'brag-book-gallery' ),
-
-			// Sync and Migration
-			str_contains( $key, 'sync' )             => __( 'Sync Data', 'brag-book-gallery' ),
-			str_contains( $key, 'migration' )        => __( 'Migration Data', 'brag-book-gallery' ),
-			str_contains( $key, 'force_update' )     => __( 'Force Update', 'brag-book-gallery' ),
-
-			// Rate Limiting
-			str_contains( $key, 'rate_limit' )       => __( 'Rate Limiting', 'brag-book-gallery' ),
-
-			// SEO and Sitemaps
-			str_contains( $key, 'sitemap' )          => __( 'SEO Sitemap', 'brag-book-gallery' ),
-			str_contains( $key, 'combined_sidebar' ) => __( 'SEO Data', 'brag-book-gallery' ),
-
-			// Forms and Validation
-			str_contains( $key, 'consultation' )     => __( 'Consultation Form', 'brag-book-gallery' ),
-
-			// Debug and System Tools
-			str_contains( $key, 'sysinfo' )          => __( 'System Information', 'brag-book-gallery' ),
-
-			// Taxonomy System
-			str_contains( $key, 'term' )             => __( 'Taxonomy Data', 'brag-book-gallery' ),
-			str_contains( $key, '_terms' )           => __( 'Taxonomy Terms', 'brag-book-gallery' ),
-			str_contains( $key, '_hierarchy' )       => __( 'Taxonomy Hierarchy', 'brag-book-gallery' ),
-
-			// Mode and System
-			str_contains( $key, 'mode' )             => __( 'Mode Data', 'brag-book-gallery' ),
-			str_contains( $key, 'rewrite_notice' )   => __( 'UI Notice', 'brag-book-gallery' ),
-
-			// Plugin Updates
-			str_contains( $key, 'github_update' )    => __( 'Plugin Update', 'brag-book-gallery' ),
-
-			// Metadata and General
-			str_contains( $key, 'meta' )             => __( 'Metadata', 'brag-book-gallery' ),
-			default                                  => __( 'General', 'brag-book-gallery' ),
+			// Sidebar - all sidebar related data
+			str_contains( $key, 'sidebar' ) || 
+			str_contains( $key, 'combined_sidebar' ) => __( 'Sidebar', 'brag-book-gallery' ),
+			
+			// Carousel - carousel specific data (which are cases for a specific procedure)
+			str_contains( $key, 'carousel' ) ||
+			(str_contains( $key, 'cases_' ) && str_contains( $key, 'procedure' )) => __( 'Carousel', 'brag-book-gallery' ),
+			
+			// Individual Case - single case data
+			str_contains( $key, 'case_' ) && ! str_contains( $key, 'cases_' ) => __( 'Case', 'brag-book-gallery' ),
+			
+			// Cases - multiple cases data (gallery, filtered, etc)
+			str_contains( $key, 'cases_' ) ||
+			str_contains( $key, 'all_cases' ) => __( 'Cases', 'brag-book-gallery' ),
+			
+			// Everything else is Misc
+			default => __( 'Misc', 'brag-book-gallery' ),
 		};
+	}
+
+	/**
+	 * Format cache key into a nice readable name
+	 *
+	 * @since 3.2.7
+	 * @param string $key The cache key to format.
+	 * @return string The formatted nice name.
+	 */
+	private function format_cache_key_nice_name( string $key ): string {
+		// Remove common prefixes
+		$prefixes = [
+			'brag_book_gallery_transient_',
+			'brag_book_gallery_',
+			'brag_book_',
+			'transient_',
+		];
+		
+		$nice_name = $key;
+		foreach ( $prefixes as $prefix ) {
+			if ( str_starts_with( $nice_name, $prefix ) ) {
+				$nice_name = substr( $nice_name, strlen( $prefix ) );
+				break;
+			}
+		}
+		
+		// Replace underscores and hyphens with spaces
+		$nice_name = str_replace( [ '_', '-' ], ' ', $nice_name );
+		
+		// Capitalize each word
+		$nice_name = ucwords( $nice_name );
+		
+		// Special formatting for known patterns
+		$replacements = [
+			'Wp Engine' => 'WP Engine',
+			'Api' => 'API',
+			'Url' => 'URL',
+			'Id' => 'ID',
+			'Css' => 'CSS',
+			'Js' => 'JS',
+			'Html' => 'HTML',
+			'Php' => 'PHP',
+			'Sysinfo' => 'System Info',
+			'Brag Book' => 'BRAGBook',
+		];
+		
+		foreach ( $replacements as $search => $replace ) {
+			$nice_name = str_replace( $search, $replace, $nice_name );
+		}
+		
+		return $nice_name;
 	}
 
 	/**

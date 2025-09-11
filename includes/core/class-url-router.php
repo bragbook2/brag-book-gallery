@@ -150,8 +150,12 @@ final class URL_Router {
 	 * @return void
 	 */
 	private function init(): void {
-		// Register rewrite rules with proper priority
+		// Use rewrite_rules_array filter for better WP Engine compatibility
+		add_filter( 'rewrite_rules_array', [ $this, 'add_rewrite_rules_array' ], 5 );
+		
+		// Keep init action as fallback for non-cached rules
 		add_action( 'init', [ $this, 'add_rewrite_rules' ], 10 );
+		
 		add_filter( 'query_vars', [ $this, 'add_query_vars' ], 10, 1 );
 		add_action( 'parse_request', [ $this, 'parse_request' ], 10, 1 );
 
@@ -266,6 +270,65 @@ final class URL_Router {
 	}
 
 	/**
+	 * Add rewrite rules via the rewrite_rules_array filter
+	 *
+	 * This method is more reliable on WP Engine and other managed hosts
+	 * as it directly modifies the rules array instead of using add_rewrite_rule().
+	 *
+	 * @since 3.2.7
+	 * @param array $rules Existing rewrite rules.
+	 * @return array Modified rewrite rules with gallery rules added.
+	 */
+	public function add_rewrite_rules_array( array $rules ): array {
+		if ( ! $this->mode_manager ) {
+			return $rules;
+		}
+
+		// Get gallery slug
+		$gallery_slug = get_option( 'brag_book_gallery_slug', 'gallery' );
+		if ( empty( $gallery_slug ) ) {
+			return $rules;
+		}
+
+		$escaped_base = preg_quote( $gallery_slug, '/' );
+		
+		// Build our gallery rules
+		$gallery_rules = [];
+		
+		// MyFavorites page (must come before other rules)
+		$gallery_rules["^{$escaped_base}/myfavorites/?$"] = 'index.php?favorites_page=1';
+		
+		// Main gallery index
+		$gallery_rules["^{$escaped_base}/?$"] = 'index.php?brag_book_gallery_view=index';
+		
+		// Search functionality
+		$gallery_rules["^{$escaped_base}/search/([^/]+)/?$"] = 'index.php?brag_book_gallery_view=search&brag_gallery_search=$matches[1]';
+		
+		// Pagination for index
+		$gallery_rules["^{$escaped_base}/page/([0-9]+)/?$"] = 'index.php?brag_book_gallery_view=index&brag_gallery_page=$matches[1]';
+		
+		// Category/Procedure view with sanitized slug
+		$gallery_rules["^{$escaped_base}/([^/]+)/?$"] = 'index.php?brag_book_gallery_view=category&brag_gallery_slug=$matches[1]';
+		
+		// Pagination for categories
+		$gallery_rules["^{$escaped_base}/([^/]+)/page/([0-9]+)/?$"] = 'index.php?brag_book_gallery_view=category&brag_gallery_slug=$matches[1]&brag_gallery_page=$matches[2]';
+		
+		// Individual case with category context
+		$gallery_rules["^{$escaped_base}/([^/]+)/([^/]+)/?$"] = 'index.php?brag_book_gallery_view=single&brag_gallery_category=$matches[1]&brag_book_gallery_case=$matches[2]';
+		
+		// For WP Engine compatibility, also ensure our rules use proper query vars
+		// WP Engine sometimes has issues with custom query vars, so we add fallbacks
+		if ( function_exists( 'brag_book_is_wp_engine' ) && brag_book_is_wp_engine() ) {
+			// Add alternative rules that work better on WP Engine
+			$gallery_rules["^{$escaped_base}/([^/]+)/([^/]+)/?$"] = 
+				'index.php?brag_book_gallery_view=single&filter_procedure=$matches[1]&brag_book_gallery_case=$matches[2]';
+		}
+		
+		// Merge our rules at the beginning to ensure they take priority
+		return array_merge( $gallery_rules, $rules );
+	}
+
+	/**
 	 * Add rewrite rules for Local mode.
 	 *
 	 * Leverages WordPress native rewrite rules for post types and taxonomies.
@@ -344,9 +407,12 @@ final class URL_Router {
 			'brag_gallery_slug',
 			'brag_gallery_category',
 			'brag_book_gallery_cae',
+			'brag_book_gallery_case',  // Used by rewrite rules handler
 			'brag_gallery_search',
 			'brag_gallery_page',
 			'brag_gallery_filter',
+			'favorites_page',           // For MyFavorites page
+			'filter_procedure',         // For procedure filtering
 		];
 
 		return array_merge( $vars, $gallery_vars );
@@ -373,9 +439,57 @@ final class URL_Router {
 			return;
 		}
 
+		// WP Engine fallback: manually parse gallery URLs if rewrite rules aren't working
+		if ( function_exists( 'brag_book_is_wp_engine' ) && brag_book_is_wp_engine() ) {
+			$this->parse_wp_engine_fallback( $wp );
+		}
+
 		// Process JavaScript mode virtual URLs
 		if ( $this->mode_manager->is_javascript_mode() ) {
 			$this->parse_javascript_mode_request( $wp );
+		}
+	}
+	
+	/**
+	 * Fallback parsing for WP Engine sites where rewrite rules may not work
+	 *
+	 * @since 3.2.7
+	 * @param \WP $wp WordPress environment instance.
+	 * @return void
+	 */
+	private function parse_wp_engine_fallback( \WP $wp ): void {
+		$request_uri = $_SERVER['REQUEST_URI'] ?? '';
+		$gallery_slug = get_option( 'brag_book_gallery_slug', 'gallery' );
+		
+		// Check if this is a gallery URL
+		if ( strpos( $request_uri, "/{$gallery_slug}/" ) === false ) {
+			return;
+		}
+		
+		// Parse the URL manually
+		$path = trim( parse_url( $request_uri, PHP_URL_PATH ), '/' );
+		$segments = explode( '/', $path );
+		$gallery_index = array_search( $gallery_slug, $segments );
+		
+		if ( $gallery_index === false ) {
+			return;
+		}
+		
+		// Check for myfavorites
+		if ( isset( $segments[ $gallery_index + 1 ] ) && $segments[ $gallery_index + 1 ] === 'myfavorites' ) {
+			$wp->set_query_var( 'favorites_page', '1' );
+			return;
+		}
+		
+		// Check for procedure/case pattern
+		if ( isset( $segments[ $gallery_index + 1 ] ) ) {
+			$procedure = $segments[ $gallery_index + 1 ];
+			$wp->set_query_var( 'filter_procedure', $procedure );
+			
+			if ( isset( $segments[ $gallery_index + 2 ] ) ) {
+				$case_id = $segments[ $gallery_index + 2 ];
+				$wp->set_query_var( 'brag_book_gallery_case', $case_id );
+			}
 		}
 	}
 
