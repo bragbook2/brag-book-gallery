@@ -305,22 +305,28 @@ class On_Page {
 	 * } Complete configuration array with typed structure
 	 */
 	private function get_seo_configuration(): array {
-		// Use helper to get the first slug with error handling
-		$page_slug = '';
+		// Get page slug with robust fallback handling
+		$page_slug = 'gallery'; // Default fallback
+		
 		try {
-			if ( class_exists( '\BRAGBookGallery\Includes\Core\Slug_Helper' ) ) {
-				$page_slug = \BRAGBookGallery\Includes\Core\Slug_Helper::get_first_gallery_page_slug( '' );
-			}
-		} catch ( \Exception $e ) {
-			// Fallback to direct option access if Slug_Helper fails
+			// Try to get from option first (most reliable)
 			$page_slug_option = get_option( 'brag_book_gallery_page_slug', 'gallery' );
 			if ( is_array( $page_slug_option ) && ! empty( $page_slug_option ) ) {
 				$page_slug = sanitize_title( (string) reset( $page_slug_option ) );
 			} elseif ( is_string( $page_slug_option ) && ! empty( $page_slug_option ) ) {
 				$page_slug = sanitize_title( $page_slug_option );
-			} else {
-				$page_slug = 'gallery';
 			}
+			
+			// Try Slug_Helper only if option didn't work and class is available
+			if ( $page_slug === 'gallery' && class_exists( '\BRAGBookGallery\Includes\Core\Slug_Helper' ) ) {
+				$helper_slug = \BRAGBookGallery\Includes\Core\Slug_Helper::get_first_gallery_page_slug( '' );
+				if ( ! empty( $helper_slug ) ) {
+					$page_slug = $helper_slug;
+				}
+			}
+		} catch ( \Exception $e ) {
+			// Keep default fallback if anything fails
+			$page_slug = 'gallery';
 		}
 
 		// Safely get all options with fallbacks
