@@ -44,6 +44,7 @@ class WP_Engine_Diagnostics {
 	public static function run_diagnostics(): array {
 		$results = [
 			'environment' => self::check_wp_engine_environment(),
+			'redirections' => self::check_redirections(),
 			'rewrite_rules' => self::test_rewrite_rules(),
 			'query_vars' => self::test_query_variables(),
 			'url_routing' => self::test_url_routing(),
@@ -502,6 +503,46 @@ class WP_Engine_Diagnostics {
 				</div>
 			</div>
 
+			<!-- Redirections -->
+			<div class="diagnostics-section">
+				<h3><?php esc_html_e( 'Redirection Analysis', 'brag-book-gallery' ); ?></h3>
+				<div class="diagnostics-card">
+					<p><strong>Status:</strong> <?php echo esc_html( $results['redirections']['status'] ); ?></p>
+					
+					<?php if ( ! empty( $results['redirections']['redirects_found'] ) ) : ?>
+					<h4><?php esc_html_e( 'Active Redirects', 'brag-book-gallery' ); ?></h4>
+					<ul>
+						<?php foreach ( $results['redirections']['redirects_found'] as $redirect ) : ?>
+						<li><?php echo esc_html( $redirect ); ?></li>
+						<?php endforeach; ?>
+					</ul>
+					<?php endif; ?>
+
+					<?php if ( ! empty( $results['redirections']['potential_conflicts'] ) ) : ?>
+					<h4 style="color: #dc3232;"><?php esc_html_e( 'Potential Conflicts', 'brag-book-gallery' ); ?></h4>
+					<ul>
+						<?php foreach ( $results['redirections']['potential_conflicts'] as $conflict ) : ?>
+						<li style="color: #dc3232;"><?php echo esc_html( $conflict ); ?></li>
+						<?php endforeach; ?>
+					</ul>
+					<?php endif; ?>
+
+					<?php if ( ! empty( $results['redirections']['recommendations'] ) ) : ?>
+					<h4 style="color: #0073aa;"><?php esc_html_e( 'Recommendations', 'brag-book-gallery' ); ?></h4>
+					<ul>
+						<?php foreach ( $results['redirections']['recommendations'] as $recommendation ) : ?>
+						<li style="color: #0073aa;"><?php echo esc_html( $recommendation ); ?></li>
+						<?php endforeach; ?>
+					</ul>
+					<?php endif; ?>
+
+					<?php if ( isset( $results['redirections']['test_url'] ) ) : ?>
+					<h4><?php esc_html_e( 'Gallery URL Test', 'brag-book-gallery' ); ?></h4>
+					<p><strong>Test URL:</strong> <a href="<?php echo esc_url( $results['redirections']['test_url'] ); ?>" target="_blank"><?php echo esc_html( $results['redirections']['test_url'] ); ?></a></p>
+					<?php endif; ?>
+				</div>
+			</div>
+
 			<!-- Rewrite Rules -->
 			<div class="diagnostics-section">
 				<h3><?php esc_html_e( 'Rewrite Rules', 'brag-book-gallery' ); ?></h3>
@@ -609,6 +650,138 @@ class WP_Engine_Diagnostics {
 		</div>
 		<?php
 		return ob_get_clean();
+	}
+
+	/**
+	 * Check for redirections that might interfere with rewrite rules
+	 *
+	 * @since 3.2.5
+	 * @return array Redirection check results
+	 */
+	private static function check_redirections(): array {
+		$results = [
+			'status' => 'checking',
+			'redirects_found' => [],
+			'potential_conflicts' => [],
+			'recommendations' => []
+		];
+
+		try {
+			// 1. Check WordPress redirect options
+			$permalink_structure = get_option( 'permalink_structure' );
+			if ( empty( $permalink_structure ) ) {
+				$results['potential_conflicts'][] = 'Plain permalinks may interfere with custom rewrite rules';
+				$results['recommendations'][] = 'Consider enabling pretty permalinks';
+			}
+
+			// 2. Check for redirect_canonical issues
+			if ( function_exists( 'redirect_canonical' ) ) {
+				$results['redirects_found'][] = 'WordPress canonical redirects active';
+			}
+
+			// 3. Check for common redirect plugins
+			$redirect_plugins = [
+				'redirection/redirection.php' => 'Redirection Plugin',
+				'simple-301-redirects/wp-simple-301-redirects.php' => 'Simple 301 Redirects',
+				'safe-redirect-manager/safe-redirect-manager.php' => 'Safe Redirect Manager',
+				'eps-301-redirects/eps-301-redirects.php' => 'EPS 301 Redirects'
+			];
+
+			foreach ( $redirect_plugins as $plugin_file => $plugin_name ) {
+				if ( is_plugin_active( $plugin_file ) ) {
+					$results['redirects_found'][] = "{$plugin_name} is active";
+					$results['potential_conflicts'][] = "{$plugin_name} may conflict with gallery URLs";
+				}
+			}
+
+			// 4. Check for SEO plugin redirects
+			$seo_plugins = [
+				'wordpress-seo/wp-seo.php' => 'Yoast SEO',
+				'seo-by-rank-math/rank-math.php' => 'RankMath SEO',
+				'all-in-one-seo-pack/all_in_one_seo_pack.php' => 'All in One SEO'
+			];
+
+			foreach ( $seo_plugins as $plugin_file => $plugin_name ) {
+				if ( is_plugin_active( $plugin_file ) ) {
+					$results['redirects_found'][] = "{$plugin_name} is active (may have redirect features)";
+				}
+			}
+
+			// 5. Check for WP Engine specific redirects
+			if ( function_exists( 'wpe_param' ) || class_exists( 'WpeCommon' ) ) {
+				$results['redirects_found'][] = 'WP Engine environment detected';
+				$results['potential_conflicts'][] = 'WP Engine may have server-level redirects';
+				$results['recommendations'][] = 'Check WP Engine User Portal for redirect rules';
+			}
+
+			// 6. Check for SSL redirects
+			if ( is_ssl() && ! is_admin() ) {
+				$results['redirects_found'][] = 'SSL redirects likely active';
+			}
+
+			// 7. Test gallery URL for redirects
+			$gallery_slug = '';
+			try {
+				if ( class_exists( '\BRAGBookGallery\Includes\Core\Slug_Helper' ) ) {
+					$gallery_slug = \BRAGBookGallery\Includes\Core\Slug_Helper::get_first_gallery_page_slug( '' );
+				}
+			} catch ( \Exception $e ) {
+				$gallery_slug = get_option( 'brag_book_gallery_page_slug', '' );
+				if ( is_array( $gallery_slug ) ) {
+					$gallery_slug = reset( $gallery_slug );
+				}
+			}
+
+			if ( ! empty( $gallery_slug ) ) {
+				$test_url = home_url( "/{$gallery_slug}/myfavorites/" );
+				$results['test_url'] = $test_url;
+				
+				// Check if URL would redirect
+				$response = wp_remote_head( $test_url, [
+					'timeout' => 10,
+					'redirection' => 0, // Don't follow redirects
+					'user-agent' => 'BRAGBook-Gallery-Diagnostics/1.0'
+				] );
+
+				if ( ! is_wp_error( $response ) ) {
+					$status_code = wp_remote_retrieve_response_code( $response );
+					if ( $status_code >= 300 && $status_code < 400 ) {
+						$location = wp_remote_retrieve_header( $response, 'location' );
+						$results['potential_conflicts'][] = "Gallery URL redirects (HTTP {$status_code}) to: {$location}";
+						$results['recommendations'][] = 'Check redirect plugins and server configuration';
+					} elseif ( $status_code === 404 ) {
+						$results['potential_conflicts'][] = 'Gallery URL returns 404 - rewrite rules not working';
+					}
+				}
+			}
+
+			// 8. Check .htaccess for redirect rules (if accessible)
+			$htaccess_file = ABSPATH . '.htaccess';
+			if ( file_exists( $htaccess_file ) && is_readable( $htaccess_file ) ) {
+				$htaccess_content = file_get_contents( $htaccess_file );
+				if ( strpos( $htaccess_content, 'Redirect' ) !== false || 
+					 strpos( $htaccess_content, 'RewriteRule' ) !== false ) {
+					$results['redirects_found'][] = '.htaccess contains redirect/rewrite rules';
+					
+					// Look for potential conflicts
+					if ( preg_match_all( '/^(Redirect|RewriteRule).*$/m', $htaccess_content, $matches ) ) {
+						foreach ( $matches[0] as $rule ) {
+							if ( strpos( $rule, $gallery_slug ) !== false ) {
+								$results['potential_conflicts'][] = "Potential .htaccess conflict: {$rule}";
+							}
+						}
+					}
+				}
+			}
+
+			$results['status'] = 'completed';
+
+		} catch ( \Exception $e ) {
+			$results['status'] = 'error';
+			$results['error'] = $e->getMessage();
+		}
+
+		return $results;
 	}
 
 	/**
