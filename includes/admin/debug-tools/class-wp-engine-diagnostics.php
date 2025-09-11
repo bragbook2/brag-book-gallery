@@ -813,6 +813,12 @@ class WP_Engine_Diagnostics {
 				}
 				return Rewrite_Rules_Handler::manual_rewrite_rules_registration( $slug );
 
+			case 'emergency_rewrite_rebuild':
+				return Rewrite_Rules_Handler::emergency_rewrite_rebuild();
+
+			case 'nuclear_rewrite_reset':
+				return Rewrite_Rules_Handler::nuclear_rewrite_reset();
+
 			case 'run_diagnostics':
 			default:
 				return self::run_diagnostics();

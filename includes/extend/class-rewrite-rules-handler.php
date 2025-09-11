@@ -359,6 +359,243 @@ class Rewrite_Rules_Handler {
 	}
 
 	/**
+	 * Emergency rewrite rules system rebuild
+	 * 
+	 * Completely rebuilds the WordPress rewrite rules system from scratch.
+	 * Use when rewrite rules are completely missing (0 total rules).
+	 *
+	 * @since 3.2.5
+	 * @return array Result with success status and actions performed
+	 */
+	public static function emergency_rewrite_rebuild(): array {
+		$actions = [];
+		$success = true;
+
+		try {
+			$actions[] = 'Starting emergency rewrite rules rebuild...';
+
+			// 1. Check current state
+			$current_rules = get_option( 'rewrite_rules', [] );
+			$actions[] = 'Current rules count: ' . count( $current_rules );
+
+			// 2. Delete the rewrite_rules option completely
+			delete_option( 'rewrite_rules' );
+			$actions[] = 'Deleted existing rewrite_rules option';
+
+			// 3. Clear all related caches
+			wp_cache_delete( 'rewrite_rules', 'options' );
+			wp_cache_delete( 'alloptions', 'options' );
+			if ( function_exists( 'wp_cache_flush' ) ) {
+				wp_cache_flush();
+			}
+			$actions[] = 'Cleared all rewrite rules caches';
+
+			// 4. Force WordPress to regenerate permalink structure
+			$permalink_structure = get_option( 'permalink_structure' );
+			if ( empty( $permalink_structure ) ) {
+				// Set to a basic structure if none exists
+				update_option( 'permalink_structure', '/%postname%/' );
+				$actions[] = 'Set permalink structure to /%postname%/';
+			} else {
+				$actions[] = 'Permalink structure: ' . $permalink_structure;
+			}
+
+			// 5. Force regeneration of all rewrite rules
+			global $wp_rewrite;
+			if ( $wp_rewrite ) {
+				$wp_rewrite->init();
+				$wp_rewrite->flush_rules( true );
+				$actions[] = 'Forced $wp_rewrite->init() and hard flush';
+			}
+
+			// 6. Manually trigger rewrite rules generation
+			do_action( 'init' );
+			$actions[] = 'Triggered init action for rule generation';
+
+			// 7. Verify WordPress core rules were generated
+			$new_rules = get_option( 'rewrite_rules', [] );
+			$core_rules_count = count( $new_rules );
+			$actions[] = "WordPress generated {$core_rules_count} core rules";
+
+			if ( $core_rules_count === 0 ) {
+				// Still no rules - try more aggressive approach
+				$actions[] = 'No core rules generated - trying aggressive rebuild...';
+
+				// Force rebuild the entire rewrite system
+				if ( $wp_rewrite ) {
+					$wp_rewrite->rules = [];
+					$wp_rewrite->non_wp_rules = [];
+					$wp_rewrite->extra_rules = [];
+					$wp_rewrite->extra_rules_top = [];
+					
+					// Regenerate rules
+					$wp_rewrite->rewrite_rules();
+					update_option( 'rewrite_rules', $wp_rewrite->rules );
+					$actions[] = 'Manually rebuilt rewrite rules via $wp_rewrite';
+
+					$new_rules = get_option( 'rewrite_rules', [] );
+					$core_rules_count = count( $new_rules );
+					$actions[] = "After manual rebuild: {$core_rules_count} rules";
+				}
+			}
+
+			// 8. Now add our gallery rules
+			if ( $core_rules_count > 0 ) {
+				self::custom_rewrite_rules();
+				$actions[] = 'Added gallery rewrite rules';
+
+				// Flush again to ensure they stick
+				flush_rewrite_rules( true );
+				$actions[] = 'Final rewrite rules flush';
+
+				// 9. WP Engine specific cache clearing
+				if ( function_exists( 'brag_book_wp_engine_rewrite_fix' ) ) {
+					$wp_engine_result = brag_book_wp_engine_rewrite_fix();
+					$actions = array_merge( $actions, $wp_engine_result['actions'] );
+				}
+
+				// 10. Final verification
+				$final_rules = get_option( 'rewrite_rules', [] );
+				$gallery_rules_found = 0;
+				
+				foreach ( $final_rules as $pattern => $replacement ) {
+					if ( strpos( $replacement, 'brag_book_gallery_case=' ) !== false || 
+						 strpos( $replacement, 'filter_procedure=' ) !== false ||
+						 strpos( $replacement, 'favorites_page=' ) !== false ) {
+						$gallery_rules_found++;
+					}
+				}
+
+				$actions[] = "Final verification: {$gallery_rules_found} gallery rules in " . count( $final_rules ) . " total rules";
+
+				if ( $gallery_rules_found > 0 ) {
+					$actions[] = 'SUCCESS: Gallery rules are now present';
+				} else {
+					$actions[] = 'WARNING: Gallery rules still missing after rebuild';
+					$success = false;
+				}
+			} else {
+				$actions[] = 'CRITICAL: Unable to generate WordPress core rewrite rules';
+				$actions[] = 'This indicates a fundamental WordPress configuration issue';
+				$success = false;
+			}
+
+		} catch ( \Exception $e ) {
+			$actions[] = 'ERROR: ' . $e->getMessage();
+			$success = false;
+		}
+
+		return [
+			'success' => $success,
+			'message' => $success ? 
+				'Emergency rewrite rules rebuild completed successfully' : 
+				'Emergency rewrite rules rebuild encountered critical issues',
+			'actions' => $actions
+		];
+	}
+
+	/**
+	 * Clear all rewrite rules and force complete regeneration
+	 * 
+	 * Nuclear option to completely reset the rewrite rules system.
+	 *
+	 * @since 3.2.5
+	 * @return array Result with success status and actions performed
+	 */
+	public static function nuclear_rewrite_reset(): array {
+		$actions = [];
+		$success = true;
+
+		try {
+			$actions[] = 'Starting nuclear rewrite rules reset...';
+
+			// 1. Delete all rewrite-related options
+			$rewrite_options = [
+				'rewrite_rules',
+				'category_base',
+				'tag_base'
+			];
+
+			foreach ( $rewrite_options as $option ) {
+				delete_option( $option );
+				$actions[] = "Deleted option: {$option}";
+			}
+
+			// 2. Clear all possible caches
+			wp_cache_flush();
+			if ( function_exists( 'wp_cache_flush_group' ) ) {
+				wp_cache_flush_group( 'options' );
+			}
+			$actions[] = 'Cleared all caches';
+
+			// 3. Reset permalink structure
+			$current_structure = get_option( 'permalink_structure' );
+			$actions[] = "Current permalink structure: {$current_structure}";
+
+			// Temporarily set to plain permalinks
+			update_option( 'permalink_structure', '' );
+			flush_rewrite_rules( true );
+			$actions[] = 'Reset to plain permalinks and flushed';
+
+			// Set back to pretty permalinks
+			update_option( 'permalink_structure', '/%postname%/' );
+			flush_rewrite_rules( true );
+			$actions[] = 'Set back to pretty permalinks and flushed';
+
+			// 4. Force complete WordPress reinitialization
+			global $wp_rewrite;
+			if ( $wp_rewrite ) {
+				$wp_rewrite->init();
+				$wp_rewrite->flush_rules( true );
+				$actions[] = 'Forced WordPress rewrite system reinitialization';
+			}
+
+			// 5. Add our gallery rules
+			self::custom_rewrite_rules();
+			$actions[] = 'Added gallery rewrite rules';
+
+			// 6. Final verification
+			$final_rules = get_option( 'rewrite_rules', [] );
+			$total_rules = count( $final_rules );
+			$actions[] = "Final total rules: {$total_rules}";
+
+			if ( $total_rules > 0 ) {
+				$gallery_rules_found = 0;
+				foreach ( $final_rules as $pattern => $replacement ) {
+					if ( strpos( $replacement, 'brag_book_gallery_case=' ) !== false || 
+						 strpos( $replacement, 'filter_procedure=' ) !== false ||
+						 strpos( $replacement, 'favorites_page=' ) !== false ) {
+						$gallery_rules_found++;
+					}
+				}
+				$actions[] = "Gallery rules found: {$gallery_rules_found}";
+				
+				if ( $gallery_rules_found > 0 ) {
+					$actions[] = 'SUCCESS: Rewrite rules system fully restored';
+				} else {
+					$actions[] = 'WARNING: WordPress rules restored but gallery rules missing';
+					$success = false;
+				}
+			} else {
+				$actions[] = 'CRITICAL: Still no rewrite rules after nuclear reset';
+				$success = false;
+			}
+
+		} catch ( \Exception $e ) {
+			$actions[] = 'ERROR: ' . $e->getMessage();
+			$success = false;
+		}
+
+		return [
+			'success' => $success,
+			'message' => $success ? 
+				'Nuclear rewrite rules reset completed successfully' : 
+				'Nuclear rewrite rules reset failed - WordPress configuration issue',
+			'actions' => $actions
+		];
+	}
+
+	/**
 	 * Manual rewrite rules registration for specific slug
 	 * 
 	 * Bypasses all detection logic and directly registers rules for a given slug.
