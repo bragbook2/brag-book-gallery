@@ -689,7 +689,7 @@ final class Cases_Shortcode_Handler {
 	 * @return array|null Case data or null if not found.
 	 */
 	private static function get_case_from_cache( string $case_id, array $atts ): ?array {
-		$cache_key   = 'brag_book_gallery_transient_all_cases_' . $atts['api_token'] . '_' . $atts['website_property_id'];
+		$cache_key   = 'brag_book_gallery_all_cases';
 		$cached_data = Cache_Manager::get( $cache_key );
 
 		// Check if cache exists and has valid data.

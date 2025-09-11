@@ -419,6 +419,9 @@ class BRAGbookGalleryApp {
 				
 				if (galleryContent) {
 					try {
+						// Show skeleton loading immediately for direct URL access
+						this.showCaseDetailSkeleton();
+						
 						// Try to get procedure IDs from sidebar data
 						let procedureIds = null;
 						if (window.bragBookGalleryConfig?.sidebarData && procedureSlug) {
@@ -469,8 +472,8 @@ class BRAGbookGalleryApp {
 			window.history.pushState({ caseId: caseId }, '', url);
 		}
 
-		// Show loading state (same as procedures page)
-		galleryContent.innerHTML = '<div class="brag-book-gallery-loading">Loading case details...</div>';
+		// Show skeleton loading for better perceived performance
+		this.showCaseDetailSkeleton();
 
 		// Scroll to top to show loading state
 		window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -504,11 +507,11 @@ class BRAGbookGalleryApp {
 				}
 			}
 
-			// Use AJAX method for consistent server-side HTML rendering
-			// Direct API disabled to ensure consistent CSS and HTML structure
-			console.log('🔄 Using AJAX method for consistent server-side HTML rendering');
+			// Always use AJAX method for consistent server-side HTML rendering
+			// This ensures consistent CSS, HTML structure, and WordPress integration
+			console.log('🔄 Loading case details via server-side AJAX rendering');
 
-			// AJAX method (ensures PHP-generated HTML)
+			// Load case details via AJAX (ensures PHP-generated HTML)
 			await this.loadCaseDetailsViaAjax(caseId, url, procedureIds);
 
 		} catch (error) {
@@ -527,7 +530,7 @@ class BRAGbookGalleryApp {
 	}
 
 	/**
-	 * Fallback method to load case details via traditional AJAX
+	 * Load case details via server-side AJAX for consistent HTML rendering
 	 * @param {string} caseId - The case ID to load
 	 * @param {string} url - The case URL
 	 * @param {string} procedureIds - Comma-separated procedure IDs
@@ -684,6 +687,162 @@ class BRAGbookGalleryApp {
 			// Always clear debounce flag
 			this.currentCaseLoad = null;
 		}
+	}
+
+	/**
+	 * Show skeleton loading for case detail view
+	 */
+	showCaseDetailSkeleton() {
+		console.log('🦴 Showing case detail skeleton');
+		const galleryContent = document.getElementById('gallery-content');
+		if (!galleryContent) {
+			console.warn('Gallery content container not found for skeleton');
+			return;
+		}
+
+		// Create skeleton that matches exact case detail view structure
+		const skeletonHTML = `
+			<div class="brag-book-gallery-case-detail-view brag-book-gallery-case-detail-skeleton" data-case-id="loading">
+				<!-- Progress Bar -->
+				<div class="skeleton-progress-bar">
+					<div class="skeleton-progress-fill"></div>
+					<div class="skeleton-progress-text">Loading... 0%</div>
+				</div>
+				
+				<!-- Case Header Section (matches render_case_header) -->
+				<div class="brag-book-gallery-brag-book-gallery-case-header-section">
+					<div class="brag-book-gallery-case-navigation">
+						<div class="skeleton-back-link"></div>
+					</div>
+					<div class="brag-book-gallery-brag-book-gallery-case-header">
+						<div class="skeleton-case-title"></div>
+						<div class="skeleton-case-navigation-buttons">
+							<div class="skeleton-nav-btn"></div>
+							<div class="skeleton-nav-btn"></div>
+						</div>
+					</div>
+				</div>
+				
+				<!-- Case Images Section (matches render_case_images) -->
+				<div class="brag-book-gallery-brag-book-gallery-case-content">
+					<div class="brag-book-gallery-case-images-section">
+						<div class="brag-book-gallery-case-images-layout">
+							<!-- Main Image Viewer -->
+							<div class="brag-book-gallery-case-main-viewer">
+								<div class="brag-book-gallery-main-image-container">
+									<div class="skeleton-main-image"></div>
+								</div>
+							</div>
+							<!-- Thumbnails -->
+							<div class="brag-book-gallery-case-thumbnails">
+								<div class="skeleton-thumbnail"></div>
+								<div class="skeleton-thumbnail"></div>
+								<div class="skeleton-thumbnail"></div>
+								<div class="skeleton-thumbnail"></div>
+							</div>
+						</div>
+					</div>
+				</div>
+				
+				<!-- Case Details Cards Section (matches render_case_details_cards) -->
+				<div class="brag-book-gallery-case-card-details-section">
+					<div class="brag-book-gallery-case-card-details-grid">
+						<!-- Procedures Card -->
+						<div class="case-detail-card procedures-performed-card">
+							<div class="card-header">
+								<div class="skeleton-card-title"></div>
+							</div>
+							<div class="card-content">
+								<div class="skeleton-procedure-badges">
+									<div class="skeleton-badge"></div>
+									<div class="skeleton-badge"></div>
+								</div>
+							</div>
+						</div>
+						
+						<!-- Patient Details Card -->
+						<div class="case-detail-card patient-details-card">
+							<div class="card-header">
+								<div class="skeleton-card-title"></div>
+							</div>
+							<div class="card-content">
+								<div class="skeleton-patient-info">
+									<div class="skeleton-info-item"></div>
+									<div class="skeleton-info-item"></div>
+									<div class="skeleton-info-item"></div>
+								</div>
+							</div>
+						</div>
+						
+						<!-- Procedure Details Card -->
+						<div class="case-detail-card procedure-details-card">
+							<div class="card-header">
+								<div class="skeleton-card-title"></div>
+							</div>
+							<div class="card-content">
+								<div class="skeleton-procedure-details">
+									<div class="skeleton-detail-row"></div>
+									<div class="skeleton-detail-row"></div>
+								</div>
+							</div>
+						</div>
+						
+						<!-- Case Notes Card (full width) -->
+						<div class="case-detail-card case-notes-card">
+							<div class="card-header">
+								<div class="skeleton-card-title"></div>
+							</div>
+							<div class="card-content">
+								<div class="skeleton-case-notes">
+									<div class="skeleton-text-line"></div>
+									<div class="skeleton-text-line short"></div>
+									<div class="skeleton-text-line medium"></div>
+									<div class="skeleton-text-line"></div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		`;
+
+		galleryContent.innerHTML = skeletonHTML;
+		console.log('✅ Skeleton loaded into gallery content');
+		
+		// Start progress bar animation
+		this.animateProgressBar();
+	}
+
+	/**
+	 * Animate progress bar from 0 to 100%
+	 */
+	animateProgressBar() {
+		const progressFill = document.querySelector('.skeleton-progress-fill');
+		const progressText = document.querySelector('.skeleton-progress-text');
+		
+		if (!progressFill || !progressText) return;
+		
+		let progress = 0;
+		const duration = 4000; // 4 seconds to match typical case load time
+		const increment = 100 / (duration / 75); // Update every 75ms for smoother animation
+		
+		// Start at 0% and show immediately
+		progressFill.style.width = '0%';
+		progressText.textContent = 'Loading... 0%';
+		
+		const updateProgress = () => {
+			if (progress < 100) {
+				progress = Math.min(progress + increment + Math.random() * 2, 100);
+				progressFill.style.width = `${progress}%`;
+				progressText.textContent = `Loading... ${Math.floor(progress)}%`;
+				
+				// Slow down as we approach 100%
+				const delay = progress > 80 ? 100 : progress > 60 ? 75 : 50;
+				setTimeout(updateProgress, delay);
+			}
+		};
+		
+		updateProgress();
 	}
 
 	displayCaseDetails(caseData) {
@@ -2104,21 +2263,51 @@ class BRAGbookGalleryApp {
 					const procedureIds = caseCard.dataset.procedureIds;
 					
 					if (caseId && !this.casePreloadCache.has(caseId)) {
-						// Preload this case in the background
-						this.preloadCase(caseId, procedureIds);
+						// Preload this case with high priority (visible soon)
+						this.preloadCase(caseId, procedureIds, 'high');
 					}
 				}
 			});
 		}, {
-			// Trigger when case is 50% visible
-			threshold: 0.5,
-			// Start preloading 200px before the case becomes visible
-			rootMargin: '200px'
+			// Trigger when case is 25% visible for earlier preloading
+			threshold: 0.25,
+			// Start preloading 800px before the case becomes visible
+			rootMargin: '800px'
 		});
 
 		// Observe all case cards
 		document.querySelectorAll('.brag-book-gallery-case-card').forEach(card => {
 			this.caseObserver.observe(card);
+			
+			// Add hover-based predictive preloading
+			this.setupHoverPreloading(card);
+		});
+	}
+
+	/**
+	 * Setup hover-based predictive preloading for a case card
+	 */
+	setupHoverPreloading(card) {
+		let hoverTimeout;
+		
+		card.addEventListener('mouseenter', () => {
+			// Start preloading after 300ms hover (indicates user interest)
+			hoverTimeout = setTimeout(() => {
+				const caseId = card.dataset.caseId;
+				const procedureIds = card.dataset.procedureIds;
+				
+				if (caseId && !this.casePreloadCache.has(caseId)) {
+					console.log(`🖱️ Hover preloading case ${caseId}`);
+					this.preloadCase(caseId, procedureIds, 'hover');
+				}
+			}, 300);
+		});
+		
+		card.addEventListener('mouseleave', () => {
+			// Cancel preloading if user leaves quickly
+			if (hoverTimeout) {
+				clearTimeout(hoverTimeout);
+			}
 		});
 	}
 
@@ -2140,32 +2329,101 @@ class BRAGbookGalleryApp {
 	}
 
 	/**
-	 * Preload a specific case in the background
+	 * Preload a specific case in the background with priority support
 	 */
-	async preloadCase(caseId, procedureIds) {
+	async preloadCase(caseId, procedureIds, priority = 'normal') {
 		if (this.casePreloadCache.has(caseId)) return;
 		
 		// Mark as being preloaded to avoid duplicates
 		this.casePreloadCache.set(caseId, 'loading');
 		
-		try {
-			// Use the same direct API method but store result in cache
-			const result = await this.loadCaseDetailsDirectly(caseId, procedureIds);
-			if (result) {
-				this.casePreloadCache.set(caseId, result);
-				console.log(`✅ Preloaded case ${caseId}`);
-			} else {
-				// If direct API fails, try AJAX preload
-				const ajaxResult = await this.preloadCaseViaAjax(caseId, procedureIds);
-				if (ajaxResult) {
-					this.casePreloadCache.set(caseId, ajaxResult);
-					console.log(`✅ Preloaded case ${caseId} via AJAX`);
+		// Add to priority queue for smart preloading order
+		if (!this.preloadQueue) this.preloadQueue = [];
+		
+		const preloadTask = {
+			caseId,
+			procedureIds,
+			priority,
+			timestamp: Date.now()
+		};
+		
+		// Insert based on priority (high > hover > normal)
+		const priorityOrder = { high: 3, hover: 2, normal: 1 };
+		const insertIndex = this.preloadQueue.findIndex(task => 
+			priorityOrder[task.priority] < priorityOrder[priority]
+		);
+		
+		if (insertIndex === -1) {
+			this.preloadQueue.push(preloadTask);
+		} else {
+			this.preloadQueue.splice(insertIndex, 0, preloadTask);
+		}
+		
+		// Process queue with controlled concurrency
+		this.processPreloadQueue();
+	}
+
+	/**
+	 * Process preload queue with controlled concurrency
+	 */
+	processPreloadQueue() {
+		// Initialize concurrency control
+		if (!this.activePreloads) {
+			this.activePreloads = new Set();
+		}
+		
+		// Maximum concurrent preloads
+		const maxConcurrency = 3;
+		
+		// Sort queue by priority (high > hover > normal) and timestamp (newer first for hover)
+		if (this.preloadQueue && this.preloadQueue.length > 0) {
+			this.preloadQueue.sort((a, b) => {
+				const priorityOrder = { high: 3, hover: 2, normal: 1 };
+				const priorityDiff = priorityOrder[b.priority] - priorityOrder[a.priority];
+				
+				// If same priority, newer timestamps first for hover (more recent user intent)
+				if (priorityDiff === 0 && a.priority === 'hover') {
+					return b.timestamp - a.timestamp;
 				}
+				
+				return priorityDiff;
+			});
+		}
+		
+		// Process queue items up to concurrency limit
+		while (this.activePreloads.size < maxConcurrency && this.preloadQueue && this.preloadQueue.length > 0) {
+			const task = this.preloadQueue.shift();
+			
+			// Skip if already being processed or completed
+			if (this.activePreloads.has(task.caseId) || this.casePreloadCache.has(task.caseId)) {
+				continue;
+			}
+			
+			// Add to active preloads
+			this.activePreloads.add(task.caseId);
+			
+			// Execute preload asynchronously
+			this.executePreloadTask(task).finally(() => {
+				this.activePreloads.delete(task.caseId);
+				// Process next items in queue
+				this.processPreloadQueue();
+			});
+		}
+	}
+
+	/**
+	 * Execute individual preload task
+	 */
+	async executePreloadTask(task) {
+		try {
+			const result = await this.preloadCaseViaAjax(task.caseId, task.procedureIds);
+			if (result) {
+				this.casePreloadCache.set(task.caseId, result);
+				const priorityIcon = task.priority === 'high' ? '⚡' : task.priority === 'hover' ? '🖱️' : '📋';
+				console.log(`${priorityIcon} Queue processed case ${task.caseId} (${task.priority} priority)`);
 			}
 		} catch (error) {
-			// Remove failed preload marker
-			this.casePreloadCache.delete(caseId);
-			console.warn(`Failed to preload case ${caseId}:`, error);
+			console.warn(`Queue failed to process case ${task.caseId}:`, error);
 		}
 	}
 
@@ -2223,112 +2481,6 @@ class BRAGbookGalleryApp {
 		}
 	}
 
-	/**
-	 * Load case details directly from API for faster performance
-	 * Bypasses PHP processing for speed
-	 */
-	async loadCaseDetailsDirectly(caseId, procedureIds = null) {
-		const ajaxUrl = bragBookGalleryConfig.ajaxUrl || '/wp-admin/admin-ajax.php';
-		const nonce = bragBookGalleryConfig.nonce || '';
-		const apiToken = bragBookGalleryConfig.apiToken || '';
-		const websitePropertyId = bragBookGalleryConfig.websitePropertyId || '';
-		
-		if (!ajaxUrl || !nonce || !apiToken || !websitePropertyId) {
-			throw new Error('Missing API configuration for case details');
-		}
-		
-		try {
-			// Build the endpoint URL - use correct API endpoint (matching PHP implementation)
-			const endpoint = `/api/plugin/combine/cases/${caseId}`;
-			
-			// Build request body as JSON (matching Insomnia working example)
-			const requestBody = {
-				apiTokens: [apiToken],
-				count: 1,  // Required parameter for case details endpoint
-				websitePropertyIds: [parseInt(websitePropertyId)]
-			};
-			
-			// Add procedure IDs if available
-			if (procedureIds) {
-				const procedureIdArray = procedureIds.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
-				if (procedureIdArray.length > 0) {
-					requestBody.procedureIds = procedureIdArray;
-					console.log(`🔗 Direct API call with procedure context: case ${caseId}, procedure IDs ${procedureIdArray.join(',')}`);
-				} else {
-					console.warn(`⚠️ Direct API call WITHOUT procedure context: case ${caseId} (invalid procedure IDs: ${procedureIds})`);
-				}
-			} else {
-				console.warn(`⚠️ Direct API call WITHOUT procedure context: case ${caseId} (no procedure IDs provided)`);
-			}
-			
-			// Use CORS-safe proxy for case details endpoint with POST method and JSON body
-			console.log(`🌐 Making API proxy request to endpoint: ${endpoint} with POST data:`, requestBody);
-			const formData = new FormData();
-			formData.append('action', 'brag_book_api_proxy');
-			formData.append('nonce', nonce);
-			formData.append('endpoint', endpoint);
-			formData.append('method', 'POST');
-			formData.append('body', JSON.stringify(requestBody));
-			formData.append('timeout', '3');
-			
-			// Set aggressive timeout for faster failure detection
-			const controller = new AbortController();
-			const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
-			
-			const response = await fetch(ajaxUrl, {
-				method: 'POST',
-				body: formData,
-				signal: controller.signal
-			});
-			
-			clearTimeout(timeoutId);
-			
-			if (!response.ok) {
-				throw new Error(`Proxy response ${response.status}`);
-			}
-			
-			const result = await response.json();
-			
-			console.log('🔍 Full API proxy response:', result);
-			
-			if (!result.success || !result.data || !result.data.data) {
-				console.error('Direct API response structure:', result);
-				console.error('Expected: result.success =', result.success);
-				console.error('Expected: result.data =', result.data);
-				console.error('Expected: result.data.data =', result.data?.data);
-				
-				// Let's also check what the actual API returned
-				if (result.data && result.data.status) {
-					console.error('🚨 API returned HTTP status:', result.data.status);
-					console.error('🚨 API error message:', result.data.message);
-					console.error('🚨 API debug info:', result.data.debug);
-				}
-				
-				throw new Error(result.data?.message || 'Case details proxy request failed');
-			}
-			
-			// Check if we got HTML response (like AJAX method)
-			if (result.data && result.data.html) {
-				console.log('✅ Direct API returned HTML content');
-				return result.data.html;
-			}
-			
-			// Fallback: if we got raw data, try to process it
-			const data = result.data.data;
-			if (!data || !data.data || !data.data[0]) {
-				console.warn('Direct API returned unexpected data structure');
-				return null;
-			}
-			
-			console.warn('⚠️ Direct API returned raw data, falling back to JavaScript rendering');
-			const caseData = data.data[0];
-			return this.generateCaseDetailHTML(caseData);
-			
-		} catch (error) {
-			console.warn('Direct API call failed:', error);
-			return null;
-		}
-	}
 
 	/**
 	 * Generate HTML for case details from API data

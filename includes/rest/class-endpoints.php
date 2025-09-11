@@ -639,19 +639,12 @@ class Endpoints {
 			$filter_body['count'] = absint( $filter_body['count'] );
 		}
 
-		// Generate cache key based on filter parameters.
-		$cache_key = $this->generate_cache_key(
-			'pagination',
-			$filter_body
-		);
-
-		// Use cache for better performance
+		// Pagination caching disabled - fetch fresh data
 		return $this->make_api_request(
 			self::API_ENDPOINTS['cases'],
 			$filter_body,
 			'POST',
-			true, // Enable cache
-			$cache_key
+			false // Disable cache
 		);
 	}
 
@@ -813,20 +806,12 @@ class Endpoints {
 			'apiTokens' => $tokens,
 		);
 
-		// Generate cache key for sidebar data.
-		$cache_key = $this->generate_cache_key(
-			'sidebar',
-			$tokens
-		);
-
-		// Make cached API request with extended cache time for sidebar.
+		// Make direct API request without caching (sidebar data is cached elsewhere)
 		return $this->make_api_request(
 			self::API_ENDPOINTS['sidebar'],
 			$body,
 			'POST',
-			true,
-			$cache_key,
-			self::CACHE_TTL_LONG
+			false
 		);
 	}
 
@@ -1308,17 +1293,8 @@ class Endpoints {
 		// Build URL with query parameters
 		$url = self::API_ENDPOINTS['carousel'] . '?' . http_build_query( $query_params );
 
-		// Generate cache key for carousel data
-		$cache_key = $this->generate_cache_key( 'carousel', $query_params );
-
 		// For carousel GET request, we need to use a simpler approach
 		// The carousel endpoint doesn't use the standard make_api_request method
-
-		// Check cache first
-		$cached_response = Cache_Manager::get( $cache_key );
-		if ( $cached_response !== false ) {
-			return $cached_response;
-		}
 
 		// Make direct GET request
 		$full_url = Setup::get_api_url() . $url;
@@ -1344,11 +1320,7 @@ class Endpoints {
 			return null;
 		}
 
-		// Cache successful response with optimized TTL
-		if ( ! empty( $response_body ) ) {
-			$cache_duration = $this->get_cache_duration_for_endpoint( 'carousel' );
-			Cache_Manager::set( $cache_key, $response_body, $cache_duration );
-		}
+		// Return response directly without caching
 
 		return $response_body;
 	}

@@ -237,7 +237,7 @@ class Rewrite_Rules_Handler {
 	/**
 	 * Force gallery query vars to always be registered
 	 *
-	 * @since 3.2.5
+	 * @since 3.2.6
 	 * @param array $vars Existing query vars
 	 * @return array Modified query vars
 	 */
@@ -364,7 +364,7 @@ class Rewrite_Rules_Handler {
 	 * Completely rebuilds the WordPress rewrite rules system from scratch.
 	 * Use when rewrite rules are completely missing (0 total rules).
 	 *
-	 * @since 3.2.5
+	 * @since 3.2.6
 	 * @return array Result with success status and actions performed
 	 */
 	public static function emergency_rewrite_rebuild(): array {
@@ -499,7 +499,7 @@ class Rewrite_Rules_Handler {
 	 * 
 	 * Nuclear option to completely reset the rewrite rules system.
 	 *
-	 * @since 3.2.5
+	 * @since 3.2.6
 	 * @return array Result with success status and actions performed
 	 */
 	public static function nuclear_rewrite_reset(): array {
@@ -601,7 +601,7 @@ class Rewrite_Rules_Handler {
 	 * Bypasses all detection logic and directly registers rules for a given slug.
 	 * Use when automatic detection fails on WP Engine.
 	 *
-	 * @since 3.2.5
+	 * @since 3.2.6
 	 * @param string $slug Gallery page slug
 	 * @return array Result with success status and actions performed
 	 */
@@ -676,7 +676,7 @@ class Rewrite_Rules_Handler {
 	 * Prevents SEO plugins, redirect plugins, and WordPress canonical
 	 * redirects from interfering with gallery rewrite rules.
 	 *
-	 * @since 3.2.5
+	 * @since 3.2.6
 	 * @return void
 	 */
 	public static function protect_gallery_urls(): void {
@@ -729,7 +729,7 @@ class Rewrite_Rules_Handler {
 	/**
 	 * Handle gallery requests and ensure proper routing
 	 *
-	 * @since 3.2.5
+	 * @since 3.2.6
 	 * @return void
 	 */
 	public static function handle_gallery_request(): void {
@@ -777,7 +777,7 @@ class Rewrite_Rules_Handler {
 	/**
 	 * Prioritize gallery rewrite rules over other plugins
 	 *
-	 * @since 3.2.5
+	 * @since 3.2.6
 	 * @param array $rules All rewrite rules
 	 * @return array Modified rules with gallery rules first
 	 */
@@ -803,7 +803,7 @@ class Rewrite_Rules_Handler {
 	/**
 	 * Get all gallery slugs for protection
 	 *
-	 * @since 3.2.5
+	 * @since 3.2.6
 	 * @return array Array of gallery slugs
 	 */
 	private static function get_all_gallery_slugs(): array {

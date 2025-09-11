@@ -270,7 +270,7 @@ class Settings_Debug extends Settings_Base {
 				<li><a href="#debug-logs"><?php esc_html_e( 'Debug Logs', 'brag-book-gallery' ); ?></a></li>
 				<li><a href="#database-info"><?php esc_html_e( 'Database Info', 'brag-book-gallery' ); ?></a></li>
 				<li style="display:none;"><a href="#export-import"><?php esc_html_e( 'Export & Import', 'brag-book-gallery' ); ?></a></li>
-				<li style="display:none;"><a href="#cache-management"><?php esc_html_e( 'Cache Management', 'brag-book-gallery' ); ?></a></li>
+				<li><a href="#cache-management"><?php esc_html_e( 'Cache Management', 'brag-book-gallery' ); ?></a></li>
 				<li><a href="#api-test"><?php esc_html_e( 'API Test', 'brag-book-gallery' ); ?></a></li>
 				<li><a href="#diagnostic-tools"><?php esc_html_e( 'Diagnostic Tools', 'brag-book-gallery' ); ?></a></li>
 				<li><a href="#flush-rules"><?php esc_html_e( 'Flush Rules', 'brag-book-gallery' ); ?></a></li>

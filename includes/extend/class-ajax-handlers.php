@@ -851,6 +851,20 @@ class Ajax_Handlers {
 			] );
 		}
 
+		// Extract procedure slug for caching
+		$procedure_slug = '';
+		if ( ! empty( $case_data['procedures'] ) && is_array( $case_data['procedures'] ) ) {
+			$procedure = $case_data['procedures'][0] ?? null;
+			if ( $procedure && ! empty( $procedure['slugName'] ) ) {
+				$procedure_slug = $procedure['slugName'];
+			}
+		}
+
+		// Cache the case data with 24-hour TTL
+		if ( ! empty( $procedure_slug ) ) {
+			self::cache_and_return_case( $case_data, $procedure_slug, $case_id );
+		}
+
 		// Format case data for frontend
 		$formatted_data = self::format_case_data_for_frontend( $case_data, $case_id );
 
@@ -986,7 +1000,7 @@ class Ajax_Handlers {
 			if ( WP_DEBUG && WP_DEBUG_LOG ) {
 				error_log( 'AJAX Handler: get_case_details failed, trying find_case_by_id fallback' );
 			}
-			$case_data = self::find_case_by_id( $case_id, $api_token, $website_property_id );
+			$case_data = self::find_case_by_id( $case_id, $api_token, $website_property_id, $procedure_slug );
 			if ( WP_DEBUG && WP_DEBUG_LOG ) {
 				error_log( 'AJAX Handler: find_case_by_id result: ' . ( ! empty( $case_data ) ? 'SUCCESS (has navigation: ' . ( isset( $case_data['navigation'] ) ? 'YES' : 'NO' ) . ')' : 'FAILED' ) );
 			}
@@ -1264,7 +1278,7 @@ class Ajax_Handlers {
 
 		// Fallback to find_case_by_id if direct API call failed
 		if ( empty( $case_data ) ) {
-			$case_data = self::find_case_by_id( $case_id, $api_token, $website_property_id );
+			$case_data = self::find_case_by_id( $case_id, $api_token, $website_property_id, $procedure_slug );
 		}
 
 		if ( ! empty( $case_data ) && is_array( $case_data ) ) {
@@ -1308,6 +1322,19 @@ class Ajax_Handlers {
 						error_log( 'HTML Handler: Existing navigation data: ' . print_r( $case_data['navigation'], true ) );
 					}
 				}
+			}
+
+			// Extract procedure slug for caching if not already available
+			if ( empty( $procedure_slug ) && ! empty( $case_data['procedures'] ) && is_array( $case_data['procedures'] ) ) {
+				$procedure = $case_data['procedures'][0] ?? null;
+				if ( $procedure && ! empty( $procedure['slugName'] ) ) {
+					$procedure_slug = $procedure['slugName'];
+				}
+			}
+
+			// Cache the case data with 24-hour TTL
+			if ( ! empty( $procedure_slug ) ) {
+				self::cache_and_return_case( $case_data, $procedure_slug, $case_id );
 			}
 
 			// Generate HTML and SEO data for case details using HTML_Renderer class method
@@ -1409,10 +1436,50 @@ class Ajax_Handlers {
 			wp_send_json_error( 'No cache key provided' );
 		}
 
+		// Debug: Log the cache key being requested
+		if ( WP_DEBUG && WP_DEBUG_LOG ) {
+			error_log( 'Cache Management Debug - Requested key: ' . $key );
+		}
+		
+		// Try to check what's actually in the database for this key
+		global $wpdb;
+		$db_check = $wpdb->get_var( $wpdb->prepare( 
+			"SELECT option_value FROM {$wpdb->options} WHERE option_name = %s",
+			'_transient_' . $key
+		) );
+		if ( WP_DEBUG && WP_DEBUG_LOG ) {
+			error_log( 'Cache Management Debug - Direct DB check for _transient_' . $key . ': ' . ( $db_check ? 'FOUND' : 'NOT FOUND' ) );
+		}
+
 		// Get the cache data
 		$data = Cache_Manager::get( $key );
 
+		// Debug: Log the result
+		if ( WP_DEBUG && WP_DEBUG_LOG ) {
+			error_log( 'Cache Management Debug - Cache_Manager::get result: ' . ( $data !== false ? 'YES' : 'NO' ) );
+		}
+
 		if ( false === $data ) {
+			// Try to also check if the transient exists directly
+			$transient_data = get_transient( $key );
+			if ( WP_DEBUG && WP_DEBUG_LOG ) {
+				error_log( 'Cache Management Debug - Direct get_transient result: ' . ( $transient_data !== false ? 'YES' : 'NO' ) );
+			}
+			
+			// If we found it in the DB but not via get_transient, there might be an expiry issue
+			if ( $db_check && !$transient_data ) {
+				$timeout_check = $wpdb->get_var( $wpdb->prepare( 
+					"SELECT option_value FROM {$wpdb->options} WHERE option_name = %s",
+					'_transient_timeout_' . $key
+				) );
+				if ( WP_DEBUG && WP_DEBUG_LOG ) {
+					$current_time = time();
+					$expired = $timeout_check && (int)$timeout_check < $current_time;
+					error_log( 'Cache Management Debug - Timeout check: ' . ($timeout_check ? $timeout_check : 'NONE') . 
+							   ' (current: ' . $current_time . ', expired: ' . ($expired ? 'YES' : 'NO') . ')' );
+				}
+			}
+			
 			wp_send_json_error( 'Cache item not found or expired' );
 		}
 
@@ -1714,9 +1781,10 @@ class Ajax_Handlers {
 	 * @param string $case_id Case identifier (numeric ID or seoSuffixUrl).
 	 * @param string $api_token BRAGBook API authentication token.
 	 * @param int    $website_property_id Website property identifier.
+	 * @param string $procedure_slug Optional procedure slug for caching.
 	 * @return array|null Case data array or null if not found.
 	 */
-	private static function find_case_by_id( string $case_id, string $api_token, int $website_property_id ): ?array {
+	private static function find_case_by_id( string $case_id, string $api_token, int $website_property_id, string $procedure_slug = '' ): ?array {
 		// Enhanced debug logging for troubleshooting
 		if ( WP_DEBUG && WP_DEBUG_LOG ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
@@ -1727,17 +1795,21 @@ class Ajax_Handlers {
 			error_log( 'find_case_by_id: Website property ID: ' . $website_property_id );
 		}
 
-		// First check if this is a carousel case in cache (case_id might be seoSuffixUrl)
-		$carousel_case = Data_Fetcher::get_carousel_case_from_cache( $case_id, $api_token );
-		if ( $carousel_case !== null ) {
-			if ( WP_DEBUG ) {
-				error_log( 'find_case_by_id: Found case in carousel cache for identifier: ' . $case_id );
-				error_log( 'find_case_by_id: Actual case ID is: ' . ( $carousel_case['id'] ?? 'N/A' ) );
+		// Check individual case cache first if procedure slug is available
+		if ( ! empty( $procedure_slug ) && Cache_Manager::is_caching_enabled() ) {
+			$case_cache_key = Cache_Manager::get_case_view_cache_key( $procedure_slug, $case_id );
+			$cached_case = Cache_Manager::get( $case_cache_key );
+			
+			if ( $cached_case !== false ) {
+				if ( WP_DEBUG && WP_DEBUG_LOG ) {
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+					error_log( 'find_case_by_id: Found case in individual cache: ' . $case_cache_key );
+				}
+				return $cached_case;
 			}
-			return $carousel_case;
 		}
 
-		// Next, try to get the case from cached data
+		// Fallback to checking all cases cache if individual cache miss
 		$cache_key = 'all_cases_' . $api_token . '_' . $website_property_id;
 		$cached_data = Cache_Manager::get( $cache_key );
 		$case_data = null;
@@ -1809,59 +1881,9 @@ class Ajax_Handlers {
 			}
 		}
 
-		// If not found in the main cache, also try the unfiltered cache (all cases)
+		// Cache lookup removed - all cases cache no longer used
 		if ( empty( $case_data ) ) {
-			$unfiltered_cache_key = \BRAGBookGallery\Includes\Extend\Cache_Manager::get_all_cases_cache_key( $api_token, (string) $website_property_id );
-			$unfiltered_cached_data = Cache_Manager::get( $unfiltered_cache_key );
-
-			if ( WP_DEBUG ) {
-				error_log( 'find_case_by_id: Trying unfiltered cache key: ' . $unfiltered_cache_key );
-				error_log( 'find_case_by_id: Unfiltered cache has ' . ( isset( $unfiltered_cached_data['data'] ) ? count( $unfiltered_cached_data['data'] ) : 0 ) . ' cases' );
-			}
-
-			if ( $unfiltered_cached_data && isset( $unfiltered_cached_data['data'] ) && is_array( $unfiltered_cached_data['data'] ) ) {
-				foreach ( $unfiltered_cached_data['data'] as $case ) {
-					// Method 1: Try by numeric ID if identifier looks numeric
-					if ( $is_numeric_id && isset( $case['id'] ) && strval( $case['id'] ) === strval( $case_id ) ) {
-						if ( WP_DEBUG ) {
-							error_log( 'find_case_by_id: Found case by numeric ID in unfiltered cache' );
-						}
-						return $case;
-					}
-
-					// Method 2: Try by SEO suffix URL at root level
-					if ( isset( $case['seoSuffixUrl'] ) && $case['seoSuffixUrl'] === $case_id ) {
-						if ( WP_DEBUG ) {
-							error_log( 'find_case_by_id: Found case by SEO suffix at root level in unfiltered cache' );
-						}
-						return $case;
-					}
-
-					// Method 3: Try by SEO suffix URL in caseDetails array
-					if ( isset( $case['caseDetails'] ) && is_array( $case['caseDetails'] ) ) {
-						foreach ( $case['caseDetails'] as $detail ) {
-							if ( isset( $detail['seoSuffixUrl'] ) && $detail['seoSuffixUrl'] === $case_id ) {
-								if ( WP_DEBUG ) {
-									error_log( 'find_case_by_id: Found case by SEO suffix in caseDetails in unfiltered cache' );
-								}
-								return $case;
-							}
-						}
-					}
-
-					// Method 4: FALLBACK - If identifier looks numeric but no numeric ID match
-					if ( $is_numeric_id && ! empty( $case['caseDetails'] ) && is_array( $case['caseDetails'] ) ) {
-						foreach ( $case['caseDetails'] as $detail ) {
-							if ( isset( $detail['seoSuffixUrl'] ) && $detail['seoSuffixUrl'] === $case_id ) {
-								if ( WP_DEBUG ) {
-									error_log( 'find_case_by_id: FALLBACK - Found numeric-looking seoSuffixUrl in unfiltered cache, actual case ID: ' . ( $case['id'] ?? 'N/A' ) );
-								}
-								return $case;
-							}
-						}
-					}
-				}
-			}
+			$unfiltered_cached_data = false;
 		}
 
 		// If not found in cache, try to fetch all cases from API
@@ -1882,6 +1904,15 @@ class Ajax_Handlers {
 					if ( WP_DEBUG ) {
 						error_log( 'find_case_by_id: Found case by numeric ID from API' );
 					}
+					
+					// Cache the found case before returning
+					if ( ! empty( $case['procedures'] ) && is_array( $case['procedures'] ) ) {
+						$procedure = $case['procedures'][0] ?? null;
+						if ( $procedure && ! empty( $procedure['slugName'] ) ) {
+							self::cache_and_return_case( $case, $procedure['slugName'], $case_id );
+						}
+					}
+					
 					return $case;
 				}
 
@@ -1890,6 +1921,15 @@ class Ajax_Handlers {
 					if ( WP_DEBUG ) {
 						error_log( 'find_case_by_id: Found case by SEO suffix at root level from API' );
 					}
+					
+					// Cache the found case before returning
+					if ( ! empty( $case['procedures'] ) && is_array( $case['procedures'] ) ) {
+						$procedure = $case['procedures'][0] ?? null;
+						if ( $procedure && ! empty( $procedure['slugName'] ) ) {
+							self::cache_and_return_case( $case, $procedure['slugName'], $case_id );
+						}
+					}
+					
 					return $case;
 				}
 
@@ -1900,6 +1940,16 @@ class Ajax_Handlers {
 							if ( WP_DEBUG ) {
 								error_log( 'find_case_by_id: Found case by SEO suffix in caseDetails from API' );
 							}
+							
+							// Cache the found case before returning
+							if ( ! empty( $case['procedures'] ) && is_array( $case['procedures'] ) ) {
+								$procedure = $case['procedures'][0] ?? null;
+								if ( $procedure && ! empty( $procedure['slugName'] ) ) {
+									error_log( 'find_case_by_id: Caching case with procedure slug: ' . $procedure['slugName'] );
+									self::cache_and_return_case( $case, $procedure['slugName'], $case_id );
+								}
+							}
+							
 							return $case;
 						}
 					}
@@ -1912,6 +1962,16 @@ class Ajax_Handlers {
 							if ( WP_DEBUG ) {
 								error_log( 'find_case_by_id: FALLBACK - Found numeric-looking seoSuffixUrl from API, actual case ID: ' . ( $case['id'] ?? 'N/A' ) );
 							}
+							
+							// Cache the found case before returning
+							if ( ! empty( $case['procedures'] ) && is_array( $case['procedures'] ) ) {
+								$procedure = $case['procedures'][0] ?? null;
+								if ( $procedure && ! empty( $procedure['slugName'] ) ) {
+									error_log( 'find_case_by_id: Caching case with procedure slug: ' . $procedure['slugName'] );
+									self::cache_and_return_case( $case, $procedure['slugName'], $case_id );
+								}
+							}
+							
 							return $case;
 						}
 					}
@@ -2043,7 +2103,34 @@ class Ajax_Handlers {
 			}
 		}
 
+		// Cache the result if we have a valid case and procedure slug
+		if ( $case_data !== null ) {
+			self::cache_case_if_available( $case_data, $procedure_slug, $case_id );
+		}
+
 		return null;
+	}
+
+	/**
+	 * Cache individual case data if procedure slug is available
+	 *
+	 * @since 3.0.0
+	 * @param array|null $case_data Case data to cache
+	 * @param string     $procedure_slug Procedure slug for cache key
+	 * @param string     $case_id Case identifier for cache key
+	 * @return void
+	 */
+	private static function cache_and_return_case( $case_data, string $procedure_slug, string $case_id ) {
+		if ( $case_data !== null && ! empty( $procedure_slug ) && Cache_Manager::is_caching_enabled() ) {
+			$case_cache_key = Cache_Manager::get_case_view_cache_key( $procedure_slug, $case_id );
+			Cache_Manager::set( $case_cache_key, $case_data, 24 * HOUR_IN_SECONDS );
+			
+			if ( WP_DEBUG && WP_DEBUG_LOG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log( 'Cached individual case: ' . $case_cache_key . ' for 24 hours' );
+			}
+		}
+		return $case_data;
 	}
 
 	/**

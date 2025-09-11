@@ -111,6 +111,164 @@
 	}
 }
 
+// Case detail skeleton loading - matches exact case detail view structure
+.brag-book-gallery-case-detail-skeleton {
+	// Full width skeleton inherits styling from case-detail-view
+	width: 100%;
+
+	// Progress Bar
+	.skeleton-progress-bar {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		height: 3px;
+		background: var(--wp--custom--brag-book-gallery--color--lighter-grey);
+		z-index: 9999;
+		overflow: hidden;
+
+		.skeleton-progress-fill {
+			height: 100%;
+			width: 0%;
+			background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+			transition: width 0.2s ease;
+		}
+
+		.skeleton-progress-text {
+			position: absolute;
+			top: 8px;
+			left: 50%;
+			transform: translateX(-50%);
+			font-size: 0.75rem;
+			font-weight: 500;
+			color: var(--wp--custom--brag-book-gallery--color--grey);
+			background: var(--wp--custom--brag-book-gallery--color--white);
+			padding: 2px 8px;
+			border-radius: 8px;
+			box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+		}
+	}
+
+	// Case Header Section Skeletons
+	.skeleton-back-link {
+		height: 1.25rem;
+		width: 6rem;
+		background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+		background-size: 200% 100%;
+		animation: skeleton-shimmer 1.5s infinite;
+		border-radius: 4px;
+		margin-bottom: var(--wp--custom--brag-book-gallery--spacer--lg);
+	}
+
+	.skeleton-case-title {
+		height: 2rem;
+		width: 50%;
+		background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+		background-size: 200% 100%;
+		animation: skeleton-shimmer 1.5s infinite;
+		border-radius: 4px;
+		margin-bottom: var(--wp--custom--brag-book-gallery--spacer--sm);
+	}
+
+	.skeleton-case-navigation-buttons {
+		display: flex;
+		gap: var(--wp--custom--brag-book-gallery--spacer--sm);
+
+		.skeleton-nav-btn {
+			height: 2.5rem;
+			width: 2.5rem;
+			background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+			background-size: 200% 100%;
+			animation: skeleton-shimmer 1.5s infinite;
+			border-radius: 50%;
+		}
+	}
+
+	// Images Section Skeletons
+	.skeleton-main-image {
+		width: 100%;
+		aspect-ratio: 16 / 10;
+		background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+		background-size: 200% 100%;
+		animation: skeleton-shimmer 1.5s infinite;
+		border-radius: 8px;
+		min-height: 300px;
+
+		@media (max-width: 768px) {
+			min-height: 200px;
+		}
+	}
+
+	.skeleton-thumbnail {
+		flex: 0 0 auto;
+		width: 80px;
+		height: 60px;
+		background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+		background-size: 200% 100%;
+		animation: skeleton-shimmer 1.5s infinite;
+		border-radius: 4px;
+	}
+
+	// Card Skeletons
+	.skeleton-card-title {
+		height: 1.25rem;
+		width: 70%;
+		background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+		background-size: 200% 100%;
+		animation: skeleton-shimmer 1.5s infinite;
+		border-radius: 4px;
+		margin-bottom: var(--wp--custom--brag-book-gallery--spacer--md);
+	}
+
+	.skeleton-procedure-badges {
+		display: flex;
+		gap: var(--wp--custom--brag-book-gallery--spacer--sm);
+		flex-wrap: wrap;
+
+		.skeleton-badge {
+			height: 1.5rem;
+			width: 5rem;
+			background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+			background-size: 200% 100%;
+			animation: skeleton-shimmer 1.5s infinite;
+			border-radius: 12px;
+		}
+	}
+
+	.skeleton-patient-info,
+	.skeleton-procedure-details {
+		.skeleton-info-item,
+		.skeleton-detail-row {
+			height: 1rem;
+			background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+			background-size: 200% 100%;
+			animation: skeleton-shimmer 1.5s infinite;
+			border-radius: 3px;
+			margin-bottom: var(--wp--custom--brag-book-gallery--spacer--sm);
+			width: 100%;
+
+			&:nth-child(1) { width: 90%; }
+			&:nth-child(2) { width: 75%; }
+			&:nth-child(3) { width: 85%; }
+		}
+	}
+
+	.skeleton-case-notes {
+		.skeleton-text-line {
+			height: 0.875rem;
+			background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+			background-size: 200% 100%;
+			animation: skeleton-shimmer 1.5s infinite;
+			border-radius: 3px;
+			margin-bottom: var(--wp--custom--brag-book-gallery--spacer--sm);
+			width: 100%;
+
+			&.short { width: 65%; }
+			&.medium { width: 80%; }
+		}
+	}
+}
+
 @keyframes skeleton-shimmer {
 	0% {
 		background-position: -200% 0;

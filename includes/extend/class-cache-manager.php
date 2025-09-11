@@ -188,7 +188,37 @@ class Cache_Manager {
 	 * @return bool True on successful cache storage, false on failure.
 	 */
 	public static function set( string $key, mixed $value, int $expiration = 0 ): bool {
-		return false; // Caching disabled
+		if ( ! self::is_caching_enabled() ) {
+			return false;
+		}
+
+		// Input validation
+		if ( empty( $key ) || $value === null ) {
+			return false;
+		}
+
+		// Use automatic expiration if not specified
+		if ( $expiration <= 0 ) {
+			$expiration = self::get_cache_duration();
+		}
+
+		// Set special duration for sidebar data (12 hours)
+		if ( strpos( $key, 'sidebar' ) !== false ) {
+			$expiration = 12 * HOUR_IN_SECONDS; // 12 hours
+		}
+
+		$success = false;
+
+		// Try wp_cache_set first (object cache)
+		if ( function_exists( 'wp_cache_set' ) ) {
+			$success = wp_cache_set( $key, $value, 'brag_book_gallery', $expiration );
+		}
+
+		// Always set transient as fallback or primary cache
+		$transient_success = set_transient( $key, $value, $expiration );
+
+		// Return true if either method succeeded
+		return $success || $transient_success;
 	}
 
 	/**
@@ -202,7 +232,43 @@ class Cache_Manager {
 	 * @return mixed Cached value or false if not found/expired.
 	 */
 	public static function get( string $key ): mixed {
-		return false; // Caching disabled
+		if ( ! self::is_caching_enabled() ) {
+			if ( WP_DEBUG && WP_DEBUG_LOG ) {
+				error_log( 'Cache_Manager::get - Caching disabled for key: ' . $key );
+			}
+			return false;
+		}
+
+		// Input validation
+		if ( empty( $key ) ) {
+			if ( WP_DEBUG && WP_DEBUG_LOG ) {
+				error_log( 'Cache_Manager::get - Empty key provided' );
+			}
+			return false;
+		}
+
+		if ( WP_DEBUG && WP_DEBUG_LOG ) {
+			error_log( 'Cache_Manager::get - Looking for key: ' . $key );
+		}
+
+		// Try wp_cache_get first (object cache)
+		if ( function_exists( 'wp_cache_get' ) ) {
+			$value = wp_cache_get( $key, 'brag_book_gallery' );
+			if ( WP_DEBUG && WP_DEBUG_LOG ) {
+				error_log( 'Cache_Manager::get - wp_cache_get result: ' . ( $value !== false ? 'FOUND' : 'NOT FOUND' ) );
+			}
+			if ( $value !== false ) {
+				return $value;
+			}
+		}
+
+		// Fallback to transient
+		$transient_result = get_transient( $key );
+		if ( WP_DEBUG && WP_DEBUG_LOG ) {
+			error_log( 'Cache_Manager::get - get_transient result: ' . ( $transient_result !== false ? 'FOUND' : 'NOT FOUND' ) );
+		}
+		
+		return $transient_result;
 	}
 
 	/**
@@ -216,7 +282,27 @@ class Cache_Manager {
 	 * @return bool True on successful deletion, false on failure.
 	 */
 	public static function delete( string $key ): bool {
-		return true; // Caching disabled
+		if ( ! self::is_caching_enabled() ) {
+			return true; // Return true when caching is disabled
+		}
+
+		// Input validation
+		if ( empty( $key ) ) {
+			return false;
+		}
+
+		$success = false;
+
+		// Try wp_cache_delete first (object cache)
+		if ( function_exists( 'wp_cache_delete' ) ) {
+			$success = wp_cache_delete( $key, 'brag_book_gallery' );
+		}
+
+		// Always delete transient as well
+		$transient_success = delete_transient( $key );
+
+		// Return true if either method succeeded
+		return $success || $transient_success;
 	}
 
 	/**
@@ -231,12 +317,8 @@ class Cache_Manager {
 	 * @return string Secure, collision-resistant cache key.
 	 */
 	public static function get_sidebar_cache_key( string $api_token ): string {
-		// Validate input
-		if ( empty( trim( $api_token ) ) ) {
-			return 'brag_book_gallery_transient_sidebar_default';
-		}
-
-		return sprintf( 'brag_book_gallery_transient_sidebar_%s', $api_token );
+		// Return consistent sidebar cache key without API token
+		return 'brag_book_gallery_sidebar';
 	}
 
 	/**
@@ -293,72 +375,54 @@ class Cache_Manager {
 		return implode( '_', $key_parts );
 	}
 
+
 	/**
-	 * Generate cache key for complete cases dataset
+	 * Generate cache key for individual case view
 	 *
-	 * Creates a cache key for the complete cases dataset used by the filtering
-	 * system. Combines API token and website property ID for unique identification
-	 * while maintaining security through hashing.
+	 * Creates a cache key for individual case views using the format:
+	 * brag_book_gallery_transient_case_view_{procedure}_{case_suffix}
 	 *
 	 * @since 3.0.0
-	 * @param string $api_token          API authentication token.
-	 * @param string $website_property_id Website property identifier.
-	 * @return string Secure cache key for complete cases dataset.
+	 * @param string $procedure_slug Procedure slug (e.g., 'facelift', 'breast-augmentation')
+	 * @param string $case_suffix Case identifier suffix (case ID or seoSuffixUrl)
+	 * @return string Cache key for individual case view
 	 */
-	public static function get_all_cases_cache_key( string $api_token, string $website_property_id ): string {
-		// Validate inputs and provide fallback
-		if ( empty( trim( $api_token ) ) || empty( trim( $website_property_id ) ) ) {
-			return 'brag_book_gallery_transient_all_cases_default';
+	public static function get_case_view_cache_key( string $procedure_slug, string $case_suffix ): string {
+		// Sanitize inputs
+		$procedure_slug = sanitize_title( $procedure_slug );
+		$case_suffix = sanitize_text_field( $case_suffix );
+		
+		// Handle empty values
+		if ( empty( $procedure_slug ) ) {
+			$procedure_slug = 'unknown';
 		}
-
-		// Create secure cache key using combined hash
-		return sprintf( 'brag_book_gallery_transient_all_cases_%s', $api_token . '_' . $website_property_id );
+		if ( empty( $case_suffix ) ) {
+			$case_suffix = 'unknown';
+		}
+		
+		return sprintf( 'brag_book_gallery_case_%s_%s', $procedure_slug, $case_suffix );
 	}
 
 	/**
-	 * Generate comprehensive cache key for carousel data
+	 * Generate cache key for cases list by procedure
 	 *
-	 * Creates a detailed cache key for carousel data that incorporates all
-	 * configuration parameters including API credentials, display limits,
-	 * filtering options, and member-specific settings.
-	 *
-	 * Key Components:
-	 * - API token and website property ID for authentication context
-	 * - Display limit for carousel size configuration
-	 * - Optional procedure ID for content filtering
-	 * - Optional member ID for personalized carousels
+	 * Creates a cache key for cases lists from procedures/carousel using the format:
+	 * brag_book_gallery_transient_cases_{procedure}
 	 *
 	 * @since 3.0.0
-	 * @param string $api_token          API authentication token.
-	 * @param string $website_property_id Website property identifier.
-	 * @param int    $limit              Maximum number of carousel items.
-	 * @param string $procedure_id       Optional procedure ID or slug for filtering.
-	 * @param string $member_id          Optional member ID for personalization.
-	 * @return string Comprehensive carousel cache key.
+	 * @param string $procedure_name Procedure name for the cache key
+	 * @return string Cache key for cases list by procedure
 	 */
-	public static function get_carousel_cache_key(
-		string $api_token,
-		string $website_property_id,
-		int $limit,
-		string $procedure_id = '',
-		string $member_id = ''
-	): string {
-		// Validate and sanitize inputs
-		$limit = max( 1, $limit ); // Ensure positive limit
-		$procedure_id = sanitize_text_field( $procedure_id );
-		$member_id = sanitize_text_field( $member_id );
-
-		// Build comprehensive hash string
-		$hash_components = [
-			$api_token,
-			$website_property_id,
-			(string) $limit,
-			$procedure_id,
-			$member_id,
-		];
-
-		$hash_string = implode( '|', $hash_components );
-		return sprintf( 'brag_book_gallery_transient_carousel_%s', $hash_string );
+	public static function get_cases_by_procedure_cache_key( string $procedure_name ): string {
+		// Sanitize procedure name
+		$procedure_name = sanitize_title( $procedure_name );
+		
+		// Handle empty values
+		if ( empty( $procedure_name ) ) {
+			$procedure_name = 'unknown';
+		}
+		
+		return sprintf( 'brag_book_gallery_transient_cases_%s', $procedure_name );
 	}
 
 	/**
@@ -432,7 +496,13 @@ class Cache_Manager {
 	 * @return bool True if caching is enabled, false otherwise.
 	 */
 	public static function is_caching_enabled(): bool {
-		return false; // Caching permanently disabled
+		/**
+		 * Filter to enable/disable caching.
+		 *
+		 * @since 3.0.0
+		 * @param bool $enabled Whether caching is enabled.
+		 */
+		return (bool) apply_filters( 'brag_book_gallery_caching_enabled', true );
 	}
 
 	/**
@@ -444,8 +514,8 @@ class Cache_Manager {
 	 *
 	 * Supported Types:
 	 * - 'sidebar': Clear sidebar/navigation cache
-	 * - 'cases': Clear case data cache
-	 * - 'carousel': Clear carousel-specific cache
+	 * - 'cases': Clear cases lists by procedure cache
+	 * - 'case_view': Clear individual case view cache
 	 * - 'all': Clear all plugin cache (default)
 	 *
 	 * @since 3.0.0
@@ -490,10 +560,9 @@ class Cache_Manager {
 	private static function get_cache_pattern_by_type( string $type ): string {
 		// Use PHP 8.2 match for cleaner type-based pattern generation
 		return match ( strtolower( trim( $type ) ) ) {
-			'sidebar' => '%transient_%brag_book_gallery_transient_sidebar_%',
+			'sidebar' => '%transient_%brag_book_gallery_sidebar%',
 			'cases' => '%transient_%brag_book_gallery_transient_cases_%',
-			'carousel' => '%transient_%brag_book_gallery_transient_carousel_%',
-			'all_cases' => '%transient_%brag_book_gallery_transient_all_cases_%',
+			'case_view' => '%transient_%brag_book_gallery_transient_case_view_%',
 			default => '%transient_%brag_book_gallery_transient_%',
 		};
 	}
