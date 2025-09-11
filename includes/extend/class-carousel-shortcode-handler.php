@@ -682,13 +682,8 @@ final class Carousel_Shortcode_Handler {
 			);
 		}
 
-		// Add custom CSS only once.
-		if ( ! wp_style_is( 'brag-book-gallery-custom-css', 'enqueued' ) ) {
-			$custom_css = get_option( 'brag_book_gallery_custom_css', '' );
-			if ( ! empty( $custom_css ) ) {
-				wp_add_inline_style( 'brag-book-gallery-main', wp_strip_all_tags( $custom_css ) );
-			}
-		}
+		// Add custom CSS using centralized Asset_Manager method (prevents duplication).
+		Asset_Manager::add_custom_css( 'brag-book-gallery-main' );
 
 		// Check if GSAP should be loaded.
 		if ( ! Asset_Manager::is_gsap_enqueued() ) {

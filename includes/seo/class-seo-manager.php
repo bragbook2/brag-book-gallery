@@ -26,6 +26,7 @@ declare( strict_types=1 );
 
 namespace BRAGBookGallery\Includes\SEO;
 
+use BRAGBookGallery\Includes\Extend\Cache_Manager;
 use BRAGBookGallery\Includes\Traits\Trait_Api;
 
 if ( ! defined( 'WPINC' ) ) {

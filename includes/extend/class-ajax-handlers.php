@@ -135,6 +135,9 @@ class Ajax_Handlers {
 		// Rewrite rules
 		add_action( 'wp_ajax_brag_book_gallery_flush_rewrite_rules', [ __CLASS__, 'ajax_flush_rewrite_rules' ] );
 
+		// WP Engine diagnostics
+		add_action( 'wp_ajax_brag_book_gallery_wp_engine_diagnostics', [ __CLASS__, 'ajax_wp_engine_diagnostics' ] );
+
 		// CORS-safe API proxy endpoints
 		add_action( 'wp_ajax_brag_book_api_proxy', [ __CLASS__, 'ajax_api_proxy' ] );
 		add_action( 'wp_ajax_nopriv_brag_book_api_proxy', [ __CLASS__, 'ajax_api_proxy' ] );
@@ -3108,6 +3111,54 @@ class Ajax_Handlers {
 		}
 
 		return false;
+	}
+
+	/**
+	 * AJAX handler for WP Engine diagnostics
+	 *
+	 * Runs comprehensive diagnostics specifically for WP Engine environments
+	 * and returns results as HTML for display in admin interface.
+	 *
+	 * @since 3.2.4
+	 * @return void
+	 */
+	public static function ajax_wp_engine_diagnostics(): void {
+		try {
+			// Verify nonce
+			if ( ! isset( $_POST['_wpnonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ), 'wp_engine_diagnostics' ) ) {
+				wp_send_json_error( __( 'Security check failed.', 'brag-book-gallery' ) );
+				return;
+			}
+
+			// Check capabilities
+			if ( ! current_user_can( 'manage_options' ) ) {
+				wp_send_json_error( __( 'Insufficient permissions.', 'brag-book-gallery' ) );
+				return;
+			}
+
+			// Set no-cache headers
+			self::set_no_cache_headers();
+
+			// Load the diagnostics class
+			if ( ! class_exists( '\BRAGBookGallery\Includes\Admin\Debug_Tools\WP_Engine_Diagnostics' ) ) {
+				require_once dirname( __DIR__ ) . '/admin/debug-tools/class-wp-engine-diagnostics.php';
+			}
+
+			// Run diagnostics
+			$results = \BRAGBookGallery\Includes\Admin\Debug_Tools\WP_Engine_Diagnostics::run_diagnostics();
+			
+			// Generate HTML
+			$html = \BRAGBookGallery\Includes\Admin\Debug_Tools\WP_Engine_Diagnostics::generate_results_html( $results );
+
+			wp_send_json_success( [
+				'html' => $html,
+				'results' => $results,
+			] );
+
+		} catch ( Exception $e ) {
+			error_log( 'BRAGBook Gallery WP Engine Diagnostics Error: ' . $e->getMessage() );
+			wp_send_json_error( __( 'Diagnostics failed. Check logs for details.', 'brag-book-gallery' ) );
+		}
 	}
 
 }

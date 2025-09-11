@@ -501,7 +501,7 @@ final class Asset_Manager {
 	 *
 	 * @return void
 	 */
-	private static function add_custom_css( string $handle ): void {
+	public static function add_custom_css( string $handle ): void {
 		// Early return for empty handle
 		if ( '' === trim( $handle ) ) {
 			return;

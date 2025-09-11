@@ -83,6 +83,7 @@ class Settings_Debug_Tools {
 		$this->tools['rewrite-flush']     = new Debug_Tools\Rewrite_Flush();
 		$this->tools['cache-management']  = new Debug_Tools\Cache_Management();
 		$this->tools['system-info']       = new Debug_Tools\System_Info();
+		$this->tools['wp-engine-diagnostics'] = new Debug_Tools\WP_Engine_Diagnostics();
 	}
 
 
