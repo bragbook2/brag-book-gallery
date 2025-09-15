@@ -26,9 +26,9 @@ declare( strict_types=1 );
 
 namespace BRAGBookGallery\Includes\SEO;
 
+use BRAGBookGallery\Includes\Core\Trait_Sanitizer;
+use BRAGBookGallery\Includes\Core\Trait_Tools;
 use BRAGBookGallery\Includes\REST\Endpoints;
-use BRAGBookGallery\Includes\Traits\Trait_Sanitizer;
-use BRAGBookGallery\Includes\Traits\Trait_Tools;
 
 /**
  * Enterprise On-Page SEO Management
@@ -260,7 +260,7 @@ class On_Page {
 			if ( $url_without_query === false ) {
 				$url_without_query = $request_uri;
 			}
-			
+
 			$clean_url = trim( $url_without_query, '/' );
 
 			// Additional validation for URL structure
@@ -270,7 +270,7 @@ class On_Page {
 
 			// Split and validate each URL segment with error handling
 			$url_parts = explode( '/', $clean_url );
-			
+
 			try {
 				return array_map( [ $this, 'sanitize_url_segment' ], $url_parts );
 			} catch ( \Exception $e ) {
@@ -307,7 +307,7 @@ class On_Page {
 	private function get_seo_configuration(): array {
 		// Get page slug with robust fallback handling
 		$page_slug = 'gallery'; // Default fallback
-		
+
 		try {
 			// Try to get from option first (most reliable)
 			$page_slug_option = get_option( 'brag_book_gallery_page_slug', 'gallery' );
@@ -316,14 +316,8 @@ class On_Page {
 			} elseif ( is_string( $page_slug_option ) && ! empty( $page_slug_option ) ) {
 				$page_slug = sanitize_title( $page_slug_option );
 			}
-			
-			// Try Slug_Helper only if option didn't work and class is available
-			if ( $page_slug === 'gallery' && class_exists( '\BRAGBookGallery\Includes\Core\Slug_Helper' ) ) {
-				$helper_slug = \BRAGBookGallery\Includes\Core\Slug_Helper::get_first_gallery_page_slug( '' );
-				if ( ! empty( $helper_slug ) ) {
-					$page_slug = $helper_slug;
-				}
-			}
+
+			// Fallback removed - using direct option only
 		} catch ( \Exception $e ) {
 			// Keep default fallback if anything fails
 			$page_slug = 'gallery';
@@ -987,15 +981,15 @@ class On_Page {
 			default_value: 0
 		);
 
-		// Get all gallery page slugs
-		$brag_book_gallery_page_slugs = \BRAGBookGallery\Includes\Core\Slug_Helper::get_all_gallery_page_slugs();
+		// Get current gallery page slug
+		$gallery_slug = get_option( 'brag_book_gallery_page_slug', '' );
 
 		$current_post = get_post( $current_page_id );
 		$current_slug = $current_post->post_name ?? '';
 
 		return in_array( $current_page_id, $stored_pages_ids, true )
 		       || $current_page_id === $gallery_page_id
-		       || in_array( $current_slug, $brag_book_gallery_page_slugs, true );
+		       || ( ! empty( $gallery_slug ) && $current_slug === $gallery_slug );
 	}
 
 	/**
@@ -1194,7 +1188,7 @@ class On_Page {
 	 */
 	private function log_validation_error( string $message, array $context = [] ): void {
 		$timestamp = current_time( 'mysql' );
-		
+
 		// Safely get URL without triggering circular dependency
 		$safe_url = '';
 		try {
@@ -1202,7 +1196,7 @@ class On_Page {
 		} catch ( Exception $e ) {
 			$safe_url = 'URL_PARSE_ERROR';
 		}
-		
+
 		$error_entry = [
 			'timestamp' => $timestamp,
 			'message'   => $message,

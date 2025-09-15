@@ -67,7 +67,7 @@ class Assets {
 	 * @since 3.0.0
 	 * @var string
 	 */
-	private const ASSET_VERSION = '3.0.0';
+	private const ASSET_VERSION = '3.3.0';
 
 	/**
 	 * CDN URLs for external dependencies with fallback support
@@ -577,6 +577,12 @@ class Assets {
 		}
 
 		try {
+			// Exclude procedure taxonomy pages - they should not load gallery assets
+			if ( is_tax( 'procedures' ) ) {
+				$this->memory_cache[ $cache_key ] = false;
+				return false;
+			}
+
 			// Enhanced gallery page detection
 			$gallery_slugs = get_option( 'brag_book_gallery_gallery_page_slug', [] );
 

@@ -13,7 +13,7 @@
 @use 'buttons';
 @use 'cache-management';
 @use 'cards';
-@use 'consultation';
+@use 'communications';
 @use 'dashboard';
 @use 'debug';
 @use 'debug-tools';
@@ -27,6 +27,7 @@
 @use 'seo';
 @use 'status';
 @use 'steps';
+@use 'sync';
 @use 'tabs';
 @use 'toggle';
 @use 'utilities';

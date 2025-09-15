@@ -1,5 +1,16 @@
 === BRAGBook Gallery Changelog ===
 
+= 3.3.0 (2025-09-15) =
+
+Fixed:
+* Procedure Taxonomy Pages - Prevented unwanted API calls on procedure taxonomy pages
+  - Fixed is_bragbook_page() method in Assets class to exclude procedure taxonomy pages
+  - Added explicit check using is_tax('procedures') to prevent frontend assets from loading
+  - Resolves issue where sidebar and cases API endpoints were being called unnecessarily
+
+Changed:
+* Version Numbering - Updated to semantic versioning 3.3.0 for new feature improvements
+
 = 3.2.8 (2025-09-11) =
 
 Added:

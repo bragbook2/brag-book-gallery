@@ -25,21 +25,16 @@ declare( strict_types=1 );
 
 namespace BRAGBookGallery\Includes\Core;
 
+use BRAGBookGallery\Includes\Admin\Core\Settings_Manager;
+use BRAGBookGallery\Includes\Communications\Communications;
+use BRAGBookGallery\Includes\data\Database;
+use BRAGBookGallery\Includes\Extend\Post_Types;
+use BRAGBookGallery\Includes\Extend\Taxonomies;
+use BRAGBookGallery\Includes\Extend\Template_Manager;
 use BRAGBookGallery\Includes\Resources\Assets;
-use BRAGBookGallery\Includes\Extend\Shortcodes;
-use BRAGBookGallery\Includes\Extend\Rewrite_Rules_Handler;
-use BRAGBookGallery\Includes\Admin\Settings_Manager;
 use BRAGBookGallery\Includes\SEO\On_Page;
 use BRAGBookGallery\Includes\SEO\Sitemap;
-use BRAGBookGallery\Includes\Mode\Mode_Manager;
-use BRAGBookGallery\Includes\Core\Database;
-use BRAGBookGallery\Includes\Core\Template_Loader;
-use BRAGBookGallery\Includes\Core\Query_Handler;
-use BRAGBookGallery\Includes\Core\URL_Router;
 use BRAGBookGallery\Includes\Sync\Sync_Manager;
-use BRAGBookGallery\Includes\Migration\Migration_Manager;
-use BRAGBookGallery\Includes\Traits\Trait_Api;
-use BRAGBookGallery\Includes\Traits\Trait_Tools;
 
 // Prevent direct access.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -330,19 +325,10 @@ final class Setup {
 		// Initialize Database manager first (creates tables if needed).
 		$this->services['database'] = new Database();
 
-		// Initialize Mode Manager (handles mode-specific components).
-		$this->services['mode_manager'] = Mode_Manager::get_instance();
-
-		// Initialize core dual-mode components.
-		$this->services['template_loader'] = new Template_Loader();
-		$this->services['query_handler'] = new Query_Handler();
-		$this->services['url_router'] = new URL_Router();
+		// Mode Manager removed per user request
 
 		// Initialize sync components (for Local mode).
 		$this->services['sync_manager'] = new Sync_Manager();
-
-		// Initialize migration components.
-		$this->services['migration_manager'] = new Migration_Manager();
 
 		// Initialize SEO Manager (handles SEO optimization and plugin detection).
 		$this->services['seo_manager'] = new \BRAGBookGallery\Includes\SEO\SEO_Manager();
@@ -354,11 +340,34 @@ final class Setup {
 		$this->services['sitemap'] = new Sitemap();
 		$this->services['on_page_seo'] = new On_Page();
 
-		// Initialize consultation handler.
-		$this->services['consultation'] = new Consultation();
+		// Initialize communications handler.
+		$this->services['communications'] = new Communications();
+
+		// Initialize post types and taxonomies.
+		$this->services['post_types'] = new Post_Types();
+		$this->services['taxonomies'] = new Taxonomies();
+
+		// Check if we need to flush rewrite rules for new case URL structure (one-time)
+		if ( ! get_option( 'brag_book_gallery_case_url_structure_updated', false ) ) {
+			update_option( 'brag_book_gallery_flush_rewrite_rules', true );
+			update_option( 'brag_book_gallery_case_url_structure_updated', true );
+		}
+
+		// Initialize template manager for procedure templates.
+		$this->services['template_manager'] = new Template_Manager();
 
 		// Initialize assets handler.
 		$this->services['assets'] = new Assets();
+
+		// Initialize shortcode handlers.
+		$this->services['gallery_handler'] = new \BRAGBookGallery\Includes\Shortcodes\Gallery_Handler();
+		$this->services['sidebar_handler'] = new \BRAGBookGallery\Includes\Shortcodes\Sidebar_Handler();
+		$this->services['case_handler'] = new \BRAGBookGallery\Includes\Shortcodes\Case_Handler();
+		$this->services['cases_handler'] = new \BRAGBookGallery\Includes\Shortcodes\Cases_Handler();
+
+		// Initialize carousel shortcodes
+		add_shortcode( 'brag_book_carousel', [ \BRAGBookGallery\Includes\Shortcodes\Carousel_Handler::class, 'handle' ] );
+		add_shortcode( 'bragbook_carousel_shortcode', [ \BRAGBookGallery\Includes\Shortcodes\Carousel_Handler::class, 'handle_legacy' ] );
 	}
 
 	/**
@@ -374,11 +383,6 @@ final class Setup {
 	 */
 	public function init(): void {
 
-		// Register shortcodes.
-		Shortcodes::register();
-
-		// Setup rewrite rules.
-		$this->setup_rewrite_rules();
 
 		// Load plugin textdomain for translations.
 		$this->load_textdomain();
@@ -388,6 +392,9 @@ final class Setup {
 
 		// Initialize REST API endpoints.
 		$this->init_rest_api();
+
+		// Disable texturize for our shortcodes
+		add_filter( 'no_texturize_shortcodes', [ $this, 'disable_texturize_shortcodes' ] );
 
 		// Fire custom action for extensions.
 		do_action( 'brag_book_gallery_init', $this );
@@ -1123,7 +1130,7 @@ final class Setup {
 	/**
 	 * Cleanup WP Engine object cache.
 	 *
-	 * Clears all plugin-related object cache entries. Since object cache doesn't 
+	 * Clears all plugin-related object cache entries. Since object cache doesn't
 	 * provide a way to query for expired items, we flush all plugin cache items
 	 * and let them be regenerated as needed.
 	 *
@@ -1142,28 +1149,28 @@ final class Setup {
 			'api_',
 			'carousel_',
 			'pagination_',
-			
+
 			// Gallery data
 			'sidebar_',
 			'cases_',
 			'filtered_cases_',
 			'all_cases_',
-			
+
 			// SEO and sitemaps
 			'sitemap_',
 			'combined_sidebar_',
-			
+
 			// Sync and migration
 			'sync_',
 			'migration_',
 			'force_update_',
-			
+
 			// Rate limiting
 			'rate_limit_',
-			
+
 			// Forms
 			'consultation_',
-			
+
 			// System
 			'mode_',
 			'rewrite_notice_',
@@ -1172,14 +1179,14 @@ final class Setup {
 		];
 
 		$deleted_count = 0;
-		
+
 		// Try to delete cache items by known patterns
 		// Note: This is not perfect since we can't enumerate object cache keys,
 		// but it covers the main cache keys used by the plugin
 		foreach ( $cache_patterns as $pattern ) {
 			// We'll need to track cache keys when they're created to make this more effective
 			// For now, we can only clear known specific keys
-			
+
 			// Example of clearing a known key pattern - this would need to be expanded
 			// based on actual cache keys used by the plugin
 			$result = wp_cache_delete( $pattern, 'brag_book_gallery' );
@@ -1261,17 +1268,50 @@ final class Setup {
 	}
 
 	/**
-	 * Get Mode Manager instance.
-	 *
-	 * Type-safe accessor for Mode Manager service.
+	 * Disable texturize for our shortcodes
 	 *
 	 * @since 3.0.0
-	 * @return Mode_Manager|null Mode Manager instance.
+	 * @param array $shortcodes Array of shortcode names to exclude from texturization.
+	 * @return array Modified shortcode list.
 	 */
-	public function get_mode_manager(): ?Mode_Manager {
-		$service = $this->services['mode_manager'] ?? null;
-		return $service instanceof Mode_Manager ? $service : null;
+	public function disable_texturize_shortcodes( array $shortcodes ): array {
+		$shortcodes[] = 'brag_book_gallery';
+		$shortcodes[] = 'brag_book_gallery_sidebar';
+		$shortcodes[] = 'brag_book_gallery_cases';
+		$shortcodes[] = 'brag_book_gallery_case';
+		$shortcodes[] = 'brag_book_carousel';
+		return $shortcodes;
 	}
+
+	/**
+	 * Clean shortcode output to remove unwanted paragraph and break tags
+	 *
+	 * @since 3.0.0
+	 * @param string $content Shortcode content to clean.
+	 * @return string Cleaned content.
+	 */
+	public static function clean_shortcode_text( string $content ): string {
+		// Remove empty paragraph tags that WordPress adds
+		$content = preg_replace( '/<p[^>]*>\s*<\/p>/i', '', $content );
+
+		// Remove standalone <p> and </p> tags
+		$content = str_replace( array( '<p>', '</p>' ), '', $content );
+
+		// Remove line break tags
+		$content = str_replace( array( '<br>', '<br/>', '<br />' ), '', $content );
+
+		// Remove HTML comments that WordPress may add
+		$content = preg_replace( '/<!--(.|\s)*?-->/', '', $content );
+
+		// Clean up extra whitespace and newlines
+		$content = preg_replace( '/\s+/', ' ', $content );
+		$content = trim( $content );
+
+		return $content;
+	}
+
+
+	// get_mode_manager method removed per user request
 
 	/**
 	 * Get Settings Manager instance.
@@ -1526,7 +1566,7 @@ final class Setup {
 	 */
 	private function load_cache_helpers(): void {
 		$helpers_file = self::get_plugin_path() . 'includes/functions/cache-helpers.php';
-		
+
 		if ( file_exists( $helpers_file ) ) {
 			require_once $helpers_file;
 		}

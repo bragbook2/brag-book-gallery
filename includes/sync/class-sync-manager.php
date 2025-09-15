@@ -28,13 +28,11 @@ declare(strict_types=1);
 
 namespace BRAGBookGallery\Includes\Sync;
 
-use BRAGBookGallery\Includes\Core\Database;
-use BRAGBookGallery\Includes\Extend\Cache_Manager;
-use BRAGBookGallery\Includes\PostTypes\Gallery_Post_Type;
+use BRAGBookGallery\Includes\data\Database;
 use BRAGBookGallery\Includes\Taxonomies\Gallery_Taxonomies;
-use WP_REST_Request;
-use WP_REST_Response;
 use Exception;
+
+// Cache_Manager removed per user requestuse BRAGBookGallery\Includes\PostTypes\Gallery_Post_Type;
 
 // Prevent direct access
 if ( ! defined( 'ABSPATH' ) ) {
@@ -156,7 +154,7 @@ final class Sync_Manager {
 		$this->database = new Database();
 		$this->data_mapper = new Data_Mapper();
 		$this->image_sync = new Image_Sync();
-		
+
 		$this->init();
 	}
 
@@ -175,10 +173,10 @@ final class Sync_Manager {
 
 		// Add WP-Cron hooks for scheduled syncing
 		add_action( 'brag_book_gallery_scheduled_sync', [ $this, 'run_scheduled_sync' ] );
-		
+
 		// Add REST API endpoints
 		add_action( 'rest_api_init', [ $this, 'register_rest_routes' ] );
-		
+
 		// Add cleanup hooks
 		add_action( 'brag_book_gallery_cleanup_old_sync_logs', [ $this, 'cleanup_old_sync_logs' ] );
 	}
@@ -193,9 +191,9 @@ final class Sync_Manager {
 	 * @param bool $force Force sync even if already running.
 	 * @return bool Success status.
 	 */
-	public function sync_all( bool $force = false ): bool {
+	public function sync_all( bool $force = false, string $sync_source = 'manual' ): bool {
 		$start_time = microtime( true );
-		
+
 		// Check if sync is already running with lock mechanism
 		if ( ! $force && ! $this->acquire_sync_lock() ) {
 			$this->log_error( 'sync_all', 'Sync already running or lock acquisition failed' );
@@ -204,10 +202,10 @@ final class Sync_Manager {
 
 		// Initialize sync progress
 		$this->reset_sync_progress();
-		
+
 		// Start sync logging
-		$this->current_sync_log_id = $this->database->log_sync_operation( 'full', 'started' );
-		
+		$this->current_sync_log_id = $this->database->log_sync_operation( 'full', 'started', 0, 0, '', $sync_source );
+
 		try {
 			$items_processed = 0;
 			$items_failed = 0;
@@ -216,7 +214,7 @@ final class Sync_Manager {
 			// Step 1: Sync categories and procedures
 			$this->update_sync_progress( 'Syncing taxonomies...', 0, 2 );
 			$taxonomy_result = $this->sync_taxonomies();
-			
+
 			if ( ! $taxonomy_result['success'] ) {
 				$errors[] = 'Taxonomy sync failed: ' . $taxonomy_result['message'];
 				$items_failed++;
@@ -230,7 +228,7 @@ final class Sync_Manager {
 			$cases_result = $this->sync_cases();
 			$items_processed += $cases_result['processed'];
 			$items_failed += $cases_result['failed'];
-			
+
 			if ( ! empty( $cases_result['errors'] ) ) {
 				$errors = array_merge( $errors, $cases_result['errors'] );
 			}
@@ -255,7 +253,7 @@ final class Sync_Manager {
 
 			// Track performance
 			$this->track_performance( 'sync_all', microtime( true ) - $start_time );
-			
+
 			return $final_status === 'completed';
 
 		} catch ( Exception $e ) {
@@ -276,8 +274,8 @@ final class Sync_Manager {
 	 */
 	public function sync_case( int $case_id ): bool {
 		// Start sync logging
-		$log_id = $this->database->log_sync_operation( 'single', 'started' );
-		
+		$log_id = $this->database->log_sync_operation( 'single', 'started', 0, 0, '', 'manual' );
+
 		try {
 			// Get API client
 			$api_client = $this->get_api_client();
@@ -295,7 +293,7 @@ final class Sync_Manager {
 
 			// Process single case
 			$result = $this->process_single_case( $case_data );
-			
+
 			$final_status = $result ? 'completed' : 'failed';
 			$this->database->update_sync_log(
 				$log_id,
@@ -358,9 +356,9 @@ final class Sync_Manager {
 	private function sync_cases(): array {
 		$api_client = $this->get_api_client();
 		if ( ! $api_client ) {
-			return array( 
-				'processed' => 0, 
-				'failed' => 1, 
+			return array(
+				'processed' => 0,
+				'failed' => 1,
 				'errors' => array( 'API client unavailable' )
 			);
 		}
@@ -381,7 +379,7 @@ final class Sync_Manager {
 
 			for ( $page = 1; $page <= $pages; $page++ ) {
 				$cases = $api_client->get_cases_by_pagination( $page, $batch_size );
-				
+
 				if ( ! $cases ) {
 					continue;
 				}
@@ -425,7 +423,7 @@ final class Sync_Manager {
 	 */
 	private function process_single_case( array $case_data ): bool {
 		$start_time = microtime( true );
-		
+
 		try {
 			// Validate required data
 			if ( empty( $case_data['id'] ) ) {
@@ -450,7 +448,7 @@ final class Sync_Manager {
 
 			// Get existing post or determine if new
 			$post_id = $this->database->get_post_by_case_id( $api_case_id, $api_token );
-			
+
 			// Map data based on operation type
 			$mapped_data = match ( (bool) $post_id ) {
 				true  => $this->data_mapper->api_to_post_update( $case_data, $post_id ),
@@ -464,11 +462,11 @@ final class Sync_Manager {
 
 			// Insert or update post with error handling
 			$result = $this->save_post( $mapped_data, $post_id );
-			
+
 			if ( ! $result ) {
 				return false;
 			}
-			
+
 			$post_id = $result;
 
 			// Update post meta with validation
@@ -480,7 +478,7 @@ final class Sync_Manager {
 			// Handle images if enabled
 			if ( $this->should_import_images() ) {
 				$image_result = $this->image_sync->import_case_images( $post_id, $case_data );
-				
+
 				if ( ! $image_result['success'] ) {
 					$this->log_error( 'process_case_images', "Image import failed for case {$api_case_id}" );
 				}
@@ -491,9 +489,9 @@ final class Sync_Manager {
 
 			// Track performance
 			$this->track_performance( 'process_single_case', microtime( true ) - $start_time );
-			
+
 			return true;
-			
+
 		} catch ( Exception $e ) {
 			$this->log_error( 'process_case', $e->getMessage() );
 			return false;
@@ -553,7 +551,7 @@ final class Sync_Manager {
 		// Assign procedures
 		if ( ! empty( $case_data['procedureIds'] ) ) {
 			$procedure_ids = array();
-			
+
 			foreach ( $case_data['procedureIds'] as $api_procedure_id ) {
 				$term = get_terms( array(
 					'taxonomy' => Gallery_Taxonomies::PROCEDURE_TAXONOMY,
@@ -585,7 +583,7 @@ final class Sync_Manager {
 	 */
 	private function assign_categories_from_procedures( int $post_id ): void {
 		$procedures = wp_get_object_terms( $post_id, Gallery_Taxonomies::PROCEDURE_TAXONOMY );
-		
+
 		if ( empty( $procedures ) || is_wp_error( $procedures ) ) {
 			return;
 		}
@@ -595,7 +593,7 @@ final class Sync_Manager {
 
 		foreach ( $procedures as $procedure ) {
 			$procedure_slug = $procedure->slug;
-			
+
 			foreach ( $category_mapping as $category_slug => $procedure_patterns ) {
 				foreach ( $procedure_patterns as $pattern ) {
 					if ( strpos( $procedure_slug, $pattern ) !== false ) {
@@ -746,7 +744,7 @@ final class Sync_Manager {
 	 */
 	public function schedule_sync(): void {
 		$mode_manager = \BRAGBookGallery\Includes\Mode\Mode_Manager::get_instance();
-		
+
 		if ( ! $mode_manager->is_local_mode() ) {
 			return;
 		}
@@ -779,7 +777,7 @@ final class Sync_Manager {
 	 * @return void
 	 */
 	public function run_scheduled_sync(): void {
-		$this->sync_all();
+		$this->sync_all( false, 'automatic' );
 	}
 
 	/**
@@ -789,7 +787,8 @@ final class Sync_Manager {
 	 * @return bool True if sync is running.
 	 */
 	public function is_sync_running(): bool {
-		return Cache_Manager::get( 'brag_book_gallery_transient_sync_status' ) === 'running';
+		// Cache_Manager removed - sync always considered not running
+		return false; // Cache_Manager::get( 'brag_book_gallery_transient_sync_status' ) === 'running';
 	}
 
 	/**
@@ -817,8 +816,8 @@ final class Sync_Manager {
 	 * @return bool Success status.
 	 */
 	public function cancel_sync(): bool {
-		Cache_Manager::delete( 'brag_book_gallery_transient_sync_status' );
-		
+		// Cache_Manager::delete( 'brag_book_gallery_transient_sync_status' );
+
 		if ( $this->current_sync_log_id ) {
 			$this->database->update_sync_log( $this->current_sync_log_id, 'failed', 0, 0, 'Cancelled by user' );
 		}
@@ -902,7 +901,7 @@ final class Sync_Manager {
 		}
 
 		$result = $this->sync_all();
-		
+
 		if ( $result ) {
 			wp_send_json_success( 'Sync completed successfully.' );
 		} else {
@@ -941,7 +940,7 @@ final class Sync_Manager {
 		}
 
 		$result = $this->cancel_sync();
-		
+
 		if ( $result ) {
 			wp_send_json_success( 'Sync cancelled successfully.' );
 		} else {
@@ -990,7 +989,7 @@ final class Sync_Manager {
 	 */
 	public function rest_sync_all( $request ): \WP_REST_Response {
 		$result = $this->sync_all();
-		
+
 		if ( $result ) {
 			return new \WP_REST_Response( array( 'success' => true ), 200 );
 		} else {
@@ -1019,7 +1018,7 @@ final class Sync_Manager {
 	 */
 	public function rest_cancel_sync( $request ): \WP_REST_Response {
 		$result = $this->cancel_sync();
-		
+
 		if ( $result ) {
 			return new \WP_REST_Response( array( 'success' => true ), 200 );
 		} else {
@@ -1047,21 +1046,20 @@ final class Sync_Manager {
 	private function acquire_sync_lock(): bool {
 		$lock_key = 'brag_book_gallery_transient_sync_lock';
 		$lock_value = wp_generate_uuid4();
-		
-		// Try to set lock with timeout
-		if ( Cache_Manager::set( $lock_key, $lock_value, self::SYNC_LOCK_TIMEOUT ) ) {
-			$this->memory_cache['sync_lock'] = $lock_value;
-			return true;
-		}
-		
-		// Check if existing lock has expired
-		$existing = Cache_Manager::get( $lock_key );
-		if ( false === $existing ) {
-			// Lock expired, try again
-			return Cache_Manager::set( $lock_key, $lock_value, self::SYNC_LOCK_TIMEOUT );
-		}
-		
-		return false;
+
+		// Cache_Manager removed - always acquire lock
+		// if ( Cache_Manager::set( $lock_key, $lock_value, self::SYNC_LOCK_TIMEOUT ) ) {
+		$this->memory_cache['sync_lock'] = $lock_value;
+		return true;
+		// }
+
+		// Cache_Manager removed - unreachable code commented out
+		// $existing = Cache_Manager::get( $lock_key );
+		// if ( false === $existing ) {
+		//	// Lock expired, try again
+		//	return Cache_Manager::set( $lock_key, $lock_value, self::SYNC_LOCK_TIMEOUT );
+		// }
+		// return false;
 	}
 
 	/**
@@ -1070,7 +1068,7 @@ final class Sync_Manager {
 	 * @since 3.0.0
 	 */
 	private function release_sync_lock(): void {
-		Cache_Manager::delete( 'brag_book_gallery_transient_sync_lock' );
+		// Cache_Manager::delete( 'brag_book_gallery_transient_sync_lock' );
 		unset( $this->memory_cache['sync_lock'] );
 	}
 
@@ -1087,8 +1085,8 @@ final class Sync_Manager {
 			'current_step' => '',
 			'started_at' => current_time( 'mysql' ),
 		];
-		
-		Cache_Manager::set( 'brag_book_gallery_transient_sync_progress', $this->sync_progress, HOUR_IN_SECONDS );
+
+		// Cache_Manager::set( 'brag_book_gallery_transient_sync_progress', $this->sync_progress, HOUR_IN_SECONDS );
 	}
 
 	/**
@@ -1101,14 +1099,14 @@ final class Sync_Manager {
 	 */
 	private function update_sync_progress( string $step, int $current = 0, int $total = 0 ): void {
 		$this->sync_progress['current_step'] = $step;
-		
+
 		if ( $total > 0 ) {
 			$this->sync_progress['total'] = $total;
 			$this->sync_progress['processed'] = $current;
 			$this->sync_progress['percentage'] = round( ( $current / $total ) * 100, 2 );
 		}
-		
-		Cache_Manager::set( 'brag_book_gallery_transient_sync_progress', $this->sync_progress, HOUR_IN_SECONDS );
+
+		// Cache_Manager::set( 'brag_book_gallery_transient_sync_progress', $this->sync_progress, HOUR_IN_SECONDS );
 	}
 
 	/**
@@ -1120,14 +1118,14 @@ final class Sync_Manager {
 	 */
 	private function should_force_update( int $case_id ): bool {
 		// Check if case is in force update list
-		$force_list = Cache_Manager::get( 'brag_book_gallery_transient_force_update_cases' );
-		
+		$force_list = false; // Cache_Manager::get( 'brag_book_gallery_transient_force_update_cases' );
+
 		if ( is_array( $force_list ) && in_array( $case_id, $force_list, true ) ) {
 			return true;
 		}
-		
+
 		// Check if force update all is enabled
-		return (bool) Cache_Manager::get( 'brag_book_gallery_transient_force_update_all' );
+		return false; // Cache_Manager::get( 'brag_book_gallery_transient_force_update_all' );
 	}
 
 	/**
@@ -1141,7 +1139,7 @@ final class Sync_Manager {
 		if ( ! isset( $this->memory_cache['skipped_cases'] ) ) {
 			$this->memory_cache['skipped_cases'] = [];
 		}
-		
+
 		$this->memory_cache['skipped_cases'][] = [
 			'case_id' => $case_id,
 			'reason' => $reason,
@@ -1164,12 +1162,12 @@ final class Sync_Manager {
 		} else {
 			$result = wp_insert_post( $mapped_data, true );
 		}
-		
+
 		if ( is_wp_error( $result ) ) {
 			$this->log_error( 'save_post', $result->get_error_message() );
 			return false;
 		}
-		
+
 		return (int) $result;
 	}
 
@@ -1182,7 +1180,7 @@ final class Sync_Manager {
 	private function should_import_images(): bool {
 		$mode_manager = \BRAGBookGallery\Includes\Mode\Mode_Manager::get_instance();
 		$settings = $mode_manager->get_mode_settings();
-		
+
 		return (bool) ( $settings['import_images'] ?? true );
 	}
 
@@ -1194,7 +1192,7 @@ final class Sync_Manager {
 	 */
 	private function handle_sync_error( Exception $e ): void {
 		$this->log_error( 'sync_error', $e->getMessage() );
-		
+
 		if ( $this->current_sync_log_id ) {
 			$this->database->update_sync_log(
 				$this->current_sync_log_id,
@@ -1204,9 +1202,9 @@ final class Sync_Manager {
 				'Exception: ' . $e->getMessage()
 			);
 		}
-		
-		Cache_Manager::delete( 'brag_book_gallery_transient_sync_status' );
-		Cache_Manager::delete( 'brag_book_gallery_transient_sync_progress' );
+
+		// Cache_Manager::delete( 'brag_book_gallery_transient_sync_status' );
+		// Cache_Manager::delete( 'brag_book_gallery_transient_sync_progress' );
 	}
 
 	/**
@@ -1221,7 +1219,7 @@ final class Sync_Manager {
 			'time'    => current_time( 'mysql' ),
 			'message' => $message,
 		];
-		
+
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 			error_log( "[BRAGBook Sync Manager] {$context}: {$message}" );
 		}
@@ -1243,7 +1241,7 @@ final class Sync_Manager {
 				'max'     => 0,
 			];
 		}
-		
+
 		$metrics = &$this->performance_metrics[ $operation ];
 		$metrics['count']++;
 		$metrics['total'] += $duration;
@@ -1261,7 +1259,7 @@ final class Sync_Manager {
 	public function cleanup_old_sync_logs( int $days_old = 30 ): void {
 		$cutoff = date( 'Y-m-d H:i:s', strtotime( "-{$days_old} days" ) );
 		$this->database->delete_old_sync_logs( $cutoff );
-		
+
 		/**
 		 * Fires after sync logs cleanup.
 		 *
@@ -1281,9 +1279,9 @@ final class Sync_Manager {
 		if ( ! check_ajax_referer( 'brag_book_gallery_sync_progress', 'nonce', false ) ) {
 			wp_send_json_error( 'Security check failed.' );
 		}
-		
-		$progress = Cache_Manager::get( 'brag_book_gallery_transient_sync_progress' );
-		
+
+		// $progress = false; // Cache_Manager::get( 'brag_book_gallery_transient_sync_progress' );
+
 		if ( false === $progress ) {
 			$progress = [
 				'total' => 0,
@@ -1293,7 +1291,7 @@ final class Sync_Manager {
 				'percentage' => 0,
 			];
 		}
-		
+
 		wp_send_json_success( $progress );
 	}
 

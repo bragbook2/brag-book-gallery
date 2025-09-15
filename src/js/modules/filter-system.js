@@ -107,36 +107,8 @@ class FilterSystem {
 	 * Set up all event listeners for filter interactions and browser navigation
 	 */
 	setupEventListeners() {
-		// No event listeners needed for filter headers - native details/summary elements handle this
-
-		// Procedure filter link handlers - intercept clicks to load content via AJAX
-		const filterLinks = this.container?.querySelectorAll('.brag-book-gallery-nav-link');
-		filterLinks?.forEach(link => {
-			link.addEventListener('click', (e) => {
-				// Only prevent default if this is not a summary element
-				// Summary elements need their default behavior to toggle details
-				if (!e.currentTarget.closest('summary')) {
-					e.preventDefault(); // Prevent default navigation
-					this.handleFilterClick(e.currentTarget);
-				}
-			});
-		});
-
-		// Browser history navigation handler (back/forward buttons)
-		window.addEventListener('popstate', (e) => {
-			if (e.state && e.state.caseId) {
-				// Navigate to/from case detail view
-				window.loadCaseDetails(e.state.caseId, e.state.procedureId, e.state.procedureSlug);
-			} else if (e.state && e.state.category && e.state.procedure) {
-				// Restore filter state from browser history
-				this.reactivateFilter(e.state.category, e.state.procedure);
-				this.loadFilteredContent(e.state.category, e.state.procedure, e.state.procedureIds, e.state.hasNudity || false);
-			} else {
-				// Navigate back to base gallery page
-				this.clearAll();
-				window.location.reload();
-			}
-		});
+		// No event listeners needed - nav links now function as normal anchor links
+		// This allows WordPress taxonomy pages to load naturally
 	}
 
 	// Filter toggle methods removed - native details/summary elements handle this automatically

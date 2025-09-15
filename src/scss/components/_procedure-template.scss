@@ -1,0 +1,140 @@
+// -----------------------------------------------------------------------------
+// Procedure Template Styles
+// -----------------------------------------------------------------------------
+
+.brag-book-gallery-procedure-template {
+	width: 100%;
+	max-width: 100%;
+
+	.brag-book-gallery-procedure-header {
+		margin-bottom: 2rem;
+		text-align: center;
+
+		.brag-book-gallery-procedure-title {
+			font-size: 2.5rem;
+			font-weight: 700;
+			color: #333;
+			margin-bottom: 1rem;
+			line-height: 1.2;
+
+			@media (max-width: 768px) {
+				font-size: 2rem;
+			}
+		}
+
+		.brag-book-gallery-procedure-description {
+			font-size: 1.125rem;
+			color: #666;
+			max-width: 600px;
+			margin: 0 auto;
+			line-height: 1.6;
+		}
+	}
+
+	.brag-book-gallery-procedure-cases {
+		width: 100%;
+	}
+
+	.brag-book-gallery-loading {
+		padding: 2rem 0;
+
+		.brag-book-gallery-skeleton {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+			gap: 1.5rem;
+
+			.skeleton-item {
+				height: 300px;
+				background: linear-gradient(90deg, #f0f0f0 25%, transparent 37%, #f0f0f0 63%);
+				background-size: 400% 100%;
+				animation: skeleton-loading 1.5s ease-in-out infinite;
+				border-radius: 8px;
+			}
+		}
+	}
+}
+
+.brag-book-procedure-template-wrapper,
+.brag-book-procedure-page-wrapper {
+	padding: 2rem 0;
+
+	.container {
+		max-width: 1200px;
+		margin: 0 auto;
+		padding: 0 1rem;
+	}
+
+	.site-main {
+		width: 100%;
+	}
+}
+
+// Taxonomy-specific wrappers
+.brag-book-taxonomy-procedures-wrapper,
+.brag-book-archive-procedures-wrapper {
+	padding: 2rem 0;
+
+	.container {
+		max-width: 1200px;
+		margin: 0 auto;
+		padding: 0 1rem;
+	}
+
+	.site-main {
+		width: 100%;
+	}
+
+	.page-header {
+		text-align: center;
+		margin-bottom: 2rem;
+
+		.page-title {
+			font-size: 2.5rem;
+			font-weight: 700;
+			color: #333;
+			margin-bottom: 1rem;
+			line-height: 1.2;
+
+			@media (max-width: 768px) {
+				font-size: 2rem;
+			}
+		}
+
+		.taxonomy-description {
+			font-size: 1.125rem;
+			color: #666;
+			max-width: 600px;
+			margin: 0 auto;
+			line-height: 1.6;
+
+			p {
+				margin-bottom: 0;
+			}
+		}
+	}
+
+	.no-results {
+		text-align: center;
+		padding: 3rem 0;
+
+		.page-title {
+			font-size: 2rem;
+			color: #666;
+			margin-bottom: 1rem;
+		}
+
+		.page-content {
+			font-size: 1.125rem;
+			color: #888;
+		}
+	}
+}
+
+@keyframes skeleton-loading {
+	0% {
+		background-position: 200% 0;
+	}
+	100% {
+		background-position: -200% 0;
+	}
+}
