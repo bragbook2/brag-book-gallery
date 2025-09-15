@@ -27,8 +27,7 @@ declare(strict_types=1);
 namespace BRAGBookGallery\Includes\Sync;
 
 use BRAGBookGallery\Includes\PostTypes\Gallery_Post_Type;
-use BRAGBookGallery\Includes\Extend\Cache_Manager;
-use WP_Post;
+// Cache_Manager removed per user requestuse WP_Post;
 use WP_Term;
 
 // Prevent direct access
@@ -867,7 +866,7 @@ final class Data_Mapper {
 
 		// Check WordPress transient cache
 		$transient_key = 'mapper_' . $cache_key;
-		$cached = Cache_Manager::get( $transient_key );
+		// $cached = false; // Cache_Manager::get( $transient_key );
 
 		if ( false !== $cached ) {
 			$this->memory_cache[ $cache_key ] = $cached;
@@ -879,7 +878,7 @@ final class Data_Mapper {
 
 		// Store in both caches
 		$this->memory_cache[ $cache_key ] = $data;
-		Cache_Manager::set( $transient_key, $data, $ttl );
+		// Cache_Manager::set( $transient_key, $data, $ttl );
 
 		return $data;
 	}

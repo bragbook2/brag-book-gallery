@@ -273,10 +273,11 @@ class SearchAutocomplete {
 		// Trigger callback
 		this.options.onSelect({ procedure, category, name });
 
-		// Find and click the corresponding filter link (by procedure only)
+		// Find the corresponding filter link and navigate to its URL
 		const filterLink = document.querySelector(`.brag-book-gallery-nav-link[data-procedure="${procedure}"]`);
-		if (filterLink) {
-			filterLink.click();
+		if (filterLink && filterLink.href) {
+			// Navigate to the taxonomy page
+			window.location.href = filterLink.href;
 		}
 	}
 

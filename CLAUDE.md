@@ -73,7 +73,7 @@ The plugin follows a modular architecture with clear separation of concerns:
 - `Consultation`: Manages consultation form submissions
 - `Database`: Database operations and queries
 - `URL_Router`: Custom URL routing for gallery pages
-- `Slug_Helper`: URL slug generation and management
+- Gallery page slug is now managed via direct `brag_book_gallery_page_slug` option
 
 **Admin** (`includes/admin/`):
 - `Settings_Manager`: Centralized settings management
@@ -206,8 +206,12 @@ The plugin follows a modular architecture with clear separation of concerns:
 ```
 [brag_book_gallery]
 ```
-- Displays full gallery with sidebar filters
+- **Smart Auto-Detection**: Automatically detects page context and shows appropriate view:
+  - **Procedure taxonomy pages**: Shows full gallery with sidebar, filtered to current procedure
+  - **Single case pages**: Shows single case detail view
+  - **Regular pages**: Shows full gallery with sidebar filters
 - Optional: `website_property_id` parameter to override global setting
+- No parameters needed - context is automatically detected!
 
 ### Carousel
 ```
@@ -232,6 +236,14 @@ The plugin follows a modular architecture with clear separation of concerns:
 - Automatically mapped to new format
 - `title="0"` → `show_controls="false"`
 - `details="0"` → `show_pagination="false"`
+
+### Procedure View (Legacy)
+```
+[brag_book_gallery view="procedure"]
+```
+- **Legacy**: Use main `[brag_book_gallery]` shortcode instead (auto-detects context)
+- Shows procedure name, description, and filtered cases
+- Optional: `procedure_slug` parameter for explicit procedure specification
 
 ### Cases Grid
 ```

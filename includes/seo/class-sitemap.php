@@ -26,9 +26,10 @@ declare(strict_types=1);
 
 namespace BRAGBookGallery\Includes\SEO;
 
-use BRAGBookGallery\Includes\Traits\{Trait_Api, Trait_Tools};
-use BRAGBookGallery\Includes\Extend\Cache_Manager;
+use BRAGBookGallery\Includes\Core\{Trait_Tools};
+use BRAGBookGallery\Includes\Core\Trait_Api;
 
+// Cache_Manager removed per user request
 if ( ! defined( 'WPINC' ) ) {
 	die( 'Restricted Access' );
 }
@@ -302,7 +303,7 @@ final class Sitemap {
 	public function generate_sitemap(): string {
 		try {
 			$cache_key = 'brag_book_gallery_transient_sitemap_content';
-			$cached_content = Cache_Manager::get( $cache_key );
+			// $cached_content = false; // Cache_Manager::get( $cache_key );
 
 			if ( ! empty( $cached_content ) ) {
 				$this->track_performance( 'sitemap_generate', 'cache_hit' );
@@ -327,11 +328,7 @@ final class Sitemap {
 
 			// Only cache if we have valid content
 			if ( ! empty( $xml ) ) {
-				Cache_Manager::set(
-					$cache_key,
-					$xml,
-					$this->cache_duration
-				);
+				// Cache_Manager::set( $cache_key, $xml, $this->cache_duration );
 				$this->track_performance( 'sitemap_generate', 'generated' );
 			}
 
@@ -353,7 +350,7 @@ final class Sitemap {
 	 * @return string Sitemap XML content.
 	 */
 	private function get_sitemap_content(): string {
-		$cached_content = Cache_Manager::get( 'brag_book_gallery_transient_sitemap_content' );
+		// $cached_content = false; // Cache_Manager::get( 'brag_book_gallery_transient_sitemap_content' );
 
 		if ( false !== $cached_content ) {
 			return $cached_content;
@@ -447,7 +444,8 @@ final class Sitemap {
 		$xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
 
 		// Get gallery mode and slug
-		$mode = get_option( 'brag_book_gallery_mode', 'default' );
+		// Mode manager removed - default to 'default' mode
+		$mode = 'default';
 		$gallery_slug = get_option( 'brag_book_gallery_page_slug', 'gallery' );
 
 		// Handle array or string slug
@@ -499,7 +497,8 @@ final class Sitemap {
 		$xml .= 'http://www.google.com/schemas/sitemap-image/1.1/sitemap-image.xsd">' . "\n";
 
 		// Get gallery mode to determine how to handle slugs with PHP 8.2 features
-		$mode = get_option( 'brag_book_gallery_mode', 'default' );
+		// Mode manager removed - default to 'default' mode
+		$mode = 'default';
 
 		// Use match expression for mode handling (PHP 8.0+)
 		match ( $mode ) {
@@ -786,7 +785,7 @@ final class Sitemap {
 	 */
 	private function get_sitemap_last_modified(): string {
 		$cache_key = 'brag_book_gallery_transient_sitemap_last_modified';
-		$last_modified = Cache_Manager::get( $cache_key );
+		// $last_modified = false; // Cache_Manager::get( $cache_key );
 
 		if ( false !== $last_modified ) {
 			return $last_modified;
@@ -794,7 +793,7 @@ final class Sitemap {
 
 		// Get the latest modification date from API or use current time
 		$current_time = current_time( 'c' );
-		Cache_Manager::set( $cache_key, $current_time, $this->cache_duration );
+		// Cache_Manager::set( $cache_key, $current_time, $this->cache_duration );
 
 		return $current_time;
 	}
@@ -806,8 +805,8 @@ final class Sitemap {
 	 * @return void
 	 */
 	public function clear_sitemap_cache(): void {
-		Cache_Manager::delete( 'brag_book_gallery_transient_sitemap_content' );
-		Cache_Manager::delete( 'brag_book_gallery_transient_sitemap_last_modified' );
+		// Cache_Manager::delete( 'brag_book_gallery_transient_sitemap_content' );
+		// Cache_Manager::delete( 'brag_book_gallery_transient_sitemap_last_modified' );
 
 		// Clear any API cache that might affect sitemap data.
 		$this->clear_api_cache( 'sitemap' );
@@ -843,7 +842,7 @@ final class Sitemap {
 	 * @return bool True if cached, false otherwise.
 	 */
 	public function is_sitemap_cached(): bool {
-		return false !== Cache_Manager::get( 'brag_book_gallery_transient_sitemap_content' );
+		return false; // Cache removed // Cache_Manager::get( 'brag_book_gallery_transient_sitemap_content' );
 	}
 
 	/**
@@ -1194,7 +1193,7 @@ final class Sitemap {
 	 */
 	private function is_rate_limited( string $identifier, int $limit = 10, int $window = 60 ): bool {
 		$cache_key = 'brag_book_gallery_transient_rate_limit_' . $identifier;
-		$requests = Cache_Manager::get( $cache_key ) ?: 0;
+		// $requests = false; // Cache_Manager::get( $cache_key ) ?: 0;
 
 		if ( $requests >= $limit ) {
 			$this->log_warning( 'Rate limit exceeded', [
@@ -1205,7 +1204,7 @@ final class Sitemap {
 			return true;
 		}
 
-		Cache_Manager::set( $cache_key, $requests + 1, $window );
+		// Cache_Manager::set( $cache_key, $requests + 1, $window );
 		return false;
 	}
 
@@ -1230,7 +1229,7 @@ final class Sitemap {
 		}
 
 		// Check transient cache (second fastest)
-		$cached_data = Cache_Manager::get( $cache_key );
+		// $cached_data = false; // Cache_Manager::get( $cache_key );
 		if ( false !== $cached_data ) {
 			$this->memory_cache[ $cache_key ] = $cached_data;
 			$this->track_performance( 'cache_lookup', 'transient_hit' );
@@ -1243,7 +1242,7 @@ final class Sitemap {
 
 			// Store in both cache levels
 			$this->memory_cache[ $cache_key ] = $data;
-			Cache_Manager::set( $cache_key, $data, $ttl );
+			// Cache_Manager::set( $cache_key, $data, $ttl );
 
 			$duration = microtime( true ) - $start_time;
 			if ( $duration > 1.0 ) { // Log slow operations

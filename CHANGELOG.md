@@ -4,7 +4,18 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.2.8] - 2025-09-11 (Current Release)
+## [3.3.0] - 2025-09-15 (Current Release)
+
+### Fixed
+- **Procedure Taxonomy Pages**: Prevented unwanted API calls on procedure taxonomy pages
+  - Fixed `is_bragbook_page()` method in Assets class to exclude procedure taxonomy pages
+  - Added explicit check using `is_tax('procedures')` to prevent frontend assets from loading
+  - Resolves issue where sidebar and cases API endpoints were being called unnecessarily
+
+### Changed
+- **Version Numbering**: Updated to semantic versioning 3.3.0 for new feature improvements
+
+## [3.2.8] - 2025-09-11
 
 ### Added
 - **Delete All Rewrite Rules**: New functionality in Flush Rules debug tool to completely remove all rewrite rules

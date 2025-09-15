@@ -28,7 +28,6 @@ declare(strict_types=1);
 namespace BRAGBookGallery\Includes\REST;
 
 use BRAGBookGallery\Includes\Core\Setup;
-use BRAGBookGallery\Includes\Extend\Cache_Manager;
 use WP_Error;
 
 // Prevent direct access
@@ -1345,10 +1344,10 @@ class Endpoints {
 
 		if ( empty( $type ) ) {
 			// Clear all BRAG book API cache including timeout transients
-			$result = Cache_Manager::delete_pattern( 'brag_book_gallery_transient_api_*' );
+			// $result = false; // Cache_Manager::delete_pattern( 'brag_book_gallery_transient_api_*' );
 		} else {
 			// Clear specific type including timeout transients
-			$result = Cache_Manager::delete_pattern( 'brag_book_gallery_transient_api_' . $type . '_*' );
+			// $result = false; // Cache_Manager::delete_pattern( 'brag_book_gallery_transient_api_' . $type . '_*' );
 		}
 
 		// Clear object cache as well
@@ -1654,7 +1653,7 @@ class Endpoints {
 		}
 
 		// Check WordPress transient cache
-		$cached_data = Cache_Manager::get( $cache_key );
+		$cached_data = get_transient( $cache_key );
 		if ( $cached_data !== false ) {
 			// Store in memory cache for subsequent requests
 			$this->memory_cache[ $cache_key ] = $cached_data;
@@ -1682,7 +1681,7 @@ class Endpoints {
 		$this->memory_cache[ $cache_key ] = $data;
 
 		// Store in WordPress transient cache
-		Cache_Manager::set( $cache_key, $data, $duration );
+		set_transient( $cache_key, $data, $duration );
 	}
 
 	/**
@@ -1804,11 +1803,11 @@ class Endpoints {
 	 */
 	private function check_rate_limit( string $identifier, int $limit = 100, int $window = 3600 ): bool {
 		$cache_key = 'brag_book_gallery_transient_rate_limit_' . $identifier;
-		$current_requests = Cache_Manager::get( $cache_key );
+		// $current_requests = false; // Cache_Manager::get( $cache_key );
 
 		if ( $current_requests === false ) {
 			// First request in window
-			Cache_Manager::set( $cache_key, 1, $window );
+			// Cache_Manager::set( $cache_key, 1, $window );
 			return true;
 		}
 
@@ -1819,7 +1818,7 @@ class Endpoints {
 		}
 
 		// Increment counter
-		Cache_Manager::set( $cache_key, $current_requests + 1, $window );
+		// Cache_Manager::set( $cache_key, $current_requests + 1, $window );
 		return true;
 	}
 
@@ -1895,7 +1894,8 @@ class Endpoints {
 	 * @return bool Success status
 	 */
 	private function warm_sidebar_cache(): bool {
-		$mode = get_option( 'brag_book_gallery_mode', 'local' );
+		// Mode manager removed - default to 'default' mode
+		$mode = 'default';
 		$api_tokens = get_option( 'brag_book_gallery_api_token', [] );
 		$token = $api_tokens[ $mode ] ?? '';
 
@@ -1914,7 +1914,8 @@ class Endpoints {
 	 * @return bool Success status
 	 */
 	private function warm_carousel_cache(): bool {
-		$mode = get_option( 'brag_book_gallery_mode', 'local' );
+		// Mode manager removed - default to 'default' mode
+		$mode = 'default';
 		$api_tokens = get_option( 'brag_book_gallery_api_token', [] );
 		$website_property_ids = get_option( 'brag_book_gallery_website_property_id', [] );
 

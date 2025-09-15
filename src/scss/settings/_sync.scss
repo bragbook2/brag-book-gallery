@@ -1,0 +1,530 @@
+@charset "UTF-8";
+
+// -----------------------------------------------------------------------------
+// Sync Settings Styles
+// -----------------------------------------------------------------------------
+
+.brag-book-gallery-progress-container {
+	margin: 20px 0;
+}
+
+// Progress Bar Header
+.brag-book-gallery-progress-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 8px;
+	margin-top: 20px;
+
+	&--secondary {
+		margin-top: 15px;
+	}
+
+	.brag-book-gallery-progress-label {
+		font-weight: 600;
+		color: #23282d;
+		font-size: 14px;
+	}
+
+	.brag-book-gallery-progress-percentage {
+		font-weight: 600;
+		color: #0073aa;
+		font-size: 14px;
+		min-width: 40px;
+		text-align: right;
+	}
+}
+
+// Main Progress Bar (Overall)
+.brag-book-gallery-progress-bar {
+	width: 100%;
+	background-color: #f1f1f1;
+	border-radius: 12px;
+	overflow: hidden;
+	margin-bottom: 10px;
+	box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+
+	&--main {
+		height: 24px; // Full height for main progress
+	}
+
+	&--secondary {
+		height: 12px; // Half height for secondary progress
+		border-radius: 6px;
+	}
+}
+
+.brag-book-gallery-progress-fill {
+	height: 100%;
+	transition: width 0.3s ease;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+
+	// Main progress bar - blue gradient
+	&:not(.brag-book-gallery-progress-fill--secondary) {
+		background: linear-gradient(135deg, #2196f3 0%, #0073aa 100%);
+		border-radius: 12px;
+	}
+
+	// Secondary progress bar - black/dark gradient
+	&--secondary {
+		background: linear-gradient(135deg, #333 0%, #111 100%);
+		border-radius: 6px;
+	}
+}
+
+.brag-book-gallery-progress-text {
+	font-weight: 600;
+	color: #23282d;
+	margin: 10px 0;
+	font-size: 14px;
+}
+
+.brag-book-gallery-progress-details {
+	margin-top: 20px;
+	background: #f9f9f9;
+	border: 1px solid #ddd;
+	border-radius: 6px;
+	padding: 15px;
+	max-height: 300px;
+	overflow-y: auto;
+}
+
+#sync-progress-items {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.brag-book-gallery-progress-item {
+	padding: 8px 12px;
+	margin: 4px 0;
+	border-radius: 4px;
+	font-size: 13px;
+	line-height: 1.4;
+	border-left: 3px solid transparent;
+	background: rgba(255, 255, 255, 0.7);
+
+	&--info {
+		border-left-color: #0073aa;
+		color: #0073aa;
+	}
+
+	&--success {
+		border-left-color: #00a32a;
+		color: #00a32a;
+		background: rgba(0, 163, 42, 0.1);
+	}
+
+	&--error {
+		border-left-color: #d63638;
+		color: #d63638;
+		background: rgba(214, 54, 56, 0.1);
+	}
+
+	&--warning {
+		border-left-color: #dba617;
+		color: #dba617;
+		background: rgba(219, 166, 23, 0.1);
+	}
+}
+
+// Detailed progress display styles
+.detailed-progress {
+	background: rgba(255, 255, 255, 0.95) !important;
+	border: 1px solid #ddd !important;
+	border-radius: 6px !important;
+	padding: 15px !important;
+	margin: 10px 0 !important;
+
+	.procedure-progress,
+	.case-progress {
+		margin: 8px 0;
+
+		.progress-header {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			margin-bottom: 8px;
+			font-size: 13px;
+
+			strong {
+				color: #23282d;
+			}
+
+			.current-step {
+				color: #0073aa;
+				font-style: italic;
+			}
+		}
+
+		.progress-bar-container {
+			display: flex;
+			align-items: center;
+			gap: 10px;
+
+			.progress-bar {
+				flex: 1;
+				height: 16px;
+				background-color: #f1f1f1;
+				border-radius: 8px;
+				overflow: hidden;
+				box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+
+				.progress-fill {
+					height: 100%;
+					background: linear-gradient(135deg, #00a32a 0%, #008a20 100%);
+					border-radius: 8px;
+					transition: width 0.3s ease;
+				}
+			}
+
+			.progress-percent {
+				font-size: 12px;
+				font-weight: 600;
+				color: #666;
+				min-width: 40px;
+				text-align: right;
+			}
+		}
+	}
+
+	.case-progress .progress-bar .progress-fill {
+		background: linear-gradient(135deg, #2196f3 0%, #0073aa 100%);
+	}
+
+	.recent-cases {
+		margin-top: 12px;
+		padding: 8px;
+		background: rgba(33, 150, 243, 0.05);
+		border-radius: 4px;
+		border-left: 3px solid #2196f3;
+
+		.recent-cases-header {
+			font-size: 12px;
+			font-weight: 600;
+			color: #0073aa;
+			margin-bottom: 4px;
+		}
+
+		.recent-cases-list {
+			font-size: 11px;
+			color: #666;
+			font-family: monospace;
+		}
+	}
+}
+
+.brag-book-gallery-status-card {
+	background: #f9f9f9;
+	border: 1px solid #ddd;
+	border-radius: 6px;
+	padding: 15px;
+	margin: 10px 0;
+
+	p {
+		margin: 8px 0;
+
+		&:first-child {
+			margin-top: 0;
+		}
+
+		&:last-child {
+			margin-bottom: 0;
+		}
+	}
+}
+
+.brag-book-gallery-results-content {
+	background: #f9f9f9;
+	border: 1px solid #ddd;
+	border-radius: 6px;
+	padding: 20px;
+	margin-top: 15px;
+
+	h4 {
+		margin-top: 0;
+		margin-bottom: 15px;
+	}
+
+	h5 {
+		margin-top: 20px;
+		margin-bottom: 10px;
+	}
+
+	ul {
+		margin: 10px 0;
+		padding-left: 20px;
+
+		li {
+			margin: 5px 0;
+		}
+	}
+}
+
+.sync-actions {
+	margin: 15px 0;
+
+	.button {
+		margin-right: 10px;
+		margin-bottom: 5px;
+	}
+}
+
+// Delete button styling
+.delete-sync-record {
+	&:hover {
+		color: #d63638 !important;
+		border-color: #d63638 !important;
+	}
+
+	&:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+}
+
+// Status indicators for sync history
+.brag-book-gallery-status {
+	padding: 4px 8px;
+	border-radius: 4px;
+	font-size: 12px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+
+	&--success {
+		background: rgba(0, 163, 42, 0.1);
+		color: #00a32a;
+		border: 1px solid rgba(0, 163, 42, 0.3);
+	}
+
+	&--error {
+		background: rgba(214, 54, 56, 0.1);
+		color: #d63638;
+		border: 1px solid rgba(214, 54, 56, 0.3);
+	}
+
+	&--running {
+		background: rgba(0, 115, 170, 0.1);
+		color: #0073aa;
+		border: 1px solid rgba(0, 115, 170, 0.3);
+	}
+
+	&--never {
+		background: rgba(102, 102, 102, 0.1);
+		color: #666;
+		border: 1px solid rgba(102, 102, 102, 0.3);
+	}
+}
+
+// Sync source indicators
+.sync-source {
+	display: inline-flex;
+	align-items: center;
+	padding: 4px 8px;
+	border-radius: 4px;
+	font-size: 12px;
+	font-weight: 500;
+	letter-spacing: 0.025em;
+
+	&--manual {
+		background: rgba(59, 130, 246, 0.1);
+		color: #1e40af;
+		border: 1px solid rgba(59, 130, 246, 0.3);
+	}
+
+	&--automatic {
+		background: rgba(16, 185, 129, 0.1);
+		color: #065f46;
+		border: 1px solid rgba(16, 185, 129, 0.3);
+	}
+}
+
+// Custom styling for sync page (uses existing brag-book-gallery-toggle classes)
+
+// Radio Button Styles for Sync Frequency - Tailwind-inspired
+.sync-frequency-wrapper {
+	margin: 20px 0;
+	display: grid;
+	gap: 12px;
+}
+
+.sync-frequency-option {
+	position: relative;
+
+	label {
+		display: flex;
+		align-items: center;
+		font-weight: 500;
+		cursor: pointer;
+		padding: 16px 20px;
+		border: 2px solid #e2e8f0;
+		border-radius: 8px;
+		background: #ffffff;
+		transition: all 0.15s ease-in-out;
+		box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+		color: #475569;
+		font-size: 14px;
+		line-height: 1.5;
+
+		&:hover {
+			background: #f8fafc;
+			border-color: #94a3b8;
+			box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+		}
+
+		&:focus-within {
+			outline: 2px solid #3b82f6;
+			outline-offset: 2px;
+			border-color: #3b82f6;
+		}
+	}
+}
+
+.sync-frequency-radio {
+	appearance: none;
+	width: 20px;
+	height: 20px;
+	border: 2px solid #d1d5db;
+	border-radius: 50%;
+	margin-right: 12px;
+	position: relative;
+	background: #ffffff;
+	cursor: pointer;
+	transition: all 0.15s ease-in-out;
+	flex-shrink: 0;
+
+	&:checked {
+		border-color: #3b82f6;
+		background: #3b82f6;
+
+		&::after {
+			content: '';
+			position: absolute;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			width: 8px;
+			height: 8px;
+			border-radius: 50%;
+			background: #ffffff;
+		}
+	}
+
+	&:focus {
+		outline: 2px solid #3b82f6;
+		outline-offset: 2px;
+	}
+
+	&:checked + .sync-frequency-label {
+		font-weight: 600;
+		color: #1e293b;
+	}
+}
+
+.sync-frequency-option:has(.sync-frequency-radio:checked) label {
+	background: #eff6ff;
+	border-color: #3b82f6;
+	color: #1e40af;
+	box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.1), 0 2px 4px -1px rgba(59, 130, 246, 0.06);
+}
+
+.sync-frequency-label {
+	flex: 1;
+	font-weight: inherit;
+}
+
+// Custom Schedule Fields - Tailwind-inspired
+.sync-custom-schedule {
+	margin: 16px 0 0 0;
+	padding: 24px;
+	background: #f8fafc;
+	border: 2px solid #e2e8f0;
+	border-radius: 12px;
+	box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+}
+
+.sync-custom-fields {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+	gap: 20px;
+}
+
+.sync-custom-field {
+	display: flex;
+	flex-direction: column;
+
+	label {
+		font-weight: 600;
+		margin-bottom: 8px;
+		color: #374151;
+		font-size: 14px;
+		letter-spacing: 0.025em;
+	}
+
+	input {
+		padding: 12px 16px;
+		border: 2px solid #d1d5db;
+		border-radius: 8px;
+		font-size: 14px;
+		background: #ffffff;
+		transition: all 0.15s ease-in-out;
+		color: #374151;
+		box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+
+		&:focus {
+			border-color: #3b82f6;
+			box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+			outline: none;
+		}
+
+		&:hover {
+			border-color: #9ca3af;
+		}
+	}
+}
+
+// Responsive adjustments
+@media (max-width: 782px) {
+	.brag-book-gallery-progress-details {
+		max-height: 200px;
+	}
+
+	.sync-actions {
+		.button {
+			display: block;
+			width: 100%;
+			margin-right: 0;
+			margin-bottom: 10px;
+		}
+	}
+
+	.sync-toggle-label {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 10px;
+	}
+
+	.sync-toggle-switch {
+		margin-left: 0;
+	}
+
+	.sync-frequency-wrapper {
+		gap: 8px;
+	}
+
+	.sync-frequency-option label {
+		padding: 12px 16px;
+		font-size: 13px;
+	}
+
+	.sync-custom-fields {
+		grid-template-columns: 1fr;
+		gap: 16px;
+	}
+
+	.sync-custom-schedule {
+		padding: 16px;
+		margin: 12px 0 0 0;
+	}
+}
