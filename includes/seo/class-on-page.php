@@ -115,8 +115,8 @@ class On_Page {
 	 */
 	public function __construct() {
 		$this->api_handler = new Endpoints();
-		$this->seo_data    = $this->get_custom_title_and_description();
-		add_action( 'wp', [ $this, 'initialize_seo' ] );
+		//$this->seo_data    = $this->get_custom_title_and_description();
+		//add_action( 'wp', [ $this, 'initialize_seo' ] );
 	}
 
 	/**
@@ -872,7 +872,8 @@ class On_Page {
 	 * @since 3.0.0
 	 */
 	public function get_custom_title(): string {
-		return $this->seo_data['brag_book_gallery_title'] ?? '';
+		// Ensure we return a string to prevent strip_tags() deprecation warning
+		return (string) ( $this->seo_data['brag_book_gallery_title'] ?? '' );
 	}
 
 	/**

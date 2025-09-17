@@ -188,6 +188,12 @@ class Taxonomies {
 			<p class="description"><?php esc_html_e( 'Banner image displayed for this procedure', 'brag-book-gallery' ); ?></p>
 		</div>
 
+		<div class="form-field">
+			<label for="brag_book_gallery_details"><?php esc_html_e( 'Gallery Details', 'brag-book-gallery' ); ?></label>
+			<textarea name="brag_book_gallery_details" id="brag_book_gallery_details" rows="5" cols="50"></textarea>
+			<p class="description"><?php esc_html_e( 'Additional details and information about this procedure for the gallery display. Supports shortcodes.', 'brag-book-gallery' ); ?></p>
+		</div>
+
 		<style>
 		.procedure-nudity-toggle {
 			display: flex;
@@ -304,6 +310,7 @@ class Taxonomies {
 		$member_id = get_term_meta( $term->term_id, 'member_id', true );
 		$nudity = get_term_meta( $term->term_id, 'nudity', true );
 		$banner_image_id = get_term_meta( $term->term_id, 'banner_image', true );
+		$gallery_details = get_term_meta( $term->term_id, 'brag_book_gallery_details', true );
 
 		wp_nonce_field( 'save_procedure_meta', 'procedure_meta_nonce' );
 		?>
@@ -360,6 +367,16 @@ class Taxonomies {
 					<?php endif; ?>
 				</div>
 				<p class="description"><?php esc_html_e( 'Banner image displayed for this procedure', 'brag-book-gallery' ); ?></p>
+			</td>
+		</tr>
+
+		<tr class="form-field">
+			<th scope="row">
+				<label for="brag_book_gallery_details"><?php esc_html_e( 'Gallery Details', 'brag-book-gallery' ); ?></label>
+			</th>
+			<td>
+				<textarea name="brag_book_gallery_details" id="brag_book_gallery_details" rows="5" cols="50" class="large-text"><?php echo esc_textarea( $gallery_details ); ?></textarea>
+				<p class="description"><?php esc_html_e( 'Additional details and information about this procedure for the gallery display. Supports shortcodes.', 'brag-book-gallery' ); ?></p>
 			</td>
 		</tr>
 
@@ -507,6 +524,16 @@ class Taxonomies {
 				update_term_meta( $term_id, 'banner_image', $banner_image_id );
 			} else {
 				delete_term_meta( $term_id, 'banner_image' );
+			}
+		}
+
+		// Save gallery details
+		if ( isset( $_POST['brag_book_gallery_details'] ) ) {
+			$gallery_details = wp_kses_post( $_POST['brag_book_gallery_details'] );
+			if ( ! empty( $gallery_details ) ) {
+				update_term_meta( $term_id, 'brag_book_gallery_details', $gallery_details );
+			} else {
+				delete_term_meta( $term_id, 'brag_book_gallery_details' );
 			}
 		}
 	}

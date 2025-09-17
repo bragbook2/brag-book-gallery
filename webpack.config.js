@@ -7,7 +7,9 @@ const path = require('path');
 module.exports = {
 	entry: {
 		frontend: './src/js/frontend.js',
-		admin: './src/js/admin.js'
+		admin: './src/js/admin.js',
+		'sync-admin': './src/js/sync-admin.js',
+		'gutenberg-sidebar': './src/js/gutenberg-sidebar.js'
 	},
 	output: {
 		path: path.resolve(__dirname, 'assets/js'),
@@ -15,7 +17,9 @@ module.exports = {
 			// Map entry names to desired output filenames
 			const nameMap = {
 				frontend: 'brag-book-gallery.js',
-				admin: 'brag-book-gallery-admin.js'
+				admin: 'brag-book-gallery-admin.js',
+				'sync-admin': 'brag-book-gallery-sync-admin.js',
+				'gutenberg-sidebar': 'gutenberg-sidebar.js'
 			};
 			return nameMap[pathData.chunk.name] || '[name].js';
 		}
@@ -28,7 +32,10 @@ module.exports = {
 				use: {
 					loader: 'babel-loader',
 					options: {
-						presets: ['@babel/preset-env']
+						presets: [
+							'@babel/preset-env',
+							['@babel/preset-react', { pragma: 'wp.element.createElement' }]
+						]
 					}
 				}
 			}
@@ -43,6 +50,13 @@ module.exports = {
 		}
 	},
 	externals: {
-		jquery: 'jQuery'
+		jquery: 'jQuery',
+		'@wordpress/plugins': ['wp', 'plugins'],
+		'@wordpress/editor': ['wp', 'editor'],
+		'@wordpress/element': ['wp', 'element'],
+		'@wordpress/components': ['wp', 'components'],
+		'@wordpress/data': ['wp', 'data'],
+		'@wordpress/i18n': ['wp', 'i18n'],
+		'wp': 'wp'
 	}
 };

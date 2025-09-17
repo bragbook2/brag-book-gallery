@@ -342,7 +342,7 @@ final class HTML_Renderer {
 		$toggle_icon = self::render_toggle_icon();
 
 		return sprintf(
-			'<summary class="brag-book-gallery-nav-button" data-category="%s" aria-label="%s">%s%s</summary>',
+			'<summary class="brag-book-gallery-nav-button" data-category="%s" aria-label="%s">%s %s</summary>',
 			esc_attr( $category_slug ),
 			/* translators: %s: category name */
 			esc_attr( sprintf( __( '%s category filter', 'brag-book-gallery' ), $category_name ) ),
@@ -909,7 +909,7 @@ final class HTML_Renderer {
 		$photo_data = self::extract_photo_data( $photo, $config );
 		$case_data = self::extract_case_data_for_carousel( $case );
 		$slide_data = self::build_slide_data( $photo_data, $case_data, $slide_index );
-		$case_url = self::build_case_url( $case_data, $procedure_slug );
+		$case_url = get_permalink( $case['id'] );
 
 		return self::render_carousel_slide( $photo_data, $case_data, $slide_data, $case_url, $is_standalone );
 	}
@@ -1175,8 +1175,8 @@ final class HTML_Renderer {
 	private static function render_nudity_warning(): string {
 		return sprintf(
 			'<div class="brag-book-gallery-nudity-warning" data-nudity-warning="true"><div class="brag-book-gallery-nudity-warning-content"><h4 class="brag-book-gallery-nudity-warning-title">%s</h4><p class="brag-book-gallery-nudity-warning-caption">%s</p><button class="brag-book-gallery-nudity-warning-button" type="button">%s</button></div></div>',
-			esc_html__( 'WARNING: Contains Nudity', 'brag-book-gallery' ),
-			esc_html__( 'If you are offended by such material or are under 18 years of age. Please do not proceed.', 'brag-book-gallery' ),
+			esc_html__( 'Contains Nudity', 'brag-book-gallery' ),
+			esc_html__( 'Click to proceed if you wish to view', 'brag-book-gallery' ),
 			esc_html__( 'Proceed', 'brag-book-gallery' )
 		);
 	}

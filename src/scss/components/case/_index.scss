@@ -1,7 +1,7 @@
 @charset "UTF-8";
 
 // -----------------------------------------------------------------------------
-// components / case / cards
+// components / case / index
 // -----------------------------------------------------------------------------
 
 @use 'cards';
@@ -9,6 +9,10 @@
 @use 'description';
 @use 'header';
 @use 'procedures-list';
+@use 'case-navigation';
+@use 'case-description';
+@use 'case-images';
+@use 'skeleton';
 
 .brag-book-case-images-split,
 .brag-book-case-image-single {

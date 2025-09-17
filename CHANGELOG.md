@@ -4,7 +4,27 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.3.0] - 2025-09-15 (Current Release)
+## [3.3.1] - 2025-09-17 (Current Release)
+
+### Fixed
+- **Nudity Warnings on Case Cards**: Fixed nudity warnings not appearing on individual case cards for procedures with nudity flags
+  - Added missing nudity warning rendering logic to `render_wordpress_case_card()` method in Cases_Handler class
+  - Fixed inconsistent nudity detection by using WordPress taxonomy meta instead of API sidebar data
+  - Unified nudity detection approach across gallery and sidebar handlers for consistency
+- **Favorites Display**: Enhanced favorites functionality with user information display
+  - Added user email and favorites count display after content title on favorites page
+  - Updated card HTML structure to match exact design specifications
+  - Improved favorites grid rendering with proper user info integration
+
+### Enhanced
+- **Performance Improvements**: Increased default posts per page from 10 to 200 for better user experience
+  - Updated `brag_book_gallery_items_per_page` option default value across all relevant handlers
+  - Reduces need for pagination and improves gallery browsing experience
+- **Card Structure**: Updated JavaScript-generated favorite cards to match exact HTML structure
+  - Ensured consistency between server-rendered and client-rendered case cards
+  - Improved responsive design and styling consistency
+
+## [3.3.0] - 2025-09-15
 
 ### Fixed
 - **Procedure Taxonomy Pages**: Prevented unwanted API calls on procedure taxonomy pages

@@ -34,7 +34,6 @@ use BRAGBookGallery\Includes\Extend\Template_Manager;
 use BRAGBookGallery\Includes\Resources\Assets;
 use BRAGBookGallery\Includes\SEO\On_Page;
 use BRAGBookGallery\Includes\SEO\Sitemap;
-use BRAGBookGallery\Includes\Sync\Sync_Manager;
 
 // Prevent direct access.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -328,7 +327,6 @@ final class Setup {
 		// Mode Manager removed per user request
 
 		// Initialize sync components (for Local mode).
-		$this->services['sync_manager'] = new Sync_Manager();
 
 		// Initialize SEO Manager (handles SEO optimization and plugin detection).
 		$this->services['seo_manager'] = new \BRAGBookGallery\Includes\SEO\SEO_Manager();
@@ -353,6 +351,12 @@ final class Setup {
 			update_option( 'brag_book_gallery_case_url_structure_updated', true );
 		}
 
+		// Check if we need to flush rewrite rules for favorites page (one-time)
+		if ( ! get_option( 'brag_book_gallery_favorites_rewrite_fixed', false ) ) {
+			update_option( 'brag_book_gallery_flush_rewrite_rules', true );
+			update_option( 'brag_book_gallery_favorites_rewrite_fixed', true );
+		}
+
 		// Initialize template manager for procedure templates.
 		$this->services['template_manager'] = new Template_Manager();
 
@@ -364,6 +368,7 @@ final class Setup {
 		$this->services['sidebar_handler'] = new \BRAGBookGallery\Includes\Shortcodes\Sidebar_Handler();
 		$this->services['case_handler'] = new \BRAGBookGallery\Includes\Shortcodes\Case_Handler();
 		$this->services['cases_handler'] = new \BRAGBookGallery\Includes\Shortcodes\Cases_Handler();
+		$this->services['favorites_handler'] = new \BRAGBookGallery\Includes\Shortcodes\Favorites_Handler();
 
 		// Initialize carousel shortcodes
 		add_shortcode( 'brag_book_carousel', [ \BRAGBookGallery\Includes\Shortcodes\Carousel_Handler::class, 'handle' ] );
@@ -382,7 +387,8 @@ final class Setup {
 	 * @return void
 	 */
 	public function init(): void {
-
+		// Run one-time migration to fix array slug issues
+		$this->migrate_page_slug_option();
 
 		// Load plugin textdomain for translations.
 		$this->load_textdomain();
@@ -393,8 +399,14 @@ final class Setup {
 		// Initialize REST API endpoints.
 		$this->init_rest_api();
 
-		// Disable texturize for our shortcodes
-		add_filter( 'no_texturize_shortcodes', [ $this, 'disable_texturize_shortcodes' ] );
+
+		// Register tracking hooks for view analytics
+		add_action( 'brag_book_gallery_track_view', [ $this, 'handle_scheduled_view_tracking' ] );
+
+		// Note: My Favorites page creation moved to sync process only
+
+		// Check and flush rewrite rules if needed
+		$this->setup_rewrite_rules();
 
 		// Fire custom action for extensions.
 		do_action( 'brag_book_gallery_init', $this );
@@ -494,8 +506,16 @@ final class Setup {
 	 * @return void
 	 */
 	private function setup_rewrite_rules(): void {
-		// Rewrite rules are handled by the Shortcodes class.
-		// This method is kept for potential future manual flush operations.
+		// Get gallery page slug
+		$gallery_slug = get_option( 'brag_book_gallery_page_slug', 'gallery' );
+
+		// Add rewrite rule for My Favorites page: /gallery/myfavorites/
+		add_rewrite_rule(
+			'^' . preg_quote( $gallery_slug, '/' ) . '/myfavorites/?$',
+			'index.php?pagename=' . $gallery_slug . '/myfavorites',
+			'top'
+		);
+
 
 		// Flush rules if needed (check option flag).
 		$flush_rules = get_option( 'brag_book_gallery_flush_rewrite_rules', false );
@@ -930,9 +950,9 @@ final class Setup {
 		// Set default options.
 		$this->set_default_options();
 
-		// Register rewrite rules and flush immediately.
-		// Rewrite rules are handled by Rewrite_Rules_Handler class
-		Rewrite_Rules_Handler::custom_rewrite_rules();
+		// Register post types and rewrite rules, then flush immediately.
+		$post_types = new Post_Types();
+		$post_types->register_post_types();
 		flush_rewrite_rules();
 
 		// Schedule daily transient cleanup at 1 AM
@@ -1267,21 +1287,6 @@ final class Setup {
 		return $this->initialized;
 	}
 
-	/**
-	 * Disable texturize for our shortcodes
-	 *
-	 * @since 3.0.0
-	 * @param array $shortcodes Array of shortcode names to exclude from texturization.
-	 * @return array Modified shortcode list.
-	 */
-	public function disable_texturize_shortcodes( array $shortcodes ): array {
-		$shortcodes[] = 'brag_book_gallery';
-		$shortcodes[] = 'brag_book_gallery_sidebar';
-		$shortcodes[] = 'brag_book_gallery_cases';
-		$shortcodes[] = 'brag_book_gallery_case';
-		$shortcodes[] = 'brag_book_carousel';
-		return $shortcodes;
-	}
 
 	/**
 	 * Clean shortcode output to remove unwanted paragraph and break tags
@@ -1294,18 +1299,32 @@ final class Setup {
 		// Remove empty paragraph tags that WordPress adds
 		$content = preg_replace( '/<p[^>]*>\s*<\/p>/i', '', $content );
 
+		// Remove paragraph tags that only contain whitespace or break tags
+		$content = preg_replace( '/<p[^>]*>\s*(<br\s*\/?>)?\s*<\/p>/i', '', $content );
+
 		// Remove standalone <p> and </p> tags
 		$content = str_replace( array( '<p>', '</p>' ), '', $content );
 
-		// Remove line break tags
-		$content = str_replace( array( '<br>', '<br/>', '<br />' ), '', $content );
+		// Remove line break tags in various formats
+		$content = str_replace( array( '<br>', '<br/>', '<br />', '<br/>' ), '', $content );
+
+		// Remove paragraph tags with only class or other attributes but no content
+		$content = preg_replace( '/<p[^>]*class="[^"]*"[^>]*>\s*<\/p>/i', '', $content );
+
+		// Remove any paragraph tags that wrap only our shortcode content divs
+		$content = preg_replace( '/<p[^>]*>\s*(<div[^>]*class="[^"]*brag-book-gallery[^"]*"[^>]*>)/i', '$1', $content );
+		$content = preg_replace( '/(<\/div>)\s*<\/p>/i', '$1', $content );
 
 		// Remove HTML comments that WordPress may add
 		$content = preg_replace( '/<!--(.|\s)*?-->/', '', $content );
 
-		// Clean up extra whitespace and newlines
+		// Clean up multiple consecutive line breaks and whitespace
+		$content = preg_replace( '/\n\s*\n/', "\n", $content );
 		$content = preg_replace( '/\s+/', ' ', $content );
 		$content = trim( $content );
+
+		// Final pass to remove any remaining empty p tags
+		$content = preg_replace( '/<p[^>]*>\s*<\/p>/i', '', $content );
 
 		return $content;
 	}
@@ -1556,6 +1575,35 @@ final class Setup {
 	}
 
 	/**
+	 * Migrate page slug option from array to string
+	 *
+	 * Fixes installations where the page slug was mistakenly stored as an array.
+	 * This migration runs once on plugin init to ensure consistency.
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	private function migrate_page_slug_option(): void {
+		// Check if migration has already run
+		$migrated = get_option( 'brag_book_gallery_page_slug_migrated', false );
+		if ( $migrated ) {
+			return;
+		}
+
+		$current_slug = get_option( 'brag_book_gallery_page_slug', '' );
+
+		// If it's an array, convert to string
+		if ( is_array( $current_slug ) ) {
+			$string_slug = ! empty( $current_slug ) ? $current_slug[0] : 'gallery';
+			update_option( 'brag_book_gallery_page_slug', $string_slug );
+			error_log( "BRAGBook Gallery: Migrated page slug from array to string: '{$string_slug}'" );
+		}
+
+		// Mark migration as complete
+		update_option( 'brag_book_gallery_page_slug_migrated', true );
+	}
+
+	/**
 	 * Load cache helper functions
 	 *
 	 * Loads the cache helper functions that provide WP Engine compatibility
@@ -1571,4 +1619,102 @@ final class Setup {
 			require_once $helpers_file;
 		}
 	}
+
+	/**
+	 * Handle scheduled view tracking
+	 *
+	 * Processes scheduled view tracking events that were deferred to avoid
+	 * blocking page load. This method is called by WordPress cron system.
+	 *
+	 * @since 3.0.0
+	 * @param string $case_id The case ID to track
+	 * @return void
+	 */
+	public function handle_scheduled_view_tracking( string $case_id ): void {
+		if ( empty( $case_id ) ) {
+			return;
+		}
+
+		try {
+			// Get API configuration
+			$api_tokens = get_option( 'brag_book_gallery_api_token', array() );
+			$website_property_ids = get_option( 'brag_book_gallery_website_property_id', array() );
+
+			if ( empty( $api_tokens ) || empty( $website_property_ids ) ) {
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+					error_log( 'BRAGBook Gallery: API configuration missing for scheduled view tracking' );
+				}
+				return;
+			}
+
+			// Use the first configured API token and property ID
+			$api_token = is_array( $api_tokens ) ? $api_tokens[0] : $api_tokens;
+			$website_property_id = is_array( $website_property_ids ) ? $website_property_ids[0] : $website_property_ids;
+
+			// Get base API URL
+			$api_endpoint = get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' );
+
+			// Build the tracking URL
+			$tracking_url = sprintf(
+				'%s/api/plugin/tracker?apiToken=%s&websitepropertyId=%s',
+				$api_endpoint,
+				urlencode( $api_token ),
+				urlencode( $website_property_id )
+			);
+
+			// Prepare tracking data
+			$tracking_data = array(
+				'case_id' => $case_id,
+				'action'  => 'view',
+				'source'  => 'wordpress_plugin_scheduled',
+			);
+
+			// Make the API request
+			$response = wp_remote_post( $tracking_url, array(
+				'body'    => wp_json_encode( $tracking_data ),
+				'headers' => array(
+					'Content-Type' => 'application/json',
+				),
+				'timeout' => 30,
+			) );
+
+			// Check for errors
+			if ( is_wp_error( $response ) ) {
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+					error_log( 'BRAGBook Gallery: Scheduled view tracking API error - ' . $response->get_error_message() );
+				}
+				return;
+			}
+
+			// Check response code
+			$response_code = wp_remote_retrieve_response_code( $response );
+			if ( $response_code < 200 || $response_code >= 300 ) {
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+					error_log( "BRAGBook Gallery: Scheduled view tracking API returned status {$response_code}" );
+				}
+				return;
+			}
+
+			// Parse response
+			$response_body = wp_remote_retrieve_body( $response );
+			$response_data = json_decode( $response_body, true );
+
+			// Log success or failure
+			if ( isset( $response_data['success'] ) && $response_data['success'] ) {
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+					error_log( "BRAGBook Gallery: Successfully tracked scheduled view for case {$case_id}" );
+				}
+			} else {
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+					error_log( "BRAGBook Gallery: Scheduled view tracking failed for case {$case_id} - " . wp_json_encode( $response_data ) );
+				}
+			}
+
+		} catch ( \Exception $e ) {
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'BRAGBook Gallery: Scheduled view tracking exception - ' . $e->getMessage() );
+			}
+		}
+	}
+
 }

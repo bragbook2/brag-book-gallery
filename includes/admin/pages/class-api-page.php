@@ -1034,7 +1034,9 @@ class API_Page extends Settings_Base {
 			// Update options
 			update_option( 'brag_book_gallery_api_token', $api_tokens );
 			update_option( 'brag_book_gallery_website_property_id', $property_ids );
-			update_option( 'brag_book_gallery_page_slug', $page_slugs );
+			// Ensure we store the first slug as a string, not an array
+			$first_slug = is_array( $page_slugs ) && ! empty( $page_slugs ) ? $page_slugs[0] : '';
+			update_option( 'brag_book_gallery_page_slug', $first_slug );
 			update_option( 'brag_book_gallery_seo_page_title', $seo_titles );
 			update_option( 'brag_book_gallery_seo_page_description', $seo_descs );
 
@@ -1235,12 +1237,12 @@ class API_Page extends Settings_Base {
 				error_log( "BRAGBook Gallery: Could not update gallery page slug option to '$slug'" );
 
 				// Fallback: update option directly
-				$page_slugs = get_option( 'brag_book_gallery_page_slug', array() );
-				if ( ! is_array( $page_slugs ) ) {
-					$page_slugs = array();
+				// Store as a single string (first page takes precedence)
+				$existing_slug = get_option( 'brag_book_gallery_page_slug', '' );
+				if ( empty( $existing_slug ) || is_array( $existing_slug ) ) {
+					// Only update if no slug is set yet, or if it's mistakenly an array
+					update_option( 'brag_book_gallery_page_slug', $slug );
 				}
-				$page_slugs[] = $slug;
-				update_option( 'brag_book_gallery_page_slug', $page_slugs );
 			}
 
 			// Schedule rewrite rules flush instead of doing it immediately

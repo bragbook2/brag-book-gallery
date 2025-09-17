@@ -151,6 +151,12 @@ class Tabs {
 				'visible' => true,
 				'badge' => ! $this->plugin_state['has_api'] ? '!' : '',
 			),
+			'sync' => array(
+				'title' => __( 'Sync', 'brag-book-gallery' ),
+				'url' => admin_url( 'admin.php?page=brag-book-gallery-sync' ),
+				'icon' => '',
+				'visible' => true,
+			),
 			'general' => array(
 				'title' => __( 'General', 'brag-book-gallery' ),
 				'url' => admin_url( 'admin.php?page=brag-book-gallery-general' ),

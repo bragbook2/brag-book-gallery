@@ -1,9 +1,9 @@
 <?php
 /**
- * Procedure Sync Class
+ * Data Sync Class
  *
- * Handles synchronization of procedures from the BRAGBook API to WordPress taxonomies.
- * Creates parent and child procedure relationships and logs all operations.
+ * Handles synchronization of data from the BRAGBook API to WordPress.
+ * Manages procedures, cases, and their relationships with full logging.
  *
  * @package    BRAGBookGallery
  * @subpackage Includes\Sync
@@ -28,13 +28,14 @@ if ( ! defined( 'WPINC' ) ) {
 }
 
 /**
- * Procedure Sync Class
+ * Data Sync Class
  *
- * Manages the synchronization of procedures from the BRAGBook API.
+ * Manages the synchronization of data from the BRAGBook API.
+ * Handles procedures, cases, and their relationships.
  *
  * @since 3.0.0
  */
-class Procedure_Sync {
+class Data_Sync {
 
 	use Trait_Api;
 
@@ -60,7 +61,7 @@ class Procedure_Sync {
 	 * @since 3.0.0
 	 */
 	public function __construct() {
-		error_log( 'BRAG book Gallery Sync: Procedure_Sync constructor started' );
+		error_log( 'BRAG book Gallery Sync: Data_Sync constructor started' );
 
 		try {
 			global $wpdb;
@@ -75,7 +76,7 @@ class Procedure_Sync {
 			error_log( 'BRAG book Gallery Sync: About to create HIPAA-compliant sync table' );
 			$this->maybe_create_sync_table();
 			error_log( 'BRAG book Gallery Sync: HIPAA-compliant sync table ready' );
-			error_log( 'BRAG book Gallery Sync: Procedure_Sync constructor completed successfully' );
+			error_log( 'BRAG book Gallery Sync: Data_Sync constructor completed successfully' );
 		} catch ( Exception $e ) {
 			error_log( 'BRAG book Gallery Sync: Constructor failed with exception: ' . $e->getMessage() );
 			error_log( 'BRAG book Gallery Sync: Exception trace: ' . $e->getTraceAsString() );
@@ -196,6 +197,9 @@ class Procedure_Sync {
 				}
 			}
 
+			// Ensure My Favorites page exists after successful sync
+			$this->ensure_favorites_page_exists();
+
 			error_log( 'BRAG book Gallery Sync: ===== SYNC COMPLETE =====' );
 
 			$this->log_sync_complete( $total_result );
@@ -228,6 +232,9 @@ class Procedure_Sync {
 	 */
 	private function sync_procedures_stage1(): array {
 		try {
+			// Ensure taxonomy is available before sync
+			$this->ensure_taxonomy_registered();
+
 			error_log( 'BRAG book Gallery Sync: Step 1 - Connecting to BRAGBook API...' );
 			$api_data = $this->fetch_api_data();
 			error_log( 'BRAG book Gallery Sync: ✓ Successfully connected to API' );
@@ -375,10 +382,15 @@ class Procedure_Sync {
 		$request_time = round( ( microtime( true ) - $start_time ) * 1000, 2 );
 
 		if ( is_wp_error( $response ) ) {
-			error_log( 'BRAG book Gallery Sync: ✗ API request failed after ' . $request_time . 'ms: ' . $response->get_error_message() );
+			$error_message = $response->get_error_message();
+			$error_code = $response->get_error_code();
+			error_log( "BRAG book Gallery Sync: ✗ API request failed after {$request_time}ms (code: {$error_code}): {$error_message}" );
+			error_log( 'BRAG book Gallery Sync: Failed request URL: ' . $full_url );
+			error_log( 'BRAG book Gallery Sync: Failed request body: ' . wp_json_encode( $request_body ) );
 			throw new Exception( sprintf(
-				__( 'API request failed: %s', 'brag-book-gallery' ),
-				$response->get_error_message()
+				__( 'API request failed [%s]: %s', 'brag-book-gallery' ),
+				$error_code,
+				$error_message
 			) );
 		}
 
@@ -388,6 +400,13 @@ class Procedure_Sync {
 		error_log( 'BRAG book Gallery Sync: ✓ API responded in ' . $request_time . 'ms with status: ' . $response_code );
 		error_log( 'BRAG book Gallery Sync: Response size: ' . strlen( $response_body ) . ' bytes' );
 		error_log( 'BRAG book Gallery Sync: Response preview: ' . substr( $response_body, 0, 150 ) . '...' );
+
+		// Check for HTML error pages (common cause of JSON parse errors)
+		if ( stripos( $response_body, '<html' ) !== false || stripos( $response_body, '<!DOCTYPE' ) !== false ) {
+			error_log( 'BRAG book Gallery Sync: WARNING - Response appears to be HTML instead of JSON' );
+			error_log( 'BRAG book Gallery Sync: Content-Type header: ' . wp_remote_retrieve_header( $response, 'content-type' ) );
+			error_log( 'BRAG book Gallery Sync: Full HTML response: ' . $response_body );
+		}
 
 		if ( $response_code !== 200 ) {
 			error_log( 'BRAG book Gallery Sync: API returned non-200 status: ' . $response_code );
@@ -401,7 +420,14 @@ class Procedure_Sync {
 
 		if ( json_last_error() !== JSON_ERROR_NONE ) {
 			error_log( 'BRAG book Gallery Sync: JSON decode error: ' . json_last_error_msg() );
-			throw new Exception( __( 'Invalid JSON response from API', 'brag-book-gallery' ) );
+			error_log( 'BRAG book Gallery Sync: Response body (first 500 chars): ' . substr( $response_body, 0, 500 ) );
+			error_log( 'BRAG book Gallery Sync: Response body length: ' . strlen( $response_body ) );
+			error_log( 'BRAG book Gallery Sync: Response content type: ' . wp_remote_retrieve_header( $response, 'content-type' ) );
+			throw new Exception( sprintf(
+				__( 'Invalid JSON response from API: %s. Response preview: %s', 'brag-book-gallery' ),
+				json_last_error_msg(),
+				substr( $response_body, 0, 100 )
+			) );
 		}
 
 		error_log( 'BRAG book Gallery Sync: API response data keys: ' . wp_json_encode( array_keys( $data ) ) );
@@ -474,7 +500,10 @@ class Procedure_Sync {
 	private function create_or_update_procedure( array $data, ?int $parent_id = null ): array {
 		$slug = $data['slugName'] ?? sanitize_title( $data['name'] );
 		$name = $data['name'];
-		$description = $data['description'] ?? '';
+		$original_description = $data['description'] ?? '';
+
+		// Set term description to shortcode for procedure view
+		$term_description = '[brag_book_gallery view="procedure"]';
 
 		// Check if term already exists
 		$existing_term = get_term_by( 'slug', $slug, Taxonomies::TAXONOMY_PROCEDURES );
@@ -484,7 +513,7 @@ class Procedure_Sync {
 			$term_id = $existing_term->term_id;
 			$updated = wp_update_term( $term_id, Taxonomies::TAXONOMY_PROCEDURES, [
 				'name'        => $name,
-				'description' => $description,
+				'description' => $term_description,
 				'parent'      => $parent_id ?? 0,
 			] );
 
@@ -500,7 +529,7 @@ class Procedure_Sync {
 		} else {
 			// Create new term
 			$inserted = wp_insert_term( $name, Taxonomies::TAXONOMY_PROCEDURES, [
-				'description' => $description,
+				'description' => $term_description,
 				'slug'        => $slug,
 				'parent'      => $parent_id ?? 0,
 			] );
@@ -555,6 +584,16 @@ class Procedure_Sync {
 		// Update nudity flag
 		$nudity = isset( $data['nudity'] ) && $data['nudity'] ? 'true' : 'false';
 		update_term_meta( $term_id, 'nudity', $nudity );
+
+		// Update gallery details from API description
+		if ( isset( $data['description'] ) ) {
+			$gallery_details = wp_kses_post( $data['description'] );
+			if ( ! empty( $gallery_details ) ) {
+				update_term_meta( $term_id, 'brag_book_gallery_details', $gallery_details );
+			} else {
+				delete_term_meta( $term_id, 'brag_book_gallery_details' );
+			}
+		}
 
 		// HIPAA COMPLIANCE: Do NOT store full API data as it may contain PHI
 		// Only store essential non-PHI operational data
@@ -673,6 +712,15 @@ class Procedure_Sync {
 	private function log_sync_complete( array $result ): void {
 		global $wpdb;
 
+		// Get the completed sync activity log that was saved during cleanup
+		$activity_log = get_option( 'brag_book_gallery_completed_sync_log', [] );
+
+		// Enhance result with activity log for the report
+		$enhanced_result = $result;
+		if ( ! empty( $activity_log ) ) {
+			$enhanced_result['activity_log'] = $activity_log;
+		}
+
 		$wpdb->insert(
 			$this->log_table,
 			[
@@ -683,7 +731,7 @@ class Procedure_Sync {
 				'items_created'   => $result['created'],
 				'items_updated'   => $result['updated'],
 				'status'          => $result['success'] ? 'success' : 'error',
-				'details'         => wp_json_encode( $result ),
+				'details'         => wp_json_encode( $enhanced_result ),
 				'created_at'      => current_time( 'mysql' ),
 			],
 			[
@@ -698,6 +746,9 @@ class Procedure_Sync {
 				'%s', // created_at
 			]
 		);
+
+		// Clean up the temporary activity log after saving to history
+		delete_option( 'brag_book_gallery_completed_sync_log' );
 	}
 
 	/**
@@ -880,6 +931,8 @@ class Procedure_Sync {
 			$warnings = []; // Track warnings that don't indicate failure
 			$total_processed = 0;
 			$case_processing_log = []; // Track detailed progress for UI
+			$unique_cases_processed = []; // Track unique case IDs to prevent double counting
+			$duplicate_cases_found = []; // Track duplicate cases for logging
 
 			// Get all procedures from sidebar data (including their IDs)
 			$procedures = $this->extract_procedures_from_sidebar( $sidebar_data );
@@ -887,11 +940,15 @@ class Procedure_Sync {
 			error_log( 'BRAG book Gallery Sync: Procedure details: ' . wp_json_encode( $procedures ) );
 
 			// Calculate total expected cases for accurate progress tracking
-			$total_expected_cases = 0;
+			// Note: API may return more cases than sidebar indicates, so this is a baseline
+			$baseline_expected_cases = 0;
 			foreach ( $procedures as $procedure ) {
-				$total_expected_cases += $procedure['caseCount'];
+				$baseline_expected_cases += $procedure['caseCount'];
 			}
-			error_log( 'BRAG book Gallery Sync: Total expected cases across all procedures: ' . $total_expected_cases );
+			error_log( 'BRAG book Gallery Sync: Baseline expected cases from sidebar: ' . $baseline_expected_cases );
+
+			// Use dynamic case counting for more accurate progress
+			$total_expected_cases = $baseline_expected_cases; // Will be updated as we discover actual case counts
 
 			// Memory-based safety only - no artificial case limits
 			error_log( "BRAG book Gallery Sync: Processing all {$total_expected_cases} cases from API (no artificial limits)" );
@@ -909,9 +966,9 @@ class Procedure_Sync {
 			// Track recent case creations for display
 			$recent_cases = [];
 
-			// Calculate better progress tracking
-			$procedure_start_percentage = 35; // Start after procedure sync (35%)
-			$case_sync_percentage_range = 65; // Cases take 65% of progress (35% to 100%)
+			// Calculate better progress tracking - start case sync from 0%
+			$case_sync_start_percentage = 0; // Start case sync from 0%
+			$case_sync_percentage_range = 100; // Cases take full progress (0% to 100%)
 
 			// Process each procedure, then each individual procedure ID
 			foreach ( $procedures as $procedure_index => $procedure ) {
@@ -919,7 +976,10 @@ class Procedure_Sync {
 				$procedure_ids = $procedure['ids'] ?? [];
 				$case_count = $procedure['caseCount'] ?? 0;
 
+				error_log( "BRAG book Gallery Sync: Extracted data for '{$procedure_name}' - IDs: " . wp_json_encode( $procedure_ids ) . ", case_count: {$case_count}" );
+
 				try {
+					error_log( "BRAG book Gallery Sync: Entering try block for procedure '{$procedure_name}'" );
 					// Monitor memory and time at procedure level
 					$procedure_start_time = microtime( true );
 					$current_memory = memory_get_usage( true );
@@ -932,7 +992,7 @@ class Procedure_Sync {
 
 					// Calculate overall progress based on cases processed across all procedures
 					$cases_processed_so_far = $total_processed;
-					$overall_percentage = $procedure_start_percentage + ( ( $cases_processed_so_far / $total_expected_cases ) * $case_sync_percentage_range );
+					$overall_percentage = $case_sync_start_percentage + ( ( $cases_processed_so_far / max( $total_expected_cases, 1 ) ) * $case_sync_percentage_range );
 					$overall_percentage = min( $overall_percentage, 99 ); // Cap at 99% until complete
 
 					// Calculate procedure progress (0% at start)
@@ -969,7 +1029,17 @@ class Procedure_Sync {
 					// Track cases processed for this procedure
 					$procedure_cases_processed = 0;
 
+					// Debug: Check if we have procedure IDs to process
+					error_log( "BRAG book Gallery Sync: About to process procedure IDs for '{$procedure_name}': " . wp_json_encode( $procedure_ids ) );
+					error_log( "BRAG book Gallery Sync: Number of procedure IDs: " . count( $procedure_ids ) );
+
+					if ( empty( $procedure_ids ) ) {
+						error_log( "BRAG book Gallery Sync: ✗ No procedure IDs found for '{$procedure_name}' - skipping" );
+						continue; // Skip to next procedure
+					}
+
 					// Process each individual procedure ID separately
+					error_log( "BRAG book Gallery Sync: Starting foreach loop for procedure IDs..." );
 					foreach ( $procedure_ids as $id_index => $procedure_id ) {
 						try {
 							$procedure_id_start = microtime( true );
@@ -1003,21 +1073,26 @@ class Procedure_Sync {
 								error_log( 'BRAG book Gallery Sync: ✓ Database connection restored' );
 							}
 
-							// Get cases for this specific procedure ID
-							error_log( "BRAG book Gallery Sync: Fetching case IDs for procedure ID {$procedure_id}..." );
-							$procedure_id_case_ids = $this->fetch_all_case_ids_for_single_procedure( $procedure_id );
-							$fetched_cases = count( $procedure_id_case_ids );
-							error_log( "BRAG book Gallery Sync: ✓ Procedure ID {$procedure_id} has {$fetched_cases} cases" );
-							$case_processing_log[] = "Found {$fetched_cases} cases for procedure ID {$procedure_id}";
+							// Stream process cases to avoid loading all IDs into memory at once
+							error_log( "BRAG book Gallery Sync: Starting streaming case processing for procedure ID {$procedure_id}..." );
 
-							if ( $fetched_cases <= 0 ) {
-								error_log( "BRAG book Gallery Sync: Skipping procedure ID {$procedure_id} - no cases found" );
-								continue;
+							// Limit log array size to prevent memory bloat
+							if ( count( $case_processing_log ) > 50 ) {
+								$case_processing_log = array_slice( $case_processing_log, -25 ); // Keep only last 25 entries
 							}
 
-							// Process cases in batches of 5 for better performance
-							$case_batches = array_chunk( $procedure_id_case_ids, 5, true );
-							foreach ( $case_batches as $batch_index => $case_batch ) {
+							// Stream process cases in paginated batches to reduce memory usage
+							// Note: API typically returns ~10 cases per page, adjust batch size to match
+							$batch_size = 10;
+							$page = 1;
+							$procedure_cases_processed = 0;
+							$processed_case_ids = []; // Track processed cases to detect duplicates
+							$empty_page_count = 0; // Track consecutive empty pages
+							$max_pages_per_procedure = 100; // Safety limit to prevent infinite loops
+							$logged_cases_for_procedure = []; // Track which cases we've already logged progress for
+
+							error_log( "BRAG book Gallery Sync: Starting while loop for procedure ID {$procedure_id}, page {$page}, max pages: {$max_pages_per_procedure}" );
+							while ( $page <= $max_pages_per_procedure ) {
 								// Check for stop flag before processing batch
 								if ( get_option( 'brag_book_gallery_sync_stop_flag', false ) ) {
 									error_log( 'BRAG book Gallery Sync: Stop flag detected, terminating sync process' );
@@ -1026,46 +1101,117 @@ class Procedure_Sync {
 									break 3; // Break out of all loops
 								}
 
-								error_log( "BRAG book Gallery Sync: Processing batch " . ( $batch_index + 1 ) . "/" . count( $case_batches ) . " for procedure ID {$procedure_id} (" . count( $case_batch ) . " cases)" );
-
+								// Fetch a page of case IDs for this procedure
 								try {
+									$fetch_start_time = microtime( true );
+									error_log( "BRAG book Gallery Sync: About to fetch case IDs for procedure ID {$procedure_id}, page {$page}, batch_size {$batch_size}" );
+									$case_batch = $this->fetch_case_ids_paginated( $procedure_id, $page, $batch_size );
+									$fetch_end_time = microtime( true );
+									$fetch_duration = round( ( $fetch_end_time - $fetch_start_time ), 2 );
+									error_log( "BRAG book Gallery Sync: Fetch completed for procedure ID {$procedure_id}, page {$page} - got " . count( $case_batch ) . " case IDs in {$fetch_duration}s" );
+									if ( empty( $case_batch ) ) {
+										$empty_page_count++;
+										error_log( "BRAG book Gallery Sync: Empty page {$page} for procedure ID {$procedure_id} (empty count: {$empty_page_count})" );
+
+										// Break after 2 consecutive empty pages
+										if ( $empty_page_count >= 2 ) {
+											error_log( "BRAG book Gallery Sync: Found {$empty_page_count} consecutive empty pages, ending procedure {$procedure_id}" );
+											break;
+										}
+
+										$page++;
+										continue;
+									}
+
+									// Reset empty page counter when we get data
+									$empty_page_count = 0;
+
+									// Check for duplicate case IDs (indicates we're in a loop)
+									$new_case_ids = array_diff( $case_batch, $processed_case_ids );
+									if ( empty( $new_case_ids ) ) {
+										error_log( "BRAG book Gallery Sync: All cases in page {$page} are duplicates for procedure ID {$procedure_id}, ending procedure" );
+										break;
+									}
+
+									// Track processed case IDs
+									$processed_case_ids = array_merge( $processed_case_ids, $case_batch );
+
+									$batch_case_count = count( $case_batch );
+									$batch_start_time = microtime( true );
+									error_log( "BRAG book Gallery Sync: *** Processing BATCH {$page} for procedure '{$procedure_name}' ({$batch_case_count} cases) ***" );
+
+									// Process this batch of cases
 									$batch_results = $this->process_case_batch( $case_batch, $procedure_name, $procedure_id );
 
+									$batch_end_time = microtime( true );
+									$batch_duration = round( ( $batch_end_time - $batch_start_time ), 2 );
+									error_log( "BRAG book Gallery Sync: *** COMPLETED BATCH {$page} for procedure '{$procedure_name}' in {$batch_duration}s ***" );
+
 									// Process batch results and update counters
+									$batch_created = 0;
+									$batch_updated = 0;
 									foreach ( $batch_results as $case_result ) {
 										$case_id = $case_result['case_id'];
 
+										// Extract original case ID for unique counting
+										$original_case_id = $case_result['original_case_id'] ?? $case_id;
+
+										// Check if this is a duplicate case ID
+										if ( in_array( $original_case_id, $unique_cases_processed, true ) ) {
+											$duplicate_cases_found[] = $original_case_id;
+											error_log( "BRAG book Gallery Sync: ⚠ Duplicate case found: {$original_case_id} (appears in multiple procedures)" );
+											continue; // Skip counting this duplicate
+										}
+
 										if ( isset( $case_result['skipped'] ) && $case_result['skipped'] ) {
 											error_log( "BRAG book Gallery Sync: ✓ Skipped case {$case_id}: " . ( $case_result['reason'] ?? 'Unknown reason' ) );
-											$case_processing_log[] = "↳ Skipped case {$case_id} from procedure ID {$procedure_id}";
 										} elseif ( $case_result['created'] ) {
 											$created_cases++;
-											error_log( "BRAG book Gallery Sync: ✓ Created case {$case_id} (post ID: {$case_result['post_id']})" );
-											$case_processing_log[] = "✓ Created case {$case_id} from procedure ID {$procedure_id}";
+											$batch_created++;
+											$unique_cases_processed[] = $original_case_id;
+											error_log( "BRAG book Gallery Sync: ✓ Created case {$case_id} (post ID: {$case_result['post_id']}) - Original ID: {$original_case_id}" );
 										} elseif ( $case_result['updated'] ) {
 											$updated_cases++;
-											error_log( "BRAG book Gallery Sync: ✓ Updated case {$case_id} (post ID: {$case_result['post_id']})" );
+											$batch_updated++;
+											$unique_cases_processed[] = $original_case_id;
+											error_log( "BRAG book Gallery Sync: ✓ Updated case {$case_id} (post ID: {$case_result['post_id']}) - Original ID: {$original_case_id}" );
 											$case_processing_log[] = "✓ Updated case {$case_id} from procedure ID {$procedure_id}";
 										}
 
 										$total_processed++;
 										$procedure_cases_processed++;
 
-										// Update progress for this case
+										// Update progress for this case with dynamic calculation
 										$cases_processed_so_far = $total_processed;
-										$overall_percentage = ( $cases_processed_so_far / $total_expected_cases ) * 100;
-										$procedure_case_progress = ( $procedure_cases_processed / $case_count ) * 100;
+
+										// Dynamic progress calculation: if we exceed expected cases, update the denominator
+										if ( $total_processed > $total_expected_cases ) {
+											$total_expected_cases = $total_processed + round( $total_processed * 0.1 ); // Add 10% buffer
+										}
+
+										// Cap overall percentage at 100%
+										$overall_percentage = min( 100, ( $cases_processed_so_far / max( $total_expected_cases, $total_processed ) ) * 100 );
+
+										// Use actual processed count instead of sidebar case count for procedure progress
+										$actual_case_count = max( $case_count, $procedure_cases_processed );
+										$procedure_case_progress = min( 100, ( $procedure_cases_processed / $actual_case_count ) * 100 );
 										$procedures_completed = $procedure_index;
 										$procedure_overall_progress = ( $procedures_completed / count( $procedures ) ) * 100;
 
-										// Add to recent cases list (keep last 5)
-										$recent_cases[] = "Case {$case_id} from {$procedure_name}";
-										if ( count( $recent_cases ) > 5 ) {
-											array_shift( $recent_cases );
-										}
+										// Send progress update frequently to show incremental progress (prevent duplicate logging)
+										if ( ! in_array( $case_id, $logged_cases_for_procedure, true ) ) {
+											$logged_cases_for_procedure[] = $case_id; // Mark this case as logged
 
-										// Send progress update every few cases
-										if ( $total_processed % 3 === 0 ) {
+											// Add to recent cases list (keep last 5) with proper counting format
+											$case_position = $procedure_cases_processed; // Current position in this procedure
+											$total_for_procedure = $actual_case_count; // Total cases for this procedure
+											$case_display = "[CREATE] {$case_position}/{$total_for_procedure} {$procedure_name} ({$procedure_id}) - Case Id: {$case_id}";
+											$recent_cases[] = $case_display;
+											if ( count( $recent_cases ) > 5 ) {
+												array_shift( $recent_cases );
+											}
+											error_log( "BRAG book Gallery Sync: Added to recent_cases: {$case_display}" );
+
 											$this->update_detailed_progress( [
 												'stage' => 'cases',
 												'overall_percentage' => round( $overall_percentage, 1 ),
@@ -1074,13 +1220,46 @@ class Procedure_Sync {
 												'procedure_total' => count( $procedures ),
 												'procedure_percentage' => round( $procedure_overall_progress, 1 ),
 												'case_current' => $procedure_cases_processed,
-												'case_total' => $case_count,
+												'case_total' => $actual_case_count,
 												'case_percentage' => round( $procedure_case_progress, 1 ),
-												'current_step' => "Batch processed {$case_id} (" . $procedure_cases_processed . " of {$case_count} in {$procedure_name})",
+												'current_step' => "[CREATE] {$procedure_cases_processed}/{$actual_case_count} {$procedure_name} ({$procedure_id}) - Case Id: {$case_id}",
 												'recent_cases' => $recent_cases,
 											] );
 										}
 									}
+
+									// Log batch summary
+									error_log( "BRAG book Gallery Sync: === BATCH {$page} SUMMARY: {$batch_case_count} cases processed ({$batch_created} created, {$batch_updated} updated) ===" );
+									error_log( "BRAG book Gallery Sync: Procedure '{$procedure_name}' progress: {$procedure_cases_processed} cases total" );
+
+									// Force progress update after each batch (ensure frontend sees progress)
+									$cases_processed_so_far = $total_processed;
+									$overall_percentage = min( 100, ( $cases_processed_so_far / max( $total_expected_cases, 1 ) ) * 100 );
+									$actual_case_count = max( $case_count, $procedure_cases_processed );
+									$procedure_case_progress = min( 100, ( $procedure_cases_processed / $actual_case_count ) * 100 );
+									$procedures_completed = $procedure_index;
+									$procedure_overall_progress = ( $procedures_completed / count( $procedures ) ) * 100;
+
+									// Ensure recent_cases has current information for Recent Activity display
+									if ( empty( $recent_cases ) ) {
+										$recent_cases[] = "Processing {$procedure_name} - {$procedure_cases_processed} of {$actual_case_count} cases completed";
+									}
+
+									error_log( "BRAG book Gallery Sync: Forcing progress update - Overall: {$overall_percentage}%, Procedure: {$procedure_cases_processed}/{$actual_case_count}" );
+									error_log( "BRAG book Gallery Sync: Recent cases for display: " . wp_json_encode( $recent_cases ) );
+									$this->update_detailed_progress( [
+										'stage' => 'cases',
+										'overall_percentage' => round( $overall_percentage, 1 ),
+										'current_procedure' => $procedure_name,
+										'procedure_current' => $procedure_index + 1,
+										'procedure_total' => count( $procedures ),
+										'procedure_percentage' => round( $procedure_overall_progress, 1 ),
+										'case_current' => $procedure_cases_processed,
+										'case_total' => $actual_case_count,
+										'case_percentage' => round( $procedure_case_progress, 1 ),
+										'current_step' => "Batch completed: {$procedure_cases_processed} of {$actual_case_count} cases in {$procedure_name} (procedure ID: {$procedure_id})",
+										'recent_cases' => $recent_cases, // Use actual recent cases, not just batch info
+									] );
 
 								} catch ( Exception $e ) {
 									$error_msg = "Failed to process batch for procedure ID {$procedure_id}: " . $e->getMessage();
@@ -1100,16 +1279,28 @@ class Procedure_Sync {
 								}
 
 								// Clear WP object cache periodically
-								if ( $batch_index % 2 === 0 ) {
+								if ( $page % 2 === 0 ) {
 									wp_cache_flush();
 								}
 
-								// Small delay between batches to prevent API rate limiting
-								usleep( 200000 ); // 0.2 second
+								// Memory cleanup after batch processing
+								unset( $batch_results );
+								if ( function_exists( 'gc_collect_cycles' ) ) {
+									gc_collect_cycles();
+								}
+
+								// Minimal delay for better performance
+								usleep( 10000 ); // 0.01 second (much faster)
+
+								// Move to next page
+								$page++;
 							}
 
-							error_log( "BRAG book Gallery Sync: Completed procedure ID {$procedure_id} - processed {$fetched_cases} cases" );
-							$case_processing_log[] = "Completed procedure ID {$procedure_id} - processed {$fetched_cases} cases";
+							// Log procedure completion
+							error_log( "BRAG book Gallery Sync: Completed procedure '{$procedure_name}' with {$procedure_cases_processed} cases processed" );
+
+							error_log( "BRAG book Gallery Sync: Completed procedure ID {$procedure_id} - processed {$procedure_cases_processed} cases" );
+							$case_processing_log[] = "Completed procedure ID {$procedure_id} - processed {$procedure_cases_processed} cases";
 
 						} catch ( Exception $e ) {
 							$errors[] = "Failed to process procedure ID {$procedure_id}: " . $e->getMessage();
@@ -1129,6 +1320,26 @@ class Procedure_Sync {
 			error_log( "BRAG book Gallery Sync: Cases created: {$created_cases}" );
 			error_log( "BRAG book Gallery Sync: Cases updated: {$updated_cases}" );
 			error_log( "BRAG book Gallery Sync: Total processed: {$total_processed}" );
+			error_log( "BRAG book Gallery Sync: Unique cases processed: " . count( $unique_cases_processed ) );
+
+			// Log duplicate cases found
+			if ( ! empty( $duplicate_cases_found ) ) {
+				$unique_duplicates = array_unique( $duplicate_cases_found );
+				error_log( "BRAG book Gallery Sync: Duplicate cases found: " . count( $unique_duplicates ) );
+				error_log( "BRAG book Gallery Sync: Duplicate case IDs: " . implode( ', ', $unique_duplicates ) );
+				$warnings[] = "Found " . count( $unique_duplicates ) . " duplicate case IDs in multiple procedures: " . implode( ', ', $unique_duplicates );
+			}
+
+			// Verify math: created + updated should equal unique cases processed
+			$expected_total = $created_cases + $updated_cases;
+			$actual_total = count( $unique_cases_processed );
+			if ( $expected_total !== $actual_total ) {
+				error_log( "BRAG book Gallery Sync: ⚠ COUNT MISMATCH! Created ({$created_cases}) + Updated ({$updated_cases}) = {$expected_total}, but unique cases processed = {$actual_total}" );
+				$warnings[] = "Case count mismatch: Created ({$created_cases}) + Updated ({$updated_cases}) = {$expected_total}, but unique cases processed = {$actual_total}";
+			} else {
+				error_log( "BRAG book Gallery Sync: ✓ Case count verified: Created ({$created_cases}) + Updated ({$updated_cases}) = {$actual_total} unique cases" );
+			}
+
 			error_log( "BRAG book Gallery Sync: Errors: " . count( $errors ) );
 			if ( ! empty( $warnings ) ) {
 				error_log( "BRAG book Gallery Sync: Warnings: " . count( $warnings ) );
@@ -1143,6 +1354,27 @@ class Procedure_Sync {
 				error_log( "BRAG book Gallery Sync: Restored memory limit to {$original_memory_limit}" );
 			}
 
+			// Set final completion progress before cleanup
+			$this->update_detailed_progress( [
+				'stage' => 'completed',
+				'overall_percentage' => 100,
+				'current_procedure' => '',
+				'procedure_current' => 0,
+				'procedure_total' => 0,
+				'procedure_percentage' => 100,
+				'case_current' => count( $unique_cases_processed ),
+				'case_total' => count( $unique_cases_processed ),
+				'case_percentage' => 100,
+				'current_step' => 'Sync Completed',
+				'recent_cases' => [],
+			] );
+
+			// Store activity log for reference before cleanup
+			$detailed_progress = get_option( 'brag_book_gallery_detailed_progress', [] );
+			if ( ! empty( $detailed_progress ) ) {
+				update_option( 'brag_book_gallery_completed_sync_log', $detailed_progress, false );
+			}
+
 			// Clean up progress tracking
 			delete_option( 'brag_book_gallery_case_progress' );
 			delete_option( 'brag_book_gallery_detailed_progress' );
@@ -1152,9 +1384,12 @@ class Procedure_Sync {
 				'updated' => $updated_cases,
 				'errors' => $errors,
 				'warnings' => $warnings,
-				'total_processed' => $total_processed,
+				'total_processed' => count( $unique_cases_processed ), // Use unique cases count
+				'duplicate_cases_found' => count( array_unique( $duplicate_cases_found ) ),
 				'details' => [
 					'case_processing_log' => $case_processing_log,
+					'unique_cases_processed' => $unique_cases_processed,
+					'duplicate_case_ids' => array_unique( $duplicate_cases_found ),
 				],
 			];
 
@@ -1212,6 +1447,7 @@ class Procedure_Sync {
 							'caseCount' => (int) ( $procedure['totalCase'] ?? 0 ), // Fix: Use 'totalCase' not 'caseCount'
 							'slug' => $procedure['slug'] ?? '',
 							'nudity' => $procedure['nudity'] ?? false,
+							'description' => $procedure['description'] ?? '', // Add description from API
 						];
 
 						error_log( "BRAG book Gallery Sync: Added procedure: " . wp_json_encode( $procedure_data ) );
@@ -1236,6 +1472,35 @@ class Procedure_Sync {
 	 * @return array Array of all case IDs for this procedure
 	 * @throws Exception If API request fails
 	 */
+	/**
+	 * Fetch case IDs for a procedure with pagination (memory efficient)
+	 *
+	 * @since 3.0.0
+	 * @param int $procedure_id Procedure ID
+	 * @param int $page Page number (1-based)
+	 * @param int $per_page Cases per page (unused, API uses count-based pagination)
+	 * @return array Case IDs for this page
+	 * @throws Exception If fetching fails
+	 */
+	private function fetch_case_ids_paginated( int $procedure_id, int $page, int $per_page = 15 ): array {
+		error_log( "BRAG book Gallery Sync: fetch_case_ids_paginated() ENTRY - procedure_id: {$procedure_id}, page: {$page}" );
+		try {
+			// Use the existing count-based API but calculate the count number from page
+			$count = $page; // The API uses 'count' as page number
+			error_log( "BRAG book Gallery Sync: About to call fetch_case_ids_for_single_procedure_count() with procedure_id: {$procedure_id}, count: {$count}" );
+			$case_ids = $this->fetch_case_ids_for_single_procedure_count( $procedure_id, $count );
+			error_log( "BRAG book Gallery Sync: fetch_case_ids_for_single_procedure_count() returned " . count( $case_ids ) . " case IDs" );
+
+			error_log( "BRAG book Gallery Sync: Procedure ID {$procedure_id} page {$page} - fetched " . count( $case_ids ) . " case IDs" );
+			return $case_ids ?: [];
+		} catch ( Exception $e ) {
+			error_log( "BRAG book Gallery Sync: ✗ EXCEPTION in fetch_case_ids_paginated() - procedure {$procedure_id} page {$page}: " . $e->getMessage() );
+			error_log( "BRAG book Gallery Sync: ✗ Exception trace: " . $e->getTraceAsString() );
+			return []; // Return empty array instead of throwing, let caller handle empty results
+		}
+		error_log( "BRAG book Gallery Sync: fetch_case_ids_paginated() EXIT - procedure_id: {$procedure_id}, page: {$page}" );
+	}
+
 	private function fetch_all_case_ids_for_single_procedure( int $procedure_id ): array {
 		$all_case_ids = [];
 		$count = 1;
@@ -1529,13 +1794,27 @@ class Procedure_Sync {
 			$batch_size = count( $case_batch );
 			error_log( "BRAG book Gallery Sync: process_case_batch() starting with {$batch_size} cases from procedure '{$procedure_name}'" );
 
+			// Update progress: Starting API fetch
+			$this->update_step_progress( "[FETCH] Fetching case details for {$batch_size} cases from {$procedure_name}" );
+
 			// Make parallel API calls for case details
+			$fetch_start_time = microtime( true );
 			$case_details_results = $this->fetch_case_details_batch( $case_batch );
+			$fetch_duration = round( microtime( true ) - $fetch_start_time, 2 );
+
+			error_log( "BRAG book Gallery Sync: API fetch completed in {$fetch_duration}s for {$batch_size} cases" );
+			$this->update_step_progress( "Case details fetched in {$fetch_duration}s, processing {$batch_size} cases..." );
 
 			// Process each case with its fetched data
 			$batch_results = [];
+			$case_count = 0;
+			$total_cases = count( $case_batch );
+
 			foreach ( $case_batch as $case_id ) {
 				try {
+					$case_count++;
+					$this->update_step_progress( "Processing case {$case_id} ({$case_count}/{$total_cases}) from {$procedure_name}..." );
+
 					// Get the case data from batch results
 					$case_data = $case_details_results[$case_id] ?? null;
 
@@ -1590,8 +1869,12 @@ class Procedure_Sync {
 					$existing_post = $this->find_existing_case_post( $case_id );
 					$is_update = ! empty( $existing_post );
 
+					$this->update_step_progress( "Creating/updating WordPress post for case {$case_id}..." );
+
 					// Handle multi-procedure cases by creating separate posts for each procedure
 					$procedure_results = $this->process_multi_procedure_case( $case_id, $case_data, $existing_post );
+
+					$this->update_step_progress( "Saving metadata and taxonomy for case {$case_id}..." );
 
 					// Add all procedure results to batch results
 					foreach ( $procedure_results as $procedure_result ) {
@@ -1601,6 +1884,8 @@ class Procedure_Sync {
 					// Memory cleanup: Clear case data to free memory
 					$case_data = null;
 					unset( $case_data );
+
+					$this->update_step_progress( "✓ Completed case {$case_id} ({$case_count}/{$total_cases}) from {$procedure_name}" );
 
 				} catch ( Exception $e ) {
 					error_log( "BRAG book Gallery Sync: ✗ Failed to process case {$case_id} in batch: " . $e->getMessage() );
@@ -1615,6 +1900,7 @@ class Procedure_Sync {
 			}
 
 			error_log( "BRAG book Gallery Sync: process_case_batch() completed {$batch_size} cases from procedure '{$procedure_name}'" );
+			$this->update_step_progress( "✓ Batch completed: {$batch_size} cases processed from {$procedure_name}" );
 			return $batch_results;
 
 		} catch ( Exception $e ) {
@@ -1740,6 +2026,8 @@ class Procedure_Sync {
 			$data = json_decode( $response_body, true );
 			if ( json_last_error() !== JSON_ERROR_NONE ) {
 				error_log( "BRAG book Gallery Sync: JSON decode error for case {$case_id}: " . json_last_error_msg() );
+				error_log( "BRAG book Gallery Sync: Case {$case_id} response body (first 500 chars): " . substr( $response_body, 0, 500 ) );
+				error_log( "BRAG book Gallery Sync: Case {$case_id} response body length: " . strlen( $response_body ) );
 				$case_results[$case_id] = null;
 				continue;
 			}
@@ -1770,10 +2058,15 @@ class Procedure_Sync {
 	}
 
 	/**
-	 * Process multi-procedure case by creating separate posts for each procedure
+	 * Process multi-procedure case by creating separate posts for each procedure or single post with multiple taxonomies
 	 *
-	 * When a case has multiple procedures, this method creates separate case posts
-	 * for each procedure, allowing better organization and filtering.
+	 * When a case has multiple procedures, this method can either:
+	 * 1. Create separate case posts for each procedure (default - better organization and filtering)
+	 * 2. Create a single post with all procedures as taxonomies (legacy approach)
+	 *
+	 * The approach is configurable via the 'brag_book_gallery_multi_procedure_strategy' option:
+	 * - 'separate_posts' (default): Create separate posts for each procedure
+	 * - 'single_post': Create one post with multiple procedure taxonomies
 	 *
 	 * @since 3.0.0
 	 * @param int $case_id Original case ID from API
@@ -1795,7 +2088,28 @@ class Procedure_Sync {
 			return [ $single_result ];
 		}
 
-		error_log( "BRAG book Gallery Sync: Case {$case_id} has " . count( $procedure_ids ) . " procedures, creating separate posts" );
+		// Get multi-procedure strategy from settings
+		$strategy = get_option( 'brag_book_gallery_multi_procedure_strategy', 'single_post' );
+		$procedure_count = count( $procedure_ids );
+
+		error_log( "BRAG book Gallery Sync: Case {$case_id} has {$procedure_count} procedures (IDs: " . implode( ', ', $procedure_ids ) . "), using strategy: {$strategy}" );
+
+		// If only one procedure, always use single post approach regardless of strategy
+		if ( $procedure_count === 1 ) {
+			error_log( "BRAG book Gallery Sync: Single procedure case {$case_id}, creating single post" );
+			$single_result = $this->create_single_case_post( $case_id, $case_data, $existing_post );
+			return [ $single_result ];
+		}
+
+		// Handle multi-procedure cases based on strategy
+		if ( $strategy === 'single_post' ) {
+			error_log( "BRAG book Gallery Sync: Creating single post with multiple procedure taxonomies for case {$case_id}" );
+			$single_result = $this->create_single_case_post( $case_id, $case_data, $existing_post );
+			return [ $single_result ];
+		}
+
+		// Default strategy: separate posts for each procedure
+		error_log( "BRAG book Gallery Sync: Creating separate posts for each procedure in case {$case_id}" );
 
 		// For each procedure, create a separate case post
 		foreach ( $procedure_ids as $procedure_index => $procedure_id ) {
@@ -1827,7 +2141,11 @@ class Procedure_Sync {
 				}
 
 				// Save API data to meta fields (with procedure-specific data)
-				\BRAGBookGallery\Includes\Extend\Post_Types::save_api_response_data( $post_id, $procedure_case_data );
+				// Pass a progress callback for image downloads
+				$progress_callback = function( $message ) {
+					$this->update_step_progress( $message );
+				};
+				\BRAGBookGallery\Includes\Extend\Post_Types::save_api_response_data( $post_id, $procedure_case_data, $progress_callback );
 
 				// Store the original case ID and procedure mapping
 				update_post_meta( $post_id, '_original_case_id', $case_id );
@@ -1902,7 +2220,11 @@ class Procedure_Sync {
 		}
 
 		// Save API data to meta fields
-		\BRAGBookGallery\Includes\Extend\Post_Types::save_api_response_data( $post_id, $case_data );
+		// Pass a progress callback for image downloads
+		$progress_callback = function( $message ) {
+			$this->update_step_progress( $message );
+		};
+		\BRAGBookGallery\Includes\Extend\Post_Types::save_api_response_data( $post_id, $case_data, $progress_callback );
 
 		// Assign taxonomies (all procedures for single post)
 		$this->assign_case_taxonomies( $post_id, $case_data );
@@ -1963,6 +2285,8 @@ class Procedure_Sync {
 	 * @return void
 	 */
 	private function assign_single_procedure_taxonomy( int $post_id, int $procedure_id ): void {
+		error_log( "BRAG book Gallery Sync: assign_single_procedure_taxonomy() - Attempting to assign procedure ID {$procedure_id} to post {$post_id}" );
+
 		// Find the term that matches this procedure ID
 		$terms = get_terms( [
 			'taxonomy' => 'procedures',
@@ -1979,12 +2303,51 @@ class Procedure_Sync {
 		if ( ! empty( $terms ) && ! is_wp_error( $terms ) ) {
 			// Assign only this one procedure term
 			wp_set_post_terms( $post_id, [ $terms[0]->term_id ], 'procedures' );
-			error_log( "BRAG book Gallery Sync: ✓ Assigned procedure term '{$terms[0]->name}' to post {$post_id}" );
-		} else {
-			// FALLBACK: If no matching procedure term found, assign to a default procedure
-			error_log( "BRAG book Gallery Sync: ✗ Could not find procedure term for procedure ID {$procedure_id}, assigning fallback" );
-			$this->assign_fallback_procedure( $post_id, $procedure_id );
+			error_log( "BRAG book Gallery Sync: ✓ Assigned procedure term '{$terms[0]->name}' (ID: {$terms[0]->term_id}) to post {$post_id}" );
+			return;
 		}
+
+		// DEBUG: Log available procedure terms and their meta
+		error_log( "BRAG book Gallery Sync: DEBUG - Could not find procedure term for procedure ID {$procedure_id}" );
+		$all_terms = get_terms( [
+			'taxonomy' => 'procedures',
+			'hide_empty' => false,
+		] );
+
+		if ( ! empty( $all_terms ) && ! is_wp_error( $all_terms ) ) {
+			error_log( "BRAG book Gallery Sync: DEBUG - Available procedure terms:" );
+			foreach ( array_slice( $all_terms, 0, 10 ) as $term ) { // Show first 10 terms
+				$stored_id = get_term_meta( $term->term_id, 'procedure_id', true );
+				error_log( "  - Term: '{$term->name}' (ID: {$term->term_id}, slug: {$term->slug}, stored procedure_id: {$stored_id})" );
+			}
+		}
+
+		// FALLBACK STRATEGY 1: Try to match by API data containing the ID
+		$terms_with_api_data = get_terms( [
+			'taxonomy' => 'procedures',
+			'hide_empty' => false,
+			'meta_query' => [
+				[
+					'key' => 'api_data',
+					'compare' => 'EXISTS',
+				],
+			],
+		] );
+
+		if ( ! empty( $terms_with_api_data ) && ! is_wp_error( $terms_with_api_data ) ) {
+			foreach ( $terms_with_api_data as $term ) {
+				$api_data = get_term_meta( $term->term_id, 'api_data', true );
+				if ( is_array( $api_data ) && isset( $api_data['api_id'] ) && (int) $api_data['api_id'] === $procedure_id ) {
+					wp_set_post_terms( $post_id, [ $term->term_id ], 'procedures' );
+					error_log( "BRAG book Gallery Sync: ✓ Assigned procedure term '{$term->name}' (via api_data match) to post {$post_id}" );
+					return;
+				}
+			}
+		}
+
+		// FALLBACK: If no matching procedure term found, assign to a default procedure
+		error_log( "BRAG book Gallery Sync: ✗ Could not find procedure term for procedure ID {$procedure_id}, assigning fallback" );
+		$this->assign_fallback_procedure( $post_id, $procedure_id );
 	}
 
 	/**
@@ -2193,7 +2556,14 @@ class Procedure_Sync {
 		$data = json_decode( $response_body, true );
 
 		if ( json_last_error() !== JSON_ERROR_NONE ) {
-			throw new Exception( __( 'Invalid JSON response from API', 'brag-book-gallery' ) );
+			error_log( "BRAG book Gallery Sync: Case {$case_id} JSON decode error: " . json_last_error_msg() );
+			error_log( "BRAG book Gallery Sync: Case {$case_id} response body (first 500 chars): " . substr( $response_body, 0, 500 ) );
+			error_log( "BRAG book Gallery Sync: Case {$case_id} response body length: " . strlen( $response_body ) );
+			throw new Exception( sprintf(
+				__( 'Invalid JSON response from API for case %d: %s', 'brag-book-gallery' ),
+				$case_id,
+				json_last_error_msg()
+			) );
 		}
 
 		if ( ! isset( $data['success'] ) || ! $data['success'] ) {
@@ -2245,9 +2615,11 @@ class Procedure_Sync {
 		$slug = $this->generate_case_slug( $case_data );
 
 		// HIPAA COMPLIANCE: Do NOT store case details as they may contain PHI
-		// Use a safe placeholder instead
+		// Use the main gallery shortcode which auto-detects context for case view
 		$content = sprintf(
-			'<!-- Case ID: %d, Procedure ID: %d, Synced: %s -->',
+			'[brag_book_gallery]
+
+<!-- Case ID: %d, Procedure ID: %d, Synced: %s -->',
 			$case_data['id'] ?? 0,
 			$case_data['procedureId'] ?? 0,
 			current_time( 'mysql' )
@@ -2294,9 +2666,11 @@ class Procedure_Sync {
 		$slug = $this->generate_case_slug( $case_data );
 
 		// HIPAA COMPLIANCE: Do NOT store case details as they may contain PHI
-		// Use a safe placeholder instead
+		// Use the main gallery shortcode which auto-detects context for case view
 		$content = sprintf(
-			'<!-- Case ID: %d, Procedure ID: %d, Synced: %s -->',
+			'[brag_book_gallery]
+
+<!-- Case ID: %d, Procedure ID: %d, Synced: %s -->',
 			$case_data['id'] ?? 0,
 			$case_data['procedureId'] ?? 0,
 			current_time( 'mysql' )
@@ -2701,7 +3075,7 @@ class Procedure_Sync {
 			foreach ( $report['details'] as $case ) {
 				$post_id = $case['post_id'];
 				$method = $case['method'];
-				$post_title = get_the_title( $post_id );
+				$post_title = get_the_title( $post_id ) ?: 'Untitled';
 
 				echo "Post ID {$post_id} ({$post_title}): ";
 
@@ -2882,7 +3256,19 @@ class Procedure_Sync {
 			'updated_at' => current_time( 'mysql' ),
 		];
 
-		update_option( 'brag_book_gallery_detailed_progress', $progress, false );
+		// Force option update without autoload and clear any caching
+		$update_result = update_option( 'brag_book_gallery_detailed_progress', $progress, false );
+
+		// Clear object cache to ensure fresh data
+		wp_cache_delete( 'brag_book_gallery_detailed_progress', 'options' );
+
+		// Log the update result
+		error_log( "BRAG book Gallery Sync: update_option result: " . ( $update_result ? 'SUCCESS' : 'FAILED' ) );
+
+		// Verify the option was saved by reading it back
+		$saved_progress = get_option( 'brag_book_gallery_detailed_progress', false );
+		$saved_updated_at = $saved_progress['updated_at'] ?? 'NOT_SET';
+		error_log( "BRAG book Gallery Sync: Verified saved updated_at: {$saved_updated_at}" );
 
 		$log_msg = "BRAG book Gallery Sync: Detailed Progress - Overall: {$progress['overall_percentage']}%, " .
 				   "Procedure: {$progress['procedure_progress']['current']}/{$progress['procedure_progress']['total']} " .
@@ -2890,6 +3276,32 @@ class Procedure_Sync {
 				   "Cases: {$progress['case_progress']['current']}/{$progress['case_progress']['total']} " .
 				   "({$progress['case_progress']['percentage']}%) - {$progress['current_step']}";
 		error_log( $log_msg );
+	}
+
+	/**
+	 * Quick step progress update for real-time feedback
+	 *
+	 * Updates just the current step without recalculating percentages
+	 * for faster, more responsive progress display
+	 *
+	 * @since 3.0.0
+	 * @param string $step_message Current step being performed
+	 */
+	private function update_step_progress( string $step_message ): void {
+		// Get current progress data
+		$current_progress = get_option( 'brag_book_gallery_detailed_progress', [] );
+
+		// Update only the current step and timestamp
+		$current_progress['current_step'] = $step_message;
+		$current_progress['updated_at'] = current_time( 'mysql' );
+
+		// Save without autoload for performance
+		update_option( 'brag_book_gallery_detailed_progress', $current_progress, false );
+
+		// Clear cache to ensure fresh data
+		wp_cache_delete( 'brag_book_gallery_detailed_progress', 'options' );
+
+		error_log( "BRAG book Gallery Sync: Step Update - {$step_message}" );
 	}
 
 	/**
@@ -2923,5 +3335,131 @@ class Procedure_Sync {
 		update_option( 'brag_book_gallery_case_progress', $progress, false );
 
 		error_log( "BRAG book Gallery Sync: Progress update - {$overall_percentage}% ({$processed}/{$total}): {$message}" );
+	}
+
+	/**
+	 * Ensure the procedures taxonomy is registered before sync operations
+	 *
+	 * @since 3.0.0
+	 * @throws Exception If taxonomy cannot be registered
+	 */
+	private function ensure_taxonomy_registered(): void {
+		// Check if taxonomy is already registered
+		if ( taxonomy_exists( Taxonomies::TAXONOMY_PROCEDURES ) ) {
+			error_log( 'BRAG book Gallery Sync: ✓ Procedures taxonomy already registered' );
+			return;
+		}
+
+		error_log( 'BRAG book Gallery Sync: Procedures taxonomy not found, forcing registration...' );
+
+		// Force taxonomy registration by creating a temporary Taxonomies instance
+		// This ensures the taxonomy is available even if init hook hasn't run yet
+		$taxonomies = new Taxonomies();
+		$taxonomies->register_taxonomies();
+
+		// Verify it was registered
+		if ( ! taxonomy_exists( Taxonomies::TAXONOMY_PROCEDURES ) ) {
+			throw new Exception( 'Failed to register procedures taxonomy. Cannot proceed with sync.' );
+		}
+
+		error_log( 'BRAG book Gallery Sync: ✓ Procedures taxonomy registration forced successfully' );
+	}
+
+	/**
+	 * Create or ensure the My Favorites page exists
+	 *
+	 * Creates a "My Favorites" page with the gallery shortcode if it doesn't exist.
+	 * This page is needed for the favorites functionality to work properly.
+	 *
+	 * @since 3.3.0
+	 * @return void
+	 */
+	private function ensure_favorites_page_exists(): void {
+		error_log( 'BRAG book Gallery Sync: Checking for My Favorites page...' );
+
+		// Get the gallery slug
+		$gallery_slug_option = get_option( 'brag_book_gallery_page_slug', 'gallery' );
+		$gallery_slug = is_array( $gallery_slug_option ) ? ( $gallery_slug_option[0] ?? 'gallery' ) : $gallery_slug_option;
+
+		// Find the gallery parent page
+		$gallery_page = get_posts( array(
+			'post_type'      => 'page',
+			'post_status'    => array( 'publish', 'draft' ),
+			'name'           => $gallery_slug,
+			'posts_per_page' => 1,
+		) );
+
+		if ( empty( $gallery_page ) ) {
+			error_log( 'BRAG book Gallery Sync: ✗ Gallery page not found with slug: ' . $gallery_slug );
+			return;
+		}
+
+		$gallery_page_id = $gallery_page[0]->ID;
+		error_log( 'BRAG book Gallery Sync: Found gallery page (ID: ' . $gallery_page_id . ', slug: ' . $gallery_slug . ')' );
+
+		// Look for existing favorites page as child of gallery page
+		$existing_page = get_posts( array(
+			'post_type'      => 'page',
+			'post_status'    => array( 'publish', 'draft' ),
+			'post_parent'    => $gallery_page_id,
+			'name'           => 'myfavorites',
+			'posts_per_page' => 1,
+		) );
+
+		if ( ! empty( $existing_page ) ) {
+			// Ensure it has the meta flag
+			update_post_meta( $existing_page[0]->ID, '_brag_book_gallery_favorites_page', '1' );
+
+			// Trigger rewrite rules flush to ensure the page URL works
+			update_option( 'brag_book_gallery_flush_rewrite_rules', true );
+
+			error_log( 'BRAG book Gallery Sync: ✓ My Favorites page already exists as child (ID: ' . $existing_page[0]->ID . ')' );
+			return;
+		}
+
+		// Check if there's a page with the shortcode content
+		$shortcode_page = get_posts( array(
+			'post_type'      => 'page',
+			'post_status'    => array( 'publish', 'draft' ),
+			'posts_per_page' => 1,
+			's'              => '[brag_book_gallery view="myfavorites"]'
+		) );
+
+		if ( ! empty( $shortcode_page ) ) {
+			// Update existing page with our meta flag
+			update_post_meta( $shortcode_page[0]->ID, '_brag_book_gallery_favorites_page', '1' );
+
+			// Trigger rewrite rules flush to ensure the page URL works
+			update_option( 'brag_book_gallery_flush_rewrite_rules', true );
+
+			error_log( 'BRAG book Gallery Sync: ✓ Found existing page with favorites shortcode, marked it as favorites page (ID: ' . $shortcode_page[0]->ID . ')' );
+			return;
+		}
+
+		// Create the favorites page as child of gallery page
+		$page_data = array(
+			'post_title'   => 'My Favorites',
+			'post_name'    => 'myfavorites',
+			'post_content' => '[brag_book_gallery_favorites]',
+			'post_status'  => 'publish',
+			'post_type'    => 'page',
+			'post_parent'  => $gallery_page_id, // Make it a child of gallery page
+			'post_author'  => 1, // Admin user
+		);
+
+		$page_id = wp_insert_post( $page_data );
+
+		if ( is_wp_error( $page_id ) ) {
+			error_log( 'BRAG book Gallery Sync: ✗ Failed to create My Favorites page: ' . $page_id->get_error_message() );
+			return;
+		}
+
+		// Add meta flag to identify this as our favorites page
+		update_post_meta( $page_id, '_brag_book_gallery_favorites_page', '1' );
+
+		// Trigger rewrite rules flush to ensure the new page URL works
+		update_option( 'brag_book_gallery_flush_rewrite_rules', true );
+
+		error_log( 'BRAG book Gallery Sync: ✓ Created My Favorites page successfully (ID: ' . $page_id . ')' );
 	}
 }

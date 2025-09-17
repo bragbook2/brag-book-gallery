@@ -12,6 +12,7 @@
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+	font-size: var(--wp--custom--brag-book-gallery--text-base) !important;
 	gap: var(--wp--custom--brag-book-gallery--spacer,4px);
 	border: 0 none;
 	color: var(--wp--custom--brag-book-gallery--color--black);
@@ -34,10 +35,6 @@
 		font-size: var(--wp--custom--brag-book-gallery--text-base);
 		user-select: none;
 		font-weight: var(--wp--custom--brag-book-gallery--font-weight--regular);
-
-		.brag-book-gallery-favorites-logo {
-			max-inline-size: 144px;
-		}
 	}
 
 	// Style for expanded/active buttons in open details
@@ -62,6 +59,17 @@
 	}
 }
 
+.brag-book-gallery-nav-count {
+	font-size: var(--wp--custom--brag-book-gallery--text-sm);
+	color: var(--wp--custom--brag-book-gallery--color--black);
+	opacity: 0.75;
+}
+
+// Hide filter counts when the setting is disabled
+body.brag-book-gallery-hide-filter-counts .brag-book-gallery-nav-count {
+	display: none !important;
+}
+
 .brag-book-gallery-nav-list-submenu {
 	margin: 0 !important;
 	padding: 0 !important;
@@ -70,15 +78,17 @@
 	overflow: hidden;
 	opacity: 0;
 	margin-block-end: 0 !important;
-	transition: max-height 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), 
-	            opacity 0.3s ease-in-out, 
+	transition: max-height 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+	            opacity 0.3s ease-in-out,
 	            margin-block-end 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 
 	// Show submenu when details is open
 	[open] & {
-		max-height: 800px; // Increased max-height to accommodate more content
+		max-height: 999em; // Increased max-height to accommodate more content
 		opacity: 1;
-		margin-block-end: calc( 8 * var(--wp--custom--brag-book-gallery--spacer,4px) ) !important;
+		padding-block-end: var(--wp--custom--brag-book-gallery--spacer--lg) !important;
+		margin-block-end: var(--wp--custom--brag-book-gallery--spacer--lg) !important;
+		border-bottom: 1px solid var(--wp--custom--brag-book-gallery--color--lighter-grey);
 	}
 }
 
@@ -139,21 +149,21 @@
 	&[open] {
 		// Remove any default browser styles for open details
 	}
-	
+
 	// Reset summary marker/arrow - we use our own toggle icon
 	& summary {
 		list-style: none;
-		
+
 		// Webkit browsers
 		&::-webkit-details-marker {
 			display: none;
 		}
-		
+
 		// Other browsers
 		&::marker {
 			display: none;
 		}
-		
+
 		// Ensure summary behaves like a button
 		cursor: pointer;
 	}

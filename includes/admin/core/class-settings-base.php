@@ -255,6 +255,7 @@ abstract class Settings_Base {
 			'brag-book-gallery-default'        => 'default',
 			'brag-book-gallery-local'          => 'local',
 			'brag-book-gallery-api-settings'   => 'api',
+			'brag-book-gallery-sync'           => 'sync',
 			'brag-book-gallery-api-test'       => 'api_test',
 			'brag-book-gallery-consultation'   => 'consultation',
 			'brag-book-gallery-help'           => 'help',

@@ -255,7 +255,7 @@ class Menu {
 			'condition'   => true,
 		);
 
-		// Sync (procedure synchronization).
+		// Sync (procedure synchronization) - hidden from menu but accessible via tabs.
 		$this->menu_config['submenus']['sync'] = array(
 			'parent_slug' => 'brag-book-gallery-settings',
 			'page_title'  => __(
@@ -272,7 +272,7 @@ class Menu {
 				$this->settings_pages['sync'],
 				'render'
 			),
-			'condition'   => true,
+			'condition'   => false, // Hidden from menu
 		);
 
 		// Mode-specific Settings (requires API) - Local mode only when available
@@ -361,6 +361,7 @@ class Menu {
 			),
 			'condition'   => false, // Hidden from menu
 		);
+
 
 		// Debug - hidden from menu but accessible.
 		$this->menu_config['submenus']['debug'] = array(

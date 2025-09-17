@@ -748,7 +748,7 @@ final class System_Info {
 					'%s v%s by %s [%s]',
 					$plugin_data['Name'],
 					$plugin_data['Version'] ?: 'N/A',
-					strip_tags( $plugin_data['Author'] ),
+					strip_tags( (string) ( $plugin_data['Author'] ?: 'Unknown' ) ),
 					$status
 				);
 			}
@@ -795,7 +795,8 @@ final class System_Info {
 			$info[] = 'Pages with Gallery Shortcode: ' . count( $pages_with_gallery );
 			if ( ! empty( $pages_with_gallery ) ) {
 				foreach ( array_slice( $pages_with_gallery, 0, 5 ) as $page_id ) {
-					$info[] = '  - ' . get_the_title( $page_id ) . ' (ID: ' . $page_id . ')';
+					$title = get_the_title( $page_id ) ?: 'Untitled';
+					$info[] = '  - ' . $title . ' (ID: ' . $page_id . ')';
 				}
 				if ( count( $pages_with_gallery ) > 5 ) {
 					$info[] = '  ... and ' . ( count( $pages_with_gallery ) - 5 ) . ' more';
@@ -897,8 +898,10 @@ final class System_Info {
 			// Get page titles for front/blog pages
 			$front_page_id = get_option( 'page_on_front' );
 			$blog_page_id = get_option( 'page_for_posts' );
-			$info[] = 'Page on Front: ' . ( $front_page_id ? get_the_title( $front_page_id ) . ' (ID: ' . $front_page_id . ')' : 'Not Set' );
-			$info[] = 'Page for Posts: ' . ( $blog_page_id ? get_the_title( $blog_page_id ) . ' (ID: ' . $blog_page_id . ')' : 'Not Set' );
+			$front_title = $front_page_id ? (get_the_title( $front_page_id ) ?: 'Untitled') : null;
+			$info[] = 'Page on Front: ' . ( $front_title ? $front_title . ' (ID: ' . $front_page_id . ')' : 'Not Set' );
+			$blog_title = $blog_page_id ? (get_the_title( $blog_page_id ) ?: 'Untitled') : null;
+			$info[] = 'Page for Posts: ' . ( $blog_title ? $blog_title . ' (ID: ' . $blog_page_id . ')' : 'Not Set' );
 
 			$info[] = 'Blog Charset: ' . get_option( 'blog_charset', 'UTF-8' );
 			$info[] = 'Users Can Register: ' . ( get_option( 'users_can_register' ) ? 'Yes' : 'No' );

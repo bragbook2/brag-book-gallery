@@ -5,11 +5,16 @@
 // -----------------------------------------------------------------------------
 
 .brag-book-gallery-consultation-text {
-	font-size: var(--wp--custom--brag-book-gallery--text-lg);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	font-size: var(--wp--custom--brag-book-gallery--text-sm);
 	line-height: 1.5;
 	text-align: center;
+	margin-bottom: var(--wp--custom--brag-book-gallery--spacer--lg) !important;
 
 	strong {
+		font-size: var(--wp--custom--brag-book-gallery--text-lg);
 		font-weight: var(--wp--custom--brag-book-gallery--font-weight--semibold);
 	}
 }

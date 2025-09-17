@@ -491,7 +491,8 @@ final class SEO_Manager {
 
 		// Fallback titles and descriptions
 		if ( empty( $seo_data['title'] ) ) {
-			$seo_data['title'] = get_the_title() . ' - ' . $site_title;
+			$page_title = get_the_title();
+			$seo_data['title'] = ( $page_title ? $page_title : 'Gallery' ) . ' - ' . $site_title;
 		}
 
 		if ( empty( $seo_data['description'] ) ) {
@@ -959,7 +960,8 @@ final class SEO_Manager {
 			return $title_parts;
 		}
 
-		$title_parts['title'] = $this->seo_data['title'];
+		// Ensure title is a string to prevent strip_tags() deprecation warning
+		$title_parts['title'] = (string) $this->seo_data['title'];
 
 		return $title_parts;
 	}
@@ -1165,7 +1167,8 @@ final class SEO_Manager {
 			return $title;
 		}
 
-		return $this->seo_data['title'];
+		// Ensure we return a string to prevent strip_tags() deprecation warning
+		return (string) $this->seo_data['title'];
 	}
 
 	/**
@@ -1291,7 +1294,7 @@ final class SEO_Manager {
 		$current_url = home_url( $_SERVER['REQUEST_URI'] ?? '/' );
 
 		return [
-			'title'          => get_the_title() . ' - ' . $site_title,
+			'title'          => (get_the_title() ?: 'Gallery') . ' - ' . $site_title,
 			'description'    => get_the_excerpt() ?: sprintf(
 				/* translators: %s: site title */
 				__( 'Gallery page - %s', 'brag-book-gallery' ),
