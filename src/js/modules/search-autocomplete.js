@@ -34,34 +34,68 @@ class SearchAutocomplete {
 	}
 
 	collectProcedures() {
-		// Collect all procedures from the filter system
-		const filterLinks = document.querySelectorAll('.brag-book-gallery-nav-link');
+		// Collect all procedures from rendered sidebar DOM
 		const procedureMap = new Map();
+		const sidebarNav = document.querySelector('.brag-book-gallery-nav');
 
-		filterLinks.forEach(link => {
-			const procedure = link.dataset.procedure;
-			const category = link.dataset.category;
-			const label = link.querySelector('.brag-book-gallery-filter-option-label')?.textContent || procedure;
-			const count = parseInt(link.dataset.procedureCount || '0');
+		if (!sidebarNav) {
+			console.warn('BRAGBook Gallery: No sidebar nav found for search autocomplete');
+			this.procedures = [];
+			return;
+		}
 
-			if (procedure && category) {
-				// Create unique key combining category and procedure
-				const key = `${category}:${procedure}`;
+		// Extract procedures from sidebar navigation
+		const procedureLinks = sidebarNav.querySelectorAll('.brag-book-gallery-nav-link[data-procedure-slug]');
+
+		procedureLinks.forEach(link => {
+			const procedureSlug = link.getAttribute('data-procedure-slug');
+			const procedureId = link.getAttribute('data-procedure-id');
+			const category = link.getAttribute('data-category');
+			const nudity = link.getAttribute('data-nudity') === 'true';
+			const url = link.href;
+
+			// Extract name and count from link text
+			const linkText = link.textContent.trim();
+			const countMatch = linkText.match(/\((\d+)\)$/);
+			const count = countMatch ? parseInt(countMatch[1], 10) : 0;
+			const name = linkText.replace(/\s*\(\d+\)$/, '').trim();
+
+			// Get category name from the parent details element
+			const categoryDetails = link.closest('details[data-category]');
+			const categoryName = categoryDetails ?
+				categoryDetails.querySelector('.brag-book-gallery-nav-button__label span')?.textContent?.trim() || category :
+				category;
+
+			if (procedureSlug && name) {
+				// Create unique key combining category and procedure slug
+				const key = `${category}:${procedureSlug}`;
 
 				if (!procedureMap.has(key)) {
 					procedureMap.set(key, {
-						id: procedure,
-						name: label.trim(),
-						category: category,
+						id: procedureSlug,
+						procedureId: procedureId,
+						name: name,
+						category: categoryName,
+						categorySlug: category,
 						count: count,
-						searchText: label.toLowerCase(),
-						fullName: `${label} (${count})` // Keep full name with count for reference
+						searchText: name.toLowerCase(),
+						url: url,
+						nudity: nudity,
+						fullName: `${name} (${count})`
 					});
 				}
 			}
 		});
 
 		this.procedures = Array.from(procedureMap.values());
+		console.log(`BRAGBook Gallery: Loaded ${this.procedures.length} procedures for search autocomplete from DOM`);
+
+		// Debug: Log first few procedures to verify data structure
+		if (this.procedures.length > 0) {
+			console.log('BRAGBook Gallery: First 3 procedures:', this.procedures.slice(0, 3));
+		} else {
+			console.warn('BRAGBook Gallery: No procedures loaded from sidebar DOM');
+		}
 	}
 
 	setupEventListeners() {
@@ -206,7 +240,7 @@ class SearchAutocomplete {
                      role="option"
                      data-index="${index}"
                      data-procedure="${proc.id}"
-                     data-category="${proc.category}"
+                     data-category="${proc.categorySlug}"
                      aria-selected="${index === this.selectedIndex}">
                     <div class="brag-book-gallery-search-item-content">
                         <span class="brag-book-gallery-search-item-name">${highlightedName}</span>
@@ -270,14 +304,31 @@ class SearchAutocomplete {
 		// Close dropdown
 		this.close();
 
-		// Trigger callback
-		this.options.onSelect({ procedure, category, name });
+		// Find the corresponding procedure data from our loaded procedures
+		const procedureData = this.procedures.find(proc =>
+			proc.id === procedure && (proc.categorySlug === category || proc.category === category)
+		);
 
-		// Find the corresponding filter link and navigate to its URL
-		const filterLink = document.querySelector(`.brag-book-gallery-nav-link[data-procedure="${procedure}"]`);
-		if (filterLink && filterLink.href) {
-			// Navigate to the taxonomy page
-			window.location.href = filterLink.href;
+		// Trigger callback with full procedure data
+		this.options.onSelect({
+			procedure,
+			category,
+			name,
+			url: procedureData?.url || '',
+			data: procedureData
+		});
+
+		// Navigate using the URL from sidebar data
+		if (procedureData && procedureData.url) {
+			window.location.href = procedureData.url;
+		} else {
+			// Fallback: try to find corresponding filter link
+			const filterLink = document.querySelector(`.brag-book-gallery-nav-link[data-procedure="${procedure}"]`);
+			if (filterLink && filterLink.href) {
+				window.location.href = filterLink.href;
+			} else {
+				console.warn(`BRAGBook Gallery: No URL found for procedure ${procedure} in category ${category}`);
+			}
 		}
 	}
 
@@ -298,6 +349,14 @@ class SearchAutocomplete {
 		this.wrapper.classList.remove('active');
 		this.input.setAttribute('aria-expanded', 'false');
 		this.selectedIndex = -1;
+	}
+
+	/**
+	 * Refresh procedures data from sidebar
+	 * Call this if sidebar data is updated dynamically
+	 */
+	refresh() {
+		this.collectProcedures();
 	}
 }
 

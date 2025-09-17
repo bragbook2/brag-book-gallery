@@ -41,6 +41,7 @@
 	"devDependencies": {
 		"@babel/core": "^7.23.0",
 		"@babel/preset-env": "^7.23.0",
+		"@babel/preset-react": "^7.27.1",
 		"@playwright/test": "^1.40.0",
 		"babel-loader": "^9.1.0",
 		"concurrently": "^8.2.0",
@@ -67,10 +68,22 @@
 			"sourceType": "module"
 		},
 		"rules": {
-			"indent": ["error", "tab"],
-			"linebreak-style": ["error", "unix"],
-			"quotes": ["error", "single"],
-			"semi": ["error", "always"]
+			"indent": [
+				"error",
+				"tab"
+			],
+			"linebreak-style": [
+				"error",
+				"unix"
+			],
+			"quotes": [
+				"error",
+				"single"
+			],
+			"semi": [
+				"error",
+				"always"
+			]
 		}
 	},
 	"stylelint": {

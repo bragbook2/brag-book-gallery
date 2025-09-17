@@ -1,0 +1,96 @@
+@charset "UTF-8";
+
+// -----------------------------------------------------------------------------
+// components / case / case-images
+// -----------------------------------------------------------------------------
+
+// Case images general layout
+.brag-book-gallery-case-images {
+	display: grid;
+
+	&.single-image {
+		// Single image layout styles
+		img {
+			// Single image specific styles
+		}
+	}
+}
+
+// Fast case detail image sections
+.brag-book-gallery-case-detail-fast {
+	.brag-book-gallery-case-images {
+		.brag-book-gallery-image-section {
+			margin-bottom: var(--wp--custom--brag-book-gallery--spacer--xl, 32px);
+
+			h3 {
+				font-size: 1.25rem;
+				font-weight: 600;
+				margin-bottom: var(--wp--custom--brag-book-gallery--spacer--md, 16px);
+			}
+
+			.brag-book-gallery-image-grid {
+				display: grid;
+				grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+				gap: var(--wp--custom--brag-book-gallery--spacer--md, 16px);
+
+				img {
+					width: 100%;
+					height: auto;
+					border-radius: 8px;
+					box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+				}
+			}
+		}
+	}
+}
+
+// Case image pairs (before/after)
+.brag-book-gallery-case-image-pair {
+	// Image pair layout
+	.before-image,
+	.after-image {
+		// Before/after image styles
+	}
+
+	h3,
+	.brag-book-gallery-case-image-pair-title {
+		font-size: var(--wp--custom--brag-book-gallery--text-lg);
+		font-weight: var(--wp--custom--brag-book-gallery--font-weight--semibold);
+		margin-bottom: var(--wp--custom--brag-book-gallery--spacer--md);
+	}
+
+	img {
+		width: 100%;
+		height: auto;
+		border-radius: var(--wp--custom--brag-book-gallery--rounded);
+		box-shadow: var(--wp--custom--brag-book-gallery--shadow-sm);
+	}
+
+	.processed-image {
+		position: relative;
+
+		img {
+			transition: var(--wp--custom--brag-book-gallery--transition);
+		}
+	}
+
+	.image-caption {
+		text-align: center;
+		font-size: var(--wp--custom--brag-book-gallery--text-sm);
+		color: var(--wp--custom--brag-book-gallery--color--grey);
+		margin-top: var(--wp--custom--brag-book-gallery--spacer--sm);
+	}
+}
+
+// General case images styles
+.brag-book-gallery-case-images {
+	img {
+		// General image styles for case images
+	}
+
+	&.single-image {
+		img {
+			// Single image specific adjustments
+		}
+	}
+}

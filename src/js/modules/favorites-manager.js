@@ -53,27 +53,48 @@ class FavoritesManager {
 			}
 		});
 
-		// Handle favorites form submission
-		const favoritesForm = document.querySelector('[data-form="favorites"]');
+		// Handle favorites form submission - check both selectors for compatibility
+		const favoritesForm = document.querySelector('[data-form="favorites"], [data-form="favorites-email"]');
 		if (favoritesForm) {
 			favoritesForm.addEventListener('submit', (e) => {
 				e.preventDefault();
 				this.handleFavoritesFormSubmit(e.target);
 			});
 		}
+
+		// Handle favorites lookup form submission
+		const lookupForm = document.querySelector('.brag-book-gallery-favorites-lookup-form, #favorites-email-form');
+		if (lookupForm) {
+			lookupForm.addEventListener('submit', (e) => {
+				e.preventDefault();
+				this.handleFavoritesLookupSubmit(e.target);
+			});
+		}
 	}
 
 	toggleFavorite(button) {
-		let itemId = button.dataset.itemId || button.dataset.caseId || '';
+		let itemId = '';
 		const isFavorited = button.dataset.favorited === 'true';
 
-		// Extract numeric ID from values like "case-12345" or "case_12345_main"
-		if (itemId) {
-			const matches = itemId.match(/(\d+)/);
-			if (matches) {
-				itemId = matches[1];
+		// Prioritize WordPress post ID from the case card data-post-id attribute
+		const caseCard = button.closest('.brag-book-gallery-case-card');
+		if (caseCard && caseCard.dataset.postId) {
+			itemId = caseCard.dataset.postId;
+		} else {
+			// Fallback to button's own data attributes
+			itemId = button.dataset.itemId || button.dataset.caseId || '';
+
+			// Extract numeric ID from values like "case-12345" or "case_12345_main"
+			if (itemId) {
+				const matches = itemId.match(/(\d+)/);
+				if (matches) {
+					itemId = matches[1];
+				}
 			}
 		}
+
+		// Update hidden case ID field if it exists
+		this.updateHiddenCaseIdField(itemId);
 
 		// If removing favorite, just remove it
 		if (isFavorited) {
@@ -106,6 +127,17 @@ class FavoritesManager {
 			this.addFavorite(itemId, button);
 			this.favoritesDialog.open();
 			this.hasShownDialog = true;
+		}
+	}
+
+	/**
+	 * Update the hidden case ID field in the favorites form
+	 * @param {string} caseId - The case ID to set
+	 */
+	updateHiddenCaseIdField(caseId) {
+		const hiddenField = document.querySelector('input[name="fav-case-id"]');
+		if (hiddenField && caseId) {
+			hiddenField.value = caseId;
 		}
 	}
 
@@ -182,11 +214,11 @@ class FavoritesManager {
 	}
 
 	/**
-	 * Submit a favorite to the WordPress API
+	 * Submit a favorite directly to the BRAGBook API (for users with existing info)
 	 * @param {string} caseId - The case ID to add to favorites
 	 */
 	submitFavoriteToAPI(caseId) {
-		// Prepare form data for WordPress AJAX endpoint
+		// Use WordPress AJAX for secure API communication
 		const formData = new FormData();
 		formData.append('action', 'brag_book_add_favorite');
 		formData.append('nonce', window.bragBookGalleryConfig?.nonce || '');
@@ -195,24 +227,33 @@ class FavoritesManager {
 		formData.append('phone', this.userInfo.phone || '');
 		formData.append('name', this.userInfo.name || '');
 
-		// Submit to API
+		// Submit via WordPress AJAX (API tokens handled securely on server)
 		fetch(window.bragBookGalleryConfig?.ajaxUrl || '/wp-admin/admin-ajax.php', {
 			method: 'POST',
 			body: formData
 		})
-		.then(response => response.json())
+		.then(response => {
+			if (!response.ok) {
+				throw new Error(`HTTP error! status: ${response.status}`);
+			}
+			return response.json();
+		})
 		.then(response => {
 			if (response.success) {
 				// Show success notification
 				this.showSuccessNotification('Added to favorites!');
 			} else {
-				// Show error notification
+				// Show error notification and remove from local favorites
 				console.error('Failed to save favorite:', response.data?.message);
-				// You might want to show an error notification here
+				this.removeFavorite(caseId);
+				this.showErrorNotification('Failed to save favorite. Please try again.');
 			}
 		})
 		.catch(error => {
 			console.error('Error submitting favorite:', error);
+			// Remove from local favorites if API call failed
+			this.removeFavorite(caseId);
+			this.showErrorNotification('Error saving favorite. Please try again.');
 		});
 	}
 
@@ -222,16 +263,34 @@ class FavoritesManager {
 	 */
 	handleFavoritesFormSubmit(form) {
 		const formData = new FormData(form);
-		const data = Object.fromEntries(formData.entries());
 
-		// Add case ID if we have a pending favorite
-		if (this.lastAddedFavorite) {
-			formData.append('case_id', this.lastAddedFavorite);
+		// Get case ID from hidden field first, then fallback to other methods
+		let caseId = formData.get('fav-case-id') || this.lastAddedFavorite;
+
+		if (!caseId) {
+			// Try to find the case ID from the current page context
+			// Prioritize WordPress post ID over API case ID
+			const articleElement = document.querySelector('.brag-book-gallery-case-card');
+			if (articleElement) {
+				caseId = articleElement.dataset.postId || articleElement.dataset.caseId;
+			}
 		}
 
-		// Add action and nonce for WordPress AJAX
-		formData.append('action', 'brag_book_add_favorite');
-		formData.append('nonce', window.bragBookGalleryConfig?.nonce || '');
+		if (!caseId) {
+			// If still no case ID, show error
+			this.showFormError(form, 'Unable to determine case ID. Please try clicking the favorite button again.');
+			return;
+		}
+
+		// Get form field values
+		const email = formData.get('fav-email') || '';
+		const name = formData.get('fav-name') || '';
+		const phone = formData.get('fav-phone') || '';
+
+		if (!email || !name || !phone) {
+			this.showFormError(form, 'Please fill in all required fields.');
+			return;
+		}
 
 		// Show loading state in form
 		const submitButton = form.querySelector('button[type="submit"]');
@@ -247,7 +306,15 @@ class FavoritesManager {
 		if (existingError) existingError.remove();
 		if (existingSuccess) existingSuccess.remove();
 
-		// Submit via AJAX
+		// Prepare WordPress AJAX request
+		formData.append('action', 'brag_book_add_favorite');
+		formData.append('nonce', window.bragBookGalleryConfig?.nonce || '');
+		formData.append('case_id', caseId);
+		formData.append('email', email);
+		formData.append('phone', phone);
+		formData.append('name', name);
+
+		// Submit via WordPress AJAX (API tokens handled securely on server)
 		fetch(window.bragBookGalleryConfig?.ajaxUrl || '/wp-admin/admin-ajax.php', {
 			method: 'POST',
 			body: formData
@@ -260,15 +327,13 @@ class FavoritesManager {
 		})
 		.then(response => {
 			if (response.success) {
-				// Save user info locally AND to localStorage
-				this.userInfo = data;
-				if (this.options.persistToStorage) {
-					this.saveUserInfo();
-				}
+				// Save user info locally
+				const userInfo = { email, name, phone };
+				this.userInfo = userInfo;
 
-				// Also save to localStorage for future sessions
+				// Save to localStorage for future sessions
 				try {
-					localStorage.setItem(this.options.userInfoKey, JSON.stringify(data));
+					localStorage.setItem(this.options.userInfoKey, JSON.stringify(userInfo));
 				} catch (e) {
 					console.error('Failed to save user info to localStorage:', e);
 				}
@@ -330,10 +395,226 @@ class FavoritesManager {
 	}
 
 	/**
+	 * Handle submission of the favorites lookup form
+	 * @param {HTMLFormElement} form - The lookup form element that was submitted
+	 */
+	handleFavoritesLookupSubmit(form) {
+		const formData = new FormData(form);
+		const email = formData.get('email');
+
+		if (!email) {
+			this.showLookupError(form, 'Please enter an email address.');
+			return;
+		}
+
+		// Show loading state
+		const submitButton = form.querySelector('button[type="submit"]');
+		const originalText = submitButton ? submitButton.textContent : '';
+		if (submitButton) {
+			submitButton.disabled = true;
+			submitButton.textContent = 'Checking...';
+		}
+
+		// Clear any previous error messages
+		this.clearLookupMessages(form);
+
+		// First check localStorage for matching email
+		const storedUserInfo = this.getUserInfo();
+		if (storedUserInfo && storedUserInfo.email === email) {
+			// Email matches localStorage, show favorites
+			this.showLookupSuccess(form, email);
+			return;
+		}
+
+		// If not found in localStorage, check with server
+		// Add action and nonce for WordPress AJAX
+		formData.append('action', 'brag_book_lookup_favorites');
+		formData.append('nonce', window.bragBookGalleryConfig?.nonce || '');
+
+		// Submit via AJAX
+		fetch(window.bragBookGalleryConfig?.ajaxUrl || '/wp-admin/admin-ajax.php', {
+			method: 'POST',
+			body: formData
+		})
+		.then(response => {
+			if (!response.ok) {
+				throw new Error(`HTTP error! status: ${response.status}`);
+			}
+			return response.json();
+		})
+		.then(response => {
+			if (response.success) {
+				// Email found, validate and save user data
+				if (response.data && response.data.user) {
+					const user = response.data.user;
+					const favoritesData = response.data.favorites || {};
+
+					// Only create user info if we have essential data (email at minimum)
+					if (user.email && user.name && user.phone) {
+						const userInfo = {
+							email: user.email,
+							name: user.name,
+							first_name: user.first_name || '',
+							last_name: user.last_name || '',
+							phone: user.phone,
+							id: user.id
+						};
+
+						// Save user info to localStorage only if all essential fields are present
+						localStorage.setItem('brag-book-user-info', JSON.stringify(userInfo));
+						this.userInfo = userInfo;
+
+						// Save favorites data if available
+						if (favoritesData.cases_data && Object.keys(favoritesData.cases_data).length > 0) {
+							// Convert case IDs to strings for consistency with frontend
+							const favoriteIds = (favoritesData.case_ids || []).map(id => String(id));
+
+							// Save favorites to localStorage
+							localStorage.setItem('brag-book-favorites', JSON.stringify(favoriteIds));
+
+							// Update internal favorites
+							this.favorites = new Set(favoriteIds);
+
+							// Update UI to reflect loaded favorites
+							favoriteIds.forEach(itemId => {
+								const buttons = document.querySelectorAll(`[data-item-id="${itemId}"], [data-case-id="${itemId}"]`);
+								buttons.forEach(button => {
+									if (button.dataset.favorited !== undefined) {
+										button.dataset.favorited = 'true';
+									}
+								});
+							});
+						}
+
+						this.showLookupSuccess(form, email, userInfo, favoritesData);
+					} else {
+						// User found but incomplete data - don't create localStorage entries
+						this.showLookupError(form, 'Account found but missing required information. Please contact support.');
+					}
+				} else {
+					// No user data returned, but success - this shouldn't happen
+					this.showLookupError(form, 'Account found but no details available. Please contact support.');
+				}
+			} else {
+				// Email not found, show error
+				this.showLookupError(form, response.data?.message || 'We were unable to locate account details for this email address.');
+			}
+		})
+		.catch(error => {
+			console.error('Error looking up favorites:', error);
+			this.showLookupError(form, 'An error occurred while looking up your favorites. Please try again.');
+		})
+		.finally(() => {
+			// Reset button state
+			if (submitButton) {
+				submitButton.disabled = false;
+				submitButton.textContent = originalText;
+			}
+		});
+	}
+
+	/**
+	 * Show lookup success and redirect to favorites view
+	 */
+	showLookupSuccess(form, email, userData = null, favoritesData = null) {
+		// Only save user data if we have complete information
+		if (userData && userData.email && userData.name && userData.phone) {
+			this.userInfo = userData;
+			this.saveUserInfo();
+		} else {
+			// Check if we have valid user info in localStorage
+			const storedUserInfo = this.getUserInfo();
+			if (storedUserInfo && storedUserInfo.email && storedUserInfo.name && storedUserInfo.phone) {
+				this.userInfo = storedUserInfo;
+			} else {
+				// No valid user info - don't proceed
+				this.showLookupError(form, 'Unable to load complete account information. Please try again or contact support.');
+				return;
+			}
+		}
+
+		// Update favorites count display
+		if (favoritesData && favoritesData.total_count > 0) {
+			this.updateUI();
+		}
+
+		// Show success message
+		const successDiv = document.createElement('div');
+		successDiv.className = 'brag-book-gallery-form-success';
+		const favCount = favoritesData?.total_count || 0;
+		successDiv.textContent = `Account found! Loading ${favCount} favorite${favCount !== 1 ? 's' : ''}...`;
+		form.appendChild(successDiv);
+
+		// Redirect to favorites view after a short delay
+		setTimeout(() => {
+			if (window.bragBookGalleryApp && typeof window.bragBookGalleryApp.initializeFavoritesPage === 'function') {
+				window.bragBookGalleryApp.initializeFavoritesPage();
+			}
+		}, 1000);
+	}
+
+	/**
+	 * Show lookup error message
+	 */
+	showLookupError(form, message) {
+		const errorDiv = document.createElement('div');
+		errorDiv.className = 'brag-book-gallery-form-error';
+		errorDiv.textContent = message;
+		form.appendChild(errorDiv);
+	}
+
+	/**
+	 * Clear lookup messages
+	 */
+	clearLookupMessages(form) {
+		const existingError = form.querySelector('.brag-book-gallery-form-error');
+		const existingSuccess = form.querySelector('.brag-book-gallery-form-success');
+		if (existingError) existingError.remove();
+		if (existingSuccess) existingSuccess.remove();
+	}
+
+	/**
+	 * Show error message in form
+	 */
+	showFormError(form, message) {
+		// Clear existing messages
+		this.clearLookupMessages(form);
+
+		// Show error message in form
+		const errorDiv = document.createElement('div');
+		errorDiv.className = 'brag-book-gallery-form-error';
+		errorDiv.textContent = message;
+		form.appendChild(errorDiv);
+
+		// Reset button state if needed
+		const submitButton = form.querySelector('button[type="submit"]');
+		if (submitButton) {
+			submitButton.disabled = false;
+		}
+	}
+
+	/**
 	 * Display a success notification to the user
 	 * @param {string} message - The message to display
 	 */
 	showSuccessNotification(message) {
+		this.showNotification(message, 'success');
+	}
+
+	/**
+	 * Display an error notification to the user
+	 * @param {string} message - The message to display
+	 */
+	showErrorNotification(message) {
+		this.showNotification(message, 'error');
+	}
+
+	/**
+	 * Display a notification to the user
+	 * @param {string} message - The message to display
+	 * @param {string} type - The type of notification (success or error)
+	 */
+	showNotification(message, type = 'success') {
 		// Get or create notification element
 		let notification = document.getElementById('favoritesNotification');
 		if (!notification) {
@@ -343,9 +624,10 @@ class FavoritesManager {
 			document.body.appendChild(notification);
 		}
 
-		// Update message and show
+		// Update message, type, and show
 		notification.textContent = message;
-		notification.classList.add('active');
+		notification.classList.remove('success', 'error');
+		notification.classList.add('active', type);
 
 		// Animate if GSAP available
 		if (typeof gsap !== 'undefined') {
@@ -355,7 +637,8 @@ class FavoritesManager {
 			);
 		}
 
-		// Hide after 3 seconds
+		// Hide after 3 seconds (or 5 for errors)
+		const hideDelay = type === 'error' ? 5000 : 3000;
 		setTimeout(() => {
 			if (typeof gsap !== 'undefined') {
 				gsap.to(notification, {
@@ -364,13 +647,13 @@ class FavoritesManager {
 					duration: 0.2,
 					ease: "power2.in",
 					onComplete: () => {
-						notification.classList.remove('active');
+						notification.classList.remove('active', 'success', 'error');
 					}
 				});
 			} else {
-				notification.classList.remove('active');
+				notification.classList.remove('active', 'success', 'error');
 			}
-		}, 3000);
+		}, hideDelay);
 	}
 
 	updateFavoritesDisplay() {
@@ -509,6 +792,12 @@ class FavoritesManager {
 	 * Save user information to localStorage
 	 */
 	saveUserInfo() {
+		// Only save if we have complete user information
+		if (!this.userInfo || !this.userInfo.email || !this.userInfo.name || !this.userInfo.phone) {
+			console.warn('Cannot save incomplete user info to localStorage:', this.userInfo);
+			return;
+		}
+
 		try {
 			localStorage.setItem(this.options.userInfoKey, JSON.stringify(this.userInfo));
 		} catch (e) {
@@ -533,6 +822,75 @@ class FavoritesManager {
 			this.saveToStorage();
 		}
 		this.updateUI();
+	}
+
+	/**
+	 * Get user information from storage
+	 * @returns {Object|null} User information or null if not set
+	 */
+	getUserInfo() {
+		if (this.userInfo) {
+			return this.userInfo;
+		}
+
+		// Try to get from localStorage
+		try {
+			const stored = localStorage.getItem(this.options.userInfoKey);
+			if (stored) {
+				this.userInfo = JSON.parse(stored);
+				return this.userInfo;
+			}
+		} catch (e) {
+			console.error('Failed to retrieve user info from localStorage:', e);
+		}
+
+		return null;
+	}
+
+	/**
+	 * Get current favorites set
+	 * @returns {Set} Set of favorite IDs
+	 */
+	getFavorites() {
+		return this.favorites;
+	}
+
+	/**
+	 * Save user info to localStorage
+	 */
+	saveUserInfo() {
+		// Only save if we have complete user information
+		if (!this.userInfo || !this.userInfo.email || !this.userInfo.name || !this.userInfo.phone) {
+			console.warn('Cannot save incomplete user info to localStorage:', this.userInfo);
+			return;
+		}
+
+		try {
+			localStorage.setItem(this.options.userInfoKey, JSON.stringify(this.userInfo));
+		} catch (e) {
+			console.error('Failed to save user info to localStorage:', e);
+		}
+	}
+
+	/**
+	 * Refresh event listeners for favorite buttons
+	 * Useful after dynamically adding content
+	 */
+	refreshEventListeners() {
+		// Re-scan for favorite buttons and set up event listeners
+		const favoriteButtons = document.querySelectorAll('.brag-book-gallery-favorite-button');
+
+		favoriteButtons.forEach(button => {
+			// Remove existing listeners to avoid duplicates
+			button.removeEventListener('click', this.handleFavoriteClick);
+
+			// Add new listener
+			button.addEventListener('click', (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				this.toggleFavorite(button);
+			});
+		});
 	}
 }
 

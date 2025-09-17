@@ -35,8 +35,8 @@ class Sync_Validation_Test {
 		$results = [];
 
 		try {
-			// Test if Procedure_Sync class exists
-			if ( ! class_exists( '\\BRAGBookGallery\\Includes\\Sync\\Procedure_Sync' ) ) {
+			// Test if Data_Sync class exists
+			if ( ! class_exists( '\\BRAGBookGallery\\Includes\\Sync\\Data_Sync' ) ) {
 				$results['class_exists'] = false;
 				return $results;
 			}
@@ -194,7 +194,7 @@ class Sync_Validation_Test {
 		// Class exists
 		$status = $test_results['class_exists'] ? '✓ Available' : '✗ Missing';
 		$class = $test_results['class_exists'] ? 'success' : 'error';
-		$html .= "<tr><td>Procedure_Sync Class</td><td class='{$class}'>{$status}</td><td>Main sync class</td></tr>";
+		$html .= "<tr><td>Data_Sync Class</td><td class='{$class}'>{$status}</td><td>Main sync class</td></tr>";
 
 		// API configured
 		$status = $test_results['api_configured'] ? '✓ Configured' : '✗ Not Configured';

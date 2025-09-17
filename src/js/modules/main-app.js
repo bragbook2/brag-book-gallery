@@ -171,6 +171,9 @@ class BRAGbookGalleryApp {
 		if (this.components.favoritesManager) {
 			const initialCount = this.components.favoritesManager.getFavorites().size;
 			this.updateFavoritesCount(initialCount);
+
+			// Update heart button states based on localStorage favorites
+			this.updateFavoriteHeartStates();
 		}
 
 		// Add click handler for My Favorites button
@@ -190,6 +193,91 @@ class BRAGbookGalleryApp {
 				}, 100);
 			}
 		});
+	}
+
+	/**
+	 * Update favorite heart button states based on localStorage favorites
+	 */
+	updateFavoriteHeartStates() {
+		// Get favorites from localStorage
+		let favorites = [];
+		try {
+			const storedFavorites = localStorage.getItem('brag-book-favorites');
+			if (storedFavorites) {
+				favorites = JSON.parse(storedFavorites);
+			}
+		} catch (e) {
+			console.error('Failed to load favorites from localStorage:', e);
+			return;
+		}
+
+		if (!Array.isArray(favorites) || favorites.length === 0) {
+			return; // No favorites to process
+		}
+
+		console.log('Updating heart states for favorites:', favorites);
+
+		// Find all favorite buttons on the page
+		const favoriteButtons = document.querySelectorAll('.brag-book-gallery-favorite-button');
+
+		favoriteButtons.forEach(button => {
+			// Get the case ID from the button's data attributes
+			let caseIds = []; // Array of possible IDs to check
+
+			// Get WordPress post ID from the case card (highest priority)
+			const caseCard = button.closest('.brag-book-gallery-case-card');
+			if (caseCard && caseCard.dataset.postId) {
+				caseIds.push(caseCard.dataset.postId);
+			}
+
+			// Get API case ID from case card
+			if (caseCard && caseCard.dataset.caseId) {
+				caseIds.push(caseCard.dataset.caseId);
+			}
+
+			// Try different data attribute sources from button
+			if (button.dataset.itemId) {
+				// Add the full item ID
+				caseIds.push(button.dataset.itemId);
+
+				// Extract numeric ID from values like "case-12345"
+				const matches = button.dataset.itemId.match(/(\d+)/);
+				if (matches) {
+					caseIds.push(matches[1]);
+				}
+			}
+
+			if (button.dataset.caseId) {
+				caseIds.push(button.dataset.caseId);
+			}
+
+			if (caseIds.length === 0) {
+				return; // Skip if no case ID found
+			}
+
+			console.log(`Checking case IDs for button:`, caseIds, 'against favorites:', favorites);
+
+			// Check if ANY of these case IDs is in the favorites
+			const isFavorited = caseIds.some(id =>
+				favorites.includes(String(id)) ||
+				favorites.includes(id) ||
+				favorites.includes(`case-${id}`)
+			);
+
+			if (isFavorited) {
+				// Mark as favorited
+				button.dataset.favorited = 'true';
+				button.setAttribute('aria-label', 'Remove from favorites');
+				console.log(`✅ Marked case as favorited (matched IDs: ${caseIds.join(', ')})`);
+			} else {
+				// Ensure it's marked as not favorited
+				button.dataset.favorited = 'false';
+				button.setAttribute('aria-label', 'Add to favorites');
+				console.log(`❌ Case not favorited (checked IDs: ${caseIds.join(', ')})`);
+			}
+		});
+
+		console.log(`Updated ${favoriteButtons.length} favorite buttons based on localStorage`);
 	}
 
 	/**
@@ -257,30 +345,14 @@ class BRAGbookGalleryApp {
 	}
 
 	initializeCaseLinks() {
-		// Handle clicks on case links with AJAX loading
+		// Handle clicks on case links - allow normal navigation instead of AJAX loading
 		document.addEventListener('click', (e) => {
 			// Check if click is on a case link
 			const caseLink = e.target.closest('.brag-book-gallery-case-card-link');
 			if (caseLink) {
-				e.preventDefault();
-				e.stopPropagation();
-
-				// Get case ID and procedure IDs from the link
-				const caseId = caseLink.dataset.caseId;
-				const procedureIds = caseLink.dataset.procedureIds;
-
-				if (caseId) {
-					// Show immediate visual feedback on the clicked card
-					const caseCard = caseLink.closest('.brag-book-gallery-case-card');
-					if (caseCard) {
-						caseCard.style.opacity = '0.6';
-						caseCard.style.transform = 'scale(0.98)';
-						caseCard.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
-					}
-
-					// Load case details via AJAX
-					this.loadCaseDetails(caseId, caseLink.href, true, procedureIds);
-				}
+				// Allow normal navigation to server-rendered case pages
+				// No preventDefault() - let the browser handle the navigation
+				console.log('🔗 Navigating to case page:', caseLink.href);
 				return;
 			}
 
@@ -290,18 +362,10 @@ class BRAGbookGalleryApp {
 				// Find the case link within the card
 				const caseLinkInCard = caseCard.querySelector('.brag-book-gallery-case-card-link');
 				if (caseLinkInCard && caseLinkInCard.href) {
-					e.preventDefault();
-					const caseId = caseLinkInCard.dataset.caseId;
-					const procedureIds = caseLinkInCard.dataset.procedureIds || caseCard.dataset.procedureIds;
-
-					if (caseId) {
-						// Show immediate visual feedback on the clicked card
-						caseCard.style.opacity = '0.6';
-						caseCard.style.transform = 'scale(0.98)';
-						caseCard.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
-
-						this.loadCaseDetails(caseId, caseLinkInCard.href, true, procedureIds);
-					}
+					// Allow normal navigation to server-rendered case pages
+					// No preventDefault() - let the browser navigate to the case page
+					console.log('🔗 Navigating to case page from card:', caseLinkInCard.href);
+					window.location.href = caseLinkInCard.href;
 				}
 			}
 
@@ -309,76 +373,9 @@ class BRAGbookGalleryApp {
 			// But exclude summary elements which also use .brag-book-gallery-nav-button
 			const navButton = e.target.closest('.brag-book-gallery-nav-button');
 			if (navButton && !navButton.closest('summary')) {
-				e.preventDefault();
-				e.stopPropagation();
-
-				// Extract case ID from the URL
-				const href = navButton.href;
-				if (href) {
-					const url = new URL(href);
-					const pathSegments = url.pathname.split('/').filter(s => s);
-					
-					// URL format: /gallery/procedure-slug/case-id/
-					if (pathSegments.length >= 3) {
-						const caseId = pathSegments[pathSegments.length - 1];
-						const procedureSlug = pathSegments[pathSegments.length - 2];
-						
-						// Try multiple methods to get procedure IDs for context preservation
-						let procedureIds = '';
-						
-						// Method 1: Try to get from current case's data attributes
-						const currentCaseElement = document.querySelector('[data-case-id]');
-						if (currentCaseElement && currentCaseElement.dataset.procedureIds) {
-							procedureIds = currentCaseElement.dataset.procedureIds;
-							console.log('Using procedure IDs from current case element:', procedureIds);
-						}
-						
-						// Method 2: Look up procedure IDs from sidebar data
-						if (!procedureIds) {
-							const currentSidebarData = window.bragBookGalleryConfig?.sidebarData;
-							if (currentSidebarData && procedureSlug) {
-								for (const category of Object.values(currentSidebarData)) {
-									if (category.procedures) {
-										for (const procedure of category.procedures) {
-											if (procedure.slug === procedureSlug) {
-												procedureIds = procedure.ids ? procedure.ids.join(',') : '';
-												console.log('Using procedure IDs from sidebar data:', procedureIds);
-												break;
-											}
-										}
-									}
-									if (procedureIds) break;
-								}
-							}
-						}
-						
-						// Method 3: Try to extract from current page URL context
-						if (!procedureIds) {
-							const currentPathSegments = window.location.pathname.split('/').filter(s => s);
-							if (currentPathSegments.length >= 2) {
-								const currentProcedureSlug = currentPathSegments[currentPathSegments.length - 2];
-								if (currentProcedureSlug === procedureSlug) {
-									// Same procedure context, try to find any case with procedure IDs
-									const anyCase = document.querySelector('[data-procedure-ids]');
-									if (anyCase && anyCase.dataset.procedureIds) {
-										procedureIds = anyCase.dataset.procedureIds;
-										console.log('Using procedure IDs from any case element:', procedureIds);
-									}
-								}
-							}
-						}
-
-						if (caseId) {
-							// Show visual feedback on the navigation button
-							navButton.style.opacity = '0.7';
-							navButton.style.transition = 'opacity 0.2s ease';
-							
-							// Load case details via AJAX with preserved procedure context
-							console.log(`Loading case ${caseId} with procedure context: ${procedureIds}`);
-							this.loadCaseDetails(caseId, href, true, procedureIds);
-						}
-					}
-				}
+				// Allow normal navigation to server-rendered case pages
+				// No preventDefault() - let the browser handle the navigation
+				console.log('🔗 Navigating to case page via nav button:', navButton.href);
 				return;
 			}
 		});
@@ -388,13 +385,9 @@ class BRAGbookGalleryApp {
 
 		// Handle browser back/forward navigation
 		window.addEventListener('popstate', (e) => {
-			if (e.state && e.state.caseId) {
-				// Load case details from history state
-				this.loadCaseDetails(e.state.caseId, window.location.href, false);
-			} else {
-				// Reload the page to show gallery
-				window.location.reload();
-			}
+			// With server-side rendering, let the browser handle navigation naturally
+			// No need to load case details via AJAX
+			console.log('🔙 Browser navigation handled by server-side rendering');
 		});
 	}
 
@@ -405,44 +398,30 @@ class BRAGbookGalleryApp {
 	async handleDirectCaseUrl() {
 		const currentPath = window.location.pathname;
 		const pathSegments = currentPath.split('/').filter(s => s);
-		
+
 		// Check if this looks like a case URL: /gallery/procedure-slug/case-id
 		// We need at least 3 segments and the last should be numeric
 		if (pathSegments.length >= 3) {
 			const lastSegment = pathSegments[pathSegments.length - 1];
-			
+
 			// Check if the last segment is a numeric case ID
 			if (/^\d+$/.test(lastSegment)) {
-				const caseId = lastSegment;
-				const procedureSlug = pathSegments[pathSegments.length - 2]; // Get procedure slug from URL
 				const galleryContent = document.getElementById('gallery-content');
-				
-				if (galleryContent) {
-					try {
-						// Show skeleton loading immediately for direct URL access
-						this.showCaseDetailSkeleton();
-						
-						// Try to get procedure IDs from sidebar data
-						let procedureIds = null;
-						if (window.bragBookGalleryConfig?.sidebarData && procedureSlug) {
-							procedureIds = this.getProcedureIdsFromSlug(procedureSlug);
-							if (procedureIds) {
-								console.log(`🔗 Direct case load with procedure context: case ${caseId}, procedure ${procedureSlug}, IDs: ${procedureIds}`);
-							}
-						}
-						
-						// Load case details directly without gallery initialization
-						await this.loadCaseDetails(caseId, window.location.href, false, procedureIds);
-						return true;
-					} catch (error) {
-						console.warn('Failed to load direct case URL:', error);
-						// Fall back to normal gallery loading
-						return false;
-					}
+
+				// Check if case is already server-rendered (has case detail view)
+				const existingCaseView = galleryContent?.querySelector('.brag-book-gallery-case-detail-view');
+				if (existingCaseView) {
+					console.log('✅ Case already server-rendered, skipping AJAX load');
+					// Case is already rendered on server, just initialize essential components
+					return true;
 				}
+
+				// If no server-rendered content exists, skip AJAX loading to avoid errors
+				console.log('⚠️ Case URL detected but no server-rendered content found, skipping AJAX load');
+				return false;
 			}
 		}
-		
+
 		return false;
 	}
 
@@ -490,10 +469,10 @@ class BRAGbookGalleryApp {
 				if (cachedData && cachedData !== 'loading') {
 					console.log(`⚡ Loading case ${caseId} from preload cache`);
 					galleryContent.innerHTML = cachedData;
-					
+
 					// Set active state on sidebar
 					this.setActiveSidebarForCase(caseId);
-					
+
 					// Scroll to top of gallery content area smoothly
 					const wrapper = document.querySelector('.brag-book-gallery-wrapper');
 					if (wrapper) {
@@ -614,10 +593,10 @@ class BRAGbookGalleryApp {
 					hasNavigation: data.data.html.includes('brag-book-gallery-case-nav-buttons'),
 					htmlLength: data.data.html.length
 				});
-				
+
 				// Display the HTML directly from the server
 				galleryContent.innerHTML = data.data.html;
-				
+
 				// Set active state on sidebar
 				this.setActiveSidebarForCase(caseId);
 
@@ -708,7 +687,7 @@ class BRAGbookGalleryApp {
 					<div class="skeleton-progress-fill"></div>
 					<div class="skeleton-progress-text">Loading... 0%</div>
 				</div>
-				
+
 				<!-- Case Header Section (matches render_case_header) -->
 				<div class="brag-book-gallery-brag-book-gallery-case-header-section">
 					<div class="brag-book-gallery-case-navigation">
@@ -722,7 +701,7 @@ class BRAGbookGalleryApp {
 						</div>
 					</div>
 				</div>
-				
+
 				<!-- Case Images Section (matches render_case_images) -->
 				<div class="brag-book-gallery-brag-book-gallery-case-content">
 					<div class="brag-book-gallery-case-images-section">
@@ -743,7 +722,7 @@ class BRAGbookGalleryApp {
 						</div>
 					</div>
 				</div>
-				
+
 				<!-- Case Details Cards Section (matches render_case_details_cards) -->
 				<div class="brag-book-gallery-case-card-details-section">
 					<div class="brag-book-gallery-case-card-details-grid">
@@ -759,7 +738,7 @@ class BRAGbookGalleryApp {
 								</div>
 							</div>
 						</div>
-						
+
 						<!-- Patient Details Card -->
 						<div class="case-detail-card patient-details-card">
 							<div class="card-header">
@@ -773,7 +752,7 @@ class BRAGbookGalleryApp {
 								</div>
 							</div>
 						</div>
-						
+
 						<!-- Procedure Details Card -->
 						<div class="case-detail-card procedure-details-card">
 							<div class="card-header">
@@ -786,7 +765,7 @@ class BRAGbookGalleryApp {
 								</div>
 							</div>
 						</div>
-						
+
 						<!-- Case Notes Card (full width) -->
 						<div class="case-detail-card case-notes-card">
 							<div class="card-header">
@@ -808,7 +787,7 @@ class BRAGbookGalleryApp {
 
 		galleryContent.innerHTML = skeletonHTML;
 		console.log('✅ Skeleton loaded into gallery content');
-		
+
 		// Start progress bar animation
 		this.animateProgressBar();
 	}
@@ -819,29 +798,29 @@ class BRAGbookGalleryApp {
 	animateProgressBar() {
 		const progressFill = document.querySelector('.skeleton-progress-fill');
 		const progressText = document.querySelector('.skeleton-progress-text');
-		
+
 		if (!progressFill || !progressText) return;
-		
+
 		let progress = 0;
 		const duration = 4000; // 4 seconds to match typical case load time
 		const increment = 100 / (duration / 75); // Update every 75ms for smoother animation
-		
+
 		// Start at 0% and show immediately
 		progressFill.style.width = '0%';
 		progressText.textContent = 'Loading... 0%';
-		
+
 		const updateProgress = () => {
 			if (progress < 100) {
 				progress = Math.min(progress + increment + Math.random() * 2, 100);
 				progressFill.style.width = `${progress}%`;
 				progressText.textContent = `Loading... ${Math.floor(progress)}%`;
-				
+
 				// Slow down as we approach 100%
 				const delay = progress > 80 ? 100 : progress > 60 ? 75 : 50;
 				setTimeout(updateProgress, delay);
 			}
 		};
-		
+
 		updateProgress();
 	}
 
@@ -1643,16 +1622,16 @@ class BRAGbookGalleryApp {
 
 		favoritesBtns.forEach(btn => {
 			btn.addEventListener('click', (e) => {
+				// If this is the favorites link in sidebar, let it navigate normally to the page
+				if (btn.classList.contains('brag-book-gallery-favorites-link')) {
+					// Allow normal navigation - don't prevent default
+					return;
+				}
+
+				// For other buttons, prevent default and toggle the view
 				e.preventDefault();
 				e.stopPropagation();
-
-				// If this is the favorites link in sidebar, always show favorites (don't toggle)
-				if (btn.classList.contains('brag-book-gallery-favorites-link')) {
-					this.showFavoritesView();
-				} else {
-					// For other buttons, toggle the view
-					this.toggleFavoritesView();
-				}
+				this.toggleFavoritesView();
 			});
 		});
 	}
@@ -1662,12 +1641,7 @@ class BRAGbookGalleryApp {
 		const favoritesBtns = document.querySelectorAll('[data-action="show-favorites"]');
 		favoritesBtns.forEach(btn => btn.classList.add('active'));
 
-		// Update URL to reflect favorites view
-		if (window.history && window.history.pushState) {
-			const gallerySlug = window.bragBookGalleryConfig?.gallerySlug || 'before-after';
-			const favoritesUrl = `/${gallerySlug}/myfavorites/`;
-			window.history.pushState({ view: 'favorites' }, '', favoritesUrl);
-		}
+		// Note: URL manipulation removed - we now navigate to actual myfavorites page
 
 		this.showFavoritesOnly();
 	}
@@ -1714,49 +1688,22 @@ class BRAGbookGalleryApp {
 			console.error('Failed to load user info:', e);
 		}
 
-		// If no user info, show a form to enter email
+		// If no user info, the email lookup form is now handled server-side
+		// JavaScript just needs to show/hide the appropriate containers
 		if (!userInfo || !userInfo.email) {
-			galleryContent.innerHTML = `
-				<div class="brag-book-gallery-favorites-wrapper">
-					<div class="brag-book-gallery-favorites-container">
-						<div class="brag-book-gallery-favorites-form-wrapper">
-							<svg class="brag-book-gallery-favorites-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 180">
-								<path fill="#ff595c" d="M85.5,124.6l40-84.7h16.2v104.9h-12.8V60.7l-39.8,84.1h-7.2L42.2,59.7v85.1h-12.8V39.9h16.8l39.3,84.7Z"></path>
-								<path fill="#ff595c" d="M186.2,131.1l25-62.4h12.9l-32.6,80.1c-2.6,6.3-5.2,11.4-7.9,15.3-2.7,3.8-5.7,6.6-9.1,8.3-3.3,1.7-7.4,2.6-12.2,2.6s-3.4,0-4.9-.4c-1.5-.2-2.9-.6-4.2-.9v-10.6c1.3.2,2.7.4,4.2.6,1.4.2,2.9.3,4.5.3,3.9,0,7.2-1.3,9.8-3.9,2.6-2.6,5.3-7.2,8.1-13.9l-32.4-77.3h13.4l25.4,62.4v-.2Z"></path>
-								<path fill="#121827" d="M303.1,39.9v11.2h-60.4v35.6h55.2v11.2h-55.2v46.9h-12.8V39.9h73.2,0Z"></path>
-								<path fill="#121827" d="M344.1,67.2c11.6,0,20.2,2.9,25.9,8.7,5.7,5.8,8.5,14.9,8.5,27.4v41.5h-7.9l-2.4-23.7c-2.7,7.8-7.2,13.9-13.7,18.4-6.4,4.5-14,6.8-22.8,6.8s-9.2-.9-12.8-2.8c-3.6-1.9-6.5-4.4-8.5-7.5s-3-6.5-3-10,1.3-8.7,3.9-12.5,6.7-7.1,12.4-9.9c5.7-2.8,13-4.7,22.1-5.8l20-2.5c-.8-6.2-2.9-10.7-6.4-13.4s-8.6-4-15.2-4-12.3,1.4-15.7,4.3c-3.3,2.9-5.6,6.8-6.8,11.8h-12.6c1.1-7.8,4.5-14.2,10.2-19.3,5.8-5.1,14-7.6,24.9-7.6h-.1ZM335,135.5c5.8,0,11.1-1.4,15.8-4.2,4.7-2.8,8.4-6.5,11.2-11.2,2.8-4.7,4.2-9.9,4.2-15.7l-15.4,1.9c-7.9,1-14,2.3-18.5,4.2-4.5,1.8-7.7,3.9-9.6,6.3-1.9,2.3-2.8,4.8-2.9,7.4,0,3.2,1.1,5.9,3.7,8.1s6.4,3.3,11.6,3.3h-.1Z"></path>
-								<path fill="#121827" d="M419.7,127l25-58.4h13.1l-33.4,76.2h-9.8l-33.2-76.2h13.2l25,58.4h.1Z"></path>
-								<path fill="#121827" d="M495.7,146.3c-7.9,0-14.7-1.6-20.4-4.7-5.8-3.1-10.2-7.5-13.3-13.3s-4.7-12.5-4.7-20.3v-2.6c0-7.8,1.6-14.6,4.7-20.3,3.1-5.7,7.6-10.1,13.3-13.2,5.8-3.1,12.6-4.7,20.4-4.7s14.6,1.6,20.4,4.7c5.8,3.1,10.2,7.5,13.3,13.2s4.7,12.5,4.7,20.3v2.6c0,7.8-1.6,14.5-4.7,20.3-3.1,5.8-7.5,10.2-13.3,13.3s-12.6,4.7-20.4,4.7ZM495.7,135.5c8.3,0,14.8-2.4,19.3-7.1,4.5-4.8,6.8-12,6.8-21.6s-2.3-16.9-6.8-21.6c-4.5-4.8-10.9-7.1-19.3-7.1s-14.8,2.4-19.3,7.1c-4.5,4.7-6.8,11.9-6.8,21.6s2.3,16.9,6.8,21.6,10.9,7.1,19.3,7.1Z"></path>
-								<path fill="#121827" d="M579.5,67.2c2.2,0,4,0,5.5.4,1.5.2,2.7.5,3.7.8v12.1c-1.4-.2-2.9-.3-4.5-.4-1.6,0-3.4,0-5.5,0-7.2,0-12.8,2.6-16.8,7.8s-6,13.9-6,26.1v31h-12.2v-76.2h7.9l2.3,22.1c2.1-8.3,5.4-14.4,10-18,4.6-3.7,9.8-5.5,15.6-5.5h0Z"></path>
-								<path fill="#121827" d="M607.6,144.8h-12.2v-76.2h12.2v76.2Z"></path>
-								<path fill="#121827" d="M670,68.7v10.8h-27.2v40.5c0,5.5,1.1,9.4,3.4,11.9,2.3,2.4,5.8,3.7,10.5,3.7s5.1,0,7.2-.4c2.1-.3,4.2-.6,6.2-1v10.6c-1.6.4-3.5.7-5.5,1-2.1.3-4.7.4-7.8.4-17.4,0-26.2-8.4-26.2-25.3v-41.5h-15.7v-10.8h16l4-22.6h7.9v22.6h27.2,0Z"></path>
-								<path fill="#121827" d="M749.7,102.9c0,2.8-.2,5.3-.6,7.5h-62.2c.7,8.5,3.2,14.9,7.6,19,4.4,4.1,10.5,6.2,18.3,6.2s8.8-.7,11.9-2.1c3-1.4,5.4-3.3,7.1-5.5,1.7-2.3,3.1-4.8,4-7.5h12.5c-.9,4.5-2.7,8.7-5.5,12.7s-6.6,7.2-11.6,9.6c-4.9,2.4-11.2,3.6-18.8,3.6s-14.5-1.6-20.2-4.7c-5.7-3.1-10.1-7.5-13.2-13.3-3.1-5.8-4.7-12.5-4.7-20.3v-2.6c0-7.8,1.6-14.6,4.7-20.3,3.1-5.7,7.6-10.1,13.4-13.2,5.8-3.1,12.6-4.7,20.5-4.7s14.1,1.5,19.5,4.5c5.5,3,9.7,7.1,12.7,12.4,3,5.3,4.5,11.6,4.5,18.8h0ZM712.9,78c-7.6,0-13.6,1.9-18,5.6-4.4,3.7-7,9.4-7.9,17h50.3c-.6-7.5-3-13.1-7.1-16.9-4.2-3.8-9.9-5.7-17.3-5.7h0Z"></path>
-								<path fill="#121827" d="M753.3,119.4h12.5c1.1,5,3.4,8.9,7,11.8,3.7,2.9,9.8,4.3,18.4,4.3s10.1-.5,13.4-1.6c3.3-1.1,5.7-2.5,7.1-4.3,1.4-1.7,2.2-3.5,2.2-5.3s-.6-4.2-1.7-5.8c-1.2-1.6-3.5-2.9-7-4s-8.9-2-16-2.8c-9-1.1-16-2.5-20.9-4.5-4.9-1.9-8.3-4.3-10.1-7.2s-2.8-6.2-2.8-9.9,1.2-7.8,3.7-11.2c2.4-3.4,6.1-6.2,11.1-8.4,4.9-2.2,11.2-3.3,18.8-3.3s14.3,1.2,19.3,3.5,8.9,5.5,11.6,9.6c2.7,4,4.3,8.6,4.8,13.8h-12.5c-.9-5.1-3-9-6.3-11.9s-9-4.3-16.8-4.3-13.4,1.2-16.5,3.5c-3.2,2.3-4.7,5-4.7,7.8s.6,3.9,1.8,5.5c1.2,1.5,3.6,2.9,7.3,4,3.7,1.2,9.2,2.2,16.7,3,8.8,1,15.6,2.4,20.3,4.5,4.8,2,8,4.5,9.9,7.3,1.8,2.9,2.7,6.1,2.7,9.8s-1.3,7.7-3.8,11.2-6.3,6.4-11.5,8.5c-5.2,2.2-11.8,3.2-19.8,3.2s-15.5-1.1-20.9-3.4c-5.4-2.3-9.4-5.5-12.1-9.5-2.7-4-4.4-8.7-5-13.9h-.2Z"></path>
-								<path fill="#121827" d="M849.8,22.7v2.4h-6.1v20.1h-2.9v-20.1h-6.1v-2.4h15.2-.1Z"></path>
-								<path fill="#121827" d="M876.2,22.8v22.3h-2.9v-16.6l-7.4,16.6h-2.1l-7.4-16.7v16.7h-2.9v-22.3h3.2l8.3,18.4,8.3-18.4h3.1-.2Z"></path>
-								<path fill="#ff595c" d="M614.2,19c-2.4-.6-4.8-.3-6.9.9-2.2,1.2-4.1,3.1-5.6,5.2-.2.3-.4.6-.5.9-2.3-3.9-6.6-7.6-11.3-7.2-4.4.4-8.2,3.6-9.1,7.9-1.1,5,2.1,9.6,5.1,13.3,2.8,3.3,5.9,6.3,9,9.3,1.9,1.8,3.9,3.6,5.9,5.3h0c0,0,.2.1.3.1s.2,0,.3-.1c1.7-1.4,3.3-2.9,4.9-4.3,3.2-2.9,6.3-5.9,9.1-9.1,3.1-3.5,6.6-7.9,6.3-12.9-.3-4.3-3.4-8.1-7.6-9.2h0Z"></path>
-							</svg>
-							<p>Please enter your email to view your saved favorites:</p>
-							<form class="brag-book-gallery-favorites-lookup-form" id="favorites-email-form">
-								<div class="brag-book-gallery-form-group">
-									<input
-										type="email"
-										name="email"
-										class="brag-book-gallery-form-input"
-										placeholder="Enter your email address"
-										required
-									>
-									<button type="submit" class="brag-book-gallery-button brag-book-gallery-button--full" data-action="form-submit">
-										View Favorites
-									</button>
-								</div>
-							</form>
-						</div>
-					</div>
-				</div>
-			`;
+			// Show the server-side email capture form
+			const emailCapture = document.getElementById('favoritesEmailCapture');
+			if (emailCapture) {
+				emailCapture.style.display = 'block';
+			}
 
-			// Setup form handler
+			// Hide the favorites grid container
+			const gridContainer = document.getElementById('favoritesGridContainer');
+			if (gridContainer) {
+				gridContainer.style.display = 'none';
+			}
+
+			// Setup form handler for the server-rendered form
 			const form = document.getElementById('favorites-email-form');
 			if (form) {
 				form.addEventListener('submit', (e) => {
@@ -1775,13 +1722,20 @@ class BRAGbookGalleryApp {
 			return;
 		}
 
-		// Show loading state
-		galleryContent.innerHTML = `
-			<div class="brag-book-gallery-loading">
-				<div class="brag-book-gallery-spinner"></div>
-				<p>Loading your favorites...</p>
-			</div>
-		`;
+		// Hide email capture form and show loading state
+		const emailCapture = document.getElementById('favoritesEmailCapture');
+		const loadingState = document.getElementById('favoritesLoading');
+		const gridContainer = document.getElementById('favoritesGridContainer');
+
+		if (emailCapture) {
+			emailCapture.style.display = 'none';
+		}
+		if (loadingState) {
+			loadingState.style.display = 'block';
+		}
+		if (gridContainer) {
+			gridContainer.style.display = 'none';
+		}
 
 		// Make AJAX request with email from localStorage
 		const ajaxUrl = window.bragBookGalleryConfig?.ajaxUrl || '/wp-admin/admin-ajax.php';
@@ -1801,6 +1755,10 @@ class BRAGbookGalleryApp {
 		})
 		.then(response => response.json())
 		.then(data => {
+			// Hide loading state
+			if (loadingState) {
+				loadingState.style.display = 'none';
+			}
 
 			if (data.success && data.data) {
 				// Update user info from API response if it includes name and phone
@@ -1895,21 +1853,25 @@ class BRAGbookGalleryApp {
 				}
 
 				if (data.data.html) {
-					// Display the favorites HTML
-					galleryContent.innerHTML = `
-						<div class="brag-book-gallery-favorites-wrapper">
-							<div class="brag-book-gallery-favorites-container">
-								<div class="brag-book-gallery-favorites-view">
-									${data.data.html}
-								</div>
-							</div>
-						</div>
-					`;
+					// Show favorites grid container and populate with HTML
+					if (gridContainer) {
+						gridContainer.style.display = 'block';
+						const favoritesGrid = gridContainer.querySelector('#favoritesGrid');
+						if (favoritesGrid) {
+							favoritesGrid.innerHTML = data.data.html;
+						}
 
-					// Add user email to the rendered content
-					const userEmailElement = galleryContent.querySelector('.brag-book-gallery-favorites-user');
-					if (userEmailElement) {
-						userEmailElement.textContent = `Showing favorites for: ${userInfo.email}`;
+						// Show favorites actions
+						const favoritesActions = gridContainer.querySelector('#favoritesActions');
+						if (favoritesActions) {
+							favoritesActions.style.display = 'block';
+						}
+
+						// Hide empty state
+						const emptyState = gridContainer.querySelector('#favoritesEmpty');
+						if (emptyState) {
+							emptyState.style.display = 'none';
+						}
 					}
 
 					// Reinitialize components for the new content first
@@ -1947,47 +1909,33 @@ class BRAGbookGalleryApp {
 							}
 						}
 					}, 100);
-				} else if (typeof data.data === 'string') {
-					// Direct HTML response
-					galleryContent.innerHTML = data.data;
 				} else {
-					// Empty or no cases - ensure localStorage is initialized
+					// Empty or no cases - show the server-side empty state
 					if (!localStorage.getItem('brag-book-favorites')) {
 						localStorage.setItem('brag-book-favorites', JSON.stringify([]));
 					}
 
-					galleryContent.innerHTML = `
-						<div class="brag-book-gallery-favorites-wrapper">
-							<div class="brag-book-gallery-favorites-container">
-								<div class="brag-book-filtered-results">
-									<svg class="brag-book-gallery-favorites-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 180">
-										<path fill="#ff595c" d="M85.5,124.6l40-84.7h16.2v104.9h-12.8V60.7l-39.8,84.1h-7.2L42.2,59.7v85.1h-12.8V39.9h16.8l39.3,84.7Z"></path>
-										<path fill="#ff595c" d="M186.2,131.1l25-62.4h12.9l-32.6,80.1c-2.6,6.3-5.2,11.4-7.9,15.3-2.7,3.8-5.7,6.6-9.1,8.3-3.3,1.7-7.4,2.6-12.2,2.6s-3.4,0-4.9-.4c-1.5-.2-2.9-.6-4.2-.9v-10.6c1.3.2,2.7.4,4.2.6,1.4.2,2.9.3,4.5.3,3.9,0,7.2-1.3,9.8-3.9,2.6-2.6,5.3-7.2,8.1-13.9l-32.4-77.3h13.4l25.4,62.4v-.2Z"></path>
-										<path fill="#121827" d="M303.1,39.9v11.2h-60.4v35.6h55.2v11.2h-55.2v46.9h-12.8V39.9h73.2,0Z"></path>
-										<path fill="#121827" d="M344.1,67.2c11.6,0,20.2,2.9,25.9,8.7,5.7,5.8,8.5,14.9,8.5,27.4v41.5h-7.9l-2.4-23.7c-2.7,7.8-7.2,13.9-13.7,18.4-6.4,4.5-14,6.8-22.8,6.8s-9.2-.9-12.8-2.8c-3.6-1.9-6.5-4.4-8.5-7.5s-3-6.5-3-10,1.3-8.7,3.9-12.5,6.7-7.1,12.4-9.9c5.7-2.8,13-4.7,22.1-5.8l20-2.5c-.8-6.2-2.9-10.7-6.4-13.4s-8.6-4-15.2-4-12.3,1.4-15.7,4.3c-3.3,2.9-5.6,6.8-6.8,11.8h-12.6c1.1-7.8,4.5-14.2,10.2-19.3,5.8-5.1,14-7.6,24.9-7.6h-.1ZM335,135.5c5.8,0,11.1-1.4,15.8-4.2,4.7-2.8,8.4-6.5,11.2-11.2,2.8-4.7,4.2-9.9,4.2-15.7l-15.4,1.9c-7.9,1-14,2.3-18.5,4.2-4.5,1.8-7.7,3.9-9.6,6.3-1.9,2.3-2.8,4.8-2.9,7.4,0,3.2,1.1,5.9,3.7,8.1s6.4,3.3,11.6,3.3h-.1Z"></path>
-										<path fill="#121827" d="M419.7,127l25-58.4h13.1l-33.4,76.2h-9.8l-33.2-76.2h13.2l25,58.4h.1Z"></path>
-										<path fill="#121827" d="M495.7,146.3c-7.9,0-14.7-1.6-20.4-4.7-5.8-3.1-10.2-7.5-13.3-13.3s-4.7-12.5-4.7-20.3v-2.6c0-7.8,1.6-14.6,4.7-20.3,3.1-5.7,7.6-10.1,13.3-13.2,5.8-3.1,12.6-4.7,20.4-4.7s14.6,1.6,20.4,4.7c5.8,3.1,10.2,7.5,13.3,13.2s4.7,12.5,4.7,20.3v2.6c0,7.8-1.6,14.5-4.7,20.3-3.1,5.8-7.5,10.2-13.3,13.3s-12.6,4.7-20.4,4.7ZM495.7,135.5c8.3,0,14.8-2.4,19.3-7.1,4.5-4.8,6.8-12,6.8-21.6s-2.3-16.9-6.8-21.6c-4.5-4.8-10.9-7.1-19.3-7.1s-14.8,2.4-19.3,7.1c-4.5,4.7-6.8,11.9-6.8,21.6s2.3,16.9,6.8,21.6,10.9,7.1,19.3,7.1Z"></path>
-										<path fill="#121827" d="M579.5,67.2c2.2,0,4,0,5.5.4,1.5.2,2.7.5,3.7.8v12.1c-1.4-.2-2.9-.3-4.5-.4-1.6,0-3.4,0-5.5,0-7.2,0-12.8,2.6-16.8,7.8s-6,13.9-6,26.1v31h-12.2v-76.2h7.9l2.3,22.1c2.1-8.3,5.4-14.4,10-18,4.6-3.7,9.8-5.5,15.6-5.5h0Z"></path>
-										<path fill="#121827" d="M607.6,144.8h-12.2v-76.2h12.2v76.2Z"></path>
-										<path fill="#121827" d="M670,68.7v10.8h-27.2v40.5c0,5.5,1.1,9.4,3.4,11.9,2.3,2.4,5.8,3.7,10.5,3.7s5.1,0,7.2-.4c2.1-.3,4.2-.6,6.2-1v10.6c-1.6.4-3.5.7-5.5,1-2.1.3-4.7.4-7.8.4-17.4,0-26.2-8.4-26.2-25.3v-41.5h-15.7v-10.8h16l4-22.6h7.9v22.6h27.2,0Z"></path>
-										<path fill="#121827" d="M749.7,102.9c0,2.8-.2,5.3-.6,7.5h-62.2c.7,8.5,3.2,14.9,7.6,19,4.4,4.1,10.5,6.2,18.3,6.2s8.8-.7,11.9-2.1c3-1.4,5.4-3.3,7.1-5.5,1.7-2.3,3.1-4.8,4-7.5h12.5c-.9,4.5-2.7,8.7-5.5,12.7s-6.6,7.2-11.6,9.6c-4.9,2.4-11.2,3.6-18.8,3.6s-14.5-1.6-20.2-4.7c-5.7-3.1-10.1-7.5-13.2-13.3-3.1-5.8-4.7-12.5-4.7-20.3v-2.6c0-7.8,1.6-14.6,4.7-20.3,3.1-5.7,7.6-10.1,13.4-13.2,5.8-3.1,12.6-4.7,20.5-4.7s14.1,1.5,19.5,4.5c5.5,3,9.7,7.1,12.7,12.4,3,5.3,4.5,11.6,4.5,18.8h0ZM712.9,78c-7.6,0-13.6,1.9-18,5.6-4.4,3.7-7,9.4-7.9,17h50.3c-.6-7.5-3-13.1-7.1-16.9-4.2-3.8-9.9-5.7-17.3-5.7h0Z"></path>
-										<path fill="#121827" d="M753.3,119.4h12.5c1.1,5,3.4,8.9,7,11.8,3.7,2.9,9.8,4.3,18.4,4.3s10.1-.5,13.4-1.6c3.3-1.1,5.7-2.5,7.1-4.3,1.4-1.7,2.2-3.5,2.2-5.3s-.6-4.2-1.7-5.8c-1.2-1.6-3.5-2.9-7-4s-8.9-2-16-2.8c-9-1.1-16-2.5-20.9-4.5-4.9-1.9-8.3-4.3-10.1-7.2s-2.8-6.2-2.8-9.9,1.2-7.8,3.7-11.2c2.4-3.4,6.1-6.2,11.1-8.4,4.9-2.2,11.2-3.3,18.8-3.3s14.3,1.2,19.3,3.5,8.9,5.5,11.6,9.6c2.7,4,4.3,8.6,4.8,13.8h-12.5c-.9-5.1-3-9-6.3-11.9s-9-4.3-16.8-4.3-13.4,1.2-16.5,3.5c-3.2,2.3-4.7,5-4.7,7.8s.6,3.9,1.8,5.5c1.2,1.5,3.6,2.9,7.3,4,3.7,1.2,9.2,2.2,16.7,3,8.8,1,15.6,2.4,20.3,4.5,4.8,2,8,4.5,9.9,7.3,1.8,2.9,2.7,6.1,2.7,9.8s-1.3,7.7-3.8,11.2-6.3,6.4-11.5,8.5c-5.2,2.2-11.8,3.2-19.8,3.2s-15.5-1.1-20.9-3.4c-5.4-2.3-9.4-5.5-12.1-9.5-2.7-4-4.4-8.7-5-13.9h-.2Z"></path>
-										<path fill="#121827" d="M849.8,22.7v2.4h-6.1v20.1h-2.9v-20.1h-6.1v-2.4h15.2-.1Z"></path>
-										<path fill="#121827" d="M876.2,22.8v22.3h-2.9v-16.6l-7.4,16.6h-2.1l-7.4-16.7v16.7h-2.9v-22.3h3.2l8.3,18.4,8.3-18.4h3.1-.2Z"></path>
-										<path fill="#ff595c" d="M614.2,19c-2.4-.6-4.8-.3-6.9.9-2.2,1.2-4.1,3.1-5.6,5.2-.2.3-.4.6-.5.9-2.3-3.9-6.6-7.6-11.3-7.2-4.4.4-8.2,3.6-9.1,7.9-1.1,5,2.1,9.6,5.1,13.3,2.8,3.3,5.9,6.3,9,9.3,1.9,1.8,3.9,3.6,5.9,5.3h0c0,0,.2.1.3.1s.2,0,.3-.1c1.7-1.4,3.3-2.9,4.9-4.3,3.2-2.9,6.3-5.9,9.1-9.1,3.1-3.5,6.6-7.9,6.3-12.9-.3-4.3-3.4-8.1-7.6-9.2h0Z"></path>
-									</svg>
-									<p class="brag-book-gallery-favorites-user">Showing favorites for: ${userInfo.email}</p>
-									<div class="brag-book-gallery-favorites-empty">
-										<svg class="empty-icon" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-											<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-										</svg>
-										<h3>No favorites yet</h3>
-										<p>Start browsing the gallery and click the heart icon on cases you love to save them here.</p>
-									</div>
-								</div>
-							</div>
-						</div>
-					`;
+					// Show favorites grid container with empty state
+					if (gridContainer) {
+						gridContainer.style.display = 'block';
+
+						// Hide the favorites grid and actions
+						const favoritesGrid = gridContainer.querySelector('#favoritesGrid');
+						if (favoritesGrid) {
+							favoritesGrid.innerHTML = '';
+						}
+
+						const favoritesActions = gridContainer.querySelector('#favoritesActions');
+						if (favoritesActions) {
+							favoritesActions.style.display = 'none';
+						}
+
+						// Show empty state
+						const emptyState = gridContainer.querySelector('#favoritesEmpty');
+						if (emptyState) {
+							emptyState.style.display = 'block';
+						}
+					}
 				}
 			} else {
 				// Show error message - ensure localStorage is initialized even on error
@@ -1995,28 +1943,31 @@ class BRAGbookGalleryApp {
 					localStorage.setItem('brag-book-favorites', JSON.stringify([]));
 				}
 
-				galleryContent.innerHTML = `
-					<div class="brag-book-gallery-favorites-empty">
-						<svg class="empty-icon" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-							<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-						</svg>
-						<h2>No favorites found</h2>
-						<p>${data.data?.message || 'Unable to load favorites. Please try again.'}</p>
-					</div>
-				`;
+				// Display error message without generating HTML
+				console.error('Failed to load favorites:', data.data?.message || 'Unknown error');
+
+				// Show the email capture form again for retry
+				if (emailCapture) {
+					emailCapture.style.display = 'block';
+				}
+				if (gridContainer) {
+					gridContainer.style.display = 'none';
+				}
 			}
 		})
 		.catch(error => {
 			console.error('Error loading favorites:', error);
-			galleryContent.innerHTML = `
-				<div class="brag-book-gallery-favorites-empty">
-					<svg class="empty-icon" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-						<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-					</svg>
-					<h2>Error loading favorites</h2>
-					<p>An error occurred while loading your favorites. Please try again.</p>
-				</div>
-			`;
+
+			// Hide loading state and show email capture form for retry
+			if (loadingState) {
+				loadingState.style.display = 'none';
+			}
+			if (emailCapture) {
+				emailCapture.style.display = 'block';
+			}
+			if (gridContainer) {
+				gridContainer.style.display = 'none';
+			}
 		});
 
 		// Clear any active filters
@@ -2062,21 +2013,7 @@ class BRAGbookGalleryApp {
 		const casesGrid = galleryContent.querySelector('.brag-book-gallery-cases-grid');
 		if (casesGrid) {
 			casesGrid.innerHTML = '';
-
-			// Add empty state
-			const emptyState = document.createElement('div');
-			emptyState.className = 'brag-book-gallery-favorites-empty-state';
-			emptyState.innerHTML = `
-				<svg class="empty-icon" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-					<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-				</svg>
-				<h2>No favorites yet</h2>
-				<p>Start browsing the gallery and click the heart icon on cases you love to save them here.</p>
-				<button class="brag-book-gallery-button" onclick="document.querySelector('[data-action=\\'show-favorites\\']').click()">
-					Browse Gallery
-				</button>
-			`;
-			casesGrid.parentElement.insertBefore(emptyState, casesGrid);
+			// Note: Empty state now handled server-side
 		}
 	}
 
@@ -2178,13 +2115,13 @@ class BRAGbookGalleryApp {
 	initializeCasePreloading() {
 		// Preload cache to store case data
 		this.casePreloadCache = new Map();
-		
+
 		// Optimize image loading for visible cases
 		this.optimizeImageLoading();
-		
+
 		// Add intersection observer for visible cases
 		this.setupCasePreloadObserver();
-		
+
 		// Preload first few visible cases after a short delay
 		setTimeout(() => {
 			this.preloadVisibleCases();
@@ -2200,7 +2137,7 @@ class BRAGbookGalleryApp {
 		Array.from(caseImages).slice(0, 3).forEach((img, index) => {
 			img.loading = 'eager';
 			img.setAttribute('fetchpriority', 'high');
-			
+
 			// Add preload link for critical images
 			if (index === 0) {
 				const link = document.createElement('link');
@@ -2226,9 +2163,9 @@ class BRAGbookGalleryApp {
 				mutation.addedNodes.forEach((node) => {
 					if (node.nodeType === Node.ELEMENT_NODE) {
 						// Find case images in the new content
-						const newImages = node.querySelectorAll ? 
+						const newImages = node.querySelectorAll ?
 							node.querySelectorAll('.brag-book-gallery-case-card img') : [];
-						
+
 						// Optimize first few images in new content
 						Array.from(newImages).slice(0, 2).forEach(img => {
 							img.loading = 'eager';
@@ -2261,7 +2198,7 @@ class BRAGbookGalleryApp {
 					const caseCard = entry.target;
 					const caseId = caseCard.dataset.caseId;
 					const procedureIds = caseCard.dataset.procedureIds;
-					
+
 					if (caseId && !this.casePreloadCache.has(caseId)) {
 						// Preload this case with high priority (visible soon)
 						this.preloadCase(caseId, procedureIds, 'high');
@@ -2278,7 +2215,7 @@ class BRAGbookGalleryApp {
 		// Observe all case cards
 		document.querySelectorAll('.brag-book-gallery-case-card').forEach(card => {
 			this.caseObserver.observe(card);
-			
+
 			// Add hover-based predictive preloading
 			this.setupHoverPreloading(card);
 		});
@@ -2289,20 +2226,20 @@ class BRAGbookGalleryApp {
 	 */
 	setupHoverPreloading(card) {
 		let hoverTimeout;
-		
+
 		card.addEventListener('mouseenter', () => {
 			// Start preloading after 300ms hover (indicates user interest)
 			hoverTimeout = setTimeout(() => {
 				const caseId = card.dataset.caseId;
 				const procedureIds = card.dataset.procedureIds;
-				
+
 				if (caseId && !this.casePreloadCache.has(caseId)) {
 					console.log(`🖱️ Hover preloading case ${caseId}`);
 					this.preloadCase(caseId, procedureIds, 'hover');
 				}
 			}, 300);
 		});
-		
+
 		card.addEventListener('mouseleave', () => {
 			// Cancel preloading if user leaves quickly
 			if (hoverTimeout) {
@@ -2316,12 +2253,12 @@ class BRAGbookGalleryApp {
 	 */
 	preloadVisibleCases() {
 		const visibleCases = document.querySelectorAll('.brag-book-gallery-case-card');
-		
+
 		// Preload first 3 visible cases
 		Array.from(visibleCases).slice(0, 3).forEach(card => {
 			const caseId = card.dataset.caseId;
 			const procedureIds = card.dataset.procedureIds;
-			
+
 			if (caseId && !this.casePreloadCache.has(caseId)) {
 				this.preloadCase(caseId, procedureIds);
 			}
@@ -2333,32 +2270,32 @@ class BRAGbookGalleryApp {
 	 */
 	async preloadCase(caseId, procedureIds, priority = 'normal') {
 		if (this.casePreloadCache.has(caseId)) return;
-		
+
 		// Mark as being preloaded to avoid duplicates
 		this.casePreloadCache.set(caseId, 'loading');
-		
+
 		// Add to priority queue for smart preloading order
 		if (!this.preloadQueue) this.preloadQueue = [];
-		
+
 		const preloadTask = {
 			caseId,
 			procedureIds,
 			priority,
 			timestamp: Date.now()
 		};
-		
+
 		// Insert based on priority (high > hover > normal)
 		const priorityOrder = { high: 3, hover: 2, normal: 1 };
-		const insertIndex = this.preloadQueue.findIndex(task => 
+		const insertIndex = this.preloadQueue.findIndex(task =>
 			priorityOrder[task.priority] < priorityOrder[priority]
 		);
-		
+
 		if (insertIndex === -1) {
 			this.preloadQueue.push(preloadTask);
 		} else {
 			this.preloadQueue.splice(insertIndex, 0, preloadTask);
 		}
-		
+
 		// Process queue with controlled concurrency
 		this.processPreloadQueue();
 	}
@@ -2371,37 +2308,37 @@ class BRAGbookGalleryApp {
 		if (!this.activePreloads) {
 			this.activePreloads = new Set();
 		}
-		
+
 		// Maximum concurrent preloads
 		const maxConcurrency = 3;
-		
+
 		// Sort queue by priority (high > hover > normal) and timestamp (newer first for hover)
 		if (this.preloadQueue && this.preloadQueue.length > 0) {
 			this.preloadQueue.sort((a, b) => {
 				const priorityOrder = { high: 3, hover: 2, normal: 1 };
 				const priorityDiff = priorityOrder[b.priority] - priorityOrder[a.priority];
-				
+
 				// If same priority, newer timestamps first for hover (more recent user intent)
 				if (priorityDiff === 0 && a.priority === 'hover') {
 					return b.timestamp - a.timestamp;
 				}
-				
+
 				return priorityDiff;
 			});
 		}
-		
+
 		// Process queue items up to concurrency limit
 		while (this.activePreloads.size < maxConcurrency && this.preloadQueue && this.preloadQueue.length > 0) {
 			const task = this.preloadQueue.shift();
-			
+
 			// Skip if already being processed or completed
 			if (this.activePreloads.has(task.caseId) || this.casePreloadCache.has(task.caseId)) {
 				continue;
 			}
-			
+
 			// Add to active preloads
 			this.activePreloads.add(task.caseId);
-			
+
 			// Execute preload asynchronously
 			this.executePreloadTask(task).finally(() => {
 				this.activePreloads.delete(task.caseId);
@@ -2469,11 +2406,11 @@ class BRAGbookGalleryApp {
 			if (!response.ok) return null;
 
 			const data = await response.json();
-			
+
 			if (data.success && data.data && data.data.html) {
 				return data.data.html;
 			}
-			
+
 			return null;
 		} catch (error) {
 			console.warn('AJAX preload failed:', error);
@@ -2488,17 +2425,17 @@ class BRAGbookGalleryApp {
 	 */
 	generateCaseDetailHTML(caseData) {
 		const caseId = caseData.id || '';
-		
+
 		// Extract procedure data using method that matches PHP implementation
 		const procedureData = this.extractProcedureDataForDetails(caseData);
 		const seoData = this.extractSEOData(caseData);
 		const navigationData = caseData.navigation || null;
-		
+
 		// Extract current procedure info from URL
 		const pathSegments = window.location.pathname.split('/').filter(s => s);
 		const procedureSlug = pathSegments.length > 2 ? pathSegments[pathSegments.length - 2] : '';
 		const procedureName = procedureData.name || '';
-		
+
 		// Extract procedure IDs for data attributes (matching PHP implementation exactly)
 		let procedureIdsAttr = '';
 		if (caseData.procedureIds && Array.isArray(caseData.procedureIds)) {
@@ -2524,7 +2461,7 @@ class BRAGbookGalleryApp {
 		// Check for procedures array with objects (matching PHP logic)
 		if (caseData.procedures && Array.isArray(caseData.procedures) && caseData.procedures.length > 0) {
 			const firstProcedure = caseData.procedures[0];
-			
+
 			if (firstProcedure.name) {
 				const rawProcedureName = firstProcedure.name;
 				procedureName = this.formatProcedureDisplayName(rawProcedureName);
@@ -2557,7 +2494,7 @@ class BRAGbookGalleryApp {
 	 */
 	sanitizeTitle(title) {
 		if (!title) return '';
-		
+
 		return title
 			.toLowerCase()
 			.trim()
@@ -2584,7 +2521,7 @@ class BRAGbookGalleryApp {
 			if (firstProcedure.slugName) {
 				procedureSlug = firstProcedure.slugName;
 			}
-			
+
 			// Collect all procedure IDs
 			procedureIds = caseData.procedures.map(proc => proc.id).filter(id => id);
 		}
@@ -2609,7 +2546,7 @@ class BRAGbookGalleryApp {
 		const title = caseData.seoTitle || `Case ${caseData.id}`;
 		const description = caseData.seoDescription || '';
 		const keywords = caseData.seoKeywords || '';
-		
+
 		return {
 			title,
 			description,
@@ -2623,11 +2560,11 @@ class BRAGbookGalleryApp {
 	renderCaseHeader(procedureData, seoData, caseId, procedureSlug, procedureName, navigationData) {
 		const gallerySlug = this.getGallerySlug();
 		const basePath = '/' + gallerySlug.replace(/^\/+/, '');
-		
+
 		// Build back URL and text
 		let backUrl = basePath + '/';
 		let backText = '← Back to Gallery';
-		
+
 		if (procedureSlug) {
 			backUrl = basePath + '/' + procedureSlug + '/';
 			if (procedureName) {
@@ -2637,7 +2574,7 @@ class BRAGbookGalleryApp {
 
 		// Build navigation buttons
 		const navigationButtons = this.buildNavigationButtons(navigationData, procedureSlug);
-		
+
 		// Build title content
 		const titleContent = this.buildTitleContent(seoData, procedureData, caseId, procedureName);
 
@@ -2669,10 +2606,10 @@ class BRAGbookGalleryApp {
 		// Previous case button
 		if (navigationData.previous) {
 			const prevCase = navigationData.previous;
-			const prevUrl = procedureSlug ? 
-				`${basePath}/${procedureSlug}/${prevCase.id}/` : 
+			const prevUrl = procedureSlug ?
+				`${basePath}/${procedureSlug}/${prevCase.id}/` :
 				`${basePath}/case/${prevCase.id}/`;
-			
+
 			html += `
 				<a href="${this.escapeHtml(prevUrl)}" class="brag-book-gallery-nav-button brag-book-gallery-prev-case" rel="prev nofollow">
 					<span class="brag-book-gallery-nav-arrow">←</span>
@@ -2681,13 +2618,13 @@ class BRAGbookGalleryApp {
 			`;
 		}
 
-		// Next case button  
+		// Next case button
 		if (navigationData.next) {
 			const nextCase = navigationData.next;
 			const nextUrl = procedureSlug ?
 				`${basePath}/${procedureSlug}/${nextCase.id}/` :
 				`${basePath}/case/${nextCase.id}/`;
-			
+
 			html += `
 				<a href="${this.escapeHtml(nextUrl)}" class="brag-book-gallery-nav-button brag-book-gallery-next-case" rel="next nofollow">
 					<span class="brag-book-gallery-nav-text">Next Case</span>
@@ -2704,7 +2641,7 @@ class BRAGbookGalleryApp {
 	 */
 	buildTitleContent(seoData, procedureData, caseId, procedureName) {
 		const displayTitle = procedureName || procedureData.procedureName || 'Case Study';
-		
+
 		return `
 			<div class="brag-book-gallery-case-title-section">
 				<h1 class="brag-book-gallery-case-title">${this.escapeHtml(displayTitle)}</h1>
@@ -2763,7 +2700,7 @@ class BRAGbookGalleryApp {
 
 		// Use processed image first, then before, then after
 		const mainImage = processedImage || beforeImage || afterImage;
-		
+
 		if (!mainImage) {
 			return this.renderNoImagesSection();
 		}
@@ -2773,9 +2710,9 @@ class BRAGbookGalleryApp {
 		return `
 			<div class="brag-book-gallery-main-image-viewer">
 				<div class="brag-book-gallery-main-image-container" data-photoset-index="0">
-					<img src="${this.escapeHtml(mainImage)}" 
-						 alt="${this.escapeHtml(procedureTitle)} - Case ${this.escapeHtml(caseId)}" 
-						 class="brag-book-gallery-main-image" 
+					<img src="${this.escapeHtml(mainImage)}"
+						 alt="${this.escapeHtml(procedureTitle)} - Case ${this.escapeHtml(caseId)}"
+						 class="brag-book-gallery-main-image"
 						 loading="lazy">
 				</div>
 			</div>
@@ -2791,20 +2728,20 @@ class BRAGbookGalleryApp {
 		}
 
 		const thumbnailsHTML = photoSets.map((photoSet, index) => {
-			const thumbImage = photoSet.postProcessedImageLocation || 
-							  photoSet.beforeLocationUrl || 
+			const thumbImage = photoSet.postProcessedImageLocation ||
+							  photoSet.beforeLocationUrl ||
 							  photoSet.afterLocationUrl1 || '';
-			
+
 			if (!thumbImage) {
 				return '';
 			}
 
 			const isActive = index === 0 ? ' active' : '';
-			
+
 			return `
 				<div class="brag-book-gallery-thumbnail${isActive}" data-photoset-index="${index}">
-					<img src="${this.escapeHtml(thumbImage)}" 
-						 alt="Thumbnail ${index + 1}" 
+					<img src="${this.escapeHtml(thumbImage)}"
+						 alt="Thumbnail ${index + 1}"
 						 loading="lazy">
 				</div>
 			`;
@@ -2833,7 +2770,7 @@ class BRAGbookGalleryApp {
 				</div>
 			</div>
 		`;
-		
+
 		return html + '</div>'; // Close case-content
 	}
 
@@ -2845,7 +2782,7 @@ class BRAGbookGalleryApp {
 			return '';
 		}
 
-		const proceduresList = caseData.procedures.map(procedure => 
+		const proceduresList = caseData.procedures.map(procedure =>
 			`<li>${this.escapeHtml(procedure.name || 'Unknown Procedure')}</li>`
 		).join('');
 
@@ -2866,7 +2803,7 @@ class BRAGbookGalleryApp {
 	 */
 	renderPatientDetailsCard(caseData) {
 		const patientDetails = [];
-		
+
 		if (caseData.age) {
 			patientDetails.push(`<div class="brag-book-gallery-detail-row"><span class="brag-book-gallery-detail-label">Age:</span> <span class="brag-book-gallery-detail-value">${this.escapeHtml(String(caseData.age))}</span></div>`);
 		}
@@ -2902,7 +2839,7 @@ class BRAGbookGalleryApp {
 	 */
 	renderProcedureDetailsCard(caseData) {
 		const procedureDetails = [];
-		
+
 		if (caseData.surgeryDate) {
 			procedureDetails.push(`<div class="brag-book-gallery-detail-row"><span class="brag-book-gallery-detail-label">Surgery Date:</span> <span class="brag-book-gallery-detail-value">${this.escapeHtml(caseData.surgeryDate)}</span></div>`);
 		}
@@ -2935,7 +2872,7 @@ class BRAGbookGalleryApp {
 	 */
 	renderCaseNotesCard(caseData) {
 		const notes = caseData.notes || caseData.description || caseData.caseNotes || '';
-		
+
 		if (!notes) {
 			return '';
 		}
@@ -2965,7 +2902,7 @@ class BRAGbookGalleryApp {
 	 */
 	escapeHtml(text) {
 		if (!text) return '';
-		
+
 		const div = document.createElement('div');
 		div.textContent = text;
 		return div.innerHTML;
@@ -2978,25 +2915,25 @@ class BRAGbookGalleryApp {
 		if (!caseData) return;
 
 		const caseId = caseData.id || '';
-		const title = procedureName ? 
-			`${procedureName} Case ${caseId} - Before & After` : 
+		const title = procedureName ?
+			`${procedureName} Case ${caseId} - Before & After` :
 			`Case ${caseId} - Before & After`;
-		
+
 		// Update page title
 		document.title = title;
-		
+
 		// Update meta description
 		let description = `View before and after photos for Case ${caseId}`;
 		if (procedureName) {
 			description = `${procedureName} before and after photos - Case ${caseId}. See real patient results.`;
 		}
-		
+
 		this.updateMetaTag('description', description);
-		
+
 		// Update canonical URL
 		const canonicalUrl = window.location.href;
 		this.updateLinkTag('canonical', canonicalUrl);
-		
+
 		// Add structured data for case details
 		this.addCaseStructuredData(caseData, procedureName);
 	}
@@ -3074,7 +3011,7 @@ class BRAGbookGalleryApp {
 		// Add click handlers for thumbnails
 		const thumbnails = document.querySelectorAll('.brag-book-gallery-thumbnail');
 		const mainImage = document.querySelector('.brag-book-gallery-main-image');
-		
+
 		if (!mainImage || thumbnails.length === 0) {
 			return;
 		}
@@ -3082,19 +3019,19 @@ class BRAGbookGalleryApp {
 		thumbnails.forEach((thumbnail, index) => {
 			thumbnail.addEventListener('click', (e) => {
 				e.preventDefault();
-				
+
 				// Remove active class from all thumbnails
 				thumbnails.forEach(thumb => thumb.classList.remove('active'));
-				
+
 				// Add active class to clicked thumbnail
 				thumbnail.classList.add('active');
-				
+
 				// Update main image
 				const thumbnailImg = thumbnail.querySelector('img');
 				if (thumbnailImg && thumbnailImg.src) {
 					mainImage.src = thumbnailImg.src;
 					mainImage.alt = thumbnailImg.alt || `Case image ${index + 1}`;
-					
+
 					// Update photoset index data attribute
 					const mainContainer = document.querySelector('.brag-book-gallery-main-image-container');
 					if (mainContainer) {
@@ -3116,12 +3053,12 @@ class BRAGbookGalleryApp {
 		}
 
 		// Debug: Log procedure ID lookup
-		console.log('🔍 Looking up procedure IDs for slug:', procedureSlug);
+		console.log('Looking up procedure IDs for slug:', procedureSlug);
 
 		// Try to get from sidebar data first
 		if (window.bragBookGalleryConfig?.sidebarData) {
 			const sidebarData = window.bragBookGalleryConfig.sidebarData;
-			
+
 			// Search through categories for the procedure
 			for (const category of Object.values(sidebarData)) {
 				if (category.procedures) {
@@ -3137,22 +3074,22 @@ class BRAGbookGalleryApp {
 		}
 
 		// Fallback: Look for procedure data in page elements
-		console.log('🔍 Checking page elements for procedure context...');
-		
+		console.log('Checking page elements for procedure context...');
+
 		// First, check if we're on a case details page - look for the case detail view container
 		const caseDetailView = document.querySelector('.brag-book-gallery-case-detail-view');
 		if (caseDetailView && caseDetailView.dataset.procedureIds) {
 			console.log('✅ Found procedure IDs from case detail view:', caseDetailView.dataset.procedureIds);
 			return caseDetailView.dataset.procedureIds;
 		}
-		
+
 		// Check if there's a procedure link in the DOM that matches the slug
 		const procedureLink = document.querySelector(`[data-procedure="${procedureSlug}"]`);
 		if (procedureLink && procedureLink.dataset.procedureIds) {
 			console.log('✅ Found procedure IDs from DOM element:', procedureLink.dataset.procedureIds);
 			return procedureLink.dataset.procedureIds;
 		}
-		
+
 		console.warn(`⚠️ Could not find procedure IDs for slug: ${procedureSlug}`);
 		return null;
 	}
@@ -3166,7 +3103,7 @@ class BRAGbookGalleryApp {
 			// Extract procedure slug from current URL
 			const pathSegments = window.location.pathname.split('/').filter(s => s);
 			const procedureSlug = pathSegments.length > 2 ? pathSegments[pathSegments.length - 2] : '';
-			
+
 			if (!procedureSlug) {
 				console.log('No procedure slug found in URL, cannot set sidebar active state');
 				return;
@@ -3182,13 +3119,13 @@ class BRAGbookGalleryApp {
 			const targetLink = document.querySelector(`.brag-book-gallery-nav-link[data-procedure="${procedureSlug}"]`);
 			if (targetLink) {
 				targetLink.classList.add('brag-book-gallery-active');
-				
+
 				// Also activate the parent item if it exists
 				const parentItem = targetLink.closest('.brag-book-gallery-nav-list-submenu__item');
 				if (parentItem) {
 					parentItem.classList.add('brag-book-gallery-active');
 				}
-				
+
 				console.log(`✅ Set sidebar active state for procedure: ${procedureSlug}`);
 			} else {
 				console.warn(`⚠️ Could not find sidebar link for procedure: ${procedureSlug}`);
@@ -3197,6 +3134,705 @@ class BRAGbookGalleryApp {
 			console.error('Error setting sidebar active state:', error);
 		}
 	}
+
+	/**
+	 * Initialize favorites page functionality
+	 *
+	 * This function is called from the favorites handler to set up
+	 * the favorites page with proper user detection and display logic.
+	 */
+	initializeFavoritesPage() {
+		// Check if user info exists in localStorage - try multiple ways
+		let userInfo = null;
+		let existingFavorites = [];
+
+		// First try favorites manager if available
+		if (this.favoritesManager) {
+			userInfo = this.favoritesManager.getUserInfo();
+			existingFavorites = Array.from(this.favoritesManager.getFavorites() || []);
+		}
+
+		// Fallback: try loading directly from localStorage
+		if (!userInfo) {
+			try {
+				const stored = localStorage.getItem('brag-book-user-info');
+				console.log('Raw localStorage brag-book-user-info:', stored);
+				if (stored) {
+					userInfo = JSON.parse(stored);
+					console.log('Parsed userInfo from localStorage:', userInfo);
+				}
+			} catch (e) {
+				console.error('Failed to load user info from localStorage:', e);
+			}
+		}
+
+		// Check for existing favorites in localStorage if not already loaded
+		if (existingFavorites.length === 0) {
+			try {
+				const storedFavorites = localStorage.getItem('brag-book-favorites');
+				console.log('Raw localStorage brag-book-favorites:', storedFavorites);
+				if (storedFavorites) {
+					existingFavorites = JSON.parse(storedFavorites);
+					console.log('Parsed favorites from localStorage:', existingFavorites);
+				}
+			} catch (e) {
+				console.error('Failed to load favorites from localStorage:', e);
+			}
+		}
+
+		console.log('initializeFavoritesPage - final userInfo:', userInfo);
+		console.log('userInfo has email?', !!(userInfo && userInfo.email));
+		console.log('userInfo.email value:', userInfo?.email);
+		console.log('existingFavorites count:', existingFavorites.length);
+		console.log('existingFavorites:', existingFavorites);
+
+		// Check if we're on the dedicated favorites page (has favorites shortcode elements)
+		const favoritesPage = document.getElementById('brag-book-gallery-favorites');
+
+		if (favoritesPage) {
+			// We're on the dedicated favorites page - handle that separately
+			console.log('Found dedicated favorites page, initializing...');
+			this.initializeDedicatedFavoritesPage(userInfo, existingFavorites);
+			return;
+		}
+
+		// We're on the main gallery with favorites context - use existing showFavoritesOnly logic
+		if (userInfo && userInfo.email) {
+			// User has registered, show their favorites in the main gallery
+			this.showFavoritesOnly();
+		} else {
+			// Show message to register or go to dedicated favorites page
+			this.showFavoritesRegistrationPrompt();
+		}
+	}
+
+	/**
+	 * Initialize the dedicated favorites page (from [brag_book_gallery_favorites] shortcode)
+	 */
+	initializeDedicatedFavoritesPage(userInfo, existingFavorites = []) {
+		console.log('initializeDedicatedFavoritesPage called with userInfo:', userInfo);
+		console.log('existingFavorites:', existingFavorites);
+
+		// Get DOM elements from dedicated favorites page
+		const emailCapture = document.getElementById('favoritesEmailCapture');
+		const gridContainer = document.getElementById('favoritesGridContainer');
+		const loadingEl = document.getElementById('favoritesLoading');
+
+		console.log('DOM elements found:', {
+			emailCapture: !!emailCapture,
+			gridContainer: !!gridContainer,
+			loadingEl: !!loadingEl
+		});
+
+		// Check if user has complete info (email, name, phone) and has favorites
+		const hasCompleteUserInfo = userInfo && userInfo.email && userInfo.name && userInfo.phone;
+		const hasFavorites = existingFavorites && existingFavorites.length > 0;
+
+		console.log('hasCompleteUserInfo:', hasCompleteUserInfo);
+		console.log('hasFavorites:', hasFavorites);
+
+		if (!hasCompleteUserInfo || !hasFavorites) {
+			// Show email capture form if no complete user info or no favorites
+			console.log('Showing email capture - missing user info or no favorites');
+			if (emailCapture) emailCapture.style.display = 'block';
+			if (loadingEl) loadingEl.style.display = 'none';
+			if (gridContainer) gridContainer.style.display = 'none';
+			return;
+		}
+
+		// User has complete info and favorites - fetch from API and display grid
+		console.log('✅ User has complete info and favorites, fetching from API...');
+		if (emailCapture) emailCapture.style.display = 'none';
+		if (loadingEl) loadingEl.style.display = 'block';
+		if (gridContainer) gridContainer.style.display = 'none';
+
+		// Make AJAX call to fetch favorites from API
+		this.fetchAndDisplayFavorites(userInfo, existingFavorites, gridContainer, loadingEl);
+	}
+
+	/**
+	 * Fetch favorites from the API and display them as cards in the grid
+	 */
+	async fetchAndDisplayFavorites(userInfo, favoriteIds, gridContainer, loadingEl) {
+		console.log('🔄 Fetching favorites from API...');
+
+		try {
+			// Make WordPress AJAX request to lookup favorites
+			const formData = new FormData();
+			formData.append('action', 'brag_book_lookup_favorites');
+			formData.append('nonce', window.bragBookGalleryConfig?.nonce || '');
+			formData.append('email', userInfo.email);
+
+			const response = await fetch(window.bragBookGalleryConfig?.ajaxUrl || '/wp-admin/admin-ajax.php', {
+				method: 'POST',
+				body: formData
+			});
+
+			if (!response.ok) {
+				throw new Error(`HTTP error! status: ${response.status}`);
+			}
+
+			const result = await response.json();
+
+			if (result.success && result.data && result.data.favorites) {
+				console.log('✅ Favorites fetched successfully:', result.data);
+				this.displayFavoritesGrid(result.data.favorites, gridContainer, loadingEl);
+			} else {
+				console.warn('No favorites found or API error:', result);
+				this.showEmptyFavoritesState(gridContainer, loadingEl);
+			}
+		} catch (error) {
+			console.error('Error fetching favorites:', error);
+			this.showEmptyFavoritesState(gridContainer, loadingEl);
+		}
+	}
+
+	/**
+	 * Display favorites as cards in the grid
+	 */
+	displayFavoritesGrid(favoritesData, gridContainer, loadingEl) {
+		console.log('📋 Displaying favorites grid...');
+
+		// Hide loading and email capture
+		if (loadingEl) loadingEl.style.display = 'none';
+
+		// IMPORTANT: Hide the email capture form when showing favorites grid
+		const emailCapture = document.getElementById('favoritesEmailCapture');
+		if (emailCapture) {
+			emailCapture.style.display = 'none';
+		}
+
+		// Show grid container
+		if (gridContainer) gridContainer.style.display = 'block';
+
+		// Use the existing PHP-rendered grid element
+		let grid = gridContainer.querySelector('.brag-book-gallery-favorites-grid');
+		if (!grid) {
+			console.error('Expected .brag-book-gallery-favorites-grid element not found in container');
+			return;
+		}
+
+		// Update the grid to use the proper CSS classes for masonry layout
+		grid.className = 'brag-book-gallery-case-grid masonry-layout grid-initialized';
+
+		// Get and hide the empty state element
+		const emptyState = gridContainer.querySelector('.brag-book-gallery-favorites-empty');
+
+		// Clear existing content
+		grid.innerHTML = '';
+
+		// Display cases if we have them
+		if (favoritesData.cases_data && Object.keys(favoritesData.cases_data).length > 0) {
+			console.log(`Displaying ${Object.keys(favoritesData.cases_data).length} favorite cases`);
+
+			// Hide empty state when we have content
+			if (emptyState) {
+				emptyState.style.display = 'none';
+			}
+
+			// Add title before the grid (only if not already present)
+			const existingTitle = gridContainer.querySelector('.brag-book-gallery-content-title');
+			if (!existingTitle) {
+				const titleHtml = `
+					<h2 class="brag-book-gallery-content-title">
+						<strong>My</strong><span>Favorites</span>
+					</h2>
+				`;
+				grid.insertAdjacentHTML('beforebegin', titleHtml);
+			}
+
+			// Add user info after the content title
+			this.addUserInfoAfterTitle(favoritesData, gridContainer);
+
+			// Add each case to the grid
+			Object.values(favoritesData.cases_data).forEach(async (caseData) => {
+				const cardHtml = await this.generateFavoriteCard(caseData);
+				grid.insertAdjacentHTML('beforeend', cardHtml);
+			});
+
+			// Show the grid
+			grid.style.display = 'grid';
+		} else {
+			// No favorites found - show empty state
+			console.log('No favorites data found, showing empty state');
+			grid.style.display = 'none';
+			this.showEmptyFavoritesState(gridContainer, loadingEl);
+		}
+	}
+
+	/**
+	 * Generate HTML for a favorite case card (matching exact procedure case format)
+	 * Uses WordPress post ID to fetch proper image, procedure name, and permalink
+	 */
+	async generateFavoriteCard(caseData) {
+		// Extract case ID and try to find corresponding WordPress post
+		const apiCaseId = caseData.id || caseData.case_id || '';
+		let wpPostData = null;
+
+		// Try to find WordPress post by API case ID
+		try {
+			const formData = new FormData();
+			formData.append('action', 'brag_book_get_case_by_api_id');
+			formData.append('nonce', window.bragBookGalleryConfig?.nonce || '');
+			formData.append('api_case_id', apiCaseId);
+
+			const response = await fetch(window.bragBookGalleryConfig?.ajaxUrl || '/wp-admin/admin-ajax.php', {
+				method: 'POST',
+				body: formData
+			});
+
+			if (response.ok) {
+				const result = await response.json();
+				if (result.success && result.data) {
+					wpPostData = result.data;
+				}
+			}
+		} catch (error) {
+			console.warn('Could not fetch WordPress post data for case:', apiCaseId, error);
+		}
+
+		// Use WordPress data if available, fallback to API data
+		let caseId, procedureTitle, procedureSlug, seoSuffix, imageUrl, postId;
+
+		if (wpPostData) {
+			// Use WordPress post data
+			postId = wpPostData.ID;
+			caseId = wpPostData.post_meta?.brag_book_gallery_api_id || apiCaseId;
+			procedureTitle = wpPostData.procedure_name || 'Unknown Procedure';
+			procedureSlug = wpPostData.procedure_slug || 'procedure';
+			seoSuffix = wpPostData.post_name || wpPostData.post_meta?._case_seo_suffix_url || caseId;
+			imageUrl = wpPostData.featured_image_url || '';
+		} else {
+			// Fallback to API data
+			postId = caseData.post_id || '';
+			caseId = apiCaseId;
+			procedureTitle = caseData.procedure_name || 'Unknown Procedure';
+			procedureSlug = caseData.procedure_slug || 'procedure';
+			seoSuffix = caseData.seo_suffix || caseId;
+
+			// Get image URL from API data (prefer after photo, fallback to before)
+			imageUrl = '';
+			if (caseData.images && Array.isArray(caseData.images)) {
+				const afterImage = caseData.images.find(img => img.type === 'after');
+				const beforeImage = caseData.images.find(img => img.type === 'before');
+				imageUrl = (afterImage && afterImage.url) || (beforeImage && beforeImage.url) || '';
+			}
+		}
+
+		// Get gallery slug for URL construction
+		const gallerySlug = window.bragBookGalleryConfig?.gallerySlug || 'gallery';
+		const caseUrl = `/${gallerySlug}/${procedureSlug}/${seoSuffix}/`;
+
+		// Build data attributes
+		const dataAttrs = [
+			`data-case-id="${this.escapeHtml(caseId)}"`,
+			`data-post-id="${postId}"`,
+			`data-age="${caseData.age || ''}"`,
+			`data-gender="${caseData.gender || ''}"`,
+			`data-ethnicity="${caseData.ethnicity || ''}"`,
+			`data-procedure-ids="${caseData.procedure_id || ''}"`,
+			`data-card="true"`
+		].join(' ');
+
+		// Start building HTML (matching filter-system.js structure exactly)
+		let html = `<article class="brag-book-gallery-case-card" ${dataAttrs}>`;
+
+		// Case images section (matching PHP structure)
+		html += '<div class="brag-book-gallery-case-images single-image">';
+		html += '<div class="brag-book-gallery-single-image">';
+		html += '<div class="brag-book-gallery-image-container">';
+
+		// Skeleton loader
+		html += '<div class="brag-book-gallery-skeleton-loader" style="display: none;"></div>';
+
+		// Favorites button (matching PHP structure)
+		html += '<div class="brag-book-gallery-item-actions">';
+		html += `<button class="brag-book-gallery-favorite-button" data-favorited="true" data-item-id="case-${this.escapeHtml(caseId)}" aria-label="Remove from favorites">`;
+		html += '<svg fill="rgba(255, 255, 255, 0.5)" stroke="white" stroke-width="2" viewBox="0 0 24 24">';
+		html += '<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>';
+		html += '</svg>';
+		html += '</button>';
+		html += '</div>';
+
+		// Case link with image (matching exact PHP structure)
+		html += `<a href="${this.escapeHtml(caseUrl)}" class="brag-book-gallery-case-permalink" data-case-id="${this.escapeHtml(caseId)}" data-procedure-ids="${caseData.procedure_id || ''}">`;
+
+		if (imageUrl) {
+			html += '<picture class="brag-book-gallery-picture">';
+			html += `<img src="${this.escapeHtml(imageUrl)}" alt="${this.escapeHtml(procedureTitle)} - Case ${this.escapeHtml(caseId)}" loading="eager" data-image-type="single" data-image-url="${this.escapeHtml(imageUrl)}" onload="this.closest('.brag-book-gallery-image-container').querySelector('.brag-book-gallery-skeleton-loader').style.display='none';" fetchpriority="high">`;
+			html += '</picture>';
+		}
+
+		html += '</a>'; // Close case link
+
+		html += '</div>'; // Close image-container
+		html += '</div>'; // Close single-image
+		html += '</div>'; // Close case-images
+
+		// Case details section (matching PHP structure)
+		html += '<details class="brag-book-gallery-case-card-details">';
+		html += '<summary class="brag-book-gallery-case-card-summary">';
+
+		// Summary info
+		html += '<div class="brag-book-gallery-case-card-summary-info">';
+		html += `<span class="brag-book-gallery-case-card-summary-info__name">${this.escapeHtml(procedureTitle)}</span>`;
+		html += `<span class="brag-book-gallery-case-card-summary-info__case-number">Case #${this.escapeHtml(caseId)}</span>`;
+		html += '</div>';
+
+		// Summary details
+		html += '<p class="brag-book-gallery-case-card-summary-details">';
+		html += '<strong>More Details</strong>';
+		html += '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor">';
+		html += '<path d="M444-288h72v-156h156v-72H516v-156h-72v156H288v72h156v156Zm36.28 192Q401-96 331-126t-122.5-82.5Q156-261 126-330.96t-30-149.5Q96-560 126-629.5q30-69.5 82.5-122T330.96-834q69.96-30 149.5-30t149.04 30q69.5 30 122 82.5T834-629.28q30 69.73 30 149Q864-401 834-331t-82.5 122.5Q699-156 629.28-126q-69.73 30-149 30Z"></path>';
+		html += '</svg>';
+		html += '</p>';
+		html += '</summary>';
+
+		// Details content
+		html += '<div class="brag-book-gallery-case-card-details-content">';
+		html += '<p class="brag-book-gallery-case-card-details-content__title">Procedures Performed:</p>';
+		html += '<ul class="brag-book-gallery-case-card-procedures-list">';
+
+		// Generate procedure list
+		if (caseData.procedures && Array.isArray(caseData.procedures) && caseData.procedures.length > 0) {
+			caseData.procedures.forEach(procedure => {
+				html += `<li class="brag-book-gallery-case-card-procedures-list__item">${this.escapeHtml(procedure.name || 'Unknown Procedure')}</li>`;
+			});
+		} else {
+			html += `<li class="brag-book-gallery-case-card-procedures-list__item">${this.escapeHtml(procedureTitle)}</li>`;
+		}
+
+		html += '</ul>';
+		html += '</div>'; // Close details-content
+		html += '</details>'; // Close details
+		html += '</article>'; // Close article
+
+		return html;
+	}
+
+	/**
+	 * Escape HTML to prevent XSS attacks
+	 */
+	escapeHtml(unsafe) {
+		if (typeof unsafe !== 'string') {
+			return String(unsafe || '');
+		}
+		return unsafe
+			.replace(/&/g, "&amp;")
+			.replace(/</g, "&lt;")
+			.replace(/>/g, "&gt;")
+			.replace(/"/g, "&quot;")
+			.replace(/'/g, "&#039;");
+	}
+
+	/**
+	 * Show empty favorites state
+	 */
+	showEmptyFavoritesState(gridContainer, loadingEl) {
+		console.log('📭 Showing empty favorites state');
+
+		if (loadingEl) loadingEl.style.display = 'none';
+
+		// Hide the grid container
+		if (gridContainer) {
+			gridContainer.style.display = 'block';
+
+			// Hide the favorites grid (could be either class name depending on state)
+			const favoritesGrid = gridContainer.querySelector('.brag-book-gallery-favorites-grid');
+			const caseGrid = gridContainer.querySelector('.brag-book-gallery-case-grid');
+
+			if (favoritesGrid) {
+				favoritesGrid.style.display = 'none';
+			}
+			if (caseGrid) {
+				caseGrid.style.display = 'none';
+			}
+
+			// Show the empty state
+			const emptyState = gridContainer.querySelector('.brag-book-gallery-favorites-empty');
+			if (emptyState) {
+				emptyState.style.display = 'block';
+			}
+		}
+
+		// Show the email capture form since user has no favorites
+		const emailCapture = document.getElementById('favoritesEmailCapture');
+		if (emailCapture) {
+			emailCapture.style.display = 'block';
+		}
+	}
+
+	/**
+	 * Add user email and favorites count information after the content title
+	 */
+	addUserInfoAfterTitle(favoritesData, gridContainer) {
+		// Find the content title
+		const contentTitle = gridContainer.querySelector('.brag-book-gallery-content-title');
+		if (!contentTitle) {
+			console.warn('Content title not found');
+			return;
+		}
+
+		// Check if user info already exists (avoid duplicates)
+		const existingUserInfo = gridContainer.querySelector('.brag-book-gallery-user-info');
+		if (existingUserInfo) {
+			console.log('User info already exists, skipping');
+			return;
+		}
+
+		// Get user information from localStorage
+		let userInfo = null;
+		try {
+			const storedUserInfo = localStorage.getItem('brag-book-user-info');
+			if (storedUserInfo) {
+				userInfo = JSON.parse(storedUserInfo);
+			}
+		} catch (e) {
+			console.error('Failed to parse user info from localStorage:', e);
+		}
+
+		// Get favorites count
+		const favoritesCount = Object.keys(favoritesData.cases_data || {}).length;
+		const userEmail = userInfo?.email || 'Unknown User';
+
+		// Create the user info HTML
+		const userInfoHtml = `
+			<div class="brag-book-gallery-controls">
+				<div class="brag-book-gallery-controls-left">
+					<div class="user-email">
+						<strong>Email:</strong>
+						<span>${userEmail}</span>
+					</div>
+					<div class="favorites-count">
+						<span>${favoritesCount} favorite${favoritesCount !== 1 ? 's' : ''}</span>
+					</div>
+				</div>
+				<div class="brag-book-gallery-grid-selector">
+					<span class="brag-book-gallery-grid-label">View:</span>
+					<div class="brag-book-gallery-grid-buttons">
+						<button class="brag-book-gallery-grid-btn" data-columns="2" onclick="updateGridLayout(2)" aria-label="View in 2 columns">
+							<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><rect x="1" y="1" width="6" height="6"></rect>
+								<rect x="9" y="1" width="6" height="6"></rect>
+								<rect x="1" y="9" width="6" height="6"></rect>
+								<rect x="9" y="9" width="6" height="6"></rect>
+							</svg>
+							<span class="sr-only">2 Columns</span>
+						</button>
+						<button class="brag-book-gallery-grid-btn active" data-columns="3" onclick="updateGridLayout(3)" aria-label="View in 3 columns">
+							<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+								<rect x="1" y="1" width="4" height="4"></rect>
+								<rect x="6" y="1" width="4" height="4"></rect>
+								<rect x="11" y="1" width="4" height="4"></rect>
+								<rect x="1" y="6" width="4" height="4"></rect>
+								<rect x="6" y="6" width="4" height="4"></rect>
+								<rect x="11" y="6" width="4" height="4"></rect>
+								<rect x="1" y="11" width="4" height="4"></rect>
+								<rect x="6" y="11" width="4" height="4"></rect>
+								<rect x="11" y="11" width="4" height="4"></rect>
+							</svg>
+							<span class="sr-only">3 Columns</span>
+						</button>
+					</div>
+				</div>
+			</div>
+		`;
+
+		// Insert user info after the content title
+		contentTitle.insertAdjacentHTML('afterend', userInfoHtml);
+
+		console.log(`✅ Added user info after title: ${userEmail}, ${favoritesCount} favorites`);
+	}
+
+	/**
+	 * Show a prompt for users to register for favorites
+	 */
+	showFavoritesRegistrationPrompt() {
+		const galleryContent = document.getElementById('gallery-content');
+		if (!galleryContent) return;
+
+		// Create a registration prompt
+		const promptHtml = `
+			<div class="brag-book-gallery-favorites-registration-prompt">
+				<h2>My Favorites</h2>
+				<p>To view your favorites, you need to register your email address first.</p>
+				<p><a href="/gallery/myfavorites/" class="brag-book-gallery-button">Go to My Favorites Page</a></p>
+			</div>
+		`;
+
+		galleryContent.innerHTML = promptHtml;
+	}
+
+	/**
+	 * Get favorites data for the given favorite IDs
+	 */
+	async getFavoritesData(favoriteIds) {
+		if (!favoriteIds || favoriteIds.length === 0) {
+			return [];
+		}
+
+		// For now, return basic structure that matches what the PHP expects
+		// In a full implementation, you'd fetch case details from the API
+		return favoriteIds.map(caseId => ({
+			id: caseId,
+			images: [], // Will be populated from server if needed
+			procedures: [], // Will be populated from server if needed
+			age: '',
+			gender: ''
+		}));
+	}
+
+	/**
+	 * Load and display user favorites from localStorage and/or API
+	 */
+	async loadUserFavorites() {
+		if (!this.favoritesManager) return;
+
+		const favoritesGrid = document.getElementById('favoritesGrid');
+		const favoritesEmpty = document.getElementById('favoritesEmpty');
+		const favoritesActions = document.getElementById('favoritesActions');
+		const loadingEl = document.getElementById('favoritesLoading');
+
+		if (!favoritesGrid || !favoritesEmpty || !favoritesActions) return;
+
+		const favorites = this.favoritesManager.getFavorites();
+		const userInfo = this.favoritesManager.getUserInfo();
+
+		if (favorites.size === 0) {
+			// Show empty state
+			favoritesEmpty.style.display = 'block';
+			favoritesGrid.style.display = 'none';
+			favoritesActions.style.display = 'none';
+			return;
+		}
+
+		// Show loading while fetching grid
+		if (loadingEl) loadingEl.style.display = 'block';
+		favoritesEmpty.style.display = 'none';
+		favoritesGrid.style.display = 'none';
+		favoritesActions.style.display = 'none';
+
+		try {
+			// Convert favorites set to array for API call
+			const favoritesData = await this.getFavoritesData(Array.from(favorites));
+
+			// Call AJAX endpoint to get favorites grid HTML
+			const response = await this.callAjaxEndpoint('brag_book_load_favorites_grid', {
+				favorites: favoritesData,
+				userInfo: userInfo,
+				columns: 3
+			});
+
+			// Hide loading
+			if (loadingEl) loadingEl.style.display = 'none';
+
+			if (response.success && response.data.html) {
+				if (response.data.isEmpty) {
+					// Server returned empty state
+					favoritesEmpty.style.display = 'block';
+					favoritesGrid.style.display = 'none';
+					favoritesActions.style.display = 'none';
+				} else {
+					// Replace grid content with server-rendered HTML
+					favoritesGrid.innerHTML = response.data.html;
+					favoritesGrid.style.display = 'grid';
+					favoritesActions.style.display = 'flex';
+				}
+			} else {
+				// Error from server - show empty state with error message
+				console.error('Failed to load favorites grid:', response.data?.message || 'Unknown error');
+				favoritesEmpty.style.display = 'block';
+				favoritesGrid.style.display = 'none';
+				favoritesActions.style.display = 'none';
+			}
+		} catch (error) {
+			// Network or other error - hide loading and show empty state
+			console.error('Error loading favorites grid:', error);
+			if (loadingEl) loadingEl.style.display = 'none';
+			favoritesEmpty.style.display = 'block';
+			favoritesGrid.style.display = 'none';
+			favoritesActions.style.display = 'none';
+		}
+	}
+
+	/**
+	 * Populate the favorites grid with case data
+	 */
+	async populateFavoritesGrid(favoriteIds) {
+		const favoritesGrid = document.getElementById('favoritesGrid');
+		if (!favoritesGrid) return;
+
+		// Clear existing content
+		favoritesGrid.innerHTML = '';
+
+		// For now, create placeholder cards for favorited cases
+		// In a full implementation, you'd fetch case details from the API
+		favoriteIds.forEach(caseId => {
+			const card = document.createElement('div');
+			card.className = 'brag-book-gallery-case-card';
+			card.dataset.caseId = caseId;
+
+			card.innerHTML = `
+				<div class="brag-book-gallery-case-card-image">
+					<img src="${window.bragBookGalleryConfig?.placeholderImage || '#'}"
+						 alt="Case ${caseId}"
+						 loading="lazy">
+				</div>
+				<div class="brag-book-gallery-case-card-content">
+					<h3>Case ${caseId}</h3>
+					<p>Favorited case details would be loaded here</p>
+				</div>
+				<div class="brag-book-gallery-item-actions">
+					<button class="brag-book-gallery-favorite-button"
+							data-favorited="true"
+							data-item-id="${caseId}">
+						<svg fill="red" stroke="red" stroke-width="2" viewBox="0 0 24 24">
+							<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+						</svg>
+					</button>
+				</div>
+			`;
+
+			favoritesGrid.appendChild(card);
+		});
+
+		// Reinitialize favorite buttons
+		if (this.favoritesManager) {
+			this.favoritesManager.refreshEventListeners();
+		}
+	}
 }
+
+// Make initializeFavoritesPage available globally for the favorites handler
+window.initializeFavoritesPage = function() {
+	console.log('Global initializeFavoritesPage called');
+	console.log('window.bragBookGalleryApp exists:', !!window.bragBookGalleryApp);
+
+	// Get the main app instance if it exists
+	if (window.bragBookGalleryApp && typeof window.bragBookGalleryApp.initializeFavoritesPage === 'function') {
+		console.log('Calling main app initializeFavoritesPage');
+		window.bragBookGalleryApp.initializeFavoritesPage();
+	} else {
+		console.warn('BRAGbook Gallery App not yet initialized, retrying...');
+		// Retry with increasing delays
+		let attempts = 0;
+		const maxAttempts = 10;
+
+		const tryInit = () => {
+			attempts++;
+			console.log(`Retry attempt ${attempts}/${maxAttempts}`);
+
+			if (window.bragBookGalleryApp && typeof window.bragBookGalleryApp.initializeFavoritesPage === 'function') {
+				console.log('Main app found on retry, calling initializeFavoritesPage');
+				window.bragBookGalleryApp.initializeFavoritesPage();
+			} else if (attempts < maxAttempts) {
+				setTimeout(tryInit, attempts * 100); // Increasing delay
+			} else {
+				console.error('Failed to initialize favorites page after', maxAttempts, 'attempts');
+			}
+		};
+
+		setTimeout(tryInit, 100);
+	}
+};
 
 export default BRAGbookGalleryApp;

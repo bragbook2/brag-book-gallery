@@ -219,7 +219,7 @@ final class Carousel_Handler {
 
 		// Generate and return carousel HTML.
 		$output = self::render_html( $carousel_data, $config );
-		return \BRAGBookGallery\Includes\Core\Setup::clean_shortcode_text( $output );
+		return $output;
 	}
 
 	/**
@@ -437,10 +437,44 @@ final class Carousel_Handler {
 	 * @return string Fully rendered, accessible carousel HTML.
 	 */
 	private static function render_html( array $carousel_data, array $config ): string {
+		// Debug logging for render_html
+		if ( WP_DEBUG && WP_DEBUG_LOG ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			error_log( 'BRAGBook Carousel Debug: render_html called with data: ' . wp_json_encode( array_keys( $carousel_data ) ) );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			error_log( 'BRAGBook Carousel Debug: carousel_data structure: ' . wp_json_encode( $carousel_data ) );
+		}
+
 		// Check if we have data in either format.
 		$has_data = ! empty( $carousel_data ) &&
 					( ! empty( $carousel_data['data'] ) ||
 					  ( is_array( $carousel_data ) && isset( $carousel_data[0] ) ) );
+
+		// Additional check: ensure at least one post has images
+		if ( $has_data ) {
+			$items_data = $carousel_data['data'] ?? $carousel_data;
+			$has_images = false;
+
+			foreach ( $items_data as $item ) {
+				if ( ! empty( $item['images'] ) && is_array( $item['images'] ) ) {
+					$has_images = true;
+					break;
+				}
+			}
+
+			if ( ! $has_images ) {
+				$has_data = false;
+				if ( WP_DEBUG && WP_DEBUG_LOG ) {
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+					error_log( 'BRAGBook Carousel Debug: Posts found but no images available' );
+				}
+			}
+		}
+
+		if ( WP_DEBUG && WP_DEBUG_LOG ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			error_log( 'BRAGBook Carousel Debug: has_data result: ' . ( $has_data ? 'true' : 'false' ) );
+		}
 
 		if ( ! $has_data ) {
 			return sprintf(
@@ -479,13 +513,15 @@ final class Carousel_Handler {
 					 role="region"
 					 aria-label="<?php esc_attr_e( 'Image carousel', 'brag-book-gallery' ); ?>">
 					<?php
-					// Generate carousel items.
+					// Generate carousel items by querying cases for this procedure
 					$limit          = absint( $config['limit'] ?: self::DEFAULT_CAROUSEL_LIMIT );
 					$procedure_slug = $config['procedure_slug'] ?? '';
-					$items_data     = $carousel_data['data'] ?? $carousel_data;
+
+					// Get fresh cases for this specific procedure
+					$procedure_cases = self::get_cases_for_procedure( $procedure_slug, $config['procedure_id'], $limit );
 
 					// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- HTML is already escaped in method.
-					echo self::generate_carousel_items( $items_data, $limit, $procedure_slug, $config );
+					echo self::generate_carousel_items( $procedure_cases, $limit, $procedure_slug, $config );
 					?>
 				</div>
 			</div>
@@ -514,7 +550,7 @@ final class Carousel_Handler {
 		$filtered_html = apply_filters( 'brag_book_carousel_html', $html, $carousel_data, $config );
 
 		// Prevent wpautop from adding unwanted <p> and <br> tags to shortcode output
-		return \BRAGBookGallery\Includes\Core\Setup::clean_shortcode_text( $filtered_html );
+		return $filtered_html;
 	}
 
 	/**
@@ -576,7 +612,17 @@ final class Carousel_Handler {
 	 */
 	private static function generate_carousel_items( array $items, int $max_slides = 8, string $procedure_slug = '', array $config = [] ): string {
 		if ( empty( $items ) ) {
+			if ( WP_DEBUG && WP_DEBUG_LOG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log( 'BRAGBook Carousel Debug: generate_carousel_items called with empty items array' );
+			}
 			return '';
+		}
+
+		// Debug logging
+		if ( WP_DEBUG && WP_DEBUG_LOG ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			error_log( 'BRAGBook Carousel Debug: generate_carousel_items called with ' . count( $items ) . ' items' );
 		}
 
 		// Sanitize inputs.
@@ -595,25 +641,17 @@ final class Carousel_Handler {
 				break;
 			}
 
-			// Check for both possible data structures: photoSets and photos.
-			$photo_sets = array();
-			if ( isset( $case['photoSets'] ) && is_array( $case['photoSets'] ) ) {
-				$photo_sets = $case['photoSets'];
-			} elseif ( isset( $case['photos'] ) && is_array( $case['photos'] ) ) {
-				$photo_sets = $case['photos'];
-			}
-
-			// If photo_sets is empty, skip this case.
-			if ( empty( $photo_sets ) ) {
+			// Check if this case has images
+			if ( empty( $case['images'] ) || ! is_array( $case['images'] ) ) {
 				continue;
 			}
 
 			// Take only the first photo from this case to ensure variety.
-			$photo = $photo_sets[0];
+			$photo = $case['images'][0];
 
 			++ $slide_index;
 			++ $slide_count;
-			$html_parts[] = HTML_Renderer::generate_carousel_slide_from_photo(
+			$slide_html = HTML_Renderer::generate_carousel_slide_from_photo(
 				$photo,
 				$case,
 				$slide_index,
@@ -621,6 +659,16 @@ final class Carousel_Handler {
 				true, // This is a standalone carousel
 				$config // Pass carousel configuration
 			);
+
+			// Debug logging for slide generation
+			if ( WP_DEBUG && WP_DEBUG_LOG && $slide_index === 1 ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log( 'BRAGBook Carousel Debug: Generated slide HTML length: ' . strlen( $slide_html ) );
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log( 'BRAGBook Carousel Debug: Photo data: ' . wp_json_encode( $photo ) );
+			}
+
+			$html_parts[] = $slide_html;
 		}
 
 		return implode( '', $html_parts );
@@ -700,7 +748,7 @@ final class Carousel_Handler {
 	 * Get carousel data from WordPress posts
 	 *
 	 * Retrieves posts from the brag_book_cases post type and formats them
-	 * for carousel display, replacing the API-based carousel data.
+	 * for carousel display using WP_Query for enhanced performance and flexibility.
 	 *
 	 * @param array $config Carousel configuration.
 	 * @return array Formatted carousel data.
@@ -714,26 +762,24 @@ final class Carousel_Handler {
 			'orderby'        => 'date',
 			'order'          => 'DESC',
 			'meta_query'     => [],
+			'no_found_rows'  => true, // Performance optimization
+			'cache_results'  => true,
 		];
 
-		// Filter by procedure if specified
-		if ( ! empty( $config['procedure_id'] ) ) {
-			$query_args['tax_query'] = [
-				[
-					'taxonomy' => \BRAGBookGallery\Includes\Extend\Taxonomies::TAXONOMY_PROCEDURES,
-					'field'    => 'term_id',
-					'terms'    => (int) $config['procedure_id'],
-				],
-			];
-		} elseif ( ! empty( $config['procedure_slug'] ) ) {
-			$query_args['tax_query'] = [
-				[
-					'taxonomy' => \BRAGBookGallery\Includes\Extend\Taxonomies::TAXONOMY_PROCEDURES,
-					'field'    => 'slug',
-					'terms'    => sanitize_title( $config['procedure_slug'] ),
-				],
-			];
+		// Debug: First check if there are ANY posts of this type
+		if ( WP_DEBUG && WP_DEBUG_LOG ) {
+			$test_query = new \WP_Query( [
+				'post_type' => \BRAGBookGallery\Includes\Extend\Post_Types::POST_TYPE_CASES,
+				'post_status' => 'publish',
+				'posts_per_page' => 1,
+			] );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			error_log( 'BRAGBook Carousel Debug: Total published brag_book_cases posts: ' . $test_query->found_posts );
+			wp_reset_postdata();
 		}
+
+		// Note: Procedure filtering is now handled by get_cases_for_procedure() method
+		// This method provides fallback data when no procedure-specific cases are found
 
 		// Filter by member_id if specified
 		if ( ! empty( $config['member_id'] ) ) {
@@ -744,29 +790,99 @@ final class Carousel_Handler {
 			];
 		}
 
-		$posts = get_posts( $query_args );
+		$query = new \WP_Query( $query_args );
+
+		// Debug logging
+		if ( WP_DEBUG && WP_DEBUG_LOG ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			error_log( 'BRAGBook Carousel Debug: Query args: ' . wp_json_encode( $query_args ) );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			error_log( 'BRAGBook Carousel Debug: Found posts: ' . $query->post_count );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			error_log( 'BRAGBook Carousel Debug: Query SQL: ' . $query->request );
+		}
+
+		// If no posts found with procedure filter, try without filter as fallback
+		if ( ! $query->have_posts() && ( ! empty( $config['procedure_id'] ) || ! empty( $config['procedure_slug'] ) ) ) {
+			if ( WP_DEBUG && WP_DEBUG_LOG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log( 'BRAGBook Carousel Debug: No posts found with procedure filter, trying without filter' );
+			}
+
+			// Remove taxonomy filters and try again
+			$fallback_args = $query_args;
+			unset( $fallback_args['tax_query'] );
+			wp_reset_postdata(); // Reset before new query
+			$query = new \WP_Query( $fallback_args );
+
+			if ( WP_DEBUG && WP_DEBUG_LOG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log( 'BRAGBook Carousel Debug: Fallback query found posts: ' . $query->post_count );
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log( 'BRAGBook Carousel Debug: Fallback query SQL: ' . $query->request );
+			}
+		}
 
 		// Format posts as carousel data
 		$carousel_items = [];
-		foreach ( $posts as $post ) {
-			$case_id = get_post_meta( $post->ID, 'case_id', true ) ?: $post->ID;
-			$images = get_post_meta( $post->ID, 'images', true ) ?: [];
+		if ( $query->have_posts() ) {
+			while ( $query->have_posts() ) {
+				$query->the_post();
+				$post_id = get_the_ID();
 
-			// Ensure images is an array
-			if ( ! is_array( $images ) ) {
-				$images = [];
+				$case_id = get_post_meta( $post_id, 'brag_book_gallery_api_id', true ) ?: get_post_meta( $post_id, '_case_api_id', true );
+				$images = get_post_meta( $post_id, 'images', true ) ?: [];
+
+				// Ensure images is an array
+				if ( ! is_array( $images ) ) {
+					$images = [];
+				}
+
+				// Get processed URLs and convert to array
+				$processed_urls = get_post_meta( $post_id, 'brag_book_gallery_case_post_processed_url', true ) ?: '';
+				$url_array = [];
+				if ( ! empty( $processed_urls ) && is_string( $processed_urls ) ) {
+					$url_array = array_filter( array_map( 'trim', explode( ';', $processed_urls ) ) );
+				}
+
+				// Get first URL if available
+				$first_image_url = ! empty( $url_array ) ? $url_array[0] : '';
+
+
+				// If we have a processed URL but no images array, create one
+				if ( ! empty( $first_image_url ) && empty( $images ) ) {
+					$images = [
+						[
+							'url' => $first_image_url,
+							'processed_url' => $first_image_url,
+						]
+					];
+				}
+
+				$carousel_items[] = [
+					'id'         => $case_id,
+					'post_id'    => $post_id,
+					'images'     => $images,
+					'age'        => get_post_meta( $post_id, 'age', true ) ?: '',
+					'gender'     => get_post_meta( $post_id, 'gender', true ) ?: '',
+					'ethnicity'  => get_post_meta( $post_id, 'ethnicity', true ) ?: '',
+					'notes'      => get_post_meta( $post_id, 'notes', true ) ?: '',
+					'procedures' => wp_get_post_terms( $post_id, \BRAGBookGallery\Includes\Extend\Taxonomies::TAXONOMY_PROCEDURES, [ 'fields' => 'names' ] ),
+				];
 			}
+		}
 
-			$carousel_items[] = [
-				'id'         => $case_id,
-				'post_id'    => $post->ID,
-				'images'     => $images,
-				'age'        => get_post_meta( $post->ID, 'age', true ) ?: '',
-				'gender'     => get_post_meta( $post->ID, 'gender', true ) ?: '',
-				'ethnicity'  => get_post_meta( $post->ID, 'ethnicity', true ) ?: '',
-				'notes'      => get_post_meta( $post->ID, 'notes', true ) ?: '',
-				'procedures' => wp_get_post_terms( $post->ID, \BRAGBookGallery\Includes\Extend\Taxonomies::TAXONOMY_PROCEDURES, [ 'fields' => 'names' ] ),
-			];
+		// Reset global post data
+		wp_reset_postdata();
+
+		// Debug logging for final result
+		if ( WP_DEBUG && WP_DEBUG_LOG ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			error_log( 'BRAGBook Carousel Debug: Final carousel items count: ' . count( $carousel_items ) );
+			if ( ! empty( $carousel_items ) ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log( 'BRAGBook Carousel Debug: First item: ' . wp_json_encode( $carousel_items[0] ) );
+			}
 		}
 
 		return [
@@ -774,5 +890,83 @@ final class Carousel_Handler {
 			'data'    => $carousel_items,
 			'total'   => count( $carousel_items ),
 		];
+	}
+
+	/**
+	 * Get cases for a specific procedure
+	 *
+	 * Queries WordPress posts to get cases for a specific procedure,
+	 * formatted for carousel display.
+	 *
+	 * @param string $procedure_slug The procedure slug to filter by.
+	 * @param int|null $procedure_id The procedure ID to filter by.
+	 * @param int $limit Maximum number of cases to return.
+	 * @return array Array of formatted case data.
+	 * @since 3.0.0
+	 */
+	private static function get_cases_for_procedure( string $procedure_slug, ?int $procedure_id, int $limit ): array {
+		$query_args = [
+			'post_type'      => \BRAGBookGallery\Includes\Extend\Post_Types::POST_TYPE_CASES,
+			'post_status'    => 'publish',
+			'posts_per_page' => $limit,
+			'orderby'        => 'date',
+			'order'          => 'DESC',
+			'no_found_rows'  => true,
+			'cache_results'  => true,
+		];
+
+		if ( ! empty( $procedure_slug ) ) {
+			$query_args['tax_query'] = [
+				[
+					'taxonomy' => \BRAGBookGallery\Includes\Extend\Taxonomies::TAXONOMY_PROCEDURES,
+					'field'    => 'slug',
+					'terms'    => sanitize_title( $procedure_slug ),
+				],
+			];
+		}
+
+		$query = new \WP_Query( $query_args );
+
+		$cases = [];
+		if ( $query->have_posts() ) {
+			while ( $query->have_posts() ) {
+				$query->the_post();
+				$post_id = get_the_ID();
+
+				// Get processed URLs and convert to array
+				$processed_urls = get_post_meta( $post_id, 'brag_book_gallery_case_post_processed_url', true ) ?: '';
+				$url_array = [];
+				if ( ! empty( $processed_urls ) && is_string( $processed_urls ) ) {
+					$url_array = array_filter( array_map( 'trim', explode( ';', $processed_urls ) ) );
+				}
+
+				// Get first URL if available
+				$first_image_url = ! empty( $url_array ) ? $url_array[0] : '';
+
+				// Only include cases that have images
+				if ( ! empty( $first_image_url ) ) {
+					$cases[] = [
+						'id'         => $post_id,
+						'post_id'    => $post_id,
+						'title'      => get_the_title(),
+						'images'     => [
+							[
+								'url' => $first_image_url,
+								'processed_url' => $first_image_url,
+							]
+						],
+						'age'        => get_post_meta( $post_id, 'age', true ) ?: '',
+						'gender'     => get_post_meta( $post_id, 'gender', true ) ?: '',
+						'ethnicity'  => get_post_meta( $post_id, 'ethnicity', true ) ?: '',
+						'notes'      => get_post_meta( $post_id, 'notes', true ) ?: '',
+						'procedures' => wp_get_post_terms( $post_id, \BRAGBookGallery\Includes\Extend\Taxonomies::TAXONOMY_PROCEDURES, [ 'fields' => 'names' ] ),
+					];
+				}
+			}
+		}
+
+		wp_reset_postdata();
+
+		return $cases;
 	}
 }

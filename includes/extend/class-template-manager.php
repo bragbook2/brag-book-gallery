@@ -93,6 +93,13 @@ class Template_Manager {
 			'description' => __( 'Template for individual case posts', 'brag-book-gallery' ),
 			'content'     => $this->get_block_template_content( 'single-brag_book_cases' ),
 		] );
+
+		// Register page-myfavorites template
+		register_block_template( $plugin_uri . '//page-myfavorites', [
+			'title'       => __( 'My Favorites Page', 'brag-book-gallery' ),
+			'description' => __( 'Template for the My Favorites page', 'brag-book-gallery' ),
+			'content'     => $this->get_block_template_content( 'page-myfavorites' ),
+		] );
 	}
 
 	/**
@@ -128,18 +135,31 @@ class Template_Manager {
 			'has_theme_file' => false,
 		];
 
+		// Register page-myfavorites template
+		$page_myfavorites_template = [
+			'slug'        => 'page-myfavorites',
+			'title'       => __( 'My Favorites Page', 'brag-book-gallery' ),
+			'description' => __( 'Template for the My Favorites page', 'brag-book-gallery' ),
+			'content'     => $this->get_block_template_content( 'page-myfavorites' ),
+			'source'      => 'plugin',
+			'type'        => 'wp_template',
+			'theme'       => get_template(),
+			'has_theme_file' => false,
+		];
+
 		// Register templates with WordPress using legacy method
-		add_filter( 'get_block_templates', function( $templates, $query ) use ( $taxonomy_template, $single_case_template ) {
+		add_filter( 'get_block_templates', function( $templates, $query ) use ( $taxonomy_template, $single_case_template, $page_myfavorites_template ) {
 			// Add our templates to the available templates
-			if ( empty( $query['slug'] ) || in_array( $query['slug'], [ 'taxonomy-procedures', 'single-brag_book_cases' ], true ) ) {
+			if ( empty( $query['slug'] ) || in_array( $query['slug'], [ 'taxonomy-procedures', 'single-brag_book_cases', 'page-myfavorites' ], true ) ) {
 				$templates[] = new \WP_Block_Template( (object) $taxonomy_template );
 				$templates[] = new \WP_Block_Template( (object) $single_case_template );
+				$templates[] = new \WP_Block_Template( (object) $page_myfavorites_template );
 			}
 			return $templates;
 		}, 10, 2 );
 
 		// Handle template resolution
-		add_filter( 'get_block_template', function( $template, $id, $template_type ) use ( $taxonomy_template, $single_case_template ) {
+		add_filter( 'get_block_template', function( $template, $id, $template_type ) use ( $taxonomy_template, $single_case_template, $page_myfavorites_template ) {
 			if ( 'wp_template' !== $template_type ) {
 				return $template;
 			}
@@ -152,6 +172,10 @@ class Template_Manager {
 
 			if ( $id === $theme_slug . '//single-brag_book_cases' ) {
 				return new \WP_Block_Template( (object) $single_case_template );
+			}
+
+			if ( $id === $theme_slug . '//page-myfavorites' ) {
+				return new \WP_Block_Template( (object) $page_myfavorites_template );
 			}
 
 			return $template;
@@ -179,6 +203,10 @@ class Template_Manager {
 
 		if ( 'single-brag_book_cases' === $template_name ) {
 			return $this->build_single_case_template( $template_parts );
+		}
+
+		if ( 'page-myfavorites' === $template_name ) {
+			return $this->build_page_myfavorites_template( $template_parts );
 		}
 
 		// Fallback to file-based template
@@ -330,6 +358,54 @@ class Template_Manager {
 		);
 	}
 
+	/**
+	 * Build My Favorites page template dynamically
+	 *
+	 * Creates a My Favorites page template using detected theme template parts.
+	 *
+	 * @since 3.0.0
+	 * @param array $parts Template part information.
+	 * @return string Template content.
+	 */
+	private function build_page_myfavorites_template( array $parts ): string {
+		return sprintf(
+			'<!-- wp:template-part {"slug":"%s","theme":"%s"} /-->
+
+<!-- wp:group {"tagName":"main","layout":{"type":"constrained"}} -->
+<main class="wp-block-group">
+
+	<!-- wp:post-title {"level":1,"textAlign":"center","style":{"spacing":{"margin":{"bottom":"var:preset|spacing|50"}}}} /-->
+
+	<!-- wp:spacer {"height":"1rem"} -->
+	<div style="height:1rem" aria-hidden="true" class="wp-block-spacer"></div>
+	<!-- /wp:spacer -->
+
+	<!-- wp:post-content {"layout":{"type":"constrained"}} /-->
+
+	<!-- wp:spacer {"height":"2rem"} -->
+	<div style="height:2rem" aria-hidden="true" class="wp-block-spacer"></div>
+	<!-- /wp:spacer -->
+
+	<!-- wp:group {"layout":{"type":"constrained"},"style":{"spacing":{"margin":{"top":"var:preset|spacing|50"}}}} -->
+	<div class="wp-block-group" style="margin-top:var(--wp--preset--spacing--50)">
+		<!-- wp:paragraph {"align":"center","style":{"typography":{"fontSize":"0.875rem"},"color":{"text":"#666666"}}} -->
+		<p class="has-text-align-center" style="color:#666666;font-size:0.875rem">
+			Powered by <a href="https://bragbookgallery.com/" target="_blank" rel="noopener">BRAG book Gallery</a>
+		</p>
+		<!-- /wp:paragraph -->
+	</div>
+	<!-- /wp:group -->
+
+</main>
+<!-- /wp:group -->
+
+<!-- wp:template-part {"slug":"%s","theme":"%s"} /-->',
+			$parts['header'],
+			$parts['theme'],
+			$parts['footer'],
+			$parts['theme']
+		);
+	}
 
 	/**
 	 * Load custom templates for classic themes
@@ -381,6 +457,17 @@ class Template_Manager {
 			}
 		}
 
+		// Handle My Favorites page
+		if ( is_page() ) {
+			$page = get_queried_object();
+			if ( $page && 'myfavorites' === $page->post_name ) {
+				$favorites_template = $plugin_template_dir . 'page-myfavorites.php';
+				if ( file_exists( $favorites_template ) ) {
+					return $favorites_template;
+				}
+			}
+		}
+
 		return $template;
 	}
 
@@ -421,6 +508,10 @@ class Template_Manager {
 			if ( file_exists( $block_template_dir . 'single-brag_book_cases.html' ) ) {
 				$templates['single-brag_book_cases'] = __( 'Single Case (Block)', 'brag-book-gallery' );
 			}
+
+			if ( file_exists( $block_template_dir . 'page-myfavorites.html' ) ) {
+				$templates['page-myfavorites'] = __( 'My Favorites Page (Block)', 'brag-book-gallery' );
+			}
 		} else {
 			// Classic theme templates
 			if ( file_exists( $plugin_template_dir . 'taxonomy-procedures.php' ) ) {
@@ -429,6 +520,10 @@ class Template_Manager {
 
 			if ( file_exists( $plugin_template_dir . 'single-brag_book_cases.php' ) ) {
 				$templates['single-brag_book_cases'] = __( 'Single Case (PHP)', 'brag-book-gallery' );
+			}
+
+			if ( file_exists( $plugin_template_dir . 'page-myfavorites.php' ) ) {
+				$templates['page-myfavorites'] = __( 'My Favorites Page (PHP)', 'brag-book-gallery' );
 			}
 		}
 

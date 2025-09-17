@@ -85,10 +85,37 @@ class Sidebar_Handler {
 			true
 		);
 
+		// Get sidebar data for search functionality
+		$sidebar_data = $this->get_taxonomy_sidebar_data();
+
+		// Format sidebar data for JavaScript consumption (match the expected structure)
+		$formatted_sidebar_data = [];
+		if ( ! empty( $sidebar_data['data'] ) ) {
+			foreach ( $sidebar_data['data'] as $category ) {
+				$procedures = [];
+				if ( ! empty( $category['procedures'] ) ) {
+					foreach ( $category['procedures'] as $procedure ) {
+						$procedures[] = [
+							'slug' => $procedure['slug'],
+							'name' => $procedure['name'],
+							'count' => $procedure['caseCount'],
+							'url' => get_term_link( get_term_by( 'slug', $procedure['slug'], Taxonomies::TAXONOMY_PROCEDURES ) ) ?: '',
+						];
+					}
+				}
+
+				$formatted_sidebar_data[ $category['slug'] ] = [
+					'name' => $category['name'],
+					'procedures' => $procedures,
+				];
+			}
+		}
+
 		// Localize script with necessary data for AJAX and functionality
 		wp_localize_script( 'brag-book-gallery', 'bragBookGalleryConfig', [
 			'ajaxUrl' => admin_url( 'admin-ajax.php' ),
 			'nonce'   => wp_create_nonce( 'brag_book_gallery_nonce' ),
+			'sidebarData' => $formatted_sidebar_data,
 		] );
 	}
 
@@ -126,7 +153,7 @@ class Sidebar_Handler {
 
 		// Clean up whitespace but maintain formatting (wpautop prevention handled by block filter)
 		$output = trim( $output );
-		return \BRAGBookGallery\Includes\Core\Setup::clean_shortcode_text( $output );
+		return $output;
 	}
 
 	/**
@@ -237,21 +264,24 @@ class Sidebar_Handler {
 	 * @since 3.0.0
 	 */
 	private function render_category_button( string $category_slug, string $category_name, int $total_cases ): string {
-		$button_label = sprintf(
-			'%s %s',
-			esc_html( $category_name ),
-			$total_cases > 0 ? sprintf( '<span class="brag-book-gallery-nav-count">(%d)</span>', $total_cases ) : ''
+		// Check if filter counts should be displayed
+		$show_filter_counts = get_option( 'brag_book_gallery_show_filter_counts', true );
+
+		$count = sprintf(
+			'<span class="brag-book-gallery-nav-button__label">%s %s</span>',
+			sprintf( '<span>%s</span>',  esc_html( $category_name ) ),
+			( $show_filter_counts && $total_cases > 0 ) ? sprintf( '<span class="brag-book-gallery-nav-count">(%d)</span>', $total_cases ) : ''
 		);
 
-		$toggle_icon = '<span class="brag-book-gallery-nav-toggle"><span class="brag-book-gallery-nav-toggle-icon"></span></span>';
+		$icon = '<svg class="brag-book-gallery-nav-button__icon" xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="currentColor"><path d="M480-357.85 253.85-584 296-626.15l184 184 184-184L706.15-584 480-357.85Z"/></svg>';
 
 		return sprintf(
-			'<summary class="brag-book-gallery-nav-button" data-category="%s" aria-label="%s">%s%s</summary>',
+			'<summary class="brag-book-gallery-nav-button" data-category="%s" aria-label="%s">%s %s</summary>',
 			esc_attr( $category_slug ),
 			/* translators: %s: category name */
 			esc_attr( sprintf( __( '%s category filter', 'brag-book-gallery' ), $category_name ) ),
-			$button_label,
-			$toggle_icon
+			$count,
+			$icon
 		);
 	}
 
@@ -309,20 +339,20 @@ class Sidebar_Handler {
 		// Generate procedure link
 		$procedure_name = esc_html( $procedure->name );
 		$case_count     = $procedure->count;
-		$count_display  = $case_count > 0 ? sprintf( ' <span class="brag-book-gallery-nav-count">(%d)</span>', $case_count ) : '';
 
-		$nudity_indicator = $nudity ? ' <span class="brag-book-gallery-nudity-indicator" title="' . esc_attr__( 'Contains nudity', 'brag-book-gallery' ) . '">🔞</span>' : '';
+		// Check if filter counts should be displayed
+		$show_filter_counts = get_option( 'brag_book_gallery_show_filter_counts', true );
+		$count_display  = ( $show_filter_counts && $case_count > 0 ) ? sprintf( ' <span class="brag-book-gallery-nav-count">(%d)</span>', $case_count ) : '';
 
 		return sprintf(
-			'<li class="brag-book-gallery-nav-list-submenu-item"><a href="%s" class="brag-book-gallery-nav-link" data-procedure-id="%s" data-procedure-slug="%s" data-category="%s" data-nudity="%s">%s%s%s</a></li>',
+			'<li class="brag-book-gallery-nav-list-submenu-item"><a href="%s" class="brag-book-gallery-nav-link" data-procedure-id="%s" data-procedure-slug="%s" data-category="%s" data-nudity="%s">%s%s</a></li>',
 			esc_url( $procedure_url ),
 			esc_attr( $procedure_id ),
 			esc_attr( $procedure->slug ),
 			esc_attr( $category_slug ),
 			$nudity ? 'true' : 'false',
 			$procedure_name,
-			$count_display,
-			$nudity_indicator
+			$count_display
 		);
 	}
 

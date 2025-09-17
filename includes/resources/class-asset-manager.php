@@ -269,20 +269,51 @@ final class Asset_Manager {
 		$gallery_slug_option = get_option( 'brag_book_gallery_page_slug', 'gallery' );
 		$gallery_slug = is_array( $gallery_slug_option ) ? ( $gallery_slug_option[0] ?? 'gallery' ) : $gallery_slug_option;
 
+		// Get API tokens and website property IDs from WordPress options
+		// These are stored as arrays with mode keys like ['default' => 'token_value']
+		$api_tokens_option = get_option( 'brag_book_gallery_api_token', [] );
+		$website_property_ids_option = get_option( 'brag_book_gallery_website_property_id', [] );
+
+		// Mode manager removed - default to 'default' mode
+		$mode = 'default';
+
+		// Extract values for the current mode
+		$api_token = '';
+		$website_property_id = '';
+
+		if ( is_array( $api_tokens_option ) && isset( $api_tokens_option[ $mode ] ) ) {
+			$api_token = sanitize_text_field( $api_tokens_option[ $mode ] );
+		}
+
+		if ( is_array( $website_property_ids_option ) && isset( $website_property_ids_option[ $mode ] ) ) {
+			$website_property_id = sanitize_text_field( $website_property_ids_option[ $mode ] );
+		}
+
+		// If no tokens found, fallback to legacy single values from config
+		if ( empty( $api_token ) && ! empty( $config['api_token'] ) ) {
+			$api_token = sanitize_text_field( $config['api_token'] );
+		}
+		if ( empty( $website_property_id ) && ! empty( $config['website_property_id'] ) ) {
+			$website_property_id = sanitize_text_field( $config['website_property_id'] );
+		}
+
+		// Note: API tokens should NOT be passed to frontend for security reasons
+		// They will be handled securely via WordPress AJAX endpoints
+
 		// Sanitize and prepare configuration data.
 		$localized_data = array(
-			'apiToken'          => sanitize_text_field( $config['api_token'] ?? '' ),
-			'websitePropertyId' => sanitize_text_field( $config['website_property_id'] ?? '' ),
-			'apiEndpoint'       => esc_url_raw( get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' ) ),
-			'apiBaseUrl'        => esc_url_raw( get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' ) ),
-			'ajaxUrl'           => esc_url_raw( admin_url( 'admin-ajax.php' ) ),
-			'nonce'             => wp_create_nonce( 'brag_book_gallery_nonce' ),
-			'pluginUrl'         => esc_url_raw( $plugin_url ),
-			'gallerySlug'       => $gallery_slug,
-			'enableSharing'     => sanitize_text_field( get_option( 'brag_book_gallery_enable_sharing', 'no' ) ),
-			'infiniteScroll'    => sanitize_text_field( get_option( 'brag_book_gallery_infinite_scroll', 'no' ) ),
-			'sidebarData'       => $sidebar_data,
-			'completeDataset'   => array(),
+			// Remove API credentials from frontend for security
+			'apiEndpoint'         => esc_url_raw( get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' ) ),
+			'apiBaseUrl'          => esc_url_raw( get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' ) ),
+			'ajaxUrl'             => esc_url_raw( admin_url( 'admin-ajax.php' ) ),
+			'nonce'               => wp_create_nonce( 'brag_book_gallery_nonce' ),
+			'consultation_nonce'  => wp_create_nonce( 'consultation_form_nonce' ),
+			'pluginUrl'           => esc_url_raw( $plugin_url ),
+			'gallerySlug'         => $gallery_slug,
+			'enableSharing'       => sanitize_text_field( get_option( 'brag_book_gallery_enable_sharing', 'no' ) ),
+			'infiniteScroll'      => sanitize_text_field( get_option( 'brag_book_gallery_infinite_scroll', 'no' ) ),
+			'sidebarData'         => $sidebar_data,
+			'completeDataset'     => array(),
 		);
 
 		// Process complete dataset if provided.
@@ -298,6 +329,11 @@ final class Asset_Manager {
 			'bragBookGalleryConfig',
 			$localized_data
 		);
+
+		// Debug logging in development mode (excluding sensitive data)
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+			error_log( 'BRAGBook Debug: JavaScript configuration localized (API tokens secured server-side)' );
+		}
 	}
 
 	/**
@@ -389,6 +425,43 @@ final class Asset_Manager {
 			'brag-book-gallery-main',
 			'bragBookCarouselConfig',
 			$localized_data
+		);
+	}
+
+	/**
+	 * Ensure minimal configuration is available for consultation forms
+	 *
+	 * Provides a lightweight configuration object specifically for consultation form
+	 * functionality when full gallery assets aren't loaded. This ensures forms
+	 * always have access to necessary AJAX endpoints and security nonces.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @return void
+	 */
+	public static function ensure_consultation_form_config(): void {
+		// Check if the main config has already been localized
+		global $wp_scripts;
+
+		if ( isset( $wp_scripts->registered['brag-book-gallery-main'] ) &&
+			 ! empty( $wp_scripts->registered['brag-book-gallery-main']->extra['data'] ) &&
+			 strpos( $wp_scripts->registered['brag-book-gallery-main']->extra['data'], 'bragBookGalleryConfig' ) !== false ) {
+			// Main config already exists, no need to add minimal config
+			return;
+		}
+
+		// Create minimal configuration for forms
+		$minimal_config = array(
+			'ajaxUrl'            => esc_url_raw( admin_url( 'admin-ajax.php' ) ),
+			'consultation_nonce' => wp_create_nonce( 'consultation_form_nonce' ),
+			'nonce'              => wp_create_nonce( 'brag_book_gallery_nonce' ),
+		);
+
+		// Add inline script to provide minimal configuration
+		wp_add_inline_script(
+			'jquery', // Use jQuery as dependency since it's likely already loaded
+			'window.bragBookGalleryConfig = window.bragBookGalleryConfig || ' . wp_json_encode( $minimal_config ) . ';',
+			'after'
 		);
 	}
 

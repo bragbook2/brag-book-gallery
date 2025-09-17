@@ -506,8 +506,8 @@ class Communications {
 			return;
 		}
 
-		// First, save the communications locally.
-		$post_id = $this->create_communications_post(
+		// First, save the consultation locally.
+		$post_id = $this->create_consultation_post(
 			$form_data['name'],
 			$form_data['description'],
 			$form_data['email'],
@@ -793,6 +793,7 @@ class Communications {
 
 		// Try multiple nonce types for compatibility.
 		$nonce_types = [
+			'consultation_form_nonce',
 			'communications_form_nonce',
 			'brag_book_gallery_nonce',
 		];
@@ -1050,7 +1051,7 @@ class Communications {
 			'api_tokens'                  => (array) $api_tokens,
 			'website_property_ids'        => (array) $website_property_ids,
 			'gallery_pages'               => (array) get_option( 'brag_book_gallery_stored_pages', [] ),
-			'brag_book_gallery_page_slug' => (string) get_option( 'brag_book_gallery_page_slug', '' ),
+			'brag_book_gallery_page_slug' => $this->get_page_slug_as_string(),
 		];
 	}
 
@@ -1164,7 +1165,7 @@ class Communications {
 
 		// Build the URL with query parameters.
 		$url = sprintf(
-			'%s/api/plugin/communicationss?apiToken=%s&websitepropertyId=%s',
+			'%s/api/plugin/consultations?apiToken=%s&websitepropertyId=%s',
 			$base_url,
 			urlencode( $api_token ),
 			urlencode( $website_property_id )
@@ -1385,8 +1386,8 @@ class Communications {
 		}
 
 		// Get post meta data.
-		$email = get_post_meta( $post_id, 'communications_email', true );
-		$phone = get_post_meta( $post_id, 'communications_phone', true );
+		$email = get_post_meta( $post_id, 'brag_book_gallery_email', true );
+		$phone = get_post_meta( $post_id, 'brag_book_gallery_phone', true );
 
 		// Build the HTML output.
 		ob_start();
@@ -2167,7 +2168,28 @@ class Communications {
 		<?php
 	}
 
+	/**
+	 * Get page slug as string with fallback handling
+	 *
+	 * Safely retrieves the gallery page slug option and ensures it's always
+	 * returned as a string, handling both legacy array format and current
+	 * string format gracefully.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @return string Gallery page slug as string
+	 */
+	private function get_page_slug_as_string(): string {
+		$page_slug = get_option( 'brag_book_gallery_page_slug', '' );
 
+		// Handle array format (legacy or corrupted data)
+		if ( is_array( $page_slug ) ) {
+			return ! empty( $page_slug ) ? (string) $page_slug[0] : '';
+		}
+
+		// Return string value or empty string
+		return (string) $page_slug;
+	}
 
 	/**
 	 * Register admin menu page

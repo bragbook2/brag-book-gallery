@@ -148,12 +148,93 @@ final class Cases_Handler {
 	public function __construct() {
 		add_shortcode( 'brag_book_gallery_cases', [ self::class, 'handle' ] );
 
+		// Add filters to prevent unwanted p/br tags in nested shortcodes
+		add_filter( 'the_content', [ $this, 'shortcode_content_filter' ], 7 );
+		add_filter( 'widget_text_content', [ $this, 'shortcode_content_filter' ], 7 );
+
+		// Enable shortcodes in term descriptions
+		add_filter( 'term_description', 'do_shortcode' );
+		add_filter( 'category_description', 'do_shortcode' );
+		add_filter( 'tag_description', 'do_shortcode' );
+
+		// Enable shortcodes in all taxonomy descriptions (including custom taxonomies)
+		add_action( 'init', [ $this, 'enable_shortcodes_in_taxonomy_descriptions' ] );
+
 		// Hook into wp_enqueue_scripts to check for our shortcode and enqueue assets
 		add_action( 'wp_enqueue_scripts', [ $this, 'maybe_enqueue_assets' ], 5 );
 
 		// Register AJAX handlers for load more functionality
 		add_action( 'wp_ajax_brag_book_gallery_load_more_cases', [ self::class, 'ajax_load_more_cases' ] );
 		add_action( 'wp_ajax_nopriv_brag_book_gallery_load_more_cases', [ self::class, 'ajax_load_more_cases' ] );
+	}
+
+	/**
+	 * Filter content to prevent unwanted p/br tags around our shortcodes
+	 *
+	 * This method prevents WordPress from adding paragraph and line break tags
+	 * around our shortcode content, especially important for nested shortcodes.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @param string $content The content to filter.
+	 *
+	 * @return string Filtered content.
+	 */
+	public function shortcode_content_filter( string $content ): string {
+		// Only process if our shortcode is present
+		if ( ! has_shortcode( $content, 'brag_book_gallery_cases' ) ) {
+			return $content;
+		}
+
+		// Temporarily remove wpautop filter to prevent auto p/br tags
+		remove_filter( 'the_content', 'wpautop' );
+		remove_filter( 'widget_text_content', 'wpautop' );
+
+		// Process shortcodes
+		$content = do_shortcode( $content );
+
+		// Add wpautop back for other content
+		add_filter( 'the_content', 'wpautop' );
+		add_filter( 'widget_text_content', 'wpautop' );
+
+		// Clean up any remaining unwanted tags
+		$patterns = [
+			'/<p>\s*\[brag_book_gallery_cases([^\]]*)\]\s*<\/p>/i' => '[brag_book_gallery_cases$1]',
+			'/<p>\s*<\/p>/i' => '',
+			'/<br\s*\/?>\s*\[brag_book_gallery_cases/i' => '[brag_book_gallery_cases',
+			'/\]\s*<br\s*\/?>/i' => ']',
+		];
+
+		foreach ( $patterns as $pattern => $replacement ) {
+			$content = preg_replace( $pattern, $replacement, $content );
+		}
+
+		return $content;
+	}
+
+	/**
+	 * Enable shortcodes in all taxonomy descriptions
+	 *
+	 * This method adds do_shortcode filter to all registered taxonomies,
+	 * ensuring shortcodes work in custom taxonomy descriptions.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @return void
+	 */
+	public function enable_shortcodes_in_taxonomy_descriptions(): void {
+		// Get all registered taxonomies
+		$taxonomies = get_taxonomies( [], 'objects' );
+
+		foreach ( $taxonomies as $taxonomy ) {
+			// Add shortcode processing to each taxonomy description
+			$filter_name = "{$taxonomy->name}_description";
+			add_filter( $filter_name, 'do_shortcode' );
+		}
+
+		// Also add filters for common ways term descriptions are displayed
+		add_filter( 'get_the_archive_description', 'do_shortcode' );
+		add_filter( 'wpseo_metadesc', 'do_shortcode' ); // Yoast SEO compatibility
 	}
 
 	/**
@@ -289,7 +370,7 @@ final class Cases_Handler {
 		$procedure_ids = self::get_procedure_ids_for_filter( $filter_procedure, $atts );
 
 		// Get items per page setting
-		$items_per_page = absint( get_option( 'brag_book_gallery_items_per_page', '10' ) );
+		$items_per_page = absint( get_option( 'brag_book_gallery_items_per_page', '200' ) );
 
 		// When filtering by procedure, load enough cases for pagination plus some buffer
 		// but avoid loading excessive amounts on initial page load for performance
@@ -326,9 +407,9 @@ final class Cases_Handler {
 			$cases_data
 		);
 
-		// Render cases grid.
-		$output = self::render_cases_grid( $cases_data, $atts, $filter_procedure );
-		return \BRAGBookGallery\Includes\Core\Setup::clean_shortcode_text( $output );
+		// Render cases grid using WordPress posts instead of API data.
+		$output = self::render_cases_grid_from_posts( $filter_procedure, $atts );
+		return $output;
 	}
 
 	/**
@@ -688,7 +769,7 @@ final class Cases_Handler {
 		$show_details = filter_var( $atts['show_details'], FILTER_VALIDATE_BOOLEAN );
 
 		// Get items per page setting for pagination
-		$items_per_page = absint( get_option( 'brag_book_gallery_items_per_page', '10' ) );
+		$items_per_page = absint( get_option( 'brag_book_gallery_items_per_page', '200' ) );
 
 		// Only render the first page of cases
 		$cases_to_render = array_slice( $cases, 0, $items_per_page );
@@ -1018,6 +1099,16 @@ final class Cases_Handler {
 				<?php
 				if ( ! empty( $case_data['photoSets'] ) ) {
 					foreach ( $case_data['photoSets'] as $photo_set ) {
+						// Show post-processed image first if available
+						if ( ! empty( $photo_set['postProcessedImageLocation'] ) ) {
+							?>
+							<div class="case-image post-processed-image">
+								<img src="<?php echo esc_url( $photo_set['postProcessedImageLocation'] ); ?>"
+									 alt="<?php esc_attr_e( 'Post-Processed Result', 'brag-book-gallery' ); ?>" />
+								<span class="image-label"><?php esc_html_e( 'Final Result', 'brag-book-gallery' ); ?></span>
+							</div>
+							<?php
+						}
 						if ( ! empty( $photo_set['beforePhoto'] ) ) {
 							?>
 							<div class="case-image before-image">
@@ -1400,8 +1491,8 @@ final class Cases_Handler {
 				}
 				$html .= '</div>';
 			} else {
-				// Show single image (after preferred, fallback to before).
-				$image_url = $first_photo['afterPhoto'] ?? $first_photo['beforePhoto'] ?? '';
+				// Show single image (post-processed preferred, fallback to after, then before).
+				$image_url = $first_photo['postProcessedImageLocation'] ?? $first_photo['afterPhoto'] ?? $first_photo['beforePhoto'] ?? '';
 				if ( ! empty( $image_url ) ) {
 					$html .= sprintf(
 						'<div class="brag-book-gallery-case-images"><img src="%s" alt="%s" /></div>',
@@ -1445,7 +1536,8 @@ final class Cases_Handler {
 	 * @return string Data attributes HTML.
 	 */
 	private static function prepare_case_data_attributes( array $case ): string {
-		$attrs = 'data-card="true"';
+		$attrs = 'data-id="' . get_the_ID() . '"';
+		$attrs .= 'data-card="true"';
 
 		// Add age.
 		if ( ! empty( $case['age'] ) ) {
@@ -1481,6 +1573,383 @@ final class Cases_Handler {
 		}
 
 		return $attrs;
+	}
+
+	/**
+	 * Prepare case data attributes from WordPress post meta
+	 *
+	 * Generates data attributes for case filtering using post meta values
+	 * stored in WordPress database according to mapping.md format.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @param int|\WP_Post $post Post ID or post object.
+	 *
+	 * @return string HTML data attributes string.
+	 */
+	private static function prepare_case_data_attributes_from_post_meta( $post ): string {
+		if ( is_numeric( $post ) ) {
+			$post_id = (int) $post;
+		} elseif ( $post instanceof \WP_Post ) {
+			$post_id = $post->ID;
+		} else {
+			return 'data-card="true"';
+		}
+
+		$attrs = 'data-card="true"';
+
+		// Add age using new meta key format
+		$age = get_post_meta( $post_id, 'brag_book_gallery_patient_age', true );
+		if ( ! empty( $age ) ) {
+			$attrs .= ' data-age="' . esc_attr( $age ) . '"';
+		}
+
+		// Add gender using new meta key format
+		$gender = get_post_meta( $post_id, 'brag_book_gallery_patient_gender', true );
+		if ( ! empty( $gender ) ) {
+			$attrs .= ' data-gender="' . esc_attr( strtolower( $gender ) ) . '"';
+		}
+
+		// Add ethnicity using new meta key format
+		$ethnicity = get_post_meta( $post_id, 'brag_book_gallery_ethnicity', true );
+		if ( ! empty( $ethnicity ) ) {
+			$attrs .= ' data-ethnicity="' . esc_attr( strtolower( $ethnicity ) ) . '"';
+		}
+
+		// Add height with unit using new meta key format
+		$height = get_post_meta( $post_id, 'brag_book_gallery_height', true );
+		$height_unit = get_post_meta( $post_id, 'brag_book_gallery_height_unit', true );
+		if ( ! empty( $height ) ) {
+			$attrs .= ' data-height="' . esc_attr( $height ) . '"';
+			if ( ! empty( $height_unit ) ) {
+				$attrs .= ' data-height-unit="' . esc_attr( $height_unit ) . '"';
+				$attrs .= ' data-height-full="' . esc_attr( $height . $height_unit ) . '"';
+			}
+		}
+
+		// Add weight with unit using new meta key format
+		$weight = get_post_meta( $post_id, 'brag_book_gallery_weight', true );
+		$weight_unit = get_post_meta( $post_id, 'brag_book_gallery_weight_unit', true );
+		if ( ! empty( $weight ) ) {
+			$attrs .= ' data-weight="' . esc_attr( $weight ) . '"';
+			if ( ! empty( $weight_unit ) ) {
+				$attrs .= ' data-weight-unit="' . esc_attr( $weight_unit ) . '"';
+				$attrs .= ' data-weight-full="' . esc_attr( $weight . $weight_unit ) . '"';
+			}
+		}
+
+		return $attrs;
+	}
+
+	/**
+	 * Render case card from WordPress post
+	 *
+	 * Generates case card HTML using WordPress post data and meta fields
+	 * instead of API data. Uses the new meta key format from mapping.md.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @param \WP_Post $post              WordPress post object.
+	 * @param string   $image_display_mode Image display mode (single/before_after).
+	 * @param bool     $procedure_nudity   Whether procedure has nudity warning.
+	 * @param string   $procedure_context  Procedure context for URL generation.
+	 *
+	 * @return string Case card HTML.
+	 */
+	public static function render_case_card_from_post(
+		\WP_Post $post,
+		string $image_display_mode = 'single',
+		bool $procedure_nudity = false,
+		string $procedure_context = ''
+	): string {
+		$html = '';
+
+		// Prepare data attributes from post meta.
+		$data_attrs = self::prepare_case_data_attributes_from_post_meta( $post );
+
+		// Get case ID from post meta (API ID).
+		$case_id = get_post_meta( $post->ID, 'brag_book_gallery_api_id', true );
+		if ( empty( $case_id ) ) {
+			$case_id = get_post_meta( $post->ID, '_case_api_id', true ); // Legacy fallback
+		}
+		if ( empty( $case_id ) ) {
+			$case_id = $post->ID; // Use WordPress post ID as fallback
+		}
+
+		// Get procedure IDs from post meta.
+		$procedure_ids = get_post_meta( $post->ID, 'brag_book_gallery_procedure_ids', true );
+		if ( empty( $procedure_ids ) ) {
+			$procedure_ids = get_post_meta( $post->ID, '_case_procedure_ids', true ); // Legacy fallback
+		}
+
+		// Get SEO suffix URL from post meta.
+		$seo_suffix_url = get_post_meta( $post->ID, 'brag_book_gallery_seo_suffix_url', true );
+		if ( empty( $seo_suffix_url ) ) {
+			$seo_suffix_url = get_post_meta( $post->ID, '_case_seo_suffix_url', true ); // Legacy fallback
+		}
+		if ( empty( $seo_suffix_url ) ) {
+			$seo_suffix_url = $post->post_name; // Use post slug as fallback
+		}
+
+		$html .= sprintf(
+			'<article class="brag-book-gallery-case-card" %s data-case-id="%s" data-procedure-ids="%s">',
+			$data_attrs,
+			esc_attr( $case_id ),
+			esc_attr( $procedure_ids )
+		);
+
+		// Build case URL.
+		$gallery_slug = self::get_gallery_page_slug();
+		if ( ! empty( $procedure_context ) ) {
+			$case_url = sprintf( '/%s/%s/%s/', $gallery_slug, $procedure_context, $seo_suffix_url );
+		} else {
+			$case_url = sprintf( '/%s/case/%s/', $gallery_slug, $seo_suffix_url );
+		}
+
+		// Add case content.
+		$html .= '<a href="' . esc_url( $case_url ) . '" class="case-link">';
+
+		// Get image URLs from post meta.
+		$before_urls = get_post_meta( $post->ID, 'brag_book_gallery_case_before_url', true );
+		$after_urls1 = get_post_meta( $post->ID, 'brag_book_gallery_case_after_url1', true );
+		$post_processed_urls = get_post_meta( $post->ID, 'brag_book_gallery_case_post_processed_url', true );
+
+		// Legacy fallback for images.
+		if ( empty( $before_urls ) && empty( $after_urls1 ) && empty( $post_processed_urls ) ) {
+			$image_sets = get_post_meta( $post->ID, 'brag_book_gallery_image_url_sets', true );
+			if ( ! empty( $image_sets ) && is_array( $image_sets ) ) {
+				$first_set = reset( $image_sets );
+				$before_urls = $first_set['before_url'] ?? '';
+				$after_urls1 = $first_set['after_url1'] ?? '';
+				$post_processed_urls = $first_set['post_processed_url'] ?? '';
+			}
+		}
+
+		// Parse URLs (handle semicolon-separated format).
+		$before_url = '';
+		$after_url = '';
+		$processed_url = '';
+
+		if ( ! empty( $post_processed_urls ) ) {
+			$urls = explode( "\n", $post_processed_urls );
+			$processed_url = ! empty( $urls[0] ) ? rtrim( $urls[0], ';' ) : '';
+		}
+
+		if ( ! empty( $before_urls ) ) {
+			$urls = explode( "\n", $before_urls );
+			$before_url = ! empty( $urls[0] ) ? rtrim( $urls[0], ';' ) : '';
+		}
+
+		if ( ! empty( $after_urls1 ) ) {
+			$urls = explode( "\n", $after_urls1 );
+			$after_url = ! empty( $urls[0] ) ? rtrim( $urls[0], ';' ) : '';
+		}
+
+		// Determine which image to show.
+		$main_image_url = $processed_url ?: $after_url ?: $before_url;
+
+		if ( 'before_after' === $image_display_mode && ! empty( $before_url ) && ! empty( $after_url ) ) {
+			// Show both before and after images.
+			$html .= '<div class="brag-book-gallery-case-images before-after">';
+			$html .= sprintf(
+				'<img src="%s" alt="%s" class="before-image" />',
+				esc_url( $before_url ),
+				esc_attr__( 'Before', 'brag-book-gallery' )
+			);
+			$html .= sprintf(
+				'<img src="%s" alt="%s" class="after-image" />',
+				esc_url( $after_url ),
+				esc_attr__( 'After', 'brag-book-gallery' )
+			);
+			$html .= '</div>';
+		} elseif ( ! empty( $main_image_url ) ) {
+			// Show single image.
+			$html .= '<div class="brag-book-gallery-case-images single-image">';
+			$html .= sprintf(
+				'<img src="%s" alt="%s" class="case-image" />',
+				esc_url( $main_image_url ),
+				esc_attr( sprintf( __( 'Case %s', 'brag-book-gallery' ), $case_id ) )
+			);
+			$html .= '</div>';
+		} else {
+			// No image available.
+			$html .= '<div class="brag-book-gallery-case-images no-image">';
+			$html .= '<div class="placeholder-image">' . esc_html__( 'No image available', 'brag-book-gallery' ) . '</div>';
+			$html .= '</div>';
+		}
+
+		$html .= '</a>'; // Close case link
+
+		// Add nudity warning if needed.
+		if ( $procedure_nudity ) {
+			$html .= '<div class="brag-book-gallery-nudity-warning" style="display: none;">';
+			$html .= '<div class="brag-book-gallery-nudity-warning-content">';
+			$html .= '<h3>' . esc_html__( 'Content Advisory', 'brag-book-gallery' ) . '</h3>';
+			$html .= '<p>' . esc_html__( 'This content may contain sensitive material. Please proceed with discretion.', 'brag-book-gallery' ) . '</p>';
+			$html .= '<div class="brag-book-gallery-nudity-warning-actions">';
+			$html .= '<button class="brag-book-gallery-button brag-book-gallery-button--secondary" data-action="nudity-cancel">' . esc_html__( 'Cancel', 'brag-book-gallery' ) . '</button>';
+			$html .= '<button class="brag-book-gallery-button brag-book-gallery-button--primary" data-action="nudity-proceed">' . esc_html__( 'Proceed', 'brag-book-gallery' ) . '</button>';
+			$html .= '</div>';
+			$html .= '</div>';
+			$html .= '</div>';
+		}
+
+		$html .= '</article>';
+
+		return $html;
+	}
+
+	/**
+	 * Render cases grid from WordPress posts
+	 *
+	 * Generates a complete HTML grid display using WordPress post data
+	 * and post meta instead of API data. Uses new meta key format from mapping.md.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @param string $filter_procedure Optional procedure slug for filtering.
+	 * @param array  $atts             Shortcode attributes.
+	 *
+	 * @return string Complete HTML grid output.
+	 */
+	public static function render_cases_grid_from_posts( string $filter_procedure = '', array $atts = [] ): string {
+		// Get cases from WordPress posts
+		$query_args = [
+			'post_type'      => Post_Types::POST_TYPE_CASES,
+			'post_status'    => 'publish',
+			'posts_per_page' => absint( get_option( 'brag_book_gallery_items_per_page', '200' ) ),
+			'orderby'        => 'date',
+			'order'          => 'DESC',
+			'meta_query'     => [],
+			'tax_query'      => [],
+		];
+
+		// Add taxonomy filter if procedure is specified
+		if ( ! empty( $filter_procedure ) ) {
+			$query_args['tax_query'][] = [
+				'taxonomy' => Taxonomies::TAXONOMY_PROCEDURES,
+				'field'    => 'slug',
+				'terms'    => $filter_procedure,
+			];
+		}
+
+		// Execute query
+		$query = new \WP_Query( $query_args );
+
+		if ( ! $query->have_posts() ) {
+			return '<div class="brag-book-gallery-wrapper"><div class="brag-book-gallery-main-content"><p>' . esc_html__( 'No cases found.', 'brag-book-gallery' ) . '</p></div></div>';
+		}
+
+		$posts = $query->posts;
+		$total_cases = $query->found_posts;
+		$items_per_page = absint( get_option( 'brag_book_gallery_items_per_page', '200' ) );
+
+		// Start output with proper container structure matching gallery layout
+		$output = '<div class="brag-book-gallery-wrapper" role="application" aria-label="Cases Gallery">';
+		$output .= '<div class="brag-book-gallery-main-content" role="region" aria-label="Gallery content" id="gallery-content">';
+
+		// Add controls section for filtering and grid layout
+		$output .= '<div class="brag-book-gallery-controls">';
+		$output .= '<div class="brag-book-gallery-controls-left">';
+		$output .= '<details class="brag-book-gallery-filter-dropdown" id="procedure-filters-details">';
+		$output .= '<summary class="brag-book-gallery-filter-dropdown__toggle">';
+		$output .= '<svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="currentColor">';
+		$output .= '<path d="M400-240v-80h160v80H400ZM240-440v-80h480v80H240ZM120-640v-80h720v80H120Z"></path>';
+		$output .= '</svg>';
+		$output .= '<span>' . esc_html__( 'Filters', 'brag-book-gallery' ) . '</span>';
+		$output .= '</summary>';
+		$output .= '<div class="brag-book-gallery-filter-dropdown__panel">';
+		$output .= '<div class="brag-book-gallery-filter-content">';
+		$output .= '<div class="brag-book-gallery-filter-section">';
+		$output .= '<div id="brag-book-gallery-filters">';
+		$output .= '<!-- Filter options will be populated by JavaScript -->';
+		$output .= '</div>';
+		$output .= '</div>';
+		$output .= '</div>';
+		$output .= '<div class="brag-book-gallery-filter-actions">';
+		$output .= '<button class="brag-book-gallery-button brag-book-gallery-button--apply" onclick="applyProcedureFilters()">';
+		$output .= esc_html__( 'Apply Filters', 'brag-book-gallery' );
+		$output .= '</button>';
+		$output .= '<button class="brag-book-gallery-button brag-book-gallery-button--clear" onclick="clearProcedureFilters()">';
+		$output .= esc_html__( 'Clear All', 'brag-book-gallery' );
+		$output .= '</button>';
+		$output .= '</div>';
+		$output .= '</div>';
+		$output .= '</details>';
+		$output .= '<div class="brag-book-gallery-active-filters" style="display: none;"></div>';
+		$output .= '</div>';
+
+		// Add grid selector controls
+		$output .= '<div class="brag-book-gallery-grid-selector">';
+		$output .= '<span class="brag-book-gallery-grid-label">' . esc_html__( 'View:', 'brag-book-gallery' ) . '</span>';
+		$output .= '<div class="brag-book-gallery-grid-buttons">';
+		$output .= '<button class="brag-book-gallery-grid-btn" data-columns="2" onclick="updateGridLayout(2)" aria-label="' . esc_attr__( 'View in 2 columns', 'brag-book-gallery' ) . '">';
+		$output .= '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">';
+		$output .= '<rect x="1" y="1" width="6" height="6"></rect><rect x="9" y="1" width="6" height="6"></rect>';
+		$output .= '<rect x="1" y="9" width="6" height="6"></rect><rect x="9" y="9" width="6" height="6"></rect>';
+		$output .= '</svg>';
+		$output .= '<span class="sr-only">' . esc_html__( '2 Columns', 'brag-book-gallery' ) . '</span>';
+		$output .= '</button>';
+		$output .= '<button class="brag-book-gallery-grid-btn active" data-columns="3" onclick="updateGridLayout(3)" aria-label="' . esc_attr__( 'View in 3 columns', 'brag-book-gallery' ) . '">';
+		$output .= '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">';
+		$output .= '<rect x="1" y="1" width="4" height="4"></rect><rect x="6" y="1" width="4" height="4"></rect><rect x="11" y="1" width="4" height="4"></rect>';
+		$output .= '<rect x="1" y="6" width="4" height="4"></rect><rect x="6" y="6" width="4" height="4"></rect><rect x="11" y="6" width="4" height="4"></rect>';
+		$output .= '<rect x="1" y="11" width="4" height="4"></rect><rect x="6" y="11" width="4" height="4"></rect><rect x="11" y="11" width="4" height="4"></rect>';
+		$output .= '</svg>';
+		$output .= '<span class="sr-only">' . esc_html__( '3 Columns', 'brag-book-gallery' ) . '</span>';
+		$output .= '</button>';
+		$output .= '</div>';
+		$output .= '</div>';
+		$output .= '</div>'; // Close controls
+
+		// Add main cases container
+		$output .= '<div class="brag-book-gallery-cases-container">';
+		$output .= '<div class="brag-book-gallery-case-grid masonry-layout" data-columns="3">';
+
+		// Get image display mode
+		$image_display_mode = $atts['image_display_mode'] ?? 'single';
+
+		// Render each case using the new post-based method
+		foreach ( $posts as $post ) {
+			$output .= self::render_case_card_from_post( $post, $image_display_mode, false, $filter_procedure );
+		}
+
+		$output .= '</div>'; // Close case grid
+
+		// Add load more button if there are more posts
+		if ( $total_cases > $items_per_page ) {
+			$procedure_ids = '';
+			if ( ! empty( $filter_procedure ) ) {
+				// Get procedure IDs for the filter
+				$procedure_term = get_term_by( 'slug', $filter_procedure, Taxonomies::TAXONOMY_PROCEDURES );
+				if ( $procedure_term ) {
+					$procedure_ids = $procedure_term->term_id;
+				}
+			}
+
+			$infinite_scroll = get_option( 'brag_book_gallery_infinite_scroll', 'no' );
+			$button_style = ( $infinite_scroll === 'yes' ) ? ' style="display: none;"' : '';
+
+			$output .= '<div class="brag-book-gallery-load-more-container">';
+			$output .= '<button class="brag-book-gallery-button brag-book-gallery-button--load-more" ';
+			$output .= 'data-action="load-more" ';
+			$output .= 'data-start-page="2" ';
+			$output .= 'data-procedure-ids="' . esc_attr( $procedure_ids ) . '" ';
+			$output .= 'data-procedure-name="' . esc_attr( $filter_procedure ) . '" ';
+			$output .= 'onclick="loadMoreCasesFromCache(this)"' . $button_style . '>';
+			$output .= esc_html__( 'Load More', 'brag-book-gallery' );
+			$output .= '</button>';
+			$output .= '</div>';
+		}
+
+		$output .= '</div>'; // Close cases container
+		$output .= '</div>'; // Close main content
+		$output .= '</div>'; // Close wrapper
+
+		// Reset query
+		wp_reset_postdata();
+
+		return $output;
 	}
 
 	/**
@@ -1672,7 +2141,7 @@ final class Cases_Handler {
 					<?php esc_html_e( 'Nudity Warning', 'brag-book-gallery' ); ?>
 				</h4>
 				<p class="brag-book-gallery-nudity-warning-caption">
-					<?php esc_html_e( 'This procedure may contain nudity or sensitive content. Click to proceed if you wish to view.', 'brag-book-gallery' ); ?>
+					<?php esc_html_e( 'Click to proceed if you wish to view.', 'brag-book-gallery' ); ?>
 				</p>
 				<button class="brag-book-gallery-nudity-warning-button">
 					<?php esc_html_e( 'Proceed', 'brag-book-gallery' ); ?>
@@ -1803,22 +2272,82 @@ final class Cases_Handler {
 	/**
 	 * Check if the current procedure being viewed has nudity flag set to true.
 	 *
-	 * This method will be handled by JavaScript which can check the data-nudity
-	 * attribute on the active procedure link. For server-side rendering, we'll
-	 * pass the procedure context and let JavaScript handle the nudity detection.
+	 * Uses the sidebar data to determine if a procedure has nudity enabled.
+	 * This ensures that server-rendered case cards show nudity warnings when appropriate.
 	 *
 	 * @since 3.0.0
 	 *
 	 * @param string $filter_procedure Current procedure being viewed.
 	 *
-	 * @return bool Always returns false for server-side rendering (JS will handle it).
+	 * @return bool True if procedure has nudity flag set.
 	 */
 	private static function procedure_has_nudity( string $filter_procedure ): bool {
-		// This will be handled by JavaScript using data-nudity attributes
-		// Return false for server-side rendering to avoid complexity
 		if ( WP_DEBUG ) {
-			error_log( 'BRAGBook: procedure_has_nudity - Deferring to JavaScript for procedure: ' . $filter_procedure );
+			error_log( 'BRAGBook: procedure_has_nudity called with filter_procedure: ' . $filter_procedure );
 		}
+
+		// Get sidebar data to check procedure nudity
+		$api_tokens = get_option( 'brag_book_gallery_api_tokens', [] );
+		if ( empty( $api_tokens ) || ! is_array( $api_tokens ) ) {
+			if ( WP_DEBUG ) {
+				error_log( 'BRAGBook: procedure_has_nudity - No API tokens found' );
+			}
+			return false;
+		}
+
+		$sidebar_data = null;
+		if ( ! empty( $api_tokens[0] ) ) {
+			$sidebar_data = \BRAGBookGallery\Includes\Extend\Data_Fetcher::get_sidebar_data( $api_tokens[0] );
+		}
+
+		if ( empty( $sidebar_data ) || ! is_array( $sidebar_data ) ) {
+			if ( WP_DEBUG ) {
+				error_log( 'BRAGBook: procedure_has_nudity - No sidebar data found' );
+			}
+			return false;
+		}
+
+		if ( WP_DEBUG ) {
+			error_log( 'BRAGBook: procedure_has_nudity - Searching through ' . count( $sidebar_data ) . ' categories' );
+		}
+
+		// Search through categories for the procedure and check nudity flag
+		foreach ( $sidebar_data as $category ) {
+			if ( ! isset( $category['procedures'] ) || ! is_array( $category['procedures'] ) ) {
+				continue;
+			}
+
+			foreach ( $category['procedures'] as $procedure ) {
+				// Check if this is the procedure we're looking for (by slug or name)
+				$procedure_slug = $procedure['slug'] ?? '';
+				$procedure_name = strtolower( $procedure['name'] ?? '' );
+				$filter_lower = strtolower( $filter_procedure );
+
+				if ( WP_DEBUG ) {
+					// Log every procedure to see what we're comparing
+					error_log( 'BRAGBook: procedure_has_nudity - Checking procedure: ' . $procedure_slug . ' (has_nudity: ' . ( ! empty( $procedure['has_nudity'] ) ? 'true' : 'false' ) . ', nudity: ' . ( ! empty( $procedure['nudity'] ) ? 'true' : 'false' ) . ')' );
+				}
+
+				if ( $procedure_slug === $filter_procedure ||
+					 $procedure_name === $filter_lower ||
+					 sanitize_title( $procedure_name ) === $filter_procedure ) {
+
+					// Check if this procedure has nudity
+					$has_nudity = ! empty( $procedure['has_nudity'] ) || ! empty( $procedure['nudity'] );
+
+					if ( WP_DEBUG ) {
+						error_log( 'BRAGBook: procedure_has_nudity - MATCH FOUND for procedure: ' . $filter_procedure . ' - has_nudity: ' . ( $has_nudity ? 'true' : 'false' ) );
+					}
+
+					return $has_nudity;
+				}
+			}
+		}
+
+		if ( WP_DEBUG ) {
+			error_log( 'BRAGBook: procedure_has_nudity - No match found for procedure: ' . $filter_procedure );
+		}
+
 		return false;
 	}
 
@@ -1830,24 +2359,34 @@ final class Cases_Handler {
 	 * @return array Case meta data with defaults.
 	 */
 	private static function get_case_meta_data( int $post_id ): array {
+		// Meta field mapping: internal_key => [new_meta_key, legacy_meta_key]
 		$meta_fields = [
-			'case_id' => '',
-			'patient_age' => '',
-			'patient_gender' => '',
-			'patient_ethnicity' => '',
-			'patient_height' => '',
-			'patient_weight' => '',
-			'procedure_date' => '',
-			'case_notes' => '',
-			'before_image' => '',
-			'after_image' => '',
+			'case_id' => ['brag_book_gallery_api_id', '_case_api_id', ''],
+			'patient_age' => ['brag_book_gallery_patient_age', '_case_patient_age', ''],
+			'patient_gender' => ['brag_book_gallery_patient_gender', '_case_patient_gender', ''],
+			'patient_ethnicity' => ['brag_book_gallery_ethnicity', '_case_ethnicity', ''],
+			'patient_height' => ['brag_book_gallery_height', '_case_height', ''],
+			'patient_weight' => ['brag_book_gallery_weight', '_case_weight', ''],
+			'procedure_date' => ['brag_book_gallery_procedure_date', '_case_procedure_date', ''],
+			'case_notes' => ['brag_book_gallery_notes', '_case_notes', ''],
+			'before_image' => ['brag_book_gallery_case_before_url', '_case_before_image', ''],
+			'after_image' => ['brag_book_gallery_case_after_url1', '_case_after_image', ''],
 		];
 
 		$case_data = [];
-		foreach ( $meta_fields as $field => $default ) {
-			$value = get_post_meta( $post_id, $field, true );
+		foreach ( $meta_fields as $field => $meta_keys ) {
+			$new_key = $meta_keys[0];
+			$legacy_key = $meta_keys[1];
+			$default = $meta_keys[2];
+
+			// Try new format first, fall back to legacy format
+			$value = get_post_meta( $post_id, $new_key, true );
 			if ( empty( $value ) && $value !== '0' ) {
-				self::log_missing_data( $post_id, $field );
+				$value = get_post_meta( $post_id, $legacy_key, true );
+			}
+
+			if ( empty( $value ) && $value !== '0' ) {
+				self::log_missing_data( $post_id, $new_key );
 				$value = $default;
 			}
 			$case_data[ $field ] = $value;
@@ -1939,6 +2478,34 @@ final class Cases_Handler {
 	}
 
 	/**
+	 * Get first URL from post-processed image URLs field
+	 *
+	 * Parses the semicolon-separated URLs from the post-processed image URLs
+	 * textarea field and returns the first valid URL.
+	 *
+	 * @param int $post_id WordPress post ID.
+	 * @return string First post-processed image URL or empty string.
+	 */
+	private static function get_first_post_processed_url( int $post_id ): string {
+		$post_processed_urls = get_post_meta( $post_id, 'brag_book_gallery_case_post_processed_url', true );
+
+		if ( empty( $post_processed_urls ) ) {
+			return '';
+		}
+
+		// Split by semicolon and get first URL
+		$urls = explode( ';', $post_processed_urls );
+		$first_url = trim( $urls[0] );
+
+		// Validate URL format
+		if ( ! empty( $first_url ) && filter_var( $first_url, FILTER_VALIDATE_URL ) ) {
+			return $first_url;
+		}
+
+		return '';
+	}
+
+	/**
 	 * Render WordPress post-based case card
 	 *
 	 * Renders a case card using WordPress post data with the correct HTML structure
@@ -1976,12 +2543,12 @@ final class Cases_Handler {
 
 		// Debug permalink generation - check required meta fields
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
-			$case_id_meta = get_post_meta( $post_id, '_case_id', true );
-			$seo_suffix_meta = get_post_meta( $post_id, '_case_seo_suffix_url', true );
+			$case_id_meta = get_post_meta( $post_id, 'brag_book_gallery_api_id', true ) ?: get_post_meta( $post_id, '_case_api_id', true );
+			$seo_suffix_meta = get_post_meta( $post_id, 'brag_book_gallery_seo_suffix_url', true ) ?: get_post_meta( $post_id, '_case_seo_suffix_url', true );
 			$debug_procedures = wp_get_post_terms( $post_id, 'procedures' );
 			error_log( "BRAGBook Debug: Post ID $post_id, generated case_url: $case_url" );
-			error_log( "BRAGBook Debug: _case_id meta: " . ( $case_id_meta ?: 'MISSING' ) );
-			error_log( "BRAGBook Debug: _case_seo_suffix_url meta: " . ( $seo_suffix_meta ?: 'MISSING' ) );
+			error_log( "BRAGBook Debug: case_id meta: " . ( $case_id_meta ?: 'MISSING' ) );
+			error_log( "BRAGBook Debug: seo_suffix_url meta: " . ( $seo_suffix_meta ?: 'MISSING' ) );
 			error_log( "BRAGBook Debug: procedures taxonomy: " . ( !is_wp_error($debug_procedures) && !empty($debug_procedures) ? $debug_procedures[0]->slug : 'MISSING' ) );
 		}
 
@@ -1990,46 +2557,63 @@ final class Cases_Handler {
 
 		// Build data attributes
 		$data_attrs = [
-			'data-card="true"',
-			'data-case-id="' . esc_attr( $case_id ) . '"',
+			'data-post-id="' . $post_id . '"',
 		];
 
+		$case_id = get_post_meta( $post_id, 'brag_book_gallery_api_id', true );
+		$gender = get_post_meta( $post_id, 'brag_book_gallery_gender', true );
+		$age = get_post_meta( $post_id, 'brag_book_gallery_age', true );
+		$ethnicity = get_post_meta( $post_id, 'brag_book_gallery_ethnicity', true );
+
+		if ( ! empty( $case_id ) ) {
+			$data_attrs[] = 'data-case-id="' . $case_id . '"';
+		}
+
 		// Add demographic data attributes
-		if ( ! empty( $case_data['age'] ) ) {
-			$data_attrs[] = 'data-age="' . esc_attr( $case_data['age'] ) . '"';
+		if ( ! empty( $age ) ) {
+			$data_attrs[] = 'data-age="' . esc_attr( $age ) . '"';
 		}
-		if ( ! empty( $case_data['gender'] ) ) {
-			$data_attrs[] = 'data-gender="' . esc_attr( strtolower( $case_data['gender'] ) ) . '"';
+		if ( ! empty( $gender ) ) {
+			$data_attrs[] = 'data-gender="' . esc_attr( strtolower( $gender ) ) . '"';
 		}
-		if ( ! empty( $case_data['ethnicity'] ) ) {
-			$data_attrs[] = 'data-ethnicity="' . esc_attr( strtolower( $case_data['ethnicity'] ) ) . '"';
+		if ( ! empty( $ethnicity ) ) {
+			$data_attrs[] = 'data-ethnicity="' . esc_attr( strtolower( $ethnicity ) ) . '"';
 		}
 		if ( ! empty( $procedure_ids ) ) {
 			$data_attrs[] = 'data-procedure-ids="' . esc_attr( implode( ',', $procedure_ids ) ) . '"';
 		}
 
-		// Get first image from additional images (gallery) - this should be the primary source
+		// Get image URL - prioritize post-processed URLs, fallback to gallery images
 		$image_url = '';
 		$image_alt = '';
 		if ( $post_id ) {
-			// Get gallery images array
-			$gallery_images = get_post_meta( $post_id, '_case_gallery_images', true );
+			// First priority: Get first post-processed image URL
+			$image_url = self::get_first_post_processed_url( $post_id );
 
-			// Debug logging - let's see gallery images
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
-				error_log( "BRAGBook Debug: Post ID $post_id _case_gallery_images: " . print_r( $gallery_images, true ) );
+				error_log( "BRAGBook Debug: Post ID $post_id post-processed URL: " . ( $image_url ?: 'empty' ) );
 			}
 
-			// Use first image from gallery if available
-			if ( is_array( $gallery_images ) && ! empty( $gallery_images ) ) {
-				$first_image_id = $gallery_images[0];
-				$image_url = wp_get_attachment_image_url( $first_image_id, 'large' );
-				$image_alt = sprintf( '%s - Case %s', is_object( $primary_procedure ) ? $primary_procedure->name : $primary_procedure, $case_id );
+			// Fallback: Use gallery images if no post-processed URL available
+			if ( empty( $image_url ) ) {
+				$gallery_images = get_post_meta( $post_id, 'brag_book_gallery_images', true ) ?: get_post_meta( $post_id, '_case_gallery_images', true );
 
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
-					error_log( "BRAGBook Debug: Using first gallery image ID $first_image_id, URL: " . ( $image_url ?: 'FAILED TO GET URL' ) );
+					error_log( "BRAGBook Debug: Post ID $post_id _case_gallery_images: " . print_r( $gallery_images, true ) );
+				}
+
+				if ( is_array( $gallery_images ) && ! empty( $gallery_images ) ) {
+					$first_image_id = $gallery_images[0];
+					$image_url = wp_get_attachment_image_url( $first_image_id, 'large' );
+
+					if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+						error_log( "BRAGBook Debug: Fallback to gallery image ID $first_image_id, URL: " . ( $image_url ?: 'FAILED TO GET URL' ) );
+					}
 				}
 			}
+
+			// Set alt text
+			$image_alt = sprintf( '%s - Case %s', is_object( $primary_procedure ) ? $primary_procedure->name : $primary_procedure, $case_id );
 		}
 
 		// Final debug log
@@ -2059,11 +2643,6 @@ final class Cases_Handler {
 						   data-case-id="<?php echo esc_attr( $case_id ); ?>"
 						   data-procedure-ids="<?php echo esc_attr( implode( ',', $procedure_ids ) ); ?>">
 							<?php
-							// Debug: Log the image URL right before conditional check
-							if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
-								error_log( "BRAGBook Debug: About to check image_url for case $case_id. Value: '" . $image_url . "', empty check: " . ( empty( $image_url ) ? 'TRUE (will skip image)' : 'FALSE (will show image)' ) );
-							}
-
 							if ( ! empty( $image_url ) ) : ?>
 								<picture class="brag-book-gallery-picture">
 									<img src="<?php echo esc_url( $image_url ); ?>"
@@ -2078,6 +2657,12 @@ final class Cases_Handler {
 								<!-- DEBUG: No image URL found for case <?php echo esc_attr( $case_id ); ?> -->
 							<?php endif; ?>
 						</a>
+						<?php
+						// Add nudity warning if needed
+						if ( $procedure_nudity ) {
+							echo self::render_nudity_warning();
+						}
+						?>
 					</div>
 				</div>
 			</div>
@@ -2087,14 +2672,12 @@ final class Cases_Handler {
 						<span class="brag-book-gallery-case-card-summary-info__name"><?php echo esc_html( is_object( $primary_procedure ) ? $primary_procedure->name : $primary_procedure ); ?></span>
 						<span class="brag-book-gallery-case-card-summary-info__case-number">Case #<?php echo esc_html( $case_id ); ?></span>
 					</div>
-					<div class="brag-book-gallery-case-card-summary-details">
-						<p class="brag-book-gallery-case-card-summary-details__more">
-							<strong>More Details</strong>
-							<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor">
-								<path d="M444-288h72v-156h156v-72H516v-156h-72v156H288v72h156v156Zm36.28 192Q401-96 331-126t-122.5-82.5Q156-261 126-330.96t-30-149.5Q96-560 126-629.5q30-69.5 82.5-122T330.96-834q69.96-30 149.5-30t149.04 30q69.5 30 122 82.5T834-629.28q30 69.73 30 149Q864-401 834-331t-82.5 122.5Q699-156 629.28-126q-69.73 30-149 30Z"></path>
-							</svg>
-						</p>
-					</div>
+					<p class="brag-book-gallery-case-card-summary-details">
+						<strong>More Details</strong>
+						<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor">
+							<path d="M444-288h72v-156h156v-72H516v-156h-72v156H288v72h156v156Zm36.28 192Q401-96 331-126t-122.5-82.5Q156-261 126-330.96t-30-149.5Q96-560 126-629.5q30-69.5 82.5-122T330.96-834q69.96-30 149.5-30t149.04 30q69.5 30 122 82.5T834-629.28q30 69.73 30 149Q864-401 834-331t-82.5 122.5Q699-156 629.28-126q-69.73 30-149 30Z"></path>
+						</svg>
+					</p>
 				</summary>
 				<div class="brag-book-gallery-case-card-details-content">
 					<p class="brag-book-gallery-case-card-details-content__title">Procedures Performed:</p>
@@ -2145,7 +2728,7 @@ final class Cases_Handler {
 			$atts = [
 				'columns' => 3,
 				'show_details' => true,
-				'items_per_page' => get_option( 'brag_book_gallery_items_per_page', '10' ),
+				'items_per_page' => get_option( 'brag_book_gallery_items_per_page', '200' ),
 			];
 
 			// Calculate offset based on page and items per page
@@ -2188,17 +2771,17 @@ final class Cases_Handler {
 
 					// Build case data array from WordPress post
 					$case_data = [
-						'id' => get_post_meta( $post_id, '_case_api_id', true ),
-						'mainImageUrl' => get_post_meta( $post_id, '_case_main_image_url', true ),
-						'age' => get_post_meta( $post_id, '_case_age', true ),
-						'gender' => get_post_meta( $post_id, '_case_gender', true ),
-						'ethnicity' => get_post_meta( $post_id, '_case_ethnicity', true ),
-						'seoHeadline' => get_post_meta( $post_id, '_case_seo_headline', true ),
+						'id' => get_post_meta( $post_id, 'brag_book_gallery_api_id', true ) ?: get_post_meta( $post_id, '_case_api_id', true ),
+						'mainImageUrl' => get_post_meta( $post_id, 'brag_book_gallery_main_image_url', true ) ?: get_post_meta( $post_id, '_case_main_image_url', true ),
+						'age' => get_post_meta( $post_id, 'brag_book_gallery_patient_age', true ) ?: get_post_meta( $post_id, '_case_age', true ),
+						'gender' => get_post_meta( $post_id, 'brag_book_gallery_patient_gender', true ) ?: get_post_meta( $post_id, '_case_gender', true ),
+						'ethnicity' => get_post_meta( $post_id, 'brag_book_gallery_ethnicity', true ) ?: get_post_meta( $post_id, '_case_ethnicity', true ),
+						'seoHeadline' => get_post_meta( $post_id, 'brag_book_gallery_seo_headline', true ) ?: get_post_meta( $post_id, '_case_seo_headline', true ),
 					];
 
 					// Use case data or post title as fallback
 					if ( empty( $case_data['seoHeadline'] ) ) {
-						$case_data['seoHeadline'] = get_the_title( $post_id );
+						$case_data['seoHeadline'] = get_the_title( $post_id ) ?: 'Untitled Case';
 					}
 
 					// Render case card

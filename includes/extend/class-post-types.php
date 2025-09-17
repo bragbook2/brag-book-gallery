@@ -59,12 +59,22 @@ class Post_Types {
 	 */
 	public function __construct() {
 		add_action( 'init', [ $this, 'register_post_types' ] );
+		add_filter( 'query_vars', [ $this, 'add_simple_query_vars' ] );
 		add_action( 'add_meta_boxes', [ $this, 'add_case_meta_boxes' ] );
 		add_action( 'save_post', [ $this, 'save_case_meta' ] );
+
+		// Register meta fields for Gutenberg - DISABLED: Using classic meta boxes instead
+		// add_action( 'init', [ $this, 'register_gutenberg_meta_fields' ] );
+
+		// Enqueue Gutenberg sidebar - DISABLED: Using classic meta boxes instead
+		// add_action( 'enqueue_block_editor_assets', [ $this, 'enqueue_gutenberg_sidebar' ] );
 		add_action( 'before_delete_post', [
 			$this,
 			'cleanup_case_images_before_delete'
 		] );
+
+		// Add admin bar edit link for case pages
+		add_action( 'admin_bar_menu', [ $this, 'add_case_edit_link_to_admin_bar' ], 80 );
 		add_action( 'wp_trash_post', [
 			$this,
 			'cleanup_case_images_on_trash'
@@ -147,6 +157,7 @@ class Post_Types {
 			'publicly_queryable' => true,
 			'show_ui'            => true,
 			'show_in_menu'       => false,
+			'show_in_admin_bar'  => true,
 			'query_var'          => true,
 			'rewrite'            => array(
 				'slug'       => $gallery_slug . '/%procedures%',
@@ -201,6 +212,14 @@ class Post_Types {
 	 * @since 3.0.0
 	 */
 	public function add_case_meta_boxes(): void {
+		// Always add meta boxes - we're using classic meta boxes for all editors
+		// Ensure we're on the correct post type
+		global $post, $current_screen;
+
+		if ( ! $current_screen || $current_screen->post_type !== self::POST_TYPE_CASES ) {
+			return;
+		}
+
 		add_meta_box(
 			'case_details',
 			__( 'Case Details', 'brag-book-gallery' ),
@@ -234,7 +253,7 @@ class Post_Types {
 			[ $this, 'render_procedure_details_meta_box' ],
 			self::POST_TYPE_CASES,
 			'normal',
-			'default'
+			'low'
 		);
 	}
 
@@ -253,25 +272,26 @@ class Post_Types {
 		// Add nonce for security
 		wp_nonce_field( 'save_case_details', 'case_details_nonce' );
 
-		// Get existing values
-		$patient_age     = get_post_meta( $post->ID, '_case_patient_age', true );
-		$patient_gender  = get_post_meta( $post->ID, '_case_patient_gender', true );
-		$procedure_date  = get_post_meta( $post->ID, '_case_procedure_date', true );
-		$case_notes      = get_post_meta( $post->ID, '_case_notes', true );
-		$before_image_id = get_post_meta( $post->ID, '_case_before_image', true );
-		$after_image_id  = get_post_meta( $post->ID, '_case_after_image', true );
+		// Get existing values (check new format first, then fallback to old format)
+		$patient_age     = get_post_meta( $post->ID, 'brag_book_gallery_patient_age', true ) ?: get_post_meta( $post->ID, '_case_patient_age', true );
+		$patient_gender  = get_post_meta( $post->ID, 'brag_book_gallery_patient_gender', true ) ?: get_post_meta( $post->ID, '_case_patient_gender', true );
+		$procedure_date  = get_post_meta( $post->ID, 'brag_book_gallery_procedure_date', true ) ?: get_post_meta( $post->ID, '_case_procedure_date', true );
+		$case_notes      = get_post_meta( $post->ID, 'brag_book_gallery_notes', true ) ?: get_post_meta( $post->ID, '_case_notes', true );
 
 		?>
-		<table class="form-table">
+		<div class="brag-book-gallery-admin-wrap">
+			<div class="brag-book-gallery-section">
+				<h3><?php esc_html_e( 'Case Details', 'brag-book-gallery' ); ?></h3>
+				<table class="form-table">
 			<tr>
 				<th scope="row">
 					<label
-						for="case_patient_age"><?php esc_html_e( 'Patient Age', 'brag-book-gallery' ); ?></label>
+						for="brag_book_gallery_patient_age"><?php esc_html_e( 'Patient Age', 'brag-book-gallery' ); ?></label>
 				</th>
 				<td>
 					<input type="number"
-						   id="case_patient_age"
-						   name="case_patient_age"
+						   id="brag_book_gallery_patient_age"
+						   name="brag_book_gallery_patient_age"
 						   value="<?php echo esc_attr( $patient_age ); ?>"
 						   min="18"
 						   max="100"
@@ -282,10 +302,10 @@ class Post_Types {
 			<tr>
 				<th scope="row">
 					<label
-						for="case_patient_gender"><?php esc_html_e( 'Patient Gender', 'brag-book-gallery' ); ?></label>
+						for="brag_book_gallery_patient_gender"><?php esc_html_e( 'Patient Gender', 'brag-book-gallery' ); ?></label>
 				</th>
 				<td>
-					<select id="case_patient_gender" name="case_patient_gender">
+					<select id="brag_book_gallery_patient_gender" name="brag_book_gallery_patient_gender">
 						<option
 							value=""><?php esc_html_e( 'Select Gender', 'brag-book-gallery' ); ?></option>
 						<option
@@ -300,12 +320,12 @@ class Post_Types {
 			<tr>
 				<th scope="row">
 					<label
-						for="case_procedure_date"><?php esc_html_e( 'Procedure Date', 'brag-book-gallery' ); ?></label>
+						for="brag_book_gallery_procedure_date"><?php esc_html_e( 'Procedure Date', 'brag-book-gallery' ); ?></label>
 				</th>
 				<td>
 					<input type="date"
-						   id="case_procedure_date"
-						   name="case_procedure_date"
+						   id="brag_book_gallery_procedure_date"
+						   name="brag_book_gallery_procedure_date"
 						   value="<?php echo esc_attr( $procedure_date ); ?>"/>
 					<p class="description"><?php esc_html_e( 'Date when the procedure was performed', 'brag-book-gallery' ); ?></p>
 				</td>
@@ -313,128 +333,21 @@ class Post_Types {
 			<tr>
 				<th scope="row">
 					<label
-						for="case_before_image"><?php esc_html_e( 'Before Image', 'brag-book-gallery' ); ?></label>
+						for="brag_book_gallery_notes"><?php esc_html_e( 'Case Notes', 'brag-book-gallery' ); ?></label>
 				</th>
 				<td>
-					<input type="hidden" id="case_before_image"
-						   name="case_before_image"
-						   value="<?php echo esc_attr( $before_image_id ); ?>"/>
-					<button type="button" class="button"
-							id="upload_before_image_button">
-						<?php esc_html_e( 'Choose Before Image', 'brag-book-gallery' ); ?>
-					</button>
-					<button type="button" class="button"
-							id="remove_before_image_button"
-							style="<?php echo empty( $before_image_id ) ? 'display:none;' : ''; ?>">
-						<?php esc_html_e( 'Remove Image', 'brag-book-gallery' ); ?>
-					</button>
-					<div id="before_image_preview" style="margin-top: 10px;">
-						<?php if ( $before_image_id ) : ?>
-							<?php echo wp_get_attachment_image( $before_image_id, 'medium' ); ?>
-						<?php endif; ?>
-					</div>
-				</td>
-			</tr>
-			<tr>
-				<th scope="row">
-					<label
-						for="case_after_image"><?php esc_html_e( 'After Image', 'brag-book-gallery' ); ?></label>
-				</th>
-				<td>
-					<input type="hidden" id="case_after_image"
-						   name="case_after_image"
-						   value="<?php echo esc_attr( $after_image_id ); ?>"/>
-					<button type="button" class="button"
-							id="upload_after_image_button">
-						<?php esc_html_e( 'Choose After Image', 'brag-book-gallery' ); ?>
-					</button>
-					<button type="button" class="button"
-							id="remove_after_image_button"
-							style="<?php echo empty( $after_image_id ) ? 'display:none;' : ''; ?>">
-						<?php esc_html_e( 'Remove Image', 'brag-book-gallery' ); ?>
-					</button>
-					<div id="after_image_preview" style="margin-top: 10px;">
-						<?php if ( $after_image_id ) : ?>
-							<?php echo wp_get_attachment_image( $after_image_id, 'medium' ); ?>
-						<?php endif; ?>
-					</div>
-				</td>
-			</tr>
-			<tr>
-				<th scope="row">
-					<label
-						for="case_notes"><?php esc_html_e( 'Case Notes', 'brag-book-gallery' ); ?></label>
-				</th>
-				<td>
-							<textarea id="case_notes"
-									  name="case_notes"
+							<textarea id="brag_book_gallery_notes"
+									  name="brag_book_gallery_notes"
 									  rows="5"
 									  cols="50"
 									  class="large-text"><?php echo esc_textarea( $case_notes ); ?></textarea>
 					<p class="description"><?php esc_html_e( 'Additional notes about this case', 'brag-book-gallery' ); ?></p>
 				</td>
 			</tr>
-		</table>
+			</table>
+			</div>
+		</div>
 
-		<script>
-			jQuery( document ).ready( function ( $ ) {
-				// Media uploader for before image
-				$( '#upload_before_image_button' ).click( function ( e ) {
-					e.preventDefault();
-					var mediaUploader = wp.media( {
-						title: '<?php esc_html_e( 'Choose Before Image', 'brag-book-gallery' ); ?>',
-						button: {
-							text: '<?php esc_html_e( 'Choose Image', 'brag-book-gallery' ); ?>'
-						},
-						multiple: false
-					} );
-
-					mediaUploader.on( 'select', function () {
-						var attachment = mediaUploader.state().get( 'selection' ).first().toJSON();
-						$( '#case_before_image' ).val( attachment.id );
-						$( '#before_image_preview' ).html( '<img src="' + attachment.sizes.medium.url + '" style="max-width: 300px;" />' );
-						$( '#remove_before_image_button' ).show();
-					} );
-
-					mediaUploader.open();
-				} );
-
-				$( '#remove_before_image_button' ).click( function ( e ) {
-					e.preventDefault();
-					$( '#case_before_image' ).val( '' );
-					$( '#before_image_preview' ).html( '' );
-					$( this ).hide();
-				} );
-
-				// Media uploader for after image
-				$( '#upload_after_image_button' ).click( function ( e ) {
-					e.preventDefault();
-					var mediaUploader = wp.media( {
-						title: '<?php esc_html_e( 'Choose After Image', 'brag-book-gallery' ); ?>',
-						button: {
-							text: '<?php esc_html_e( 'Choose Image', 'brag-book-gallery' ); ?>'
-						},
-						multiple: false
-					} );
-
-					mediaUploader.on( 'select', function () {
-						var attachment = mediaUploader.state().get( 'selection' ).first().toJSON();
-						$( '#case_after_image' ).val( attachment.id );
-						$( '#after_image_preview' ).html( '<img src="' + attachment.sizes.medium.url + '" style="max-width: 300px;" />' );
-						$( '#remove_after_image_button' ).show();
-					} );
-
-					mediaUploader.open();
-				} );
-
-				$( '#remove_after_image_button' ).click( function ( e ) {
-					e.preventDefault();
-					$( '#case_after_image' ).val( '' );
-					$( '#after_image_preview' ).html( '' );
-					$( this ).hide();
-				} );
-			} );
-		</script>
 		<?php
 	}
 
@@ -453,48 +366,46 @@ class Post_Types {
 		// Add nonce for security
 		wp_nonce_field( 'save_case_api_data', 'case_api_data_nonce' );
 
-		// Get existing values
-		$api_case_id          = get_post_meta( $post->ID, '_case_api_id', true );
-		$patient_id           = get_post_meta( $post->ID, '_case_patient_id', true );
-		$user_id              = get_post_meta( $post->ID, '_case_user_id', true );
-		$org_id               = get_post_meta( $post->ID, '_case_org_id', true );
-		$emr_id               = get_post_meta( $post->ID, '_case_emr_id', true );
-		$ethnicity            = get_post_meta( $post->ID, '_case_ethnicity', true );
-		$height               = get_post_meta( $post->ID, '_case_height', true );
-		$height_unit          = get_post_meta( $post->ID, '_case_height_unit', true );
-		$weight               = get_post_meta( $post->ID, '_case_weight', true );
-		$weight_unit          = get_post_meta( $post->ID, '_case_weight_unit', true );
-		$procedure_ids        = get_post_meta( $post->ID, '_case_procedure_ids', true );
-		$technique            = get_post_meta( $post->ID, '_case_technique', true );
-		$revision_surgery     = get_post_meta( $post->ID, '_case_revision_surgery', true );
-		$quality_score        = get_post_meta( $post->ID, '_case_quality_score', true );
-		$approved_for_social  = get_post_meta( $post->ID, '_case_approved_for_social', true );
-		$is_for_tablet        = get_post_meta( $post->ID, '_case_is_for_tablet', true );
-		$is_for_website       = get_post_meta( $post->ID, '_case_is_for_website', true );
-		$draft                = get_post_meta( $post->ID, '_case_draft', true );
-		$no_watermark         = get_post_meta( $post->ID, '_case_no_watermark', true );
-		$is_nude              = get_post_meta( $post->ID, '_case_is_nude', true );
-		$after1_timeframe     = get_post_meta( $post->ID, '_case_after1_timeframe', true );
-		$after1_unit          = get_post_meta( $post->ID, '_case_after1_unit', true );
-		$after2_timeframe     = get_post_meta( $post->ID, '_case_after2_timeframe', true );
-		$after2_unit          = get_post_meta( $post->ID, '_case_after2_unit', true );
-		$seo_suffix_url       = get_post_meta( $post->ID, '_case_seo_suffix_url', true );
-		$seo_headline         = get_post_meta( $post->ID, '_case_seo_headline', true );
-		$seo_page_title       = get_post_meta( $post->ID, '_case_seo_page_title', true );
-		$seo_page_description = get_post_meta( $post->ID, '_case_seo_page_description', true );
-		$seo_alt_text         = get_post_meta( $post->ID, '_case_seo_alt_text', true );
+		// Get existing values (check new format first, then fallback to old format)
+		$api_case_id          = get_post_meta( $post->ID, 'brag_book_gallery_api_id', true ) ?: get_post_meta( $post->ID, '_case_api_id', true );
+		$patient_id           = get_post_meta( $post->ID, 'brag_book_gallery_patient_id', true ) ?: get_post_meta( $post->ID, '_case_patient_id', true );
+		$user_id              = get_post_meta( $post->ID, 'brag_book_gallery_user_id', true ) ?: get_post_meta( $post->ID, '_case_user_id', true );
+		$org_id               = get_post_meta( $post->ID, 'brag_book_gallery_org_id', true ) ?: get_post_meta( $post->ID, '_case_org_id', true );
+		$emr_id               = get_post_meta( $post->ID, 'brag_book_gallery_emr_id', true ) ?: get_post_meta( $post->ID, '_case_emr_id', true );
+		$ethnicity            = get_post_meta( $post->ID, 'brag_book_gallery_ethnicity', true ) ?: get_post_meta( $post->ID, '_case_ethnicity', true );
+		$height               = get_post_meta( $post->ID, 'brag_book_gallery_height', true ) ?: get_post_meta( $post->ID, '_case_height', true );
+		$height_unit          = get_post_meta( $post->ID, 'brag_book_gallery_height_unit', true ) ?: get_post_meta( $post->ID, '_case_height_unit', true );
+		$weight               = get_post_meta( $post->ID, 'brag_book_gallery_weight', true ) ?: get_post_meta( $post->ID, '_case_weight', true );
+		$weight_unit          = get_post_meta( $post->ID, 'brag_book_gallery_weight_unit', true ) ?: get_post_meta( $post->ID, '_case_weight_unit', true );
+		$procedure_ids        = get_post_meta( $post->ID, 'brag_book_gallery_procedure_ids', true ) ?: get_post_meta( $post->ID, '_case_procedure_ids', true );
+		$technique            = get_post_meta( $post->ID, 'brag_book_gallery_technique', true ) ?: get_post_meta( $post->ID, '_case_technique', true );
+		$revision_surgery     = get_post_meta( $post->ID, 'brag_book_gallery_revision_surgery', true ) ?: get_post_meta( $post->ID, '_case_revision_surgery', true );
+		$quality_score        = get_post_meta( $post->ID, 'brag_book_gallery_quality_score', true ) ?: get_post_meta( $post->ID, '_case_quality_score', true );
+		$approved_for_social  = get_post_meta( $post->ID, 'brag_book_gallery_approved_for_social', true ) ?: get_post_meta( $post->ID, '_case_approved_for_social', true );
+		$is_for_tablet        = get_post_meta( $post->ID, 'brag_book_gallery_is_for_tablet', true ) ?: get_post_meta( $post->ID, '_case_is_for_tablet', true );
+		$is_for_website       = get_post_meta( $post->ID, 'brag_book_gallery_is_for_website', true ) ?: get_post_meta( $post->ID, '_case_is_for_website', true );
+		$draft                = get_post_meta( $post->ID, 'brag_book_gallery_draft', true ) ?: get_post_meta( $post->ID, '_case_draft', true );
+		$no_watermark         = get_post_meta( $post->ID, 'brag_book_gallery_no_watermark', true ) ?: get_post_meta( $post->ID, '_case_no_watermark', true );
+		$is_nude              = get_post_meta( $post->ID, 'brag_book_gallery_is_nude', true ) ?: get_post_meta( $post->ID, '_case_is_nude', true );
+		$after1_timeframe     = get_post_meta( $post->ID, 'brag_book_gallery_after1_timeframe', true ) ?: get_post_meta( $post->ID, '_case_after1_timeframe', true );
+		$after1_unit          = get_post_meta( $post->ID, 'brag_book_gallery_after1_unit', true ) ?: get_post_meta( $post->ID, '_case_after1_unit', true );
+		$after2_timeframe     = get_post_meta( $post->ID, 'brag_book_gallery_after2_timeframe', true ) ?: get_post_meta( $post->ID, '_case_after2_timeframe', true );
+		$after2_unit          = get_post_meta( $post->ID, 'brag_book_gallery_after2_unit', true ) ?: get_post_meta( $post->ID, '_case_after2_unit', true );
+		$seo_suffix_url       = get_post_meta( $post->ID, 'brag_book_gallery_seo_suffix_url', true ) ?: get_post_meta( $post->ID, '_case_seo_suffix_url', true );
+		$seo_headline         = get_post_meta( $post->ID, 'brag_book_gallery_seo_headline', true ) ?: get_post_meta( $post->ID, '_case_seo_headline', true );
+		$seo_page_title       = get_post_meta( $post->ID, 'brag_book_gallery_seo_page_title', true ) ?: get_post_meta( $post->ID, '_case_seo_page_title', true );
+		$seo_page_description = get_post_meta( $post->ID, 'brag_book_gallery_seo_page_description', true ) ?: get_post_meta( $post->ID, '_case_seo_page_description', true );
+		$seo_alt_text         = get_post_meta( $post->ID, 'brag_book_gallery_seo_alt_text', true ) ?: get_post_meta( $post->ID, '_case_seo_alt_text', true );
 
 		// Photo URLs
-		$before_location_url               = get_post_meta( $post->ID, '_case_before_location_url', true );
-		$after_location_url1               = get_post_meta( $post->ID, '_case_after_location_url1', true );
-		$after_location_url2               = get_post_meta( $post->ID, '_case_after_location_url2', true );
-		$after_location_url3               = get_post_meta( $post->ID, '_case_after_location_url3', true );
-		$post_processed_image_url          = get_post_meta( $post->ID, '_case_post_processed_image_url', true );
-		$high_res_post_processed_image_url = get_post_meta( $post->ID, '_case_high_res_post_processed_image_url', true );
+		$post_processed_image_url          = get_post_meta( $post->ID, 'brag_book_gallery_post_processed_image_url', true ) ?: get_post_meta( $post->ID, '_case_post_processed_image_url', true );
+		$high_res_post_processed_image_url = get_post_meta( $post->ID, 'brag_book_gallery_high_res_post_processed_image_url', true ) ?: get_post_meta( $post->ID, '_case_high_res_post_processed_image_url', true );
 
 		?>
-		<div class="brag-book-api-data-tabs">
-			<nav class="nav-tab-wrapper">
+		<div class="brag-book-gallery-admin-wrap">
+			<div class="brag-book-gallery-section">
+				<div class="brag-book-api-data-tabs">
+					<nav class="nav-tab-wrapper">
 				<a href="#api-basic"
 				   class="nav-tab nav-tab-active"><?php esc_html_e( 'Basic Info', 'brag-book-gallery' ); ?></a>
 				<a href="#api-patient"
@@ -508,15 +419,16 @@ class Post_Types {
 			</nav>
 
 			<div id="api-basic" class="tab-content active">
+				<h4><?php esc_html_e( 'Basic Information', 'brag-book-gallery' ); ?></h4>
 				<table class="form-table">
 					<tr>
 						<th scope="row">
 							<label
-								for="case_api_id"><?php esc_html_e( 'API Case ID', 'brag-book-gallery' ); ?></label>
+								for="brag_book_gallery_api_id"><?php esc_html_e( 'API Case ID', 'brag-book-gallery' ); ?></label>
 						</th>
 						<td>
-							<input type="number" id="case_api_id"
-								   name="case_api_id"
+							<input type="number" id="brag_book_gallery_api_id"
+								   name="brag_book_gallery_api_id"
 								   value="<?php echo esc_attr( $api_case_id ); ?>"
 								   class="regular-text"/>
 							<p class="description"><?php esc_html_e( 'Unique case ID from the BRAGBook API', 'brag-book-gallery' ); ?></p>
@@ -525,11 +437,11 @@ class Post_Types {
 					<tr>
 						<th scope="row">
 							<label
-								for="case_patient_id"><?php esc_html_e( 'Patient ID', 'brag-book-gallery' ); ?></label>
+								for="brag_book_gallery_patient_id"><?php esc_html_e( 'Patient ID', 'brag-book-gallery' ); ?></label>
 						</th>
 						<td>
-							<input type="text" id="case_patient_id"
-								   name="case_patient_id"
+							<input type="text" id="brag_book_gallery_patient_id"
+								   name="brag_book_gallery_patient_id"
 								   value="<?php echo esc_attr( $patient_id ); ?>"
 								   class="regular-text"/>
 						</td>
@@ -537,11 +449,11 @@ class Post_Types {
 					<tr>
 						<th scope="row">
 							<label
-								for="case_user_id"><?php esc_html_e( 'User ID', 'brag-book-gallery' ); ?></label>
+								for="brag_book_gallery_user_id"><?php esc_html_e( 'User ID', 'brag-book-gallery' ); ?></label>
 						</th>
 						<td>
-							<input type="text" id="case_user_id"
-								   name="case_user_id"
+							<input type="text" id="brag_book_gallery_user_id"
+								   name="brag_book_gallery_user_id"
 								   value="<?php echo esc_attr( $user_id ); ?>"
 								   class="regular-text"/>
 						</td>
@@ -549,11 +461,11 @@ class Post_Types {
 					<tr>
 						<th scope="row">
 							<label
-								for="case_org_id"><?php esc_html_e( 'Organization ID', 'brag-book-gallery' ); ?></label>
+								for="brag_book_gallery_org_id"><?php esc_html_e( 'Organization ID', 'brag-book-gallery' ); ?></label>
 						</th>
 						<td>
-							<input type="text" id="case_org_id"
-								   name="case_org_id"
+							<input type="text" id="brag_book_gallery_org_id"
+								   name="brag_book_gallery_org_id"
 								   value="<?php echo esc_attr( $org_id ); ?>"
 								   class="regular-text"/>
 						</td>
@@ -561,11 +473,11 @@ class Post_Types {
 					<tr>
 						<th scope="row">
 							<label
-								for="case_emr_id"><?php esc_html_e( 'EMR ID', 'brag-book-gallery' ); ?></label>
+								for="brag_book_gallery_emr_id"><?php esc_html_e( 'EMR ID', 'brag-book-gallery' ); ?></label>
 						</th>
 						<td>
-							<input type="text" id="case_emr_id"
-								   name="case_emr_id"
+							<input type="text" id="brag_book_gallery_emr_id"
+								   name="brag_book_gallery_emr_id"
 								   value="<?php echo esc_attr( $emr_id ); ?>"
 								   class="regular-text"/>
 						</td>
@@ -573,11 +485,11 @@ class Post_Types {
 					<tr>
 						<th scope="row">
 							<label
-								for="case_procedure_ids"><?php esc_html_e( 'Procedure IDs', 'brag-book-gallery' ); ?></label>
+								for="brag_book_gallery_procedure_ids"><?php esc_html_e( 'Procedure IDs', 'brag-book-gallery' ); ?></label>
 						</th>
 						<td>
-							<input type="text" id="case_procedure_ids"
-								   name="case_procedure_ids"
+							<input type="text" id="brag_book_gallery_procedure_ids"
+								   name="brag_book_gallery_procedure_ids"
 								   value="<?php echo esc_attr( $procedure_ids ); ?>"
 								   class="regular-text"/>
 							<p class="description"><?php esc_html_e( 'Comma-separated list of procedure IDs', 'brag-book-gallery' ); ?></p>
@@ -591,11 +503,11 @@ class Post_Types {
 					<tr>
 						<th scope="row">
 							<label
-								for="case_ethnicity"><?php esc_html_e( 'Ethnicity', 'brag-book-gallery' ); ?></label>
+								for="brag_book_gallery_ethnicity"><?php esc_html_e( 'Ethnicity', 'brag-book-gallery' ); ?></label>
 						</th>
 						<td>
-							<input type="text" id="case_ethnicity"
-								   name="case_ethnicity"
+							<input type="text" id="brag_book_gallery_ethnicity"
+								   name="brag_book_gallery_ethnicity"
 								   value="<?php echo esc_attr( $ethnicity ); ?>"
 								   class="regular-text"/>
 						</td>
@@ -603,15 +515,15 @@ class Post_Types {
 					<tr>
 						<th scope="row">
 							<label
-								for="case_height"><?php esc_html_e( 'Height', 'brag-book-gallery' ); ?></label>
+								for="brag_book_gallery_height"><?php esc_html_e( 'Height', 'brag-book-gallery' ); ?></label>
 						</th>
 						<td>
-							<input type="number" id="case_height"
-								   name="case_height"
+							<input type="number" id="brag_book_gallery_height"
+								   name="brag_book_gallery_height"
 								   value="<?php echo esc_attr( $height ); ?>"
 								   class="small-text"/>
-							<select id="case_height_unit"
-									name="case_height_unit">
+							<select id="brag_book_gallery_height_unit"
+									name="brag_book_gallery_height_unit">
 								<option
 									value="inches" <?php selected( $height_unit, 'inches' ); ?>>
 									Inches
@@ -626,15 +538,15 @@ class Post_Types {
 					<tr>
 						<th scope="row">
 							<label
-								for="case_weight"><?php esc_html_e( 'Weight', 'brag-book-gallery' ); ?></label>
+								for="brag_book_gallery_weight"><?php esc_html_e( 'Weight', 'brag-book-gallery' ); ?></label>
 						</th>
 						<td>
-							<input type="number" id="case_weight"
-								   name="case_weight"
+							<input type="number" id="brag_book_gallery_weight"
+								   name="brag_book_gallery_weight"
 								   value="<?php echo esc_attr( $weight ); ?>"
 								   class="small-text"/>
-							<select id="case_weight_unit"
-									name="case_weight_unit">
+							<select id="brag_book_gallery_weight_unit"
+									name="brag_book_gallery_weight_unit">
 								<option
 									value="lbs" <?php selected( $weight_unit, 'lbs' ); ?>>
 									Pounds
@@ -649,11 +561,11 @@ class Post_Types {
 					<tr>
 						<th scope="row">
 							<label
-								for="case_technique"><?php esc_html_e( 'Technique', 'brag-book-gallery' ); ?></label>
+								for="brag_book_gallery_technique"><?php esc_html_e( 'Technique', 'brag-book-gallery' ); ?></label>
 						</th>
 						<td>
-							<input type="text" id="case_technique"
-								   name="case_technique"
+							<input type="text" id="brag_book_gallery_technique"
+								   name="brag_book_gallery_technique"
 								   value="<?php echo esc_attr( $technique ); ?>"
 								   class="regular-text"/>
 						</td>
@@ -661,13 +573,13 @@ class Post_Types {
 					<tr>
 						<th scope="row">
 							<label
-								for="case_revision_surgery"><?php esc_html_e( 'Revision Surgery', 'brag-book-gallery' ); ?></label>
+								for="brag_book_gallery_revision_surgery"><?php esc_html_e( 'Revision Surgery', 'brag-book-gallery' ); ?></label>
 						</th>
 						<td>
 							<label>
 								<input type="checkbox"
-									   id="case_revision_surgery"
-									   name="case_revision_surgery"
+									   id="brag_book_gallery_revision_surgery"
+									   name="brag_book_gallery_revision_surgery"
 									   value="1" <?php checked( $revision_surgery, '1' ); ?> />
 								<?php esc_html_e( 'This is a revision surgery', 'brag-book-gallery' ); ?>
 							</label>
@@ -676,15 +588,15 @@ class Post_Types {
 					<tr>
 						<th scope="row">
 							<label
-								for="case_after1_timeframe"><?php esc_html_e( 'After Photo 1 Timeframe', 'brag-book-gallery' ); ?></label>
+								for="brag_book_gallery_after1_timeframe"><?php esc_html_e( 'After Photo 1 Timeframe', 'brag-book-gallery' ); ?></label>
 						</th>
 						<td>
-							<input type="number" id="case_after1_timeframe"
-								   name="case_after1_timeframe"
+							<input type="number" id="brag_book_gallery_after1_timeframe"
+								   name="brag_book_gallery_after1_timeframe"
 								   value="<?php echo esc_attr( $after1_timeframe ); ?>"
 								   class="small-text"/>
-							<select id="case_after1_unit"
-									name="case_after1_unit">
+							<select id="brag_book_gallery_after1_unit"
+									name="brag_book_gallery_after1_unit">
 								<option
 									value=""><?php esc_html_e( 'Select Unit', 'brag-book-gallery' ); ?></option>
 								<option
@@ -709,15 +621,15 @@ class Post_Types {
 					<tr>
 						<th scope="row">
 							<label
-								for="case_after2_timeframe"><?php esc_html_e( 'After Photo 2 Timeframe', 'brag-book-gallery' ); ?></label>
+								for="brag_book_gallery_after2_timeframe"><?php esc_html_e( 'After Photo 2 Timeframe', 'brag-book-gallery' ); ?></label>
 						</th>
 						<td>
-							<input type="number" id="case_after2_timeframe"
-								   name="case_after2_timeframe"
+							<input type="number" id="brag_book_gallery_after2_timeframe"
+								   name="brag_book_gallery_after2_timeframe"
 								   value="<?php echo esc_attr( $after2_timeframe ); ?>"
 								   class="small-text"/>
-							<select id="case_after2_unit"
-									name="case_after2_unit">
+							<select id="brag_book_gallery_after2_unit"
+									name="brag_book_gallery_after2_unit">
 								<option
 									value=""><?php esc_html_e( 'Select Unit', 'brag-book-gallery' ); ?></option>
 								<option
@@ -747,11 +659,11 @@ class Post_Types {
 					<tr>
 						<th scope="row">
 							<label
-								for="case_quality_score"><?php esc_html_e( 'Quality Score', 'brag-book-gallery' ); ?></label>
+								for="brag_book_gallery_quality_score"><?php esc_html_e( 'Quality Score', 'brag-book-gallery' ); ?></label>
 						</th>
 						<td>
-							<input type="number" id="case_quality_score"
-								   name="case_quality_score"
+							<input type="number" id="brag_book_gallery_quality_score"
+								   name="brag_book_gallery_quality_score"
 								   value="<?php echo esc_attr( $quality_score ); ?>"
 								   min="0" max="100" class="small-text"/>
 							<p class="description"><?php esc_html_e( 'Quality score from 0-100', 'brag-book-gallery' ); ?></p>
@@ -760,65 +672,127 @@ class Post_Types {
 					<tr>
 						<th scope="row"><?php esc_html_e( 'Approval & Settings', 'brag-book-gallery' ); ?></th>
 						<td>
-							<label>
-								<input type="checkbox"
-									   name="case_approved_for_social"
-									   value="1" <?php checked( $approved_for_social, '1' ); ?> />
-								<?php esc_html_e( 'Approved for Social Media', 'brag-book-gallery' ); ?>
-							</label><br>
-							<label>
-								<input type="checkbox" name="case_is_for_tablet"
-									   value="1" <?php checked( $is_for_tablet, '1' ); ?> />
-								<?php esc_html_e( 'Available for Tablet', 'brag-book-gallery' ); ?>
-							</label><br>
-							<label>
-								<input type="checkbox"
-									   name="case_is_for_website"
-									   value="1" <?php checked( $is_for_website, '1' ); ?> />
-								<?php esc_html_e( 'Available for Website', 'brag-book-gallery' ); ?>
-							</label><br>
-							<label>
-								<input type="checkbox" name="case_draft"
-									   value="1" <?php checked( $draft, '1' ); ?> />
-								<?php esc_html_e( 'Draft Status', 'brag-book-gallery' ); ?>
-							</label><br>
-							<label>
-								<input type="checkbox" name="case_no_watermark"
-									   value="1" <?php checked( $no_watermark, '1' ); ?> />
-								<?php esc_html_e( 'No Watermark', 'brag-book-gallery' ); ?>
-							</label><br>
-							<label>
-								<input type="checkbox" name="case_is_nude"
-									   value="1" <?php checked( $is_nude, '1' ); ?> />
-								<?php esc_html_e( 'Contains Nudity', 'brag-book-gallery' ); ?>
-							</label>
+							<div class="brag-book-case-meta-toggles">
+								<div class="brag-book-gallery-toggle-wrapper">
+									<label class="brag-book-gallery-toggle">
+										<input type="hidden" name="brag_book_gallery_approved_for_social" value="0" />
+										<input type="checkbox"
+											   id="brag_book_gallery_approved_for_social"
+											   name="brag_book_gallery_approved_for_social"
+											   value="1"
+											   <?php checked( $approved_for_social, '1' ); ?> />
+										<span class="brag-book-gallery-toggle-slider"></span>
+									</label>
+									<span class="brag-book-gallery-toggle-label">
+										<?php esc_html_e( 'Approved for Social Media', 'brag-book-gallery' ); ?>
+									</span>
+								</div>
+
+								<div class="brag-book-gallery-toggle-wrapper">
+									<label class="brag-book-gallery-toggle">
+										<input type="hidden" name="brag_book_gallery_is_for_tablet" value="0" />
+										<input type="checkbox"
+											   id="brag_book_gallery_is_for_tablet"
+											   name="brag_book_gallery_is_for_tablet"
+											   value="1"
+											   <?php checked( $is_for_tablet, '1' ); ?> />
+										<span class="brag-book-gallery-toggle-slider"></span>
+									</label>
+									<span class="brag-book-gallery-toggle-label">
+										<?php esc_html_e( 'Available for Tablet', 'brag-book-gallery' ); ?>
+									</span>
+								</div>
+
+								<div class="brag-book-gallery-toggle-wrapper">
+									<label class="brag-book-gallery-toggle">
+										<input type="hidden" name="brag_book_gallery_is_for_website" value="0" />
+										<input type="checkbox"
+											   id="brag_book_gallery_is_for_website"
+											   name="brag_book_gallery_is_for_website"
+											   value="1"
+											   <?php checked( $is_for_website, '1' ); ?> />
+										<span class="brag-book-gallery-toggle-slider"></span>
+									</label>
+									<span class="brag-book-gallery-toggle-label">
+										<?php esc_html_e( 'Available for Website', 'brag-book-gallery' ); ?>
+									</span>
+								</div>
+
+								<div class="brag-book-gallery-toggle-wrapper">
+									<label class="brag-book-gallery-toggle">
+										<input type="hidden" name="brag_book_gallery_draft" value="0" />
+										<input type="checkbox"
+											   id="brag_book_gallery_draft"
+											   name="brag_book_gallery_draft"
+											   value="1"
+											   <?php checked( $draft, '1' ); ?> />
+										<span class="brag-book-gallery-toggle-slider"></span>
+									</label>
+									<span class="brag-book-gallery-toggle-label">
+										<?php esc_html_e( 'Draft Status', 'brag-book-gallery' ); ?>
+									</span>
+								</div>
+
+								<div class="brag-book-gallery-toggle-wrapper">
+									<label class="brag-book-gallery-toggle">
+										<input type="hidden" name="brag_book_gallery_no_watermark" value="0" />
+										<input type="checkbox"
+											   id="brag_book_gallery_no_watermark"
+											   name="brag_book_gallery_no_watermark"
+											   value="1"
+											   <?php checked( $no_watermark, '1' ); ?> />
+										<span class="brag-book-gallery-toggle-slider"></span>
+									</label>
+									<span class="brag-book-gallery-toggle-label">
+										<?php esc_html_e( 'No Watermark', 'brag-book-gallery' ); ?>
+									</span>
+								</div>
+
+								<div class="brag-book-gallery-toggle-wrapper">
+									<label class="brag-book-gallery-toggle">
+										<input type="hidden" name="brag_book_gallery_is_nude" value="0" />
+										<input type="checkbox"
+											   id="brag_book_gallery_is_nude"
+											   name="brag_book_gallery_is_nude"
+											   value="1"
+											   <?php checked( $is_nude, '1' ); ?> />
+										<span class="brag-book-gallery-toggle-slider"></span>
+									</label>
+									<span class="brag-book-gallery-toggle-label">
+										<?php esc_html_e( 'Contains Nudity', 'brag-book-gallery' ); ?>
+									</span>
+								</div>
+							</div>
 						</td>
 					</tr>
 				</table>
 			</div>
 
 			<div id="api-seo" class="tab-content">
+				<div class="brag-book-section-header">
+					<h4><?php esc_html_e( '🔍 SEO & Marketing', 'brag-book-gallery' ); ?></h4>
+				</div>
 				<table class="form-table">
 					<tr>
 						<th scope="row">
 							<label
-								for="case_seo_suffix_url"><?php esc_html_e( 'SEO Suffix URL', 'brag-book-gallery' ); ?></label>
+								for="brag_book_gallery_seo_suffix_url"><?php esc_html_e( 'SEO Suffix URL', 'brag-book-gallery' ); ?></label>
 						</th>
 						<td>
-							<input type="text" id="case_seo_suffix_url"
-								   name="case_seo_suffix_url"
+							<input type="text" id="brag_book_gallery_seo_suffix_url"
+								   name="brag_book_gallery_seo_suffix_url"
 								   value="<?php echo esc_attr( $seo_suffix_url ); ?>"
 								   class="regular-text"/>
 						</td>
 					</tr>
 					<tr>
-						<th scope="row">
+						<th scope="row">hp
 							<label
-								for="case_seo_headline"><?php esc_html_e( 'SEO Headline', 'brag-book-gallery' ); ?></label>
+								for="brag_book_gallery_seo_headline"><?php esc_html_e( 'SEO Headline', 'brag-book-gallery' ); ?></label>
 						</th>
 						<td>
-							<input type="text" id="case_seo_headline"
-								   name="case_seo_headline"
+							<input type="text" id="brag_book_gallery_seo_headline"
+								   name="brag_book_gallery_seo_headline"
 								   value="<?php echo esc_attr( $seo_headline ); ?>"
 								   class="large-text"/>
 						</td>
@@ -826,11 +800,11 @@ class Post_Types {
 					<tr>
 						<th scope="row">
 							<label
-								for="case_seo_page_title"><?php esc_html_e( 'SEO Page Title', 'brag-book-gallery' ); ?></label>
+								for="brag_book_gallery_seo_page_title"><?php esc_html_e( 'SEO Page Title', 'brag-book-gallery' ); ?></label>
 						</th>
 						<td>
-							<input type="text" id="case_seo_page_title"
-								   name="case_seo_page_title"
+							<input type="text" id="brag_book_gallery_seo_page_title"
+								   name="brag_book_gallery_seo_page_title"
 								   value="<?php echo esc_attr( $seo_page_title ); ?>"
 								   class="large-text"/>
 						</td>
@@ -838,11 +812,11 @@ class Post_Types {
 					<tr>
 						<th scope="row">
 							<label
-								for="case_seo_page_description"><?php esc_html_e( 'SEO Page Description', 'brag-book-gallery' ); ?></label>
+								for="brag_book_gallery_seo_page_description"><?php esc_html_e( 'SEO Page Description', 'brag-book-gallery' ); ?></label>
 						</th>
 						<td>
-									<textarea id="case_seo_page_description"
-											  name="case_seo_page_description"
+									<textarea id="brag_book_gallery_seo_page_description"
+											  name="brag_book_gallery_seo_page_description"
 											  rows="3"
 											  class="large-text"><?php echo esc_textarea( $seo_page_description ); ?></textarea>
 						</td>
@@ -850,11 +824,11 @@ class Post_Types {
 					<tr>
 						<th scope="row">
 							<label
-								for="case_seo_alt_text"><?php esc_html_e( 'SEO Alt Text', 'brag-book-gallery' ); ?></label>
+								for="brag_book_gallery_seo_alt_text"><?php esc_html_e( 'SEO Alt Text', 'brag-book-gallery' ); ?></label>
 						</th>
 						<td>
-							<input type="text" id="case_seo_alt_text"
-								   name="case_seo_alt_text"
+							<input type="text" id="brag_book_gallery_seo_alt_text"
+								   name="brag_book_gallery_seo_alt_text"
 								   value="<?php echo esc_attr( $seo_alt_text ); ?>"
 								   class="large-text"/>
 						</td>
@@ -864,95 +838,477 @@ class Post_Types {
 
 			<div id="api-images" class="tab-content">
 				<table class="form-table">
-					<tr>
-						<th scope="row">
-							<label
-								for="case_before_location_url"><?php esc_html_e( 'Before Image URL', 'brag-book-gallery' ); ?></label>
-						</th>
-						<td>
-							<input type="url" id="case_before_location_url"
-								   name="case_before_location_url"
-								   value="<?php echo esc_attr( $before_location_url ); ?>"
-								   class="large-text"/>
-						</td>
-					</tr>
-					<tr>
-						<th scope="row">
-							<label
-								for="case_after_location_url1"><?php esc_html_e( 'After Image URL 1', 'brag-book-gallery' ); ?></label>
-						</th>
-						<td>
-							<input type="url" id="case_after_location_url1"
-								   name="case_after_location_url1"
-								   value="<?php echo esc_attr( $after_location_url1 ); ?>"
-								   class="large-text"/>
-						</td>
-					</tr>
-					<tr>
-						<th scope="row">
-							<label
-								for="case_after_location_url2"><?php esc_html_e( 'After Image URL 2', 'brag-book-gallery' ); ?></label>
-						</th>
-						<td>
-							<input type="url" id="case_after_location_url2"
-								   name="case_after_location_url2"
-								   value="<?php echo esc_attr( $after_location_url2 ); ?>"
-								   class="large-text"/>
-						</td>
-					</tr>
-					<tr>
-						<th scope="row">
-							<label
-								for="case_after_location_url3"><?php esc_html_e( 'After Image URL 3', 'brag-book-gallery' ); ?></label>
-						</th>
-						<td>
-							<input type="url" id="case_after_location_url3"
-								   name="case_after_location_url3"
-								   value="<?php echo esc_attr( $after_location_url3 ); ?>"
-								   class="large-text"/>
-						</td>
-					</tr>
-					<tr>
-						<th scope="row">
-							<label
-								for="case_post_processed_image_url"><?php esc_html_e( 'Post-Processed Image URL', 'brag-book-gallery' ); ?></label>
-						</th>
-						<td>
-							<input type="url" id="case_post_processed_image_url"
-								   name="case_post_processed_image_url"
-								   value="<?php echo esc_attr( $post_processed_image_url ); ?>"
-								   class="large-text"/>
-						</td>
-					</tr>
-					<tr>
-						<th scope="row">
-							<label
-								for="case_high_res_post_processed_image_url"><?php esc_html_e( 'High-Res Post-Processed Image URL', 'brag-book-gallery' ); ?></label>
-						</th>
-						<td>
-							<input type="url"
-								   id="case_high_res_post_processed_image_url"
-								   name="case_high_res_post_processed_image_url"
-								   value="<?php echo esc_attr( $high_res_post_processed_image_url ); ?>"
-								   class="large-text"/>
-						</td>
-					</tr>
+					<?php
+					// Define URL fields with their meta keys and labels
+					$url_fields = [
+						'brag_book_gallery_case_before_url' => __( 'Before Image URLs', 'brag-book-gallery' ),
+						'brag_book_gallery_case_after_url1' => __( 'After Image URLs 1', 'brag-book-gallery' ),
+						'brag_book_gallery_case_after_url2' => __( 'After Image URLs 2', 'brag-book-gallery' ),
+						'brag_book_gallery_case_after_url3' => __( 'After Image URLs 3', 'brag-book-gallery' ),
+						'brag_book_gallery_case_post_processed_url' => __( 'Post-Processed Image URLs', 'brag-book-gallery' ),
+						'brag_book_gallery_case_high_res_url' => __( 'High-Res Post-Processed Image URLs', 'brag-book-gallery' )
+					];
+
+					foreach ( $url_fields as $meta_key => $label ) :
+						// Get the current value from the new meta field format
+						$urls_value = get_post_meta( $post->ID, $meta_key, true );
+
+						// Clean up the display value (remove extra semicolons for display)
+						$display_value = '';
+						if ( ! empty( $urls_value ) ) {
+							$lines = explode( "\n", $urls_value );
+							$clean_lines = [];
+							foreach ( $lines as $line ) {
+								$clean_line = trim( rtrim( trim( $line ), ';' ) );
+								if ( ! empty( $clean_line ) ) {
+									$clean_lines[] = $clean_line;
+								}
+							}
+							$display_value = implode( "\n", $clean_lines );
+						}
+						?>
+						<tr>
+							<th scope="row">
+								<label for="<?php echo esc_attr( $meta_key ); ?>"><?php echo esc_html( $label ); ?></label>
+							</th>
+							<td>
+								<textarea
+									name="<?php echo esc_attr( $meta_key ); ?>"
+									id="<?php echo esc_attr( $meta_key ); ?>"
+									rows="4"
+									cols="60"
+									class="large-text"
+									placeholder="<?php esc_attr_e( 'Enter one URL per line...', 'brag-book-gallery' ); ?>"
+								><?php echo esc_textarea( $display_value ); ?></textarea>
+								<p class="description">
+									<?php esc_html_e( 'Enter one URL per line for this image type. Semicolons will be added automatically when saved.', 'brag-book-gallery' ); ?>
+								</p>
+							</td>
+						</tr>
+						<?php
+					endforeach;
+					?>
 				</table>
 			</div>
 		</div>
 
 		<style>
+			/* Meta Box Global Styles - Modern Admin Design */
+			.brag-book-case-meta {
+				background: #fff;
+				border: 1px solid #c3c4c7;
+				border-radius: 8px;
+				overflow: hidden;
+				box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+			}
+
+			.brag-book-case-meta .form-table {
+				margin: 0;
+				border-collapse: separate;
+				border-spacing: 0;
+				width: 100%;
+			}
+
+			.brag-book-case-meta .form-table th {
+				background: #f6f7f7;
+				border-bottom: 1px solid #c3c4c7;
+				border-right: 1px solid #c3c4c7;
+				padding: 16px 20px;
+				font-weight: 500;
+				font-size: 13px;
+				color: #2c3338;
+				width: 220px;
+				vertical-align: top;
+			}
+
+			.brag-book-case-meta .form-table td {
+				background: #fff;
+				border-bottom: 1px solid #c3c4c7;
+				padding: 16px 20px;
+				vertical-align: top;
+			}
+
+			.brag-book-case-meta .form-table tr:last-child th,
+			.brag-book-case-meta .form-table tr:last-child td {
+				border-bottom: none;
+			}
+
+			/* Modern input styling matching admin settings */
+			.brag-book-case-meta input[type="text"],
+			.brag-book-case-meta input[type="url"],
+			.brag-book-case-meta input[type="number"],
+			.brag-book-case-meta input[type="date"],
+			.brag-book-case-meta select,
+			.brag-book-case-meta textarea {
+				border: 1px solid #8c8f94;
+				border-radius: 6px;
+				padding: 8px 12px;
+				font-size: 14px;
+				line-height: 1.4;
+				transition: all 0.2s ease;
+				background: white;
+				width: 100%;
+				max-width: 500px;
+			}
+
+			.brag-book-case-meta input[type="text"]:hover,
+			.brag-book-case-meta input[type="url"]:hover,
+			.brag-book-case-meta input[type="number"]:hover,
+			.brag-book-case-meta input[type="date"]:hover,
+			.brag-book-case-meta select:hover,
+			.brag-book-case-meta textarea:hover {
+				border-color: #646970;
+			}
+
+			.brag-book-case-meta input[type="text"]:focus,
+			.brag-book-case-meta input[type="url"]:focus,
+			.brag-book-case-meta input[type="number"]:focus,
+			.brag-book-case-meta input[type="date"]:focus,
+			.brag-book-case-meta select:focus,
+			.brag-book-case-meta textarea:focus {
+				outline: 2px solid #2271b1;
+				outline-offset: -1px;
+				border-color: #2271b1;
+				box-shadow: none;
+			}
+
+			.brag-book-case-meta .description {
+				color: #646970;
+				font-size: 13px;
+				margin-top: 8px;
+				line-height: 1.4;
+			}
+
+			.brag-book-case-meta label {
+				font-weight: 500;
+				color: #1d2327;
+			}
+
+			/* Toggle styling for post meta - matches admin settings exactly */
+			.brag-book-case-meta-toggles {
+				display: flex;
+				flex-direction: column;
+				gap: 16px;
+			}
+
+			.brag-book-case-meta .brag-book-gallery-toggle-wrapper {
+				display: flex;
+				align-items: center;
+				gap: 12px;
+			}
+
+			.brag-book-case-meta .brag-book-gallery-toggle {
+				position: relative;
+				display: inline-block;
+				width: 44px;
+				height: 24px;
+				cursor: pointer;
+				user-select: none;
+			}
+
+			.brag-book-case-meta .brag-book-gallery-toggle input[type="checkbox"] {
+				position: absolute;
+				opacity: 0;
+				pointer-events: none;
+				width: 100%;
+				height: 100%;
+				margin: 0;
+			}
+
+			.brag-book-case-meta .brag-book-gallery-toggle input[type="checkbox"]:checked + .brag-book-gallery-toggle-slider {
+				background-color: #2271b1;
+			}
+
+			.brag-book-case-meta .brag-book-gallery-toggle input[type="checkbox"]:checked + .brag-book-gallery-toggle-slider::before {
+				transform: translateX(20px);
+			}
+
+			.brag-book-case-meta .brag-book-gallery-toggle input[type="checkbox"]:focus-visible + .brag-book-gallery-toggle-slider {
+				outline: 2px solid #2271b1;
+				outline-offset: 2px;
+			}
+
+			.brag-book-case-meta .brag-book-gallery-toggle-slider {
+				position: relative;
+				display: block;
+				width: 100%;
+				height: 100%;
+				background-color: #ccc;
+				border-radius: 12px;
+				transition: background-color 0.2s ease;
+			}
+
+			.brag-book-case-meta .brag-book-gallery-toggle-slider::before {
+				content: '';
+				position: absolute;
+				top: 2px;
+				left: 2px;
+				width: 20px;
+				height: 20px;
+				background-color: white;
+				border-radius: 50%;
+				transition: transform 0.2s ease;
+				box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+			}
+
+			.brag-book-case-meta .brag-book-gallery-toggle-label {
+				font-weight: 500;
+				color: #2c3338;
+				margin: 0;
+			}
+
+			/* Tabbed Interface */
+			.brag-book-api-data-tabs {
+				background: #fff;
+				border: 1px solid #e1e1e1;
+				border-radius: 8px;
+				overflow: hidden;
+			}
+
 			.brag-book-api-data-tabs .nav-tab-wrapper {
-				border-bottom: 1px solid #ccc;
-				margin-bottom: 20px;
+				background: #f6f7f7;
+				border-bottom: 1px solid #e1e1e1;
+				margin: 0;
+				padding: 0;
+				display: flex;
+			}
+
+			.brag-book-api-data-tabs .nav-tab {
+				background: transparent;
+				border: none;
+				border-bottom: 3px solid transparent;
+				border-radius: 0;
+				margin: 0;
+				padding: 16px 24px;
+				font-weight: 500;
+				color: #50575e;
+				transition: all 0.2s ease;
+				cursor: pointer;
+				text-decoration: none;
+			}
+
+			.brag-book-api-data-tabs .nav-tab:hover {
+				background: #f0f0f1;
+				color: #1d2327;
+			}
+
+			.brag-book-api-data-tabs .nav-tab.nav-tab-active {
+				background: #fff;
+				color: #2271b1;
+				border-bottom-color: #2271b1;
 			}
 
 			.brag-book-api-data-tabs .tab-content {
 				display: none;
+				padding: 0;
 			}
 
 			.brag-book-api-data-tabs .tab-content.active {
 				display: block;
+			}
+
+			/* Image URL Repeater Styles */
+			.image-urls-repeater {
+				padding: 24px;
+			}
+
+			.image-urls-repeater h4 {
+				margin: 0 0 8px 0;
+				font-size: 16px;
+				font-weight: 600;
+				color: #1d2327;
+			}
+
+			.image-urls-repeater > .description {
+				color: #646970;
+				font-size: 14px;
+				margin-bottom: 24px;
+				line-height: 1.5;
+			}
+
+			.image-url-set {
+				border: 2px solid #e1e5e9;
+				border-radius: 12px;
+				margin-bottom: 24px;
+				background: #fff;
+				box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+				transition: all 0.2s ease;
+			}
+
+			.image-url-set:hover {
+				border-color: #c3c4c7;
+				box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+			}
+
+			.image-url-set-header {
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+				padding: 20px 24px;
+				border-bottom: 1px solid #e9ecef;
+				background: linear-gradient(135deg, #f8f9fa 0%, #f1f3f4 100%);
+				border-radius: 10px 10px 0 0;
+			}
+
+			.image-url-set-header h5 {
+				margin: 0;
+				font-size: 15px;
+				font-weight: 600;
+				color: #1d2327;
+				display: flex;
+				align-items: center;
+			}
+
+			.image-url-set-header h5:before {
+				content: "📷";
+				margin-right: 8px;
+				font-size: 16px;
+			}
+
+			.image-url-set-header .remove-image-set {
+				color: #d63638;
+				text-decoration: none;
+				font-size: 13px;
+				font-weight: 500;
+				padding: 6px 12px;
+				border-radius: 4px;
+				transition: all 0.2s ease;
+				border: 1px solid transparent;
+			}
+
+			.image-url-set-header .remove-image-set:hover {
+				background: #d63638;
+				color: #fff;
+				border-color: #d63638;
+			}
+
+			.image-url-set .form-table {
+				margin: 0;
+				background: #fff;
+				border-radius: 0 0 10px 10px;
+			}
+
+			.image-url-set .form-table th {
+				background: #fafbfc;
+				width: 240px;
+				font-weight: 500;
+				font-size: 13px;
+			}
+
+			.image-url-set .form-table td {
+				background: #fff;
+			}
+
+			.image-url-repeater-controls {
+				padding: 20px 0 0 0;
+				border-top: 2px solid #f0f0f1;
+				text-align: center;
+			}
+
+			.image-url-repeater-controls .button {
+				background: #2271b1;
+				border-color: #2271b1;
+				color: #fff;
+				border-radius: 6px;
+				padding: 12px 24px;
+				font-weight: 500;
+				text-shadow: none;
+				box-shadow: none;
+				transition: all 0.2s ease;
+			}
+
+			.image-url-repeater-controls .button:hover:not(:disabled) {
+				background: #135e96;
+				border-color: #135e96;
+				transform: translateY(-1px);
+				box-shadow: 0 4px 12px rgba(34, 113, 177, 0.3);
+			}
+
+			.image-url-repeater-controls .button:disabled {
+				background: #c3c4c7;
+				border-color: #c3c4c7;
+				cursor: not-allowed;
+			}
+
+			.image-url-repeater-controls .description {
+				display: block;
+				margin-top: 12px;
+				color: #646970;
+				font-style: normal;
+				font-size: 13px;
+			}
+
+			/* Section Headers */
+			.brag-book-section-header {
+				background: linear-gradient(135deg, #f6f7f7 0%, #f0f0f1 100%);
+				padding: 16px 20px;
+				border-bottom: 1px solid #e1e1e1;
+				margin: 0;
+			}
+
+			.brag-book-section-header h4 {
+				margin: 0;
+				font-size: 15px;
+				font-weight: 600;
+				color: #1d2327;
+			}
+
+			/* Success/Info Messages */
+			.brag-book-info-box {
+				background: #f0f6fc;
+				border: 1px solid #c3d9ed;
+				border-radius: 6px;
+				padding: 16px;
+				margin: 16px 0;
+			}
+
+			.brag-book-info-box h4 {
+				margin: 0 0 8px 0;
+				color: #0073aa;
+				font-size: 14px;
+			}
+
+			.brag-book-info-box p {
+				margin: 0;
+				color: #0073aa;
+				font-size: 13px;
+			}
+
+			/* Responsive Design */
+			@media (max-width: 782px) {
+				.brag-book-case-meta .form-table th {
+					width: auto;
+					display: block;
+					padding: 12px 16px 4px;
+					border-right: none;
+					border-bottom: none;
+				}
+
+				.brag-book-case-meta .form-table td {
+					display: block;
+					padding: 0 16px 16px;
+					border-bottom: 1px solid #e9ecef;
+				}
+
+				.brag-book-api-data-tabs .nav-tab-wrapper {
+					flex-wrap: wrap;
+				}
+
+				.brag-book-api-data-tabs .nav-tab {
+					flex: 1;
+					text-align: center;
+					min-width: 120px;
+				}
+
+				.image-url-set-header {
+					flex-direction: column;
+					gap: 12px;
+					text-align: center;
+				}
+
+				.image-url-repeater {
+					padding: 16px;
+				}
 			}
 		</style>
 
@@ -972,6 +1328,9 @@ class Post_Types {
 				} );
 			} );
 		</script>
+				</div>
+			</div>
+		</div>
 		<?php
 	}
 
@@ -990,35 +1349,44 @@ class Post_Types {
 		// Add nonce for security
 		wp_nonce_field( 'save_case_images', 'case_images_nonce' );
 
-		// Get existing gallery images
-		$gallery_images = get_post_meta( $post->ID, '_case_gallery_images', true );
+		// Get existing gallery images (check new format first, then fallback to old format)
+		$gallery_images = get_post_meta( $post->ID, 'brag_book_gallery_images', true ) ?: get_post_meta( $post->ID, '_case_gallery_images', true );
 		if ( ! is_array( $gallery_images ) ) {
 			$gallery_images = [];
 		}
 
 		?>
-		<p><?php esc_html_e( 'Add additional images to showcase different angles or stages of the procedure.', 'brag-book-gallery' ); ?></p>
+		<div class="brag-book-gallery-admin-wrap">
+			<div class="brag-book-gallery-section">
+				<h3><?php esc_html_e( 'Additional Images', 'brag-book-gallery' ); ?></h3>
+			<div style="padding: 20px;">
+				<p class="description" style="margin-bottom: 16px;">
+					<?php esc_html_e( 'Add additional images to showcase different angles or stages of the procedure.', 'brag-book-gallery' ); ?>
+				</p>
 
-		<input type="hidden" id="case_gallery_images" name="case_gallery_images"
-			   value="<?php echo esc_attr( implode( ',', $gallery_images ) ); ?>"/>
+				<input type="hidden" id="brag_book_gallery_images" name="brag_book_gallery_images"
+					   value="<?php echo esc_attr( implode( ',', $gallery_images ) ); ?>"/>
 
-		<button type="button" class="button button-primary"
-				id="add_gallery_images_button">
-			<?php esc_html_e( 'Add Images', 'brag-book-gallery' ); ?>
-		</button>
+				<button type="button" class="button button-primary"
+						id="add_gallery_images_button"
+						style="background: #2271b1; border-color: #2271b1; border-radius: 6px; padding: 12px 20px; font-weight: 500;">
+					<?php esc_html_e( 'Add Images', 'brag-book-gallery' ); ?>
+				</button>
 
-		<div id="gallery_images_preview" style="margin-top: 15px;">
-			<?php foreach ( $gallery_images as $image_id ) : ?>
-				<div class="gallery-image-item"
-					 data-id="<?php echo esc_attr( $image_id ); ?>"
-					 style="display: inline-block; margin: 5px; position: relative;">
-					<?php echo wp_get_attachment_image( $image_id, 'thumbnail' ); ?>
-					<button type="button" class="remove-gallery-image"
-							style="position: absolute; top: 0; right: 0; background: red; color: white; border: none; width: 20px; height: 20px; cursor: pointer;">
-						×
-					</button>
+				<div id="gallery_images_preview" style="margin-top: 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px;">
+					<?php foreach ( $gallery_images as $image_id ) : ?>
+						<div class="gallery-image-item"
+							 data-id="<?php echo esc_attr( $image_id ); ?>"
+							 style="position: relative; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+							<?php echo wp_get_attachment_image( $image_id, 'thumbnail', false, [ 'style' => 'width: 100%; height: auto; display: block;' ] ); ?>
+							<button type="button" class="remove-gallery-image"
+									style="position: absolute; top: 5px; right: 5px; background: #d63638; color: white; border: none; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-size: 14px; line-height: 1; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+								×
+							</button>
+						</div>
+					<?php endforeach; ?>
 				</div>
-			<?php endforeach; ?>
+			</div>
 		</div>
 
 		<script>
@@ -1035,7 +1403,7 @@ class Post_Types {
 
 					mediaUploader.on( 'select', function () {
 						var selection = mediaUploader.state().get( 'selection' );
-						var currentImages = $( '#case_gallery_images' ).val().split( ',' ).filter( function ( id ) {
+						var currentImages = $( '#brag_book_gallery_images' ).val().split( ',' ).filter( function ( id ) {
 							return id !== '';
 						} );
 
@@ -1044,15 +1412,15 @@ class Post_Types {
 							if ( currentImages.indexOf( attachment.id.toString() ) === - 1 ) {
 								currentImages.push( attachment.id );
 								$( '#gallery_images_preview' ).append(
-									'<div class="gallery-image-item" data-id="' + attachment.id + '" style="display: inline-block; margin: 5px; position: relative;">' +
-									'<img src="' + attachment.sizes.thumbnail.url + '" />' +
-									'<button type="button" class="remove-gallery-image" style="position: absolute; top: 0; right: 0; background: red; color: white; border: none; width: 20px; height: 20px; cursor: pointer;">×</button>' +
+									'<div class="gallery-image-item" data-id="' + attachment.id + '" style="position: relative; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">' +
+									'<img src="' + attachment.sizes.thumbnail.url + '" style="width: 100%; height: auto; display: block;" />' +
+									'<button type="button" class="remove-gallery-image" style="position: absolute; top: 5px; right: 5px; background: #d63638; color: white; border: none; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-size: 14px; line-height: 1; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">×</button>' +
 									'</div>'
 								);
 							}
 						} );
 
-						$( '#case_gallery_images' ).val( currentImages.join( ',' ) );
+						$( '#brag_book_gallery_images' ).val( currentImages.join( ',' ) );
 					} );
 
 					mediaUploader.open();
@@ -1061,10 +1429,10 @@ class Post_Types {
 				$( document ).on( 'click', '.remove-gallery-image', function ( e ) {
 					e.preventDefault();
 					var imageId = $( this ).parent().data( 'id' );
-					var currentImages = $( '#case_gallery_images' ).val().split( ',' ).filter( function ( id ) {
+					var currentImages = $( '#brag_book_gallery_images' ).val().split( ',' ).filter( function ( id ) {
 						return id !== '' && id != imageId;
 					} );
-					$( '#case_gallery_images' ).val( currentImages.join( ',' ) );
+					$( '#brag_book_gallery_images' ).val( currentImages.join( ',' ) );
 					$( this ).parent().remove();
 				} );
 			} );
@@ -1125,17 +1493,17 @@ class Post_Types {
 
 		echo '</div>';
 
-		// Show download status for images
-		$api_downloaded_images = get_post_meta( $post->ID, '_case_api_downloaded_images', true );
-		if ( ! empty( $api_downloaded_images ) ) {
-			echo '<div style="margin-top: 20px; padding: 10px; background: #f0f8ff; border-left: 4px solid #0073aa;">';
-			echo '<h4 style="margin-top: 0;">' . esc_html__( 'Downloaded Images', 'brag-book-gallery' ) . '</h4>';
-			echo '<p>' . sprintf(
-					esc_html__( '%d images have been downloaded from the API and added to the Additional Images gallery.', 'brag-book-gallery' ),
-					count( $api_downloaded_images )
-				) . '</p>';
-			echo '</div>';
-		}
+			// Show download status for images
+			$api_downloaded_images = get_post_meta( $post->ID, '_case_api_downloaded_images', true );
+			if ( ! empty( $api_downloaded_images ) ) {
+				echo '<div class="brag-book-info-box" style="margin-top: 20px;">';
+				echo '<h4>📥 ' . esc_html__( 'Downloaded Images', 'brag-book-gallery' ) . '</h4>';
+				echo '<p>' . sprintf(
+						esc_html__( '%d images have been downloaded from the API and added to the gallery above.', 'brag-book-gallery' ),
+						count( $api_downloaded_images )
+					) . '</p>';
+				echo '</div>';
+			}
 	}
 
 	/**
@@ -1220,25 +1588,6 @@ class Post_Types {
 
 		// Delete before/after images if they are attached to this case
 		$before_after_deleted = 0;
-		$before_image_id      = get_post_meta( $post_id, '_case_before_image', true );
-		if ( $before_image_id ) {
-			$image_case_id = get_post_meta( $before_image_id, '_case_post_id', true );
-			if ( $image_case_id == $post_id ) {
-				if ( wp_delete_attachment( $before_image_id, true ) ) {
-					$before_after_deleted ++;
-				}
-			}
-		}
-
-		$after_image_id = get_post_meta( $post_id, '_case_after_image', true );
-		if ( $after_image_id ) {
-			$image_case_id = get_post_meta( $after_image_id, '_case_post_id', true );
-			if ( $image_case_id == $post_id ) {
-				if ( wp_delete_attachment( $after_image_id, true ) ) {
-					$before_after_deleted ++;
-				}
-			}
-		}
 
 		// Calculate total deleted images
 		$total_deleted = $api_images_deleted + $gallery_deleted + $before_after_deleted;
@@ -1285,22 +1634,160 @@ class Post_Types {
 			return;
 		}
 
-		// Save case details
+		// Save case details (both old format from meta boxes and new format from Gutenberg)
 		if ( isset( $_POST['case_details_nonce'] ) && wp_verify_nonce( $_POST['case_details_nonce'], 'save_case_details' ) ) {
 			$fields = [
 				'case_patient_age'    => 'absint',
 				'case_patient_gender' => 'sanitize_text_field',
 				'case_procedure_date' => 'sanitize_text_field',
 				'case_notes'          => 'sanitize_textarea_field',
-				'case_before_image'   => 'absint',
-				'case_after_image'    => 'absint',
 			];
 
 			foreach ( $fields as $field => $sanitize_function ) {
 				if ( isset( $_POST[ $field ] ) ) {
 					$value = call_user_func( $sanitize_function, $_POST[ $field ] );
 					update_post_meta( $post_id, '_' . $field, $value );
+					// Also save with new prefix for consistency
+					update_post_meta( $post_id, 'brag_book_gallery_' . str_replace( 'case_', '', $field ), $value );
 				}
+			}
+		}
+
+		// Handle meta saves from Gutenberg (new prefix format)
+		$gutenberg_fields = [
+			// Case details
+			'brag_book_gallery_patient_age'    => 'absint',
+			'brag_book_gallery_patient_gender' => 'sanitize_text_field',
+			'brag_book_gallery_procedure_date' => 'sanitize_text_field',
+			'brag_book_gallery_notes'          => 'sanitize_textarea_field',
+
+			// API data
+			'brag_book_gallery_api_id'         => 'absint',
+			'brag_book_gallery_patient_id'     => 'sanitize_text_field',
+			'brag_book_gallery_org_id'         => 'sanitize_text_field',
+			'brag_book_gallery_quality_score'  => 'absint',
+
+			// Patient information
+			'brag_book_gallery_ethnicity'      => 'sanitize_text_field',
+			'brag_book_gallery_height'         => 'absint',
+			'brag_book_gallery_height_unit'    => 'sanitize_text_field',
+			'brag_book_gallery_weight'         => 'absint',
+			'brag_book_gallery_weight_unit'    => 'sanitize_text_field',
+
+			// SEO data
+			'brag_book_gallery_seo_suffix_url'        => 'sanitize_text_field',
+			'brag_book_gallery_seo_headline'          => 'sanitize_text_field',
+			'brag_book_gallery_seo_page_title'        => 'sanitize_text_field',
+			'brag_book_gallery_seo_page_description'  => 'sanitize_textarea_field',
+			'brag_book_gallery_seo_alt_text'          => 'sanitize_text_field',
+		];
+
+		foreach ( $gutenberg_fields as $field => $sanitize_function ) {
+			if ( isset( $_POST[ $field ] ) ) {
+				$value = call_user_func( $sanitize_function, $_POST[ $field ] );
+				update_post_meta( $post_id, $field, $value );
+				// Also save with old prefix for backward compatibility
+				$old_field = '_case_' . str_replace( 'brag_book_gallery_', '', $field );
+				update_post_meta( $post_id, $old_field, $value );
+			}
+		}
+
+		// Handle Gutenberg checkbox fields separately (they may not be present in $_POST if unchecked)
+		$gutenberg_checkbox_fields = [
+			'brag_book_gallery_revision_surgery',
+			'brag_book_gallery_approved_for_social',
+			'brag_book_gallery_is_for_tablet',
+			'brag_book_gallery_is_for_website',
+			'brag_book_gallery_draft',
+			'brag_book_gallery_no_watermark',
+			'brag_book_gallery_is_nude',
+		];
+
+		foreach ( $gutenberg_checkbox_fields as $field ) {
+			if ( isset( $_POST[ $field ] ) ) {
+				$value = $_POST[ $field ] === '1' ? '1' : '0';
+				update_post_meta( $post_id, $field, $value );
+				// Also save with old prefix for backward compatibility
+				$old_field = '_case_' . str_replace( 'brag_book_gallery_', '', $field );
+				update_post_meta( $post_id, $old_field, $value );
+			}
+		}
+
+		// Handle Gutenberg image URL sets (JSON format)
+		if ( isset( $_POST['brag_book_gallery_image_url_sets'] ) ) {
+			$json_data = $_POST['brag_book_gallery_image_url_sets'];
+			$image_url_sets = json_decode( $json_data, true );
+
+			if ( is_array( $image_url_sets ) ) {
+				$sanitized_sets = [];
+
+				foreach ( $image_url_sets as $index => $url_set ) {
+					if ( ! is_array( $url_set ) ) {
+						continue;
+					}
+
+					$sanitized_set = [];
+					$has_content = false;
+
+					$url_fields = [
+						'before_url',
+						'after_url1',
+						'after_url2',
+						'after_url3',
+						'post_processed_url',
+						'high_res_url'
+					];
+
+					foreach ( $url_fields as $field ) {
+						$url = isset( $url_set[ $field ] ) ? esc_url_raw( trim( $url_set[ $field ] ) ) : '';
+						$sanitized_set[ $field ] = $url;
+						if ( ! empty( $url ) ) {
+							$has_content = true;
+						}
+					}
+
+					// Only save sets that have at least one URL
+					if ( $has_content ) {
+						$sanitized_sets[] = $sanitized_set;
+					}
+				}
+
+				// Save with new format
+				update_post_meta( $post_id, 'brag_book_gallery_image_url_sets', $sanitized_sets );
+				// Also save with old format for backward compatibility
+				update_post_meta( $post_id, '_case_image_url_sets', $sanitized_sets );
+			}
+		}
+
+		// Handle new individual URL fields from meta boxes
+		$url_fields = [
+			'brag_book_gallery_case_before_url',
+			'brag_book_gallery_case_after_url1',
+			'brag_book_gallery_case_after_url2',
+			'brag_book_gallery_case_after_url3',
+			'brag_book_gallery_case_post_processed_url',
+			'brag_book_gallery_case_high_res_url'
+		];
+
+		foreach ( $url_fields as $field ) {
+			if ( isset( $_POST[ $field ] ) ) {
+				$urls_input = $_POST[ $field ];
+
+				// Process the textarea input: split by lines, trim, add semicolons
+				$lines = explode( "\n", $urls_input );
+				$processed_lines = [];
+
+				foreach ( $lines as $line ) {
+					$clean_url = trim( $line );
+					$clean_url = rtrim( $clean_url, ';' ); // Remove existing semicolons
+
+					if ( ! empty( $clean_url ) && filter_var( $clean_url, FILTER_VALIDATE_URL ) ) {
+						$processed_lines[] = esc_url_raw( $clean_url ) . ';';
+					}
+				}
+
+				$final_value = implode( "\n", $processed_lines );
+				update_post_meta( $post_id, $field, $final_value );
 			}
 		}
 
@@ -1316,16 +1803,16 @@ class Post_Types {
 				'case_procedure_ids'                     => 'sanitize_text_field',
 
 				// Patient Data
-				'case_ethnicity'                         => 'sanitize_text_field',
-				'case_height'                            => 'absint',
-				'case_height_unit'                       => 'sanitize_text_field',
-				'case_weight'                            => 'absint',
-				'case_weight_unit'                       => 'sanitize_text_field',
-				'case_technique'                         => 'sanitize_text_field',
-				'case_after1_timeframe'                  => 'absint',
-				'case_after1_unit'                       => 'sanitize_text_field',
-				'case_after2_timeframe'                  => 'absint',
-				'case_after2_unit'                       => 'sanitize_text_field',
+				'brag_book_gallery_ethnicity'           => 'sanitize_text_field',
+				'brag_book_gallery_height'               => 'absint',
+				'brag_book_gallery_height_unit'          => 'sanitize_text_field',
+				'brag_book_gallery_weight'               => 'absint',
+				'brag_book_gallery_weight_unit'          => 'sanitize_text_field',
+				'brag_book_gallery_technique'            => 'sanitize_text_field',
+				'brag_book_gallery_after1_timeframe'     => 'absint',
+				'brag_book_gallery_after1_unit'          => 'sanitize_text_field',
+				'brag_book_gallery_after2_timeframe'     => 'absint',
+				'brag_book_gallery_after2_unit'          => 'sanitize_text_field',
 
 				// Settings
 				'case_quality_score'                     => 'absint',
@@ -1338,10 +1825,6 @@ class Post_Types {
 				'case_seo_alt_text'                      => 'sanitize_text_field',
 
 				// Image URLs
-				'case_before_location_url'               => 'esc_url_raw',
-				'case_after_location_url1'               => 'esc_url_raw',
-				'case_after_location_url2'               => 'esc_url_raw',
-				'case_after_location_url3'               => 'esc_url_raw',
 				'case_post_processed_image_url'          => 'esc_url_raw',
 				'case_high_res_post_processed_image_url' => 'esc_url_raw',
 			];
@@ -1372,12 +1855,180 @@ class Post_Types {
 
 		// Save gallery images
 		if ( isset( $_POST['case_images_nonce'] ) && wp_verify_nonce( $_POST['case_images_nonce'], 'save_case_images' ) ) {
-			if ( isset( $_POST['case_gallery_images'] ) ) {
+			// Handle new format (brag_book_gallery_images)
+			if ( isset( $_POST['brag_book_gallery_images'] ) ) {
+				$gallery_images = array_map( 'absint', explode( ',', $_POST['brag_book_gallery_images'] ) );
+				$gallery_images = array_filter( $gallery_images ); // Remove empty values
+				update_post_meta( $post_id, 'brag_book_gallery_images', $gallery_images );
+				// Also save with old prefix for backward compatibility
+				update_post_meta( $post_id, '_case_gallery_images', $gallery_images );
+			}
+			// Handle old format (case_gallery_images) for backward compatibility
+			elseif ( isset( $_POST['case_gallery_images'] ) ) {
 				$gallery_images = array_map( 'absint', explode( ',', $_POST['case_gallery_images'] ) );
 				$gallery_images = array_filter( $gallery_images ); // Remove empty values
 				update_post_meta( $post_id, '_case_gallery_images', $gallery_images );
+				// Also save with new prefix
+				update_post_meta( $post_id, 'brag_book_gallery_images', $gallery_images );
 			}
 		}
+
+		// Save image URLs from separate textareas
+		if ( isset( $_POST['case_api_data_nonce'] ) && wp_verify_nonce( $_POST['case_api_data_nonce'], 'save_case_api_data' ) ) {
+			$url_types = [ 'before_url', 'after_url1', 'after_url2', 'after_url3', 'post_processed_url', 'high_res_url' ];
+			$urls_by_type = [];
+
+			// Collect URLs from each textarea
+			foreach ( $url_types as $url_type ) {
+				if ( isset( $_POST[ 'case_' . $url_type ] ) ) {
+					$textarea_content = sanitize_textarea_field( $_POST[ 'case_' . $url_type ] );
+					$urls = array_filter( array_map( 'trim', explode( "\n", $textarea_content ) ) );
+
+					// Sanitize URLs
+					$sanitized_urls = [];
+					foreach ( $urls as $url ) {
+						$clean_url = esc_url_raw( $url );
+						if ( ! empty( $clean_url ) ) {
+							$sanitized_urls[] = $clean_url;
+						}
+					}
+					$urls_by_type[ $url_type ] = $sanitized_urls;
+				} else {
+					$urls_by_type[ $url_type ] = [];
+				}
+			}
+
+			// Convert to URL sets format (each row corresponds to one set)
+			$max_urls = max( array_map( 'count', $urls_by_type ) );
+			$image_url_sets = [];
+
+			for ( $i = 0; $i < $max_urls; $i++ ) {
+				$set = [
+					'before_url' => $urls_by_type['before_url'][ $i ] ?? '',
+					'after_url1' => $urls_by_type['after_url1'][ $i ] ?? '',
+					'after_url2' => $urls_by_type['after_url2'][ $i ] ?? '',
+					'after_url3' => $urls_by_type['after_url3'][ $i ] ?? '',
+					'post_processed_url' => $urls_by_type['post_processed_url'][ $i ] ?? '',
+					'high_res_url' => $urls_by_type['high_res_url'][ $i ] ?? ''
+				];
+
+				// Only add sets that have at least one URL
+				if ( array_filter( $set ) ) {
+					$image_url_sets[] = $set;
+				}
+			}
+
+			// Save in both new and legacy formats
+			update_post_meta( $post_id, 'brag_book_gallery_image_url_sets', $image_url_sets );
+			update_post_meta( $post_id, '_case_image_url_sets', $image_url_sets );
+		}
+	}
+
+	/**
+	 * Register meta fields for Gutenberg sidebar
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	public function register_gutenberg_meta_fields(): void {
+		$meta_fields = [
+			// Case details
+			'brag_book_gallery_patient_age',
+			'brag_book_gallery_patient_gender',
+			'brag_book_gallery_procedure_date',
+			'brag_book_gallery_notes',
+
+			// API data
+			'brag_book_gallery_api_id',
+			'brag_book_gallery_patient_id',
+			'brag_book_gallery_user_id',
+			'brag_book_gallery_org_id',
+			'brag_book_gallery_emr_id',
+			'brag_book_gallery_procedure_ids',
+			'brag_book_gallery_quality_score',
+
+			// Patient information
+			'brag_book_gallery_ethnicity',
+			'brag_book_gallery_height',
+			'brag_book_gallery_height_unit',
+			'brag_book_gallery_weight',
+			'brag_book_gallery_weight_unit',
+			'brag_book_gallery_technique',
+			'brag_book_gallery_after1_timeframe',
+			'brag_book_gallery_after1_unit',
+			'brag_book_gallery_after2_timeframe',
+			'brag_book_gallery_after2_unit',
+
+			// Settings
+			'brag_book_gallery_revision_surgery',
+			'brag_book_gallery_approved_for_social',
+			'brag_book_gallery_is_for_tablet',
+			'brag_book_gallery_is_for_website',
+			'brag_book_gallery_draft',
+			'brag_book_gallery_no_watermark',
+			'brag_book_gallery_is_nude',
+
+			// SEO
+			'brag_book_gallery_seo_suffix_url',
+			'brag_book_gallery_seo_headline',
+			'brag_book_gallery_seo_page_title',
+			'brag_book_gallery_seo_page_description',
+			'brag_book_gallery_seo_alt_text',
+
+			// Image URLs
+			'brag_book_gallery_image_url_sets',
+		];
+
+		foreach ( $meta_fields as $meta_key ) {
+			register_post_meta( self::POST_TYPE_CASES, $meta_key, [
+				'show_in_rest' => true,
+				'single' => true,
+				'type' => 'string',
+				'auth_callback' => function() {
+					return current_user_can( 'edit_posts' );
+				}
+			] );
+		}
+	}
+
+	/**
+	 * Enqueue Gutenberg sidebar assets
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	public function enqueue_gutenberg_sidebar(): void {
+		global $post;
+
+		// Only enqueue for brag_book_cases post type
+		if ( ! $post || get_post_type( $post ) !== self::POST_TYPE_CASES ) {
+			return;
+		}
+
+		wp_enqueue_script(
+			'brag-book-gallery-gutenberg-sidebar',
+			plugin_dir_url( dirname( dirname( __FILE__ ) ) ) . 'assets/js/gutenberg-sidebar.js',
+			[ 'wp-plugins', 'wp-edit-post', 'wp-element', 'wp-components', 'wp-data', 'wp-i18n' ],
+			'3.0.0',
+			true
+		);
+
+		wp_set_script_translations(
+			'brag-book-gallery-gutenberg-sidebar',
+			'brag-book-gallery'
+		);
+	}
+
+	/**
+	 * Check if Gutenberg is active for the current screen
+	 *
+	 * @deprecated 3.0.0 No longer used - meta boxes are shown for all editors
+	 * @since 3.0.0
+	 * @return bool
+	 */
+	private function is_gutenberg_active(): bool {
+		// Always return false - we're using meta boxes for all editors now
+		return false;
 	}
 
 	/**
@@ -1418,37 +2069,6 @@ class Post_Types {
 	}
 
 	/**
-	 * Add custom rewrite rules for hierarchical case URLs
-	 *
-	 * @return void
-	 * @since 3.0.0
-	 */
-	private static function add_case_rewrite_rules(): void {
-		// Get gallery slug from option
-		$gallery_slug = get_option( 'brag_book_gallery_page_slug', 'gallery' );
-
-		// If it's an array, get the first slug
-		if ( is_array( $gallery_slug ) && ! empty( $gallery_slug ) ) {
-			$gallery_slug = $gallery_slug[0];
-		}
-
-		// Fallback to 'gallery' if empty
-		if ( empty( $gallery_slug ) ) {
-			$gallery_slug = 'gallery';
-		}
-
-		// Add rewrite rule for: /gallery-slug/procedure-slug/case-slug/
-		add_rewrite_rule(
-			'^' . $gallery_slug . '/([^/]+)/([^/]+)/?$',
-			'index.php?post_type=' . self::POST_TYPE_CASES . '&procedures=$matches[1]&name=$matches[2]',
-			'top'
-		);
-
-		// Add query vars
-		add_filter( 'query_vars', [ __CLASS__, 'add_case_query_vars' ] );
-	}
-
-	/**
 	 * Add query vars for case rewrite rules
 	 *
 	 * @param array $vars Existing query vars.
@@ -1456,8 +2076,25 @@ class Post_Types {
 	 * @return array Modified query vars.
 	 * @since 3.0.0
 	 */
-	public static function add_case_query_vars( array $vars ): array {
+	public function add_case_query_vars( array $vars ): array {
 		$vars[] = 'procedures';
+		$vars[] = 'procedure_slug';
+		$vars[] = 'case_id';
+
+		return $vars;
+	}
+
+	/**
+	 * Add simple query vars for case detection
+	 *
+	 * @param array $vars Existing query vars.
+	 *
+	 * @return array Modified query vars.
+	 * @since 3.0.0
+	 */
+	public function add_simple_query_vars( array $vars ): array {
+		$vars[] = 'case_id';
+		$vars[] = 'procedure_slug';
 
 		return $vars;
 	}
@@ -1474,7 +2111,7 @@ class Post_Types {
 	 * @return bool True on success, false on failure.
 	 * @since 3.0.0
 	 */
-	public static function save_api_response_data( int $post_id, array $api_data ): bool {
+	public static function save_api_response_data( int $post_id, array $api_data, ?callable $progress_callback = null ): bool {
 		// Verify this is a case post
 		if ( get_post_type( $post_id ) !== self::POST_TYPE_CASES ) {
 			return false;
@@ -1491,8 +2128,44 @@ class Post_Types {
 			return false;
 		}
 
-		// Map API response fields to post meta
+		// Map API response fields to post meta (new format with brag_book_gallery_ prefix)
 		$field_mapping = [
+			// Basic Info
+			'id'                => 'brag_book_gallery_api_id',
+			'patientId'         => 'brag_book_gallery_patient_id',
+			'userId'            => 'brag_book_gallery_user_id',
+			'orgId'             => 'brag_book_gallery_org_id',
+			'emrId'             => 'brag_book_gallery_emr_id',
+
+			// Patient Data
+			'age'               => 'brag_book_gallery_patient_age',
+			'gender'            => 'brag_book_gallery_patient_gender',
+			'ethnicity'         => 'brag_book_gallery_ethnicity',
+			'height'            => 'brag_book_gallery_height',
+			'heightUnit'        => 'brag_book_gallery_height_unit',
+			'weight'            => 'brag_book_gallery_weight',
+			'weightUnit'        => 'brag_book_gallery_weight_unit',
+			'technique'         => 'brag_book_gallery_technique',
+			'revisionSurgery'   => 'brag_book_gallery_revision_surgery',
+			'after1Timeframe'   => 'brag_book_gallery_after1_timeframe',
+			'after1Unit'        => 'brag_book_gallery_after1_unit',
+			'after2Timeframe'   => 'brag_book_gallery_after2_timeframe',
+			'after2Unit'        => 'brag_book_gallery_after2_unit',
+
+			// Settings
+			'qualityScore'      => 'brag_book_gallery_quality_score',
+			'approvedForSocial' => 'brag_book_gallery_approved_for_social',
+			'isForTablet'       => 'brag_book_gallery_is_for_tablet',
+			'isForWebsite'      => 'brag_book_gallery_is_for_website',
+			'draft'             => 'brag_book_gallery_draft',
+			'noWatermark'       => 'brag_book_gallery_no_watermark',
+
+			// Additional fields
+			'details'           => 'brag_book_gallery_notes',
+		];
+
+		// Legacy field mapping for backward compatibility
+		$legacy_field_mapping = [
 			// Basic Info
 			'id'                => '_case_api_id',
 			'patientId'         => '_case_patient_id',
@@ -1528,42 +2201,61 @@ class Post_Types {
 		];
 
 		// Save basic fields
-		foreach ( $field_mapping as $api_field => $meta_key ) {
-			if ( isset( $api_data[ $api_field ] ) ) {
-				$value = $api_data[ $api_field ];
+		if ( $progress_callback ) {
+			$progress_callback( "Writing case data fields for post {$post_id}..." );
+		}
 
-				// Convert boolean values
-				if ( is_bool( $value ) ) {
-					$value = $value ? '1' : '0';
-				}
+		// Save both new and legacy field formats for backward compatibility
+		$all_mappings = [ $field_mapping, $legacy_field_mapping ];
 
-				// Sanitize based on field type
-				switch ( $meta_key ) {
-					case '_case_api_id':
-					case '_case_patient_age':
-					case '_case_height':
-					case '_case_weight':
-					case '_case_quality_score':
-					case '_case_after1_timeframe':
-					case '_case_after2_timeframe':
+		foreach ( $all_mappings as $mapping ) {
+			foreach ( $mapping as $api_field => $meta_key ) {
+				if ( isset( $api_data[ $api_field ] ) ) {
+					$value = $api_data[ $api_field ];
+
+					// Convert boolean values
+					if ( is_bool( $value ) ) {
+						$value = $value ? '1' : '0';
+					}
+
+					// Sanitize based on field type (check both new and legacy formats)
+					if ( in_array( $meta_key, [
+						'brag_book_gallery_api_id', '_case_api_id',
+						'brag_book_gallery_patient_age', '_case_patient_age',
+						'brag_book_gallery_height', '_case_height',
+						'brag_book_gallery_weight', '_case_weight',
+						'brag_book_gallery_quality_score', '_case_quality_score',
+						'brag_book_gallery_after1_timeframe', '_case_after1_timeframe',
+						'brag_book_gallery_after2_timeframe', '_case_after2_timeframe'
+					] ) ) {
 						$value = absint( $value );
-						break;
-					case '_case_notes':
+					} elseif ( in_array( $meta_key, [
+						'brag_book_gallery_notes', '_case_notes'
+					] ) ) {
 						$value = wp_kses_post( $value );
-						break;
-					default:
+					} elseif ( in_array( $meta_key, [
+						'brag_book_gallery_case_before_url',
+						'brag_book_gallery_case_after_url1',
+						'brag_book_gallery_case_after_url2',
+						'brag_book_gallery_case_after_url3',
+						'brag_book_gallery_case_post_processed_url',
+						'brag_book_gallery_case_high_res_url'
+					] ) ) {
+						$value = sanitize_textarea_field( $value );
+					} else {
 						$value = sanitize_text_field( $value );
-						break;
-				}
+					}
 
-				update_post_meta( $post_id, $meta_key, $value );
+					update_post_meta( $post_id, $meta_key, $value );
+				}
 			}
 		}
 
-		// Handle procedure IDs
+		// Handle procedure IDs - save in both formats
 		if ( isset( $api_data['procedureIds'] ) && is_array( $api_data['procedureIds'] ) ) {
 			$procedure_ids = implode( ',', array_map( 'absint', $api_data['procedureIds'] ) );
-			update_post_meta( $post_id, '_case_procedure_ids', $procedure_ids );
+			update_post_meta( $post_id, 'brag_book_gallery_procedure_ids', $procedure_ids );
+			update_post_meta( $post_id, '_case_procedure_ids', $procedure_ids ); // Legacy compatibility
 		}
 
 		// Handle SEO data from caseDetails and update post title
@@ -1574,26 +2266,31 @@ class Post_Types {
 		if ( isset( $api_data['caseDetails'] ) && is_array( $api_data['caseDetails'] ) ) {
 			foreach ( $api_data['caseDetails'] as $case_detail ) {
 				if ( isset( $case_detail['seoSuffixUrl'] ) ) {
-					update_post_meta( $post_id, '_case_seo_suffix_url', sanitize_text_field( $case_detail['seoSuffixUrl'] ) );
+					$seo_suffix = sanitize_text_field( $case_detail['seoSuffixUrl'] );
+					update_post_meta( $post_id, 'brag_book_gallery_seo_suffix_url', $seo_suffix );
+					update_post_meta( $post_id, '_case_seo_suffix_url', $seo_suffix ); // Legacy compatibility
 				}
 				if ( isset( $case_detail['seoHeadline'] ) && ! empty( $case_detail['seoHeadline'] ) ) {
 					$seo_headline = sanitize_text_field( $case_detail['seoHeadline'] );
-					update_post_meta( $post_id, '_case_seo_headline', $seo_headline );
+					update_post_meta( $post_id, 'brag_book_gallery_seo_headline', $seo_headline );
+					update_post_meta( $post_id, '_case_seo_headline', $seo_headline ); // Legacy compatibility
 				}
 				if ( isset( $case_detail['seoPageTitle'] ) && ! empty( $case_detail['seoPageTitle'] ) ) {
 					$seo_page_title = sanitize_text_field( $case_detail['seoPageTitle'] );
-					update_post_meta( $post_id, '_case_seo_page_title', $seo_page_title );
+					update_post_meta( $post_id, 'brag_book_gallery_seo_page_title', $seo_page_title );
+					update_post_meta( $post_id, '_case_seo_page_title', $seo_page_title ); // Legacy compatibility
 				}
 				if ( isset( $case_detail['seoPageDescription'] ) && ! empty( $case_detail['seoPageDescription'] ) ) {
 					$seo_page_description = sanitize_textarea_field( $case_detail['seoPageDescription'] );
-					update_post_meta( $post_id, '_case_seo_page_description', $seo_page_description );
+					update_post_meta( $post_id, 'brag_book_gallery_seo_page_description', $seo_page_description );
+					update_post_meta( $post_id, '_case_seo_page_description', $seo_page_description ); // Legacy compatibility
 				}
 			}
 		}
 
 		// Update post title based on naming logic
 		$case_id    = $api_data['id'] ?? $post_id;
-		$post_title = $seo_headline;
+		$post_title = $seo_headline ?: '';
 
 		// If no seoHeadline, try to get procedure name + case number
 		if ( ! $post_title ) {
@@ -1609,7 +2306,7 @@ class Post_Types {
 
 		wp_update_post( [
 			'ID'         => $post_id,
-			'post_title' => $post_title,
+			'post_title' => $post_title ?: 'Untitled Case',
 		] );
 
 		// Apply SEO metadata if we have an SEO plugin installed
@@ -1644,65 +2341,99 @@ class Post_Types {
 
 		// Handle photo sets and download images
 		if ( isset( $api_data['photoSets'] ) && is_array( $api_data['photoSets'] ) ) {
-			$downloaded_images = [];
-			$image_position    = 1; // Track position for filename and alt text
+			$total_photo_sets = count( $api_data['photoSets'] );
+			if ( $progress_callback ) {
+				$progress_callback( "Processing {$total_photo_sets} image sets for post {$post_id}..." );
+			}
+
+			// Clear existing URL fields before populating fresh data from API
+			$url_fields_to_clear = [
+				'brag_book_gallery_case_before_url',
+				'brag_book_gallery_case_after_url1',
+				'brag_book_gallery_case_after_url2',
+				'brag_book_gallery_case_after_url3',
+				'brag_book_gallery_case_post_processed_url',
+				'brag_book_gallery_case_high_res_url'
+			];
+
+			foreach ( $url_fields_to_clear as $field ) {
+				delete_post_meta( $post_id, $field );
+			}
+
+			$photo_set_count = 0;
+			$image_url_sets  = []; // New array for URL sets
 
 			foreach ( $api_data['photoSets'] as $photo_set ) {
+				$photo_set_count++;
+				if ( $progress_callback ) {
+					$progress_callback( "Processing image set {$photo_set_count}/{$total_photo_sets} for post {$post_id}..." );
+				}
 				// Get seoAltText for this photo set
 				$seo_alt_text = isset( $photo_set['seoAltText'] ) ? sanitize_text_field( $photo_set['seoAltText'] ) : '';
 
-				// Save image URLs (keep existing functionality)
-				if ( isset( $photo_set['beforeLocationUrl'] ) ) {
-					update_post_meta( $post_id, '_case_before_location_url', esc_url_raw( $photo_set['beforeLocationUrl'] ) );
-				}
-				if ( isset( $photo_set['afterLocationUrl1'] ) ) {
-					update_post_meta( $post_id, '_case_after_location_url1', esc_url_raw( $photo_set['afterLocationUrl1'] ) );
-				}
-				if ( isset( $photo_set['afterLocationUrl2'] ) ) {
-					update_post_meta( $post_id, '_case_after_location_url2', esc_url_raw( $photo_set['afterLocationUrl2'] ) );
-				}
-				if ( isset( $photo_set['afterLocationUrl3'] ) ) {
-					update_post_meta( $post_id, '_case_after_location_url3', esc_url_raw( $photo_set['afterLocationUrl3'] ) );
-				}
-				if ( isset( $photo_set['postProcessedImageLocation'] ) ) {
-					update_post_meta( $post_id, '_case_post_processed_image_url', esc_url_raw( $photo_set['postProcessedImageLocation'] ) );
+				// Debug: Log what we're getting from the API
+				error_log( "BRAG Book Gallery: Processing photoSet for post {$post_id}" );
+				error_log( "BRAG Book Gallery: beforeLocationUrl = " . ( $photo_set['beforeLocationUrl'] ?? 'NOT SET' ) );
+				error_log( "BRAG Book Gallery: afterLocationUrl1 = " . ( $photo_set['afterLocationUrl1'] ?? 'NOT SET' ) );
 
-					// Only download images if sync option allows it (performance optimization)
-					$skip_image_downloads = get_option( 'brag_book_gallery_skip_image_downloads', false );
-					if ( ! $skip_image_downloads ) {
-						$attachment_id = self::download_image_to_media_library(
-							$photo_set['postProcessedImageLocation'],
-							$post_id,
-							'Post-processed image for case ' . $post_id,
-							$seo_alt_text,
-							$image_position
-						);
+				// Build URL set for this photo set
+				$url_set = [
+					'before_url'         => isset( $photo_set['beforeLocationUrl'] ) ? esc_url_raw( $photo_set['beforeLocationUrl'] ) : '',
+					'after_url1'         => isset( $photo_set['afterLocationUrl1'] ) ? esc_url_raw( $photo_set['afterLocationUrl1'] ) : '',
+					'after_url2'         => isset( $photo_set['afterLocationUrl2'] ) ? esc_url_raw( $photo_set['afterLocationUrl2'] ) : '',
+					'after_url3'         => isset( $photo_set['afterLocationUrl3'] ) ? esc_url_raw( $photo_set['afterLocationUrl3'] ) : '',
+					'post_processed_url' => isset( $photo_set['postProcessedImageLocation'] ) ? esc_url_raw( $photo_set['postProcessedImageLocation'] ) : '',
+					'high_res_url'       => isset( $photo_set['highResPostProcessedImageLocation'] ) ? esc_url_raw( $photo_set['highResPostProcessedImageLocation'] ) : '',
+				];
 
-						if ( $attachment_id ) {
-							$downloaded_images[] = $attachment_id;
-							$image_position ++; // Increment position for next image
-						}
+				// Debug: Log the constructed URL set
+				error_log( "BRAG Book Gallery: Constructed URL set: " . wp_json_encode( $url_set ) );
+
+				// Only add URL set if it has at least one URL
+				$has_urls = false;
+				foreach ( $url_set as $url ) {
+					if ( ! empty( $url ) ) {
+						$has_urls = true;
+						break;
 					}
+				}
+
+				if ( $has_urls ) {
+					$image_url_sets[] = $url_set;
+				}
+
+				// Append individual URLs to textarea-formatted meta fields (new format)
+				$url_fields = [
+					'beforeLocationUrl' => 'brag_book_gallery_case_before_url',
+					'afterLocationUrl1' => 'brag_book_gallery_case_after_url1',
+					'afterLocationUrl2' => 'brag_book_gallery_case_after_url2',
+					'afterLocationUrl3' => 'brag_book_gallery_case_after_url3',
+					'postProcessedImageLocation' => 'brag_book_gallery_case_post_processed_url',
+					'highResPostProcessedImageLocation' => 'brag_book_gallery_case_high_res_url',
+				];
+
+				foreach ( $url_fields as $api_field => $meta_key ) {
+					if ( isset( $photo_set[ $api_field ] ) && ! empty( $photo_set[ $api_field ] ) ) {
+						$url = esc_url_raw( $photo_set[ $api_field ] );
+						$existing_urls = get_post_meta( $post_id, $meta_key, true );
+
+						// Add URL to existing list with semicolon separator
+						if ( ! empty( $existing_urls ) ) {
+							$updated_urls = $existing_urls . "\n" . $url . ';';
+						} else {
+							$updated_urls = $url . ';';
+						}
+
+						update_post_meta( $post_id, $meta_key, $updated_urls );
+					}
+				}
+
+				// Save legacy individual URL fields (keep existing functionality for backwards compatibility)
+				if ( isset( $photo_set['postProcessedImageLocation'] ) ) {
+					update_post_meta( $post_id, '_case_post_processed_image_url', esc_url_raw( $photo_set['postProcessedImageLocation'] ) ); // Legacy compatibility
 				}
 				if ( isset( $photo_set['highResPostProcessedImageLocation'] ) ) {
-					update_post_meta( $post_id, '_case_high_res_post_processed_image_url', esc_url_raw( $photo_set['highResPostProcessedImageLocation'] ) );
-
-					// Only download images if sync option allows it (performance optimization)
-					$skip_image_downloads = get_option( 'brag_book_gallery_skip_image_downloads', false );
-					if ( ! $skip_image_downloads ) {
-						$attachment_id = self::download_image_to_media_library(
-							$photo_set['highResPostProcessedImageLocation'],
-							$post_id,
-							'High-res post-processed image for case ' . $post_id,
-							$seo_alt_text,
-							$image_position
-						);
-
-						if ( $attachment_id ) {
-							$downloaded_images[] = $attachment_id;
-							$image_position ++; // Increment position for next image
-						}
-					}
+					update_post_meta( $post_id, '_case_high_res_post_processed_image_url', esc_url_raw( $photo_set['highResPostProcessedImageLocation'] ) ); // Legacy compatibility
 				}
 				if ( isset( $photo_set['seoAltText'] ) ) {
 					update_post_meta( $post_id, '_case_seo_alt_text', sanitize_text_field( $photo_set['seoAltText'] ) );
@@ -1712,20 +2443,22 @@ class Post_Types {
 				}
 			}
 
-			// Add downloaded images to the case gallery
-			if ( ! empty( $downloaded_images ) ) {
-				// Get existing gallery images
-				$existing_gallery = get_post_meta( $post_id, '_case_gallery_images', true );
-				if ( ! is_array( $existing_gallery ) ) {
-					$existing_gallery = [];
+			// Note: Image downloading has been disabled - we only store Image URLs now
+
+			// Save the collected image URL sets in both new and legacy formats
+			if ( ! empty( $image_url_sets ) ) {
+				// Debug: Log what we're saving to the database
+				error_log( "BRAG Book Gallery: Saving " . count( $image_url_sets ) . " image URL sets for post {$post_id}" );
+				error_log( "BRAG Book Gallery: Image URL sets being saved: " . wp_json_encode( $image_url_sets ) );
+
+				update_post_meta( $post_id, 'brag_book_gallery_image_url_sets', $image_url_sets );
+				update_post_meta( $post_id, '_case_image_url_sets', $image_url_sets ); // Legacy compatibility
+				if ( $progress_callback ) {
+					$progress_callback( "Saved " . count( $image_url_sets ) . " image URL sets for post {$post_id}" );
 				}
-
-				// Merge with new images (avoiding duplicates)
-				$updated_gallery = array_unique( array_merge( $existing_gallery, $downloaded_images ) );
-				update_post_meta( $post_id, '_case_gallery_images', $updated_gallery );
-
-				// Store a reference to API-downloaded images for easy cleanup
-				update_post_meta( $post_id, '_case_api_downloaded_images', $downloaded_images );
+			} else {
+				// Debug: Log when no image URL sets are saved
+				error_log( "BRAG Book Gallery: No image URL sets to save for post {$post_id}" );
 			}
 		}
 
@@ -2629,7 +3362,7 @@ class Post_Types {
 								wp.media.attachment( id ).fetch().then( function ( model ) {
 									if ( model.get( 'brag_book_gallery' ) && !$details.find( '.brag-book-info' ).length ) {
 										var html = '<div class="brag-book-info">';
-										html += '<h4>🎯 BRAG Book Gallery Image</h4>';
+										html += '<h4>BRAG Book Gallery Image</h4>';
 										html += '<p><strong>Type:</strong> ' + (
 											model.get( 'brag_book_label' ) || 'BRAG Book'
 										) + '</p>';
@@ -2662,5 +3395,72 @@ class Post_Types {
 			} );
 		</script>
 		<?php
+	}
+
+	/**
+	 * Add edit link to admin bar for case pages
+	 *
+	 * @param WP_Admin_Bar $wp_admin_bar The admin bar instance.
+	 */
+	public function add_case_edit_link_to_admin_bar( $wp_admin_bar ): void {
+		// Only show on frontend
+		if ( is_admin() ) {
+			return;
+		}
+
+		// Check if we're on a case page
+		global $wp_query;
+
+		// Check if this is a single case page
+		if ( is_singular( 'brag_book_cases' ) ) {
+			$post_id = get_the_ID();
+			$edit_url = get_edit_post_link( $post_id );
+
+			if ( $edit_url && current_user_can( 'edit_post', $post_id ) ) {
+				$wp_admin_bar->add_node( [
+					'id'    => 'edit-case',
+					'title' => 'Edit Case',
+					'href'  => $edit_url,
+					'meta'  => [
+						'title' => 'Edit this case'
+					]
+				] );
+			}
+		}
+
+		// Also check for custom case URLs (like /gallery/case/123)
+		if ( isset( $wp_query->query_vars['case_id'] ) ) {
+			$case_id = (int) $wp_query->query_vars['case_id'];
+
+			// Find the post by case_id meta
+			$posts = get_posts( [
+				'post_type' => 'brag_book_cases',
+				'meta_query' => [
+					[
+						'key' => 'brag_book_gallery_api_id',
+						'value' => $case_id,
+						'compare' => '='
+					]
+				],
+				'posts_per_page' => 1,
+				'post_status' => 'any'
+			] );
+
+			if ( ! empty( $posts ) ) {
+				$post_id = $posts[0]->ID;
+				$edit_url = get_edit_post_link( $post_id );
+
+				if ( $edit_url && current_user_can( 'edit_post', $post_id ) ) {
+					$wp_admin_bar->add_node( [
+						'id'    => 'edit-case',
+						'title' => 'Edit Case',
+						'href'  => $edit_url,
+						'meta'  => [
+							'title' => 'Edit this case'
+						]
+					] );
+				}
+			}
+		}
 	}
 }

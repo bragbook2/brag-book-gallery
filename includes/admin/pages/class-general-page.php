@@ -1598,13 +1598,8 @@ class General_Page extends Settings_Base {
 
 			// Update the slug - maintain array format for consistency
 			if ( ! empty( $new_slug ) ) {
-				// Replace the first slug or add if empty
-				if ( ! empty( $existing_slugs ) ) {
-					$existing_slugs[0] = $new_slug;
-				} else {
-					$existing_slugs = array( $new_slug );
-				}
-				update_option( 'brag_book_gallery_page_slug', $existing_slugs );
+				// Store as a single string value
+				update_option( 'brag_book_gallery_page_slug', $new_slug );
 			}
 		}
 

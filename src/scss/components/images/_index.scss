@@ -119,7 +119,8 @@
 	position: relative;
 	width: 100%;
 	overflow: hidden;
-	border-radius: var(--wp--custom--brag-book-gallery--spacer)
+	border-top-right-radius: var(--wp--custom--brag-book-gallery--rounded,4px);
+	border-top-left-radius: var(--wp--custom--brag-book-gallery--rounded,4px);
 }
 
 .brag-book-gallery-placeholder-container {

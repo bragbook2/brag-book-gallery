@@ -151,3 +151,49 @@
 		}
 	}
 }
+
+// Alternative case grid layout from old.css
+.brag-book-gallery-case-grid {
+	display: grid;
+	gap: var(--wp--custom--brag-book-gallery--spacer--2xl);
+	grid-template-columns: 1fr;
+	grid-auto-rows: auto;
+	grid-auto-flow: dense;
+	align-items: start;
+	transition: grid-template-columns 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+
+	@media (min-width: 576px) {
+		grid-template-columns: repeat(2, 1fr);
+		gap: var(--wp--custom--brag-book-gallery--spacer--md);
+	}
+
+	@media (min-width: 768px) {
+		grid-template-columns: repeat(2, 1fr);
+		gap: var(--wp--custom--brag-book-gallery--spacer--4xl);
+
+		&[data-columns="2"] {
+			grid-template-columns: repeat(2, 1fr);
+		}
+
+		&[data-columns="3"] {
+			grid-template-columns: repeat(2, 1fr);
+		}
+	}
+
+	@media (min-width: 1280px) {
+		grid-template-columns: repeat(3, 1fr);
+
+		&[data-columns="2"] {
+			grid-template-columns: repeat(2, 1fr);
+		}
+
+		&[data-columns="3"] {
+			grid-template-columns: repeat(3, 1fr);
+		}
+	}
+
+	.brag-book-gallery-case-description,
+	.brag-book-gallery-case-notes {
+		grid-column: 1/-1;
+	}
+}
