@@ -4,9 +4,16 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.3.1] - 2025-09-17 (Current Release)
+## [3.3.0] - 2025-09-18 (Current Release)
 
 ### Fixed
+- **Carousel Cross-Origin Images**: Fixed Firefox cookie rejection errors for Cloudflare-protected images from BRAGBook API
+  - Added `crossorigin="anonymous"` attributes to all external image elements in JavaScript modules
+  - Prevents Firefox from rejecting Cloudflare `__cf_bm` cookies when loading before/after images
+  - Affected files: filter-system.js, global-utilities.js, main-app.js, carousel.js
+- **JavaScript Build Errors**: Fixed syntax errors in main-app.js caused by console statement cleanup
+  - Removed orphaned object literals left after automated console.log removal
+  - Fixed broken JavaScript that was preventing webpack builds from completing
 - **Nudity Warnings on Case Cards**: Fixed nudity warnings not appearing on individual case cards for procedures with nudity flags
   - Added missing nudity warning rendering logic to `render_wordpress_case_card()` method in Cases_Handler class
   - Fixed inconsistent nudity detection by using WordPress taxonomy meta instead of API sidebar data
@@ -15,16 +22,41 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   - Added user email and favorites count display after content title on favorites page
   - Updated card HTML structure to match exact design specifications
   - Improved favorites grid rendering with proper user info integration
+- **Procedure Taxonomy Pages**: Prevented unwanted API calls on procedure taxonomy pages
+  - Fixed `is_bragbook_page()` method in Assets class to exclude procedure taxonomy pages
+  - Added explicit check using `is_tax('procedures')` to prevent frontend assets from loading
+  - Resolves issue where sidebar and cases API endpoints were being called unnecessarily
 
 ### Enhanced
+- **Code Quality**: Removed all development console.log statements from JavaScript modules
+  - Cleaned up debugging code from all frontend JavaScript files for production
+  - Improved code maintainability and reduced bundle size
+- **Carousel Simplification**: Removed GSAP dependency and autoplay functionality from carousel
+  - Simplified carousel implementation to use only native browser APIs
+  - Removed complex animation library dependencies for better cross-browser compatibility
+  - Eliminated autoplay and auto-scroll options as requested
 - **Performance Improvements**: Increased default posts per page from 10 to 200 for better user experience
   - Updated `brag_book_gallery_items_per_page` option default value across all relevant handlers
   - Reduces need for pagination and improves gallery browsing experience
 - **Card Structure**: Updated JavaScript-generated favorite cards to match exact HTML structure
   - Ensured consistency between server-rendered and client-rendered case cards
   - Improved responsive design and styling consistency
+- **Sync Status Display**: Enhanced file-based sync status to show comprehensive data equivalent to previous database system
+  - Updated `parse_log_file_for_status()` method to extract detailed procedure and case counts from log files
+  - Added warning detection for duplicate case IDs and other sync warnings
+  - Implemented accurate counting of procedures and cases created by parsing log entries
+  - Enhanced duration formatting to match previous MM:SS display format
+  - Updated sync status display to show warnings, duplicate counts, and comprehensive statistics
+  - Maintains full data compatibility with previous sync status information
 
-## [3.3.0] - 2025-09-15
+### Attempted
+- **Firefox Carousel Navigation**: Extensive debugging and attempted fixes for Firefox-specific carousel navigation issues
+  - Investigated Firefox scrollTo() compatibility and scroll behavior differences
+  - Attempted transform-based navigation solutions for Firefox browser
+  - Ultimately reverted to universal implementation due to complexity of Firefox-specific workarounds
+  - Firefox navigation issues remain unresolved but codebase is clean and maintainable
+
+## [3.2.8] - 2025-09-11
 
 ### Fixed
 - **Procedure Taxonomy Pages**: Prevented unwanted API calls on procedure taxonomy pages

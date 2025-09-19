@@ -20,13 +20,36 @@ Enhanced:
   - Ensured consistency between server-rendered and client-rendered case cards
   - Improved responsive design and styling consistency
 
-= 3.3.0 (2025-09-15) =
+= 3.3.0 (2025-09-19) =
 
 Fixed:
 * Procedure Taxonomy Pages - Prevented unwanted API calls on procedure taxonomy pages
   - Fixed is_bragbook_page() method in Assets class to exclude procedure taxonomy pages
   - Added explicit check using is_tax('procedures') to prevent frontend assets from loading
   - Resolves issue where sidebar and cases API endpoints were being called unnecessarily
+* Carousel Cross-Origin Images - Fixed Firefox cookie rejection errors for Cloudflare-protected images from BRAGBook API
+  - Added crossorigin="anonymous" attributes to all external image elements in JavaScript modules
+  - Prevents Firefox from rejecting Cloudflare __cf_bm cookies when loading before/after images
+  - Affected files: filter-system.js, global-utilities.js, main-app.js, carousel.js
+* JavaScript Build Errors - Fixed syntax errors in main-app.js caused by console statement cleanup
+  - Removed orphaned object literals left after automated console.log removal
+  - Fixed broken JavaScript that was preventing webpack builds from completing
+
+Enhanced:
+* Sync Status Display - Enhanced file-based sync status to show comprehensive data equivalent to previous database system
+  - Updated parse_log_file_for_status() method to extract detailed procedure and case counts from log files
+  - Added warning detection for duplicate case IDs and other sync warnings
+  - Implemented accurate counting of procedures and cases created by parsing log entries
+  - Enhanced duration formatting to match previous MM:SS display format
+  - Updated sync status display to show warnings, duplicate counts, and comprehensive statistics
+  - Maintains full data compatibility with previous sync status information
+* Code Quality - Removed all development console.log statements from JavaScript modules
+  - Cleaned up debugging code from all frontend JavaScript files for production
+  - Improved code maintainability and reduced bundle size
+* Carousel Simplification - Removed GSAP dependency and autoplay functionality from carousel
+  - Simplified carousel implementation to use only native browser APIs
+  - Removed complex animation library dependencies for better cross-browser compatibility
+  - Eliminated autoplay and auto-scroll options as requested
 
 Changed:
 * Version Numbering - Updated to semantic versioning 3.3.0 for new feature improvements

@@ -2,7 +2,7 @@
 /**
  * Sync Settings Page Class
  *
- * Handles the sync settings page for procedure synchronization from the BRAGBook API.
+ * Handles the sync settings page for procedure synchronization from the BRAG book API.
  * Provides interface for syncing procedures and managing sync history.
  *
  * @package    BRAGBookGallery
@@ -74,10 +74,14 @@ class Sync_Page extends Settings_Base {
 		add_action( 'wp_ajax_brag_book_get_case_progress', [ $this, 'handle_get_case_progress' ] );
 		add_action( 'wp_ajax_brag_book_get_detailed_progress', [ $this, 'handle_get_detailed_progress' ] );
 		add_action( 'wp_ajax_brag_book_stop_sync', [ $this, 'handle_stop_sync' ] );
+		add_action( 'wp_ajax_brag_book_force_clear_sync_state', [ $this, 'handle_force_clear_sync_state' ] );
 		add_action( 'wp_ajax_brag_book_clear_sync_log', [ $this, 'handle_clear_sync_log' ] );
 		add_action( 'wp_ajax_brag_book_delete_sync_record', [ $this, 'handle_delete_sync_record' ] );
 		add_action( 'wp_ajax_brag_book_validate_procedure_assignments', [ $this, 'handle_validate_procedure_assignments' ] );
 		add_action( 'wp_ajax_brag_book_get_sync_report', [ $this, 'handle_get_sync_report' ] );
+
+		// Register automatic sync cron hook
+		add_action( 'brag_book_gallery_automatic_sync', [ $this, 'handle_automatic_sync_cron' ] );
 
 		error_log( 'BRAG book Gallery Sync: AJAX actions registered, including test_automatic_sync' );
 		error_log( 'BRAG book Gallery Sync: Action registered: wp_ajax_brag_book_test_automatic_sync -> handle_test_automatic_sync' );
@@ -137,9 +141,9 @@ class Sync_Page extends Settings_Base {
 
 			<!-- Manual Sync Section -->
 			<div class="brag-book-gallery-section">
-				<h2><?php esc_html_e( 'Sync from BRAGBook API', 'brag-book-gallery' ); ?></h2>
+				<h2><?php esc_html_e( 'Sync from BRAG book API', 'brag-book-gallery' ); ?></h2>
 				<p class="description">
-					<?php esc_html_e( 'Synchronize procedures and cases from the BRAGBook API. This process may take several minutes depending on the amount of data.', 'brag-book-gallery' ); ?>
+					<?php esc_html_e( 'Synchronize procedures and cases from the BRAG book API. This process may take several minutes depending on the amount of data.', 'brag-book-gallery' ); ?>
 				</p>
 
 				<?php $this->render_manual_sync_section(); ?>
@@ -149,7 +153,7 @@ class Sync_Page extends Settings_Base {
 			<div class="brag-book-gallery-section">
 				<h2><?php esc_html_e( 'Automatic Sync Settings', 'brag-book-gallery' ); ?></h2>
 				<p class="description">
-					<?php esc_html_e( 'Configure automatic synchronization of procedures from the BRAGBook API.', 'brag-book-gallery' ); ?>
+					<?php esc_html_e( 'Configure automatic synchronization of procedures from the BRAG book API.', 'brag-book-gallery' ); ?>
 				</p>
 
 				<table class="form-table brag-book-gallery-form-table">
@@ -172,15 +176,6 @@ class Sync_Page extends Settings_Base {
 				</table>
 			</div>
 
-			<!-- Sync History Section -->
-			<div class="brag-book-gallery-section">
-				<h2><?php esc_html_e( 'Full Sync History', 'brag-book-gallery' ); ?></h2>
-				<p class="description">
-					<?php esc_html_e( 'View recent sync operations and their results. The first sync will show procedures created, while subsequent syncs will show procedures updated as they already exist.', 'brag-book-gallery' ); ?>
-				</p>
-
-				<?php $this->render_sync_history_section(); ?>
-			</div>
 
 			<?php submit_button( __( 'Save Settings', 'brag-book-gallery' ) ); ?>
 		</form>
@@ -215,10 +210,28 @@ class Sync_Page extends Settings_Base {
 
 		// Update sync frequency
 		if ( isset( $_POST[ $this->page_config['option_name'] ]['sync_frequency'] ) ) {
-			$allowed_frequencies = [ 'hourly', 'daily', 'weekly', 'monthly' ];
+			$allowed_frequencies = [ 'daily', 'weekly', 'monthly', 'custom' ];
 			$frequency = sanitize_text_field( $_POST[ $this->page_config['option_name'] ]['sync_frequency'] );
 			if ( in_array( $frequency, $allowed_frequencies, true ) ) {
 				$new_settings['sync_frequency'] = $frequency;
+			}
+		}
+
+		// Update custom sync date (only if custom frequency is selected)
+		if ( isset( $_POST[ $this->page_config['option_name'] ]['sync_custom_date'] ) ) {
+			$custom_date = sanitize_text_field( $_POST[ $this->page_config['option_name'] ]['sync_custom_date'] );
+			// Validate date format (YYYY-MM-DD)
+			if ( empty( $custom_date ) || preg_match( '/^\d{4}-\d{2}-\d{2}$/', $custom_date ) ) {
+				$new_settings['sync_custom_date'] = $custom_date;
+			}
+		}
+
+		// Update custom sync time (only if custom frequency is selected)
+		if ( isset( $_POST[ $this->page_config['option_name'] ]['sync_custom_time'] ) ) {
+			$custom_time = sanitize_text_field( $_POST[ $this->page_config['option_name'] ]['sync_custom_time'] );
+			// Validate time format (HH:MM)
+			if ( preg_match( '/^([01]?\d|2[0-3]):[0-5]\d$/', $custom_time ) ) {
+				$new_settings['sync_custom_time'] = $custom_time;
 			}
 		}
 
@@ -251,6 +264,8 @@ class Sync_Page extends Settings_Base {
 		return [
 			'auto_sync_enabled'    => false,
 			'sync_frequency'       => 'weekly',
+			'sync_custom_date'     => '',
+			'sync_custom_time'     => '02:00',
 			'last_sync_time'       => '',
 			'sync_status'          => 'never',
 		];
@@ -270,10 +285,15 @@ class Sync_Page extends Settings_Base {
 		$latest_sync_from_history = $this->get_latest_sync_from_history();
 
 		if ( $latest_sync_from_history ) {
-			$last_sync = wp_date(
-				get_option( 'date_format' ) . ' ' . get_option( 'time_format' ),
-				strtotime( $latest_sync_from_history->created_at )
-			);
+			$display_time = $latest_sync_from_history->sync_time ?? $latest_sync_from_history->created_at ?? $latest_sync_from_history->started_at ?? '';
+			if ( $display_time ) {
+				$last_sync = wp_date(
+					get_option( 'date_format' ) . ' ' . get_option( 'time_format' ),
+					strtotime( $display_time )
+				);
+			} else {
+				$last_sync = __( 'Unknown', 'brag-book-gallery' );
+			}
 			$sync_status = $latest_sync_from_history->status;
 		} else {
 			$last_sync = __( 'Never', 'brag-book-gallery' );
@@ -321,7 +341,7 @@ class Sync_Page extends Settings_Base {
 
 						<?php if ( $sync_status === 'never' ) : ?>
 							<div style="margin-top: 10px; padding: 8px; background: #e3f2fd; border-left: 3px solid #2196f3; font-size: 12px;">
-								<?php esc_html_e( 'No sync has been performed yet. Click "Start Full Sync" to synchronize your procedures and cases from the BRAGBook API.', 'brag-book-gallery' ); ?>
+								<?php esc_html_e( 'No sync has been performed yet. Click "Start Full Sync" to synchronize your procedures and cases from the BRAG book API.', 'brag-book-gallery' ); ?>
 							</div>
 						<?php endif; ?>
 					</div>
@@ -332,49 +352,53 @@ class Sync_Page extends Settings_Base {
 				<td>
 					<div class="sync-actions">
 						<button type="button" id="sync-procedures-btn" class="button button-primary">
-							<?php esc_html_e( 'Start Full Sync', 'brag-book-gallery' ); ?>
+							<?php esc_html_e( 'Start Sync', 'brag-book-gallery' ); ?>
 						</button>
 						<button type="button" id="stop-sync-btn" class="button button-secondary" style="display: none;">
 							<?php esc_html_e( 'Stop Sync', 'brag-book-gallery' ); ?>
 						</button>
-						<button type="button" id="clear-sync-log-btn" class="button button-secondary">
-							<?php esc_html_e( 'Clear Sync Log', 'brag-book-gallery' ); ?>
+						<button type="button" id="force-clear-sync-btn" class="button button-link-delete" style="margin-left: 10px;" title="Clear stuck sync state">
+							<?php esc_html_e( 'Force Clear Sync State', 'brag-book-gallery' ); ?>
 						</button>
 					</div>
-					<p class="description">
-						<?php esc_html_e( 'Start Full Sync to synchronize all procedures and cases from the BRAGBook API. This process will fetch fresh sidebar data, create/update procedure taxonomies, then process all available cases from each procedure. No artificial limits are applied - all API data will be synchronized. You can stop the sync at any time.', 'brag-book-gallery' ); ?>
-					</p>
 				</td>
 			</tr>
 		</table>
 
-		<!-- Progress Section (Hidden by default) -->
+		<!-- File-Based Sync Progress Section -->
 		<div id="sync-progress" class="brag-book-gallery-section" style="display:none;">
-			<h3><?php esc_html_e( 'Sync Progress', 'brag-book-gallery' ); ?></h3>
-			<div class="brag-book-gallery-progress-container">
-				<!-- Main Progress Bar (Overall) -->
-				<div class="brag-book-gallery-progress-header">
-					<span class="brag-book-gallery-progress-label"><?php esc_html_e( 'Overall Progress', 'brag-book-gallery' ); ?></span>
-					<span id="sync-overall-percentage" class="brag-book-gallery-progress-percentage">0%</span>
-				</div>
-				<div class="brag-book-gallery-progress-bar brag-book-gallery-progress-bar--main">
-					<div id="sync-overall-fill" class="brag-book-gallery-progress-fill" style="width: 0%;"></div>
+			<h3><?php esc_html_e( 'Real-Time Sync Progress', 'brag-book-gallery' ); ?></h3>
+
+			<!-- Progress Overview -->
+			<div class="sync-progress-overview">
+				<div class="progress-stats">
+					<div class="stat-item">
+						<strong>Status:</strong> <span id="sync-status-text">Ready</span>
+					</div>
+					<div class="stat-item">
+						<strong>Progress:</strong> <span id="sync-overall-percentage">0%</span>
+					</div>
+					<div class="stat-item">
+						<strong>Stage:</strong> <span id="sync-current-operation">Waiting</span>
+					</div>
 				</div>
 
-				<!-- Secondary Progress Bar (Current Operation) -->
-				<div class="brag-book-gallery-progress-header brag-book-gallery-progress-header--secondary">
-					<span id="sync-current-operation" class="brag-book-gallery-progress-label"><?php esc_html_e( 'Preparing sync...', 'brag-book-gallery' ); ?></span>
-					<span id="sync-current-percentage" class="brag-book-gallery-progress-percentage">0%</span>
-				</div>
-				<div class="brag-book-gallery-progress-bar brag-book-gallery-progress-bar--secondary">
-					<div id="sync-current-fill" class="brag-book-gallery-progress-fill brag-book-gallery-progress-fill--secondary" style="width: 0%;"></div>
-				</div>
-
-				<!-- Progress Details -->
-				<div id="sync-progress-details" class="brag-book-gallery-progress-details" style="display:none;">
-					<ul id="sync-progress-items"></ul>
+				<!-- Overall Progress Bar -->
+				<div class="progress-bar-container">
+					<div class="progress-bar">
+						<div id="sync-overall-fill" class="progress-fill" style="width: 0%;"></div>
+					</div>
 				</div>
 			</div>
+
+			<!-- Real-Time Activity Log -->
+			<div class="sync-activity-log">
+				<h4><?php esc_html_e( 'Activity Log', 'brag-book-gallery' ); ?></h4>
+				<div id="sync-log-container" class="log-container">
+					<ul id="sync-progress-items" class="log-entries"></ul>
+				</div>
+			</div>
+		</div>
 		</div>
 
 		<!-- Results Section (Hidden by default) -->
@@ -385,169 +409,6 @@ class Sync_Page extends Settings_Base {
 		<?php
 	}
 
-	/**
-	 * Render sync history section
-	 *
-	 * @since 3.0.0
-	 * @return void
-	 */
-	public function render_sync_history_section(): void {
-		$sync_logs = $this->get_sync_logs();
-		?>
-		<?php if ( empty( $sync_logs ) ) : ?>
-			<div class="brag-book-gallery-notice brag-book-gallery-notice--info">
-				<p><?php esc_html_e( 'No sync operations have been performed yet.', 'brag-book-gallery' ); ?></p>
-			</div>
-		<?php else : ?>
-			<table class="wp-list-table widefat fixed striped brag-book-gallery-table">
-				<thead>
-					<tr>
-						<th scope="col"><?php esc_html_e( 'Date', 'brag-book-gallery' ); ?></th>
-						<th scope="col"><?php esc_html_e( 'Sync Type', 'brag-book-gallery' ); ?></th>
-						<th scope="col"><?php esc_html_e( 'Source', 'brag-book-gallery' ); ?></th>
-						<th scope="col"><?php esc_html_e( 'Status', 'brag-book-gallery' ); ?></th>
-						<th scope="col"><?php esc_html_e( 'Procedures', 'brag-book-gallery' ); ?></th>
-						<th scope="col"><?php esc_html_e( 'Cases', 'brag-book-gallery' ); ?></th>
-						<th scope="col"><?php esc_html_e( 'Duration', 'brag-book-gallery' ); ?></th>
-						<th scope="col"><?php esc_html_e( 'Details', 'brag-book-gallery' ); ?></th>
-						<th scope="col"><?php esc_html_e( 'Actions', 'brag-book-gallery' ); ?></th>
-					</tr>
-				</thead>
-				<tbody>
-					<?php foreach ( $sync_logs as $log ) : ?>
-						<?php
-						// Parse details for better display
-						$details = ! empty( $log->details ) ? json_decode( $log->details, true ) : [];
-						$sync_type_display = 'Full Sync'; // All syncs are now Full Sync
-
-						// Calculate procedures and cases counts - use database columns if available
-						$procedures_total = 0;
-						$procedures_created = 0;
-						$procedures_updated = 0;
-
-						// Try database columns first, then fall back to JSON details
-						if (isset($log->processed) && $log->processed > 0) {
-							$procedures_total = (int) $log->processed;
-							$procedures_updated = (int) $log->processed; // Assume updated for display
-						} else {
-							$procedures_created = (int) ($details['created'] ?? 0);
-							$procedures_updated = (int) ($details['updated'] ?? 0);
-							$procedures_total = $procedures_created + $procedures_updated;
-						}
-
-						$cases_total = 0;
-						$cases_created = 0;
-						$cases_updated = 0;
-
-						// Try to get cases from details
-						$cases_created = (int) ($details['cases_created'] ?? 0);
-						$cases_updated = (int) ($details['cases_updated'] ?? 0);
-						$cases_total = (int) ($details['total_cases_processed'] ?? ($cases_created + $cases_updated));
-
-						// Calculate duration if available
-						$duration = '';
-						if ( ! empty( $details['duration'] ) ) {
-							$duration = $details['duration'];
-						} elseif ( ! empty( $log->updated_at ) && ! empty( $log->created_at ) ) {
-							$start = strtotime( $log->created_at );
-							$end = strtotime( $log->updated_at );
-							$duration_seconds = $end - $start;
-							if ( $duration_seconds > 0 ) {
-								$minutes = floor( $duration_seconds / 60 );
-								$seconds = $duration_seconds % 60;
-								$duration = $minutes > 0 ? "{$minutes}m {$seconds}s" : "{$seconds}s";
-							}
-						}
-						?>
-						<tr>
-							<td><?php echo esc_html( wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), strtotime( $log->created_at ) ) ); ?></td>
-							<td>
-								<strong><?php echo esc_html( $sync_type_display ); ?></strong>
-								<?php if ( ! empty( $details['warnings'] ) ) : ?>
-									<br><small class="description"><?php esc_html_e( 'With warnings', 'brag-book-gallery' ); ?></small>
-								<?php endif; ?>
-							</td>
-							<td>
-								<?php
-								// For old schema compatibility, sync_source might not exist yet
-								$sync_source = isset($log->sync_source) ? $log->sync_source : 'manual';
-								$source_icon = $sync_source === 'automatic' ? '🔄' : '👤';
-								$source_label = $sync_source === 'automatic' ? __( 'Automatic', 'brag-book-gallery' ) : __( 'Manual', 'brag-book-gallery' );
-								?>
-								<span class="sync-source sync-source--<?php echo esc_attr( $sync_source ); ?>">
-									<?php echo esc_html( $source_icon . ' ' . $source_label ); ?>
-								</span>
-							</td>
-							<td>
-								<span class="brag-book-gallery-status brag-book-gallery-status--<?php echo esc_attr( $log->status ); ?>">
-									<?php echo esc_html( ucfirst( $log->status ) ); ?>
-								</span>
-							</td>
-							<td>
-								<?php if ( $procedures_total > 0 ) : ?>
-									<strong><?php echo esc_html( number_format( $procedures_total ) ); ?></strong>
-									<?php if ( $procedures_created > 0 && $procedures_updated > 0 ) : ?>
-										<br><small class="description">
-											<?php echo esc_html( sprintf( '%d created, %d updated', $procedures_created, $procedures_updated ) ); ?>
-										</small>
-									<?php elseif ( $procedures_created > 0 ) : ?>
-										<br><small class="description"><?php echo esc_html( sprintf( '%d created', $procedures_created ) ); ?></small>
-									<?php elseif ( $procedures_updated > 0 ) : ?>
-										<br><small class="description"><?php echo esc_html( sprintf( '%d updated', $procedures_updated ) ); ?></small>
-									<?php endif; ?>
-								<?php else : ?>
-									<span class="description">—</span>
-								<?php endif; ?>
-							</td>
-							<td>
-								<?php if ( $cases_total > 0 ) : ?>
-									<strong><?php echo esc_html( number_format( $cases_total ) ); ?></strong>
-									<?php if ( $cases_created > 0 && $cases_updated > 0 ) : ?>
-										<br><small class="description">
-											<?php echo esc_html( sprintf( '%d created, %d updated', $cases_created, $cases_updated ) ); ?>
-										</small>
-									<?php elseif ( $cases_created > 0 ) : ?>
-										<br><small class="description"><?php echo esc_html( sprintf( '%d created', $cases_created ) ); ?></small>
-									<?php elseif ( $cases_updated > 0 ) : ?>
-										<br><small class="description"><?php echo esc_html( sprintf( '%d updated', $cases_updated ) ); ?></small>
-									<?php endif; ?>
-								<?php else : ?>
-									<span class="description">—</span>
-								<?php endif; ?>
-							</td>
-							<td>
-								<?php if ( ! empty( $duration ) ) : ?>
-									<?php echo esc_html( $duration ); ?>
-								<?php else : ?>
-									<span class="description">—</span>
-								<?php endif; ?>
-							</td>
-							<td>
-								<?php if ( ! empty( $log->details ) ) : ?>
-									<button type="button" class="button button-small view-details"
-											data-details="<?php echo esc_attr( $log->details ); ?>"
-											data-sync-id="<?php echo esc_attr( $log->id ); ?>"
-											data-sync-date="<?php echo esc_attr( $log->created_at ); ?>">
-										<?php esc_html_e( 'View Report', 'brag-book-gallery' ); ?>
-									</button>
-								<?php else : ?>
-									<span class="description"><?php esc_html_e( 'No details', 'brag-book-gallery' ); ?></span>
-								<?php endif; ?>
-							</td>
-							<td>
-								<button type="button" class="button button-small button-link-delete delete-sync-record"
-									data-record-id="<?php echo esc_attr( $log->id ); ?>"
-									data-record-date="<?php echo esc_attr( wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), strtotime( $log->created_at ) ) ); ?>">
-									<?php esc_html_e( 'Delete', 'brag-book-gallery' ); ?>
-								</button>
-							</td>
-						</tr>
-					<?php endforeach; ?>
-				</tbody>
-			</table>
-		<?php endif; ?>
-		<?php
-	}
 
 	/**
 	 * Render auto sync enabled field
@@ -592,22 +453,37 @@ class Sync_Page extends Settings_Base {
 		$custom_time = $settings['sync_custom_time'] ?? '12:00';
 
 		$frequencies = [
-			'weekly'  => __( 'Weekly', 'brag-book-gallery' ),
-			'monthly' => __( 'Monthly', 'brag-book-gallery' ),
-			'yearly'  => __( 'Yearly', 'brag-book-gallery' ),
-			'custom'  => __( 'Custom', 'brag-book-gallery' ),
+			'daily'   => [
+				'label' => __( 'Daily', 'brag-book-gallery' ),
+				'description' => __( 'Sync every day at a specified time', 'brag-book-gallery' )
+			],
+			'weekly'  => [
+				'label' => __( 'Weekly', 'brag-book-gallery' ),
+				'description' => __( 'Sync once per week at a specified time', 'brag-book-gallery' )
+			],
+			'monthly' => [
+				'label' => __( 'Monthly', 'brag-book-gallery' ),
+				'description' => __( 'Sync once per month (runs weekly due to WordPress limitations)', 'brag-book-gallery' )
+			],
+			'custom'  => [
+				'label' => __( 'Custom Date/Time', 'brag-book-gallery' ),
+				'description' => __( 'Schedule a one-time sync at a specific date and time', 'brag-book-gallery' )
+			],
 		];
 		?>
 		<div class="sync-frequency-wrapper">
-			<?php foreach ( $frequencies as $freq_value => $freq_label ) : ?>
+			<?php foreach ( $frequencies as $freq_value => $freq_data ) : ?>
 				<div class="sync-frequency-option">
-					<label>
-						<input type="radio"
-							   name="<?php echo esc_attr( $this->page_config['option_name'] ); ?>[sync_frequency]"
-							   value="<?php echo esc_attr( $freq_value ); ?>"
-							   class="sync-frequency-radio"
-							   <?php checked( $value, $freq_value ); ?> />
-						<span class="sync-frequency-label"><?php echo esc_html( $freq_label ); ?></span>
+					<input type="radio"
+						   name="<?php echo esc_attr( $this->page_config['option_name'] ); ?>[sync_frequency]"
+						   value="<?php echo esc_attr( $freq_value ); ?>"
+						   class="sync-frequency-radio"
+						   id="sync_frequency_<?php echo esc_attr( $freq_value ); ?>"
+						   <?php checked( $value, $freq_value ); ?> />
+					<label for="sync_frequency_<?php echo esc_attr( $freq_value ); ?>">
+						<span class="sync-frequency-label" data-description="<?php echo esc_attr( $freq_data['description'] ); ?>">
+							<?php echo esc_html( $freq_data['label'] ); ?>
+						</span>
 					</label>
 				</div>
 			<?php endforeach; ?>
@@ -634,7 +510,7 @@ class Sync_Page extends Settings_Base {
 			</div>
 		</div>
 		<p class="description">
-			<?php esc_html_e( 'How often should procedures be automatically synced from the API.', 'brag-book-gallery' ); ?>
+			<?php esc_html_e( 'Choose how often procedures should be automatically synced from the API. Use "Custom Date/Time" to schedule a one-time sync at a specific date and time.', 'brag-book-gallery' ); ?>
 		</p>
 		<?php
 	}
@@ -769,13 +645,77 @@ class Sync_Page extends Settings_Base {
 				throw new Exception( 'Data_Sync class not found. Please check the plugin installation.' );
 			}
 
+			// Initialize file-based logging for real-time monitoring
+			$file_logger = new \BRAGBookGallery\Includes\Admin\Sync_Progress_Logger();
+			$session_id = $file_logger->get_session_id();
+
 			$sync_manager = new Data_Sync();
 			error_log( 'BRAG book Gallery Sync: Data_Sync constructor completed successfully!' );
+
+			// Hook the file logger into the sync process
+			add_action( 'brag_book_sync_progress', [ $file_logger, 'handle_sync_progress' ] );
+			add_action( 'brag_book_sync_message', [ $file_logger, 'handle_sync_message' ] );
+
+			$file_logger->write_log( 'info', '🚀 Starting full synchronization with file logging' );
+			$file_logger->write_log( 'info', "📋 Session ID: {$session_id}" );
 
 			// Now run the actual sync
 			error_log( 'BRAG book Gallery Sync: Running actual two-stage sync...' );
 			$result = $sync_manager->run_two_stage_sync();
 			error_log( 'BRAG book Gallery Sync: Sync completed with result: ' . wp_json_encode( $result ) );
+
+			// Debug: Check if total_api_cases is in the result
+			if (isset($result['total_api_cases'])) {
+				error_log( 'BRAG book Gallery Sync: ✅ NEW FEATURE WORKING - total_api_cases: ' . $result['total_api_cases'] );
+			} else {
+				error_log( 'BRAG book Gallery Sync: ❌ NEW FEATURE MISSING - total_api_cases not found in result' );
+			}
+
+			// Log completion to file
+			if ( $result['success'] ) {
+				$file_logger->write_log( 'success', '🎉 Synchronization completed successfully!' );
+			} else {
+				$file_logger->write_log( 'error', 'Sync completed with errors: ' . implode( ', ', $result['errors'] ?? [] ) );
+			}
+
+			// Also store the final sync results in the database for sync history
+			try {
+				$database = new \BRAGBookGallery\Includes\Data\Database();
+				$database->check_database_version();
+
+				// Prepare detailed sync results for database storage
+				$sync_details = [
+					'success' => $result['success'],
+					'created' => $result['created'] ?? 0,
+					'updated' => $result['updated'] ?? 0,
+					'cases_created' => $result['cases_created'] ?? 0,
+					'cases_updated' => $result['cases_updated'] ?? 0,
+					'total_cases_processed' => $result['total_cases_processed'] ?? 0,
+					'total_api_cases' => $result['total_api_cases'] ?? 0,
+					'warnings' => $result['warnings'] ?? [],
+					'session_id' => $session_id,
+					'duration' => isset($result['duration_seconds']) ? $result['duration_seconds'] . ' seconds' : '',
+				];
+
+				// Store sync completion in database
+				$log_id = $database->log_sync_operation(
+					'full',
+					$result['success'] ? 'completed' : 'failed',
+					($result['created'] ?? 0) + ($result['updated'] ?? 0), // procedures processed
+					count($result['errors'] ?? []), // failed items
+					wp_json_encode($sync_details), // detailed results
+					'manual'
+				);
+
+				if ($log_id) {
+					error_log( 'BRAG book Gallery Sync: ✅ Stored sync results in database with ID: ' . $log_id );
+				} else {
+					error_log( 'BRAG book Gallery Sync: ❌ Failed to store sync results in database' );
+				}
+			} catch (Exception $e) {
+				error_log( 'BRAG book Gallery Sync: ❌ Database storage error: ' . $e->getMessage() );
+			}
+			$file_logger->write_completion( $result );
 
 			// Update sync settings (keep for backward compatibility and other features)
 			$settings = $this->get_settings();
@@ -793,12 +733,19 @@ class Sync_Page extends Settings_Base {
 			$response = [
 				'success' => $result['success'],
 				'data'    => $result,
+				'session_id' => $session_id, // Include session ID for file monitoring
 			];
 
 		} catch ( \Throwable $e ) {
 			error_log( 'BRAG book Gallery Sync: Fatal error during sync: ' . $e->getMessage() );
 			error_log( 'BRAG book Gallery Sync: Error file: ' . $e->getFile() . ' on line ' . $e->getLine() );
 			error_log( 'BRAG book Gallery Sync: Error trace: ' . $e->getTraceAsString() );
+
+			// Log error to file if logger exists
+			if ( isset( $file_logger ) ) {
+				$file_logger->write_log( 'error', 'Sync failed: ' . $e->getMessage() );
+				$file_logger->write_completion( [ 'success' => false, 'errors' => [ $e->getMessage() ] ] );
+			}
 
 			// Update sync settings with error status
 			$settings = $this->get_settings();
@@ -932,25 +879,27 @@ class Sync_Page extends Settings_Base {
 			$database->check_database_version();
 			error_log( 'BRAG Book Gallery: Test automatic sync - step 4: database update complete' );
 
-			error_log( 'BRAG Book Gallery: Test automatic sync - step 5: testing database log entry with automatic source' );
+			error_log( 'BRAG Book Gallery: Test automatic sync - step 5: testing cron job functionality' );
 
-			// Test just creating a sync log entry to verify the sync_source tracking works
-			$log_id = $database->log_sync_operation( 'full', 'completed', 1, 0, 'Test automatic sync entry', 'automatic' );
+			// Check current cron schedule
+			$hook_name = 'brag_book_gallery_automatic_sync';
+			$scheduled_time = wp_next_scheduled( $hook_name );
 
-			if ( $log_id ) {
-				error_log( 'BRAG Book Gallery: Test automatic sync - step 5: log entry created with ID: ' . $log_id );
-				wp_send_json_success( [
-					'message' => 'Test automatic sync tracking created successfully! Check the sync history to see the test entry marked as "Automatic".',
-					'success' => true,
-					'reload' => true
-				] );
-			} else {
-				error_log( 'BRAG Book Gallery: Test automatic sync - step 5: log entry creation failed' );
-				wp_send_json_error( [
-					'message' => 'Test automatic sync tracking failed. Could not create log entry.',
-					'success' => false
-				] );
-			}
+			error_log( 'BRAG Book Gallery: Test automatic sync - checking cron schedule: ' . ( $scheduled_time ? date( 'Y-m-d H:i:s', $scheduled_time ) : 'Not scheduled' ) );
+
+			// Test the cron function directly
+			error_log( 'BRAG Book Gallery: Test automatic sync - step 6: calling cron handler directly' );
+			$this->handle_automatic_sync_cron();
+
+			error_log( 'BRAG Book Gallery: Test automatic sync - step 6: cron handler completed' );
+
+			wp_send_json_success( [
+				'message' => 'Test automatic sync completed! The cron function was executed manually. Check sync history and server logs for results.',
+				'success' => true,
+				'reload' => true,
+				'cron_scheduled' => $scheduled_time ? true : false,
+				'next_run' => $scheduled_time ? date( 'Y-m-d H:i:s', $scheduled_time ) : 'Not scheduled'
+			] );
 
 		} catch ( \Exception $e ) {
 			error_log( 'BRAG Book Gallery: Test automatic sync - Setup/SyncManager failed: ' . $e->getMessage() );
@@ -958,6 +907,72 @@ class Sync_Page extends Settings_Base {
 				'message' => 'Component access failed: ' . $e->getMessage(),
 				'debug' => 'Setup or sync_manager failed'
 			] );
+		}
+	}
+
+	/**
+	 * Handle automatic sync cron job
+	 *
+	 * This method is called by WordPress cron when automatic sync is enabled.
+	 *
+	 * @since 3.3.0
+	 * @return void
+	 */
+	public function handle_automatic_sync_cron(): void {
+		error_log( 'BRAG Book Gallery: Automatic sync cron job triggered' );
+
+		// Check if automatic sync is still enabled
+		$settings = $this->get_settings();
+		if ( empty( $settings['auto_sync_enabled'] ) ) {
+			error_log( 'BRAG Book Gallery: Automatic sync is disabled, skipping cron execution' );
+			return;
+		}
+
+		try {
+			// Get the sync manager from the Setup service
+			$setup = \BRAGBookGallery\Includes\Core\Setup::get_instance();
+			$sync_manager = $setup->get_service( 'sync_manager' );
+
+			if ( ! $sync_manager ) {
+				error_log( 'BRAG Book Gallery: Sync manager not available for automatic sync' );
+				return;
+			}
+
+			error_log( 'BRAG Book Gallery: Starting automatic sync via cron' );
+
+			// Initialize the sync progress logger for background logging
+			$logger = new \BRAGBookGallery\Includes\Admin\Sync_Progress_Logger();
+
+			// Hook into sync events for logging
+			add_action( 'brag_book_sync_progress', [ $logger, 'handle_sync_progress' ] );
+			add_action( 'brag_book_sync_message', [ $logger, 'handle_sync_message' ] );
+
+			$logger->write_log( 'info', '🕒 Automatic sync started via cron job' );
+
+			// Run the sync
+			$result = $sync_manager->run_two_stage_sync();
+
+			if ( $result['success'] ) {
+				$logger->write_log( 'success', '🎉 Automatic sync completed successfully' );
+				error_log( 'BRAG Book Gallery: Automatic sync completed successfully' );
+			} else {
+				$error_message = 'Automatic sync completed with errors: ' . implode( ', ', $result['errors'] );
+				$logger->write_log( 'error', '❌ ' . $error_message );
+				error_log( 'BRAG Book Gallery: ' . $error_message );
+			}
+
+			// Write completion to log
+			$logger->write_completion( $result );
+
+		} catch ( \Exception $e ) {
+			$error_message = 'Automatic sync failed: ' . $e->getMessage();
+			error_log( 'BRAG Book Gallery: ' . $error_message );
+
+			// Try to log the error if logger is available
+			if ( isset( $logger ) ) {
+				$logger->write_log( 'error', '❌ ' . $error_message );
+				$logger->write_completion( [ 'success' => false, 'errors' => [ $e->getMessage() ] ] );
+			}
 		}
 	}
 
@@ -1065,23 +1080,80 @@ class Sync_Page extends Settings_Base {
 	 * @return void
 	 */
 	public function handle_clear_sync_log(): void {
+		// Clear any output that might interfere
+		if ( ob_get_level() ) {
+			ob_clean();
+		}
+
+		// Set proper headers
+		header( 'Content-Type: application/json' );
+
 		// Verify nonce
 		if ( ! wp_verify_nonce( $_POST['nonce'] ?? '', 'brag_book_clear_sync_log' ) ) {
-			wp_die( __( 'Security check failed.', 'brag-book-gallery' ) );
+			wp_send_json_error( [
+				'message' => __( 'Security check failed.', 'brag-book-gallery' ),
+			] );
 		}
 
 		// Check permissions
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( __( 'Insufficient permissions.', 'brag-book-gallery' ) );
+			wp_send_json_error( [
+				'message' => __( 'Insufficient permissions.', 'brag-book-gallery' ),
+			] );
 		}
 
+		$cleared_items = 0;
+		$errors = [];
+
+		// Clear database sync logs
 		global $wpdb;
 		$table_name = $wpdb->prefix . 'brag_book_sync_log';
-		$wpdb->query( "TRUNCATE TABLE {$table_name}" );
 
-		wp_send_json_success( [
-			'message' => __( 'Sync log cleared successfully.', 'brag-book-gallery' ),
-		] );
+		// Check if table exists before trying to clear it
+		if ( $wpdb->get_var( "SHOW TABLES LIKE '{$table_name}'" ) === $table_name ) {
+			$db_count = $wpdb->get_var( "SELECT COUNT(*) FROM {$table_name}" );
+			$result = $wpdb->query( "TRUNCATE TABLE {$table_name}" );
+
+			if ( $result !== false ) {
+				$cleared_items += $db_count;
+			} else {
+				$errors[] = __( 'Failed to clear database sync logs.', 'brag-book-gallery' );
+			}
+		}
+
+		// Clear file-based sync logs
+		$upload_dir = wp_upload_dir();
+		$log_files = glob( $upload_dir['basedir'] . '/brag-book-sync-*.log' );
+
+		if ( $log_files ) {
+			foreach ( $log_files as $log_file ) {
+				if ( unlink( $log_file ) ) {
+					$cleared_items++;
+				} else {
+					$errors[] = sprintf(
+						__( 'Failed to delete log file: %s', 'brag-book-gallery' ),
+						basename( $log_file )
+					);
+				}
+			}
+		}
+
+		if ( empty( $errors ) ) {
+			wp_send_json_success( [
+				'message' => sprintf(
+					__( 'Sync log cleared successfully. Removed %d items.', 'brag-book-gallery' ),
+					$cleared_items
+				),
+			] );
+		} else {
+			wp_send_json_error( [
+				'message' => sprintf(
+					__( 'Partially cleared sync logs. Removed %d items. Errors: %s', 'brag-book-gallery' ),
+					$cleared_items,
+					implode( ', ', $errors )
+				),
+			] );
+		}
 	}
 
 	/**
@@ -1099,8 +1171,12 @@ class Sync_Page extends Settings_Base {
 		// Set proper headers
 		header( 'Content-Type: application/json' );
 
+		// Debug: Log the incoming request
+		// error_log( 'Delete sync record request: ' . print_r( $_POST, true ) );
+
 		// Verify nonce
 		if ( ! wp_verify_nonce( $_POST['nonce'] ?? '', 'brag_book_delete_sync_record' ) ) {
+			error_log( 'Delete sync record: Nonce verification failed' );
 			wp_send_json_error( [
 				'message' => __( 'Security check failed.', 'brag-book-gallery' ),
 			] );
@@ -1114,40 +1190,74 @@ class Sync_Page extends Settings_Base {
 		}
 
 		// Get record ID
-		$record_id = absint( $_POST['record_id'] ?? 0 );
-		if ( ! $record_id ) {
+		$record_id = sanitize_text_field( $_POST['record_id'] ?? '' );
+		if ( empty( $record_id ) ) {
 			wp_send_json_error( [
 				'message' => __( 'Invalid record ID.', 'brag-book-gallery' ),
 			] );
 		}
 
-		global $wpdb;
-		$table_name = $wpdb->prefix . 'brag_book_sync_log';
+		// Check if this is a file-based log
+		if ( strpos( $record_id, 'file_' ) === 0 ) {
+			// Handle file-based log deletion
+			$session_id = str_replace( 'file_', '', $record_id );
+			$upload_dir = wp_upload_dir();
+			$log_file = $upload_dir['basedir'] . '/brag-book-sync-' . $session_id . '.log';
 
-		// Check if record exists
-		$record = $wpdb->get_row( $wpdb->prepare(
-			"SELECT * FROM {$table_name} WHERE id = %d",
-			$record_id
-		) );
+			if ( ! file_exists( $log_file ) ) {
+				wp_send_json_error( [
+					'message' => __( 'Log file not found.', 'brag-book-gallery' ),
+				] );
+			}
 
-		if ( ! $record ) {
-			wp_send_json_error( [
-				'message' => __( 'Record not found.', 'brag-book-gallery' ),
+			// Delete the log file
+			$deleted = unlink( $log_file );
+
+			if ( ! $deleted ) {
+				wp_send_json_error( [
+					'message' => __( 'Failed to delete log file.', 'brag-book-gallery' ),
+				] );
+			}
+			wp_send_json_success( [
+				'message' => __( 'Sync log deleted successfully.', 'brag-book-gallery' ),
+			] );
+		} else {
+			// Handle database record deletion (legacy)
+			$record_id = absint( $record_id );
+			if ( ! $record_id ) {
+				wp_send_json_error( [
+					'message' => __( 'Invalid record ID.', 'brag-book-gallery' ),
+				] );
+			}
+
+			global $wpdb;
+			$table_name = $wpdb->prefix . 'brag_book_sync_log';
+
+			// Check if record exists
+			$record = $wpdb->get_row( $wpdb->prepare(
+				"SELECT * FROM {$table_name} WHERE id = %d",
+				$record_id
+			) );
+
+			if ( ! $record ) {
+				wp_send_json_error( [
+					'message' => __( 'Record not found.', 'brag-book-gallery' ),
+				] );
+			}
+
+			// Delete the record
+			$deleted = $wpdb->delete( $table_name, [ 'id' => $record_id ], [ '%d' ] );
+
+			if ( $deleted === false ) {
+				wp_send_json_error( [
+					'message' => __( 'Failed to delete record.', 'brag-book-gallery' ),
+				] );
+			}
+
+			wp_send_json_success( [
+				'message' => __( 'Sync record deleted successfully.', 'brag-book-gallery' ),
 			] );
 		}
-
-		// Delete the record
-		$deleted = $wpdb->delete( $table_name, [ 'id' => $record_id ], [ '%d' ] );
-
-		if ( $deleted === false ) {
-			wp_send_json_error( [
-				'message' => __( 'Failed to delete record.', 'brag-book-gallery' ),
-			] );
-		}
-
-		wp_send_json_success( [
-			'message' => __( 'Sync record deleted successfully.', 'brag-book-gallery' ),
-		] );
 	}
 
 	/**
@@ -1213,162 +1323,62 @@ class Sync_Page extends Settings_Base {
 	}
 
 	/**
-	 * Get latest sync information for status display
+	 * Get latest sync information for status display using file-based logs
 	 *
-	 * @since 3.0.0
+	 * @since 3.3.0
 	 * @return array|null Latest sync info or null if no sync found
 	 */
 	private function get_latest_sync_info(): ?array {
-		global $wpdb;
+		// Get the latest sync from file-based logs (current system)
+		$latest_sync_record = $this->get_latest_file_based_sync();
 
-		$log_table = $wpdb->prefix . 'brag_book_sync_log';
-
-		// Check if table exists
-		if ( $wpdb->get_var( "SHOW TABLES LIKE '{$log_table}'" ) !== $log_table ) {
+		if ( ! $latest_sync_record ) {
 			return null;
 		}
 
-		$latest_log = $wpdb->get_row( $wpdb->prepare(
-			"SELECT * FROM {$log_table} WHERE sync_type = %s ORDER BY created_at DESC LIMIT 1",
-			'procedure_sync'
-		) );
-
-		if ( ! $latest_log || empty( $latest_log->details ) ) {
-			return null;
-		}
-
-		$details = json_decode( $latest_log->details, true );
+		// Extract details from the file-based sync record
+		$details = json_decode( $latest_sync_record->details, true );
 		if ( ! $details ) {
 			return null;
 		}
 
-		// Calculate totals
-		$procedures_created = (int) ($details['created'] ?? 0);
-		$procedures_updated = (int) ($details['updated'] ?? 0);
-		$procedures_total = $procedures_created + $procedures_updated;
+		// Format warnings for display
+		$warnings = [];
+		if ( ! empty( $details['warnings'] ) ) {
+			$warnings = $details['warnings'];
+		}
 
-		$cases_created = (int) ($details['cases_created'] ?? 0);
-		$cases_updated = (int) ($details['cases_updated'] ?? 0);
-		$cases_total = (int) ($details['total_cases_processed'] ?? ($cases_created + $cases_updated));
-
-		// Calculate duration
-		$duration = '';
-		if ( ! empty( $details['duration'] ) ) {
-			$duration = $details['duration'];
-		} elseif ( ! empty( $latest_log->updated_at ) && ! empty( $latest_log->created_at ) ) {
-			$start = strtotime( $latest_log->created_at );
-			$end = strtotime( $latest_log->updated_at );
-			$duration_seconds = $end - $start;
-			if ( $duration_seconds > 0 ) {
-				$minutes = floor( $duration_seconds / 60 );
-				$seconds = $duration_seconds % 60;
-				$duration = $minutes > 0 ? "{$minutes}m {$seconds}s" : "{$seconds}s";
-			}
+		// Add duplicate case count to warnings if present
+		if ( ! empty( $details['duplicate_case_count'] ) && $details['duplicate_case_count'] > 0 ) {
+			$warnings[] = "Found {$details['duplicate_case_count']} duplicate case IDs";
 		}
 
 		return [
-			'procedures_total' => $procedures_total,
-			'cases_total' => $cases_total,
-			'duration' => $duration,
-			'warnings' => $details['warnings'] ?? [],
-			'status' => $latest_log->status,
-			'created_at' => $latest_log->created_at,
+			'procedures_total' => $latest_sync_record->procedures_count ?? 0,
+			'cases_total' => $latest_sync_record->cases_count ?? 0,
+			'duration' => $latest_sync_record->duration ?? '',
+			'warnings' => $warnings,
+			'status' => $latest_sync_record->status,
+			'created_at' => $latest_sync_record->created_at,
+			'has_warnings' => $details['has_warnings'] ?? false,
 		];
 	}
 
-	/**
-	 * Get sync logs from database
-	 *
-	 * @since 3.0.0
-	 * @return array Sync log entries
-	 */
-	private function get_sync_logs(): array {
-		global $wpdb;
-		$table_name = $wpdb->prefix . 'brag_book_sync_log';
-
-		// Check if table exists
-		if ( $wpdb->get_var( "SHOW TABLES LIKE '{$table_name}'" ) !== $table_name ) {
-			return [];
-		}
-
-		// Get all records and filter out duplicates/empty ones
-		$all_records = $wpdb->get_results("SELECT * FROM {$table_name} ORDER BY id DESC");
-
-		// Filter to only show meaningful sync records (not empty ones)
-		$filtered_records = [];
-		$seen_timestamps = [];
-
-		foreach ($all_records as $record) {
-			// More aggressive filtering - only show records with actual meaningful data
-			$has_processed = (isset($record->processed) && $record->processed > 0);
-			$has_failed = (isset($record->failed) && $record->failed > 0);
-			$has_meaningful_details = false;
-
-			// Check if details contains actual sync data (not just empty or basic info)
-			if (isset($record->details) && !empty($record->details)) {
-				$details = json_decode($record->details, true);
-				if ($details && (
-					(isset($details['created']) && $details['created'] > 0) ||
-					(isset($details['updated']) && $details['updated'] > 0) ||
-					(isset($details['cases_created']) && $details['cases_created'] > 0) ||
-					(isset($details['cases_updated']) && $details['cases_updated'] > 0) ||
-					(isset($details['total_cases_processed']) && $details['total_cases_processed'] > 0)
-				)) {
-					$has_meaningful_details = true;
-				}
-			}
-
-			// Only include records that have actual sync data
-			if (!$has_processed && !$has_failed && !$has_meaningful_details) {
-				continue;
-			}
-
-			// Create a timestamp key to avoid showing multiple records from the same minute
-			$timestamp_key = '';
-			if (isset($record->created_at)) {
-				$timestamp_key = date('Y-m-d H:i', strtotime($record->created_at));
-			} elseif (isset($record->started_at)) {
-				$timestamp_key = date('Y-m-d H:i', strtotime($record->started_at));
-			}
-
-			// If we already have a record for this timestamp, prefer the one with more data
-			if (isset($seen_timestamps[$timestamp_key])) {
-				$existing = $seen_timestamps[$timestamp_key];
-				$existing_data_score = 0;
-				if (isset($existing->processed)) $existing_data_score += $existing->processed;
-				if (isset($existing->failed)) $existing_data_score += $existing->failed;
-
-				$current_data_score = 0;
-				if (isset($record->processed)) $current_data_score += $record->processed;
-				if (isset($record->failed)) $current_data_score += $record->failed;
-
-				// Keep the one with more data
-				if ($current_data_score > $existing_data_score) {
-					// Remove the old one and add the new one
-					$filtered_records = array_filter($filtered_records, function($r) use ($existing) {
-						return $r->id !== $existing->id;
-					});
-					$filtered_records[] = $record;
-					$seen_timestamps[$timestamp_key] = $record;
-				}
-			} else {
-				$filtered_records[] = $record;
-				if ($timestamp_key) {
-					$seen_timestamps[$timestamp_key] = $record;
-				}
-			}
-		}
-
-		return array_slice($filtered_records, 0, 20);
-	}
 
 	/**
-	 * Get the most recent sync from the history table
+	 * Get the most recent sync from file-based logs (primary) or database (fallback)
 	 *
-	 * @since 3.0.0
+	 * @since 3.3.0
 	 * @return object|null Latest sync record or null if none found
 	 */
 	private function get_latest_sync_from_history(): ?object {
+		// First, try to get sync status from file-based logs (current system)
+		$file_sync = $this->get_latest_file_based_sync();
+		if ( $file_sync ) {
+			return $file_sync;
+		}
+
+		// Fallback to database for legacy sync records
 		global $wpdb;
 		$table_name = $wpdb->prefix . 'brag_book_sync_log';
 
@@ -1377,7 +1387,7 @@ class Sync_Page extends Settings_Base {
 			return null;
 		}
 
-		// Get the most recent completed sync
+		// Get the most recent completed sync from database
 		return $wpdb->get_row(
 			"SELECT * FROM {$table_name}
 			WHERE operation = 'complete'
@@ -1385,6 +1395,297 @@ class Sync_Page extends Settings_Base {
 			ORDER BY created_at DESC
 			LIMIT 1"
 		);
+	}
+
+	/**
+	 * Get the most recent sync from file-based logs
+	 *
+	 * @since 3.3.0
+	 * @return object|null Latest sync record or null if none found
+	 */
+	private function get_latest_file_based_sync(): ?object {
+		$upload_dir = wp_upload_dir();
+		$log_files = glob( $upload_dir['basedir'] . '/brag-book-sync-*.log' );
+
+		if ( ! $log_files ) {
+			return null;
+		}
+
+		// Sort by modification time (newest first)
+		usort( $log_files, function( $a, $b ) {
+			return filemtime( $b ) - filemtime( $a );
+		} );
+
+		// Parse the most recent log file
+		$latest_log = $log_files[0];
+		$sync_data = $this->parse_log_file_for_status( $latest_log );
+
+		if ( ! $sync_data ) {
+			return null;
+		}
+
+		// Create a standardized sync record object
+		return (object) [
+			'id' => 'file_' . basename( $latest_log, '.log' ),
+			'status' => $sync_data['status'],
+			'sync_time' => $sync_data['sync_time'],
+			'created_at' => $sync_data['sync_time'],
+			'started_at' => $sync_data['start_time'],
+			'updated_at' => $sync_data['end_time'],
+			'procedures_count' => $sync_data['procedures_count'],
+			'cases_count' => $sync_data['cases_count'],
+			'duration' => $sync_data['duration'],
+			'details' => wp_json_encode( $sync_data['details'] ),
+			'is_file_based' => true,
+			'session_id' => str_replace( 'brag-book-sync-', '', basename( $latest_log, '.log' ) )
+		];
+	}
+
+	/**
+	 * Parse a log file to extract sync status and details
+	 *
+	 * @since 3.3.0
+	 * @param string $log_file Path to the log file
+	 * @return array|null Sync data or null if parsing failed
+	 */
+	private function parse_log_file_for_status( string $log_file ): ?array {
+		if ( ! file_exists( $log_file ) ) {
+			return null;
+		}
+
+		$content = file_get_contents( $log_file );
+		if ( ! $content ) {
+			return null;
+		}
+
+		$lines = explode( "\n", trim( $content ) );
+		if ( empty( $lines ) ) {
+			return null;
+		}
+
+		// Initialize data
+		$status = 'running';
+		$start_time = null;
+		$end_time = null;
+		$procedures_created = 0;
+		$procedures_updated = 0;
+		$cases_created = 0;
+		$cases_updated = 0;
+		$total_cases_processed = 0;
+		$total_api_cases = 0;
+		$warnings = [];
+		$duplicate_case_count = 0;
+		$has_warnings = false;
+		$final_step = '';
+
+		// Parse each log entry
+		foreach ( $lines as $line ) {
+			if ( empty( $line ) ) {
+				continue;
+			}
+
+			$entry = json_decode( $line, true );
+			if ( ! $entry ) {
+				continue;
+			}
+
+			// Track timing
+			if ( ! $start_time && isset( $entry['microtime'] ) ) {
+				$start_time = $entry['microtime'];
+			}
+			if ( isset( $entry['microtime'] ) ) {
+				$end_time = $entry['microtime'];
+			}
+
+			// Look for completion status
+			if ( $entry['type'] === 'complete' ) {
+				$status = isset( $entry['success'] ) && $entry['success'] ? 'success' : 'failed';
+			}
+
+			// Track final step from progress
+			if ( $entry['type'] === 'progress' && isset( $entry['current_step'] ) ) {
+				$final_step = $entry['current_step'];
+			}
+
+			// Extract counts and warnings from messages
+			if ( $entry['type'] === 'message' && isset( $entry['message'] ) ) {
+				$message = $entry['message'];
+
+				// Extract procedure counts
+				if ( preg_match( '/Created (\d+) procedures/', $message, $matches ) ) {
+					$procedures_created = max( $procedures_created, (int) $matches[1] );
+				}
+				if ( preg_match( '/Updated (\d+) procedures/', $message, $matches ) ) {
+					$procedures_updated = max( $procedures_updated, (int) $matches[1] );
+				}
+
+				// Extract case counts
+				if ( preg_match( '/Created (\d+) cases/', $message, $matches ) ) {
+					$cases_created = max( $cases_created, (int) $matches[1] );
+				}
+				if ( preg_match( '/Updated (\d+) cases/', $message, $matches ) ) {
+					$cases_updated = max( $cases_updated, (int) $matches[1] );
+				}
+				if ( preg_match( '/(\d+) cases processed/', $message, $matches ) ) {
+					$total_cases_processed = max( $total_cases_processed, (int) $matches[1] );
+				}
+
+				// Extract total API cases including duplicates
+				if ( preg_match( '/Total API cases.*?(\d+)/', $message, $matches ) ) {
+					$total_api_cases = max( $total_api_cases, (int) $matches[1] );
+				}
+
+				// Extract warnings and duplicate information
+				if ( preg_match( '/Total warnings:\s*(\d+)/', $message, $matches ) ) {
+					$has_warnings = (int) $matches[1] > 0;
+				}
+
+				// Extract duplicate case count from warning messages
+				if ( preg_match( '/Found (\d+) duplicate case IDs/', $message, $matches ) ) {
+					$duplicate_case_count = max( $duplicate_case_count, (int) $matches[1] );
+					$warnings[] = $message;
+					$has_warnings = true;
+				}
+
+				// Capture other warning messages
+				if ( strpos( $message, 'Case count mismatch' ) !== false ) {
+					$warnings[] = $message;
+					$has_warnings = true;
+				}
+			}
+		}
+
+		// Count actual procedures created by counting [CREATED] procedure entries
+		$procedure_count = 0;
+		foreach ( $lines as $line ) {
+			if ( strpos( $line, '[CREATED] Procedure:' ) !== false ) {
+				$procedure_count++;
+			}
+		}
+
+		// Count actual cases created by counting [CREATE] case entries
+		$case_count = 0;
+		foreach ( $lines as $line ) {
+			if ( strpos( $line, '[CREATE]' ) !== false && strpos( $line, 'Case Id:' ) !== false ) {
+				$case_count++;
+			}
+		}
+
+		// Calculate file modification time for sync time
+		$file_time = filemtime( $log_file );
+		$sync_time = date( 'Y-m-d H:i:s', $file_time );
+
+		// Calculate duration
+		$duration = '';
+		if ( $start_time && $end_time ) {
+			$duration_seconds = round( $end_time - $start_time );
+			if ( $duration_seconds > 0 ) {
+				$minutes = floor( $duration_seconds / 60 );
+				$seconds = $duration_seconds % 60;
+				$duration = sprintf( '%02d:%02d', $minutes, $seconds );
+			}
+		}
+
+		// Build details array
+		$details = [
+			'created' => max( $procedures_created, $procedure_count ),
+			'updated' => $procedures_updated,
+			'cases_created' => max( $cases_created, $case_count ),
+			'cases_updated' => $cases_updated,
+			'total_cases_processed' => max( $total_cases_processed, $case_count ),
+			'total_api_cases' => max( $total_api_cases, $case_count ),
+			'duration' => $duration,
+			'current_step' => $final_step,
+			'start_time' => $start_time ? date( 'Y-m-d H:i:s', (int) $start_time ) : null,
+			'end_time' => $end_time ? date( 'Y-m-d H:i:s', (int) $end_time ) : null,
+			'warnings' => $warnings,
+			'has_warnings' => $has_warnings,
+			'duplicate_case_count' => $duplicate_case_count,
+		];
+
+		return [
+			'status' => $status,
+			'sync_time' => $sync_time,
+			'start_time' => $start_time ? date( 'Y-m-d H:i:s', (int) $start_time ) : $sync_time,
+			'end_time' => $end_time ? date( 'Y-m-d H:i:s', (int) $end_time ) : $sync_time,
+			'procedures_count' => max( $procedures_created, $procedure_count ),
+			'cases_count' => max( $total_cases_processed, $case_count ),
+			'duration' => $duration,
+			'details' => $details,
+			'has_warnings' => $has_warnings,
+			'warnings' => $warnings,
+		];
+	}
+
+	/**
+	 * Reset all sync status and clear log files
+	 *
+	 * @since 3.3.0
+	 * @return array Result array with success status and message
+	 */
+	public function reset_sync_status(): array {
+		$cleared_items = [];
+
+		// 1. Clear all sync log files
+		$upload_dir = wp_upload_dir();
+		$log_files = glob( $upload_dir['basedir'] . '/brag-book-sync-*.log' );
+		if ( $log_files ) {
+			foreach ( $log_files as $log_file ) {
+				if ( unlink( $log_file ) ) {
+					$cleared_items[] = 'Log file: ' . basename( $log_file );
+				}
+			}
+		}
+
+		// 2. Reset sync status in settings
+		$settings = $this->get_settings();
+		$settings['last_sync_time'] = '';
+		$settings['sync_status'] = 'never';
+		$this->update_settings( $settings );
+		$cleared_items[] = 'Settings: Reset sync status to "never"';
+
+		// 3. Clear any sync-related transients
+		$transient_keys = [
+			'brag_book_gallery_procedures_sidebar',
+			'brag_book_gallery_cases',
+			'brag_book_gallery_api_test',
+			'brag_book_gallery_sync_progress',
+			'brag_book_gallery_sync_status'
+		];
+
+		foreach ( $transient_keys as $key ) {
+			if ( delete_transient( $key ) ) {
+				$cleared_items[] = 'Transient: ' . $key;
+			}
+		}
+
+		// 4. Clear any pending sync options
+		global $wpdb;
+		$pending_sync_options = $wpdb->get_results(
+			"SELECT option_name FROM {$wpdb->options}
+			WHERE option_name LIKE 'brag_book_sync_pending_%'"
+		);
+
+		foreach ( $pending_sync_options as $option ) {
+			delete_option( $option->option_name );
+			$cleared_items[] = 'Pending sync: ' . $option->option_name;
+		}
+
+		// 5. Clear old database sync records (legacy system)
+		$log_table = $wpdb->prefix . 'brag_book_sync_log';
+		if ( $wpdb->get_var( "SHOW TABLES LIKE '{$log_table}'" ) === $log_table ) {
+			$deleted_count = $wpdb->query( "DELETE FROM {$log_table}" );
+			if ( $deleted_count > 0 ) {
+				$cleared_items[] = "Database records: {$deleted_count} old sync records";
+			}
+		}
+
+		return [
+			'success' => true,
+			'message' => 'Sync status reset successfully',
+			'cleared_items' => $cleared_items,
+			'total_cleared' => count( $cleared_items )
+		];
 	}
 
 	/**
@@ -1398,29 +1699,50 @@ class Sync_Page extends Settings_Base {
 
 		if ( $screen && strpos( $screen->id, $this->page_config['menu_slug'] ) !== false ) {
 			wp_enqueue_script(
-				'brag-book-sync-admin',
-				plugins_url( 'assets/js/brag-book-gallery-sync-admin.js', dirname( __DIR__, 2 ) ),
-				[ 'jquery' ],
-				'3.0.0',
+				'brag-book-file-sync-admin',
+				plugins_url( 'assets/js/brag-book-gallery-file-sync-admin.js', dirname( __DIR__, 2 ) ),
+				[],
+				'3.3.2',
 				true
 			);
 
-			wp_localize_script( 'brag-book-sync-admin', 'bragBookSync', [
+			wp_localize_script( 'brag-book-file-sync-admin', 'bragBookSync', [
 				'ajax_url'          => admin_url( 'admin-ajax.php' ),
 				'sync_nonce'        => wp_create_nonce( 'brag_book_sync_procedures' ),
 				'nonce'             => wp_create_nonce( 'brag_book_gallery_settings_nonce' ), // For stop sync and progress
 				'test_auto_nonce'   => wp_create_nonce( 'brag_book_test_automatic_sync' ),
-				'clear_log_nonce'   => wp_create_nonce( 'brag_book_clear_sync_log' ),
-				'delete_nonce'      => wp_create_nonce( 'brag_book_delete_sync_record' ),
 				'messages'          => [
 					'sync_starting'     => __( 'Starting sync...', 'brag-book-gallery' ),
 					'sync_in_progress'  => __( 'Sync in progress...', 'brag-book-gallery' ),
 					'sync_complete'     => __( 'Sync completed successfully!', 'brag-book-gallery' ),
 					'sync_error'        => __( 'Sync failed. Please try again.', 'brag-book-gallery' ),
-					'confirm_clear_log' => __( 'Are you sure you want to clear the sync log? This action cannot be undone.', 'brag-book-gallery' ),
-					'confirm_delete_record' => __( 'Are you sure you want to delete this sync record? This action cannot be undone.', 'brag-book-gallery' ),
 				],
 			] );
+
+			// Add inline JavaScript for sync frequency controls
+			wp_add_inline_script( 'brag-book-file-sync-admin', "
+				document.addEventListener('DOMContentLoaded', function() {
+					const frequencyRadios = document.querySelectorAll('.sync-frequency-radio');
+					const customSchedule = document.querySelector('.sync-custom-schedule');
+
+					function toggleCustomSchedule() {
+						const customSelected = document.querySelector('.sync-frequency-radio[value=\"custom\"]:checked');
+
+						// Show/hide custom schedule
+						if (customSchedule) {
+							customSchedule.style.display = customSelected ? 'block' : 'none';
+						}
+					}
+
+					// Initial setup
+					toggleCustomSchedule();
+
+					// Add event listeners
+					frequencyRadios.forEach(function(radio) {
+						radio.addEventListener('change', toggleCustomSchedule);
+					});
+				});
+			" );
 		}
 	}
 
@@ -1439,10 +1761,21 @@ class Sync_Page extends Settings_Base {
 		}
 
 		if ( isset( $input['sync_frequency'] ) ) {
-			$allowed_frequencies = [ 'hourly', 'daily', 'weekly', 'monthly' ];
+			$allowed_frequencies = [ 'daily', 'weekly', 'monthly', 'custom' ];
 			$sanitized['sync_frequency'] = in_array( $input['sync_frequency'], $allowed_frequencies, true )
 				? $input['sync_frequency']
 				: 'weekly';
+		}
+
+		// Custom date/time fields
+		if ( isset( $input['sync_custom_date'] ) ) {
+			$custom_date = sanitize_text_field( $input['sync_custom_date'] );
+			$sanitized['sync_custom_date'] = ( empty( $custom_date ) || preg_match( '/^\d{4}-\d{2}-\d{2}$/', $custom_date ) ) ? $custom_date : '';
+		}
+
+		if ( isset( $input['sync_custom_time'] ) ) {
+			$custom_time = sanitize_text_field( $input['sync_custom_time'] );
+			$sanitized['sync_custom_time'] = preg_match( '/^([01]?\d|2[0-3]):[0-5]\d$/', $custom_time ) ? $custom_time : '02:00';
 		}
 
 		// Preserve existing values
@@ -1471,7 +1804,108 @@ class Sync_Page extends Settings_Base {
 	 * @return bool True if successful
 	 */
 	protected function update_settings( array $settings ): bool {
-		return update_option( $this->page_config['option_name'], $settings );
+		$result = update_option( $this->page_config['option_name'], $settings );
+
+		// Update cron jobs when automatic sync settings change
+		if ( $result ) {
+			$this->update_automatic_sync_schedule( $settings );
+		}
+
+		return $result;
+	}
+
+	/**
+	 * Update automatic sync schedule based on settings
+	 *
+	 * @since 3.3.0
+	 * @param array $settings Current settings array
+	 * @return void
+	 */
+	private function update_automatic_sync_schedule( array $settings ): void {
+		$hook_name = 'brag_book_gallery_automatic_sync';
+
+		// Clear any existing scheduled events
+		$scheduled_time = wp_next_scheduled( $hook_name );
+		if ( $scheduled_time ) {
+			wp_unschedule_event( $scheduled_time, $hook_name );
+		}
+
+		// If auto sync is enabled, schedule new event
+		if ( ! empty( $settings['auto_sync_enabled'] ) ) {
+			$frequency = $settings['sync_frequency'] ?? 'weekly';
+
+			// Handle custom date/time scheduling
+			if ( $frequency === 'custom' ) {
+				$custom_date = $settings['sync_custom_date'] ?? '';
+				$custom_time = $settings['sync_custom_time'] ?? '02:00';
+
+				if ( ! empty( $custom_date ) && ! empty( $custom_time ) ) {
+					// Create timestamp from custom date and time
+					$custom_datetime = $custom_date . ' ' . $custom_time . ':00';
+					$timestamp = strtotime( $custom_datetime );
+
+					if ( $timestamp && $timestamp > time() ) {
+						// Schedule a one-time event for the custom date/time
+						$result = wp_schedule_single_event( $timestamp, $hook_name );
+
+						if ( false === $result ) {
+							error_log( 'BRAG Book Gallery: Failed to schedule custom automatic sync' );
+						} else {
+							error_log( "BRAG Book Gallery: Scheduled automatic sync for custom date/time: {$custom_datetime}" );
+						}
+					} else {
+						error_log( 'BRAG Book Gallery: Invalid custom date/time or date in the past' );
+					}
+				} else {
+					error_log( 'BRAG Book Gallery: Custom frequency selected but date/time not provided' );
+				}
+			} else {
+				// Handle standard frequencies
+				$start_time = time();
+
+				// Convert monthly to a WordPress-supported frequency (use weekly for now)
+				if ( $frequency === 'monthly' ) {
+					$frequency = 'weekly';
+				}
+
+				// For daily/weekly/hourly, optionally apply custom time
+				$custom_time = $settings['sync_custom_time'] ?? '02:00';
+				if ( ! empty( $custom_time ) && in_array( $frequency, [ 'daily', 'weekly' ], true ) ) {
+					// Calculate next occurrence at the specified time
+					$time_parts = explode( ':', $custom_time );
+					$hour = (int) $time_parts[0];
+					$minute = (int) ( $time_parts[1] ?? 0 );
+
+					if ( $frequency === 'daily' ) {
+						// Next daily occurrence at the specified time
+						$next_run = mktime( $hour, $minute, 0 );
+						if ( $next_run <= time() ) {
+							$next_run = mktime( $hour, $minute, 0 ) + DAY_IN_SECONDS;
+						}
+						$start_time = $next_run;
+					} elseif ( $frequency === 'weekly' ) {
+						// Next weekly occurrence at the specified time (same day of week)
+						$next_run = mktime( $hour, $minute, 0 );
+						if ( $next_run <= time() ) {
+							$next_run = mktime( $hour, $minute, 0 ) + WEEK_IN_SECONDS;
+						}
+						$start_time = $next_run;
+					}
+				}
+
+				// Schedule the recurring event
+				$result = wp_schedule_event( $start_time, $frequency, $hook_name );
+
+				if ( false === $result ) {
+					error_log( 'BRAG Book Gallery: Failed to schedule automatic sync cron job' );
+				} else {
+					$next_time = date( 'Y-m-d H:i:s', $start_time );
+					error_log( "BRAG Book Gallery: Scheduled automatic sync with frequency: {$frequency}, next run: {$next_time}" );
+				}
+			}
+		} else {
+			error_log( 'BRAG Book Gallery: Automatic sync disabled, cron job cleared' );
+		}
 	}
 
 	/**
@@ -1580,6 +2014,37 @@ class Sync_Page extends Settings_Base {
 	}
 
 	/**
+	 * Handle AJAX request to force clear sync state
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	public function handle_force_clear_sync_state(): void {
+		// Verify nonce
+		$this->verify_ajax_request();
+
+		try {
+			// Clear all sync-related options
+			delete_option( 'brag_book_gallery_sync_stop_flag' );
+			delete_option( 'brag_book_gallery_case_progress' );
+			delete_option( 'brag_book_gallery_detailed_progress' );
+			delete_option( 'brag_book_gallery_sync_progress' );
+
+			error_log( 'BRAG book Gallery Sync: Force cleared all sync state options' );
+
+			wp_send_json_success( [
+				'message' => 'Sync state forcefully cleared. You can now start a new sync.',
+			] );
+
+		} catch ( Exception $e ) {
+			error_log( 'BRAG book Gallery Sync: Error force clearing sync state: ' . $e->getMessage() );
+			wp_send_json_error( [
+				'message' => 'Failed to clear sync state: ' . $e->getMessage(),
+			] );
+		}
+	}
+
+	/**
 	 * Handle AJAX request for detailed sync report
 	 *
 	 * @since 3.0.0
@@ -1614,7 +2079,12 @@ class Sync_Page extends Settings_Base {
 
 		// Parse sync details
 		$details = json_decode( $sync_log->details, true ) ?: [];
-		$sync_date = wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), strtotime( $sync_log->created_at ) );
+		$display_time = $sync_log->sync_time ?? $sync_log->created_at ?? $sync_log->started_at ?? '';
+		if ( $display_time ) {
+			$sync_date = wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), strtotime( $display_time ) );
+		} else {
+			$sync_date = __( 'Unknown', 'brag-book-gallery' );
+		}
 
 		// Get actual case count from database
 		$actual_case_count = $wpdb->get_var( $wpdb->prepare(
