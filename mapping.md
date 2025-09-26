@@ -15,10 +15,6 @@ The plugin stores case data using two meta field formats:
 | API Field | New Meta Key | Legacy Meta Key | Data Type | Description |
 |-----------|--------------|-----------------|-----------|-------------|
 | `id` | `brag_book_gallery_api_id` | `_case_api_id` | int | Case ID from API |
-| `patientId` | `brag_book_gallery_patient_id` | `_case_patient_id` | int | Patient identifier |
-| `userId` | `brag_book_gallery_user_id` | `_case_user_id` | int | User/doctor ID |
-| `orgId` | `brag_book_gallery_org_id` | `_case_org_id` | int | Organization ID |
-| `emrId` | `brag_book_gallery_emr_id` | `_case_emr_id` | int | EMR system ID |
 
 ### Patient Demographics
 
@@ -38,22 +34,12 @@ The plugin stores case data using two meta field formats:
 |-----------|--------------|-----------------|-----------|-------------|
 | `technique` | `brag_book_gallery_technique` | `_case_technique` | string | Surgical technique used |
 | `revisionSurgery` | `brag_book_gallery_revision_surgery` | `_case_revision_surgery` | string | Revision surgery details |
-| `after1Timeframe` | `brag_book_gallery_after1_timeframe` | `_case_after1_timeframe` | int | First follow-up timeframe |
-| `after1Unit` | `brag_book_gallery_after1_unit` | `_case_after1_unit` | string | First follow-up unit |
-| `after2Timeframe` | `brag_book_gallery_after2_timeframe` | `_case_after2_timeframe` | int | Second follow-up timeframe |
-| `after2Unit` | `brag_book_gallery_after2_unit` | `_case_after2_unit` | string | Second follow-up unit |
 | `procedureIds` | `brag_book_gallery_procedure_ids` | `_case_procedure_ids` | string | Comma-separated procedure IDs |
 
 ### Case Settings & Flags
 
 | API Field | New Meta Key | Legacy Meta Key | Data Type | Description |
 |-----------|--------------|-----------------|-----------|-------------|
-| `qualityScore` | `brag_book_gallery_quality_score` | `_case_quality_score` | int | Image quality rating |
-| `approvedForSocial` | `brag_book_gallery_approved_for_social` | `_case_approved_for_social` | bool | Social media approval |
-| `isForTablet` | `brag_book_gallery_is_for_tablet` | `_case_is_for_tablet` | bool | Tablet display approval |
-| `isForWebsite` | `brag_book_gallery_is_for_website` | `_case_is_for_website` | bool | Website display approval |
-| `draft` | `brag_book_gallery_draft` | `_case_draft` | bool | Draft status |
-| `noWatermark` | `brag_book_gallery_no_watermark` | `_case_no_watermark` | bool | Watermark exemption |
 | `details` | `brag_book_gallery_notes` | `_case_notes` | text | Case notes/details |
 
 ### SEO Data

@@ -32,56 +32,9 @@
 	}
 }
 
-// Alternative case navigation styling
-.brag-book-gallery-case-navigation {
-	&.simple-nav {
-		display: inline-flex;
-		color: var(--wp--custom--brag-book-gallery--color--black) !important;
-		font-size: var(--wp--custom--brag-book-gallery--text-sm) !important;
-		margin-block-end: var(--wp--custom--brag-book-gallery--spacer--sm, 8px);
-	}
-}
-
-// Case header layout
-.brag-book-gallery-brag-book-gallery-case-header {
-	flex: 1;
-	display: flex;
-	flex-flow: row wrap;
-	align-items: center;
-	justify-content: space-between;
-	text-align: center;
-	gap: var(--wp--custom--brag-book-gallery--spacer--sm);
-	border-bottom: 1px solid var(--wp--custom--brag-book-gallery--color--light-grey);
-
-	.brag-book-gallery-content-title {
-		margin: 0;
-		font-size: var(--text-xl);
-		font-weight: var(--font-semibold);
-		line-height: var(--leading-6);
-		color: var(--color-text-primary);
-
-		@media (max-width: 768px) {
-			font-size: var(--text-lg);
-			line-height: var(--leading-5);
-		}
-
-		.case-id {
-			opacity: 0.7;
-			font-weight: var(--font-normal);
-		}
-	}
-}
-
-// Navigation buttons
 .brag-book-gallery-case-nav-buttons {
 	display: flex;
-	align-items: center;
 	gap: var(--wp--custom--brag-book-gallery--spacer--md);
-
-	@media (max-width: 768px) {
-		width: 100%;
-		justify-content: center;
-	}
 }
 
 .brag-book-gallery-nav-button {

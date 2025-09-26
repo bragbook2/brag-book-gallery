@@ -9,6 +9,7 @@ module.exports = {
 		frontend: './src/js/frontend.js',
 		admin: './src/js/admin.js',
 		'sync-admin': './src/js/sync-admin.js',
+		'stage-sync': './src/js/stage-sync.js',
 		'gutenberg-sidebar': './src/js/gutenberg-sidebar.js'
 	},
 	output: {
@@ -19,6 +20,7 @@ module.exports = {
 				frontend: 'brag-book-gallery.js',
 				admin: 'brag-book-gallery-admin.js',
 				'sync-admin': 'brag-book-gallery-sync-admin.js',
+				'stage-sync': 'brag-book-gallery-stage-sync.js',
 				'gutenberg-sidebar': 'gutenberg-sidebar.js'
 			};
 			return nameMap[pathData.chunk.name] || '[name].js';

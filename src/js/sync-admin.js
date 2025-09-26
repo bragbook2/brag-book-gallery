@@ -70,26 +70,7 @@ if (typeof window.BRAGbookSyncAdmin === 'undefined') {
 		 */
 		bindSyncControls() {
 			console.log('BRAGbook Sync Admin: Binding sync controls...');
-
-			// Main sync button
-			const syncBtn = document.getElementById('sync-procedures-btn');
-			console.log('BRAGbook Sync Admin: Sync button found:', !!syncBtn);
-			if (syncBtn) {
-				syncBtn.addEventListener('click', () => this.startFullSync());
-			}
-
-			// Stop sync button
-			const stopBtn = document.getElementById('stop-sync-btn');
-			console.log('BRAGbook Sync Admin: Stop button found:', !!stopBtn);
-			if (stopBtn) {
-				stopBtn.addEventListener('click', () => this.stopSync());
-			}
-
-			// Clear sync log button
-			const clearLogBtn = document.getElementById('clear-sync-log-btn');
-			if (clearLogBtn) {
-				clearLogBtn.addEventListener('click', () => this.clearSyncLog());
-			}
+			// Legacy sync buttons removed - using Stage-Based Sync instead
 		}
 
 		/**
@@ -107,8 +88,11 @@ if (typeof window.BRAGbookSyncAdmin === 'undefined') {
 			// Delete record buttons
 			document.querySelectorAll('.delete-sync-record').forEach(btn => {
 				btn.addEventListener('click', (e) => {
-					const recordId = e.target.getAttribute('data-record-id');
-					const recordDate = e.target.getAttribute('data-record-date');
+					const recordId = e.target.getAttribute('data-sync-id');
+					// Try to get the date from the row
+					const row = e.target.closest('tr');
+					const dateCell = row ? row.querySelector('td:first-child') : null;
+					const recordDate = dateCell ? dateCell.textContent.trim() : 'this sync record';
 					this.deleteSyncRecord(recordId, recordDate);
 				});
 			});
@@ -175,36 +159,12 @@ if (typeof window.BRAGbookSyncAdmin === 'undefined') {
 		}
 
 		/**
-		 * Start full sync operation
+		 * Resume sync operation after pause
 		 */
-		async startFullSync() {
-			console.log('BRAGbook Sync Admin: Starting full sync...');
-
-			if (this.syncInProgress) {
-				console.log('BRAGbook Sync Admin: Sync already in progress, aborting');
-				return;
-			}
+		async resumeSync() {
+			console.log('BRAGbook Sync Admin: Resuming sync after pause...');
 
 			try {
-				console.log('BRAGbook Sync Admin: Setting sync in progress...');
-				this.syncStartTime = Date.now(); // Record sync start time
-				this.setSyncInProgress(true);
-				this.showProgress();
-
-				// Clear any existing log and add startup messages
-				const progressItems = document.getElementById('sync-progress-items');
-				if (progressItems) {
-					progressItems.innerHTML = '';
-				}
-
-				// Add detailed startup messages
-				this.addProgressLogEntry('Starting full synchronization process', 'info');
-				this.addProgressLogEntry('Validating API connection and credentials', 'info');
-				this.addProgressLogEntry('Fetching sidebar data for procedures', 'info');
-
-				// Update progress bars
-				this.updateProgress('Initializing sync...', 0, 0, []);
-
 				const formData = new FormData();
 				formData.append('action', 'brag_book_full_sync');
 				formData.append('nonce', this.nonces.sync);
@@ -218,10 +178,11 @@ if (typeof window.BRAGbookSyncAdmin === 'undefined') {
 				this.handleSyncResult(result);
 
 			} catch (error) {
-				console.error('Sync error:', error);
+				console.error('Resume sync error:', error);
 				this.handleSyncError(error.message);
 			}
 		}
+
 
 		/**
 		 * Update the syncs in progress section
@@ -313,38 +274,6 @@ if (typeof window.BRAGbookSyncAdmin === 'undefined') {
 			}
 		}
 
-		/**
-		 * Clear sync log
-		 */
-		async clearSyncLog() {
-			if (!confirm(this.messages.confirm_clear_log || 'Are you sure you want to clear the sync log?')) {
-				return;
-			}
-
-			try {
-				const formData = new FormData();
-				formData.append('action', 'brag_book_clear_sync_log');
-				formData.append('nonce', this.nonces.clearLog);
-
-				const response = await fetch(this.ajaxUrl, {
-					method: 'POST',
-					body: formData
-				});
-
-				const result = await response.json();
-
-				if (result.success) {
-					this.showNotice(result.data.message, 'success');
-					setTimeout(() => window.location.reload(), 1500);
-				} else {
-					this.showNotice(result.data.message, 'error');
-				}
-
-			} catch (error) {
-				console.error('Clear log error:', error);
-				this.showNotice('Failed to clear sync log: ' + error.message, 'error');
-			}
-		}
 
 
 		/**
@@ -360,7 +289,7 @@ if (typeof window.BRAGbookSyncAdmin === 'undefined') {
 				const formData = new FormData();
 				formData.append('action', 'brag_book_delete_sync_record');
 				formData.append('nonce', this.nonces.delete);
-				formData.append('record_id', recordId);
+				formData.append('sync_id', recordId); // Changed from record_id to sync_id
 
 				const response = await fetch(this.ajaxUrl, {
 					method: 'POST',
@@ -497,21 +426,7 @@ if (typeof window.BRAGbookSyncAdmin === 'undefined') {
 			console.log('BRAGbook Sync Admin: Setting sync in progress:', inProgress);
 			this.syncInProgress = inProgress;
 
-			const syncBtn = document.getElementById('sync-procedures-btn');
-			const stopBtn = document.getElementById('stop-sync-btn');
-
-			console.log('BRAGbook Sync Admin: Elements found - sync:', !!syncBtn, 'stop:', !!stopBtn);
-
-			if (syncBtn) {
-				syncBtn.disabled = inProgress;
-				syncBtn.textContent = inProgress ? 'Sync in Progress...' : 'Start Full Sync';
-				console.log('BRAGbook Sync Admin: Updated sync button - disabled:', inProgress, 'text:', syncBtn.textContent);
-			}
-
-			if (stopBtn) {
-				stopBtn.style.display = inProgress ? 'inline-block' : 'none';
-				console.log('BRAGbook Sync Admin: Updated stop button display:', stopBtn.style.display);
-			}
+			// Legacy sync button updates removed - using Stage-Based Sync instead
 
 			if (inProgress) {
 				this.startProgressPolling();
@@ -566,22 +481,38 @@ if (typeof window.BRAGbookSyncAdmin === 'undefined') {
 			const currentOperation = document.getElementById('sync-current-operation');
 			const currentFill = document.getElementById('sync-current-fill');
 			const currentPercentage = document.getElementById('sync-current-percentage');
+			const statusText = document.getElementById('sync-status-text');
+			const timeElapsed = document.getElementById('sync-time-elapsed');
+
+
 
 			if (overallFill) {
 				overallFill.style.width = overall + '%';
+				// Add data-percentage attribute for CSS display
+				overallFill.setAttribute('data-percentage', Math.round(overall) + '%');
 			}
 			if (overallPercentage) {
-				// Add elapsed time to overall percentage display
-				let percentageText = Math.round(overall) + '%';
-				if (this.syncStartTime && overall > 0) {
-					const elapsed = Math.floor((Date.now() - this.syncStartTime) / 1000);
-					const minutes = Math.floor(elapsed / 60);
-					const seconds = elapsed % 60;
-					const timeStr = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
-					percentageText += ` (${timeStr})`;
-				}
-				overallPercentage.textContent = percentageText;
+				// Just show percentage without time
+				overallPercentage.textContent = Math.round(overall) + '%';
 			}
+
+			// Always update time and resource monitoring
+			// Use real data from server if available, otherwise calculate locally
+			const elapsed = this.syncStartTime ? Math.floor((Date.now() - this.syncStartTime) / 1000) : 0;
+
+			if (timeElapsed) {
+				const minutes = Math.floor(elapsed / 60);
+				const seconds = elapsed % 60;
+				let timeStr = 'Time: ';
+				if (minutes > 0) {
+					timeStr += `${minutes}m ${seconds}s`;
+				} else {
+					timeStr += `${seconds}s`;
+				}
+				timeElapsed.textContent = timeStr;
+			}
+
+
 			if (currentOperation) {
 				currentOperation.textContent = message;
 			}
@@ -591,6 +522,46 @@ if (typeof window.BRAGbookSyncAdmin === 'undefined') {
 			if (currentPercentage) {
 				currentPercentage.textContent = Math.round(current) + '%';
 			}
+
+			// Update status text based on progress
+			if (statusText) {
+				if (overall === 100) {
+					statusText.textContent = 'Completed';
+					statusText.style.color = '#22c55e'; // Green for completed
+				} else if (overall > 0) {
+					statusText.textContent = 'In Progress';
+					statusText.style.color = '#D94540'; // Brand red for in progress
+				} else {
+					statusText.textContent = 'Ready';
+					statusText.style.color = '#1e293b'; // Default dark color
+				}
+			}
+
+			// Update sync progress overview class for state-based styling
+			const progressOverview = document.querySelector('.sync-progress-overview');
+			if (progressOverview) {
+				progressOverview.classList.remove('sync-in-progress', 'sync-completed', 'sync-error');
+				if (overall === 100) {
+					progressOverview.classList.add('sync-completed');
+				} else if (overall > 0) {
+					progressOverview.classList.add('sync-in-progress');
+				}
+			}
+
+
+
+			// Update sync status badge
+			const statusBadge = document.querySelector('.sync-status-badge');
+			if (statusBadge) {
+				if (overall === 100) {
+					statusBadge.className = 'sync-status-badge completed';
+					statusBadge.innerHTML = '<span class="status-indicator"></span>Completed';
+				} else if (overall > 0) {
+					statusBadge.className = 'sync-status-badge syncing';
+					statusBadge.innerHTML = '<span class="status-indicator active"></span>Syncing';
+				}
+			}
+
 
 			// Update progress details log
 			this.updateProgressLog(recentCases);
@@ -799,6 +770,7 @@ if (typeof window.BRAGbookSyncAdmin === 'undefined') {
 							data.recent_cases || []
 						);
 
+
 						// Update syncs in progress section
 						this.updateSyncsInProgress([data]);
 					} else if (result.success && result.data.stage === 'idle') {
@@ -820,6 +792,7 @@ if (typeof window.BRAGbookSyncAdmin === 'undefined') {
 			}, 1500); // Poll more frequently for better responsiveness
 		}
 
+
 		/**
 		 * Stop progress polling
 		 */
@@ -835,6 +808,34 @@ if (typeof window.BRAGbookSyncAdmin === 'undefined') {
 		 */
 		handleSyncResult(result) {
 			if (result.success) {
+				// Check if sync needs to resume (paused for resource limits)
+				if (result.data && result.data.needs_resume) {
+					this.addProgressLogEntry('⏸ Sync paused to prevent timeout - resuming...', 'warning');
+
+					// Update progress display
+					const progress = result.data.progress || 0;
+					this.updateProgress(result.data.message || 'Resuming sync...', progress, progress, []);
+
+					// Log current stats
+					if (result.data.created > 0 || result.data.updated > 0) {
+						this.addProgressLogEntry(`Progress so far:`, 'info');
+						if (result.data.created > 0) this.addProgressLogEntry(`   • Procedures Created: ${result.data.created}`, 'info');
+						if (result.data.updated > 0) this.addProgressLogEntry(`   • Procedures Updated: ${result.data.updated}`, 'info');
+						if (result.data.cases_created > 0) this.addProgressLogEntry(`   • Cases Created: ${result.data.cases_created}`, 'info');
+						if (result.data.cases_updated > 0) this.addProgressLogEntry(`   • Cases Updated: ${result.data.cases_updated}`, 'info');
+					}
+
+					// Wait a moment then resume sync automatically
+					setTimeout(() => {
+						this.addProgressLogEntry('↻ Continuing sync...', 'info');
+						this.resumeSync();
+					}, 2000);
+
+					// Keep sync in progress
+					return;
+				}
+
+				// Normal completion
 				this.addProgressLogEntry('🎉 Sync completed successfully!', 'success');
 
 				// Force both progress bars to 100% and set completion styling

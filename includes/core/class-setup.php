@@ -399,6 +399,15 @@ final class Setup {
 		// Initialize REST API endpoints.
 		$this->init_rest_api();
 
+		// Initialize optimized sync AJAX handlers
+		if ( is_admin() ) {
+			error_log( 'BRAG book Gallery: Initializing Sync_Ajax_Handler' );
+			\BRAGBookGallery\Includes\Sync\Sync_Ajax_Handler::init();
+			error_log( 'BRAG book Gallery: Sync_Ajax_Handler initialized' );
+		}
+
+		// Register custom cron schedules
+		add_filter( 'cron_schedules', [ $this, 'add_cron_schedules' ] );
 
 		// Register tracking hooks for view analytics
 		add_action( 'brag_book_gallery_track_view', [ $this, 'handle_scheduled_view_tracking' ] );
@@ -1715,6 +1724,26 @@ final class Setup {
 				error_log( 'BRAGBook Gallery: Scheduled view tracking exception - ' . $e->getMessage() );
 			}
 		}
+	}
+
+	/**
+	 * Add custom cron schedules
+	 *
+	 * WordPress doesn't include a weekly schedule by default,
+	 * so we add it here for the automatic sync functionality.
+	 *
+	 * @since 3.3.0
+	 * @param array $schedules Existing cron schedules.
+	 * @return array Modified schedules with weekly option added.
+	 */
+	public function add_cron_schedules( array $schedules ): array {
+		if ( ! isset( $schedules['weekly'] ) ) {
+			$schedules['weekly'] = [
+				'interval' => WEEK_IN_SECONDS,
+				'display'  => __( 'Weekly', 'brag-book-gallery' ),
+			];
+		}
+		return $schedules;
 	}
 
 }

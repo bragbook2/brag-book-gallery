@@ -82,14 +82,8 @@ class General_Page extends Settings_Base {
 			true
 		);
 
-		// Debug form submission
-		error_log( "BRAGBook Debug - POST submit: " . ( isset( $_POST['submit'] ) ? 'TRUE' : 'FALSE' ) );
-		error_log( "BRAGBook Debug - POST submit_css: " . ( isset( $_POST['submit_css'] ) ? 'TRUE' : 'FALSE' ) );
-		error_log( "BRAGBook Debug - POST submit_default: " . ( isset( $_POST['submit_default'] ) ? 'TRUE' : 'FALSE' ) );
-
 		// Handle form submission
 		if ( ( isset( $_POST['submit'] ) || isset( $_POST['submit_css'] ) ) && $this->save_settings( 'brag_book_gallery_general_settings', 'brag_book_gallery_general_nonce' ) ) {
-			error_log( "BRAGBook Debug - Calling save_general_settings()" );
 			$this->save_general_settings();
 		}
 
@@ -472,11 +466,6 @@ class General_Page extends Settings_Base {
 		$enable_favorites = get_option( 'brag_book_gallery_enable_favorites', true );
 		$enable_consultation = get_option( 'brag_book_gallery_enable_consultation', true );
 
-		// Debug what's actually in the database
-		$raw_db_value = get_option( 'brag_book_gallery_enable_favorites', 'NOT_FOUND' );
-		error_log( "BRAGBook Debug - Raw DB value: " . print_r( $raw_db_value, true ) . " (type: " . gettype( $raw_db_value ) . ")" );
-		error_log( "BRAGBook Debug - Final enable_favorites: " . print_r( $enable_favorites, true ) . " (type: " . gettype( $enable_favorites ) . ")" );
-
 		// Show notice if not in default mode (for gallery settings section)
 		// Mode manager removed - default to 'default' mode
 		$current_mode = 'default';
@@ -619,7 +608,7 @@ class General_Page extends Settings_Base {
 							   name="brag_book_gallery_items_per_page"
 							   value="<?php echo esc_attr( $items_per_page ); ?>"
 							   min="1"
-							   max="100"
+							   max="200"
 							   step="1" />
 						<p class="description">
 							<?php esc_html_e( 'Number of gallery items to load initially. Additional items can be loaded with the "Load More" button.', 'brag-book-gallery' ); ?>
@@ -986,6 +975,7 @@ class General_Page extends Settings_Base {
 					<td>
 						<div class="brag-book-gallery-toggle-wrapper">
 							<label class="brag-book-gallery-toggle">
+								<input type="hidden" name="lazy_load" value="no" />
 								<input type="checkbox"
 								       id="lazy_load"
 								       name="lazy_load"
@@ -1443,6 +1433,64 @@ class General_Page extends Settings_Base {
 	 * @return void
 	 */
 	private function save_general_settings(): void {
+		// Save landing page text (moved from save_default_settings)
+		if ( isset( $_POST['brag_book_gallery_landing_page_text'] ) ) {
+			// Clean escaped quotes from WYSIWYG editor before saving
+			$landing_text = $_POST['brag_book_gallery_landing_page_text'];
+			$landing_text = str_replace( '\"', '"', $landing_text );
+			$landing_text = str_replace( "\'", "'", $landing_text );
+			$landing_text = stripslashes( $landing_text );
+			update_option(
+				'brag_book_gallery_landing_page_text',
+				wp_kses_post( $landing_text )
+			);
+		}
+
+		// Save combined gallery settings and create page if needed (moved from save_default_settings)
+		if ( isset( $_POST['brag_book_gallery_page_slug'] ) ) {
+			$new_slug = sanitize_title( $_POST['brag_book_gallery_page_slug'] );
+
+			// Get existing slug from option
+			$old_slug = get_option( 'brag_book_gallery_page_slug', '' );
+
+			if ( ! empty( $new_slug ) && $new_slug !== $old_slug ) {
+				// Check if page with this slug exists
+				$existing_page = get_page_by_path( $new_slug );
+
+				if ( ! $existing_page ) {
+					// Create the page with the gallery shortcode
+					$page_data = array(
+						'post_title'    => ucwords( str_replace( '-', ' ', $new_slug ) ),
+						'post_name'     => $new_slug,
+						'post_status'   => 'publish',
+						'post_type'     => 'page',
+						'post_content'  => '[brag_book_gallery]',
+						'comment_status' => 'closed',
+						'ping_status'    => 'closed'
+					);
+
+					$page_id = wp_insert_post( $page_data );
+
+					if ( $page_id && ! is_wp_error( $page_id ) ) {
+						update_option( 'brag_book_gallery_page_id', $page_id );
+						$this->add_notice(
+							sprintf( __( 'Gallery page "%s" created successfully.', 'brag-book-gallery' ), $new_slug ),
+							'success'
+						);
+					}
+				}
+
+				// Update the slug
+				update_option( 'brag_book_gallery_page_slug', $new_slug );
+
+				// Also update the old gallery_slug option for backward compatibility
+				update_option( 'brag_book_gallery_slug', $new_slug );
+
+				// Flush rewrite rules after changing slug
+				flush_rewrite_rules();
+			}
+		}
+
 		// Gallery Display Settings
 		$columns = isset( $_POST['brag_book_gallery_columns'] ) ? sanitize_text_field( $_POST['brag_book_gallery_columns'] ) : '3';
 		update_option( 'brag_book_gallery_columns', $columns );
@@ -1451,39 +1499,22 @@ class General_Page extends Settings_Base {
 		update_option( 'brag_book_gallery_items_per_page', $items_per_page );
 
 		// Navigation and Filter Settings
+		// With hidden field, we always get a value (0 or 1)
 		$expand_nav_menus = isset( $_POST['brag_book_gallery_expand_nav_menus'] ) && $_POST['brag_book_gallery_expand_nav_menus'] === '1';
 		update_option( 'brag_book_gallery_expand_nav_menus', $expand_nav_menus );
 
 		$show_filter_counts = isset( $_POST['brag_book_gallery_show_filter_counts'] ) && $_POST['brag_book_gallery_show_filter_counts'] === '1';
 		update_option( 'brag_book_gallery_show_filter_counts', $show_filter_counts );
 
-		// Debug favorites toggle processing
-		$raw_post_value = $_POST['brag_book_gallery_enable_favorites'] ?? 'NOT_SET';
-		$is_isset = isset( $_POST['brag_book_gallery_enable_favorites'] );
-		$equals_one = isset( $_POST['brag_book_gallery_enable_favorites'] ) && $_POST['brag_book_gallery_enable_favorites'] === '1';
-
-		error_log( "BRAGBook Debug - Raw POST value: " . print_r( $raw_post_value, true ) );
-		error_log( "BRAGBook Debug - isset check: " . ( $is_isset ? 'TRUE' : 'FALSE' ) );
-		error_log( "BRAGBook Debug - equals '1' check: " . ( $equals_one ? 'TRUE' : 'FALSE' ) );
-
+		// Favorites Settings
+		// With hidden field, we always get a value (0 or 1)
 		$enable_favorites = isset( $_POST['brag_book_gallery_enable_favorites'] ) && $_POST['brag_book_gallery_enable_favorites'] === '1';
-
-		error_log( "BRAGBook Debug - Final boolean value: " . ( $enable_favorites ? 'TRUE' : 'FALSE' ) );
-		error_log( "BRAGBook Debug - About to save to database..." );
-
-		// Force the option to be created/updated even if value is false
-		delete_option( 'brag_book_gallery_enable_favorites' );
-		$update_result = add_option( 'brag_book_gallery_enable_favorites', $enable_favorites, '', 'no' );
-
-		error_log( "BRAGBook Debug - Update result: " . ( $update_result ? 'SUCCESS' : 'NO_CHANGE_OR_FAIL' ) );
-		error_log( "BRAGBook Debug - Value now in DB: " . print_r( get_option( 'brag_book_gallery_enable_favorites' ), true ) );
+		update_option( 'brag_book_gallery_enable_favorites', $enable_favorites );
 
 		// Consultation Settings
+		// With hidden field, we always get a value (0 or 1)
 		$enable_consultation = isset( $_POST['brag_book_gallery_enable_consultation'] ) && $_POST['brag_book_gallery_enable_consultation'] === '1';
-
-		// Force the option to be created/updated even if value is false
-		delete_option( 'brag_book_gallery_enable_consultation' );
-		add_option( 'brag_book_gallery_enable_consultation', $enable_consultation, '', 'no' );
+		update_option( 'brag_book_gallery_enable_consultation', $enable_consultation );
 
 		// Clear settings helper cache when favorites setting is updated
 		if ( class_exists( '\BRAGBookGallery\Includes\Core\Settings_Helper' ) ) {
@@ -1508,101 +1539,13 @@ class General_Page extends Settings_Base {
 	}
 
 	/**
-	 * Save default settings
+	 * Save default settings (for SEO and Performance forms)
 	 *
 	 * @since 3.0.0
 	 * @return void
 	 */
 	private function save_default_settings(): void {
-		// Save landing page text
-		if ( isset( $_POST['brag_book_gallery_landing_page_text'] ) ) {
-			// Clean escaped quotes from WYSIWYG editor before saving
-			$landing_text = $_POST['brag_book_gallery_landing_page_text'];
-			$landing_text = str_replace( '\"', '"', $landing_text );
-			$landing_text = str_replace( "\'", "'", $landing_text );
-			$landing_text = stripslashes( $landing_text );
-			update_option(
-				'brag_book_gallery_landing_page_text',
-				wp_kses_post( $landing_text )
-			);
-		}
-
-		// Save combined gallery settings and create page if needed
-		if ( isset( $_POST['brag_book_gallery_page_slug'] ) ) {
-			$new_slug = sanitize_title( $_POST['brag_book_gallery_page_slug'] );
-
-			// Get existing slug from option
-			$old_slug = get_option( 'brag_book_gallery_page_slug', '' );
-
-			if ( ! empty( $new_slug ) && $new_slug !== $old_slug ) {
-				// Check if page with this slug exists
-				$existing_page = get_page_by_path( $new_slug );
-
-				if ( ! $existing_page ) {
-					// Create the page with the gallery shortcode
-					$page_data = array(
-						'post_title'    => ucwords( str_replace( '-', ' ', $new_slug ) ),
-						'post_name'     => $new_slug,
-						'post_content'  => '[brag_book_gallery]', // Main gallery shortcode
-						'post_status'   => 'publish',
-						'post_type'     => 'page',
-						'post_author'   => get_current_user_id(),
-						'comment_status' => 'closed',
-						'ping_status'   => 'closed',
-					);
-
-					$page_id = wp_insert_post( $page_data );
-
-					if ( ! is_wp_error( $page_id ) ) {
-						// Add SEO meta fields if they exist (handle array format)
-						$seo_title_option = get_option( 'brag_book_gallery_seo_page_title', '' );
-						$seo_title = is_array( $seo_title_option ) && ! empty( $seo_title_option[0] ) ? $seo_title_option[0] : $seo_title_option;
-
-						$seo_desc_option = get_option( 'brag_book_gallery_seo_page_description', '' );
-						$seo_description = is_array( $seo_desc_option ) && ! empty( $seo_desc_option[0] ) ? $seo_desc_option[0] : $seo_desc_option;
-
-						if ( ! empty( $seo_title ) ) {
-							update_post_meta( $page_id, '_yoast_wpseo_title', $seo_title );
-							update_post_meta( $page_id, '_aioseo_title', $seo_title );
-							update_post_meta( $page_id, '_seopress_titles_title', $seo_title );
-							update_post_meta( $page_id, '_rank_math_title', $seo_title );
-						}
-
-						if ( ! empty( $seo_description ) ) {
-							update_post_meta( $page_id, '_yoast_wpseo_metadesc', $seo_description );
-							update_post_meta( $page_id, '_aioseo_description', $seo_description );
-							update_post_meta( $page_id, '_seopress_titles_desc', $seo_description );
-							update_post_meta( $page_id, '_rank_math_description', $seo_description );
-						}
-
-						// Flush rewrite rules after creating gallery page
-						flush_rewrite_rules();
-
-						$this->add_notice(
-							sprintf(
-								__( 'Gallery page "%s" has been created successfully.', 'brag-book-gallery' ),
-								$new_slug
-							)
-						);
-					}
-				} else {
-					$this->add_notice(
-						sprintf(
-							__( 'A page with slug "%s" already exists. The gallery will use the existing page.', 'brag-book-gallery' ),
-							$new_slug
-						),
-						'warning'
-					);
-				}
-			}
-
-			// Update the slug - maintain array format for consistency
-			if ( ! empty( $new_slug ) ) {
-				// Store as a single string value
-				update_option( 'brag_book_gallery_page_slug', $new_slug );
-			}
-		}
-
+		// Save SEO settings
 		if ( isset( $_POST['brag_book_gallery_seo_title'] ) ) {
 			update_option( 'brag_book_gallery_seo_page_title', sanitize_text_field( $_POST['brag_book_gallery_seo_title'] ) );
 		}
@@ -1620,10 +1563,20 @@ class General_Page extends Settings_Base {
 			update_option( 'brag_book_gallery_cache_duration', absint( $_POST['cache_duration'] ) );
 		}
 
-		$lazy_load = isset( $_POST['lazy_load'] ) && $_POST['lazy_load'] === 'yes' ? 'yes' : 'no';
-		update_option( 'brag_book_gallery_lazy_load', $lazy_load );
+		// With hidden field, lazy_load is always set
+		if ( isset( $_POST['lazy_load'] ) ) {
+			$lazy_load = $_POST['lazy_load'] === 'yes' ? 'yes' : 'no';
+			update_option( 'brag_book_gallery_lazy_load', $lazy_load );
+		}
 
-		$this->add_notice( __( 'Gallery settings saved successfully.', 'brag-book-gallery' ) );
+		// Determine which form was submitted and show appropriate message
+		if ( isset( $_POST['brag_book_gallery_seo_title'] ) || isset( $_POST['brag_book_gallery_seo_description'] ) ) {
+			$this->add_notice( __( 'SEO settings saved successfully.', 'brag-book-gallery' ) );
+		} elseif ( isset( $_POST['ajax_timeout'] ) || isset( $_POST['cache_duration'] ) || isset( $_POST['lazy_load'] ) ) {
+			$this->add_notice( __( 'Performance settings saved successfully.', 'brag-book-gallery' ) );
+		} else {
+			$this->add_notice( __( 'Settings saved successfully.', 'brag-book-gallery' ) );
+		}
 	}
 
 }

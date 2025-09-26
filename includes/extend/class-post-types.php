@@ -366,12 +366,10 @@ class Post_Types {
 		// Add nonce for security
 		wp_nonce_field( 'save_case_api_data', 'case_api_data_nonce' );
 
+
 		// Get existing values (check new format first, then fallback to old format)
 		$api_case_id          = get_post_meta( $post->ID, 'brag_book_gallery_api_id', true ) ?: get_post_meta( $post->ID, '_case_api_id', true );
-		$patient_id           = get_post_meta( $post->ID, 'brag_book_gallery_patient_id', true ) ?: get_post_meta( $post->ID, '_case_patient_id', true );
-		$user_id              = get_post_meta( $post->ID, 'brag_book_gallery_user_id', true ) ?: get_post_meta( $post->ID, '_case_user_id', true );
-		$org_id               = get_post_meta( $post->ID, 'brag_book_gallery_org_id', true ) ?: get_post_meta( $post->ID, '_case_org_id', true );
-		$emr_id               = get_post_meta( $post->ID, 'brag_book_gallery_emr_id', true ) ?: get_post_meta( $post->ID, '_case_emr_id', true );
+
 		$ethnicity            = get_post_meta( $post->ID, 'brag_book_gallery_ethnicity', true ) ?: get_post_meta( $post->ID, '_case_ethnicity', true );
 		$height               = get_post_meta( $post->ID, 'brag_book_gallery_height', true ) ?: get_post_meta( $post->ID, '_case_height', true );
 		$height_unit          = get_post_meta( $post->ID, 'brag_book_gallery_height_unit', true ) ?: get_post_meta( $post->ID, '_case_height_unit', true );
@@ -380,17 +378,6 @@ class Post_Types {
 		$procedure_ids        = get_post_meta( $post->ID, 'brag_book_gallery_procedure_ids', true ) ?: get_post_meta( $post->ID, '_case_procedure_ids', true );
 		$technique            = get_post_meta( $post->ID, 'brag_book_gallery_technique', true ) ?: get_post_meta( $post->ID, '_case_technique', true );
 		$revision_surgery     = get_post_meta( $post->ID, 'brag_book_gallery_revision_surgery', true ) ?: get_post_meta( $post->ID, '_case_revision_surgery', true );
-		$quality_score        = get_post_meta( $post->ID, 'brag_book_gallery_quality_score', true ) ?: get_post_meta( $post->ID, '_case_quality_score', true );
-		$approved_for_social  = get_post_meta( $post->ID, 'brag_book_gallery_approved_for_social', true ) ?: get_post_meta( $post->ID, '_case_approved_for_social', true );
-		$is_for_tablet        = get_post_meta( $post->ID, 'brag_book_gallery_is_for_tablet', true ) ?: get_post_meta( $post->ID, '_case_is_for_tablet', true );
-		$is_for_website       = get_post_meta( $post->ID, 'brag_book_gallery_is_for_website', true ) ?: get_post_meta( $post->ID, '_case_is_for_website', true );
-		$draft                = get_post_meta( $post->ID, 'brag_book_gallery_draft', true ) ?: get_post_meta( $post->ID, '_case_draft', true );
-		$no_watermark         = get_post_meta( $post->ID, 'brag_book_gallery_no_watermark', true ) ?: get_post_meta( $post->ID, '_case_no_watermark', true );
-		$is_nude              = get_post_meta( $post->ID, 'brag_book_gallery_is_nude', true ) ?: get_post_meta( $post->ID, '_case_is_nude', true );
-		$after1_timeframe     = get_post_meta( $post->ID, 'brag_book_gallery_after1_timeframe', true ) ?: get_post_meta( $post->ID, '_case_after1_timeframe', true );
-		$after1_unit          = get_post_meta( $post->ID, 'brag_book_gallery_after1_unit', true ) ?: get_post_meta( $post->ID, '_case_after1_unit', true );
-		$after2_timeframe     = get_post_meta( $post->ID, 'brag_book_gallery_after2_timeframe', true ) ?: get_post_meta( $post->ID, '_case_after2_timeframe', true );
-		$after2_unit          = get_post_meta( $post->ID, 'brag_book_gallery_after2_unit', true ) ?: get_post_meta( $post->ID, '_case_after2_unit', true );
 		$seo_suffix_url       = get_post_meta( $post->ID, 'brag_book_gallery_seo_suffix_url', true ) ?: get_post_meta( $post->ID, '_case_seo_suffix_url', true );
 		$seo_headline         = get_post_meta( $post->ID, 'brag_book_gallery_seo_headline', true ) ?: get_post_meta( $post->ID, '_case_seo_headline', true );
 		$seo_page_title       = get_post_meta( $post->ID, 'brag_book_gallery_seo_page_title', true ) ?: get_post_meta( $post->ID, '_case_seo_page_title', true );
@@ -432,54 +419,6 @@ class Post_Types {
 								   value="<?php echo esc_attr( $api_case_id ); ?>"
 								   class="regular-text"/>
 							<p class="description"><?php esc_html_e( 'Unique case ID from the BRAGBook API', 'brag-book-gallery' ); ?></p>
-						</td>
-					</tr>
-					<tr>
-						<th scope="row">
-							<label
-								for="brag_book_gallery_patient_id"><?php esc_html_e( 'Patient ID', 'brag-book-gallery' ); ?></label>
-						</th>
-						<td>
-							<input type="text" id="brag_book_gallery_patient_id"
-								   name="brag_book_gallery_patient_id"
-								   value="<?php echo esc_attr( $patient_id ); ?>"
-								   class="regular-text"/>
-						</td>
-					</tr>
-					<tr>
-						<th scope="row">
-							<label
-								for="brag_book_gallery_user_id"><?php esc_html_e( 'User ID', 'brag-book-gallery' ); ?></label>
-						</th>
-						<td>
-							<input type="text" id="brag_book_gallery_user_id"
-								   name="brag_book_gallery_user_id"
-								   value="<?php echo esc_attr( $user_id ); ?>"
-								   class="regular-text"/>
-						</td>
-					</tr>
-					<tr>
-						<th scope="row">
-							<label
-								for="brag_book_gallery_org_id"><?php esc_html_e( 'Organization ID', 'brag-book-gallery' ); ?></label>
-						</th>
-						<td>
-							<input type="text" id="brag_book_gallery_org_id"
-								   name="brag_book_gallery_org_id"
-								   value="<?php echo esc_attr( $org_id ); ?>"
-								   class="regular-text"/>
-						</td>
-					</tr>
-					<tr>
-						<th scope="row">
-							<label
-								for="brag_book_gallery_emr_id"><?php esc_html_e( 'EMR ID', 'brag-book-gallery' ); ?></label>
-						</th>
-						<td>
-							<input type="text" id="brag_book_gallery_emr_id"
-								   name="brag_book_gallery_emr_id"
-								   value="<?php echo esc_attr( $emr_id ); ?>"
-								   class="regular-text"/>
 						</td>
 					</tr>
 					<tr>
@@ -585,16 +524,6 @@ class Post_Types {
 							</label>
 						</td>
 					</tr>
-					<tr>
-						<th scope="row">
-							<label
-								for="brag_book_gallery_after1_timeframe"><?php esc_html_e( 'After Photo 1 Timeframe', 'brag-book-gallery' ); ?></label>
-						</th>
-						<td>
-							<input type="number" id="brag_book_gallery_after1_timeframe"
-								   name="brag_book_gallery_after1_timeframe"
-								   value="<?php echo esc_attr( $after1_timeframe ); ?>"
-								   class="small-text"/>
 							<select id="brag_book_gallery_after1_unit"
 									name="brag_book_gallery_after1_unit">
 								<option
@@ -618,155 +547,9 @@ class Post_Types {
 							</select>
 						</td>
 					</tr>
-					<tr>
-						<th scope="row">
-							<label
-								for="brag_book_gallery_after2_timeframe"><?php esc_html_e( 'After Photo 2 Timeframe', 'brag-book-gallery' ); ?></label>
-						</th>
-						<td>
-							<input type="number" id="brag_book_gallery_after2_timeframe"
-								   name="brag_book_gallery_after2_timeframe"
-								   value="<?php echo esc_attr( $after2_timeframe ); ?>"
-								   class="small-text"/>
-							<select id="brag_book_gallery_after2_unit"
-									name="brag_book_gallery_after2_unit">
-								<option
-									value=""><?php esc_html_e( 'Select Unit', 'brag-book-gallery' ); ?></option>
-								<option
-									value="days" <?php selected( $after2_unit, 'days' ); ?>>
-									Days
-								</option>
-								<option
-									value="weeks" <?php selected( $after2_unit, 'weeks' ); ?>>
-									Weeks
-								</option>
-								<option
-									value="months" <?php selected( $after2_unit, 'months' ); ?>>
-									Months
-								</option>
-								<option
-									value="years" <?php selected( $after2_unit, 'years' ); ?>>
-									Years
-								</option>
-							</select>
-						</td>
-					</tr>
 				</table>
 			</div>
 
-			<div id="api-settings" class="tab-content">
-				<table class="form-table">
-					<tr>
-						<th scope="row">
-							<label
-								for="brag_book_gallery_quality_score"><?php esc_html_e( 'Quality Score', 'brag-book-gallery' ); ?></label>
-						</th>
-						<td>
-							<input type="number" id="brag_book_gallery_quality_score"
-								   name="brag_book_gallery_quality_score"
-								   value="<?php echo esc_attr( $quality_score ); ?>"
-								   min="0" max="100" class="small-text"/>
-							<p class="description"><?php esc_html_e( 'Quality score from 0-100', 'brag-book-gallery' ); ?></p>
-						</td>
-					</tr>
-					<tr>
-						<th scope="row"><?php esc_html_e( 'Approval & Settings', 'brag-book-gallery' ); ?></th>
-						<td>
-							<div class="brag-book-case-meta-toggles">
-								<div class="brag-book-gallery-toggle-wrapper">
-									<label class="brag-book-gallery-toggle">
-										<input type="hidden" name="brag_book_gallery_approved_for_social" value="0" />
-										<input type="checkbox"
-											   id="brag_book_gallery_approved_for_social"
-											   name="brag_book_gallery_approved_for_social"
-											   value="1"
-											   <?php checked( $approved_for_social, '1' ); ?> />
-										<span class="brag-book-gallery-toggle-slider"></span>
-									</label>
-									<span class="brag-book-gallery-toggle-label">
-										<?php esc_html_e( 'Approved for Social Media', 'brag-book-gallery' ); ?>
-									</span>
-								</div>
-
-								<div class="brag-book-gallery-toggle-wrapper">
-									<label class="brag-book-gallery-toggle">
-										<input type="hidden" name="brag_book_gallery_is_for_tablet" value="0" />
-										<input type="checkbox"
-											   id="brag_book_gallery_is_for_tablet"
-											   name="brag_book_gallery_is_for_tablet"
-											   value="1"
-											   <?php checked( $is_for_tablet, '1' ); ?> />
-										<span class="brag-book-gallery-toggle-slider"></span>
-									</label>
-									<span class="brag-book-gallery-toggle-label">
-										<?php esc_html_e( 'Available for Tablet', 'brag-book-gallery' ); ?>
-									</span>
-								</div>
-
-								<div class="brag-book-gallery-toggle-wrapper">
-									<label class="brag-book-gallery-toggle">
-										<input type="hidden" name="brag_book_gallery_is_for_website" value="0" />
-										<input type="checkbox"
-											   id="brag_book_gallery_is_for_website"
-											   name="brag_book_gallery_is_for_website"
-											   value="1"
-											   <?php checked( $is_for_website, '1' ); ?> />
-										<span class="brag-book-gallery-toggle-slider"></span>
-									</label>
-									<span class="brag-book-gallery-toggle-label">
-										<?php esc_html_e( 'Available for Website', 'brag-book-gallery' ); ?>
-									</span>
-								</div>
-
-								<div class="brag-book-gallery-toggle-wrapper">
-									<label class="brag-book-gallery-toggle">
-										<input type="hidden" name="brag_book_gallery_draft" value="0" />
-										<input type="checkbox"
-											   id="brag_book_gallery_draft"
-											   name="brag_book_gallery_draft"
-											   value="1"
-											   <?php checked( $draft, '1' ); ?> />
-										<span class="brag-book-gallery-toggle-slider"></span>
-									</label>
-									<span class="brag-book-gallery-toggle-label">
-										<?php esc_html_e( 'Draft Status', 'brag-book-gallery' ); ?>
-									</span>
-								</div>
-
-								<div class="brag-book-gallery-toggle-wrapper">
-									<label class="brag-book-gallery-toggle">
-										<input type="hidden" name="brag_book_gallery_no_watermark" value="0" />
-										<input type="checkbox"
-											   id="brag_book_gallery_no_watermark"
-											   name="brag_book_gallery_no_watermark"
-											   value="1"
-											   <?php checked( $no_watermark, '1' ); ?> />
-										<span class="brag-book-gallery-toggle-slider"></span>
-									</label>
-									<span class="brag-book-gallery-toggle-label">
-										<?php esc_html_e( 'No Watermark', 'brag-book-gallery' ); ?>
-									</span>
-								</div>
-
-								<div class="brag-book-gallery-toggle-wrapper">
-									<label class="brag-book-gallery-toggle">
-										<input type="hidden" name="brag_book_gallery_is_nude" value="0" />
-										<input type="checkbox"
-											   id="brag_book_gallery_is_nude"
-											   name="brag_book_gallery_is_nude"
-											   value="1"
-											   <?php checked( $is_nude, '1' ); ?> />
-										<span class="brag-book-gallery-toggle-slider"></span>
-									</label>
-									<span class="brag-book-gallery-toggle-label">
-										<?php esc_html_e( 'Contains Nudity', 'brag-book-gallery' ); ?>
-									</span>
-								</div>
-							</div>
-						</td>
-					</tr>
-				</table>
-			</div>
 
 			<div id="api-seo" class="tab-content">
 				<div class="brag-book-section-header">
@@ -1796,10 +1579,6 @@ class Post_Types {
 			$api_fields = [
 				// Basic Info
 				'case_api_id'                            => 'absint',
-				'case_patient_id'                        => 'sanitize_text_field',
-				'case_user_id'                           => 'sanitize_text_field',
-				'case_org_id'                            => 'sanitize_text_field',
-				'case_emr_id'                            => 'sanitize_text_field',
 				'case_procedure_ids'                     => 'sanitize_text_field',
 
 				// Patient Data
@@ -1809,13 +1588,6 @@ class Post_Types {
 				'brag_book_gallery_weight'               => 'absint',
 				'brag_book_gallery_weight_unit'          => 'sanitize_text_field',
 				'brag_book_gallery_technique'            => 'sanitize_text_field',
-				'brag_book_gallery_after1_timeframe'     => 'absint',
-				'brag_book_gallery_after1_unit'          => 'sanitize_text_field',
-				'brag_book_gallery_after2_timeframe'     => 'absint',
-				'brag_book_gallery_after2_unit'          => 'sanitize_text_field',
-
-				// Settings
-				'case_quality_score'                     => 'absint',
 
 				// SEO
 				'case_seo_suffix_url'                    => 'sanitize_text_field',
@@ -1838,13 +1610,7 @@ class Post_Types {
 
 			// Handle checkboxes separately (they may not be present in $_POST if unchecked)
 			$checkbox_fields = [
-				'case_revision_surgery',
-				'case_approved_for_social',
-				'case_is_for_tablet',
-				'case_is_for_website',
-				'case_draft',
-				'case_no_watermark',
-				'case_is_nude',
+				'case_revision_surgery'
 			];
 
 			foreach ( $checkbox_fields as $field ) {
@@ -2183,18 +1949,6 @@ class Post_Types {
 			'weightUnit'        => '_case_weight_unit',
 			'technique'         => '_case_technique',
 			'revisionSurgery'   => '_case_revision_surgery',
-			'after1Timeframe'   => '_case_after1_timeframe',
-			'after1Unit'        => '_case_after1_unit',
-			'after2Timeframe'   => '_case_after2_timeframe',
-			'after2Unit'        => '_case_after2_unit',
-
-			// Settings
-			'qualityScore'      => '_case_quality_score',
-			'approvedForSocial' => '_case_approved_for_social',
-			'isForTablet'       => '_case_is_for_tablet',
-			'isForWebsite'      => '_case_is_for_website',
-			'draft'             => '_case_draft',
-			'noWatermark'       => '_case_no_watermark',
 
 			// Additional fields
 			'details'           => '_case_notes',
@@ -2292,15 +2046,34 @@ class Post_Types {
 		$case_id    = $api_data['id'] ?? $post_id;
 		$post_title = $seo_headline ?: '';
 
-		// If no seoHeadline, try to get procedure name + case number
+		// If no seoHeadline, check for multiple procedures
 		if ( ! $post_title ) {
-			$procedure_name = self::get_primary_procedure_name( $api_data );
-			if ( $procedure_name ) {
-				// For multi-procedure cases, use the original case ID
+			// Check if this case has multiple procedures
+			$has_multiple_procedures = false;
+
+			// Check procedureIds array
+			if ( isset( $api_data['procedureIds'] ) && is_array( $api_data['procedureIds'] ) && count( $api_data['procedureIds'] ) > 1 ) {
+				$has_multiple_procedures = true;
+			}
+			// Or check procedureDetails array
+			elseif ( isset( $api_data['procedureDetails'] ) && is_array( $api_data['procedureDetails'] ) && count( $api_data['procedureDetails'] ) > 1 ) {
+				$has_multiple_procedures = true;
+			}
+
+			if ( $has_multiple_procedures ) {
+				// Use "Combo Procedures" for multi-procedure cases
 				$display_case_id = $api_data['original_case_id'] ?? $case_id;
-				$post_title      = $procedure_name . ' ' . $display_case_id;
+				$post_title = 'Combo Procedures #' . $display_case_id;
 			} else {
-				$post_title = "Procedure #{$case_id}";
+				// Single procedure - use procedure name
+				$procedure_name = self::get_primary_procedure_name( $api_data );
+				if ( $procedure_name ) {
+					// For single procedure cases, use the original case ID
+					$display_case_id = $api_data['original_case_id'] ?? $case_id;
+					$post_title      = $procedure_name . ' #' . $display_case_id;
+				} else {
+					$post_title = "Case #{$case_id}";
+				}
 			}
 		}
 

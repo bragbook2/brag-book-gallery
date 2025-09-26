@@ -388,7 +388,6 @@ final class Gallery_Handler {
 		return $config;
 	}
 
-
 	private static function render_gallery_html( array $all_cases_data = [], string $initial_procedure = '', string $initial_case_id = '', bool $is_favorites_page = false, \WP_Term $current_taxonomy = null, bool $is_case_view = false, string $case_id = '' ): string {
 		// Initialize output buffering for complete HTML capture
 		ob_start();
@@ -786,11 +785,15 @@ final class Gallery_Handler {
 									</div>
 								</details>
 							</div>
+							<?php
+							// Get columns from settings
+							$default_columns = absint( get_option( 'brag_book_gallery_columns', 2 ) );
+							?>
 							<div class="brag-book-gallery-grid-selector">
 								<span
 									class="brag-book-gallery-grid-label">View:</span>
 								<div class="brag-book-gallery-grid-buttons">
-									<button class="brag-book-gallery-grid-btn"
+									<button class="brag-book-gallery-grid-btn<?php echo $default_columns == 2 ? ' active' : ''; ?>"
 											data-columns="2"
 											onclick="updateGridLayout(2)"
 											aria-label="View in 2 columns">
@@ -810,7 +813,7 @@ final class Gallery_Handler {
 										<span class="sr-only">2 Columns</span>
 									</button>
 									<button
-										class="brag-book-gallery-grid-btn active"
+										class="brag-book-gallery-grid-btn<?php echo $default_columns == 3 ? ' active' : ''; ?>"
 										data-columns="3"
 										onclick="updateGridLayout(3)"
 										aria-label="View in 3 columns">
@@ -850,7 +853,7 @@ final class Gallery_Handler {
 								 aria-label="Filtered Gallery Results">
 								<div
 									class="brag-book-gallery-case-grid masonry-layout"
-									data-columns="3">
+									data-columns="<?php echo esc_attr( $default_columns ); ?>">
 									<?php
 									// Load cases from WordPress posts for this taxonomy
 									echo self::render_taxonomy_cases( $current_taxonomy );
@@ -1274,75 +1277,6 @@ final class Gallery_Handler {
 		return '/' . ltrim( $gallery_slug, '/' ) . '/myfavorites';
 	}
 
-	private static function render_case_details_fast( string $case_id, string $procedure_title = '' ): string {
-		try {
-			// Get API configuration
-			$api_tokens           = get_option( 'brag_book_gallery_api_token', [] );
-			$website_property_ids = get_option( 'brag_book_gallery_website_property_id', [] );
-
-			if ( empty( $api_tokens[0] ) || empty( $website_property_ids[0] ) ) {
-				return ''; // Fall back to normal rendering
-			}
-
-			$api_token           = $api_tokens[0];
-			$website_property_id = (int) $website_property_ids[0];
-
-			// Initialize case data
-			$case_data = null;
-
-			// If not in cache, make API call
-			if ( empty( $case_data ) ) {
-				// Make direct API call with short timeout for speed
-				$api_base_url = get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' );
-				$api_url      = sprintf( '%s/api/plugin/combine/cases/%s',
-					$api_base_url,
-					urlencode( $case_id )
-				);
-
-				// Prepare request body - API expects parameters wrapped in 'items'
-				$body = [
-					'items' => [
-						'apiToken'          => $api_token,
-						'websitePropertyId' => $website_property_id,
-					],
-				];
-
-				$response = wp_remote_post( $api_url, [
-					'timeout' => 5, // Fast timeout for initial page loads
-					'headers' => [
-						'Accept'       => 'application/json',
-						'Content-Type' => 'application/json',
-					],
-					'body'    => wp_json_encode( $body ),
-				] );
-
-				if ( is_wp_error( $response ) || wp_remote_retrieve_response_code( $response ) !== 200 ) {
-					return ''; // Fall back to normal rendering
-				}
-
-				$data = json_decode( wp_remote_retrieve_body( $response ), true );
-				if ( empty( $data['data'][0] ) ) {
-					return ''; // Fall back to normal rendering
-				}
-
-				$case_data = $data['data'][0];
-
-				// Cache the case data for future use (caching logic handled by API)
-			}
-
-			// Enqueue gallery assets for JavaScript functionality
-			Asset_Manager::enqueue_gallery_assets();
-
-			// Generate fast case details HTML
-			$output = self::generate_fast_case_html( $case_data, $procedure_title );
-
-			return $output;
-
-		} catch ( \Exception $e ) {
-			return ''; // Fall back to normal rendering
-		}
-	}
-
 	private static function generate_fast_case_html( array $case_data, string $procedure_title = '' ): string {
 		$case_id       = esc_html( $case_data['id'] ?? '' );
 		$images        = $case_data['images'] ?? [];
@@ -1473,10 +1407,14 @@ final class Gallery_Handler {
 			<?php endif; ?>
 
 			<!-- Gallery container for procedure cases -->
+			<?php
+			// Get columns from settings
+			$default_columns = absint( get_option( 'brag_book_gallery_columns', 2 ) );
+			?>
 			<div class="brag-book-gallery-procedure-cases"
 				 data-filter-procedure="<?php echo esc_attr( $procedure_slug ); ?>">
 				<div class="brag-book-gallery-case-grid masonry-layout"
-					 data-columns="3">
+					 data-columns="<?php echo esc_attr( $default_columns ); ?>">
 					<?php
 					// Load cases from WordPress posts for this procedure
 					echo self::render_taxonomy_cases( $procedure_term );
@@ -1484,9 +1422,43 @@ final class Gallery_Handler {
 				</div>
 
 				<?php
-				// Add Load More pagination if there are more than 12 cases
-				$total_cases = wp_count_posts( \BRAGBookGallery\Includes\Extend\Post_Types::POST_TYPE_CASES )->publish;
-				if ( $total_cases > 12 ) {
+				// Get items per page from settings
+				$items_per_page = absint( get_option( 'brag_book_gallery_items_per_page', 12 ) );
+
+				// Get total cases for this specific procedure
+				$procedure_id = get_term_meta( $procedure_term->term_id, 'procedure_id', true );
+				$total_case_ids = [];
+
+				if ( $procedure_id ) {
+					// Get all ordered case IDs for this procedure
+					$case_order_list = get_term_meta( $procedure_term->term_id, 'brag_book_gallery_case_order_list', true );
+					if ( is_array( $case_order_list ) ) {
+						$total_case_ids = $case_order_list;
+					}
+				}
+
+				// If we have ordered cases, use that count; otherwise count posts in taxonomy
+				if ( ! empty( $total_case_ids ) ) {
+					$total_cases = count( $total_case_ids );
+				} else {
+					// Fallback to counting posts in this taxonomy
+					$count_query = new \WP_Query( [
+						'post_type' => \BRAGBookGallery\Includes\Extend\Post_Types::POST_TYPE_CASES,
+						'tax_query' => [
+							[
+								'taxonomy' => $procedure_term->taxonomy,
+								'field'    => 'term_id',
+								'terms'    => $procedure_term->term_id,
+							]
+						],
+						'posts_per_page' => -1,
+						'fields' => 'ids',
+					] );
+					$total_cases = $count_query->found_posts;
+				}
+
+				// Add Load More pagination if there are more cases than items per page
+				if ( $total_cases > $items_per_page ) {
 					$infinite_scroll = get_option( 'brag_book_gallery_infinite_scroll', 'no' );
 					$button_style    = ( $infinite_scroll === 'yes' ) ? ' style="display: none;"' : '';
 					?>
@@ -1497,7 +1469,7 @@ final class Gallery_Handler {
 							data-start-page="2"
 							data-procedure-ids=""
 							data-procedure-name="<?php echo esc_attr( $procedure_slug ); ?>"
-							data-total-pages="<?php echo ceil( $total_cases / 12 ); ?>">
+							data-total-pages="<?php echo ceil( $total_cases / $items_per_page ); ?>">
 							<?php esc_html_e( 'Load More', 'brag-book-gallery' ); ?>
 						</button>
 					</div>
@@ -1525,18 +1497,25 @@ final class Gallery_Handler {
 	 */
 	private static function render_taxonomy_cases( \WP_Term $taxonomy ): string {
 
+		// Get items per page from settings
+		$items_per_page = absint( get_option( 'brag_book_gallery_items_per_page', 12 ) );
+
+		// Build query args using case order meta field for sorting
 		$query_args = array(
 			'post_type'      => \BRAGBookGallery\Includes\Extend\Post_Types::POST_TYPE_CASES,
 			'post_status'    => 'publish',
-			'posts_per_page' => 12,
-			'orderby'        => 'date',
-			'order'          => 'DESC',
+			'posts_per_page' => $items_per_page,
 			'tax_query'      => array(
 				array(
 					'taxonomy' => $taxonomy->taxonomy,
 					'field'    => 'term_id',
 					'terms'    => $taxonomy->term_id,
 				),
+			),
+			'meta_key'       => 'brag_book_gallery_case_order',
+			'orderby'        => array(
+				'meta_value_num' => 'ASC',  // Primary sort by case order
+				'date'           => 'DESC',  // Secondary sort by date
 			),
 		);
 
@@ -1583,7 +1562,7 @@ final class Gallery_Handler {
 				$case_data,
 				'single', // image_display_mode - use single mode for taxonomy pages
 				$procedure_nudity, // procedure_nudity - from taxonomy meta
-				'taxonomy' // procedure_context - we're on a taxonomy page
+				$taxonomy->name // procedure_context - pass the actual taxonomy name
 			);
 		}
 
@@ -1787,88 +1766,5 @@ final class Gallery_Handler {
 				error_log( 'BRAGBook Gallery: Server-side view tracking exception - ' . $e->getMessage() );
 			}
 		}
-	}
-
-	/**
-	 * Check if a procedure has nudity flag set using API sidebar data.
-	 *
-	 * Uses the sidebar data to determine if a procedure has nudity enabled.
-	 * This ensures consistent nudity detection across all shortcode handlers.
-	 *
-	 * @since 3.0.0
-	 *
-	 * @param string $procedure_slug Procedure slug to check.
-	 *
-	 * @return bool True if procedure has nudity flag set.
-	 */
-	private static function procedure_has_nudity_from_api( string $procedure_slug ): bool {
-		if ( WP_DEBUG ) {
-			error_log( 'BRAGBook Gallery: procedure_has_nudity_from_api called with slug: ' . $procedure_slug );
-		}
-
-
-		// Get sidebar data to check procedure nudity
-		$api_tokens = get_option( 'brag_book_gallery_api_tokens', [] );
-		if ( empty( $api_tokens ) || ! is_array( $api_tokens ) ) {
-			if ( WP_DEBUG ) {
-				error_log( 'BRAGBook Gallery: procedure_has_nudity_from_api - No API tokens found' );
-			}
-			return false;
-		}
-
-		$sidebar_data = null;
-		if ( ! empty( $api_tokens[0] ) ) {
-			$sidebar_data = \BRAGBookGallery\Includes\Extend\Data_Fetcher::get_sidebar_data( $api_tokens[0] );
-		}
-
-		if ( empty( $sidebar_data ) || ! is_array( $sidebar_data ) ) {
-			if ( WP_DEBUG ) {
-				error_log( 'BRAGBook Gallery: procedure_has_nudity_from_api - No sidebar data found' );
-			}
-			return false;
-		}
-
-		if ( WP_DEBUG ) {
-			error_log( 'BRAGBook Gallery: procedure_has_nudity_from_api - Searching through ' . count( $sidebar_data ) . ' categories' );
-		}
-
-		// Search through categories for the procedure and check nudity flag
-		foreach ( $sidebar_data as $category ) {
-			if ( ! isset( $category['procedures'] ) || ! is_array( $category['procedures'] ) ) {
-				continue;
-			}
-
-			foreach ( $category['procedures'] as $procedure ) {
-				// Check if this is the procedure we're looking for (by slug or name)
-				$api_procedure_slug = $procedure['slug'] ?? '';
-				$procedure_name = strtolower( $procedure['name'] ?? '' );
-				$slug_lower = strtolower( $procedure_slug );
-
-				if ( WP_DEBUG ) {
-					// Log every procedure to see what we're comparing
-					error_log( 'BRAGBook Gallery: procedure_has_nudity_from_api - Checking procedure: ' . $api_procedure_slug . ' (has_nudity: ' . ( ! empty( $procedure['has_nudity'] ) ? 'true' : 'false' ) . ', nudity: ' . ( ! empty( $procedure['nudity'] ) ? 'true' : 'false' ) . ')' );
-				}
-
-				if ( $api_procedure_slug === $procedure_slug ||
-					 $procedure_name === $slug_lower ||
-					 sanitize_title( $procedure_name ) === $procedure_slug ) {
-
-					// Check if this procedure has nudity
-					$has_nudity = ! empty( $procedure['has_nudity'] ) || ! empty( $procedure['nudity'] );
-
-					if ( WP_DEBUG ) {
-						error_log( 'BRAGBook Gallery: procedure_has_nudity_from_api - MATCH FOUND for procedure: ' . $procedure_slug . ' - has_nudity: ' . ( $has_nudity ? 'true' : 'false' ) );
-					}
-
-					return $has_nudity;
-				}
-			}
-		}
-
-		if ( WP_DEBUG ) {
-			error_log( 'BRAGBook Gallery: procedure_has_nudity_from_api - No match found for procedure: ' . $procedure_slug );
-		}
-
-		return false;
 	}
 }

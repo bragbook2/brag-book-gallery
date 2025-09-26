@@ -162,10 +162,13 @@ final class Favorites_Handler {
 	 * @since 3.0.0
 	 */
 	private static function validate_and_sanitize_shortcode_attributes( array $raw_atts ): array {
+		// Get columns from settings
+		$default_columns = absint( get_option( 'brag_book_gallery_columns', 2 ) );
+
 		// Define default attributes with proper types
 		$defaults = [
 			'show_header' => true,
-			'columns'     => 3,
+			'columns'     => $default_columns,
 		];
 
 		// Apply WordPress shortcode attribute parsing with defaults
@@ -186,7 +189,7 @@ final class Favorites_Handler {
 	 * @since 3.0.0
 	 */
 	private static function render_favorites_html( array $validated_atts ): string {
-		$columns = $validated_atts['columns'] ?? 3;
+		$columns = $validated_atts['columns'] ?? absint( get_option( 'brag_book_gallery_columns', 2 ) );
 
 		// Check if user has existing data in localStorage (client-side detection will handle actual logic)
 		// Server-side we always render the email capture form as the default state
@@ -259,97 +262,6 @@ final class Favorites_Handler {
 			<div class="brag-book-gallery-favorites-grid-container" id="favoritesGridContainer" style="display: none;">
 				<!-- Empty state -->
 				<div class="brag-book-gallery-favorites-empty" id="favoritesEmpty" style="display: none;">
-					<div class="brag-book-gallery-favorites-empty-content">
-						<svg class="brag-book-gallery-favorites-empty-icon"
-							 xmlns="http://www.w3.org/2000/svg"
-							 fill="none"
-							 viewBox="0 0 24 24"
-							 stroke="currentColor">
-							<path stroke-linecap="round"
-								  stroke-linejoin="round"
-								  stroke-width="2"
-								  d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-						</svg>
-						<h3><?php esc_html_e( 'No favorites yet', 'brag-book-gallery' ); ?></h3>
-						<p>
-							<?php esc_html_e( 'Start browsing our gallery and click the heart icon on any case to add it to your favorites.', 'brag-book-gallery' ); ?>
-						</p>
-						<a href="<?php echo esc_url( self::get_gallery_url() ); ?>"
-						   class="brag-book-gallery-button">
-							<?php esc_html_e( 'Browse Gallery', 'brag-book-gallery' ); ?>
-						</a>
-					</div>
-				</div>
-
-				<!-- Favorites grid -->
-				<div class="brag-book-gallery-favorites-grid"
-					 id="favoritesGrid"
-					 data-columns="<?php echo esc_attr( $columns ); ?>">
-					<!-- Favorites will be populated by JavaScript -->
-				</div>
-
-				<!-- Favorites actions -->
-				<div class="brag-book-gallery-favorites-actions" id="favoritesActions" style="display: none;">
-					<button class="brag-book-gallery-button brag-book-gallery-button--secondary"
-							data-action="clear-all-favorites">
-						<?php esc_html_e( 'Clear All Favorites', 'brag-book-gallery' ); ?>
-					</button>
-					<button class="brag-book-gallery-button"
-							data-action="send-favorites">
-						<?php esc_html_e( 'Send My Favorites', 'brag-book-gallery' ); ?>
-					</button>
-				</div>
-			</div>
-
-			<!-- Loading state -->
-			<div class="brag-book-gallery-favorites-loading" id="favoritesLoading" style="display: none;">
-				<div class="brag-book-gallery-loading-spinner"></div>
-				<p><?php esc_html_e( 'Loading your favorites...', 'brag-book-gallery' ); ?></p>
-			</div>
-		</div>
-
-		<script>
-			// Initialize favorites page when DOM is ready
-			document.addEventListener('DOMContentLoaded', function() {
-				if (typeof window.initializeFavoritesPage === 'function') {
-					window.initializeFavoritesPage();
-				}
-			});
-		</script>
-
-		<!-- BRAG book Gallery Favorites Component End -->
-		<?php
-		return ob_get_clean();
-	}
-
-	/**
-	 * Render the gallery view (user has favorites data)
-	 *
-	 * @param bool $show_header Whether to show the header.
-	 * @param string $wrapper_class CSS wrapper classes.
-	 * @param int $columns Number of columns for the grid.
-	 * @return string Rendered HTML.
-	 * @since 3.0.0
-	 */
-	private static function render_gallery_view( bool $show_header, string $wrapper_class, int $columns ): string {
-		ob_start();
-		?>
-
-		<!-- BRAG book Gallery Favorites Component Start -->
-		<div class="<?php echo esc_attr( $wrapper_class ); ?>"
-			 id="brag-book-gallery-favorites"
-			 role="application"
-			 aria-label="My Favorites Gallery">
-
-			<!-- Email Lookup Form (hidden when user has data) -->
-			<div class="brag-book-gallery-favorites-email-capture" id="favoritesEmailCapture" style="display: none;">
-				<!-- Email form content here if needed for transitions -->
-			</div>
-
-			<!-- Favorites Grid (shown when user info exists) -->
-			<div class="brag-book-gallery-favorites-grid-container" id="favoritesGridContainer" style="display: block;">
-				<!-- Empty state -->
-				<div class="brag-book-gallery-favorites-empty" id="favoritesEmpty" style="display: block;">
 					<div class="brag-book-gallery-favorites-empty-content">
 						<svg class="brag-book-gallery-favorites-empty-icon"
 							 xmlns="http://www.w3.org/2000/svg"
@@ -777,7 +689,8 @@ final class Favorites_Handler {
 		}
 
 		// Get grid configuration
-		$columns = max( 1, min( 6, absint( $_POST['columns'] ?? 3 ) ) );
+		$default_columns = absint( get_option( 'brag_book_gallery_columns', 2 ) );
+		$columns = max( 1, min( 6, absint( $_POST['columns'] ?? $default_columns ) ) );
 
 		if ( empty( $favorites_data ) ) {
 			// Return empty state HTML

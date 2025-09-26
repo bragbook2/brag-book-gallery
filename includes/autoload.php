@@ -10,7 +10,7 @@
  * @since      3.0.0
  */
 
-if ( ! defined( constant_name: 'WPINC' ) ) {
+if ( ! defined( 'WPINC' ) ) {
 	die( 'Restricted Access' );
 }
 
@@ -22,7 +22,6 @@ spl_autoload_register(
 
 		if ( isset( $file_path[ count( $file_path ) - 1 ] ) ) {
 			$file_name       = strtolower( $file_path[ count( $file_path ) - 1 ] );
-			$file_path       = str_replace( '_', '-', $file_path );
 			$file_name       = str_ireplace( '_', '-', $file_name );
 			$file_name_parts = explode( '-', $file_name );
 

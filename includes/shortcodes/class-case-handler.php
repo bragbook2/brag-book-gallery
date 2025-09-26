@@ -440,13 +440,19 @@ class Case_Handler {
 		$gallery_page_slug = get_option( 'brag_book_gallery_page_slug', 'gallery' );
 		$back_url = sprintf( '/%s/%s/', $gallery_page_slug, esc_attr( $procedure_slug ) );
 		$html .= sprintf(
-			'<a href="%s" class="brag-book-gallery-back-link">← Back to %s</a>',
+			'<a href="%s" class="brag-book-gallery-back-link">%s</a>',
 			esc_url( $back_url ),
-			esc_html( $procedure_name )
+			esc_html__( '← Back to gallery', 'brag-book-gallery' )
 		);
 		$html .= '</div>';
 		$html .= '<div class="brag-book-gallery-brag-book-gallery-case-header">';
-		$html .= '<h2 class="brag-book-gallery-content-title"><strong>' . esc_html( $procedure_name ) . '</strong> <span class="case-id">#' . $case_id . '</span></h2>';
+		// Get the full title and parse it to wrap case number in span
+		$full_title = get_the_title( $case_post->ID );
+		// Replace #123 pattern with wrapped version
+		$formatted_title = preg_replace('/ (#\d+)$/', ' <span class="case-id">$1</span>', $full_title);
+		// Wrap the procedure name part in strong tag
+		$formatted_title = preg_replace('/^(.+?)( <span)/', '<strong>$1</strong>$2', $formatted_title);
+		$html .= '<h2 class="brag-book-gallery-content-title">' . $formatted_title . '</h2>';
 		$html .= '<div class="brag-book-gallery-case-nav-buttons">';
 		$html .= $this->render_case_navigation_buttons( $case_post, $case_data );
 		$html .= '</div>';
@@ -478,9 +484,6 @@ class Case_Handler {
 		// Get the images directly from post meta
 		$images_string = get_post_meta( get_the_ID(), 'brag_book_gallery_case_post_processed_url', true );
 
-		error_log( 'Case Handler Images Debug: Raw images string from meta: ' . var_export( $images_string, true ) );
-		error_log( 'Case Handler Images Debug: String length: ' . strlen( $images_string ) );
-
 		// Convert string to array by splitting on semicolons
 		$images = [];
 		if ( ! empty( $images_string ) ) {
@@ -494,32 +497,34 @@ class Case_Handler {
 			}
 		}
 
-		error_log( 'Case Handler Images Debug: Processed ' . count( $images ) . ' valid URLs' );
-		if ( ! empty( $images ) ) {
-			error_log( 'Case Handler Images Debug: URLs = ' . wp_json_encode( $images ) );
-		}
-
 		if ( empty( $images ) ) {
-			error_log( 'Case Handler Images Debug: No valid images found, returning no images message' );
 			return '<div class="brag-book-gallery-case-images-section"><p>No images available for this case.</p></div>';
 		}
 
 		$case_id = esc_attr( $case_data['id'] );
 		$procedure_name = ! empty( $case_data['procedures'] ) ? $case_data['procedures'][0]['name'] : 'Case';
 
-		error_log( 'Case Handler Images Debug: Starting HTML generation with ' . count( $images ) . ' images' );
-		error_log( 'Case Handler Images Debug: First image URL: ' . ( ! empty( $images[0] ) ? $images[0] : 'EMPTY' ) );
+		// Generate schema markup for the image gallery
+		$schema_markup = $this->generate_gallery_schema( $images, $case_data );
 
-		$html = '<div class="brag-book-gallery-case-images-section">';
+		$html = $schema_markup;
+		$html .= '<div class="brag-book-gallery-case-images-section" itemscope itemtype="https://schema.org/ImageGallery">';
+
+		// Add hidden meta elements for schema.org microdata
+		$gallery_name = sprintf( '%s - Before & After Case #%s', $procedure_name, $case_id );
+		$gallery_description = sprintf( 'Before and after photos of %s procedure', $procedure_name );
+		$html .= '<meta itemprop="name" content="' . esc_attr( $gallery_name ) . '">';
+		$html .= '<meta itemprop="description" content="' . esc_attr( $gallery_description ) . '">';
+		$html .= '<meta itemprop="contentUrl" content="' . esc_url( get_permalink() ) . '">';
+
 		$html .= '<div class="brag-book-gallery-case-images-layout">';
 		$html .= '<div class="brag-book-gallery-case-main-viewer">';
 		$html .= '<div class="brag-book-gallery-main-image-container" data-image-index="0">';
 		$html .= '<div class="brag-book-gallery-main-single">';
 
-		// Main image (first image)
+		// Main image (first image) with microdata
 		if ( ! empty( $images[0] ) ) {
-			error_log( 'Case Handler Images Debug: Rendering main image with URL: ' . $images[0] );
-			$html .= '<img src="' . esc_url( $images[0] ) . '" alt="' . esc_attr( $procedure_name . ' - Case ' . $case_id ) . '" loading="eager">';
+			$html .= '<img src="' . esc_url( $images[0] ) . '" alt="' . esc_attr( $procedure_name . ' - Case ' . $case_id ) . '" loading="eager" itemprop="image">';
 			$html .= '<div class="brag-book-gallery-item-actions">';
 			$html .= '<button class="brag-book-gallery-favorite-button" data-favorited="false" data-item-id="case_' . $case_id . '_main" aria-label="Add to favorites">';
 			$html .= '<svg fill="rgba(255, 255, 255, 0.5)" stroke="white" stroke-width="2" viewBox="0 0 24 24">';
@@ -533,24 +538,143 @@ class Case_Handler {
 		$html .= '</div>';
 		$html .= '</div>';
 
-		// Thumbnails (show for all images, including single image)
-		$html .= '<div class="brag-book-gallery-case-thumbnails">';
-		$html .= '<div class="brag-book-gallery-thumbnails-grid">';
+		// Thumbnails (only show if there are 2 or more images)
+		if ( count( $images ) >= 2 ) {
+			$html .= '<div class="brag-book-gallery-case-thumbnails">';
+			$html .= '<div class="brag-book-gallery-thumbnails-grid">';
 
-		foreach ( $images as $index => $image_url ) {
-			$active_class = $index === 0 ? ' active' : '';
-			$html .= '<div class="brag-book-gallery-thumbnail-item' . $active_class . '" data-image-index="' . $index . '" data-processed-url="' . esc_attr( $image_url ) . '">';
-			$html .= '<img src="' . esc_url( $image_url ) . '" alt="Thumbnail" loading="lazy">';
+			foreach ( $images as $index => $image_url ) {
+				$active_class = $index === 0 ? ' active' : '';
+				$thumbnail_alt = sprintf( '%s - Thumbnail %d', $procedure_name, $index + 1 );
+				$html .= '<div class="brag-book-gallery-thumbnail-item' . $active_class . '" data-image-index="' . $index . '" data-processed-url="' . esc_attr( $image_url ) . '">';
+				$html .= '<img src="' . esc_url( $image_url ) . '" alt="' . esc_attr( $thumbnail_alt ) . '" loading="lazy" itemprop="thumbnail">';
+				$html .= '</div>';
+			}
+
+			$html .= '</div>';
 			$html .= '</div>';
 		}
 
 		$html .= '</div>';
 		$html .= '</div>';
 
-		$html .= '</div>';
-		$html .= '</div>';
-
 		return $html;
+	}
+
+	/**
+	 * Generate schema.org ImageGallery markup for SEO
+	 *
+	 * @since 3.3.0
+	 * @param array $images Array of image URLs.
+	 * @param array $case_data The case data array.
+	 * @return string Schema markup HTML.
+	 */
+	private function generate_gallery_schema( array $images, array $case_data ): string {
+		if ( empty( $images ) ) {
+			return '';
+		}
+
+		// Get site and practice information
+		$site_name = get_bloginfo( 'name' );
+		$site_url = home_url();
+
+		// Build procedure information
+		$procedure_name = ! empty( $case_data['procedures'] ) ? $case_data['procedures'][0]['name'] : 'Cosmetic Procedure';
+		$all_procedures = ! empty( $case_data['procedures'] ) ? array_map( function( $proc ) {
+			return $proc['name'];
+		}, $case_data['procedures'] ) : array( $procedure_name );
+
+		// Get patient information for description
+		$patient_info_parts = array();
+		if ( ! empty( $case_data['patient']['age'] ) ) {
+			$patient_info_parts[] = $case_data['patient']['age'] . ' year old';
+		}
+		if ( ! empty( $case_data['patient']['gender'] ) ) {
+			$patient_info_parts[] = $case_data['patient']['gender'];
+		}
+		$patient_info = ! empty( $patient_info_parts ) ? implode( ' ', $patient_info_parts ) : 'Patient';
+
+		// Build description
+		$description = sprintf(
+			'Before and after photos of %s - %s performed at %s',
+			$patient_info,
+			implode( ', ', $all_procedures ),
+			$site_name
+		);
+
+		// Build the schema data
+		$schema_data = array(
+			'@context' => 'https://schema.org',
+			'@type' => 'ImageGallery',
+			'name' => sprintf( '%s - Before & After Case #%s', $procedure_name, $case_data['id'] ),
+			'description' => $description,
+			'url' => get_permalink(),
+			'provider' => array(
+				'@type' => 'MedicalBusiness',
+				'name' => $site_name,
+				'url' => $site_url,
+			),
+			'about' => array(
+				'@type' => 'MedicalProcedure',
+				'name' => implode( ', ', $all_procedures ),
+				'procedureType' => 'CosmeticProcedure',
+			),
+			'associatedMedia' => array(),
+		);
+
+		// Add each image to the schema
+		foreach ( $images as $index => $image_url ) {
+			$image_position = $index + 1;
+			$image_caption = sprintf(
+				'%s - Before and After Photo %d',
+				$procedure_name,
+				$image_position
+			);
+
+			$schema_data['associatedMedia'][] = array(
+				'@type' => 'ImageObject',
+				'contentUrl' => $image_url,
+				'url' => $image_url,
+				'name' => $image_caption,
+				'caption' => $image_caption,
+				'description' => sprintf(
+					'%s result photo %d showing patient transformation',
+					$procedure_name,
+					$image_position
+				),
+				'position' => $image_position,
+				'copyrightHolder' => array(
+					'@type' => 'Organization',
+					'name' => $site_name,
+				),
+			);
+		}
+
+		// Add aggregateRating if available
+		if ( ! empty( $case_data['rating'] ) ) {
+			$schema_data['aggregateRating'] = array(
+				'@type' => 'AggregateRating',
+				'ratingValue' => $case_data['rating'],
+				'bestRating' => '5',
+				'worstRating' => '1',
+			);
+		}
+
+		// Add date information if available
+		if ( ! empty( $case_data['datePublished'] ) ) {
+			$schema_data['datePublished'] = $case_data['datePublished'];
+		}
+		if ( ! empty( $case_data['dateModified'] ) ) {
+			$schema_data['dateModified'] = $case_data['dateModified'];
+		}
+
+		// Generate the JSON-LD script tag
+		$schema_json = wp_json_encode( $schema_data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT );
+
+		return sprintf(
+			'<script type="application/ld+json">%s</script>',
+			$schema_json
+		);
 	}
 
 	/**
@@ -688,35 +812,6 @@ class Case_Handler {
 		// This would need to pull from procedure meta or other sources
 		// For now, return empty - would need additional implementation
 		return '';
-	}
-
-	/**
-	 * Get patient information HTML
-	 *
-	 * @since 3.0.0
-	 * @param array $case_data The case data array.
-	 * @return string Patient information HTML.
-	 */
-	private function get_patient_info_html( array $case_data ): string {
-		$patient_fields = [
-			'patientAge' => __( 'Age', 'brag-book-gallery' ),
-			'patientGender' => __( 'Gender', 'brag-book-gallery' ),
-			'patientEthnicity' => __( 'Ethnicity', 'brag-book-gallery' ),
-			'patientHeight' => __( 'Height', 'brag-book-gallery' ),
-			'patientWeight' => __( 'Weight', 'brag-book-gallery' ),
-		];
-
-		$html = '';
-		$has_data = false;
-
-		foreach ( $patient_fields as $field => $label ) {
-			if ( ! empty( $case_data[ $field ] ) ) {
-				$html .= '<p><strong>' . esc_html( $label ) . ':</strong> ' . esc_html( $case_data[ $field ] ) . '</p>';
-				$has_data = true;
-			}
-		}
-
-		return $has_data ? $html : '';
 	}
 
 	/**
@@ -930,7 +1025,22 @@ class Case_Handler {
 		// Previous case button
 		if ( $current_position > 0 ) {
 			$prev_case = $procedure_cases[ $current_position - 1 ];
-			$prev_case_url = sprintf( '/%s/%s/%s/', $gallery_page_slug, $primary_procedure_slug, $prev_case->post_name );
+
+			// Get the SEO suffix URL or case ID for the previous case
+			$prev_case_seo_suffix = get_post_meta( $prev_case->ID, 'brag_book_gallery_seo_suffix_url', true );
+			if ( empty( $prev_case_seo_suffix ) ) {
+				$prev_case_seo_suffix = get_post_meta( $prev_case->ID, '_case_seo_suffix_url', true ); // Legacy fallback
+			}
+			if ( empty( $prev_case_seo_suffix ) ) {
+				// If no SEO suffix, try to use the case API ID
+				$prev_case_api_id = get_post_meta( $prev_case->ID, 'brag_book_gallery_api_id', true );
+				if ( empty( $prev_case_api_id ) ) {
+					$prev_case_api_id = get_post_meta( $prev_case->ID, '_case_api_id', true ); // Legacy fallback
+				}
+				$prev_case_seo_suffix = $prev_case_api_id ?: $prev_case->post_name; // Ultimate fallback to post slug
+			}
+
+			$prev_case_url = sprintf( '/%s/%s/%s/', $gallery_page_slug, $primary_procedure_slug, $prev_case_seo_suffix );
 			$html .= sprintf(
 				'<a href="%s" class="brag-book-gallery-nav-button brag-book-gallery-nav-button--prev" aria-label="Previous case">
 					<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M400-240 160-480l240-240 56 58-142 142h486v80H314l142 142-56 58Z"/></svg>
@@ -949,11 +1059,25 @@ class Case_Handler {
 
 			$next_case = $procedure_cases[ $current_position + 1 ];
 
+			// Get the SEO suffix URL or case ID for the next case
+			$next_case_seo_suffix = get_post_meta( $next_case->ID, 'brag_book_gallery_seo_suffix_url', true );
+			if ( empty( $next_case_seo_suffix ) ) {
+				$next_case_seo_suffix = get_post_meta( $next_case->ID, '_case_seo_suffix_url', true ); // Legacy fallback
+			}
+			if ( empty( $next_case_seo_suffix ) ) {
+				// If no SEO suffix, try to use the case API ID
+				$next_case_api_id = get_post_meta( $next_case->ID, 'brag_book_gallery_api_id', true );
+				if ( empty( $next_case_api_id ) ) {
+					$next_case_api_id = get_post_meta( $next_case->ID, '_case_api_id', true ); // Legacy fallback
+				}
+				$next_case_seo_suffix = $next_case_api_id ?: $next_case->post_name; // Ultimate fallback to post slug
+			}
+
 			$next_case_url = sprintf(
 				'/%s/%s/%s/',
 				$gallery_page_slug,
 				$primary_procedure_slug,
-				$next_case->post_name
+				$next_case_seo_suffix
 			);
 
 			$html .= sprintf(
@@ -980,43 +1104,57 @@ class Case_Handler {
 	 * @return array Array of WP_Post objects for cases in this procedure.
 	 */
 	private function get_cases_for_procedure( int $procedure_id ): array {
-		// First, find the taxonomy term for this procedure_id
-		$terms = get_terms( [
-			'taxonomy' => Taxonomies::TAXONOMY_PROCEDURES,
-			'meta_query' => [
-				[
-					'key' => 'procedure_id',
-					'value' => $procedure_id,
-					'compare' => '='
-				]
-			],
-			'hide_empty' => false
-		] );
+		// Try to get ordered cases using the case ordering metadata
+		$ordered_post_ids = \BRAGBookGallery\Includes\Sync\Data_Sync::get_ordered_cases_for_procedure( $procedure_id );
 
-		if ( empty( $terms ) || is_wp_error( $terms ) ) {
-			return [];
+		if ( ! empty( $ordered_post_ids ) ) {
+			// Use ordered IDs with post__in to preserve order
+			$query_args = [
+				'post_type' => Post_Types::POST_TYPE_CASES,
+				'post_status' => 'publish',
+				'post__in' => $ordered_post_ids,
+				'orderby' => 'post__in', // Preserve the order from post__in
+				'posts_per_page' => -1, // Get all posts
+			];
+		} else {
+			// Fallback to regular query if no ordering data exists
+			// First, find the taxonomy term for this procedure_id
+			$terms = get_terms( [
+				'taxonomy' => Taxonomies::TAXONOMY_PROCEDURES,
+				'meta_query' => [
+					[
+						'key' => 'procedure_id',
+						'value' => $procedure_id,
+						'compare' => '='
+					]
+				],
+				'hide_empty' => false
+			] );
+
+			if ( empty( $terms ) || is_wp_error( $terms ) ) {
+				return [];
+			}
+
+			$procedure_term = $terms[0];
+
+			// Get all posts with this procedure term, ordered by date
+			$query_args = [
+				'post_type' => Post_Types::POST_TYPE_CASES,
+				'post_status' => 'publish',
+				'posts_per_page' => -1,
+				'orderby' => [
+					'modified' => 'DESC',
+					'date' => 'DESC'
+				],
+				'tax_query' => [
+					[
+						'taxonomy' => Taxonomies::TAXONOMY_PROCEDURES,
+						'field' => 'term_id',
+						'terms' => $procedure_term->term_id
+					]
+				]
+			];
 		}
-
-		$procedure_term = $terms[0];
-
-		// Get all posts with this procedure term, ordered by when data was added/updated
-		// Use modified date first (most recent updates), then creation date
-		$query_args = [
-			'post_type' => Post_Types::POST_TYPE_CASES,
-			'post_status' => 'publish',
-			'posts_per_page' => -1,
-			'orderby' => [
-				'modified' => 'DESC',
-				'date' => 'DESC'
-			],
-			'tax_query' => [
-				[
-					'taxonomy' => Taxonomies::TAXONOMY_PROCEDURES,
-					'field' => 'term_id',
-					'terms' => $procedure_term->term_id
-				]
-			]
-		];
 
 		$cases_query = new \WP_Query( $query_args );
 
@@ -1046,16 +1184,6 @@ class Case_Handler {
 				$field
 			) );
 		}
-	}
-
-	/**
-	 * Get missing data log
-	 *
-	 * @since 3.0.0
-	 * @return array The missing data log.
-	 */
-	public function get_missing_data_log(): array {
-		return $this->missing_data_log;
 	}
 
 	/**

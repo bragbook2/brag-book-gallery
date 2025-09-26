@@ -377,20 +377,20 @@ class Database {
 				return false;
 			}
 
-			// Prepare sanitized data for insertion (using old column names for compatibility)
+			// Prepare sanitized data for insertion (matching actual table schema)
 			$data = [
-				'item_type'       => $sync_type,
-				'status'          => $sync_status,
-				'sync_source'     => $sync_source, // This might not exist in old schema, handle gracefully
-				'processed'       => max( 0, $items_processed ),
-				'failed'          => max( 0, $items_failed ),
-				'details'         => substr( $error_messages, 0, self::MAX_ERROR_MESSAGE_LENGTH ),
-				'created_at'      => current_time( 'mysql' ),
+				'sync_type'       => $sync_type,
+				'sync_status'     => $sync_status,
+				'sync_source'     => $sync_source,
+				'items_processed' => max( 0, $items_processed ),
+				'items_failed'    => max( 0, $items_failed ),
+				'error_messages'  => substr( $error_messages, 0, self::MAX_ERROR_MESSAGE_LENGTH ),
+				'started_at'      => current_time( 'mysql' ),
 			];
 
 			// Set completion time for finished operations
 			if ( in_array( $sync_status, [ 'completed', 'failed' ], true ) ) {
-				$data['updated_at'] = current_time( 'mysql' );
+				$data['completed_at'] = current_time( 'mysql' );
 			}
 
 			// Remove sync_source if column doesn't exist (old schema compatibility)
@@ -402,7 +402,7 @@ class Database {
 			// Dynamic format specifiers - adjust based on what columns we're inserting
 			$formats = [];
 			foreach ( $data as $key => $value ) {
-				if ( in_array( $key, [ 'processed', 'failed' ], true ) ) {
+				if ( in_array( $key, [ 'items_processed', 'items_failed' ], true ) ) {
 					$formats[] = '%d';
 				} else {
 					$formats[] = '%s';
@@ -454,22 +454,22 @@ class Database {
 				return false;
 			}
 
-			// Prepare sanitized update data (using old column names for compatibility)
+			// Prepare sanitized update data (matching actual table schema)
 			$data = [
-				'status'    => $sync_status,
-				'processed' => max( 0, $items_processed ),
-				'failed'    => max( 0, $items_failed ),
-				'details'   => substr( $error_messages, 0, self::MAX_ERROR_MESSAGE_LENGTH ),
+				'sync_status'     => $sync_status,
+				'items_processed' => max( 0, $items_processed ),
+				'items_failed'    => max( 0, $items_failed ),
+				'error_messages'  => substr( $error_messages, 0, self::MAX_ERROR_MESSAGE_LENGTH ),
 			];
 
-			// Set completion timestamp for finished operations (old schema uses updated_at)
+			// Set completion timestamp for finished operations
 			if ( in_array( $sync_status, [ 'completed', 'failed' ], true ) ) {
-				$data['updated_at'] = current_time( 'mysql' );
+				$data['completed_at'] = current_time( 'mysql' );
 			}
 
 			// Update with proper format specifiers
 			$formats = [ '%s', '%d', '%d', '%s' ];
-			if ( isset( $data['updated_at'] ) ) {
+			if ( isset( $data['completed_at'] ) ) {
 				$formats[] = '%s';
 			}
 
