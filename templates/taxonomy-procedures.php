@@ -14,22 +14,21 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-get_header(); ?>
+get_header();
 
-<?php if ( have_posts() ) : ?>
-		<?php the_archive_description(); ?>
-
-	<?php else : ?>
-
+if ( have_posts() ) {
+	the_archive_description();
+} else {
+	?>
 	<section class="no-results not-found">
 		<header class="page-header">
 			<h1 class="page-title"><?php esc_html_e( 'Nothing Found', 'brag-book-gallery' ); ?></h1>
 		</header><!-- .page-header -->
 		<div class="page-content">
 			<p><?php esc_html_e( 'No cases were found for this procedure.', 'brag-book-gallery' ); ?></p>
-		</div><!-- .page-content -->
-	</section><!-- .no-results -->
+		</div>
+	</section>
+	<?php
+}
 
-<?php endif; ?>
-
-<?php get_footer(); ?>
+get_footer();

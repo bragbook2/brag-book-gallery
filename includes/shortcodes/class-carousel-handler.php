@@ -104,17 +104,6 @@ final class Carousel_Handler {
 	private const CACHE_GROUP = 'brag_book_carousel';
 
 	/**
-	 * Cache expiration time in seconds for procedure ID lookups
-	 *
-	 * Balances performance with data freshness. Procedure mappings
-	 * change infrequently, allowing for longer cache durations.
-	 *
-	 * @since 3.0.0
-	 * @var int
-	 */
-	private const CACHE_EXPIRATION = 3600; // 1 hour
-
-	/**
 	 * Extract and validate API configuration from WordPress options
 	 *
 	 * Intelligently handles both array and string format configurations

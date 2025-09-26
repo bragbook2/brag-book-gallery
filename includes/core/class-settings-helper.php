@@ -152,7 +152,7 @@ final class Settings_Helper {
 		}
 
 		// Get setting with default 10
-		$setting = get_option( 'brag_book_gallery_items_per_page', 10 );
+		$setting = get_option( 'brag_book_gallery_items_per_page', 200 );
 
 		// Convert to int, ensure minimum of 1, maximum of 100
 		$items_per_page = max( 1, min( 100, absint( $setting ) ) );

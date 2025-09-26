@@ -30,9 +30,7 @@ declare(strict_types=1);
 namespace BRAGBookGallery\Includes\Core;
 
 use WP_Error;
-use function BRAGBookGallery\Includes\Traits\brag_book_delete_cache;
-use function BRAGBookGallery\Includes\Traits\brag_book_get_cache;
-use function BRAGBookGallery\Includes\Traits\brag_book_set_cache;
+// Cache functions - using WordPress transients directly
 use function BRAGBookGallery\Includes\Traits\gettype;
 use const BRAGBookGallery\Includes\Traits\BRAG_BOOK_GALLERY_VERSION;
 
@@ -171,6 +169,50 @@ trait Trait_Api {
 		$endpoint = $endpoint ?: '';
 		$url = $this->get_api_base_url() . '/' . ltrim( $endpoint, '/' );
 
+		// Get API credentials
+		$api_tokens = get_option( 'brag_book_gallery_api_token', [] );
+		$website_property_ids = get_option( 'brag_book_gallery_website_property_id', [] );
+
+		// Ensure credentials are arrays
+		if ( ! is_array( $api_tokens ) ) {
+			$api_tokens = [ $api_tokens ];
+		}
+		if ( ! is_array( $website_property_ids ) ) {
+			$website_property_ids = [ $website_property_ids ];
+		}
+
+		// Add credentials to body for POST/PUT requests (matching Data_Sync pattern)
+		if ( in_array( strtoupper( $method ), [ 'POST', 'PUT', 'PATCH' ], true ) ) {
+			// Initialize body if not set
+			if ( ! isset( $args['body'] ) ) {
+				$args['body'] = [];
+			}
+
+			// Ensure body is an array
+			if ( is_string( $args['body'] ) ) {
+				$args['body'] = json_decode( $args['body'], true ) ?: [];
+			}
+
+			// Only add credentials if they're not already set in the body
+			// This allows methods to override with specific credential requirements
+			if ( ! isset( $args['body']['apiTokens'] ) && ! empty( $api_tokens ) ) {
+				$args['body']['apiTokens'] = array_values( $api_tokens );
+			}
+
+			// Only add websitePropertyIds if not already set and not the sidebar endpoint
+			// The sidebar endpoint only needs apiTokens
+			if ( ! isset( $args['body']['websitePropertyIds'] ) &&
+			     ! empty( $website_property_ids ) &&
+			     ! str_contains( $endpoint, 'sidebar' ) ) {
+				$args['body']['websitePropertyIds'] = array_values( $website_property_ids );
+			}
+
+			error_log( 'API Request - Method: ' . $method . ', Endpoint: ' . $endpoint );
+			error_log( 'API Request - Tokens included: ' . ( ! empty( $args['body']['apiTokens'] ) ? 'Yes' : 'No' ) );
+			error_log( 'API Request - Property IDs included: ' . ( ! empty( $args['body']['websitePropertyIds'] ) ? 'Yes' : 'No' ) );
+			error_log( 'API Request - Body: ' . wp_json_encode( $args['body'] ) );
+		}
+
 		// Validate URL.
 		if ( ! filter_var( $url, FILTER_VALIDATE_URL ) ) {
 			return new WP_Error(
@@ -215,17 +257,24 @@ trait Trait_Api {
 			$url .= $separator . '_nocache=' . time();
 		}
 
+		// Log before making request
+		error_log( 'API Request - About to make request to: ' . $url );
+
 		// Make the request.
 		$response = wp_remote_request( $url, $args );
 
+		error_log( 'API Request - Response received, checking for errors...' );
+
 		// Check for errors.
 		if ( is_wp_error( $response ) ) {
+			error_log( 'API Request - WP_Error returned: ' . $response->get_error_message() );
 			$this->log_api_error( $endpoint, $response->get_error_message() );
 			return $response;
 		}
 
 		// Get response code.
 		$response_code = wp_remote_retrieve_response_code( $response );
+		error_log( 'API Request - Response code: ' . $response_code );
 
 		// Check response code.
 		if ( $response_code < 200 || $response_code >= 300 ) {
@@ -261,9 +310,12 @@ trait Trait_Api {
 
 		// Get response body.
 		$body = wp_remote_retrieve_body( $response );
+		error_log( 'API Request - Response body length: ' . strlen( $body ) );
 
 		// Decode JSON response.
+		error_log( 'API Request - About to decode JSON response' );
 		$data = json_decode( $body, true );
+		error_log( 'API Request - JSON decoded, checking for errors' );
 
 		// Check for JSON errors.
 		if ( json_last_error() !== JSON_ERROR_NONE ) {
@@ -384,7 +436,7 @@ trait Trait_Api {
 		int $expiration = 1800
 	): bool {
 		$cache_key = 'brag_book_gallery_transient_api_' . $cache_key;
-		return brag_book_set_cache( $cache_key, $data, $expiration );
+		return set_transient( $cache_key, $data, $expiration );
 	}
 
 	/**
@@ -396,7 +448,7 @@ trait Trait_Api {
 	 */
 	protected function get_cached_api_response( string $cache_key ): mixed {
 		$cache_key = 'brag_book_gallery_transient_api_' . $cache_key;
-		return brag_book_get_cache( $cache_key );
+		return get_transient( $cache_key );
 	}
 
 	/**
@@ -573,10 +625,10 @@ trait Trait_Api {
 	 */
 	protected function check_rate_limit( string $endpoint ): bool {
 		$transient_key = 'brag_book_gallery_transient_rate_limit_' . $endpoint;
-		$current_count = brag_book_get_cache( $transient_key );
+		$current_count = get_transient( $transient_key );
 
 		if ( false === $current_count ) {
-			brag_book_set_cache( $transient_key, 1, self::RATE_LIMIT_WINDOW );
+			set_transient( $transient_key, 1, self::RATE_LIMIT_WINDOW );
 			return true;
 		}
 
@@ -588,7 +640,7 @@ trait Trait_Api {
 			return false;
 		}
 
-		brag_book_set_cache( $transient_key, $current_count + 1, self::RATE_LIMIT_WINDOW );
+		set_transient( $transient_key, $current_count + 1, self::RATE_LIMIT_WINDOW );
 		return true;
 	}
 
@@ -673,7 +725,7 @@ trait Trait_Api {
 	 */
 	protected function is_circuit_open( string $endpoint ): bool {
 		$circuit_key = 'brag_book_gallery_transient_circuit_' . $endpoint;
-		$circuit_status = brag_book_get_cache( $circuit_key );
+		$circuit_status = get_transient( $circuit_key );
 
 		return $circuit_status === 'open';
 	}
@@ -687,20 +739,20 @@ trait Trait_Api {
 	 */
 	protected function record_api_failure( string $endpoint ): void {
 		$failure_key = 'brag_book_gallery_transient_failures_' . $endpoint;
-		$failures = brag_book_get_cache( $failure_key ) ?: 0;
+		$failures = get_transient( $failure_key ) ?: 0;
 		$failures++;
 
 		if ( $failures >= self::CIRCUIT_BREAKER_THRESHOLD ) {
 			// Open circuit
 			$circuit_key = 'brag_book_gallery_transient_circuit_' . $endpoint;
-			brag_book_set_cache( $circuit_key, 'open', self::CIRCUIT_BREAKER_TIMEOUT );
+			set_transient( $circuit_key, 'open', self::CIRCUIT_BREAKER_TIMEOUT );
 
 			// Reset failure count
-			brag_book_delete_cache( $failure_key );
+			delete_transient( $failure_key );
 
 			$this->log_api_error( $endpoint, 'Circuit breaker opened', [ 'failures' => $failures ] );
 		} else {
-			brag_book_set_cache( $failure_key, $failures, 300 ); // 5 minute window
+			set_transient( $failure_key, $failures, 300 ); // 5 minute window
 		}
 	}
 
@@ -714,12 +766,12 @@ trait Trait_Api {
 	protected function record_api_success( string $endpoint ): void {
 		// Reset failure count on success
 		$failure_key = 'brag_book_gallery_transient_failures_' . $endpoint;
-		brag_book_delete_cache( $failure_key );
+		delete_transient( $failure_key );
 
 		// Close circuit if it was open
 		$circuit_key = 'brag_book_gallery_circuit_' . $endpoint;
-		if ( brag_book_get_cache( $circuit_key ) === 'open' ) {
-			brag_book_delete_cache( $circuit_key );
+		if ( get_transient( $circuit_key ) === 'open' ) {
+			delete_transient( $circuit_key );
 			$this->log_api_error( $endpoint, 'Circuit breaker closed', [ 'status' => 'success' ] );
 		}
 	}

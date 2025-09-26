@@ -4,7 +4,22 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.3.0] - 2025-09-18 (Current Release)
+## [3.3.0] - 2025-09-26 (Current Release)
+
+### Added
+- **Automatic Sync Cron Jobs**: Full implementation of WordPress cron-based automatic synchronization
+  - Added weekly cron schedule support to WordPress (not included by default)
+  - Implemented custom date/time scheduling for one-time sync events
+  - Created visual cron status display on Sync Settings page showing next scheduled sync
+  - Added "Test Cron Now" button for manual cron job testing and validation
+  - Full 3-stage sync execution via cron (Procedures, Manifest, Cases)
+  - Detailed logging for all cron operations for debugging
+  - Automatic schedule clearing when sync is disabled
+- **Cron Status Monitoring**: Real-time visibility of scheduled sync operations
+  - Shows exact date/time of next scheduled sync
+  - Displays human-readable countdown (e.g., "In 6 days")
+  - Indicates overdue syncs when cron hasn't executed on schedule
+  - Integrated status display directly in admin interface
 
 ### Fixed
 - **Carousel Cross-Origin Images**: Fixed Firefox cookie rejection errors for Cloudflare-protected images from BRAGBook API

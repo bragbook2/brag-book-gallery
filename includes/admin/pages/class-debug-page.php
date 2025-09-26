@@ -152,6 +152,20 @@ class Debug_Page extends Settings_Base {
 			$this->clear_logs();
 		}
 
+		// Handle debug log actions
+		if ( isset( $_POST['save_log_settings'] ) ) {
+			$this->save_log_settings();
+		}
+
+		if ( isset( $_POST['clear_debug_log'] ) ) {
+			$this->clear_debug_log();
+		}
+
+		// Handle log download
+		if ( isset( $_GET['download_log'] ) && isset( $_GET['nonce'] ) && wp_verify_nonce( $_GET['nonce'], 'download_log' ) ) {
+			$this->download_debug_log();
+		}
+
 		// Export is now handled in handle_export_import_early()
 		// Import is still handled here to show success messages
 		if ( isset( $_POST['import_settings'] ) ) {
@@ -596,9 +610,134 @@ class Debug_Page extends Settings_Base {
 		$enable_logs = get_option( 'brag_book_gallery_enable_logs', 'no' );
 		$log_level   = get_option( 'brag_book_gallery_log_level', 'error' );
 		?>
-		<form method="post">
-			<?php wp_nonce_field( 'brag_book_gallery_debug_action', 'debug_nonce' ); ?>
-		</form>
+		<div class="brag-book-gallery-debug-logs">
+			<!-- Log Settings -->
+			<div class="brag-book-gallery-card">
+				<h3><?php esc_html_e( 'Debug Log Settings', 'brag-book-gallery' ); ?></h3>
+				<form method="post">
+					<?php wp_nonce_field( 'brag_book_gallery_debug_action', 'debug_nonce' ); ?>
+					<table class="form-table">
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Enable Debug Logging', 'brag-book-gallery' ); ?></th>
+							<td>
+								<label>
+									<input type="checkbox" name="enable_logs" value="yes" <?php checked( $enable_logs, 'yes' ); ?> />
+									<?php esc_html_e( 'Enable debug logging to file', 'brag-book-gallery' ); ?>
+								</label>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row"><?php esc_html_e( 'Log Level', 'brag-book-gallery' ); ?></th>
+							<td>
+								<select name="log_level">
+									<option value="error" <?php selected( $log_level, 'error' ); ?>><?php esc_html_e( 'Errors Only', 'brag-book-gallery' ); ?></option>
+									<option value="warning" <?php selected( $log_level, 'warning' ); ?>><?php esc_html_e( 'Warnings & Errors', 'brag-book-gallery' ); ?></option>
+									<option value="info" <?php selected( $log_level, 'info' ); ?>><?php esc_html_e( 'Info, Warnings & Errors', 'brag-book-gallery' ); ?></option>
+									<option value="debug" <?php selected( $log_level, 'debug' ); ?>><?php esc_html_e( 'All Messages (Debug)', 'brag-book-gallery' ); ?></option>
+								</select>
+							</td>
+						</tr>
+					</table>
+					<p class="submit">
+						<button type="submit" name="save_log_settings" class="button button-primary">
+							<?php esc_html_e( 'Save Settings', 'brag-book-gallery' ); ?>
+						</button>
+					</p>
+				</form>
+			</div>
+
+			<!-- Log File Contents -->
+			<div class="brag-book-gallery-card">
+				<h3><?php esc_html_e( 'Debug Log File', 'brag-book-gallery' ); ?></h3>
+				<?php if ( file_exists( $log_file ) && is_readable( $log_file ) ) : ?>
+					<?php
+					$log_contents = file_get_contents( $log_file );
+					$file_size = filesize( $log_file );
+					$file_modified = filemtime( $log_file );
+
+					// If file is too large, get last 100 lines
+					if ( $file_size > 1048576 ) { // 1MB
+						$lines = file( $log_file );
+						$last_lines = array_slice( $lines, -100 );
+						$log_contents = implode( '', $last_lines );
+						$truncated = true;
+					} else {
+						$truncated = false;
+					}
+					?>
+					<div class="log-file-info">
+						<p>
+							<strong><?php esc_html_e( 'File Path:', 'brag-book-gallery' ); ?></strong>
+							<code><?php echo esc_html( $log_file ); ?></code>
+						</p>
+						<p>
+							<strong><?php esc_html_e( 'File Size:', 'brag-book-gallery' ); ?></strong>
+							<?php echo esc_html( size_format( $file_size ) ); ?>
+						</p>
+						<p>
+							<strong><?php esc_html_e( 'Last Modified:', 'brag-book-gallery' ); ?></strong>
+							<?php echo esc_html( date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $file_modified ) ); ?>
+						</p>
+						<?php if ( $truncated ) : ?>
+							<p class="notice notice-warning inline">
+								<?php esc_html_e( 'Log file is large. Showing last 100 lines only.', 'brag-book-gallery' ); ?>
+							</p>
+						<?php endif; ?>
+					</div>
+
+					<div class="log-file-actions">
+						<form method="post" style="display: inline;">
+							<?php wp_nonce_field( 'brag_book_gallery_debug_action', 'debug_nonce' ); ?>
+							<button type="submit" name="clear_debug_log" class="button" onclick="return confirm('<?php esc_attr_e( 'Are you sure you want to clear the debug log?', 'brag-book-gallery' ); ?>');">
+								<?php esc_html_e( 'Clear Log', 'brag-book-gallery' ); ?>
+							</button>
+						</form>
+						<a href="<?php echo esc_url( add_query_arg( array( 'download_log' => 1, 'nonce' => wp_create_nonce( 'download_log' ) ) ) ); ?>" class="button">
+							<?php esc_html_e( 'Download Log', 'brag-book-gallery' ); ?>
+						</a>
+					</div>
+
+					<div class="log-file-contents">
+						<label for="debug-log-contents"><?php esc_html_e( 'Log Contents:', 'brag-book-gallery' ); ?></label>
+						<textarea id="debug-log-contents" readonly rows="20" style="width: 100%; font-family: monospace; font-size: 12px; background: #f0f0f0; padding: 10px;"><?php echo esc_textarea( $log_contents ); ?></textarea>
+					</div>
+				<?php else : ?>
+					<p class="notice notice-info inline">
+						<?php esc_html_e( 'No debug log file found. Enable debug logging above to start capturing debug information.', 'brag-book-gallery' ); ?>
+					</p>
+					<p>
+						<strong><?php esc_html_e( 'Log file location:', 'brag-book-gallery' ); ?></strong>
+						<code><?php echo esc_html( $log_file ); ?></code>
+					</p>
+				<?php endif; ?>
+			</div>
+		</div>
+
+		<style>
+		.brag-book-gallery-debug-logs .log-file-info {
+			background: #f0f0f1;
+			padding: 15px;
+			margin: 15px 0;
+			border-left: 4px solid #2271b1;
+		}
+		.brag-book-gallery-debug-logs .log-file-info p {
+			margin: 5px 0;
+		}
+		.brag-book-gallery-debug-logs .log-file-actions {
+			margin: 15px 0;
+		}
+		.brag-book-gallery-debug-logs .log-file-actions .button {
+			margin-right: 10px;
+		}
+		.brag-book-gallery-debug-logs .log-file-contents {
+			margin-top: 15px;
+		}
+		.brag-book-gallery-debug-logs .log-file-contents label {
+			display: block;
+			margin-bottom: 5px;
+			font-weight: 600;
+		}
+		</style>
 		<?php
 	}
 
@@ -735,6 +874,80 @@ class Debug_Page extends Settings_Base {
 		}
 
 		settings_errors( $this->page_slug );
+	}
+
+	/**
+	 * Save log settings
+	 *
+	 * @since 3.3.0
+	 * @return void
+	 */
+	private function save_log_settings(): void {
+		if ( ! isset( $_POST['debug_nonce'] ) || ! wp_verify_nonce( $_POST['debug_nonce'], 'brag_book_gallery_debug_action' ) ) {
+			$this->add_notice( __( 'Security check failed.', 'brag-book-gallery' ), 'error' );
+			return;
+		}
+
+		$enable_logs = isset( $_POST['enable_logs'] ) && $_POST['enable_logs'] === 'yes' ? 'yes' : 'no';
+		$log_level = isset( $_POST['log_level'] ) ? sanitize_text_field( $_POST['log_level'] ) : 'error';
+
+		// Validate log level
+		$valid_levels = array( 'error', 'warning', 'info', 'debug' );
+		if ( ! in_array( $log_level, $valid_levels, true ) ) {
+			$log_level = 'error';
+		}
+
+		update_option( 'brag_book_gallery_enable_logs', $enable_logs );
+		update_option( 'brag_book_gallery_log_level', $log_level );
+
+		$this->add_notice( __( 'Log settings saved successfully.', 'brag-book-gallery' ) );
+	}
+
+	/**
+	 * Clear debug log file
+	 *
+	 * @since 3.3.0
+	 * @return void
+	 */
+	private function clear_debug_log(): void {
+		if ( ! isset( $_POST['debug_nonce'] ) || ! wp_verify_nonce( $_POST['debug_nonce'], 'brag_book_gallery_debug_action' ) ) {
+			$this->add_notice( __( 'Security check failed.', 'brag-book-gallery' ), 'error' );
+			return;
+		}
+
+		$log_file = $this->get_log_file_path();
+		if ( file_exists( $log_file ) ) {
+			file_put_contents( $log_file, '' );
+			$this->add_notice( __( 'Debug log cleared successfully.', 'brag-book-gallery' ) );
+		} else {
+			$this->add_notice( __( 'Debug log file not found.', 'brag-book-gallery' ), 'error' );
+		}
+	}
+
+	/**
+	 * Download debug log file
+	 *
+	 * @since 3.3.0
+	 * @return void
+	 */
+	private function download_debug_log(): void {
+		$log_file = $this->get_log_file_path();
+
+		if ( ! file_exists( $log_file ) || ! is_readable( $log_file ) ) {
+			wp_die( esc_html__( 'Log file not found or not readable.', 'brag-book-gallery' ) );
+		}
+
+		$filename = 'brag-book-gallery-debug-' . date( 'Y-m-d-H-i-s' ) . '.log';
+
+		header( 'Content-Type: text/plain' );
+		header( 'Content-Disposition: attachment; filename="' . $filename . '"' );
+		header( 'Content-Length: ' . filesize( $log_file ) );
+		header( 'Pragma: public' );
+		header( 'Cache-Control: must-revalidate, post-check=0, pre-check=0' );
+		header( 'Expires: 0' );
+
+		readfile( $log_file );
+		exit;
 	}
 
 	/**

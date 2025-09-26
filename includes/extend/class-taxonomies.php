@@ -380,6 +380,44 @@ class Taxonomies {
 			</td>
 		</tr>
 
+		<?php
+		// Get case order list for display
+		$case_order_list = get_term_meta( $term->term_id, 'brag_book_gallery_case_order_list', true );
+		?>
+		<tr class="form-field">
+			<th scope="row">
+				<label><?php esc_html_e( 'Case Ordering', 'brag-book-gallery' ); ?></label>
+			</th>
+			<td>
+				<?php if ( is_array( $case_order_list ) && ! empty( $case_order_list ) ) : ?>
+					<div style="background: #f9f9f9; padding: 15px; border: 1px solid #ddd; border-radius: 4px;">
+						<p><strong><?php echo count( $case_order_list ); ?> cases in API order:</strong></p>
+						<div style="max-height: 200px; overflow-y: auto; font-family: monospace; font-size: 12px;">
+							<?php
+							// Display cases in order
+							foreach ( $case_order_list as $position => $case_id ) {
+								echo sprintf(
+									'<div>Position %d: Case ID %s</div>',
+									esc_html( $position ),
+									esc_html( $case_id )
+								);
+							}
+							?>
+						</div>
+					</div>
+				<?php else : ?>
+					<div style="background: #fff3cd; padding: 15px; border: 1px solid #ffeaa7; border-radius: 4px; color: #856404;">
+						<strong>No case ordering data found.</strong><br>
+						Case ordering is automatically populated when cases are synced from the API.
+						Run a sync to see case ordering information here.
+					</div>
+				<?php endif; ?>
+				<p class="description">
+					<?php esc_html_e( 'Shows the order in which cases appear for this procedure based on the API response. This is automatically managed during sync operations and cannot be manually edited.', 'brag-book-gallery' ); ?>
+				</p>
+			</td>
+		</tr>
+
 		<style>
 		.procedure-nudity-toggle {
 			display: flex;

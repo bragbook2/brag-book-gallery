@@ -93,12 +93,54 @@ class Changelog_Page extends Settings_Base {
 				</div>
 			</div>
 
+			<!-- Version 3.3.0 -->
+			<div class="brag-book-gallery-section">
+				<div class="brag-book-gallery-changelog-version">
+					<h3>
+						<span class="version-badge version-minor">v3.3.0</span>
+						<?php esc_html_e( 'September 26, 2025', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Current Release', 'brag-book-gallery' ); ?>
+					</h3>
+					<div class="brag-book-gallery-card">
+						<h4><?php esc_html_e( '🎉 New Features', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Automatic Sync Cron Jobs: Full implementation of WordPress cron-based automatic synchronization', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Added weekly cron schedule support to WordPress (not included by default)', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Implemented custom date/time scheduling for one-time sync events', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Created visual cron status display on Sync Settings page showing next scheduled sync', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Added "Test Cron Now" button for manual cron job testing and validation', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Full 3-stage sync execution via cron (Procedures, Manifest, Cases)', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Cron Status Monitoring: Real-time visibility of scheduled sync operations', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Shows exact date/time of next scheduled sync with human-readable countdown', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Indicates overdue syncs when cron hasn\'t executed on schedule', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '🐛 Bug Fixes', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Fixed missing view="myfavorites" parameter documentation for [brag_book_gallery] shortcode', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Fixed fatal error in generate_case_slug() method: Return value must be of type string, int returned', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Removed unnecessary "case-" prefix from fallback slugs as per requirements', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '⚡ Performance Improvements', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Optimized cron scheduling with automatic cleanup of old schedules', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Detailed logging for all cron operations for easier debugging', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Automatic schedule clearing when sync is disabled', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '🔧 Code Quality', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Removed unused render_cases_grid() method from Cases_Handler class', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Verified Chunked_Data_Sync class is actively used via Sync_Ajax_Handler', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Added proper type casting in generate_case_slug() for string return type', 'brag-book-gallery' ); ?></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
 			<!-- Version 3.2.7 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">
 					<h3>
 						<span class="version-badge version-patch">v3.2.7</span>
-						<?php esc_html_e( 'September 11, 2025', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Current Release', 'brag-book-gallery' ); ?>
+						<?php esc_html_e( 'September 11, 2025', 'brag-book-gallery' ); ?>
 					</h3>
 					<div class="brag-book-gallery-card">
 						<h4><?php esc_html_e( '🎉 New Features', 'brag-book-gallery' ); ?></h4>
