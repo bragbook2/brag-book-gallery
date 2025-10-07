@@ -1,4 +1,3 @@
-import Carousel from './carousel.js';
 import Dialog from './dialog.js';
 import FilterSystem from './filter-system.js';
 import MobileMenu from './mobile-menu.js';
@@ -44,7 +43,6 @@ class BRAGbookGalleryApp {
 		}
 
 		// Initialize core components for normal gallery view
-		this.initializeCarousels();
 		this.initializeDialogs();
 		this.initializeFilters();
 		this.initializeMobileMenu();
@@ -67,40 +65,6 @@ class BRAGbookGalleryApp {
 
 	}
 
-	/**
-	 * Initialize all carousel components with specific configurations
-	 */
-	initializeCarousels() {
-		const carousels = document.querySelectorAll('.brag-book-gallery-carousel-wrapper');
-		this.components.carousels = [];
-
-		// Configure each carousel with different behaviors
-		carousels.forEach((carousel, index) => {
-			const options = index === 0 ? {
-				// First carousel: featured content with autoplay
-				infinite: true,
-				autoplay: true,
-				autoplayDelay: 4000,
-				pauseOnHover: true
-			} : {
-				// Additional carousels: manual navigation only
-				infinite: false,
-				autoplay: false
-			};
-
-			this.components.carousels.push(new Carousel(carousel, options));
-		});
-
-		// Handle responsive behavior with debounced resize events
-		let resizeTimer;
-		window.addEventListener('resize', () => {
-			clearTimeout(resizeTimer);
-			// Debounce resize events for performance
-			resizeTimer = setTimeout(() => {
-				this.components.carousels.forEach(carousel => carousel.refresh());
-			}, 250);
-		});
-	}
 
 	/**
 	 * Initialize dialog components for modals and popups
@@ -141,11 +105,165 @@ class BRAGbookGalleryApp {
 			}
 		});
 
+		// Generate procedure filters from DOM case cards on page load
+		this.initializeProcedureFilters();
+
 		// Set up Clear All button
 		this.initializeClearAllButton();
 
 		// Initialize demographic filter badge integration
 		this.initializeDemographicFilterBadges();
+	}
+
+	/**
+	 * Initialize procedure filters from case card data attributes
+	 */
+	initializeProcedureFilters() {
+		const filterSystem = this.components.filterSystem;
+		if (!filterSystem) {
+			return;
+		}
+
+		// Find the procedure filters container
+		const procedureFiltersContainer = document.getElementById('brag-book-gallery-filters');
+		if (!procedureFiltersContainer) {
+			return;
+		}
+
+		// Generate filter HTML from DOM case cards
+		const filterHTML = filterSystem.generateFiltersFromDOMCards();
+
+		// Only populate if we have filter HTML
+		if (filterHTML) {
+			procedureFiltersContainer.innerHTML = filterHTML;
+
+			// Show the procedure filters dropdown
+			const procedureFiltersDetails = document.getElementById('procedure-filters-details');
+			if (procedureFiltersDetails) {
+				procedureFiltersDetails.style.display = '';
+				procedureFiltersDetails.setAttribute('data-initialized', 'true');
+			}
+
+			// Bind event listeners to the new filter checkboxes
+			this.bindProcedureFilterEvents();
+		}
+	}
+
+	/**
+	 * Bind events to procedure filter checkboxes
+	 */
+	bindProcedureFilterEvents() {
+		const filterCheckboxes = document.querySelectorAll('#brag-book-gallery-filters input[type="checkbox"]');
+
+		filterCheckboxes.forEach(checkbox => {
+			checkbox.addEventListener('change', (e) => {
+				this.applyProcedureFilters();
+			});
+		});
+	}
+
+	/**
+	 * Apply procedure filters to case cards
+	 */
+	applyProcedureFilters() {
+		// Collect active filters
+		const activeFilters = {
+			age: [],
+			gender: [],
+			ethnicity: [],
+			height: [],
+			weight: []
+		};
+
+		// Get all checked filter checkboxes
+		const checkedFilters = document.querySelectorAll('#brag-book-gallery-filters input[type="checkbox"]:checked');
+		checkedFilters.forEach(checkbox => {
+			const filterType = checkbox.dataset.filterType;
+			const value = checkbox.value;
+			if (activeFilters[filterType]) {
+				activeFilters[filterType].push(value);
+			}
+		});
+
+		// Get all case cards
+		const caseCards = document.querySelectorAll('.brag-book-gallery-case-card');
+
+		// Filter case cards
+		caseCards.forEach(card => {
+			let show = true;
+
+			// Check age filter
+			if (activeFilters.age.length > 0) {
+				const age = parseInt(card.dataset.age);
+				let ageMatch = false;
+
+				activeFilters.age.forEach(range => {
+					if (range === '18-24' && age >= 18 && age < 25) ageMatch = true;
+					else if (range === '25-34' && age >= 25 && age < 35) ageMatch = true;
+					else if (range === '35-44' && age >= 35 && age < 45) ageMatch = true;
+					else if (range === '45-54' && age >= 45 && age < 55) ageMatch = true;
+					else if (range === '55-64' && age >= 55 && age < 65) ageMatch = true;
+					else if (range === '65+' && age >= 65) ageMatch = true;
+				});
+
+				if (!ageMatch) show = false;
+			}
+
+			// Check gender filter
+			if (activeFilters.gender.length > 0) {
+				const gender = (card.dataset.gender || '').toLowerCase();
+				if (!activeFilters.gender.includes(gender)) {
+					show = false;
+				}
+			}
+
+			// Check ethnicity filter
+			if (activeFilters.ethnicity.length > 0) {
+				const ethnicity = (card.dataset.ethnicity || '').toLowerCase();
+				if (!activeFilters.ethnicity.some(e => e.toLowerCase() === ethnicity)) {
+					show = false;
+				}
+			}
+
+			// Check height filter
+			if (activeFilters.height.length > 0) {
+				const height = parseFloat(card.dataset.height);
+				let heightMatch = false;
+
+				activeFilters.height.forEach(range => {
+					if (range === 'Under 5\'0"' && height < 60) heightMatch = true;
+					else if (range === '5\'0" - 5\'3"' && height >= 60 && height < 64) heightMatch = true;
+					else if (range === '5\'4" - 5\'7"' && height >= 64 && height < 68) heightMatch = true;
+					else if (range === '5\'8" - 5\'11"' && height >= 68 && height < 72) heightMatch = true;
+					else if (range === '6\'0" and above' && height >= 72) heightMatch = true;
+				});
+
+				if (!heightMatch) show = false;
+			}
+
+			// Check weight filter
+			if (activeFilters.weight.length > 0) {
+				const weight = parseFloat(card.dataset.weight);
+				let weightMatch = false;
+
+				activeFilters.weight.forEach(range => {
+					if (range === 'Under 120 lbs' && weight < 120) weightMatch = true;
+					else if (range === '120-149 lbs' && weight >= 120 && weight < 150) weightMatch = true;
+					else if (range === '150-179 lbs' && weight >= 150 && weight < 180) weightMatch = true;
+					else if (range === '180-209 lbs' && weight >= 180 && weight < 210) weightMatch = true;
+					else if (range === '210+ lbs' && weight >= 210) weightMatch = true;
+				});
+
+				if (!weightMatch) show = false;
+			}
+
+			// Show or hide the card
+			if (show) {
+				card.style.display = '';
+			} else {
+				card.style.display = 'none';
+			}
+		});
 	}
 
 	/**
@@ -215,8 +333,6 @@ class BRAGbookGalleryApp {
 			return; // No favorites to process
 		}
 
-		console.log('Updating heart states for favorites:', favorites);
-
 		// Find all favorite buttons on the page
 		const favoriteButtons = document.querySelectorAll('.brag-book-gallery-favorite-button');
 
@@ -255,8 +371,6 @@ class BRAGbookGalleryApp {
 				return; // Skip if no case ID found
 			}
 
-			console.log(`Checking case IDs for button:`, caseIds, 'against favorites:', favorites);
-
 			// Check if ANY of these case IDs is in the favorites
 			const isFavorited = caseIds.some(id =>
 				favorites.includes(String(id)) ||
@@ -268,16 +382,12 @@ class BRAGbookGalleryApp {
 				// Mark as favorited
 				button.dataset.favorited = 'true';
 				button.setAttribute('aria-label', 'Remove from favorites');
-				console.log(`✅ Marked case as favorited (matched IDs: ${caseIds.join(', ')})`);
 			} else {
 				// Ensure it's marked as not favorited
 				button.dataset.favorited = 'false';
 				button.setAttribute('aria-label', 'Add to favorites');
-				console.log(`❌ Case not favorited (checked IDs: ${caseIds.join(', ')})`);
 			}
 		});
-
-		console.log(`Updated ${favoriteButtons.length} favorite buttons based on localStorage`);
 	}
 
 	/**
@@ -344,27 +454,128 @@ class BRAGbookGalleryApp {
 		}
 	}
 
+	/**
+	 * Store procedure referrer from case card data
+	 * Extracted to avoid code duplication
+	 * @param {HTMLElement} caseCard - The case card element
+	 */
+	storeProcedureReferrerFromCard(caseCard) {
+		if (!caseCard || typeof window.storeProcedureReferrer !== 'function') return;
+
+		// Extract all IDs from case card data attributes
+		const termId = caseCard.dataset.currentTermId;
+		const procedureId = caseCard.dataset.currentProcedureId;
+		const caseId = caseCard.dataset.caseId;
+		const caseWpId = caseCard.dataset.postId;
+
+		if (!termId) {
+			console.warn('storeProcedureReferrerFromCard - No termId found');
+			return;
+		}
+
+		// Extract procedure slug from URL
+		// URL pattern: /{gallery-slug}/{procedure}/{case-slug}
+		// Procedure is always the second path segment
+		const urlPath = window.location.pathname;
+		const pathSegments = urlPath.split('/').filter(segment => segment);
+		const procedureSlug = pathSegments.length >= 2 ? pathSegments[1] : null;
+
+		// Try to get procedure name from page title or heading
+		const pageTitle = document.querySelector('h1.entry-title, h1.page-title, .brag-book-gallery-title');
+		const procedureName = pageTitle ? pageTitle.textContent.trim() : procedureSlug;
+
+		const procedureUrl = window.location.href;
+
+		console.log('storeProcedureReferrerFromCard - Data:', {
+			caseId,
+			caseWpId,
+			termId,
+			procedureId,
+			procedureSlug,
+			procedureName
+		});
+
+		window.storeProcedureReferrer(procedureSlug, procedureName, procedureUrl, procedureId, termId, caseId, caseWpId);
+	}
+
+	/**
+	 * Store procedure referrer from carousel item data
+	 * Extracted to avoid code duplication
+	 * @param {HTMLElement} carouselItem - The carousel item element
+	 */
+	storeProcedureReferrerFromCarousel(carouselItem) {
+		if (!carouselItem || typeof window.storeProcedureReferrer !== 'function') return;
+
+		const termId = carouselItem.dataset.currentTermId;
+		if (!termId) return;
+
+		// Extract case IDs from carousel item
+		const caseId = carouselItem.dataset.caseId;
+		const caseWpId = carouselItem.dataset.postId;
+
+		// Try to get procedure info from active nav link
+		const activeLink = document.querySelector('.brag-book-gallery-nav-link.brag-book-gallery-active');
+
+		let procedureSlug = null;
+		let procedureName = null;
+		let procedureId = null;
+
+		if (activeLink) {
+			// Get from active nav link
+			procedureSlug = activeLink.dataset.procedure;
+			procedureName = activeLink.querySelector('.brag-book-gallery-filter-option-label')?.textContent?.trim();
+			procedureId = activeLink.dataset.procedureId;
+		} else {
+			// Fallback: get from carousel wrapper
+			const carouselWrapper = carouselItem.closest('.brag-book-gallery-carousel-wrapper');
+			if (carouselWrapper) {
+				procedureSlug = carouselWrapper.dataset.procedure;
+				procedureId = carouselWrapper.dataset.currentProcedureId;
+			}
+
+			// If still no slug, try URL path
+			if (!procedureSlug) {
+				const urlPath = window.location.pathname;
+				const pathMatch = urlPath.match(/\/([^\/]+)\/?$/);
+				if (pathMatch) {
+					procedureSlug = pathMatch[1];
+				}
+			}
+		}
+
+		const procedureUrl = window.location.href;
+
+		// Store referrer with all IDs
+		window.storeProcedureReferrer(procedureSlug, procedureName, procedureUrl, procedureId, termId, caseId, caseWpId);
+	}
+
 	initializeCaseLinks() {
 		// Handle clicks on case links - allow normal navigation instead of AJAX loading
 		document.addEventListener('click', (e) => {
-			// Check if click is on a case link
-			const caseLink = e.target.closest('.brag-book-gallery-case-card-link');
-			if (caseLink) {
-				// Allow normal navigation to server-rendered case pages
-				// No preventDefault() - let the browser handle the navigation
-				console.log('🔗 Navigating to case page:', caseLink.href);
+			// Check if click is on a carousel link
+			const carouselLink = e.target.closest('.brag-book-gallery-carousel-link');
+			if (carouselLink) {
+				const carouselItem = carouselLink.closest('.brag-book-gallery-carousel-item');
+				this.storeProcedureReferrerFromCarousel(carouselItem);
+
 				return;
 			}
 
-			// Check if click is on a case card but not on interactive elements (fallback)
+			// Check if click is on a case link (supports both class names)
+			const caseLink = e.target.closest('.brag-book-gallery-case-card-link, .brag-book-gallery-case-permalink');
+			if (caseLink) {
+				const caseCard = caseLink.closest('.brag-book-gallery-case-card');
+				this.storeProcedureReferrerFromCard(caseCard);
+
+				return;
+			}
+
+			// Check if click is on a case card but not on interactive elements (fallback for UX)
 			const caseCard = e.target.closest('.brag-book-gallery-case-card');
 			if (caseCard && !e.target.closest('button') && !e.target.closest('details')) {
-				// Find the case link within the card
-				const caseLinkInCard = caseCard.querySelector('.brag-book-gallery-case-card-link');
+				const caseLinkInCard = caseCard.querySelector('.brag-book-gallery-case-card-link, .brag-book-gallery-case-permalink');
 				if (caseLinkInCard && caseLinkInCard.href) {
-					// Allow normal navigation to server-rendered case pages
-					// No preventDefault() - let the browser navigate to the case page
-					console.log('🔗 Navigating to case page from card:', caseLinkInCard.href);
+					this.storeProcedureReferrerFromCard(caseCard);
 					window.location.href = caseLinkInCard.href;
 				}
 			}
@@ -374,8 +585,6 @@ class BRAGbookGalleryApp {
 			const navButton = e.target.closest('.brag-book-gallery-nav-button');
 			if (navButton && !navButton.closest('summary')) {
 				// Allow normal navigation to server-rendered case pages
-				// No preventDefault() - let the browser handle the navigation
-				console.log('🔗 Navigating to case page via nav button:', navButton.href);
 				return;
 			}
 		});
@@ -387,7 +596,7 @@ class BRAGbookGalleryApp {
 		window.addEventListener('popstate', (e) => {
 			// With server-side rendering, let the browser handle navigation naturally
 			// No need to load case details via AJAX
-			console.log('🔙 Browser navigation handled by server-side rendering');
+			console.log('Browser navigation handled by server-side rendering');
 		});
 	}
 
@@ -411,13 +620,10 @@ class BRAGbookGalleryApp {
 				// Check if case is already server-rendered (has case detail view)
 				const existingCaseView = galleryContent?.querySelector('.brag-book-gallery-case-detail-view');
 				if (existingCaseView) {
-					console.log('✅ Case already server-rendered, skipping AJAX load');
 					// Case is already rendered on server, just initialize essential components
 					return true;
 				}
 
-				// If no server-rendered content exists, skip AJAX loading to avoid errors
-				console.log('⚠️ Case URL detected but no server-rendered content found, skipping AJAX load');
 				return false;
 			}
 		}
@@ -433,7 +639,6 @@ class BRAGbookGalleryApp {
 
 		// Debounce multiple case loads
 		if (this.currentCaseLoad) {
-			console.log('Debouncing case load request');
 			return;
 		}
 		this.currentCaseLoad = caseId;
@@ -467,7 +672,6 @@ class BRAGbookGalleryApp {
 			if (this.casePreloadCache && this.casePreloadCache.has(caseId)) {
 				const cachedData = this.casePreloadCache.get(caseId);
 				if (cachedData && cachedData !== 'loading') {
-					console.log(`⚡ Loading case ${caseId} from preload cache`);
 					galleryContent.innerHTML = cachedData;
 
 					// Set active state on sidebar
@@ -485,10 +689,6 @@ class BRAGbookGalleryApp {
 					return;
 				}
 			}
-
-			// Always use AJAX method for consistent server-side HTML rendering
-			// This ensures consistent CSS, HTML structure, and WordPress integration
-			console.log('🔄 Loading case details via server-side AJAX rendering');
 
 			// Load case details via AJAX (ensures PHP-generated HTML)
 			await this.loadCaseDetailsViaAjax(caseId, url, procedureIds);
@@ -566,7 +766,6 @@ class BRAGbookGalleryApp {
 			// Add procedure IDs if available
 			if (procedureIds) {
 				requestParams.procedure_ids = procedureIds;
-				console.log(`🔗 AJAX call with procedure context: case ${caseId}, procedure IDs ${procedureIds}`);
 			} else {
 				console.warn(`⚠️ AJAX call WITHOUT procedure context: case ${caseId} (no procedure IDs provided)`);
 			}
@@ -587,12 +786,6 @@ class BRAGbookGalleryApp {
 			const data = await response.json();
 
 			if (data.success && data.data && data.data.html) {
-				console.log(`✅ AJAX response received for case ${caseId}:`, {
-					hasHtml: !!data.data.html,
-					hasSeo: !!data.data.seo,
-					hasNavigation: data.data.html.includes('brag-book-gallery-case-nav-buttons'),
-					htmlLength: data.data.html.length
-				});
 
 				// Display the HTML directly from the server
 				galleryContent.innerHTML = data.data.html;
@@ -627,15 +820,13 @@ class BRAGbookGalleryApp {
 
 				// Log view tracking information to console
 				if (data.data.view_tracked) {
-					console.log(`✅ Case view tracked successfully for Case ID: ${data.data.case_id}`);
+					console.log(`Case view tracked successfully for Case ID: ${data.data.case_id}`);
 				} else if (data.data.view_tracked === false) {
-					console.warn(`⚠️ Case view tracking failed for Case ID: ${data.data.case_id}`);
+					console.warn(`Case view tracking failed for Case ID: ${data.data.case_id}`);
 
 					// Show additional debug info if available
 					if (data.data.debug) {
 						console.group('View Tracking Debug Info:');
-						console.log('Tracking attempted:', data.data.debug.view_tracking_attempted);
-						console.log('View tracked:', data.data.debug.view_tracked);
 						if (data.data.debug.tracking_error) {
 							console.error('Tracking error:', data.data.debug.tracking_error);
 						}
@@ -672,7 +863,6 @@ class BRAGbookGalleryApp {
 	 * Show skeleton loading for case detail view
 	 */
 	showCaseDetailSkeleton() {
-		console.log('🦴 Showing case detail skeleton');
 		const galleryContent = document.getElementById('gallery-content');
 		if (!galleryContent) {
 			console.warn('Gallery content container not found for skeleton');
@@ -786,7 +976,6 @@ class BRAGbookGalleryApp {
 		`;
 
 		galleryContent.innerHTML = skeletonHTML;
-		console.log('✅ Skeleton loaded into gallery content');
 
 		// Start progress bar animation
 		this.animateProgressBar();
@@ -1248,18 +1437,6 @@ class BRAGbookGalleryApp {
 	 * Monitor demographic filter checkboxes and update badges
 	 */
 	monitorDemographicFilters() {
-
-		// Override console.log to capture filter logs and extract data
-		const originalConsoleLog = console.log;
-		console.log = (...args) => {
-			// Call original console.log first
-			originalConsoleLog.apply(console, args);
-
-			// Check if this is an "Active filters" log message
-			if (args.length >= 2 && args[0] === 'Active filters:' && typeof args[1] === 'object') {
-				this.updateDemographicBadges(args[1]);
-			}
-		};
 
 		// Also try direct checkbox monitoring
 		document.addEventListener('change', (e) => {
@@ -2234,7 +2411,6 @@ class BRAGbookGalleryApp {
 				const procedureIds = card.dataset.procedureIds;
 
 				if (caseId && !this.casePreloadCache.has(caseId)) {
-					console.log(`🖱️ Hover preloading case ${caseId}`);
 					this.preloadCase(caseId, procedureIds, 'hover');
 				}
 			}, 300);
@@ -2356,8 +2532,7 @@ class BRAGbookGalleryApp {
 			const result = await this.preloadCaseViaAjax(task.caseId, task.procedureIds);
 			if (result) {
 				this.casePreloadCache.set(task.caseId, result);
-				const priorityIcon = task.priority === 'high' ? '⚡' : task.priority === 'hover' ? '🖱️' : '📋';
-				console.log(`${priorityIcon} Queue processed case ${task.caseId} (${task.priority} priority)`);
+				const priorityIcon = task.priority === 'high' ? '⚡' : task.priority === 'hover' ? '🖱️' : '📋';;
 			}
 		} catch (error) {
 			console.warn(`Queue failed to process case ${task.caseId}:`, error);
@@ -3052,9 +3227,6 @@ class BRAGbookGalleryApp {
 			return null;
 		}
 
-		// Debug: Log procedure ID lookup
-		console.log('Looking up procedure IDs for slug:', procedureSlug);
-
 		// Try to get from sidebar data first
 		if (window.bragBookGalleryConfig?.sidebarData) {
 			const sidebarData = window.bragBookGalleryConfig.sidebarData;
@@ -3064,7 +3236,6 @@ class BRAGbookGalleryApp {
 				if (category.procedures) {
 					for (const procedure of category.procedures) {
 						if (procedure.slug === procedureSlug) {
-							console.log('✅ Found procedure IDs from sidebar data:', procedure.ids);
 							// Return comma-separated IDs if available
 							return procedure.ids ? procedure.ids.join(',') : null;
 						}
@@ -3073,20 +3244,15 @@ class BRAGbookGalleryApp {
 			}
 		}
 
-		// Fallback: Look for procedure data in page elements
-		console.log('Checking page elements for procedure context...');
-
 		// First, check if we're on a case details page - look for the case detail view container
 		const caseDetailView = document.querySelector('.brag-book-gallery-case-detail-view');
 		if (caseDetailView && caseDetailView.dataset.procedureIds) {
-			console.log('✅ Found procedure IDs from case detail view:', caseDetailView.dataset.procedureIds);
 			return caseDetailView.dataset.procedureIds;
 		}
 
 		// Check if there's a procedure link in the DOM that matches the slug
 		const procedureLink = document.querySelector(`[data-procedure="${procedureSlug}"]`);
 		if (procedureLink && procedureLink.dataset.procedureIds) {
-			console.log('✅ Found procedure IDs from DOM element:', procedureLink.dataset.procedureIds);
 			return procedureLink.dataset.procedureIds;
 		}
 
@@ -3105,7 +3271,6 @@ class BRAGbookGalleryApp {
 			const procedureSlug = pathSegments.length > 2 ? pathSegments[pathSegments.length - 2] : '';
 
 			if (!procedureSlug) {
-				console.log('No procedure slug found in URL, cannot set sidebar active state');
 				return;
 			}
 
@@ -3126,7 +3291,6 @@ class BRAGbookGalleryApp {
 					parentItem.classList.add('brag-book-gallery-active');
 				}
 
-				console.log(`✅ Set sidebar active state for procedure: ${procedureSlug}`);
 			} else {
 				console.warn(`⚠️ Could not find sidebar link for procedure: ${procedureSlug}`);
 			}
@@ -3156,10 +3320,8 @@ class BRAGbookGalleryApp {
 		if (!userInfo) {
 			try {
 				const stored = localStorage.getItem('brag-book-user-info');
-				console.log('Raw localStorage brag-book-user-info:', stored);
 				if (stored) {
 					userInfo = JSON.parse(stored);
-					console.log('Parsed userInfo from localStorage:', userInfo);
 				}
 			} catch (e) {
 				console.error('Failed to load user info from localStorage:', e);
@@ -3170,28 +3332,19 @@ class BRAGbookGalleryApp {
 		if (existingFavorites.length === 0) {
 			try {
 				const storedFavorites = localStorage.getItem('brag-book-favorites');
-				console.log('Raw localStorage brag-book-favorites:', storedFavorites);
 				if (storedFavorites) {
 					existingFavorites = JSON.parse(storedFavorites);
-					console.log('Parsed favorites from localStorage:', existingFavorites);
 				}
 			} catch (e) {
 				console.error('Failed to load favorites from localStorage:', e);
 			}
 		}
 
-		console.log('initializeFavoritesPage - final userInfo:', userInfo);
-		console.log('userInfo has email?', !!(userInfo && userInfo.email));
-		console.log('userInfo.email value:', userInfo?.email);
-		console.log('existingFavorites count:', existingFavorites.length);
-		console.log('existingFavorites:', existingFavorites);
-
 		// Check if we're on the dedicated favorites page (has favorites shortcode elements)
 		const favoritesPage = document.getElementById('brag-book-gallery-favorites');
 
 		if (favoritesPage) {
 			// We're on the dedicated favorites page - handle that separately
-			console.log('Found dedicated favorites page, initializing...');
 			this.initializeDedicatedFavoritesPage(userInfo, existingFavorites);
 			return;
 		}
@@ -3210,30 +3363,18 @@ class BRAGbookGalleryApp {
 	 * Initialize the dedicated favorites page (from [brag_book_gallery_favorites] shortcode)
 	 */
 	initializeDedicatedFavoritesPage(userInfo, existingFavorites = []) {
-		console.log('initializeDedicatedFavoritesPage called with userInfo:', userInfo);
-		console.log('existingFavorites:', existingFavorites);
 
 		// Get DOM elements from dedicated favorites page
 		const emailCapture = document.getElementById('favoritesEmailCapture');
 		const gridContainer = document.getElementById('favoritesGridContainer');
 		const loadingEl = document.getElementById('favoritesLoading');
 
-		console.log('DOM elements found:', {
-			emailCapture: !!emailCapture,
-			gridContainer: !!gridContainer,
-			loadingEl: !!loadingEl
-		});
-
 		// Check if user has complete info (email, name, phone) and has favorites
 		const hasCompleteUserInfo = userInfo && userInfo.email && userInfo.name && userInfo.phone;
 		const hasFavorites = existingFavorites && existingFavorites.length > 0;
 
-		console.log('hasCompleteUserInfo:', hasCompleteUserInfo);
-		console.log('hasFavorites:', hasFavorites);
-
 		if (!hasCompleteUserInfo || !hasFavorites) {
 			// Show email capture form if no complete user info or no favorites
-			console.log('Showing email capture - missing user info or no favorites');
 			if (emailCapture) emailCapture.style.display = 'block';
 			if (loadingEl) loadingEl.style.display = 'none';
 			if (gridContainer) gridContainer.style.display = 'none';
@@ -3241,7 +3382,6 @@ class BRAGbookGalleryApp {
 		}
 
 		// User has complete info and favorites - fetch from API and display grid
-		console.log('✅ User has complete info and favorites, fetching from API...');
 		if (emailCapture) emailCapture.style.display = 'none';
 		if (loadingEl) loadingEl.style.display = 'block';
 		if (gridContainer) gridContainer.style.display = 'none';
@@ -3254,7 +3394,6 @@ class BRAGbookGalleryApp {
 	 * Fetch favorites from the API and display them as cards in the grid
 	 */
 	async fetchAndDisplayFavorites(userInfo, favoriteIds, gridContainer, loadingEl) {
-		console.log('🔄 Fetching favorites from API...');
 
 		try {
 			// Make WordPress AJAX request to lookup favorites
@@ -3275,7 +3414,6 @@ class BRAGbookGalleryApp {
 			const result = await response.json();
 
 			if (result.success && result.data && result.data.favorites) {
-				console.log('✅ Favorites fetched successfully:', result.data);
 				this.displayFavoritesGrid(result.data.favorites, gridContainer, loadingEl);
 			} else {
 				console.warn('No favorites found or API error:', result);
@@ -3291,7 +3429,6 @@ class BRAGbookGalleryApp {
 	 * Display favorites as cards in the grid
 	 */
 	displayFavoritesGrid(favoritesData, gridContainer, loadingEl) {
-		console.log('📋 Displaying favorites grid...');
 
 		// Hide loading and email capture
 		if (loadingEl) loadingEl.style.display = 'none';
@@ -3323,7 +3460,6 @@ class BRAGbookGalleryApp {
 
 		// Display cases if we have them
 		if (favoritesData.cases_data && Object.keys(favoritesData.cases_data).length > 0) {
-			console.log(`Displaying ${Object.keys(favoritesData.cases_data).length} favorite cases`);
 
 			// Hide empty state when we have content
 			if (emptyState) {
@@ -3353,8 +3489,6 @@ class BRAGbookGalleryApp {
 			// Show the grid
 			grid.style.display = 'grid';
 		} else {
-			// No favorites found - show empty state
-			console.log('No favorites data found, showing empty state');
 			grid.style.display = 'none';
 			this.showEmptyFavoritesState(gridContainer, loadingEl);
 		}
@@ -3529,7 +3663,6 @@ class BRAGbookGalleryApp {
 	 * Show empty favorites state
 	 */
 	showEmptyFavoritesState(gridContainer, loadingEl) {
-		console.log('📭 Showing empty favorites state');
 
 		if (loadingEl) loadingEl.style.display = 'none';
 
@@ -3576,7 +3709,6 @@ class BRAGbookGalleryApp {
 		// Check if user info already exists (avoid duplicates)
 		const existingUserInfo = gridContainer.querySelector('.brag-book-gallery-user-info');
 		if (existingUserInfo) {
-			console.log('User info already exists, skipping');
 			return;
 		}
 
@@ -3639,8 +3771,6 @@ class BRAGbookGalleryApp {
 
 		// Insert user info after the content title
 		contentTitle.insertAdjacentHTML('afterend', userInfoHtml);
-
-		console.log(`✅ Added user info after title: ${userEmail}, ${favoritesCount} favorites`);
 	}
 
 	/**
@@ -3804,12 +3934,9 @@ class BRAGbookGalleryApp {
 
 // Make initializeFavoritesPage available globally for the favorites handler
 window.initializeFavoritesPage = function() {
-	console.log('Global initializeFavoritesPage called');
-	console.log('window.bragBookGalleryApp exists:', !!window.bragBookGalleryApp);
 
 	// Get the main app instance if it exists
 	if (window.bragBookGalleryApp && typeof window.bragBookGalleryApp.initializeFavoritesPage === 'function') {
-		console.log('Calling main app initializeFavoritesPage');
 		window.bragBookGalleryApp.initializeFavoritesPage();
 	} else {
 		console.warn('BRAGbook Gallery App not yet initialized, retrying...');
@@ -3819,10 +3946,8 @@ window.initializeFavoritesPage = function() {
 
 		const tryInit = () => {
 			attempts++;
-			console.log(`Retry attempt ${attempts}/${maxAttempts}`);
 
 			if (window.bragBookGalleryApp && typeof window.bragBookGalleryApp.initializeFavoritesPage === 'function') {
-				console.log('Main app found on retry, calling initializeFavoritesPage');
 				window.bragBookGalleryApp.initializeFavoritesPage();
 			} else if (attempts < maxAttempts) {
 				setTimeout(tryInit, attempts * 100); // Increasing delay

@@ -88,7 +88,6 @@ class SearchAutocomplete {
 		});
 
 		this.procedures = Array.from(procedureMap.values());
-		console.log(`BRAGBook Gallery: Loaded ${this.procedures.length} procedures for search autocomplete from DOM`);
 
 		// Debug: Log first few procedures to verify data structure
 		if (this.procedures.length > 0) {

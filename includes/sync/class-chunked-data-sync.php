@@ -649,38 +649,41 @@ class Chunked_Data_Sync {
 	 */
 	private function fetch_all_case_ids_for_procedure( int $procedure_id ): array {
 		$all_case_ids = [];
-		$count        = 1;
-		$max_count    = 100; // Safety limit
+		$page         = 1;
+		$limit        = 50;
 
 		error_log( "Chunked Sync: Fetching case IDs for procedure {$procedure_id}" );
 
-		while ( $count <= $max_count ) {
+		while ( true ) {
 			try {
-				$case_ids = $this->fetch_case_ids_with_count( $procedure_id, $count );
+				$result = $this->fetch_case_ids_with_count( $procedure_id, $page, $limit );
 
-				if ( empty( $case_ids ) ) {
-					// No more cases
+				if ( empty( $result['case_ids'] ) ) {
 					break;
 				}
 
-				$all_case_ids = array_merge( $all_case_ids, $case_ids );
-				error_log( "Chunked Sync: Count {$count} returned " . count( $case_ids ) . " case IDs" );
+				$all_case_ids = array_merge( $all_case_ids, $result['case_ids'] );
+				error_log( "Chunked Sync: Page {$page} returned " . count( $result['case_ids'] ) . " case IDs" );
 
-				$count ++;
+				// Check pagination metadata to see if there are more pages
+				$pagination = $result['pagination'];
+				if ( ! $pagination || ! ( $pagination['hasNext'] ?? false ) ) {
+					break;
+				}
+
+				$page++;
 
 				// Small delay to avoid overwhelming the API
 				usleep( 100000 ); // 0.1 second
 
 			} catch ( Exception $e ) {
-				error_log( "Chunked Sync: Failed to fetch count {$count} for procedure {$procedure_id}: " . $e->getMessage() );
+				error_log( "Chunked Sync: Failed to fetch page {$page} for procedure {$procedure_id}: " . $e->getMessage() );
 				break;
 			}
 		}
 
 		// Remove duplicates and ensure sequential array
 		$all_case_ids = array_unique( $all_case_ids );
-
-		// Re-index to ensure it's a sequential array (0, 1, 2, ...) not an associative array
 		$all_case_ids = array_values( $all_case_ids );
 
 		error_log( "Chunked Sync: Total of " . count( $all_case_ids ) . " unique case IDs for procedure {$procedure_id}" );
@@ -689,98 +692,49 @@ class Chunked_Data_Sync {
 	}
 
 	/**
-	 * Fetch case IDs for a procedure with specific count parameter
+	 * Fetch case IDs for a procedure with pagination
 	 *
+	 * @since 3.3.0
 	 * @param int $procedure_id Procedure ID
-	 * @param int $count Count parameter for API
-	 *
-	 * @return array Case IDs
+	 * @param int $page Page number for pagination
+	 * @param int $limit Number of items per page
+	 * @return array Case IDs and pagination info
 	 * @throws Exception If API request fails
 	 */
-	private function fetch_case_ids_with_count( int $procedure_id, int $count ): array {
-		// Get API configuration
-		$api_tokens           = get_option( 'brag_book_gallery_api_token', [] );
-		$website_property_ids = get_option( 'brag_book_gallery_website_property_id', [] );
+	private function fetch_case_ids_with_count( int $procedure_id, int $page = 1, int $limit = 50 ): array {
+		$api_token            = get_option( 'brag_book_gallery_api_token', [] )[0] ?? '';
+		$website_property_id  = get_option( 'brag_book_gallery_website_property_id', [] )[0] ?? 0;
 
-		if ( empty( $api_tokens ) || empty( $api_tokens[0] ) ) {
-			throw new Exception( 'No API tokens configured' );
+		if ( empty( $api_token ) || $website_property_id <= 0 ) {
+			throw new Exception( 'Invalid API configuration' );
 		}
 
-		$valid_tokens = array_filter( $api_tokens, function ( $token ) {
-			return ! empty( $token );
-		} );
+		// Use Endpoints class for v2 API call
+		$endpoints = new \BRAGBookGallery\Includes\REST\Endpoints();
+		$response  = $endpoints->get_cases_v2(
+			$api_token,
+			intval( $website_property_id ),
+			$procedure_id,
+			$page,
+			$limit
+		);
 
-		$valid_property_ids = array_filter( array_map( 'intval', $website_property_ids ) );
-
-		// Build API request
-		$api_base_url = $this->get_api_base_url();
-		$endpoint     = '/api/plugin/combine/cases';
-		$full_url     = $api_base_url . $endpoint;
-
-		$request_body = [
-			'apiTokens'          => array_values( $valid_tokens ),
-			'websitePropertyIds' => array_values( $valid_property_ids ),
-			'procedureIds'       => [ $procedure_id ],
-			'count'              => $count,
-		];
-
-		// Make API request
-		$response = wp_remote_post( $full_url, [
-			'timeout'   => 30,
-			'headers'   => [
-				'Content-Type' => 'application/json',
-				'Accept'       => 'application/json',
-			],
-			'body'      => wp_json_encode( $request_body ),
-			'sslverify' => true,
-		] );
-
-		if ( is_wp_error( $response ) ) {
-			throw new Exception( 'API request failed: ' . $response->get_error_message() );
+		if ( ! $response || ! isset( $response['data']['cases'] ) ) {
+			return [ 'case_ids' => [], 'pagination' => null ];
 		}
 
-		$response_code = wp_remote_retrieve_response_code( $response );
-		if ( $response_code !== 200 ) {
-			throw new Exception( 'API returned error status: ' . $response_code );
-		}
-
-		$response_body = wp_remote_retrieve_body( $response );
-		$data          = json_decode( $response_body, true );
-
-		if ( json_last_error() !== JSON_ERROR_NONE ) {
-			throw new Exception( 'Invalid JSON response: ' . json_last_error_msg() );
-		}
-
-		// Extract case IDs from response
+		// Extract case IDs
 		$case_ids = [];
-		if ( isset( $data['success'] ) && $data['success'] && ! empty( $data['data'] ) ) {
-			// Log the structure to understand what we're getting
-			if ( $count === 1 ) {
-				error_log( "Chunked Sync: API response structure for procedure {$procedure_id}, count {$count}: " . wp_json_encode( array_keys( $data['data'] ) ) );
-
-				// Check if data['data'] is an associative array with count keys or a sequential array
-				$first_key = array_key_first( $data['data'] );
-				if ( is_numeric( $first_key ) && $first_key > 0 ) {
-					error_log( "Chunked Sync: WARNING - API returning count-indexed array for procedure {$procedure_id}" );
-				}
-			}
-
-			foreach ( $data['data'] as $key => $case ) {
-				// Skip if the key is numeric (count index) and the value is just an ID
-				if ( is_numeric( $key ) && is_numeric( $case ) ) {
-					// This is just a case ID, not a case object
-					$case_ids[] = $case;
-				} elseif ( is_array( $case ) && isset( $case['id'] ) ) {
-					// This is a case object with an id field
-					$case_ids[] = $case['id'];
-				} elseif ( is_numeric( $case ) ) {
-					// Just a plain case ID
-					$case_ids[] = $case;
-				}
+		foreach ( $response['data']['cases'] as $case ) {
+			if ( isset( $case['id'] ) ) {
+				$case_ids[] = intval( $case['id'] );
 			}
 		}
 
-		return $case_ids;
+		return [
+			'case_ids'   => $case_ids,
+			'pagination' => $response['data']['pagination'] ?? null,
+		];
 	}
 
 	/**
@@ -897,14 +851,16 @@ class Chunked_Data_Sync {
 	/**
 	 * Execute Stage 3: Process cases from manifest
 	 *
+	 * @param int $batch_size Number of cases to process per chunk (default 20)
+	 *
 	 * @return array Result with success status and details
 	 */
-	public function execute_stage_3(): array {
-		error_log( 'Chunked Sync: Starting Stage 3 - Process cases from manifest' );
+	public function execute_stage_3( int $batch_size = 20 ): array {
+		error_log( 'Chunked Sync: Starting Stage 3 - Process cases from manifest (batch size: ' . $batch_size . ')' );
 
 		// Increase memory limit and time limit for processing
 		@ini_set( 'memory_limit', '512M' );
-		@set_time_limit( 600 ); // 10 minutes
+		@set_time_limit( 180 ); // 3 minutes per chunk
 
 		try {
 			// Check if manifest exists (required for Stage 3)
@@ -920,14 +876,38 @@ class Chunked_Data_Sync {
 
 			// Check for existing state to resume from
 			$state = get_option( 'brag_book_stage3_state', null );
-			if ( $state && isset( $state['session_id'] ) && $state['session_id'] === $this->sync_session_id ) {
+			if ( $state ) {
 				error_log( 'Chunked Sync: Resuming Stage 3 from saved state' );
-
-				return $this->resume_stage_3( $state );
+				$result = $this->process_batch_from_state( $state, $manifest, $batch_size );
+			} else {
+				// Start fresh processing
+				error_log( 'Chunked Sync: Starting fresh Stage 3 processing' );
+				$result = $this->process_batch_from_manifest( $manifest, $batch_size );
 			}
 
-			// Start fresh processing
-			$result = $this->process_cases_from_manifest( $manifest );
+			// Check if we need to continue processing
+			if ( $result['needs_continue'] ?? false ) {
+				error_log( 'Chunked Sync: Stage 3 needs to continue - ' . $result['processed_cases'] . '/' . $result['total_cases'] . ' processed' );
+				return [
+					'success'         => true,
+					'stage'           => 3,
+					'needs_continue'  => true,
+					'message'         => sprintf(
+						'Processing batch: %d/%d cases completed',
+						$result['processed_cases'],
+						$result['total_cases']
+					),
+					'created_posts'   => $result['created_posts'],
+					'updated_posts'   => $result['updated_posts'],
+					'failed_cases'    => $result['failed_cases'],
+					'processed_cases' => $result['processed_cases'],
+					'total_cases'     => $result['total_cases'],
+					'progress'        => round( ( $result['processed_cases'] / $result['total_cases'] ) * 100 ),
+				];
+			}
+
+			// Processing complete
+			error_log( 'Chunked Sync: Stage 3 completed successfully' );
 
 			// Store completion status for display
 			$completion_status = [
@@ -952,13 +932,11 @@ class Chunked_Data_Sync {
 				gc_collect_cycles();
 			}
 
-			error_log( 'Chunked Sync: Stage 3 completed successfully' );
-			error_log( 'Chunked Sync: Memory usage before response: ' . ( memory_get_usage( true ) / 1024 / 1024 ) . 'MB' );
-
 			// Return minimal response to avoid memory issues
 			return [
 				'success'         => true,
 				'stage'           => 3,
+				'needs_continue'  => false,
 				'message'         => sprintf(
 					'Stage 3 completed: %d cases processed (%d created, %d updated, %d failed)',
 					$result['processed_cases'] ?? 0,
@@ -976,6 +954,7 @@ class Chunked_Data_Sync {
 		} catch ( Exception $e ) {
 			// Clear progress on error
 			$this->clear_stage_progress();
+			delete_option( 'brag_book_stage3_state' );
 
 			error_log( 'Chunked Sync: Stage 3 failed: ' . $e->getMessage() );
 
@@ -1034,7 +1013,210 @@ class Chunked_Data_Sync {
 	}
 
 	/**
-	 * Process cases from manifest
+	 * Process a batch of cases from manifest (fresh start)
+	 *
+	 * @param array $manifest Manifest data with procedure IDs and case IDs
+	 * @param int $batch_size Number of cases to process
+	 *
+	 * @return array Processing results with needs_continue flag
+	 */
+	private function process_batch_from_manifest( array $manifest, int $batch_size ): array {
+		// Calculate total cases
+		$total_cases = 0;
+		foreach ( $manifest as $case_ids ) {
+			$total_cases += count( $case_ids );
+		}
+
+		error_log( "Chunked Sync: Processing first batch of {$batch_size} cases from total {$total_cases}" );
+
+		// Initialize state
+		$state = [
+			'manifest'        => $manifest,
+			'total_cases'     => $total_cases,
+			'processed_cases' => 0,
+			'created_posts'   => 0,
+			'updated_posts'   => 0,
+			'failed_cases'    => 0,
+			'errors'          => [],
+			'procedure_index' => 0,
+			'case_index'      => 0,
+		];
+
+		return $this->process_batch_from_state( $state, $manifest, $batch_size );
+	}
+
+	/**
+	 * Process a batch of cases from saved state (resume)
+	 *
+	 * @param array $state Saved processing state
+	 * @param array $manifest Manifest data
+	 * @param int $batch_size Number of cases to process in this batch
+	 *
+	 * @return array Processing results with needs_continue flag
+	 */
+	private function process_batch_from_state( array $state, array $manifest, int $batch_size ): array {
+		$processed_in_batch = 0;
+		$procedure_keys     = array_keys( $manifest );
+
+		// Ensure total_cases is set (calculate if missing)
+		if ( empty( $state['total_cases'] ) ) {
+			$total_cases = 0;
+			foreach ( $manifest as $case_ids ) {
+				$total_cases += count( $case_ids );
+			}
+			$state['total_cases'] = $total_cases;
+		}
+
+		// Ensure counters are initialized
+		$state['processed_cases'] = $state['processed_cases'] ?? 0;
+		$state['created_posts']   = $state['created_posts'] ?? 0;
+		$state['updated_posts']   = $state['updated_posts'] ?? 0;
+		$state['failed_cases']    = $state['failed_cases'] ?? 0;
+		$state['errors']          = $state['errors'] ?? [];
+
+		// Resume from saved position
+		$procedure_index = $state['procedure_index'] ?? 0;
+		$case_index      = $state['case_index'] ?? 0;
+
+		error_log( "Chunked Sync: Resuming from procedure index {$procedure_index}, case index {$case_index}" );
+		error_log( "Chunked Sync: Progress so far: {$state['processed_cases']}/{$state['total_cases']} cases" );
+
+		// Update progress
+		$this->update_stage_progress(
+			(int) $state['processed_cases'],
+			(int) $state['total_cases'],
+			'Processing batch of cases...'
+		);
+
+		// Process cases until batch is full
+		while ( $processed_in_batch < $batch_size && $procedure_index < count( $procedure_keys ) ) {
+			$procedure_id = $procedure_keys[ $procedure_index ];
+			$case_ids     = $manifest[ $procedure_id ];
+
+			// Get procedure term
+			$procedure_term = $this->get_procedure_term_by_api_id( intval( $procedure_id ) );
+			if ( ! $procedure_term ) {
+				error_log( "Chunked Sync: WARNING - No procedure term found for API ID {$procedure_id}, skipping" );
+				$procedure_index ++;
+				$case_index = 0;
+				continue;
+			}
+
+			// Build case order list when we first start processing this procedure
+			if ( $case_index === 0 ) {
+				// We'll store the full order after processing all cases for this procedure
+				$state['current_procedure_case_order'] = [];
+			}
+
+			// Process cases for this procedure
+			while ( $case_index < count( $case_ids ) && $processed_in_batch < $batch_size ) {
+				$case_id = $case_ids[ $case_index ];
+
+				try {
+					// Fetch and process case
+					$case_details = $this->fetch_case_details( intval( $case_id ), intval( $procedure_id ) );
+					if ( ! $case_details ) {
+						throw new Exception( "Failed to fetch details for case {$case_id}" );
+					}
+
+					// Create or update post
+					$result = $this->create_or_update_case_post( $case_details, $procedure_term, $case_index );
+
+					if ( $result['created'] ) {
+						$state['created_posts'] ++;
+					} else {
+						$state['updated_posts'] ++;
+					}
+
+					// Add to case order list (WordPress ID + API ID)
+					if ( ! empty( $result['post_id'] ) ) {
+						$state['current_procedure_case_order'][] = [
+							'wp_id'  => $result['post_id'],
+							'api_id' => $case_id,
+						];
+					}
+
+					// Update progress
+					$state['processed_cases'] ++;
+					$this->update_stage_progress(
+						$state['processed_cases'],
+						$state['total_cases'],
+						"Processed case {$case_id} ({$state['processed_cases']}/{$state['total_cases']})"
+					);
+
+				} catch ( Exception $e ) {
+					$state['failed_cases'] ++;
+					$state['errors'][] = "Failed to process case {$case_id}: " . $e->getMessage();
+					error_log( "Chunked Sync: ERROR - Failed to process case {$case_id}: " . $e->getMessage() );
+					$state['processed_cases'] ++;
+				}
+
+				$case_index ++;
+				$processed_in_batch ++;
+
+				// Pause briefly to avoid overwhelming the server
+				if ( $processed_in_batch % 5 === 0 ) {
+					usleep( 50000 ); // 0.05 second
+				}
+			}
+
+			// Move to next procedure if we finished this one
+			if ( $case_index >= count( $case_ids ) ) {
+				// Store the case order for this completed procedure
+				if ( ! empty( $state['current_procedure_case_order'] ) ) {
+					$this->store_procedure_case_order( $procedure_term->term_id, $state['current_procedure_case_order'] );
+					error_log( "Chunked Sync: Stored case ordering for procedure {$procedure_id} (term: {$procedure_term->term_id}) - " . count( $state['current_procedure_case_order'] ) . " cases" );
+				}
+
+				$procedure_index ++;
+				$case_index = 0;
+				$state['current_procedure_case_order'] = []; // Reset for next procedure
+			}
+		}
+
+		// Save state for next batch
+		$state['procedure_index'] = $procedure_index;
+		$state['case_index']      = $case_index;
+
+		// Check if we need to continue
+		// We're done if we've reached the end of all procedures OR if we've processed all cases
+		$reached_end    = $procedure_index >= count( $procedure_keys );
+		$needs_continue = ! $reached_end && ( $state['processed_cases'] < $state['total_cases'] );
+
+		if ( $needs_continue ) {
+			// Save state for resumption
+			update_option( 'brag_book_stage3_state', $state, false );
+			error_log( "Chunked Sync: Saved state - {$state['processed_cases']}/{$state['total_cases']} processed, continuing..." );
+		} else {
+			// Log completion or end of available data
+			if ( $reached_end ) {
+				error_log( "Chunked Sync: Reached end of manifest - {$state['processed_cases']}/{$state['total_cases']} processed" );
+				if ( $state['processed_cases'] < $state['total_cases'] ) {
+					error_log( "Chunked Sync: WARNING - Expected {$state['total_cases']} cases but only found {$state['processed_cases']} in manifest" );
+				}
+			} else {
+				error_log( "Chunked Sync: All cases processed - {$state['processed_cases']}/{$state['total_cases']}" );
+			}
+		}
+
+		// Force garbage collection
+		if ( function_exists( 'gc_collect_cycles' ) ) {
+			gc_collect_cycles();
+		}
+
+		return [
+			'needs_continue'  => $needs_continue,
+			'total_cases'     => $state['total_cases'],
+			'processed_cases' => $state['processed_cases'],
+			'created_posts'   => $state['created_posts'],
+			'updated_posts'   => $state['updated_posts'],
+			'failed_cases'    => $state['failed_cases'],
+			'errors'          => $state['errors'],
+		];
+	}
+
+	/**
+	 * Process cases from manifest (OLD METHOD - kept for reference)
 	 *
 	 * @param array $manifest Manifest data with procedure IDs and case IDs
 	 *
@@ -1194,101 +1376,146 @@ class Chunked_Data_Sync {
 	/**
 	 * Fetch case details from API
 	 *
-	 * @param int $case_id Case ID
-	 * @param int $procedure_id Procedure ID the case belongs to (needed for API)
-	 *
-	 * @return array|null Case details or null on failure
+	 * @since 3.3.0
+	 * @param int      $case_id Case ID to fetch
+	 * @param int|null $procedure_id Optional procedure ID
+	 * @return array|null Normalized case data or null on failure
 	 */
 	private function fetch_case_details( int $case_id, ?int $procedure_id = null ): ?array {
-		// Get API configuration
-		$api_tokens           = get_option( 'brag_book_gallery_api_token', [] );
-		$website_property_ids = get_option( 'brag_book_gallery_website_property_id', [] );
+		$api_token           = get_option( 'brag_book_gallery_api_token', [] )[0] ?? '';
+		$website_property_id = get_option( 'brag_book_gallery_website_property_id', [] )[0] ?? 0;
 
-		if ( empty( $api_tokens ) || empty( $api_tokens[0] ) ) {
-			error_log( 'Chunked Sync: No API tokens configured for case fetch' );
-
+		if ( empty( $api_token ) || $website_property_id <= 0 ) {
+			error_log( 'Chunked Sync: Invalid API configuration for case fetch' );
 			return null;
 		}
 
-		$valid_tokens = array_filter( $api_tokens, function ( $token ) {
-			return ! empty( $token );
-		} );
+		$endpoints = new \BRAGBookGallery\Includes\REST\Endpoints();
+		$response  = $endpoints->get_case_detail_v2(
+			$api_token,
+			$case_id,
+			intval( $website_property_id ),
+			$procedure_id
+		);
 
-		$valid_property_ids = array_filter( array_map( 'intval', $website_property_ids ) );
-
-		// Build API request for single case
-		$api_base_url = $this->get_api_base_url();
-		$endpoint     = '/api/plugin/combine/cases/' . $case_id; // Endpoint for single case details
-		$full_url     = $api_base_url . $endpoint;
-
-		// API requires procedureIds even for single case fetch
-		$procedure_ids = [];
-		if ( $procedure_id !== null ) {
-			$procedure_ids = [ intval( $procedure_id ) ];
-		} else {
-			// Use a default if not provided (this should rarely happen)
-			$procedure_ids = [ 6851 ];
-		}
-
-		$request_body = [
-			'apiTokens'          => array_values( $valid_tokens ),
-			'websitePropertyIds' => array_values( $valid_property_ids ),
-			'procedureIds'       => $procedure_ids,
-		];
-
-		// Debug: Log request details
-		error_log( 'Chunked Sync: Fetching case ' . $case_id . ' from ' . $full_url );
-		error_log( 'Chunked Sync: Request body: ' . wp_json_encode( $request_body ) );
-		error_log( 'Chunked Sync: Procedure IDs being sent: ' . implode( ',', $procedure_ids ) );
-
-		// Make API request
-		$response = wp_remote_post( $full_url, [
-			'timeout'   => 30,
-			'headers'   => [
-				'Content-Type' => 'application/json',
-				'Accept'       => 'application/json',
-			],
-			'body'      => wp_json_encode( $request_body ),
-			'sslverify' => true,
-		] );
-
-		if ( is_wp_error( $response ) ) {
-			error_log( 'Chunked Sync: API request failed for case ' . $case_id . ': ' . $response->get_error_message() );
-
+		if ( ! $response || ! isset( $response['data']['case'] ) ) {
+			error_log( "Chunked Sync: Failed to fetch case {$case_id}" );
 			return null;
 		}
 
-		$response_code = wp_remote_retrieve_response_code( $response );
-		if ( $response_code !== 200 ) {
-			$response_body = wp_remote_retrieve_body( $response );
-			error_log( 'Chunked Sync: API returned error status ' . $response_code . ' for case ' . $case_id );
-			error_log( 'Chunked Sync: API error response: ' . substr( $response_body, 0, 500 ) ); // Log first 500 chars of response
+		error_log( "Chunked Sync: Successfully fetched case {$case_id}" );
 
-			return null;
+		// Normalize v2 data to v1 format
+		return $this->normalize_v2_to_v1( $response['data']['case'] );
+	}
+
+	/**
+	 * Normalize v2 API data to v1 format for backward compatibility
+	 *
+	 * Converts the v2 nested data structure to the flat v1 format expected
+	 * by the Post_Types::save_api_response_data() method.
+	 *
+	 * @since 3.3.0
+	 * @param array $v2_data v2 API case data
+	 * @return array Normalized data in v1 format
+	 */
+	private function normalize_v2_to_v1( array $v2_data ): array {
+		$case_id = $v2_data['id'] ?? 'unknown';
+
+		// DEBUG: Log incoming v2 data structure
+		error_log( "=== NORMALIZATION DEBUG: Case {$case_id} ===" );
+		error_log( "V2 Data Keys: " . implode( ', ', array_keys( $v2_data ) ) );
+		error_log( "Has patientInfo: " . ( isset( $v2_data['patientInfo'] ) ? 'YES' : 'NO' ) );
+		error_log( "Has seoInfo: " . ( isset( $v2_data['seoInfo'] ) ? 'YES' : 'NO' ) );
+		error_log( "Has photoSets: " . ( isset( $v2_data['photoSets'] ) ? 'YES (' . count( $v2_data['photoSets'] ) . ' sets)' : 'NO' ) );
+
+		if ( isset( $v2_data['photoSets'][0]['images'] ) ) {
+			$first_images = $v2_data['photoSets'][0]['images'];
+			error_log( "First photoSet image keys: " . implode( ', ', array_keys( $first_images ) ) );
+			error_log( "Before URL: " . ( $first_images['before']['url'] ?? 'MISSING' ) );
+			error_log( "After URL: " . ( $first_images['after']['url'] ?? 'MISSING' ) );
 		}
 
-		$response_body = wp_remote_retrieve_body( $response );
-		$data          = json_decode( $response_body, true );
+		$normalized = [];
 
-		if ( json_last_error() !== JSON_ERROR_NONE ) {
-			error_log( 'Chunked Sync: Invalid JSON response for case ' . $case_id );
+		// Basic fields (unchanged)
+		$normalized['id']           = $v2_data['id'] ?? 0;
+		$normalized['procedureIds'] = $v2_data['procedureIds'] ?? [];
+		$normalized['categoryIds']  = $v2_data['categoryIds'] ?? [];
 
-			return null;
+		// CRITICAL: v2 API doesn't return isForWebsite field, but save_api_response_data() requires it
+		// All cases from v2 API are approved for website use (filtered server-side)
+		$normalized['isForWebsite'] = true;
+
+		// Patient data (move from patientInfo to root)
+		if ( isset( $v2_data['patientInfo'] ) ) {
+			$normalized['age']       = $v2_data['patientInfo']['age'] ?? null;
+			$normalized['gender']    = $v2_data['patientInfo']['gender'] ?? null;
+			$normalized['ethnicity'] = $v2_data['patientInfo']['ethnicity'] ?? null;
+			$normalized['height']    = $v2_data['patientInfo']['height'] ?? null;
+			$normalized['weight']    = $v2_data['patientInfo']['weight'] ?? null;
 		}
 
-		if ( ! isset( $data['success'] ) || ! $data['success'] || empty( $data['data'] ) ) {
-			error_log( 'Chunked Sync: API returned unsuccessful response for case ' . $case_id );
-
-			return null;
+		// SEO data (convert from seoInfo to caseDetails array format)
+		if ( isset( $v2_data['seoInfo'] ) ) {
+			$normalized['caseDetails'] = [
+				[
+					'seoSuffixUrl'       => $v2_data['seoInfo']['slug'] ?? '',
+					'seoHeadline'        => $v2_data['seoInfo']['headline'] ?? '',
+					'seoPageTitle'       => $v2_data['seoInfo']['title'] ?? '',
+					'seoPageDescription' => $v2_data['seoInfo']['metaDescription'] ?? '',
+				],
+			];
 		}
 
-		// The API returns data in an array format - get the first item
-		if ( isset( $data['data'][0] ) ) {
-			return $data['data'][0];
+		// Photo sets (convert nested v2 structure to flat v1 field names)
+		// CRITICAL: Use *LocationUrl field names that v1 code expects
+		if ( isset( $v2_data['photoSets'] ) ) {
+			$normalized['photoSets'] = [];
+
+			foreach ( $v2_data['photoSets'] as $photo_set ) {
+				$images = $photo_set['images'] ?? [];
+
+				// Convert v2 nested structure to v1 flat format
+				$flat_photo_set = [
+					'beforeLocationUrl'                    => $images['before']['url'] ?? '',
+					'afterLocationUrl1'                    => $images['after']['url'] ?? '',
+					'afterLocationUrl2'                    => $images['afterPlus']['url'] ?? '',
+					'afterLocationUrl3'                    => '', // No equivalent in v2
+					'postProcessedImageLocation'           => $images['sideBySide']['standard']['url'] ?? '',
+					'highResPostProcessedImageLocation'    => $images['sideBySide']['highDefinition']['url'] ?? '',
+					'seoAltText'                           => $images['before']['altText'] ?? $images['after']['altText'] ?? '',
+					'isNude'                               => false, // Default value (not in v2 response)
+				];
+
+				$normalized['photoSets'][] = $flat_photo_set;
+			}
 		}
 
-		// Fallback if data structure is different
-		return $data['data'];
+		// Procedure details (unchanged structure)
+		$normalized['procedureDetails'] = $v2_data['procedureDetails'] ?? [];
+
+		// Store v2-specific fields separately
+		$normalized['description'] = $v2_data['description'] ?? '';
+		$normalized['createdAt']   = $v2_data['createdAt'] ?? '';
+		$normalized['updatedAt']   = $v2_data['updatedAt'] ?? '';
+
+		// DEBUG: Log normalized output
+		error_log( "Normalized Data Keys: " . implode( ', ', array_keys( $normalized ) ) );
+		error_log( "Normalized age: " . ( $normalized['age'] ?? 'NULL' ) );
+		error_log( "Normalized gender: " . ( $normalized['gender'] ?? 'NULL' ) );
+		error_log( "Normalized photoSets count: " . ( isset( $normalized['photoSets'] ) ? count( $normalized['photoSets'] ) : '0' ) );
+		if ( isset( $normalized['photoSets'][0] ) ) {
+			error_log( "First normalized photoSet keys: " . implode( ', ', array_keys( $normalized['photoSets'][0] ) ) );
+			error_log( "Normalized beforeLocationUrl: " . ( $normalized['photoSets'][0]['beforeLocationUrl'] ?? 'MISSING' ) );
+			error_log( "Normalized afterLocationUrl1: " . ( $normalized['photoSets'][0]['afterLocationUrl1'] ?? 'MISSING' ) );
+		}
+		if ( isset( $normalized['caseDetails'][0] ) ) {
+			error_log( "Normalized seoPageTitle: " . ( $normalized['caseDetails'][0]['seoPageTitle'] ?? 'MISSING' ) );
+		}
+		error_log( "=== END NORMALIZATION DEBUG ===" );
+
+		return $normalized;
 	}
 
 	/**
@@ -1328,11 +1555,27 @@ class Chunked_Data_Sync {
 			current_time( 'mysql' )
 		);
 
+		// Generate title from seoInfo or fallback to procedure name
+		if ( isset( $case_details['seoInfo']['title'] ) && ! empty( $case_details['seoInfo']['title'] ) ) {
+			$post_title = wp_strip_all_tags( $case_details['seoInfo']['title'] );
+		} else {
+			$procedure_name  = $procedure_term->name ?? 'Unknown Procedure';
+			$display_case_id = $case_details['id'] ?? 'unknown';
+			$post_title      = $procedure_name . ' #' . $display_case_id;
+		}
+
+		// Prepare meta description
+		$meta_description = '';
+		if ( isset( $case_details['seoInfo']['metaDescription'] ) && ! empty( $case_details['seoInfo']['metaDescription'] ) ) {
+			$meta_description = wp_strip_all_tags( $case_details['seoInfo']['metaDescription'] );
+		}
+
 		if ( ! empty( $existing_posts ) ) {
 			// Update existing post
 			$post_id   = $existing_posts[0]->ID;
 			$post_data = [
 				'ID'           => $post_id,
+				'post_title'   => $post_title,
 				'post_name'    => $slug,
 				'post_content' => $content,
 				'post_status'  => isset( $case_details['draft'] ) && $case_details['draft'] ? 'draft' : 'publish',
@@ -1342,25 +1585,24 @@ class Chunked_Data_Sync {
 			if ( is_wp_error( $result ) ) {
 				throw new Exception( "Failed to update post: " . $result->get_error_message() );
 			}
-			// Update sync timestamp
+			// Update sync timestamp and meta description
 			update_post_meta( $post_id, '_case_synced_at', current_time( 'mysql' ) );
+			if ( ! empty( $meta_description ) ) {
+				update_post_meta( $post_id, '_yoast_wpseo_metadesc', $meta_description );
+			}
 			$created = false;
 		} else {
-			// Generate a proper title upfront in case save_api_response_data fails
-			$procedure_name  = $procedure_term->name ?? 'Unknown Procedure';
-			$display_case_id = $case_details['id'] ?? 'unknown';
-			$initial_title   = $procedure_name . ' #' . $display_case_id;
-
 			// Create new post with proper title from the start
 			$post_data = [
 				'post_type'    => Post_Types::POST_TYPE_CASES,
-				'post_title'   => $initial_title, // Use proper title from the start
+				'post_title'   => $post_title,
 				'post_name'    => $slug,
 				'post_content' => $content,
 				'post_status'  => isset( $case_details['draft'] ) && $case_details['draft'] ? 'draft' : 'publish',
 				'meta_input'   => [
-					'_case_api_id'    => $case_details['id'],
-					'_case_synced_at' => current_time( 'mysql' ),
+					'_case_api_id'          => $case_details['id'],
+					'_case_synced_at'       => current_time( 'mysql' ),
+					'_yoast_wpseo_metadesc' => $meta_description,
 				],
 			];
 			$post_id   = wp_insert_post( $post_data );
@@ -1431,6 +1673,8 @@ class Chunked_Data_Sync {
 	/**
 	 * Generate case slug from API data
 	 *
+	 * Uses seoInfo.slug if available, otherwise falls back to case ID.
+	 *
 	 * @param array $case_data Case data from API
 	 *
 	 * @return string Generated slug
@@ -1438,24 +1682,19 @@ class Chunked_Data_Sync {
 	private function generate_case_slug( array $case_data ): string {
 		$case_id = $case_data['id'] ?? 'unknown';
 
-		// Check for seoSuffixUrl in caseDetails array
-		if ( isset( $case_data['caseDetails'] ) && is_array( $case_data['caseDetails'] ) ) {
-			foreach ( $case_data['caseDetails'] as $case_detail ) {
-				if ( isset( $case_detail['seoSuffixUrl'] ) && ! empty( $case_detail['seoSuffixUrl'] ) ) {
-					// Sanitize the seoSuffixUrl to make it a valid WordPress slug
-					$slug = sanitize_title( $case_detail['seoSuffixUrl'] );
+		// First, check for seoInfo.slug (primary source)
+		if ( isset( $case_data['seoInfo']['slug'] ) && ! empty( $case_data['seoInfo']['slug'] ) ) {
+			$slug = sanitize_title( $case_data['seoInfo']['slug'] );
 
-					// Make sure it's not empty after sanitization
-					if ( ! empty( $slug ) ) {
-						error_log( 'Chunked Sync: Using seoSuffixUrl as slug for case ' . $case_id . ': ' . $slug );
+			// Make sure it's not empty after sanitization
+			if ( ! empty( $slug ) ) {
+				error_log( 'Chunked Sync: Using seoInfo.slug for case ' . $case_id . ': ' . $slug );
 
-						return $slug;
-					}
-				}
+				return $slug;
 			}
 		}
 
-		// Fallback to case ID - ensure it's a string
+		// Fallback to case ID
 		$fallback_slug = (string) $case_id;
 		error_log( 'Chunked Sync: Using fallback slug for case ' . $case_id . ': ' . $fallback_slug );
 
@@ -1525,16 +1764,16 @@ class Chunked_Data_Sync {
 	/**
 	 * Store case ordering for a procedure
 	 *
-	 * Stores the case IDs in their API response order as term meta.
+	 * Stores the case WordPress IDs and API IDs in their API response order as term meta.
 	 * This allows maintaining the same case order as displayed in the BRAGBook system.
 	 *
 	 * @param int $term_id WordPress term ID for the procedure
-	 * @param array $case_ids Array of case IDs in their API response order
+	 * @param array $case_order Array of case data with 'wp_id' and 'api_id' keys
 	 *
 	 * @return void
 	 */
-	private function store_procedure_case_order( int $term_id, array $case_ids ): void {
-		if ( empty( $case_ids ) ) {
+	private function store_procedure_case_order( int $term_id, array $case_order ): void {
+		if ( empty( $case_order ) ) {
 			// Clear any existing case order list if no cases
 			delete_term_meta( $term_id, 'brag_book_gallery_case_order_list' );
 
@@ -1542,9 +1781,14 @@ class Chunked_Data_Sync {
 		}
 
 		// Store the case order list as term meta
-		update_term_meta( $term_id, 'brag_book_gallery_case_order_list', $case_ids );
+		update_term_meta( $term_id, 'brag_book_gallery_case_order_list', $case_order );
 
-		error_log( "Chunked Sync: Stored case order for term {$term_id} - " . count( $case_ids ) . " cases in order: " . implode( ', ', array_slice( $case_ids, 0, 5 ) ) . ( count( $case_ids ) > 5 ? '...' : '' ) );
+		$sample_cases = array_slice( $case_order, 0, 3 );
+		$sample_str = implode( ', ', array_map( function( $case ) {
+			return "WP:{$case['wp_id']}/API:{$case['api_id']}";
+		}, $sample_cases ) );
+
+		error_log( "Chunked Sync: Stored case order for term {$term_id} - " . count( $case_order ) . " cases. Sample: " . $sample_str . ( count( $case_order ) > 3 ? '...' : '' ) );
 	}
 
 	/**
@@ -1585,7 +1829,19 @@ class Chunked_Data_Sync {
 
 		// Get WordPress post IDs for these case IDs in order
 		$ordered_post_ids = [];
-		foreach ( $case_ids_in_order as $case_id ) {
+		foreach ( $case_ids_in_order as $case_data ) {
+			// Handle new format with wp_id and api_id
+			if ( is_array( $case_data ) && ! empty( $case_data['wp_id'] ) ) {
+				$ordered_post_ids[] = $case_data['wp_id'];
+				continue;
+			}
+
+			// Handle legacy format (simple case ID)
+			$case_id = is_array( $case_data ) ? ( $case_data['api_id'] ?? null ) : $case_data;
+			if ( empty( $case_id ) ) {
+				continue;
+			}
+
 			// Try current format first (brag_book_gallery_api_id)
 			$posts = get_posts( [
 				'post_type'      => \BRAGBookGallery\Includes\Extend\Post_Types::POST_TYPE_CASES,

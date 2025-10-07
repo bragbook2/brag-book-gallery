@@ -1,10 +1,238 @@
 import BRAGbookGalleryApp from './main-app.js';
+import Carousel from './carousel.js';
 import { NudityWarningManager, PhoneFormatter } from './utilities.js';
 
 /**
  * Global utility functions for the BRAG book Gallery
  * Contains grid layout management, procedure filtering, case loading, and image handling
  */
+
+/**
+ * Procedure referrer tracking for combo procedures
+ * Stores which procedure page the user came from to correctly handle navigation
+ */
+
+/**
+ * Store the current procedure context when user clicks a case card
+ * This allows combo procedures to navigate back to the correct procedure
+ */
+window.storeProcedureReferrer = function(procedureSlug, procedureName, procedureUrl, procedureId, termId, caseId, caseWpId) {
+	if (!procedureSlug) return;
+
+	const referrer = {
+		'slug': procedureSlug,
+		'name': procedureName || procedureSlug,
+		'url': procedureUrl || window.location.href,
+		'case-id': caseId || null,
+		'case-wp-id': caseWpId || null,
+		'procedure-id': procedureId || null,
+		'term-id': termId || null,
+		'timestamp': Date.now()
+	};
+
+	localStorage.setItem('brag-book-gallery-procedure-referrer', JSON.stringify(referrer));
+};
+
+/**
+ * Get the stored procedure referrer
+ * @returns {Object|null} Referrer object or null
+ */
+window.getProcedureReferrer = function() {
+	try {
+		const stored = localStorage.getItem('brag-book-gallery-procedure-referrer');
+		if (!stored) return null;
+
+		const referrer = JSON.parse(stored);
+
+		// Clear referrer if older than 1 hour (stale data)
+		const oneHour = 60 * 60 * 1000;
+		if (Date.now() - referrer.timestamp > oneHour) {
+			localStorage.removeItem('brag-book-gallery-procedure-referrer');
+			return null;
+		}
+
+		return referrer;
+	} catch (e) {
+		console.error('Error reading procedure referrer:', e);
+		return null;
+	}
+};
+
+/**
+ * Clear the procedure referrer from localStorage
+ */
+window.clearProcedureReferrer = function() {
+	localStorage.removeItem('brag-book-gallery-procedure-referrer');
+};
+
+/**
+ * Update navigation links based on stored procedure referrer
+ * Called on case detail pages to update "Back to Gallery" and next/prev links
+ */
+window.updateNavigationFromReferrer = function() {
+	const referrer = getProcedureReferrer();
+	if (!referrer) return;
+
+	// Update "Back to Gallery" button/link URL only (keep text the same)
+	const backButton = document.querySelector('.brag-book-gallery-back-link, .brag-book-gallery-back-button, a[href*="/gallery/"][class*="back"]');
+	if (backButton && referrer.url) {
+		backButton.href = referrer.url;
+	}
+
+	// Update next/previous post navigation links
+	updateAdjacentPostLinks(referrer.slug, referrer.termId);
+};
+
+/**
+ * Update next/previous post links to navigate within the referrer procedure
+ * @param {string} procedureSlug - The procedure slug to use for navigation
+ * @param {number} termId - The WordPress term ID for the procedure
+ */
+function updateAdjacentPostLinks(procedureSlug, termId) {
+	if (!procedureSlug) {
+		console.warn('updateAdjacentPostLinks: No procedure slug provided');
+		return;
+	}
+
+	// Find next/prev links using the correct selectors
+	const nextLink = document.querySelector('.brag-book-gallery-nav-button--next, .brag-book-gallery-next-post, .nav-next a, a[rel="next"]');
+	const prevLink = document.querySelector('.brag-book-gallery-nav-button--prev, .brag-book-gallery-prev-post, .nav-previous a, a[rel="prev"]');
+
+	// Get current post ID from the page
+	const currentPostId = getCurrentPostId();
+	if (!currentPostId) {
+		console.error('updateAdjacentPostLinks: Could not find current post ID');
+		return;
+	}
+
+	// Fetch adjacent cases for this procedure via AJAX
+	fetchAdjacentCases(procedureSlug, termId, currentPostId, (adjacentCases) => {
+
+		// Update next link if we have a new URL
+		if (adjacentCases.next && nextLink) {
+			nextLink.href = adjacentCases.next;
+			nextLink.style.display = '';
+		}
+
+		// Update prev link if we have a new URL
+		if (adjacentCases.prev && prevLink) {
+			prevLink.href = adjacentCases.prev;
+			prevLink.style.display = '';
+		}
+	});
+}
+
+/**
+ * Get the current post ID from the page
+ * @returns {number|null} Post ID or null
+ */
+function getCurrentPostId() {
+	// Try to get from body class (WordPress adds post-ID class)
+	const bodyClasses = document.body.className.match(/postid-(\d+)/);
+	if (bodyClasses) return parseInt(bodyClasses[1]);
+
+	// Try to get from data attribute
+	const postElement = document.querySelector('[data-post-id]');
+	if (postElement) return parseInt(postElement.dataset.postId);
+
+	// Try to get from global WordPress object
+	if (window.bragBookGalleryConfig?.postId) {
+		return parseInt(window.bragBookGalleryConfig.postId);
+	}
+
+	return null;
+}
+
+/**
+ * Fetch adjacent cases for a specific procedure
+ * @param {string} procedureSlug - Procedure slug
+ * @param {number} termId - WordPress term ID for the procedure
+ * @param {number} currentPostId - Current post ID
+ * @param {Function} callback - Callback with adjacent cases data
+ */
+function fetchAdjacentCases(procedureSlug, termId, currentPostId, callback) {
+	// Make AJAX call to WordPress admin-ajax.php
+	const formData = new FormData();
+	formData.append('action', 'brag_book_get_adjacent_cases');
+	formData.append('procedure_slug', procedureSlug);
+	if (termId) {
+		formData.append('term_id', termId);
+	}
+	formData.append('post_id', currentPostId);
+
+	const ajaxUrl = window.bragBookGalleryConfig?.ajaxUrl || '/wp-admin/admin-ajax.php';
+
+	fetch(ajaxUrl, {
+		method: 'POST',
+		body: formData,
+		credentials: 'same-origin'
+	})
+		.then(response => response.json())
+		.then(data => {
+			if (data.success && data.data) {
+				callback(data.data);
+			} else {
+				console.error('Failed to fetch adjacent cases:', data);
+				console.error('Error details:', data.data || data);
+				callback({ next: null, prev: null });
+			}
+		})
+		.catch(error => {
+			console.error('Error fetching adjacent cases:', error);
+			callback({ next: null, prev: null });
+		});
+}
+
+/**
+ * Initialize procedure referrer tracking
+ * Sets up click handlers on procedure pages and updates navigation on case pages
+ */
+function initializeProcedureReferrerTracking() {
+	const currentPath = window.location.pathname;
+
+	// Check if we're on a case detail page (ends with numbers)
+	if (currentPath.match(/\/\d+\/?$/)) {
+		// Update navigation based on stored referrer
+		updateNavigationFromReferrer();
+		return;
+	}
+
+	// Get the gallery slug from config (e.g., 'gallery', 'before-after', etc.)
+	const gallerySlug = window.bragBookGalleryConfig?.gallerySlug || 'gallery';
+
+	// Escape special regex characters in the gallery slug
+	const escapedGallerySlug = gallerySlug.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+	// Check if we're on a procedure archive page using the dynamic gallery slug
+	const procedurePattern = new RegExp(`\\/${escapedGallerySlug}\\/([^\\/]+)\\/?$`);
+	const procedureMatch = currentPath.match(procedurePattern);
+
+	const procedureSlug = procedureMatch[1];
+
+	// Get procedure name from page title or heading
+	const pageTitle = document.querySelector('.brag-book-gallery-content-title strong');
+	const procedureName = pageTitle ? pageTitle.textContent.trim() : procedureSlug;
+
+	// Get procedure ID and term ID from the navigation link that matches this procedure slug
+	const procedureNavLink = document.querySelector(`[data-procedure-slug="${procedureSlug}"]`);
+	const procedureId = procedureNavLink?.dataset.procedureId || null;
+	const termId = procedureNavLink?.dataset.termId || null;
+
+	// Add click handlers to all case card links
+	const caseLinks = document.querySelectorAll('.brag-book-gallery-case-permalink, .brag-book-gallery-case-card a[href*="/gallery/"]');
+
+	caseLinks.forEach(link => {
+		link.addEventListener('click', (e) => {
+			// Get procedure context from the case card
+			const caseCard = link.closest('.brag-book-gallery-case-card');
+			const cardProcedureId = caseCard?.dataset.currentProcedureId || procedureId;
+			const cardTermId = caseCard?.dataset.currentTermId || termId;
+
+			// Store the current procedure as referrer
+			storeProcedureReferrer(procedureSlug, procedureName, window.location.href, cardProcedureId, cardTermId);
+		});
+	});
+}
 
 /**
  * Update the gallery grid column layout and save preference
@@ -36,7 +264,7 @@ window.updateGridLayout = function(columns) {
 	});
 
 	// Persist user preference across sessions
-	localStorage.setItem('bragbook-grid-columns', columns);
+	localStorage.setItem('brag-book-gallery-grid-columns', columns);
 };
 
 /**
@@ -59,7 +287,6 @@ window.bragBookProcedureFilters = {
 window.initializeProcedureFilters = function() {
 	const details = document.getElementById('procedure-filters-details');
 	if (details) {
-		console.log('Initializing procedure filters...');
 		// Clean up any server-generated procedure badges first
 		cleanupProcedureBadges();
 		// Always regenerate filter options based on current page cards
@@ -74,7 +301,6 @@ window.initializeProcedureFilters = function() {
  * Clears the initialized flag and regenerates filters
  */
 window.regenerateProcedureFilters = function() {
-	console.log('Force regenerating procedure filters...');
 	const details = document.getElementById('procedure-filters-details');
 	if (details) {
 		// Clear the initialized flag to force regeneration
@@ -120,7 +346,6 @@ function cleanupActiveFiltersSection() {
  * Removes badges that contain procedure names or data-filter-key attributes
  */
 function cleanupProcedureBadges() {
-	console.log('Cleaning up procedure badges...');
 
 	// Find all active filters sections
 	const activeFiltersSections = document.querySelectorAll('.brag-book-gallery-active-filters');
@@ -137,7 +362,6 @@ function cleanupProcedureBadges() {
 				!badge.querySelector('[data-filter-type]'); // Not a demographic filter
 
 			if (hasFilterKey || hasRemoveFilter || hasSpanWithProcedureName) {
-				console.log('Removing procedure badge:', badge.textContent.trim());
 				badge.remove();
 			}
 		});
@@ -165,19 +389,27 @@ function cleanupProcedureBadges() {
  * Uses either complete dataset from config or falls back to DOM scanning
  */
 window.generateProcedureFilterOptions = function() {
+	// Helper function to escape HTML attribute values
+	const escapeAttr = (text) => {
+		if (!text) return '';
+		return String(text)
+			.replace(/&/g, '&amp;')
+			.replace(/"/g, '&quot;')
+			.replace(/'/g, '&#39;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;');
+	};
+
 	// Try multiple possible filter container IDs/classes
 	const container = document.getElementById('brag-book-gallery-filters') ||
 					  document.querySelector('.brag-book-gallery-filter-content') ||
 					  document.querySelector('.brag-book-gallery-filters');
 	if (!container) {
-		// On procedure/case pages, filters might not be needed, so don't warn
-		console.log('Filter container not found - likely on a procedure or case page');
 		return;
 	}
 
 	// Always generate filters based on visible case cards on the page
 	const cards = document.querySelectorAll('.brag-book-gallery-case-card[data-card="true"]');
-	console.log('Filter generation - Scanning case cards on page, found:', cards.length);
 	const filterData = {
 		age: new Set(),
 		gender: new Set(),
@@ -196,19 +428,16 @@ window.generateProcedureFilterOptions = function() {
 		const age = card.dataset.age;
 		if (age) {
 			ageValues.push(parseInt(age));
-			console.log('Found case with age:', age);
 		}
 
 		// Gender
 		if (card.dataset.gender) {
 			filterData.gender.add(card.dataset.gender);
-			console.log('Found case with gender:', card.dataset.gender);
 		}
 
 		// Ethnicity
 		if (card.dataset.ethnicity) {
 			filterData.ethnicity.add(card.dataset.ethnicity);
-			console.log('Found case with ethnicity:', card.dataset.ethnicity);
 		}
 
 		// Height
@@ -270,6 +499,16 @@ window.generateProcedureFilterOptions = function() {
  * @param {Object} filterData - Categorized filter options
  */
 window.generateFilterHTML = function(container, filterData) {
+	// Helper function to escape HTML attribute values
+	const escapeAttr = (text) => {
+		if (!text) return '';
+		return String(text)
+			.replace(/&/g, '&amp;')
+			.replace(/"/g, '&quot;')
+			.replace(/'/g, '&#39;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;');
+	};
 
 	// Build filter HTML
 	let html = '';
@@ -287,8 +526,8 @@ window.generateFilterHTML = function(container, filterData) {
 		Array.from(filterData.age).sort().forEach(value => {
 			const id = `procedure-filter-age-${value.replace(/\s+/g, '-')}`;
 			html += `<li class="brag-book-gallery-filter-option">
-				<input type="checkbox" id="${id}" value="${value}" data-filter-type="age">
-				<label for="${id}">${value}</label>
+				<input type="checkbox" id="${id}" value="${escapeAttr(value)}" data-filter-type="age">
+				<label for="${id}">${escapeAttr(value)}</label>
 			</li>`;
 		});
 		html += '</ul>';
@@ -309,8 +548,8 @@ window.generateFilterHTML = function(container, filterData) {
 			const id = `procedure-filter-gender-${value}`;
 			const displayValue = value.charAt(0).toUpperCase() + value.slice(1);
 			html += `<li class="brag-book-gallery-filter-option">
-				<input type="checkbox" id="${id}" value="${value}" data-filter-type="gender">
-				<label for="${id}">${displayValue}</label>
+				<input type="checkbox" id="${id}" value="${escapeAttr(value)}" data-filter-type="gender">
+				<label for="${id}">${escapeAttr(displayValue)}</label>
 			</li>`;
 		});
 		html += '</ul>';
@@ -331,8 +570,8 @@ window.generateFilterHTML = function(container, filterData) {
 			const id = `procedure-filter-ethnicity-${value.replace(/\s+/g, '-')}`;
 			const displayValue = value.charAt(0).toUpperCase() + value.slice(1);
 			html += `<li class="brag-book-gallery-filter-option">
-				<input type="checkbox" id="${id}" value="${value}" data-filter-type="ethnicity">
-				<label for="${id}">${displayValue}</label>
+				<input type="checkbox" id="${id}" value="${escapeAttr(value)}" data-filter-type="ethnicity">
+				<label for="${id}">${escapeAttr(displayValue)}</label>
 			</li>`;
 		});
 		html += '</ul>';
@@ -352,8 +591,8 @@ window.generateFilterHTML = function(container, filterData) {
 		Array.from(filterData.height).sort().forEach(value => {
 			const id = `procedure-filter-height-${value.replace(/\s+/g, '-')}`;
 			html += `<li class="brag-book-gallery-filter-option">
-				<input type="checkbox" id="${id}" value="${value}" data-filter-type="height">
-				<label for="${id}">${value}</label>
+				<input type="checkbox" id="${id}" value="${escapeAttr(value)}" data-filter-type="height">
+				<label for="${id}">${escapeAttr(value)}</label>
 			</li>`;
 		});
 		html += '</ul>';
@@ -373,8 +612,8 @@ window.generateFilterHTML = function(container, filterData) {
 		Array.from(filterData.weight).sort().forEach(value => {
 			const id = `procedure-filter-weight-${value.replace(/\s+/g, '-')}`;
 			html += `<li class="brag-book-gallery-filter-option">
-				<input type="checkbox" id="${id}" value="${value}" data-filter-type="weight">
-				<label for="${id}">${value}</label>
+				<input type="checkbox" id="${id}" value="${escapeAttr(value)}" data-filter-type="weight">
+				<label for="${id}">${escapeAttr(value)}</label>
 			</li>`;
 		});
 		html += '</ul>';
@@ -385,16 +624,11 @@ window.generateFilterHTML = function(container, filterData) {
 
 	// Add event listeners to all checkboxes
 	const filterCheckboxes = container.querySelectorAll('input[type="checkbox"]');
-	console.log('Setting up event listeners for', filterCheckboxes.length, 'filter checkboxes');
 	filterCheckboxes.forEach(checkbox => {
 		checkbox.addEventListener('change', function() {
-			console.log('Checkbox changed:', this.dataset.filterType, '=', this.value, 'checked:', this.checked);
-			console.log('About to call applyProcedureFilters...');
 			try {
 				if (typeof window.applyProcedureFilters === 'function') {
-					console.log('Calling window.applyProcedureFilters()');
 					window.applyProcedureFilters();
-					console.log('Successfully called applyProcedureFilters');
 				} else {
 					console.error('window.applyProcedureFilters function not found, typeof:', typeof window.applyProcedureFilters);
 				}
@@ -421,9 +655,7 @@ window.generateFilterHTML = function(container, filterData) {
  * Handles both complete dataset filtering and DOM-based filtering
  */
 window.applyProcedureFilters = function() {
-	console.log('applyProcedureFilters called');
 	const checkboxes = document.querySelectorAll('.brag-book-gallery-filter-option input:checked');
-	console.log('Found checked filters:', checkboxes.length);
 
 	// Reset filter state
 	window.bragBookProcedureFilters = {
@@ -438,13 +670,10 @@ window.applyProcedureFilters = function() {
 	checkboxes.forEach(checkbox => {
 		const filterType = checkbox.dataset.filterType;
 		const value = checkbox.value;
-		console.log('Adding filter:', filterType, '=', value);
 		if (window.bragBookProcedureFilters[filterType]) {
 			window.bragBookProcedureFilters[filterType].push(value);
 		}
 	});
-
-	console.log('Active filters:', window.bragBookProcedureFilters);
 
 	// Check if any filters are selected
 	const hasActiveFilters = Object.values(window.bragBookProcedureFilters).some(arr => arr.length > 0);
@@ -463,17 +692,9 @@ window.applyProcedureFilters = function() {
 		cards = document.querySelectorAll('.brag-book-gallery-case-card');
 	}
 
-	console.log('Filtering cards, found:', cards.length, 'cards');
-
 	// Debug: log the first card's data attributes
 	if (cards.length > 0) {
 		const firstCard = cards[0];
-		console.log('First card data attributes:', {
-			age: firstCard.dataset.age,
-			gender: firstCard.dataset.gender,
-			ethnicity: firstCard.dataset.ethnicity,
-			caseId: firstCard.dataset.caseId
-		});
 	}
 
 	if (!hasActiveFilters) {
@@ -482,11 +703,7 @@ window.applyProcedureFilters = function() {
 			card.style.display = '';
 		});
 
-		// Hide filter results message when no filters are active
-		const resultsEl = document.querySelector('.brag-book-gallery-filter-results');
-		if (resultsEl) {
-			resultsEl.style.display = 'none';
-		}
+		// Filter results element no longer used - removed
 
 		// Show Load More button if it exists since no filters are active
 		const loadMoreBtn = document.querySelector('button[onclick*="loadMoreCases"]') ||
@@ -508,36 +725,28 @@ window.applyProcedureFilters = function() {
 		// Check age filter
 		if (window.bragBookProcedureFilters.age.length > 0) {
 			const cardAge = parseInt(card.dataset.age);
-			console.log('Case', caseId, 'has age:', cardAge, '(type:', typeof cardAge, ') checking against filters:', window.bragBookProcedureFilters.age);
 			let ageMatch = false;
 			window.bragBookProcedureFilters.age.forEach(range => {
-				console.log('Checking age range:', range, 'against card age:', cardAge);
 				if (range === '18-24' && cardAge >= 18 && cardAge < 25) {
-					console.log('Matched 18-24 range');
 					ageMatch = true;
 				}
 				else if (range === '25-34' && cardAge >= 25 && cardAge < 35) {
-					console.log('Matched 25-34 range');
 					ageMatch = true;
 				}
 				else if (range === '35-44' && cardAge >= 35 && cardAge < 45) {
-					console.log('Matched 35-44 range');
 					ageMatch = true;
 				}
 				else if (range === '45-54' && cardAge >= 45 && cardAge < 55) {
-					console.log('Matched 45-54 range');
 					ageMatch = true;
 				}
 				else if (range === '55-64' && cardAge >= 55 && cardAge < 65) {
-					console.log('Matched 55-64 range');
 					ageMatch = true;
 				}
 				else if (range === '65+' && cardAge >= 65) {
-					console.log('Matched 65+ range');
 					ageMatch = true;
 				}
 			});
-			console.log('Case', caseId, 'age match result:', ageMatch);
+
 			if (!ageMatch) {
 				show = false;
 			}
@@ -547,10 +756,8 @@ window.applyProcedureFilters = function() {
 		if (show && window.bragBookProcedureFilters.gender.length > 0) {
 			const cardGender = (card.dataset.gender || '').toLowerCase();
 			const filterGenders = window.bragBookProcedureFilters.gender.map(g => g.toLowerCase());
-			console.log('Case', caseId, 'has gender:', cardGender, 'checking against filters:', filterGenders);
 
 			if (!filterGenders.includes(cardGender)) {
-				console.log('Case', caseId, 'gender does not match');
 				show = false;
 			}
 		}
@@ -559,10 +766,8 @@ window.applyProcedureFilters = function() {
 		if (show && window.bragBookProcedureFilters.ethnicity.length > 0) {
 			const cardEthnicity = (card.dataset.ethnicity || '').toLowerCase();
 			const filterEthnicities = window.bragBookProcedureFilters.ethnicity.map(e => e.toLowerCase());
-			console.log('Case', caseId, 'has ethnicity:', cardEthnicity, 'checking against filters:', filterEthnicities);
 
 			if (!filterEthnicities.includes(cardEthnicity)) {
-				console.log('Case', caseId, 'ethnicity does not match');
 				show = false;
 			}
 		}
@@ -573,15 +778,23 @@ window.applyProcedureFilters = function() {
 			let heightMatch = false;
 
 			window.bragBookProcedureFilters.height.forEach(range => {
-				// Assume height is in inches (matching the ranges we generate)
-				if (range === 'Under 5\'0"' && cardHeight < 60) heightMatch = true;
-				else if (range === '5\'0" - 5\'3"' && cardHeight >= 60 && cardHeight < 64) heightMatch = true;
-				else if (range === '5\'4" - 5\'7"' && cardHeight >= 64 && cardHeight < 68) heightMatch = true;
-				else if (range === '5\'8" - 5\'11"' && cardHeight >= 68 && cardHeight < 72) heightMatch = true;
-				else if (range === '6\'0" and above' && cardHeight >= 72) heightMatch = true;
+				if (range === 'Under 5\'0"' && cardHeight < 60) {
+					heightMatch = true;
+				}
+				else if (range === '5\'0" - 5\'3"' && cardHeight >= 60 && cardHeight < 64) {
+					heightMatch = true;
+				}
+				else if (range === '5\'4" - 5\'7"' && cardHeight >= 64 && cardHeight < 68) {
+					heightMatch = true;
+				}
+				else if (range === '5\'8" - 5\'11"' && cardHeight >= 68 && cardHeight < 72) {
+					heightMatch = true;
+				}
+				else if (range === '6\'0" and above' && cardHeight >= 72) {
+					heightMatch = true;
+				}
 			});
 
-			console.log('Case', caseId, 'height match:', heightMatch);
 			if (!heightMatch) show = false;
 		}
 
@@ -599,50 +812,37 @@ window.applyProcedureFilters = function() {
 				else if (range === '210+ lbs' && cardWeight >= 210) weightMatch = true;
 			});
 
-			console.log('Case', caseId, 'weight match:', weightMatch);
 			if (!weightMatch) show = false;
 		}
 
 		// Show/hide card
-		console.log('Case', caseId, 'final show decision:', show);
 		card.style.display = show ? '' : 'none';
 		if (show) visibleCount++;
 	});
 
-	// Only show filter results message if there are active filters
-	if (hasActiveFilters) {
-		const resultsMessage = visibleCount === 0 ? 'No cases match the selected filters' :
-			`Filter applied: Showing ${visibleCount} matching case${visibleCount !== 1 ? 's' : ''}`;
+	// Filter results element no longer used - removed
 
-		// Add/update results message if needed
-		const resultsEl = getFilterResultsElement();
-		resultsEl.textContent = resultsMessage;
-		resultsEl.style.display = 'block';
-	} else {
-		// Hide filter results message when no filters are active
-		const resultsEl = document.querySelector('.brag-book-gallery-filter-results');
-		if (resultsEl) {
-			resultsEl.style.display = 'none';
-		}
-	}
-
-	// Close the details after applying filters
+	// Close the details after applying filters and update visual indicator
 	const details = document.getElementById('procedure-filters-details');
 	if (details) {
 		details.open = false;
-		// Add visual indicator if filters are active
+		// Add/remove visual indicator based on whether filters are active
 		const toggle = details.querySelector('.brag-book-gallery-filter-dropdown__toggle');
 		if (toggle) {
-			toggle.classList.add('has-active-filters');
+			if (hasActiveFilters) {
+				toggle.classList.add('has-active-filters');
+			} else {
+				toggle.classList.remove('has-active-filters');
+			}
 		}
 	}
 
-	// Hide Load More button when filters are active
+	// Hide Load More button when filters are active, show when no filters
 	const loadMoreBtn = document.querySelector('button[onclick*="loadMoreCases"]') ||
 					   document.querySelector('.brag-book-gallery-load-more button');
 	const loadMoreContainer = loadMoreBtn ? (loadMoreBtn.closest('.brag-book-gallery-load-more-container') || loadMoreBtn.parentElement) : null;
 	if (loadMoreContainer) {
-		loadMoreContainer.style.display = 'none';
+		loadMoreContainer.style.display = hasActiveFilters ? 'none' : '';
 	}
 };
 
@@ -927,11 +1127,9 @@ window.updateFilteredCount = function(shown, total) {
  * Clear all active demographic filters and show all cases
  */
 window.clearProcedureFilters = function() {
-	console.log('clearProcedureFilters called');
 
 	// 1. Uncheck all filter checkboxes
 	const checkboxes = document.querySelectorAll('.brag-book-gallery-filter-option input[type="checkbox"]');
-	console.log('Unchecking', checkboxes.length, 'filter checkboxes');
 	checkboxes.forEach(checkbox => {
 		checkbox.checked = false;
 	});
@@ -943,12 +1141,10 @@ window.clearProcedureFilters = function() {
 		window.bragBookProcedureFilters.ethnicity = [];
 		window.bragBookProcedureFilters.height = [];
 		window.bragBookProcedureFilters.weight = [];
-		console.log('Reset global filter state');
 	}
 
 	// 3. Show all case cards
 	const cards = document.querySelectorAll('.brag-book-gallery-case-card');
-	console.log('Showing', cards.length, 'case cards');
 	cards.forEach(card => {
 		card.style.display = '';
 		card.style.visibility = '';
@@ -957,24 +1153,17 @@ window.clearProcedureFilters = function() {
 	// 4. Remove has-active-filters class from wrapper
 	const galleryWrapper = document.querySelector('.brag-book-gallery-wrapper');
 	if (galleryWrapper && galleryWrapper.classList.contains('has-active-filters')) {
-		console.log('Removing has-active-filters class from wrapper');
 		galleryWrapper.classList.remove('has-active-filters');
 	}
 
 	// 5. Hide the active filters section and clear badges
 	const activeFiltersSection = document.querySelector('.brag-book-gallery-active-filters');
 	if (activeFiltersSection) {
-		console.log('Hiding active filters section');
 		activeFiltersSection.style.display = 'none';
 		activeFiltersSection.innerHTML = '';
 	}
 
-	// 6. Hide filter results message
-	const resultsEl = document.querySelector('.brag-book-gallery-filter-results');
-	if (resultsEl) {
-		console.log('Hiding filter results message');
-		resultsEl.style.display = 'none';
-	}
+	// Filter results element no longer used - removed
 
 	// 7. Show Load More button if it exists
 	const loadMoreBtn = document.querySelector('button[onclick*="loadMoreCases"]') ||
@@ -982,7 +1171,6 @@ window.clearProcedureFilters = function() {
 	if (loadMoreBtn) {
 		const loadMoreContainer = loadMoreBtn.closest('.brag-book-gallery-load-more-container') || loadMoreBtn.parentElement;
 		if (loadMoreContainer) {
-			console.log('Showing Load More button');
 			loadMoreContainer.style.display = '';
 		}
 	}
@@ -990,7 +1178,6 @@ window.clearProcedureFilters = function() {
 	// 8. Hide the Clear All button
 	const clearAllButton = document.querySelector('.brag-book-gallery-clear-all-filters');
 	if (clearAllButton) {
-		console.log('Hiding Clear All button');
 		clearAllButton.style.display = 'none';
 	}
 
@@ -1000,12 +1187,10 @@ window.clearProcedureFilters = function() {
 		filterDropdown.open = false;
 		const summary = filterDropdown.querySelector('summary');
 		if (summary && summary.classList.contains('has-active-filters')) {
-			console.log('Removing has-active-filters class from filter dropdown summary');
 			summary.classList.remove('has-active-filters');
 		}
 	}
 
-	console.log('clearProcedureFilters completed');
 };
 
 /**
@@ -1223,12 +1408,10 @@ window.loadMoreCases = function(button) {
 				processLoadMoreResult(result, button, originalText, startPage);
 			} else {
 				// Direct API failed, fallback to AJAX
-				console.log('Direct API failed for load more, falling back to AJAX');
 				loadMoreCasesViaAjax(button, startPage, procedureIds, procedureName, hasNudity, loadedIds, originalText);
 			}
 		})
 		.catch(error => {
-			console.log('Direct API error for load more, falling back to AJAX:', error);
 			loadMoreCasesViaAjax(button, startPage, procedureIds, procedureName, hasNudity, loadedIds, originalText);
 		});
 };
@@ -1368,6 +1551,11 @@ function loadMoreCasesViaAjax(button, startPage, procedureIds, procedureName, ha
 	const nonce = window.bragBookGalleryConfig?.nonce || '';
 	const ajaxUrl = window.bragBookGalleryConfig?.ajaxUrl || '/wp-admin/admin-ajax.php';
 
+	// Get current procedure context from active nav link
+	const activeLink = document.querySelector('.brag-book-gallery-nav-link.brag-book-gallery-active');
+	const currentProcedureId = activeLink?.dataset.procedureId || '';
+	const currentTermId = activeLink?.dataset.termId || '';
+
 	// Prepare AJAX data
 	const formData = new FormData();
 	formData.append('action', 'brag_book_gallery_load_more_cases');
@@ -1377,6 +1565,8 @@ function loadMoreCasesViaAjax(button, startPage, procedureIds, procedureName, ha
 	formData.append('procedure_name', procedureName);
 	formData.append('has_nudity', hasNudity ? '1' : '0');
 	formData.append('loaded_ids', loadedIds.join(','));
+	formData.append('current_procedure_id', currentProcedureId);
+	formData.append('current_term_id', currentTermId);
 
 	// Make AJAX request
 	fetch(ajaxUrl, {
@@ -1654,26 +1844,7 @@ window.clearProcedureFilter = function() {
 };
 
 
-/**
- * Get or create the filter results element (centralized management)
- * Always starts hidden and only shows when filters are applied
- */
-function getFilterResultsElement() {
-	let resultsEl = document.querySelector('.brag-book-gallery-filter-results');
-	if (!resultsEl) {
-		resultsEl = document.createElement('div');
-		resultsEl.className = 'brag-book-gallery-filter-results';
-		resultsEl.style.display = 'none'; // Start hidden by default
-
-		// Insert before the case grid
-		const grid = document.querySelector('.brag-book-gallery-case-grid') ||
-		             document.querySelector('.brag-book-gallery-cases-grid');
-		if (grid && grid.parentNode) {
-			grid.parentNode.insertBefore(resultsEl, grid);
-		}
-	}
-	return resultsEl;
-}
+// Filter results element no longer used - function removed
 
 /**
  * Update filter badges based on active demographic filters only
@@ -1685,22 +1856,24 @@ function updateFilterBadges() {
 		oldBadgesContainer.remove();
 	}
 
-	// Use the existing active filters section instead of creating a separate container
-	let activeFiltersSection = document.querySelector('.brag-book-gallery-active-filters');
+	// Find or create the active filters section
+	const controlsLeft = document.querySelector('.brag-book-gallery-controls-left');
+	const clearAllButton = controlsLeft ? controlsLeft.querySelector('.brag-book-gallery-clear-all-filters') : null;
+
+	// Look for active filters section specifically within the controls left area
+	let activeFiltersSection = controlsLeft ? controlsLeft.querySelector('.brag-book-gallery-active-filters') : null;
+
 	if (!activeFiltersSection) {
-		// If it doesn't exist, create it and place it correctly
+		// Create it if it doesn't exist
 		activeFiltersSection = document.createElement('div');
 		activeFiltersSection.className = 'brag-book-gallery-active-filters';
 
-		// Insert after filter results message or before case grid
-		const resultsEl = document.querySelector('.brag-book-gallery-filter-results');
-		const caseGrid = document.querySelector('.brag-book-gallery-case-grid') ||
-						 document.querySelector('.brag-book-gallery-cases-grid');
-
-		if (resultsEl && resultsEl.parentNode) {
-			resultsEl.parentNode.insertBefore(activeFiltersSection, resultsEl.nextSibling);
-		} else if (caseGrid && caseGrid.parentNode) {
-			caseGrid.parentNode.insertBefore(activeFiltersSection, caseGrid);
+		// Insert before the Clear All button inside controls-left
+		if (clearAllButton && controlsLeft) {
+			controlsLeft.insertBefore(activeFiltersSection, clearAllButton);
+		} else if (controlsLeft) {
+			// Fallback: append to controls left if no clear button found
+			controlsLeft.appendChild(activeFiltersSection);
 		}
 	}
 
@@ -1713,11 +1886,18 @@ function updateFilterBadges() {
 	if (checkedFilters.length === 0) {
 		// Hide the active filters section when no filters are applied
 		activeFiltersSection.style.display = 'none';
+
+		// Remove the Clear All button if it exists
+		const existingClearAllButton = document.querySelector('.brag-book-gallery-clear-all-filters');
+		if (existingClearAllButton) {
+			existingClearAllButton.remove();
+		}
+
 		return;
 	}
 
 	// Show the active filters section when filters are applied
-	activeFiltersSection.style.display = 'block';
+	activeFiltersSection.style.display = 'flex';
 
 	// Create badges for each checked demographic filter
 	checkedFilters.forEach(checkbox => {
@@ -1737,7 +1917,7 @@ function updateFilterBadges() {
 
 		badge.innerHTML = `
 			<span class="brag-book-gallery-badge-text">${displayType}: ${escapeHtml(displayValue)}</span>
-			<button class="brag-book-gallery-badge-remove" aria-label="Remove ${displayType}: ${escapeHtml(displayValue)} filter" onclick="removeFilterBadge('${filterType}', '${escapeHtml(filterValue)}')">
+			<button class="brag-book-gallery-badge-remove" aria-label="Remove ${displayType}: ${escapeHtml(displayValue)} filter">
 				<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
 					<path d="M13 1L1 13M1 1l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
 				</svg>
@@ -1761,39 +1941,29 @@ function updateFilterBadges() {
 		clearAllButton.textContent = 'Clear All';
 		clearAllButton.onclick = function(event) {
 			event.preventDefault();
-			console.log('Clear All button clicked!');
 
 			// Try multiple approaches to call the function
 			try {
 				// Method 1: Direct call
 				if (typeof window.clearProcedureFilters === 'function') {
-					console.log('Method 1: Calling window.clearProcedureFilters...');
-					console.log('Function definition:', window.clearProcedureFilters.toString().substring(0, 100));
 					window.clearProcedureFilters();
-					console.log('Function call completed');
 					return;
 				}
 
 				// Method 2: Try global scope
 				if (typeof clearProcedureFilters === 'function') {
-					console.log('Method 2: Calling clearProcedureFilters...');
 					clearProcedureFilters();
 					return;
 				}
 
-				// Method 3: Manual clear if function not found
-				console.log('Method 3: Manual clear - function not found');
-
 				// Uncheck all filter checkboxes
 				const checkboxes = document.querySelectorAll('.brag-book-gallery-filter-option input[type="checkbox"]');
-				console.log('Manually unchecking', checkboxes.length, 'checkboxes');
 				checkboxes.forEach(checkbox => {
 					checkbox.checked = false;
 				});
 
 				// Show all cards
 				const cards = document.querySelectorAll('.brag-book-gallery-case-card');
-				console.log('Manually showing', cards.length, 'cards');
 				cards.forEach(card => {
 					card.style.display = '';
 				});
@@ -1805,11 +1975,7 @@ function updateFilterBadges() {
 					activeFiltersSection.innerHTML = '';
 				}
 
-				// Hide filter results message
-				const resultsEl = document.querySelector('.brag-book-gallery-filter-results');
-				if (resultsEl) {
-					resultsEl.style.display = 'none';
-				}
+				// Filter results element no longer used - removed
 
 				// Remove has-active-filters class
 				const toggle = document.querySelector('.brag-book-gallery-filter-dropdown__toggle');
@@ -1817,14 +1983,10 @@ function updateFilterBadges() {
 					toggle.classList.remove('has-active-filters');
 				}
 
-				console.log('Manual clear completed');
-
 			} catch (error) {
 				console.error('Error in Clear All button:', error);
 			}
 		};
-
-		console.log('Created Clear All button');
 
 		// Insert the Clear All button after the active filters section
 		if (activeFiltersSection.parentNode) {
@@ -1846,9 +2008,18 @@ function updateFilterBadges() {
  */
 window.removeFilterBadge = function(filterType, filterValue) {
 	// Find and uncheck the corresponding checkbox
-	const checkbox = document.querySelector(`#brag-book-gallery-filters input[data-filter-type="${filterType}"][value="${filterValue}"]`);
-	if (checkbox) {
-		checkbox.checked = false;
+	// We can't use querySelector with value attribute containing quotes, so iterate through checkboxes
+	const checkboxes = document.querySelectorAll(`#brag-book-gallery-filters input[data-filter-type="${filterType}"]`);
+	let foundCheckbox = null;
+
+	checkboxes.forEach(cb => {
+		if (cb.value === filterValue) {
+			foundCheckbox = cb;
+		}
+	});
+
+	if (foundCheckbox) {
+		foundCheckbox.checked = false;
 	}
 
 	// Re-apply filters to update the display
@@ -2024,18 +2195,15 @@ let currentDisplayedCases = 0; // Track how many cases are currently displayed
  * Initialize case pagination system - load all data via XHR and manage display
  */
 function initializeCasePagination() {
-	console.log('initializeCasePagination called');
 
 	// Check if we're on a cases page that should use pagination
 	const caseGrid = document.querySelector('.brag-book-gallery-case-grid, .brag-book-gallery-cases-grid');
-	console.log('caseGrid found:', !!caseGrid);
 
 	if (!caseGrid) return;
 
 	// Check if there are already cases rendered server-side
 	const existingCases = caseGrid.querySelectorAll('.brag-book-gallery-case-card');
 	currentDisplayedCases = existingCases.length;
-	console.log('currentDisplayedCases:', currentDisplayedCases);
 
 	// Load all cases via AJAX for the current procedure
 	loadAllCasesForPagination();
@@ -2077,8 +2245,6 @@ async function loadAllCasesForPagination() {
 		if (result.success && result.data) {
 			// Store all cases data
 			allCasesData = result.data;
-			console.log('Loaded', allCasesData.length, 'cases for pagination');
-			console.log('allCasesData sample:', allCasesData[0]);
 
 			// Update load more button visibility
 			updateLoadMoreButton();
@@ -2094,7 +2260,6 @@ async function loadAllCasesForPagination() {
  * Simplified load more function that uses server-side pagination
  */
 window.loadMoreCasesFromCache = function(button) {
-	console.log('loadMoreCasesFromCache called');
 
 	// Disable button and show loading state
 	button.disabled = true;
@@ -2106,11 +2271,14 @@ window.loadMoreCasesFromCache = function(button) {
 	const procedureIds = button.getAttribute('data-procedure-ids') || '';
 	const procedureName = button.getAttribute('data-procedure-name') || '';
 
-	console.log('Loading page:', startPage, 'for procedure:', procedureName);
-
 	// Get AJAX configuration
 	const ajaxUrl = window.bragBookGalleryConfig?.ajaxUrl || '/wp-admin/admin-ajax.php';
 	const nonce = window.bragBookGalleryConfig?.nonce || '';
+
+	// Get current procedure context from active nav link
+	const activeLink = document.querySelector('.brag-book-gallery-nav-link.brag-book-gallery-active');
+	const currentProcedureId = activeLink?.dataset.procedureId || '';
+	const currentTermId = activeLink?.dataset.termId || '';
 
 	// Prepare request data for server-side pagination
 	const formData = new FormData();
@@ -2120,6 +2288,8 @@ window.loadMoreCasesFromCache = function(button) {
 	formData.append('procedure_ids', procedureIds);
 	formData.append('procedure_name', procedureName);
 	formData.append('loaded_ids', ''); // Will be populated by server
+	formData.append('current_procedure_id', currentProcedureId);
+	formData.append('current_term_id', currentTermId);
 
 	// Make AJAX request
 	fetch(ajaxUrl, {
@@ -2128,7 +2298,6 @@ window.loadMoreCasesFromCache = function(button) {
 	})
 	.then(response => response.json())
 	.then(result => {
-		console.log('Load more result:', result);
 
 		if (result.success && result.data && result.data.html) {
 			// Find the cases grid container
@@ -2194,11 +2363,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	// Clean up any server-generated procedure badges first
 	cleanupProcedureBadges();
 
-	// Always hide filter results message on page load - should only show when filters are applied
-	const resultsEl = document.querySelector('.brag-book-gallery-filter-results');
-	if (resultsEl) {
-		resultsEl.style.display = 'none';
-	}
+	// Filter results element no longer used - removed
 
 	// Remove old/legacy filter badges container
 	const oldBadgesContainer = document.querySelector('.brag-book-gallery-filter-badges');
@@ -2210,8 +2375,14 @@ document.addEventListener('DOMContentLoaded', () => {
 	nudityManager = new NudityWarningManager();
 	phoneFormatter = new PhoneFormatter();
 
-	// Initialize case pagination system (simplified approach)
-	console.log('Simplified pagination system initialized');
+	// Initialize carousels
+	const carouselElements = document.querySelectorAll('.brag-book-gallery-carousel-wrapper');
+	if (carouselElements.length > 0) {
+		new Carousel({});
+	}
+
+	// Initialize procedure referrer tracking for combo procedures
+	initializeProcedureReferrerTracking();
 
 	// Mark grid as initialized after initial load animations
 	const grid = document.querySelector('.brag-book-gallery-case-grid');
@@ -2223,7 +2394,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		// Apply saved grid preference if available and on desktop
 		const isDesktop = window.innerWidth >= 1024;
 		if (isDesktop) {
-			const savedColumns = localStorage.getItem('bragbook-grid-columns');
+			const savedColumns = localStorage.getItem('brag-book-gallery-grid-columns');
 			if (savedColumns) {
 				const columns = parseInt(savedColumns);
 				grid.setAttribute('data-columns', columns);
@@ -2327,6 +2498,22 @@ document.addEventListener('toggle', function(e) {
 
 // Close details when clicking outside
 document.addEventListener('click', function(e) {
+	// Handle badge remove button clicks
+	const badgeRemoveButton = e.target.closest('.brag-book-gallery-badge-remove');
+	if (badgeRemoveButton) {
+		e.preventDefault();
+		const badge = badgeRemoveButton.closest('.brag-book-gallery-filter-badge');
+		if (badge) {
+			const filterType = badge.getAttribute('data-filter-type');
+			const filterValue = badge.getAttribute('data-filter-value');
+			if (filterType && filterValue) {
+				removeFilterBadge(filterType, filterValue);
+			}
+		}
+		return;
+	}
+
+	// Close filter dropdown when clicking outside
 	const details = document.getElementById('procedure-filters-details');
 	const panel = document.querySelector('.brag-book-gallery-filter-dropdown__panel');
 

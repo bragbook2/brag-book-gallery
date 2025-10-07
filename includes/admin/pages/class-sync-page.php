@@ -90,6 +90,9 @@ class Sync_Page extends Settings_Base {
 		// Register automatic sync cron hook
 		add_action( 'brag_book_gallery_automatic_sync', [ $this, 'handle_automatic_sync_cron' ] );
 
+		// Register REST API endpoint for remote sync triggering
+		add_action( 'rest_api_init', [ $this, 'register_rest_endpoints' ] );
+
 		error_log( 'BRAG book Gallery Sync: AJAX actions registered, including test_automatic_sync' );
 		error_log( 'BRAG book Gallery Sync: Action registered: wp_ajax_brag_book_test_automatic_sync -> handle_test_automatic_sync' );
 	}
@@ -163,6 +166,82 @@ class Sync_Page extends Settings_Base {
 					<?php esc_html_e( 'Configure automatic synchronization of procedures from the BRAG book API.', 'brag-book-gallery' ); ?>
 				</p>
 
+				<!-- Server Time Display -->
+				<div style="background: #f0f0f1; padding: 15px; border-radius: 4px; margin: 15px 0; border-left: 4px solid #2271b1;">
+					<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+						<div>
+							<strong style="display: block; margin-bottom: 5px; color: #1d2327;">
+								<?php esc_html_e( 'Server Time:', 'brag-book-gallery' ); ?>
+							</strong>
+							<span id="server-time" style="font-size: 16px; font-family: monospace; color: #2271b1;">
+								<?php echo esc_html( wp_date( 'Y-m-d H:i:s' ) ); ?>
+							</span>
+						</div>
+						<div>
+							<strong style="display: block; margin-bottom: 5px; color: #1d2327;">
+								<?php esc_html_e( 'Server Timezone:', 'brag-book-gallery' ); ?>
+							</strong>
+							<span style="font-size: 14px; color: #50575e;">
+								<?php echo esc_html( wp_timezone_string() ); ?>
+							</span>
+						</div>
+						<div>
+							<strong style="display: block; margin-bottom: 5px; color: #1d2327;">
+								<?php esc_html_e( 'Current Browser Time:', 'brag-book-gallery' ); ?>
+							</strong>
+							<span id="browser-time" style="font-size: 16px; font-family: monospace; color: #2271b1;"></span>
+						</div>
+					</div>
+				</div>
+
+				<script type="text/javascript">
+				(function() {
+					function updateTimes() {
+						// Update server time
+						var serverTimeEl = document.getElementById('server-time');
+						if (serverTimeEl) {
+							// Get initial server time from PHP
+							var initialServerTime = new Date('<?php echo esc_js( wp_date( 'c' ) ); ?>');
+							var now = new Date();
+							var elapsed = Math.floor((now - pageLoadTime) / 1000);
+							var currentServerTime = new Date(initialServerTime.getTime() + (elapsed * 1000));
+
+							var year = currentServerTime.getFullYear();
+							var month = String(currentServerTime.getMonth() + 1).padStart(2, '0');
+							var day = String(currentServerTime.getDate()).padStart(2, '0');
+							var hours = String(currentServerTime.getHours()).padStart(2, '0');
+							var minutes = String(currentServerTime.getMinutes()).padStart(2, '0');
+							var seconds = String(currentServerTime.getSeconds()).padStart(2, '0');
+
+							serverTimeEl.textContent = year + '-' + month + '-' + day + ' ' + hours + ':' + minutes + ':' + seconds;
+						}
+
+						// Update browser time
+						var browserTimeEl = document.getElementById('browser-time');
+						if (browserTimeEl) {
+							var now = new Date();
+							var year = now.getFullYear();
+							var month = String(now.getMonth() + 1).padStart(2, '0');
+							var day = String(now.getDate()).padStart(2, '0');
+							var hours = String(now.getHours()).padStart(2, '0');
+							var minutes = String(now.getMinutes()).padStart(2, '0');
+							var seconds = String(now.getSeconds()).padStart(2, '0');
+
+							browserTimeEl.textContent = year + '-' + month + '-' + day + ' ' + hours + ':' + minutes + ':' + seconds;
+						}
+					}
+
+					// Store page load time for server time calculation
+					var pageLoadTime = new Date();
+
+					// Update immediately
+					updateTimes();
+
+					// Update every second
+					setInterval(updateTimes, 1000);
+				})();
+				</script>
+
 				<table class="form-table brag-book-gallery-form-table">
 					<tr>
 						<th scope="row">
@@ -195,12 +274,22 @@ class Sync_Page extends Settings_Base {
 
 				<script type="text/javascript">
 				jQuery(document).ready(function($) {
+					// Helper function to auto-dismiss notices after 5 seconds
+					function autoDismissNotice($notice) {
+						setTimeout(function() {
+							$notice.fadeOut(300, function() {
+								$(this).remove();
+							});
+						}, 5000);
+					}
+
 					$('#test-cron-sync').on('click', function() {
 						var $button = $(this);
 						var $result = $('#test-cron-result');
 
 						$button.prop('disabled', true).text('<?php esc_html_e( 'Running...', 'brag-book-gallery' ); ?>');
-						$result.html('<div class="notice notice-info"><p><?php esc_html_e( 'Triggering cron job...', 'brag-book-gallery' ); ?></p></div>');
+						$result.html('<div class="notice notice-info is-dismissible"><p><?php esc_html_e( 'Triggering cron job...', 'brag-book-gallery' ); ?></p></div>');
+						autoDismissNotice($result.find('.notice'));
 
 						$.ajax({
 							url: ajaxurl,
@@ -212,14 +301,16 @@ class Sync_Page extends Settings_Base {
 							success: function(response) {
 								$button.prop('disabled', false).text('<?php esc_html_e( 'Test Cron Now', 'brag-book-gallery' ); ?>');
 								if (response.success) {
-									$result.html('<div class="notice notice-success"><p>' + response.data.message + '</p></div>');
+									$result.html('<div class="notice notice-success is-dismissible"><p>' + response.data.message + '</p></div>');
 								} else {
-									$result.html('<div class="notice notice-error"><p>' + (response.data || '<?php esc_html_e( 'Test failed', 'brag-book-gallery' ); ?>') + '</p></div>');
+									$result.html('<div class="notice notice-error is-dismissible"><p>' + (response.data || '<?php esc_html_e( 'Test failed', 'brag-book-gallery' ); ?>') + '</p></div>');
 								}
+								autoDismissNotice($result.find('.notice'));
 							},
 							error: function() {
 								$button.prop('disabled', false).text('<?php esc_html_e( 'Test Cron Now', 'brag-book-gallery' ); ?>');
-								$result.html('<div class="notice notice-error"><p><?php esc_html_e( 'AJAX request failed', 'brag-book-gallery' ); ?></p></div>');
+								$result.html('<div class="notice notice-error is-dismissible"><p><?php esc_html_e( 'AJAX request failed', 'brag-book-gallery' ); ?></p></div>');
+								autoDismissNotice($result.find('.notice'));
 							}
 						});
 					});
@@ -236,6 +327,15 @@ class Sync_Page extends Settings_Base {
 			<p class="description">
 				<?php esc_html_e( 'View and manage synchronization history and logs.', 'brag-book-gallery' ); ?>
 			</p>
+
+			<?php
+			// Check if database needs update
+			$setup = \BRAGBookGallery\Includes\Core\Setup::get_instance();
+			$database = $setup->get_service( 'database' );
+			if ( $database ) {
+				$database->check_database_version();
+			}
+			?>
 
 			<?php $this->render_sync_history_table(); ?>
 		</div>
@@ -491,79 +591,10 @@ class Sync_Page extends Settings_Base {
 								</div>
 							</div>
 						</div>
-
-						<!-- Activity Log Panel -->
-						<div id="sync-progress-details" class="sync-log-panel" style="display: none;">
-							<div class="log-panel-header">
-								<h4><?php esc_html_e( 'Activity Log', 'brag-book-gallery' ); ?></h4>
-								<div class="log-controls">
-									<label>
-										<input type="checkbox" id="auto-scroll-log" checked>
-										<?php esc_html_e( 'Auto-scroll', 'brag-book-gallery' ); ?>
-									</label>
-								</div>
-							</div>
-							<div class="log-container">
-								<ul id="sync-progress-items" class="sync-log-entries"></ul>
-							</div>
-						</div>
-
-						<!-- Hidden Legacy Elements (kept for compatibility) -->
-						<div id="sync-progress" style="display: none;">
-							<div id="sync-overall-fill" style="width: 0%;"></div>
-							<div id="sync-overall-percentage">0%</div>
-							<div id="sync-current-operation">Waiting</div>
-							<div id="sync-current-fill" style="width: 0%;"></div>
-							<div id="sync-current-percentage">0%</div>
-							<div id="sync-status-text">Ready</div>
-							<div id="sync-time-elapsed"></div>
-						</div>
 					</div>
 				</td>
 			</tr>
 		</table>
-
-		<!-- Legacy Sync Progress Section (hidden, kept for backwards compatibility) -->
-		<div id="sync-progress" class="brag-book-gallery-section" style="display:none;">
-			<h3><?php esc_html_e( 'Real-Time Sync Progress', 'brag-book-gallery' ); ?></h3>
-
-			<!-- Progress Overview -->
-			<div class="sync-progress-overview">
-				<!-- Status at the top (no label) -->
-				<div style="margin-bottom: 15px;">
-					<span id="sync-status-text" style="font-size: 16px; font-weight: 600; color: #1e293b;">Ready</span>
-				</div>
-
-				<!-- Progress percentage and time above the progress bar -->
-				<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-					<div>
-						<strong>Progress:</strong> <span id="sync-overall-percentage" style="font-weight: 600;">0%</span>
-					</div>
-					<div id="sync-time-elapsed" style="color: #64748b; font-size: 14px;"></div>
-				</div>
-
-				<!-- Progress Bar -->
-				<div class="progress-bar-container">
-					<div class="progress-bar">
-						<div id="sync-overall-fill" class="progress-fill" style="width: 0%;"></div>
-					</div>
-				</div>
-
-				<!-- Stage below the progress bar -->
-				<div style="margin-top: 12px;">
-					<strong>Current Stage:</strong> <span id="sync-current-operation" style="color: #475569;">Waiting</span>
-				</div>
-			</div>
-
-			<!-- Real-Time Activity Log -->
-			<div class="sync-activity-log">
-				<h4><?php esc_html_e( 'Activity Log', 'brag-book-gallery' ); ?></h4>
-				<div id="sync-log-container" class="log-container">
-					<ul id="sync-progress-items" class="log-entries"></ul>
-				</div>
-			</div>
-		</div>
-		</div>
 
 		<!-- Results Section (Hidden by default) -->
 		<div id="sync-results" class="brag-book-gallery-section" style="display:none;">
@@ -1222,9 +1253,29 @@ class Sync_Page extends Settings_Base {
 			return;
 		}
 
+		$sync_success = false;
+		$sync_source = 'cron'; // Track if triggered by REST API or cron
+
+		// Check if this was triggered via REST API
+		if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
+			$sync_source = 'rest_api';
+			error_log( 'BRAG Book Gallery: Sync triggered via REST API' );
+		}
+
+		// Get database instance for logging
+		$setup = \BRAGBookGallery\Includes\Core\Setup::get_instance();
+		$database = $setup->get_service( 'database' );
+		$log_id = null;
+
+		// Create initial log entry
+		if ( $database ) {
+			$log_id = $database->log_sync_operation( 'full', 'started', 0, 0, '', $sync_source );
+			error_log( 'BRAG Book Gallery: Sync log created with ID: ' . $log_id );
+		}
+
 		try {
 			error_log( 'BRAG Book Gallery: Starting automatic sync via cron using Stage-Based Sync' );
-			error_log( 'BRAG Book Gallery: 🕒 Automatic sync started via cron job' );
+			error_log( 'BRAG Book Gallery: 🕒 Automatic sync started via ' . $sync_source );
 
 			// Use the new stage-based sync
 			$sync = new \BRAGBookGallery\Includes\Sync\Chunked_Data_Sync();
@@ -1235,6 +1286,21 @@ class Sync_Page extends Settings_Base {
 
 			if ( ! $stage1_result['success'] ) {
 				error_log( 'BRAG Book Gallery: Stage 1 failed: ' . ($stage1_result['message'] ?? 'Unknown error') );
+
+				// Update sync log with failure
+				if ( $database && $log_id ) {
+					$database->update_sync_log( $log_id, 'failed', 0, 0, $stage1_result['message'] ?? 'Stage 1 failed' );
+				}
+
+				// Update sync settings with error status
+				$settings['last_sync_time'] = current_time( 'mysql' );
+				$settings['sync_status']    = 'error';
+				$this->update_settings( $settings );
+
+				// Also update separate options for REST API access
+				update_option( 'brag_book_gallery_last_sync_time', $settings['last_sync_time'] );
+				update_option( 'brag_book_gallery_last_sync_status', 'error' );
+
 				return;
 			}
 
@@ -1248,6 +1314,21 @@ class Sync_Page extends Settings_Base {
 
 			if ( ! $stage2_result['success'] ) {
 				error_log( 'BRAG Book Gallery: Stage 2 failed: ' . ($stage2_result['message'] ?? 'Unknown error') );
+
+				// Update sync log with failure
+				if ( $database && $log_id ) {
+					$database->update_sync_log( $log_id, 'failed', 0, 0, $stage2_result['message'] ?? 'Stage 2 failed' );
+				}
+
+				// Update sync settings with error status
+				$settings['last_sync_time'] = current_time( 'mysql' );
+				$settings['sync_status']    = 'error';
+				$this->update_settings( $settings );
+
+				// Also update separate options for REST API access
+				update_option( 'brag_book_gallery_last_sync_time', $settings['last_sync_time'] );
+				update_option( 'brag_book_gallery_last_sync_status', 'error' );
+
 				return;
 			}
 
@@ -1255,25 +1336,283 @@ class Sync_Page extends Settings_Base {
 				($stage2_result['procedure_count'] ?? 0) . ' procedures, ' .
 				($stage2_result['case_count'] ?? 0) . ' cases in manifest' );
 
-			// Run Stage 3: Process cases
-			error_log( 'BRAG Book Gallery: Running Stage 3 - Processing cases' );
-			$stage3_result = $sync->execute_stage_3();
+			// Run Stage 3: Process cases in batches
+			error_log( 'BRAG Book Gallery: Running Stage 3 - Processing cases in batches' );
 
-			if ( ! $stage3_result['success'] ) {
-				error_log( 'BRAG Book Gallery: Stage 3 failed: ' . ($stage3_result['message'] ?? 'Unknown error') );
-			} else {
-				error_log( 'BRAG Book Gallery: Stage 3 completed - ' .
-					($stage3_result['created_posts'] ?? 0) . ' created, ' .
-					($stage3_result['updated_posts'] ?? 0) . ' updated, ' .
-					($stage3_result['failed_cases'] ?? 0) . ' failed' );
+			$total_created = 0;
+			$total_updated = 0;
+			$total_failed  = 0;
+			$total_processed = 0;
+			$total_cases = 0;
+			$needs_continue = true;
+			$batch_count = 0;
+			$max_batches = 1000; // Safety limit to prevent infinite loops
+
+			while ( $needs_continue && $batch_count < $max_batches ) {
+				$batch_count++;
+				error_log( "BRAG Book Gallery: Stage 3 - Processing batch {$batch_count}" );
+
+				$stage3_result = $sync->execute_stage_3();
+
+				if ( ! $stage3_result['success'] ) {
+					error_log( 'BRAG Book Gallery: Stage 3 failed: ' . ($stage3_result['message'] ?? 'Unknown error') );
+
+					// Update sync log with failure
+					if ( $database && $log_id ) {
+						$database->update_sync_log( $log_id, 'failed', $total_processed, $total_failed, $stage3_result['message'] ?? 'Stage 3 failed' );
+					}
+
+					// Update sync settings with error status
+					$settings['last_sync_time'] = current_time( 'mysql' );
+					$settings['sync_status']    = 'error';
+					$this->update_settings( $settings );
+
+					// Also update separate options for REST API access
+					update_option( 'brag_book_gallery_last_sync_time', $settings['last_sync_time'] );
+					update_option( 'brag_book_gallery_last_sync_status', 'error' );
+
+					break; // Exit the loop on error
+				}
+
+				// Update totals
+				$total_created   = $stage3_result['created_posts'] ?? 0;
+				$total_updated   = $stage3_result['updated_posts'] ?? 0;
+				$total_failed    = $stage3_result['failed_cases'] ?? 0;
+				$total_processed = $stage3_result['processed_cases'] ?? 0;
+				$total_cases     = $stage3_result['total_cases'] ?? 0;
+				$needs_continue  = $stage3_result['needs_continue'] ?? false;
+
+				error_log( "BRAG Book Gallery: Stage 3 batch {$batch_count} - Progress: {$total_processed}/{$total_cases} cases ({$total_created} created, {$total_updated} updated, {$total_failed} failed)" );
+
+				// Check if we need to continue
+				if ( ! $needs_continue ) {
+					error_log( 'BRAG Book Gallery: Stage 3 completed - All cases processed' );
+					$sync_success = true;
+					break;
+				}
+
+				// Brief pause between batches to avoid overwhelming the server
+				usleep( 500000 ); // 0.5 second pause
 			}
 
+			if ( $batch_count >= $max_batches ) {
+				error_log( "BRAG Book Gallery: Stage 3 stopped - Reached maximum batch limit ({$max_batches})" );
+			}
+
+			error_log( 'BRAG Book Gallery: Stage 3 final totals - ' .
+				"{$total_created} created, {$total_updated} updated, {$total_failed} failed ({$total_processed}/{$total_cases} cases)" );
+
 			error_log( 'BRAG Book Gallery: 🎉 Automatic sync completed successfully' );
+
+			// Update sync log with completion
+			if ( $database && $log_id ) {
+				$status = $sync_success ? 'completed' : 'partial';
+				$database->update_sync_log( $log_id, $status, $total_processed, $total_failed );
+				error_log( 'BRAG Book Gallery: Sync log updated - Status: ' . $status . ', Processed: ' . $total_processed . ', Failed: ' . $total_failed );
+			}
+
+			// Update sync settings with success status
+			$settings['last_sync_time'] = current_time( 'mysql' );
+			$settings['sync_status']    = $sync_success ? 'success' : 'partial';
+			$update_result              = $this->update_settings( $settings );
+
+			// Also update separate options for REST API access
+			update_option( 'brag_book_gallery_last_sync_time', $settings['last_sync_time'] );
+			update_option( 'brag_book_gallery_last_sync_status', $settings['sync_status'] );
+
+			if ( ! $update_result ) {
+				error_log( 'BRAG Book Gallery: Failed to update sync settings after cron sync' );
+			} else {
+				error_log( 'BRAG Book Gallery: Successfully updated sync settings - Status: ' . $settings['sync_status'] . ', Time: ' . $settings['last_sync_time'] );
+			}
 
 		} catch ( \Exception $e ) {
 			$error_message = 'Automatic sync failed: ' . $e->getMessage();
 			error_log( 'BRAG Book Gallery: ❌ ' . $error_message );
+
+			// Update sync log with error
+			if ( $database && $log_id ) {
+				$database->update_sync_log( $log_id, 'failed', 0, 0, $error_message );
+			}
+
+			// Update sync settings with error status
+			$settings['last_sync_time'] = current_time( 'mysql' );
+			$settings['sync_status']    = 'error';
+			$this->update_settings( $settings );
+
+			// Also update separate options for REST API access
+			update_option( 'brag_book_gallery_last_sync_time', $settings['last_sync_time'] );
+			update_option( 'brag_book_gallery_last_sync_status', 'error' );
 		}
+	}
+
+	/**
+	 * Register REST API endpoints for remote sync triggering
+	 *
+	 * @since 3.3.0
+	 * @return void
+	 */
+	public function register_rest_endpoints(): void {
+		register_rest_route(
+			'brag-book-gallery/v1',
+			'/sync/trigger',
+			[
+				'methods'             => 'POST',
+				'callback'            => [ $this, 'handle_rest_trigger_sync' ],
+				'permission_callback' => [ $this, 'validate_sync_token' ],
+				'args'                => [
+					'token' => [
+						'required'          => true,
+						'type'              => 'string',
+						'sanitize_callback' => 'sanitize_text_field',
+						'validate_callback' => function( $param ) {
+							return is_string( $param ) && ! empty( $param );
+						},
+					],
+				],
+			]
+		);
+
+		register_rest_route(
+			'brag-book-gallery/v1',
+			'/sync/update',
+			[
+				'methods'             => 'GET',
+				'callback'            => [ $this, 'handle_rest_get_update' ],
+				'permission_callback' => [ $this, 'validate_sync_token' ],
+				'args'                => [
+					'token' => [
+						'required'          => true,
+						'type'              => 'string',
+						'sanitize_callback' => 'sanitize_text_field',
+						'validate_callback' => function( $param ) {
+							return is_string( $param ) && ! empty( $param );
+						},
+					],
+				],
+			]
+		);
+	}
+
+	/**
+	 * Validate sync token for REST API authentication
+	 *
+	 * Uses the BRAGbook API token for authentication - same token used for API calls.
+	 *
+	 * @since 3.3.0
+	 * @param \WP_REST_Request $request The REST request object
+	 * @return bool|WP_Error True if valid, WP_Error otherwise
+	 */
+	public function validate_sync_token( \WP_REST_Request $request ) {
+		$provided_token = $request->get_param( 'token' );
+
+		if ( empty( $provided_token ) ) {
+			return new \WP_Error(
+				'missing_token',
+				__( 'Authentication token is required.', 'brag-book-gallery' ),
+				[ 'status' => 401 ]
+			);
+		}
+
+		// Get the BRAGbook API tokens from settings (stored as array)
+		$api_tokens = get_option( 'brag_book_gallery_api_token', array() );
+
+		// Ensure it's an array
+		if ( ! is_array( $api_tokens ) ) {
+			$api_tokens = array( $api_tokens );
+		}
+
+		// Remove empty tokens
+		$api_tokens = array_filter( $api_tokens );
+
+		if ( empty( $api_tokens ) ) {
+			error_log( 'BRAG Book Gallery: BRAGbook API token not configured' );
+			return new \WP_Error(
+				'token_not_configured',
+				__( 'BRAGbook API token is not configured. Please configure it in the API Settings page.', 'brag-book-gallery' ),
+				[ 'status' => 500 ]
+			);
+		}
+
+		// Check if provided token matches any of the configured API tokens
+		$token_valid = false;
+		foreach ( $api_tokens as $stored_token ) {
+			if ( hash_equals( $stored_token, $provided_token ) ) {
+				$token_valid = true;
+				break;
+			}
+		}
+
+		if ( ! $token_valid ) {
+			error_log( 'BRAG Book Gallery: Invalid BRAGbook API token provided to REST API' );
+			return new \WP_Error(
+				'invalid_token',
+				__( 'Invalid authentication token.', 'brag-book-gallery' ),
+				[ 'status' => 403 ]
+			);
+		}
+
+		return true;
+	}
+
+	/**
+	 * Handle REST API sync trigger request
+	 *
+	 * @since 3.3.0
+	 * @param \WP_REST_Request $request The REST request object
+	 * @return \WP_REST_Response|\WP_Error Response object or error
+	 */
+	public function handle_rest_trigger_sync( \WP_REST_Request $request ) {
+		error_log( 'BRAG Book Gallery: Sync triggered via REST API' );
+
+		// Schedule the sync to run asynchronously in the background
+		// This ensures the REST API response returns immediately
+		wp_schedule_single_event( time(), 'brag_book_gallery_automatic_sync' );
+
+		return rest_ensure_response( [
+			'success' => true,
+			'message' => __( 'Sync has been triggered and will run in the background', 'brag-book-gallery' ),
+		] );
+	}
+
+	/**
+	 * Handle REST API get update request
+	 *
+	 * Returns website URL, plugin details, and last sync information.
+	 *
+	 * @since 3.3.0
+	 * @param \WP_REST_Request $request The REST request object
+	 * @return \WP_REST_Response|\WP_Error Response object or error
+	 */
+	public function handle_rest_get_update( \WP_REST_Request $request ) {
+		// Get plugin data
+		if ( ! function_exists( 'get_plugin_data' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+
+		$plugin_file = dirname( dirname( dirname( __DIR__ ) ) ) . '/brag-book-gallery.php';
+		$plugin_data = get_plugin_data( $plugin_file );
+
+		// Get last sync time and status from options
+		$last_sync_time = get_option( 'brag_book_gallery_last_sync_time', null );
+		$last_sync_status = get_option( 'brag_book_gallery_last_sync_status', 'unknown' );
+
+		// Build response
+		$response = [
+			'success'     => true,
+			'website_url' => home_url(),
+			'plugin'      => [
+				'version'      => $plugin_data['Version'] ?? null,
+				'name'         => $plugin_data['Name'] ?? 'BRAGBook Gallery',
+				'last_updated' => $plugin_data['Version'] ? filemtime( $plugin_file ) : null,
+			],
+			'last_sync'   => [
+				'time'   => $last_sync_time,
+				'status' => $last_sync_status,
+			],
+		];
+
+		return rest_ensure_response( $response );
 	}
 
 	/**
@@ -1727,12 +2066,22 @@ class Sync_Page extends Settings_Base {
 			// Enqueue jQuery for WP Engine sync script
 			wp_enqueue_script( 'jquery' );
 
+			// Get plugin paths for file versioning
+			$plugin_path = \BRAGBookGallery\Includes\Core\Setup::get_plugin_path();
+
+			// Get file modification times for cache busting
+			$sync_admin_file = $plugin_path . 'assets/js/brag-book-gallery-sync-admin.js';
+			$sync_admin_version = file_exists( $sync_admin_file ) ? filemtime( $sync_admin_file ) : '3.3.2';
+
+			$stage_sync_file = $plugin_path . 'assets/js/brag-book-gallery-stage-sync.js';
+			$stage_sync_version = file_exists( $stage_sync_file ) ? filemtime( $stage_sync_file ) : '3.3.0';
+
 			// Enqueue main sync admin script
 			wp_enqueue_script(
 				'brag-book-file-sync-admin',
 				plugins_url( 'assets/js/brag-book-gallery-sync-admin.js', dirname( __DIR__, 2 ) ),
 				[],
-				'3.3.2',
+				$sync_admin_version,
 				true
 			);
 
@@ -1741,7 +2090,7 @@ class Sync_Page extends Settings_Base {
 				'brag-book-stage-sync',
 				plugins_url( 'assets/js/brag-book-gallery-stage-sync.js', dirname( __DIR__, 2 ) ),
 				[ 'jquery' ],
-				'3.3.0',
+				$stage_sync_version,
 				true
 			);
 
@@ -2665,13 +3014,16 @@ class Sync_Page extends Settings_Base {
 		$table_exists = $wpdb->get_var( "SHOW TABLES LIKE '{$table_name}'" ) === $table_name;
 		if ( ! $table_exists ) {
 			echo '<p>' . esc_html__( 'Sync history table not found. Please re-activate the plugin.', 'brag-book-gallery' ) . '</p>';
+			error_log( 'BRAGBook Sync History: Table does not exist: ' . $table_name );
 			return;
 		}
 
-		// Check which column names are in use (handle old vs new schema)
+		// Check which columns exist (handle different schema versions)
 		$columns = $wpdb->get_col( "DESCRIBE {$table_name}" );
 		$has_started_at = in_array( 'started_at', $columns, true );
 		$has_created_at = in_array( 'created_at', $columns, true );
+
+		error_log( 'BRAGBook Sync History: Table columns: ' . implode( ', ', $columns ) );
 
 		// Use appropriate column for ordering based on what exists
 		$order_column = 'id'; // Default fallback
@@ -2681,17 +3033,19 @@ class Sync_Page extends Settings_Base {
 			$order_column = 'created_at';
 		}
 
-		// Only get complete sync sessions (one entry per sync)
-		$records = $wpdb->get_results(
-			"SELECT * FROM {$table_name}
-			WHERE operation = 'complete'
-			AND item_type = 'sync_session'
-			ORDER BY {$order_column} DESC
-			LIMIT 50"
-		);
+		// Get all sync records
+		$query = "SELECT * FROM {$table_name} ORDER BY {$order_column} DESC LIMIT 50";
+		error_log( 'BRAGBook Sync History: Executing query: ' . $query );
+
+		$records = $wpdb->get_results( $query );
+
+		error_log( 'BRAGBook Sync History: Found ' . count( $records ) . ' records' );
 
 		if ( empty( $records ) ) {
-			echo '<p>' . esc_html__( 'No sync history available.', 'brag-book-gallery' ) . '</p>';
+			// Show count for debugging
+			$count = $wpdb->get_var( "SELECT COUNT(*) FROM {$table_name}" );
+			echo '<p>' . esc_html__( 'No sync history available.', 'brag-book-gallery' ) . ' (Total records in table: ' . esc_html( $count ) . ')</p>';
+			error_log( 'BRAGBook Sync History: No records returned. Total in table: ' . $count );
 			return;
 		}
 		?>
@@ -2766,7 +3120,7 @@ class Sync_Page extends Settings_Base {
 
 						$items_processed = $record->items_processed ?? $record->processed ??
 										  ($procedures_created + $procedures_updated + $cases_created + $cases_updated);
-						$items_failed = $record->items_failed ?? $record->failed ?? 0;
+						$items_failed = (int) ( $record->items_failed ?? $record->failed ?? 0 );
 
 						// Build a more informative display
 						$processed_display = '';

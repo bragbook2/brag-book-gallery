@@ -929,6 +929,11 @@ final class SEO_Manager {
 			array()
 		);
 
+		// Handle case where option is stored as a string instead of array
+		if ( is_string( $gallery_slugs ) ) {
+			$gallery_slugs = array( $gallery_slugs );
+		}
+
 		return array_search( $page_slug, $gallery_slugs, true );
 	}
 

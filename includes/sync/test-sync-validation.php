@@ -51,11 +51,11 @@ class Sync_Validation_Test {
 			$results['post_type_exists'] = post_type_exists( 'brag_book_cases' );
 
 			// Test if procedure taxonomy exists
-			$results['taxonomy_exists'] = taxonomy_exists( 'procedures' );
+			$results['taxonomy_exists'] = taxonomy_exists( \BRAGBookGallery\Includes\Extend\Taxonomies::TAXONOMY_PROCEDURES );
 
 			// Count existing procedures
 			$procedures = get_terms( [
-				'taxonomy' => 'procedures',
+				'taxonomy' => \BRAGBookGallery\Includes\Extend\Taxonomies::TAXONOMY_PROCEDURES,
 				'hide_empty' => false,
 			] );
 			$results['existing_procedures'] = is_array( $procedures ) ? count( $procedures ) : 0;

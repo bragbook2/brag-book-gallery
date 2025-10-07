@@ -53,24 +53,25 @@ if (typeof window.BRAGbookSyncAdmin === 'undefined') {
 		 * Initialize all event listeners and UI components
 		 */
 		init() {
-			console.log('BRAGbook Sync Admin: Initializing...');
-			console.log('BRAGbook Sync Admin: Config:', this.config);
 			this.bindSyncControls();
 			this.bindHistoryControls();
 			this.bindProgressHandlers();
 
+			// Setup auto-dismiss for notices
+			this.setupNoticeObserver();
+
+			// Setup exit intent warning
+			this.setupExitWarning();
+
 			// Check for existing sync on page load
 			this.checkExistingSync();
-
-			console.log('BRAGbook Sync Admin: Initialization complete');
 		}
 
 		/**
 		 * Bind sync control event listeners
 		 */
 		bindSyncControls() {
-			console.log('BRAGbook Sync Admin: Binding sync controls...');
-			// Legacy sync buttons removed - using Stage-Based Sync instead
+				// Legacy sync buttons removed - using Stage-Based Sync instead
 		}
 
 		/**
@@ -109,7 +110,6 @@ if (typeof window.BRAGbookSyncAdmin === 'undefined') {
 		 * Check for existing sync progress on page load
 		 */
 		async checkExistingSync() {
-			console.log('BRAGbook Sync Admin: Checking for existing sync...');
 
 			try {
 				const formData = new FormData();
@@ -124,8 +124,6 @@ if (typeof window.BRAGbookSyncAdmin === 'undefined') {
 				const result = await response.json();
 
 				if (result.success && result.data.stage !== 'idle') {
-					console.log('BRAGbook Sync Admin: Found existing sync in progress, resuming...');
-					console.log('BRAGbook Sync Admin: Sync state:', result.data);
 
 					// Update syncs in progress section
 					this.updateSyncsInProgress([result.data]);
@@ -142,19 +140,19 @@ if (typeof window.BRAGbookSyncAdmin === 'undefined') {
 						result.data.recent_cases || []
 					);
 
-					// Show resume notice
-					this.showNotice('Resuming sync in progress...', 'info');
-
 				} else {
-					console.log('BRAGbook Sync Admin: No active sync found');
 					// Update syncs in progress to show no active syncs
 					this.updateSyncsInProgress([]);
+					// Ensure sync in progress flag is false
+					this.setSyncInProgress(false);
 				}
 
 			} catch (error) {
 				console.error('BRAGbook Sync Admin: Error checking existing sync:', error);
 				// Don't show error to user as this is just a background check
 				this.updateSyncsInProgress([]);
+				// Ensure sync in progress flag is false on error
+				this.setSyncInProgress(false);
 			}
 		}
 
@@ -162,7 +160,6 @@ if (typeof window.BRAGbookSyncAdmin === 'undefined') {
 		 * Resume sync operation after pause
 		 */
 		async resumeSync() {
-			console.log('BRAGbook Sync Admin: Resuming sync after pause...');
 
 			try {
 				const formData = new FormData();
@@ -192,8 +189,7 @@ if (typeof window.BRAGbookSyncAdmin === 'undefined') {
 			const activeSyncsList = document.getElementById('active-syncs-list');
 
 			if (!noActiveSyncs || !activeSyncsList) {
-				console.log('BRAGbook Sync Admin: Syncs in progress elements not found, skipping update');
-				return;
+					return;
 			}
 
 			if (activeSyncs.length === 0) {
@@ -423,7 +419,6 @@ if (typeof window.BRAGbookSyncAdmin === 'undefined') {
 		 * Set sync in progress state
 		 */
 		setSyncInProgress(inProgress) {
-			console.log('BRAGbook Sync Admin: Setting sync in progress:', inProgress);
 			this.syncInProgress = inProgress;
 
 			// Legacy sync button updates removed - using Stage-Based Sync instead
@@ -439,20 +434,15 @@ if (typeof window.BRAGbookSyncAdmin === 'undefined') {
 		 * Show progress section
 		 */
 		showProgress() {
-			console.log('BRAGbook Sync Admin: showProgress() called');
-
 			const progressSection = document.getElementById('sync-progress');
-			console.log('BRAGbook Sync Admin: Progress section found:', !!progressSection);
 			if (progressSection) {
 				progressSection.style.display = 'block';
 			}
 
 			// Also show the progress details section
 			const progressDetails = document.getElementById('sync-progress-details');
-			console.log('BRAGbook Sync Admin: Progress details found:', !!progressDetails);
 			if (progressDetails) {
 				progressDetails.style.display = 'block';
-				console.log('BRAGbook Sync Admin: Progress details shown');
 			}
 		}
 
@@ -615,7 +605,7 @@ if (typeof window.BRAGbookSyncAdmin === 'undefined') {
 		addProgressLogEntry(message, type = 'success') {
 			const progressItems = document.getElementById('sync-progress-items');
 			if (!progressItems) {
-				console.error('BRAGbook Sync Admin: Progress items element not found!');
+				// Legacy element not found - silently skip
 				return;
 			}
 
@@ -646,19 +636,14 @@ if (typeof window.BRAGbookSyncAdmin === 'undefined') {
 
 			// Auto-scroll to bottom to show latest entries
 			progressItems.scrollTop = progressItems.scrollHeight;
-
-			console.log('BRAGbook Sync Admin: Added progress log entry:', message);
 		}
 
 		/**
 		 * Update the progress log with recent cases (enhanced version)
 		 */
 		updateProgressLog(recentCases) {
-			console.log('BRAGbook Sync Admin: updateProgressLog() called with:', recentCases);
-
 			// Add recent cases as individual entries (don't clear existing log)
 			if (recentCases && recentCases.length > 0) {
-				console.log('BRAGbook Sync Admin: Adding', recentCases.length, 'recent cases to log');
 				recentCases.forEach(caseInfo => {
 					this.addProgressLogEntry(`✓ ${caseInfo}`, 'success');
 				});
@@ -693,7 +678,6 @@ if (typeof window.BRAGbookSyncAdmin === 'undefined') {
 
 					if (result.success && result.data.stage !== 'idle') {
 						const data = result.data;
-						console.log('BRAGbook Sync Admin: Progress polling received data:', data);
 
 						// Check if this is the completion stage
 						if (data.stage === 'completed') {
@@ -913,16 +897,302 @@ if (typeof window.BRAGbookSyncAdmin === 'undefined') {
 
 			noticesContainer.appendChild(notice);
 
-			// Auto-remove after 5 seconds
+			// Auto-dismiss after 5 seconds
+			this.autoDismissNotice(notice);
+		}
+
+		/**
+		 * Auto-dismiss a notice after 5 seconds with fade effect
+		 */
+		autoDismissNotice(notice) {
 			setTimeout(() => {
 				if (notice.parentNode) {
-					notice.parentNode.removeChild(notice);
+					notice.style.transition = 'opacity 0.3s ease';
+					notice.style.opacity = '0';
+					setTimeout(() => {
+						if (notice.parentNode) {
+							notice.parentNode.removeChild(notice);
+						}
+					}, 300);
 				}
 			}, 5000);
+		}
+
+		/**
+		 * Setup notice auto-dismiss observer for dynamically added notices
+		 */
+		setupNoticeObserver() {
+			const noticesContainer = document.querySelector('.brag-book-gallery-notices');
+			if (!noticesContainer) {
+				return;
+			}
+
+			// Auto-dismiss any existing notices on page load
+			noticesContainer.querySelectorAll('.notice').forEach(notice => {
+				this.autoDismissNotice(notice);
+			});
+
+			// Watch for new notices being added
+			const observer = new MutationObserver((mutations) => {
+				mutations.forEach((mutation) => {
+					mutation.addedNodes.forEach((node) => {
+						if (node.nodeType === 1 && node.classList && node.classList.contains('notice')) {
+							this.autoDismissNotice(node);
+						}
+					});
+				});
+			});
+
+			observer.observe(noticesContainer, {
+				childList: true,
+				subtree: true
+			});
+		}
+
+		/**
+		 * Setup exit warning when sync is in progress
+		 */
+		setupExitWarning() {
+			// Verify wrap element exists
+			const wrap = document.querySelector('.brag-book-gallery-admin-wrap');
+			if (!wrap) {
+				return;
+			}
+
+			// Create exit warning dialog
+			this.createExitWarningDialog();
+
+			// Bind beforeunload event
+			this.boundBeforeUnload = (e) => {
+				if (this.syncInProgress) {
+					e.preventDefault();
+					e.returnValue = '';
+					return '';
+				}
+			};
+
+			window.addEventListener('beforeunload', this.boundBeforeUnload);
+
+			// Track if mouse leaves the main wrap area
+			let mouseOutsideWrap = false;
+
+			document.addEventListener('mousemove', (e) => {
+				if (!this.syncInProgress) {
+					return;
+				}
+
+				const wrap = document.querySelector('.brag-book-gallery-admin-wrap');
+				if (!wrap) {
+					return;
+				}
+
+				const rect = wrap.getBoundingClientRect();
+				const isOutside = (
+					e.clientX < rect.left ||
+					e.clientX > rect.right ||
+					e.clientY < rect.top ||
+					e.clientY > rect.bottom
+				);
+
+				if (isOutside && !mouseOutsideWrap) {
+					mouseOutsideWrap = true;
+				}
+			});
+
+			// Intercept clicks outside the wrap area
+			document.addEventListener('click', (e) => {
+
+				if (!this.syncInProgress) {
+					mouseOutsideWrap = false;
+					return;
+				}
+
+				const wrap = document.querySelector('.brag-book-gallery-admin-wrap');
+				if (!wrap) {
+					console.error('BRAGbook Sync Admin: wrap not found during click');
+					return;
+				}
+
+				// Check if click is outside the wrap
+				const rect = wrap.getBoundingClientRect();
+				const isOutside = (
+					e.clientX < rect.left ||
+					e.clientX > rect.right ||
+					e.clientY < rect.top ||
+					e.clientY > rect.bottom
+				);
+
+				if (isOutside) {
+					e.preventDefault();
+					e.stopPropagation();
+					e.stopImmediatePropagation();
+
+					// Check if it's a link
+					const link = e.target.closest('a');
+					const targetUrl = link && link.href ? link.href : null;
+
+					this.showExitWarningDialog(targetUrl);
+					return false;
+				}
+
+				// Also intercept link clicks even inside wrap if navigating away
+				const link = e.target.closest('a');
+				if (link && link.href && !link.target && !link.href.startsWith('#')) {
+					const currentPage = window.location.href.split('?')[0];
+					const targetPage = link.href.split('?')[0];
+
+					if (currentPage !== targetPage) {
+						e.preventDefault();
+						e.stopPropagation();
+						e.stopImmediatePropagation();
+						this.showExitWarningDialog(link.href);
+						return false;
+					}
+				}
+			}, true); // Use capture phase to catch event early
+		}
+
+		/**
+		 * Create the exit warning dialog element
+		 */
+		createExitWarningDialog() {
+			const dialog = document.createElement('dialog');
+			dialog.id = 'sync-exit-warning-dialog';
+			dialog.className = 'sync-exit-warning-dialog';
+
+			dialog.innerHTML = `
+				<div style="
+					background: white;
+					border-radius: 0.5rem;
+					box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+					max-width: 28rem;
+					width: 100%;
+				">
+					<div style="padding: 1.5rem;">
+						<div style="display: flex; align-items: flex-start;">
+							<div style="
+								flex-shrink: 0;
+								display: flex;
+								align-items: center;
+								justify-content: center;
+								height: 3rem;
+								width: 3rem;
+								border-radius: 9999px;
+								background-color: #FEF2F2;
+								margin-right: 1rem;
+							">
+								<svg style="height: 1.5rem; width: 1.5rem; color: #DC2626;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+								</svg>
+							</div>
+							<div style="flex: 1; margin-top: 0;">
+								<h3 style="
+									font-size: 1.125rem;
+									font-weight: 600;
+									color: #111827;
+									margin: 0 0 0.5rem 0;
+								">Sync In Progress</h3>
+								<p style="
+									font-size: 0.875rem;
+									color: #6B7280;
+									margin: 0;
+								">A data synchronization is currently running. If you leave this page, the sync will be interrupted and may leave your data in an incomplete state.</p>
+							</div>
+						</div>
+					</div>
+					<div style="
+						background-color: #F9FAFB;
+						padding: 1rem 1.5rem;
+						display: flex;
+						gap: 0.75rem;
+						justify-content: flex-end;
+						border-bottom-left-radius: 0.5rem;
+						border-bottom-right-radius: 0.5rem;
+					">
+						<button id="sync-exit-cancel" type="button" style="
+							padding: 0.5rem 1rem;
+							border: 1px solid #D1D5DB;
+							border-radius: 0.375rem;
+							background-color: white;
+							font-size: 0.875rem;
+							font-weight: 500;
+							color: #374151;
+							cursor: pointer;
+							transition: background-color 0.2s;
+						">Stay on Page</button>
+						<button id="sync-exit-confirm" type="button" style="
+							padding: 0.5rem 1rem;
+							border: none;
+							border-radius: 0.375rem;
+							background-color: #DC2626;
+							font-size: 0.875rem;
+							font-weight: 500;
+							color: white;
+							cursor: pointer;
+							transition: background-color 0.2s;
+						">Leave Anyway</button>
+					</div>
+				</div>
+			`;
+
+			// Add hover effects via inline event handlers
+			const cancelBtn = dialog.querySelector('#sync-exit-cancel');
+			const confirmBtn = dialog.querySelector('#sync-exit-confirm');
+
+			cancelBtn.addEventListener('mouseenter', () => {
+				cancelBtn.style.backgroundColor = '#F3F4F6';
+			});
+			cancelBtn.addEventListener('mouseleave', () => {
+				cancelBtn.style.backgroundColor = 'white';
+			});
+
+			confirmBtn.addEventListener('mouseenter', () => {
+				confirmBtn.style.backgroundColor = '#B91C1C';
+			});
+			confirmBtn.addEventListener('mouseleave', () => {
+				confirmBtn.style.backgroundColor = '#DC2626';
+			});
+
+			// Bind button handlers
+			cancelBtn.addEventListener('click', () => {
+				dialog.close();
+				this.pendingNavigation = null;
+			});
+
+			confirmBtn.addEventListener('click', () => {
+				dialog.close();
+				if (this.pendingNavigation) {
+					window.location.href = this.pendingNavigation;
+				}
+			});
+
+			// Add backdrop styles
+			const style = document.createElement('style');
+			style.textContent = `
+				.sync-exit-warning-dialog::backdrop {
+					background-color: rgba(0, 0, 0, 0.5);
+					backdrop-filter: blur(4px);
+				}
+			`;
+			document.head.appendChild(style);
+
+			document.body.appendChild(dialog);
+			this.exitWarningDialog = dialog;
+		}
+
+		/**
+		 * Show exit warning dialog
+		 */
+		showExitWarningDialog(targetUrl = null) {
+			if (!this.exitWarningDialog) {
+				return;
+			}
+
+			this.pendingNavigation = targetUrl;
+			this.exitWarningDialog.showModal();
 		}
 	};
 
 	// Initialize when the script loads
-	console.log('BRAGbook Sync Admin: Script loaded, creating instance...');
 	new window.BRAGbookSyncAdmin();
 }

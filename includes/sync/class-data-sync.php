@@ -2050,110 +2050,58 @@ class Data_Sync {
 	}
 
 	/**
-	 * Fetch case IDs for a single procedure ID with specific count
+	 * Fetch case IDs for a single procedure ID with page-based pagination (v2 API)
 	 *
 	 * @param int $procedure_id Single procedure ID to filter by
-	 * @param int $count Number of cases to fetch (incremental: 1, 2, 3, etc.)
+	 * @param int $page Page number (1-indexed)
+	 * @param int $limit Number of items per page (default 50)
 	 *
 	 * @return array Array of case IDs
 	 * @throws Exception If API request fails
-	 * @since 3.0.0
+	 * @since 3.3.0
 	 */
-	private function fetch_case_ids_for_single_procedure_count( int $procedure_id, int $count ): array {
-		$endpoint = '/api/plugin/combine/cases';
+	private function fetch_case_ids_for_single_procedure_count( int $procedure_id, int $page, int $limit = 50 ): array {
+		$api_token           = get_option( 'brag_book_gallery_api_token', [] )[0] ?? '';
+		$website_property_id = get_option( 'brag_book_gallery_website_property_id', [] )[0] ?? 0;
 
-		// Get API tokens and website property IDs
-		$api_tokens           = get_option( 'brag_book_gallery_api_token', [] );
-		$website_property_ids = get_option( 'brag_book_gallery_website_property_id', [] );
-
-		if ( empty( $api_tokens ) || empty( $api_tokens[0] ) ) {
-			throw new Exception( __( 'No API tokens configured', 'brag-book-gallery' ) );
+		if ( empty( $api_token ) || $website_property_id <= 0 ) {
+			throw new Exception( __( 'Invalid API configuration', 'brag-book-gallery' ) );
 		}
 
-		$valid_tokens = array_filter( $api_tokens, function ( $token ) {
-			return ! empty( $token );
-		} );
+		error_log( 'BRAG book Gallery Sync: Fetching procedure ' . $procedure_id . ' page ' . $page . ' (v2 API)' );
 
-		$valid_property_ids = array_filter( array_map( 'intval', $website_property_ids ) );
+		// Use Endpoints class for v2 API call
+		$endpoints = new \BRAGBookGallery\Includes\REST\Endpoints();
+		$response  = $endpoints->get_cases_v2(
+			$api_token,
+			intval( $website_property_id ),
+			$procedure_id,
+			$page,
+			$limit
+		);
 
-		// Build full URL
-		$api_base_url = $this->get_api_base_url();
-		$full_url     = $api_base_url . $endpoint;
-
-		// Prepare request body using count-based approach (no start parameter)
-		$request_body = [
-			'apiTokens'          => array_values( $valid_tokens ),
-			'websitePropertyIds' => array_values( $valid_property_ids ),
-			'count'              => $count,
-			'procedureIds'       => [ $procedure_id ], // Single procedure ID in array
-		];
-
-		error_log( 'BRAG book Gallery Sync: Fetching procedure ' . $procedure_id . ' with count ' . $count );
-		error_log( 'BRAG book Gallery Sync: Request body: ' . wp_json_encode( $request_body ) );
-
-		// Make POST request
-		$response = wp_remote_post( $full_url, [
-			'timeout'   => 30,
-			'headers'   => [
-				'Content-Type' => 'application/json',
-				'Accept'       => 'application/json',
-				'User-Agent'   => 'BRAGBookGallery/' . ( defined( 'BRAG_BOOK_GALLERY_VERSION' ) ? BRAG_BOOK_GALLERY_VERSION : '3.0.0' ),
-			],
-			'body'      => wp_json_encode( $request_body ),
-			'sslverify' => true,
-		] );
-
-		if ( is_wp_error( $response ) ) {
+		if ( ! $response ) {
 			throw new Exception( sprintf(
-				__( 'API request failed: %s', 'brag-book-gallery' ),
-				$response->get_error_message()
-			) );
-		}
-
-		$response_code = wp_remote_retrieve_response_code( $response );
-		$response_body = wp_remote_retrieve_body( $response );
-
-		if ( $response_code !== 200 ) {
-			error_log( 'BRAG book Gallery Sync: API error response for procedure ' . $procedure_id . ' count ' . $count . ': ' . $response_body );
-			throw new Exception( sprintf(
-				__( 'API returned error status %d for procedure %d count %d', 'brag-book-gallery' ),
-				$response_code,
+				__( 'API request failed for procedure %d page %d', 'brag-book-gallery' ),
 				$procedure_id,
-				$count
+				$page
 			) );
 		}
 
-		$data = json_decode( $response_body, true );
-
-		if ( json_last_error() !== JSON_ERROR_NONE ) {
-			throw new Exception( __( 'Invalid JSON response from API', 'brag-book-gallery' ) );
-		}
-
-		// Log the full response for debugging
-		error_log( 'BRAG book Gallery Sync: Full API response for procedure ' . $procedure_id . ' count ' . $count . ': ' . $response_body );
-
-		if ( ! isset( $data['success'] ) || ! $data['success'] ) {
-			error_log( 'BRAG book Gallery Sync: API response not successful for procedure ' . $procedure_id . ' count ' . $count );
-			throw new Exception( __( 'API returned unsuccessful response', 'brag-book-gallery' ) );
-		}
-
-		// Extract case IDs from response
+		// v2 API: Extract case IDs from response
 		$case_ids = [];
-		if ( isset( $data['data'] ) && is_array( $data['data'] ) ) {
-			error_log( 'BRAG book Gallery Sync: Found data array with ' . count( $data['data'] ) . ' items for procedure ' . $procedure_id . ' count ' . $count );
-			foreach ( $data['data'] as $case_index => $case ) {
+		if ( isset( $response['data']['cases'] ) && is_array( $response['data']['cases'] ) ) {
+			error_log( 'BRAG book Gallery Sync: Found ' . count( $response['data']['cases'] ) . ' cases for procedure ' . $procedure_id . ' page ' . $page );
+			foreach ( $response['data']['cases'] as $case ) {
 				if ( isset( $case['id'] ) ) {
 					$case_ids[] = (int) $case['id'];
-					error_log( 'BRAG book Gallery Sync: Found case ID ' . $case['id'] . ' at index ' . $case_index );
-				} else {
-					error_log( 'BRAG book Gallery Sync: Case at index ' . $case_index . ' missing ID field: ' . wp_json_encode( array_keys( $case ) ) );
 				}
 			}
 		} else {
-			error_log( 'BRAG book Gallery Sync: No data array found in response for procedure ' . $procedure_id . ' count ' . $count . '. Response keys: ' . wp_json_encode( array_keys( $data ) ) );
+			error_log( 'BRAG book Gallery Sync: No cases found in v2 response for procedure ' . $procedure_id . ' page ' . $page );
 		}
 
-		error_log( 'BRAG book Gallery Sync: Procedure ' . $procedure_id . ' count ' . $count . ' returned ' . count( $case_ids ) . ' case IDs: ' . wp_json_encode( $case_ids ) );
+		error_log( 'BRAG book Gallery Sync: Procedure ' . $procedure_id . ' page ' . $page . ' returned ' . count( $case_ids ) . ' case IDs' );
 
 		return $case_ids;
 	}
@@ -2924,7 +2872,7 @@ class Data_Sync {
 
 		// Find the term that matches this procedure ID
 		$terms = get_terms( [
-			'taxonomy'   => 'procedures',
+			'taxonomy'   => Taxonomies::TAXONOMY_PROCEDURES,
 			'hide_empty' => false,
 			'meta_query' => [
 				[
@@ -2937,7 +2885,7 @@ class Data_Sync {
 
 		if ( ! empty( $terms ) && ! is_wp_error( $terms ) ) {
 			// Assign only this one procedure term
-			wp_set_post_terms( $post_id, [ $terms[0]->term_id ], 'procedures' );
+			wp_set_post_terms( $post_id, [ $terms[0]->term_id ], Taxonomies::TAXONOMY_PROCEDURES );
 			error_log( "BRAG book Gallery Sync: ✓ Assigned procedure term '{$terms[0]->name}' (ID: {$terms[0]->term_id}) to post {$post_id}" );
 
 			return;
@@ -2946,7 +2894,7 @@ class Data_Sync {
 		// DEBUG: Log available procedure terms and their meta
 		error_log( "BRAG book Gallery Sync: DEBUG - Could not find procedure term for procedure ID {$procedure_id}" );
 		$all_terms = get_terms( [
-			'taxonomy'   => 'procedures',
+			'taxonomy'   => Taxonomies::TAXONOMY_PROCEDURES,
 			'hide_empty' => false,
 		] );
 
@@ -2960,7 +2908,7 @@ class Data_Sync {
 
 		// FALLBACK STRATEGY 1: Try to match by API data containing the ID
 		$terms_with_api_data = get_terms( [
-			'taxonomy'   => 'procedures',
+			'taxonomy'   => Taxonomies::TAXONOMY_PROCEDURES,
 			'hide_empty' => false,
 			'meta_query' => [
 				[
@@ -2974,7 +2922,7 @@ class Data_Sync {
 			foreach ( $terms_with_api_data as $term ) {
 				$api_data = get_term_meta( $term->term_id, 'api_data', true );
 				if ( is_array( $api_data ) && isset( $api_data['api_id'] ) && (int) $api_data['api_id'] === $procedure_id ) {
-					wp_set_post_terms( $post_id, [ $term->term_id ], 'procedures' );
+					wp_set_post_terms( $post_id, [ $term->term_id ], Taxonomies::TAXONOMY_PROCEDURES );
 					error_log( "BRAG book Gallery Sync: ✓ Assigned procedure term '{$term->name}' (via api_data match) to post {$post_id}" );
 
 					return;
@@ -3105,118 +3053,155 @@ class Data_Sync {
 	 * @since 3.0.0
 	 */
 	private function fetch_case_details( int $case_id ): array {
-		error_log( "BRAG book Gallery Sync: fetch_case_details() starting for case {$case_id}" );
-		$endpoint = '/api/plugin/combine/cases/' . $case_id;
+		error_log( "BRAG book Gallery Sync: fetch_case_details() starting for case {$case_id} (v2 API)" );
 
-		// Get API tokens and website property IDs
-		error_log( "BRAG book Gallery Sync: Getting API configuration for case {$case_id}..." );
-		$api_tokens           = get_option( 'brag_book_gallery_api_token', [] );
-		$website_property_ids = get_option( 'brag_book_gallery_website_property_id', [] );
+		$api_token           = get_option( 'brag_book_gallery_api_token', [] )[0] ?? '';
+		$website_property_id = get_option( 'brag_book_gallery_website_property_id', [] )[0] ?? 0;
 
-		if ( empty( $api_tokens ) || empty( $api_tokens[0] ) ) {
-			error_log( "BRAG book Gallery Sync: ✗ No API tokens configured for case {$case_id}" );
-			throw new Exception( __( 'No API tokens configured', 'brag-book-gallery' ) );
+		if ( empty( $api_token ) || $website_property_id <= 0 ) {
+			error_log( "BRAG book Gallery Sync: ✗ Invalid API configuration for case {$case_id}" );
+			throw new Exception( __( 'Invalid API configuration', 'brag-book-gallery' ) );
 		}
 
-		error_log( "BRAG book Gallery Sync: API configuration found - " . count( $api_tokens ) . " tokens, " . count( $website_property_ids ) . " property IDs" );
-
-		$valid_tokens = array_filter( $api_tokens, function ( $token ) {
-			return ! empty( $token );
-		} );
-
-		$valid_property_ids = array_filter( array_map( 'intval', $website_property_ids ) );
-
-		// Build full URL
-		$api_base_url = $this->get_api_base_url();
-		$full_url     = $api_base_url . $endpoint;
-
-		// For single case endpoint, we need to get procedure IDs from the case
-		// Since we don't know the procedure ID beforehand, we'll use a default from settings
-		// or try to get it from the case's existing data
-		$default_procedure_ids = [ 6851 ]; // Default fallback
-
-		// Try to get procedure IDs from existing case post if it exists
+		// Try to get procedure ID from existing case post if it exists
+		$procedure_id  = null;
 		$existing_post = $this->find_existing_case_post( $case_id );
 		if ( $existing_post ) {
 			$stored_procedure_ids = get_post_meta( $existing_post->ID, '_case_procedure_ids', true );
 			if ( ! empty( $stored_procedure_ids ) ) {
-				$default_procedure_ids = array_map( 'intval', explode( ',', $stored_procedure_ids ) );
+				$procedure_ids_array = explode( ',', $stored_procedure_ids );
+				$procedure_id        = intval( $procedure_ids_array[0] );
 			}
 		}
 
-		// Prepare request body matching API Test format for single case
-		$request_body = [
-			'apiTokens'          => array_values( $valid_tokens ),
-			'websitePropertyIds' => array_values( $valid_property_ids ),
-			'procedureIds'       => $default_procedure_ids,
-		];
-
-		error_log( "BRAG book Gallery Sync: Making API request for case {$case_id} to: {$full_url}" );
-		error_log( 'BRAG book Gallery Sync: Request body: ' . wp_json_encode( $request_body ) );
-
-		// Make POST request
-		$request_start    = microtime( true );
-		$response         = wp_remote_post( $full_url, [
-			'timeout'   => 30,
-			'headers'   => [
-				'Content-Type' => 'application/json',
-				'Accept'       => 'application/json',
-				'User-Agent'   => 'BRAGBookGallery/' . ( defined( 'BRAG_BOOK_GALLERY_VERSION' ) ? BRAG_BOOK_GALLERY_VERSION : '3.0.0' ),
-			],
-			'body'      => wp_json_encode( $request_body ),
-			'sslverify' => true,
-		] );
+		// Use Endpoints class for v2 API call
+		$request_start = microtime( true );
+		$endpoints     = new \BRAGBookGallery\Includes\REST\Endpoints();
+		$response      = $endpoints->get_case_detail_v2(
+			$api_token,
+			$case_id,
+			intval( $website_property_id ),
+			$procedure_id
+		);
 		$request_duration = round( ( microtime( true ) - $request_start ) * 1000, 2 );
 
 		error_log( "BRAG book Gallery Sync: API request for case {$case_id} completed in {$request_duration}ms" );
 
-		if ( is_wp_error( $response ) ) {
-			error_log( "BRAG book Gallery Sync: ✗ API request failed for case {$case_id}: " . $response->get_error_message() );
-			throw new Exception( sprintf(
-				__( 'API request failed: %s', 'brag-book-gallery' ),
-				$response->get_error_message()
-			) );
-		}
-
-		$response_code = wp_remote_retrieve_response_code( $response );
-		$response_body = wp_remote_retrieve_body( $response );
-
-		error_log( "BRAG book Gallery Sync: API response for case {$case_id} - Code: {$response_code}, Body length: " . strlen( $response_body ) . " bytes" );
-
-		if ( $response_code !== 200 ) {
-			error_log( 'BRAG book Gallery Sync: API error response for case ' . $case_id . ': ' . $response_body );
-			throw new Exception( sprintf(
-				__( 'API returned error status %d for case %d', 'brag-book-gallery' ),
-				$response_code,
-				$case_id
-			) );
-		}
-
-		$data = json_decode( $response_body, true );
-
-		if ( json_last_error() !== JSON_ERROR_NONE ) {
-			error_log( "BRAG book Gallery Sync: Case {$case_id} JSON decode error: " . json_last_error_msg() );
-			error_log( "BRAG book Gallery Sync: Case {$case_id} response body (first 500 chars): " . substr( $response_body, 0, 500 ) );
-			error_log( "BRAG book Gallery Sync: Case {$case_id} response body length: " . strlen( $response_body ) );
-			throw new Exception( sprintf(
-				__( 'Invalid JSON response from API for case %d: %s', 'brag-book-gallery' ),
-				$case_id,
-				json_last_error_msg()
-			) );
-		}
-
-		if ( ! isset( $data['success'] ) || ! $data['success'] ) {
-			error_log( 'BRAG book Gallery Sync: API returned unsuccessful response for case ' . $case_id . ': ' . wp_json_encode( $data ) );
-			throw new Exception( __( 'API returned unsuccessful response', 'brag-book-gallery' ) );
-		}
-
-		if ( ! isset( $data['data'][0] ) ) {
+		if ( ! $response || ! isset( $response['data']['case'] ) ) {
+			error_log( "BRAG book Gallery Sync: ✗ No case data found in v2 API response for case {$case_id}" );
 			throw new Exception( __( 'No case data found in API response', 'brag-book-gallery' ) );
 		}
 
 		error_log( 'BRAG book Gallery Sync: Successfully fetched case details for case ' . $case_id );
 
-		return $data['data'][0]; // Return first case data
+		// Normalize v2 data to v1 format
+		return $this->normalize_v2_case_data( $response['data']['case'] );
+	}
+
+	/**
+	 * Normalize v2 API data to v1 format for backward compatibility
+	 *
+	 * Converts the v2 nested data structure to the flat v1 format.
+	 *
+	 * @since 3.3.0
+	 * @param array $v2_data v2 API case data
+	 * @return array Normalized data in v1 format
+	 */
+	private function normalize_v2_case_data( array $v2_data ): array {
+		$case_id = $v2_data['id'] ?? 'unknown';
+
+		// DEBUG: Log incoming v2 data structure
+		error_log( "=== DATA_SYNC NORMALIZATION DEBUG: Case {$case_id} ===" );
+		error_log( "V2 Data Keys: " . implode( ', ', array_keys( $v2_data ) ) );
+		error_log( "Has patientInfo: " . ( isset( $v2_data['patientInfo'] ) ? 'YES' : 'NO' ) );
+		error_log( "Has seoInfo: " . ( isset( $v2_data['seoInfo'] ) ? 'YES' : 'NO' ) );
+		error_log( "Has photoSets: " . ( isset( $v2_data['photoSets'] ) ? 'YES (' . count( $v2_data['photoSets'] ) . ' sets)' : 'NO' ) );
+
+		if ( isset( $v2_data['photoSets'][0]['images'] ) ) {
+			$first_images = $v2_data['photoSets'][0]['images'];
+			error_log( "First photoSet image keys: " . implode( ', ', array_keys( $first_images ) ) );
+			error_log( "Before URL: " . ( $first_images['before']['url'] ?? 'MISSING' ) );
+			error_log( "After URL: " . ( $first_images['after']['url'] ?? 'MISSING' ) );
+		}
+
+		$normalized = [];
+
+		// Basic fields
+		$normalized['id']           = $v2_data['id'] ?? 0;
+		$normalized['procedureIds'] = $v2_data['procedureIds'] ?? [];
+		$normalized['categoryIds']  = $v2_data['categoryIds'] ?? [];
+
+		// CRITICAL: v2 API doesn't return isForWebsite field, but save_api_response_data() requires it
+		// All cases from v2 API are approved for website use (filtered server-side)
+		$normalized['isForWebsite'] = true;
+
+		// Patient data (move from patientInfo to root)
+		if ( isset( $v2_data['patientInfo'] ) ) {
+			$normalized['age']       = $v2_data['patientInfo']['age'] ?? null;
+			$normalized['gender']    = $v2_data['patientInfo']['gender'] ?? null;
+			$normalized['ethnicity'] = $v2_data['patientInfo']['ethnicity'] ?? null;
+			$normalized['height']    = $v2_data['patientInfo']['height'] ?? null;
+			$normalized['weight']    = $v2_data['patientInfo']['weight'] ?? null;
+		}
+
+		// SEO data (convert from seoInfo to caseDetails array format)
+		if ( isset( $v2_data['seoInfo'] ) ) {
+			$normalized['caseDetails'] = [
+				[
+					'seoSuffixUrl'       => $v2_data['seoInfo']['slug'] ?? '',
+					'seoHeadline'        => $v2_data['seoInfo']['headline'] ?? '',
+					'seoPageTitle'       => $v2_data['seoInfo']['title'] ?? '',
+					'seoPageDescription' => $v2_data['seoInfo']['metaDescription'] ?? '',
+				],
+			];
+		}
+
+		// Photo sets (convert nested v2 structure to flat v1 field names)
+		if ( isset( $v2_data['photoSets'] ) ) {
+			$normalized['photoSets'] = [];
+
+			foreach ( $v2_data['photoSets'] as $photo_set ) {
+				$images = $photo_set['images'] ?? [];
+
+				$flat_photo_set = [
+					'beforeLocationUrl'                    => $images['before']['url'] ?? '',
+					'afterLocationUrl1'                    => $images['after']['url'] ?? '',
+					'afterLocationUrl2'                    => $images['afterPlus']['url'] ?? '',
+					'afterLocationUrl3'                    => '',
+					'postProcessedImageLocation'           => $images['sideBySide']['standard']['url'] ?? '',
+					'highResPostProcessedImageLocation'    => $images['sideBySide']['highDefinition']['url'] ?? '',
+					'seoAltText'                           => $images['before']['altText'] ?? $images['after']['altText'] ?? '',
+					'isNude'                               => false,
+				];
+
+				$normalized['photoSets'][] = $flat_photo_set;
+			}
+		}
+
+		// Procedure details
+		$normalized['procedureDetails'] = $v2_data['procedureDetails'] ?? [];
+
+		// v2-specific fields
+		$normalized['description'] = $v2_data['description'] ?? '';
+		$normalized['createdAt']   = $v2_data['createdAt'] ?? '';
+		$normalized['updatedAt']   = $v2_data['updatedAt'] ?? '';
+
+		// DEBUG: Log normalized output
+		error_log( "Normalized Data Keys: " . implode( ', ', array_keys( $normalized ) ) );
+		error_log( "Normalized age: " . ( $normalized['age'] ?? 'NULL' ) );
+		error_log( "Normalized gender: " . ( $normalized['gender'] ?? 'NULL' ) );
+		error_log( "Normalized photoSets count: " . ( isset( $normalized['photoSets'] ) ? count( $normalized['photoSets'] ) : '0' ) );
+		if ( isset( $normalized['photoSets'][0] ) ) {
+			error_log( "First normalized photoSet keys: " . implode( ', ', array_keys( $normalized['photoSets'][0] ) ) );
+			error_log( "Normalized beforeLocationUrl: " . ( $normalized['photoSets'][0]['beforeLocationUrl'] ?? 'MISSING' ) );
+			error_log( "Normalized afterLocationUrl1: " . ( $normalized['photoSets'][0]['afterLocationUrl1'] ?? 'MISSING' ) );
+		}
+		if ( isset( $normalized['caseDetails'][0] ) ) {
+			error_log( "Normalized seoPageTitle: " . ( $normalized['caseDetails'][0]['seoPageTitle'] ?? 'MISSING' ) );
+		}
+		error_log( "=== END DATA_SYNC NORMALIZATION DEBUG ===" );
+
+		return $normalized;
 	}
 
 	/**
@@ -3266,6 +3251,12 @@ class Data_Sync {
 			current_time( 'mysql' )
 		);
 
+		// Prepare meta description
+		$meta_description = '';
+		if ( isset( $case_data['seoInfo']['metaDescription'] ) && ! empty( $case_data['seoInfo']['metaDescription'] ) ) {
+			$meta_description = wp_strip_all_tags( $case_data['seoInfo']['metaDescription'] );
+		}
+
 		$post_data = [
 			'post_type'    => 'brag_book_cases',
 			'post_title'   => $title,
@@ -3273,8 +3264,9 @@ class Data_Sync {
 			'post_content' => $content,
 			'post_status'  => isset( $case_data['draft'] ) && $case_data['draft'] ? 'draft' : 'publish',
 			'meta_input'   => [
-				'_case_api_id'    => $case_data['id'],
-				'_case_synced_at' => current_time( 'mysql' ),
+				'_case_api_id'       => $case_data['id'],
+				'_case_synced_at'    => current_time( 'mysql' ),
+				'_yoast_wpseo_metadesc' => $meta_description,
 			],
 		];
 
@@ -3327,6 +3319,12 @@ class Data_Sync {
 		];
 
 		$result = wp_update_post( $post_data, true );
+
+		// Update meta description separately
+		if ( isset( $case_data['seoInfo']['metaDescription'] ) && ! empty( $case_data['seoInfo']['metaDescription'] ) ) {
+			$meta_description = wp_strip_all_tags( $case_data['seoInfo']['metaDescription'] );
+			update_post_meta( $post_id, '_yoast_wpseo_metadesc', $meta_description );
+		}
 
 		if ( is_wp_error( $result ) ) {
 			throw new Exception( sprintf(
@@ -3499,12 +3497,20 @@ class Data_Sync {
 	/**
 	 * Generate case title from API data
 	 *
+	 * Uses seoInfo.title if available, otherwise builds from case data.
+	 *
 	 * @param array $case_data Case data from API
 	 *
 	 * @return string Generated title
 	 * @since 3.0.0
 	 */
 	private function generate_case_title( array $case_data ): string {
+		// First, check for seoInfo.title (primary source)
+		if ( isset( $case_data['seoInfo']['title'] ) && ! empty( $case_data['seoInfo']['title'] ) ) {
+			return wp_strip_all_tags( $case_data['seoInfo']['title'] );
+		}
+
+		// Fallback: build title from case data
 		$case_id = $case_data['id'] ?? 'Unknown';
 		$age     = $case_data['age'] ?? '';
 		$gender  = $case_data['gender'] ?? '';
@@ -3550,7 +3556,7 @@ class Data_Sync {
 	/**
 	 * Generate case slug from API data
 	 *
-	 * Uses seoSuffixUrl from caseDetails if available, otherwise falls back to case ID.
+	 * Uses seoInfo.slug if available, otherwise falls back to case ID.
 	 *
 	 * @param array $case_data Case data from API
 	 *
@@ -3560,25 +3566,20 @@ class Data_Sync {
 	private function generate_case_slug( array $case_data ): string {
 		$case_id = $case_data['id'] ?? 'unknown';
 
-		// Check for seoSuffixUrl in caseDetails array
-		if ( isset( $case_data['caseDetails'] ) && is_array( $case_data['caseDetails'] ) ) {
-			foreach ( $case_data['caseDetails'] as $case_detail ) {
-				if ( isset( $case_detail['seoSuffixUrl'] ) && ! empty( $case_detail['seoSuffixUrl'] ) ) {
-					// Sanitize the seoSuffixUrl to make it a valid WordPress slug
-					$slug = sanitize_title( $case_detail['seoSuffixUrl'] );
+		// First, check for seoInfo.slug (primary source)
+		if ( isset( $case_data['seoInfo']['slug'] ) && ! empty( $case_data['seoInfo']['slug'] ) ) {
+			$slug = sanitize_title( $case_data['seoInfo']['slug'] );
 
-					// Make sure it's not empty after sanitization
-					if ( ! empty( $slug ) ) {
-						error_log( 'BRAG book Gallery Sync: Using seoSuffixUrl as slug for case ' . $case_id . ': ' . $slug );
+			// Make sure it's not empty after sanitization
+			if ( ! empty( $slug ) ) {
+				error_log( 'BRAG book Gallery Sync: Using seoInfo.slug for case ' . $case_id . ': ' . $slug );
 
-						return $slug;
-					}
-				}
+				return $slug;
 			}
 		}
 
 		// Fallback to case ID
-		$fallback_slug = $case_id;
+		$fallback_slug = (string) $case_id;
 		error_log( 'BRAG book Gallery Sync: Using fallback slug for case ' . $case_id . ': ' . $fallback_slug );
 
 		return $fallback_slug;
@@ -3650,7 +3651,7 @@ class Data_Sync {
 		if ( $original_procedure_id ) {
 			$created_term = $this->create_missing_procedure_term( $original_procedure_id );
 			if ( $created_term ) {
-				wp_set_post_terms( $post_id, [ $created_term->term_id ], 'procedures' );
+				wp_set_post_terms( $post_id, [ $created_term->term_id ], Taxonomies::TAXONOMY_PROCEDURES );
 				error_log( "BRAG book Gallery Sync: ✓ Created and assigned missing procedure term for ID {$original_procedure_id} to post {$post_id}" );
 
 				return;
@@ -3659,21 +3660,21 @@ class Data_Sync {
 
 		// Strategy 2: Find and assign to "Other Procedures" or "Miscellaneous" category
 		$fallback_terms = get_terms( [
-			'taxonomy'   => 'procedures',
+			'taxonomy'   => Taxonomies::TAXONOMY_PROCEDURES,
 			'hide_empty' => false,
 			'name__in'   => [ 'Other Procedures', 'Miscellaneous', 'Other', 'General Procedures' ],
 			'number'     => 1,
 		] );
 
 		if ( ! empty( $fallback_terms ) && ! is_wp_error( $fallback_terms ) ) {
-			wp_set_post_terms( $post_id, [ $fallback_terms[0]->term_id ], 'procedures' );
+			wp_set_post_terms( $post_id, [ $fallback_terms[0]->term_id ], Taxonomies::TAXONOMY_PROCEDURES );
 			error_log( "BRAG book Gallery Sync: ✓ Assigned fallback procedure '{$fallback_terms[0]->name}' to post {$post_id}" );
 
 			return;
 		}
 
 		// Strategy 3: Create "Other Procedures" category if it doesn't exist
-		$fallback_term = wp_insert_term( 'Other Procedures', 'procedures', [
+		$fallback_term = wp_insert_term( 'Other Procedures', Taxonomies::TAXONOMY_PROCEDURES, [
 			'description' => 'Cases that could not be categorized into specific procedures',
 			'parent'      => 0, // Make it a top-level category
 		] );
@@ -3683,7 +3684,7 @@ class Data_Sync {
 			update_term_meta( $fallback_term['term_id'], 'procedure_id', 99999 ); // Use high ID for fallback
 			update_term_meta( $fallback_term['term_id'], 'nudity', 'false' );
 
-			wp_set_post_terms( $post_id, [ $fallback_term['term_id'] ], 'procedures' );
+			wp_set_post_terms( $post_id, [ $fallback_term['term_id'] ], Taxonomies::TAXONOMY_PROCEDURES );
 			error_log( "BRAG book Gallery Sync: ✓ Created and assigned 'Other Procedures' fallback category to post {$post_id}" );
 
 			return;
@@ -3691,7 +3692,7 @@ class Data_Sync {
 
 		// Strategy 4: Last resort - assign to ANY existing procedure
 		$any_terms = get_terms( [
-			'taxonomy'   => 'procedures',
+			'taxonomy'   => Taxonomies::TAXONOMY_PROCEDURES,
 			'hide_empty' => false,
 			'number'     => 1,
 			'orderby'    => 'count',
@@ -3699,7 +3700,7 @@ class Data_Sync {
 		] );
 
 		if ( ! empty( $any_terms ) && ! is_wp_error( $any_terms ) ) {
-			wp_set_post_terms( $post_id, [ $any_terms[0]->term_id ], 'procedures' );
+			wp_set_post_terms( $post_id, [ $any_terms[0]->term_id ], Taxonomies::TAXONOMY_PROCEDURES );
 			error_log( "BRAG book Gallery Sync: ✓ Assigned to most common procedure '{$any_terms[0]->name}' as last resort for post {$post_id}" );
 
 			return;
@@ -3733,7 +3734,7 @@ class Data_Sync {
 			}
 
 			// Create the term
-			$result = wp_insert_term( $procedure_name, 'procedures', [
+			$result = wp_insert_term( $procedure_name, Taxonomies::TAXONOMY_PROCEDURES, [
 				'description' => "Auto-created procedure term for procedure ID {$procedure_id}",
 				'parent'      => 0, // Make it a top-level category for now
 			] );
@@ -3782,7 +3783,7 @@ class Data_Sync {
 			'fields'         => 'ids',
 			'tax_query'      => [
 				[
-					'taxonomy' => 'procedures',
+					'taxonomy' => Taxonomies::TAXONOMY_PROCEDURES,
 					'operator' => 'NOT EXISTS',
 				],
 			],

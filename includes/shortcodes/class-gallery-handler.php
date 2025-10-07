@@ -562,20 +562,6 @@ final class Gallery_Handler {
 				<div class="brag-book-gallery-main-content" role="region"
 					 aria-label="Gallery content"
 					 id="gallery-content"<?php echo $is_favorites_page ? ' data-favorites-page="true"' : ''; ?>>
-					<!-- Filter badges container (initially hidden, populated by JavaScript) -->
-					<div class="brag-book-gallery-controls-left">
-						<div class="brag-book-gallery-active-filters">
-							<div class="brag-book-gallery-filter-badges"
-								 data-action="filter-badges">
-								<!-- Filter badges will be populated by JavaScript -->
-							</div>
-							<button class="brag-book-gallery-clear-all-filters"
-									data-action="clear-filters"
-									style="display: none;">
-								<?php echo esc_html__( 'Clear All', 'brag-book-gallery' ); ?>
-							</button>
-						</div>
-					</div>
 					<?php
 					// Check if we're showing a single case view
 					if ( $is_case_view && ! empty( $case_id ) ) {
@@ -784,6 +770,7 @@ final class Gallery_Handler {
 										</div>
 									</div>
 								</details>
+								<button class="brag-book-gallery-clear-all-filters" data-action="clear-filters">Clear All</button>
 							</div>
 							<?php
 							// Get columns from settings
@@ -1497,27 +1484,66 @@ final class Gallery_Handler {
 	 */
 	private static function render_taxonomy_cases( \WP_Term $taxonomy ): string {
 
-		// Get items per page from settings
-		$items_per_page = absint( get_option( 'brag_book_gallery_items_per_page', 12 ) );
+		// Show all results - no pagination limit
+		// Use -1 to get all posts for this taxonomy
+		$items_per_page = -1;
 
-		// Build query args using case order meta field for sorting
+		// Get case order list from taxonomy term meta
+		$case_order_list = get_term_meta( $taxonomy->term_id, 'brag_book_gallery_case_order_list', true );
+
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( 'BRAGBook Gallery: render_taxonomy_cases for term ' . $taxonomy->term_id . ' (' . $taxonomy->slug . ')' );
+			error_log( 'BRAGBook Gallery: Case order list: ' . print_r( $case_order_list, true ) );
+		}
+
+		// Build query args
 		$query_args = array(
 			'post_type'      => \BRAGBookGallery\Includes\Extend\Post_Types::POST_TYPE_CASES,
 			'post_status'    => 'publish',
 			'posts_per_page' => $items_per_page,
-			'tax_query'      => array(
+		);
+
+		// If we have case order with WordPress IDs, use post__in for ordering
+		if ( is_array( $case_order_list ) && ! empty( $case_order_list ) ) {
+			$post_ids = [];
+			foreach ( $case_order_list as $case_data ) {
+				if ( is_array( $case_data ) && ! empty( $case_data['wp_id'] ) ) {
+					$post_ids[] = $case_data['wp_id'];
+				}
+			}
+
+			if ( ! empty( $post_ids ) ) {
+				$query_args['post__in'] = $post_ids;
+				$query_args['orderby']  = 'post__in';
+
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+					error_log( 'BRAGBook Gallery: Using post__in with ' . count( $post_ids ) . ' WordPress IDs for ordering' );
+					error_log( 'BRAGBook Gallery: Post IDs in order: ' . implode( ', ', $post_ids ) );
+				}
+			} else {
+				// Fallback to taxonomy filter
+				$query_args['tax_query'] = array(
+					array(
+						'taxonomy' => $taxonomy->taxonomy,
+						'field'    => 'term_id',
+						'terms'    => $taxonomy->term_id,
+					),
+				);
+				$query_args['orderby'] = 'date';
+				$query_args['order']   = 'DESC';
+			}
+		} else {
+			// Fallback to taxonomy filter if no case order list
+			$query_args['tax_query'] = array(
 				array(
 					'taxonomy' => $taxonomy->taxonomy,
 					'field'    => 'term_id',
 					'terms'    => $taxonomy->term_id,
 				),
-			),
-			'meta_key'       => 'brag_book_gallery_case_order',
-			'orderby'        => array(
-				'meta_value_num' => 'ASC',  // Primary sort by case order
-				'date'           => 'DESC',  // Secondary sort by date
-			),
-		);
+			);
+			$query_args['orderby'] = 'date';
+			$query_args['order']   = 'DESC';
+		}
 
 		$posts = get_posts( $query_args );
 

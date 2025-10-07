@@ -1875,6 +1875,27 @@ class Debug_Page extends Settings_Base {
 	 * @return void
 	 */
 	private function render_api_test_content( array $api_tokens, array $website_property_ids ): void {
+		// Get saved account info which contains organization names
+		$account_info = get_option( 'brag_book_gallery_account_info', array() );
+		$connections_info = [];
+
+		foreach ( $api_tokens as $index => $token ) {
+			$property_id = $website_property_ids[$index] ?? null;
+			if ( ! empty( $token ) && ! empty( $property_id ) ) {
+				// Get organization name from saved account info
+				$org_name = 'Unknown';
+				if ( ! empty( $account_info[$index]['organization']['name'] ) ) {
+					$org_name = $account_info[$index]['organization']['name'];
+				}
+
+				$connections_info[$index] = [
+					'token' => $token,
+					'property_id' => $property_id,
+					'organization' => $org_name,
+					'valid' => ! empty( $token ) && ! empty( $property_id ),
+				];
+			}
+		}
 		?>
 		<div class="api-test-config">
 			<div class="config-info">
@@ -1883,14 +1904,17 @@ class Debug_Page extends Settings_Base {
 					<p class="description"><?php esc_html_e( 'Multiple connections configured. Tests will use all connections.', 'brag-book-gallery' ); ?></p>
 				<?php endif; ?>
 				<ul>
-					<?php foreach ( $api_tokens as $index => $token ) : ?>
+					<?php foreach ( $connections_info as $index => $info ) : ?>
 						<li>
 							<?php
-							echo esc_html( sprintf(
-								__( 'Connection %d: Token %s... | Property ID: %s', 'brag-book-gallery' ),
+							$status_icon = $info['valid'] ? '<span style="color: #00a32a;">●</span>' : '<span style="color: #d63638;">●</span>';
+							echo wp_kses_post( sprintf(
+								__( '%s Connection %d: <strong>%s</strong> | Token %s... | Property ID: %s', 'brag-book-gallery' ),
+								$status_icon,
 								$index + 1,
-								substr( $token, 0, 10 ),
-								$website_property_ids[$index] ?? 'N/A'
+								esc_html( $info['organization'] ),
+								esc_html( substr( $info['token'], 0, 10 ) ),
+								esc_html( $info['property_id'] )
 							) );
 							?>
 						</li>
@@ -1904,6 +1928,33 @@ class Debug_Page extends Settings_Base {
 				<table class="form-table" style="margin-top: 10px;">
 					<tr>
 						<th style="padding: 5px; width: 150px;">
+							<label for="test-base-url"><?php esc_html_e( 'Base URL:', 'brag-book-gallery' ); ?></label>
+						</th>
+						<td style="padding: 5px;">
+							<input type="text" id="test-base-url" value="https://app.bragbookgallery.com" class="input-field regular-text" style="width: 350px;">
+							<span class="description"><?php esc_html_e( 'API base URL (e.g., https://dev.bragbookgallery.com for dev)', 'brag-book-gallery' ); ?></span>
+						</td>
+					</tr>
+					<tr>
+						<th style="padding: 5px;">
+							<label for="test-api-token"><?php esc_html_e( 'API Token:', 'brag-book-gallery' ); ?></label>
+						</th>
+						<td style="padding: 5px;">
+							<input type="text" id="test-api-token" placeholder="<?php echo esc_attr( ! empty( $api_tokens[0] ) ? substr( $api_tokens[0], 0, 20 ) . '...' : 'Enter API token' ); ?>" class="input-field regular-text" style="width: 350px;">
+							<span class="description"><?php esc_html_e( 'API token for Bearer authentication (used by v2 endpoints)', 'brag-book-gallery' ); ?></span>
+						</td>
+					</tr>
+					<tr>
+						<th style="padding: 5px;">
+							<label for="test-website-property-id"><?php esc_html_e( 'Website Property ID:', 'brag-book-gallery' ); ?></label>
+						</th>
+						<td style="padding: 5px;">
+							<input type="number" id="test-website-property-id" placeholder="<?php echo esc_attr( ! empty( $website_property_ids[0] ) ? $website_property_ids[0] : '84' ); ?>" class="input-field regular-text" style="width: 150px;">
+							<span class="description"><?php esc_html_e( 'Website Property ID for API requests', 'brag-book-gallery' ); ?></span>
+						</td>
+					</tr>
+					<tr>
+						<th style="padding: 5px;">
 							<label for="test-procedure-id"><?php esc_html_e( 'Procedure ID:', 'brag-book-gallery' ); ?></label>
 						</th>
 						<td style="padding: 5px;">
@@ -1917,7 +1968,25 @@ class Debug_Page extends Settings_Base {
 						</th>
 						<td style="padding: 5px;">
 							<input type="number" id="test-member-id" placeholder="129" class="input-field regular-text" style="width: 150px;">
-							<span class="description"><?php esc_html_e( 'Used by: Cases, Filters (default: 129) - Not used by Carousel', 'brag-book-gallery' ); ?></span>
+							<span class="description"><?php esc_html_e( 'Used by: Cases, Filters (default: 129)', 'brag-book-gallery' ); ?></span>
+						</td>
+					</tr>
+					<tr>
+						<th style="padding: 5px;">
+							<label for="test-page"><?php esc_html_e( 'Page:', 'brag-book-gallery' ); ?></label>
+						</th>
+						<td style="padding: 5px;">
+							<input type="number" id="test-page" placeholder="1" value="1" class="input-field regular-text" style="width: 150px;">
+							<span class="description"><?php esc_html_e( 'Page number for pagination (default: 1)', 'brag-book-gallery' ); ?></span>
+						</td>
+					</tr>
+					<tr>
+						<th style="padding: 5px;">
+							<label for="test-limit"><?php esc_html_e( 'Limit:', 'brag-book-gallery' ); ?></label>
+						</th>
+						<td style="padding: 5px;">
+							<input type="number" id="test-limit" placeholder="20" value="20" class="input-field regular-text" style="width: 150px;">
+							<span class="description"><?php esc_html_e( 'Items per page (default: 20)', 'brag-book-gallery' ); ?></span>
 						</td>
 					</tr>
 				</table>
@@ -2061,6 +2130,72 @@ class Debug_Page extends Settings_Base {
 							</button>
 						</td>
 					</tr>
+				</tbody>
+			</table>
+		</div>
+
+		<!-- v2 API Endpoints -->
+		<h3 style="margin-top: 30px;"><?php esc_html_e( 'v2 API Endpoints', 'brag-book-gallery' ); ?></h3>
+		<div class="api-test-container">
+			<table class="wp-list-table widefat fixed striped">
+				<thead>
+					<tr>
+						<th><?php esc_html_e( 'Endpoint', 'brag-book-gallery' ); ?></th>
+						<th><?php esc_html_e( 'Method', 'brag-book-gallery' ); ?></th>
+						<th><?php esc_html_e( 'Description', 'brag-book-gallery' ); ?></th>
+						<th><?php esc_html_e( 'Action', 'brag-book-gallery' ); ?></th>
+					</tr>
+				</thead>
+				<tbody>
+					<!-- Cases Endpoint (v2) -->
+					<tr>
+						<td><code>/api/plugin/v2/cases/</code></td>
+						<td><span class="method-badge method-get">GET</span></td>
+						<td><?php esc_html_e( 'Get paginated case listings (v2 - requires procedureId)', 'brag-book-gallery' ); ?></td>
+						<td>
+							<button class="button button-secondary test-endpoint-btn"
+							        data-endpoint="cases-v2"
+							        data-method="GET"
+							        data-url="/api/plugin/v2/cases/">
+								<?php esc_html_e( 'Test', 'brag-book-gallery' ); ?>
+							</button>
+						</td>
+					</tr>
+
+					<!-- Single Case (v2) -->
+					<tr>
+						<td><code>/api/plugin/v2/cases/{id}</code></td>
+						<td><span class="method-badge method-get">GET</span></td>
+						<td>
+							<?php esc_html_e( 'Get specific case details (v2 - Bearer auth)', 'brag-book-gallery' ); ?>
+							<input type="number" id="case-id-v2-input" placeholder="Case ID" class="small-text" style="margin-left: 10px;">
+						</td>
+						<td>
+							<button class="button button-secondary test-endpoint-btn"
+							        data-endpoint="single-case-v2"
+							        data-method="GET"
+							        data-url="/api/plugin/v2/cases/"
+							        data-needs-case-id-v2="true">
+								<?php esc_html_e( 'Test', 'brag-book-gallery' ); ?>
+							</button>
+						</td>
+					</tr>
+
+					<!-- Token Validation -->
+					<tr>
+						<td><code>/api/plugin/v2/validation/token</code></td>
+						<td><span class="method-badge method-get">GET</span></td>
+						<td><?php esc_html_e( 'Validate API token (Bearer auth)', 'brag-book-gallery' ); ?></td>
+						<td>
+							<button class="button button-secondary test-endpoint-btn"
+							        data-endpoint="validate-token"
+							        data-method="GET"
+							        data-url="/api/plugin/v2/validation/token">
+								<?php esc_html_e( 'Test', 'brag-book-gallery' ); ?>
+							</button>
+						</td>
+					</tr>
+
 				</tbody>
 			</table>
 		</div>
@@ -2226,7 +2361,6 @@ class Debug_Page extends Settings_Base {
 			// Get all API tokens and property IDs as arrays
 			const apiTokens = <?php echo wp_json_encode( array_values( array_filter( $api_tokens ) ) ); ?>;
 			const websitePropertyIds = <?php echo wp_json_encode( array_values( array_filter( array_map( 'intval', $website_property_ids ) ) ) ); ?>;
-			const baseUrl = 'https://app.bragbookgallery.com';
 			const ajaxUrl = '<?php echo admin_url( 'admin-ajax.php' ); ?>';
 			const nonce = '<?php echo wp_create_nonce( 'brag_book_api_test' ); ?>';
 
@@ -2234,6 +2368,30 @@ class Debug_Page extends Settings_Base {
 			if (!apiTokens || apiTokens.length === 0) {
 				console.error('No valid API tokens found. Please check your API settings.');
 			}
+
+			// Helper function to get base URL from input
+			const getBaseUrl = () => {
+				const baseUrlInput = document.getElementById('test-base-url');
+				return baseUrlInput ? baseUrlInput.value.trim() : 'https://app.bragbookgallery.com';
+			};
+
+			const getWebsitePropertyId = () => {
+				const propertyIdInput = document.getElementById('test-website-property-id');
+				if (propertyIdInput && propertyIdInput.value) {
+					return propertyIdInput.value;
+				}
+				// Fallback to configured value or default
+				return websitePropertyIds[0] ? websitePropertyIds[0].toString() : '84';
+			};
+
+			const getApiToken = () => {
+				const tokenInput = document.getElementById('test-api-token');
+				if (tokenInput && tokenInput.value) {
+					return tokenInput.value;
+				}
+				// Fallback to configured value
+				return apiTokens[0] || '';
+			};
 
 			// Helper functions
 			const showElement = (selector) => {
@@ -2324,15 +2482,28 @@ class Debug_Page extends Settings_Base {
 				btn.addEventListener('click', function() {
 					const endpoint = this.dataset.endpoint;
 					const method = this.dataset.method;
+					const baseUrl = getBaseUrl();
 					let url = baseUrl + this.dataset.url;
 					const needsId = this.dataset.needsId;
+					const needsCaseIdV2 = this.dataset.needsCaseIdV2;
 
-					// Check if case ID is needed
+					// Check if case ID is needed (v1 endpoint)
 					if (needsId) {
 						const caseIdInput = document.getElementById('case-id-input');
 						const caseId = caseIdInput ? caseIdInput.value : '';
 						if (!caseId) {
 							alert('Please enter a Case ID');
+							return;
+						}
+						url += caseId;
+					}
+
+					// Check if case ID is needed (v2 endpoint)
+					if (needsCaseIdV2) {
+						const caseIdInput = document.getElementById('case-id-v2-input');
+						const caseId = caseIdInput ? caseIdInput.value : '';
+						if (!caseId) {
+							alert('Please enter a Case ID for v2 endpoint');
 							return;
 						}
 						url += caseId;
@@ -2409,8 +2580,8 @@ class Debug_Page extends Settings_Base {
 								break;
 
 							case 'consultations':
-								url += '?apiToken=' + encodeURIComponent(apiTokens[0]) +
-								       '&websitepropertyId=' + encodeURIComponent(websitePropertyIds[0]);
+								url += '?apiToken=' + encodeURIComponent(getApiToken()) +
+								       '&websitepropertyId=' + encodeURIComponent(getWebsitePropertyId());
 								requestBody = {
 									email: "test@example.com",
 									phone: "(555) 123-4567",
@@ -2420,20 +2591,89 @@ class Debug_Page extends Settings_Base {
 								break;
 						}
 					} else {
-						// For GET requests (carousel), add params to URL
-						const procedureInput = document.getElementById('test-procedure-id');
-						const params = new URLSearchParams({
-							websitePropertyId: websitePropertyIds[0].toString(),
-							start: '1',
-							limit: '10',
-							apiToken: apiTokens[0]
-						});
+						// For GET requests, handle different endpoint types
+						if (endpoint === 'validate-token') {
+							// Token validation uses Bearer auth and websitePropertyId query param
+							const params = new URLSearchParams({
+								websitePropertyId: getWebsitePropertyId()
+							});
+							url += '?' + params.toString();
+							// Add Bearer token to headers
+							const token = getApiToken();
+							requestHeaders['Authorization'] = 'Bearer ' + token;
+							console.log('Token Validation GET Request URL:', url);
+							console.log('Token Validation will use Bearer auth with token:', token.substring(0, 10) + '...');
+						} else if (endpoint === 'cases-v2') {
+							// v2 cases endpoint uses Bearer auth with websitePropertyId and procedureId
+							const procedureInput = document.getElementById('test-procedure-id');
+							const memberInput = document.getElementById('test-member-id');
+							const pageInput = document.getElementById('test-page');
+							const limitInput = document.getElementById('test-limit');
 
-						if (endpoint === 'carousel') {
-							params.append('procedureId', procedureInput?.value || '3405');
+							const testProcedureId = procedureInput ? (procedureInput.value || '4168') : '4168';
+							const testMemberId = memberInput ? memberInput.value : '';
+							const testPage = pageInput ? (pageInput.value || '1') : '1';
+							const testLimit = limitInput ? (limitInput.value || '20') : '20';
+
+							const params = new URLSearchParams({
+								websitePropertyId: getWebsitePropertyId(),
+								procedureId: testProcedureId,
+								page: testPage,
+								limit: testLimit
+							});
+
+							// Add optional memberId if provided
+							if (testMemberId) {
+								params.append('memberId', testMemberId);
+							}
+
+							url += '?' + params.toString();
+							// Add Bearer token to headers
+							const token = getApiToken();
+							requestHeaders['Authorization'] = 'Bearer ' + token;
+							console.log('v2 Cases GET Request URL:', url);
+							console.log('v2 Cases will use Bearer auth with token:', token.substring(0, 10) + '...');
+						} else if (endpoint === 'case-detail-v2') {
+							// v2 case detail endpoint uses Bearer auth with websitePropertyId
+							const procedureInput = document.getElementById('test-procedure-id');
+							const memberInput = document.getElementById('test-member-id');
+							const testProcedureId = procedureInput ? procedureInput.value : '';
+							const testMemberId = memberInput ? memberInput.value : '';
+
+							const params = new URLSearchParams({
+								websitePropertyId: getWebsitePropertyId()
+							});
+
+							// Add optional parameters if provided
+							if (testProcedureId) {
+								params.append('procedureId', testProcedureId);
+							}
+							if (testMemberId) {
+								params.append('memberId', testMemberId);
+							}
+
+							url += '?' + params.toString();
+							// Add Bearer token to headers
+							const token = getApiToken();
+							requestHeaders['Authorization'] = 'Bearer ' + token;
+							console.log('v2 Case Detail GET Request URL:', url);
+							console.log('v2 Case Detail will use Bearer auth with token:', token.substring(0, 10) + '...');
+						} else {
+							// For other GET requests (carousel), add params to URL
+							const procedureInput = document.getElementById('test-procedure-id');
+							const params = new URLSearchParams({
+								websitePropertyId: getWebsitePropertyId(),
+								start: '1',
+								limit: '10',
+								apiToken: getApiToken()
+							});
+
+							if (endpoint === 'carousel') {
+								params.append('procedureId', procedureInput?.value || '3405');
+							}
+
+							url += '?' + params.toString();
 						}
-
-						url += '?' + params.toString();
 					}
 
 					// Store request details for display
@@ -2583,7 +2823,7 @@ class Debug_Page extends Settings_Base {
 	}
 
 	/**
-	 * Handle API test requests via AJAX (copied from Settings_Api_Test)
+	 * Handle API test requests via AJAX
 	 *
 	 * @since 3.0.0
 	 * @return void
@@ -2597,85 +2837,183 @@ class Debug_Page extends Settings_Base {
 
 		// Get request parameters
 		$endpoint = sanitize_text_field( $_POST['endpoint'] ?? '' );
-		$method = sanitize_text_field( $_POST['method'] ?? 'POST' );
-		$url = sanitize_url( $_POST['url'] ?? '' );
 		$body = isset( $_POST['body'] ) ? json_decode( stripslashes( $_POST['body'] ), true ) : null;
 
-		// Get timeout from settings or use default
-		$api_timeout = intval( get_option( 'brag_book_gallery_api_timeout', 30 ) );
+		// Get API configuration
+		$api_tokens = get_option( 'brag_book_gallery_api_token', array() );
+		$website_property_ids = get_option( 'brag_book_gallery_website_property_id', array() );
 
-		// Make the API request using wp_remote_request - matching the format in class-endpoints.php
-		$args = array(
-			'method' => $method,
-			'timeout' => $api_timeout,
-			'headers' => array(
-				'Content-Type' => 'application/json',
-				'Accept' => 'application/json',
-				'User-Agent' => 'BRAG book-Gallery-Plugin/3.0.0',
-				'X-Plugin-Version' => '3.0.0',
-				'X-WordPress-Version' => get_bloginfo( 'version' ),
-				'X-Site-URL' => home_url(),
-			),
-			'sslverify' => false, // Set to false for local development
-		);
-
-		// Add body for POST requests
-		if ( $method === 'POST' && $body ) {
-			$args['body'] = wp_json_encode( $body );
-		} elseif ( $method === 'GET' ) {
-			// For GET requests, use simpler headers (carousel endpoint)
-			$args['headers'] = array(
-				'Accept' => 'application/json',
-				'User-Agent' => 'BRAG book Gallery Plugin/3.0.0',
-			);
-		}
-
-		// Log the request for debugging
-		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			error_log( 'API Test Request: ' . print_r( array( 'url' => $url, 'method' => $method, 'body' => $body ), true ) );
-		}
-
-		// Make the request
-		$response = wp_remote_request( $url, $args );
-
-		if ( is_wp_error( $response ) ) {
-			// Log detailed error information
-			error_log( 'API Test Error: ' . $response->get_error_message() );
-			error_log( 'API Test Error Code: ' . $response->get_error_code() );
-			error_log( 'API Test URL: ' . $url );
-			error_log( 'API Test Args: ' . print_r( $args, true ) );
-
+		if ( empty( $api_tokens ) || empty( $website_property_ids ) ) {
 			wp_send_json_error( array(
-				'message' => $response->get_error_message(),
-				'code' => $response->get_error_code(),
-				'details' => 'Failed to connect to API endpoint: ' . $url,
-				'wp_error_data' => $response->get_error_data(),
+				'message' => 'API configuration is missing. Please configure your API settings.',
 			) );
 			return;
 		}
 
-		$response_code = wp_remote_retrieve_response_code( $response );
-		$response_body = wp_remote_retrieve_body( $response );
+		// Initialize Endpoints class
+		$endpoints = new \BRAGBookGallery\Includes\REST\Endpoints();
 
-		// Try to decode JSON response
-		$decoded_body = json_decode( $response_body, true );
-		if ( json_last_error() === JSON_ERROR_NONE ) {
-			$response_body = $decoded_body;
+		try {
+			$response_body = null;
+			$start_time = microtime( true );
+
+			// Route to appropriate Endpoints method based on endpoint type
+			switch ( $endpoint ) {
+				case 'sidebar':
+					$response_body = $endpoints->get_api_sidebar( $api_tokens );
+					break;
+
+				case 'cases':
+					$response_body = $endpoints->get_pagination_data( $body );
+					break;
+
+				case 'carousel':
+					$options = array(
+						'websitePropertyId' => $website_property_ids[0],
+						'procedureId' => $body['procedureId'] ?? null,
+						'limit' => 10,
+						'start' => 1,
+					);
+					$response_body = $endpoints->get_carousel_data( $api_tokens[0], $options );
+					break;
+
+				case 'filters':
+					$response_body = $endpoints->get_pagination_data( $body );
+					break;
+
+				case 'favorites-list':
+					$email = $body['email'] ?? 'test@example.com';
+					$response_body = $endpoints->get_favorite_list_data( $api_tokens, $website_property_ids, $email );
+					break;
+
+				case 'sitemap':
+					$response_body = $endpoints->get_sitemap_data( $api_tokens, $website_property_ids );
+					break;
+
+				case 'single-case':
+					$case_id = $body['caseId'] ?? '';
+					if ( empty( $case_id ) ) {
+						throw new \Exception( 'Case ID is required for single case endpoint' );
+					}
+					$response_body = $endpoints->get_case_details( (string) $case_id );
+					break;
+
+				case 'consultations':
+					$response_body = $endpoints->submit_consultation(
+						$api_tokens[0],
+						intval( $website_property_ids[0] ),
+						$body['email'] ?? 'test@example.com',
+						$body['phone'] ?? '(555) 123-4567',
+						$body['name'] ?? 'Test User',
+						$body['details'] ?? 'Test consultation from API test page'
+					);
+					break;
+
+				case 'views':
+					$case_id = intval( $body['caseId'] ?? 0 );
+					if ( $case_id <= 0 ) {
+						throw new \Exception( 'Valid Case ID is required for views endpoint' );
+					}
+					$response_body = $endpoints->track_case_view( $api_tokens[0], $case_id );
+					break;
+
+				case 'validate-token':
+					$result = $endpoints->validate_token( $api_tokens[0], intval( $website_property_ids[0] ) );
+					$response_body = wp_json_encode( $result );
+					break;
+
+				case 'cases-v2':
+					// For GET requests, parameters come from the URL
+					$url_parts = wp_parse_url( sanitize_text_field( $_POST['url'] ?? '' ) );
+					parse_str( $url_parts['query'] ?? '', $query_params );
+
+					$procedure_id = intval( $query_params['procedureId'] ?? 0 );
+					if ( $procedure_id <= 0 ) {
+						throw new \Exception( 'Valid Procedure ID is required for v2 cases endpoint' );
+					}
+
+					$page = intval( $query_params['page'] ?? 1 );
+					$limit = intval( $query_params['limit'] ?? 20 );
+					$member_id = isset( $query_params['memberId'] ) ? strval( $query_params['memberId'] ) : null;
+
+					$result = $endpoints->get_cases_v2(
+						$api_tokens[0],
+						intval( $website_property_ids[0] ),
+						$procedure_id,
+						$page,
+						$limit,
+						$member_id
+					);
+					$response_body = wp_json_encode( $result );
+					break;
+
+				case 'single-case-v2':
+					// For GET requests, parameters come from the URL
+					$url_parts = wp_parse_url( sanitize_text_field( $_POST['url'] ?? '' ) );
+					parse_str( $url_parts['query'] ?? '', $query_params );
+
+					// Case ID comes from the URL path
+					preg_match( '/\/cases\/(\d+)/', sanitize_text_field( $_POST['url'] ?? '' ), $matches );
+					$case_id = intval( $matches[1] ?? 0 );
+
+					if ( $case_id <= 0 ) {
+						throw new \Exception( 'Valid Case ID is required for v2 single case endpoint' );
+					}
+
+					$procedure_id = intval( $query_params['procedureId'] ?? 0 );
+					$member_id = isset( $query_params['memberId'] ) ? strval( $query_params['memberId'] ) : null;
+
+					$result = $endpoints->get_case_detail_v2(
+						$api_tokens[0],
+						$case_id,
+						intval( $website_property_ids[0] ),
+						$procedure_id > 0 ? $procedure_id : null,
+						$member_id
+					);
+					$response_body = wp_json_encode( $result );
+					break;
+
+				default:
+					throw new \Exception( 'Unsupported endpoint: ' . $endpoint );
+			}
+
+			$duration = microtime( true ) - $start_time;
+
+			// Check if we got a response
+			if ( $response_body === null ) {
+				throw new \Exception( 'No response received from API' );
+			}
+
+			// Try to decode JSON response if it's a string
+			$decoded_body = $response_body;
+			if ( is_string( $response_body ) ) {
+				$decoded = json_decode( $response_body, true );
+				if ( json_last_error() === JSON_ERROR_NONE ) {
+					$decoded_body = $decoded;
+				}
+			}
+
+			wp_send_json_success( array(
+				'status' => 200,
+				'body' => $decoded_body,
+				'headers' => array(
+					'Content-Type' => 'application/json',
+				),
+				'duration' => round( $duration * 1000, 2 ) . 'ms',
+			) );
+
+		} catch ( \Exception $e ) {
+			// Log detailed error information
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'API Test Error: ' . $e->getMessage() );
+				error_log( 'API Test Endpoint: ' . $endpoint );
+			}
+
+			wp_send_json_error( array(
+				'message' => $e->getMessage(),
+				'code' => 'api_test_error',
+				'details' => 'Failed to test endpoint: ' . $endpoint,
+			) );
 		}
-
-		// Get headers array
-		$headers_object = wp_remote_retrieve_headers( $response );
-		$headers = array();
-		if ( is_object( $headers_object ) && method_exists( $headers_object, 'getAll' ) ) {
-			$headers = $headers_object->getAll();
-		} elseif ( is_array( $headers_object ) ) {
-			$headers = $headers_object;
-		}
-
-		wp_send_json_success( array(
-			'status' => $response_code,
-			'body' => $response_body,
-			'headers' => $headers,
-		) );
 	}
 }

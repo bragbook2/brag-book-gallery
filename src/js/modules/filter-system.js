@@ -1,6 +1,6 @@
 /**
  * Filter System Component
- * Manages expandable filter groups with GSAP animations and URL routing
+ * Manages expandable filter groups with URL routing
  * Handles procedure filtering, browser history, and AJAX content loading
  * Supports both JavaScript-based filtering and URL navigation modes
  */
@@ -31,7 +31,6 @@ class FilterSystem {
 		this.options = {
 			mode: options.mode || 'javascript', // Filter mode
 			baseUrl: options.baseUrl || '/gallery', // Base URL for navigation
-			animateWithGsap: typeof gsap !== 'undefined', // Use GSAP if available
 			closeOthersOnOpen: options.closeOthersOnOpen === true, // Accordion behavior - disabled by default
 			onFilterChange: options.onFilterChange || (() => {}), // Filter change callback
 			onNavigate: options.onNavigate || ((url) => { window.location.href = url; }), // Navigation callback
@@ -56,8 +55,6 @@ class FilterSystem {
 
 		// Load any existing filter state from URL
 		this.loadStateFromUrl();
-
-		// GSAP initialization removed - native details elements handle their own state
 	}
 
 	/**
@@ -176,17 +173,6 @@ class FilterSystem {
 		this.loadFilteredContent(category, procedure, procedureIds, hasNudity);
 
 		// Note: Nudity warnings are now handled at render time based on data-nudity attribute
-
-		// Animate the selection
-		if (this.options.animateWithGsap && typeof gsap !== 'undefined') {
-			gsap.to(link, {
-				scale: 1.02,
-				duration: 0.1,
-				yoyo: true,
-				repeat: 1,
-				ease: "power2.inOut"
-			});
-		}
 	}
 
 	navigateToFilteredPage() {
@@ -428,11 +414,7 @@ class FilterSystem {
 						}
 					}
 
-					// Re-initialize carousels if present
-					const carousels = galleryContent.querySelectorAll('.brag-book-gallery-carousel-wrapper');
-					carousels.forEach(carousel => {
-						new Carousel(carousel);
-					});
+					// Carousels removed - no reinitialization needed
 
 					// Regenerate procedure filters after content loads
 					setTimeout(function() {
@@ -453,12 +435,10 @@ class FilterSystem {
 					// this.updateFilterBadges();
 				} else {
 					// Direct API failed, fallback to AJAX
-					console.log('Direct API failed, falling back to AJAX');
 					this.loadFilteredContentViaAjax(category, procedure, procedureIds, hasNudity, procedureName, galleryContent);
 				}
 			})
 			.catch(error => {
-				console.log('Direct API error, falling back to AJAX:', error);
 				this.loadFilteredContentViaAjax(category, procedure, procedureIds, hasNudity, procedureName, galleryContent);
 			});
 	}
@@ -621,11 +601,7 @@ class FilterSystem {
 						}
 					}
 
-					// Re-initialize carousels if present
-					const carousels = galleryContent.querySelectorAll('.brag-book-gallery-carousel-wrapper');
-					carousels.forEach(carousel => {
-						new Carousel(carousel);
-					});
+					// Carousels removed - no reinitialization needed
 
 					// Regenerate procedure filters after content loads
 					setTimeout(function() {
@@ -831,7 +807,6 @@ class FilterSystem {
 	 */
 	setupFilterEventListeners() {
 		const filterCheckboxes = document.querySelectorAll('.brag-book-gallery-filter-option input[type="checkbox"]');
-		console.log('Setting up FilterSystem event listeners for', filterCheckboxes.length, 'checkboxes');
 
 		// Clean up any existing procedure badges first
 		const activeFiltersSection = document.querySelector('.brag-book-gallery-active-filters');
@@ -853,8 +828,6 @@ class FilterSystem {
 	 * Handle filter checkbox change events
 	 */
 	handleFilterChange(event) {
-		console.log('FilterSystem checkbox changed:', event.target.dataset.filterType, '=', event.target.value, 'checked:', event.target.checked);
-		// Call the global filter application function
 		if (typeof window.applyProcedureFilters === 'function') {
 			window.applyProcedureFilters();
 		} else {
@@ -889,6 +862,17 @@ class FilterSystem {
 		const procedureIds = caseData.procedureIds ? caseData.procedureIds.join(',') : '';
 		if (procedureIds) {
 			dataAttrs += ` data-procedure-ids="${this.escapeHtml(procedureIds)}"`;
+		}
+
+		// Get current procedure context from active nav link
+		const activeProcedureLink = document.querySelector('.brag-book-gallery-nav-link.brag-book-gallery-active');
+		const currentProcedureId = activeProcedureLink?.dataset.procedureId || '';
+		const currentTermId = activeProcedureLink?.dataset.termId || '';
+		if (currentProcedureId) {
+			dataAttrs += ` data-current-procedure-id="${this.escapeHtml(currentProcedureId)}"`;
+		}
+		if (currentTermId) {
+			dataAttrs += ` data-current-term-id="${this.escapeHtml(currentTermId)}"`;
 		}
 
 		// Build case URL (matching PHP structure)
@@ -1021,6 +1005,110 @@ class FilterSystem {
 	}
 
 	/**
+	 * Generate procedure filters from DOM case cards
+	 * Reads data attributes from case cards already on the page
+	 */
+	generateFiltersFromDOMCards() {
+		// Find all case cards on the page
+		const caseCards = document.querySelectorAll('.brag-book-gallery-case-card');
+
+		if (caseCards.length === 0) {
+			return '';
+		}
+
+		// Collect filter data from case card data attributes
+		const filterData = {
+			age: new Set(),
+			gender: new Set(),
+			ethnicity: new Set(),
+			height: new Set(),
+			weight: new Set()
+		};
+
+		// Extract filter values from data attributes
+		caseCards.forEach(card => {
+			// Age
+			const age = card.dataset.age;
+			if (age) {
+				const ageNum = parseInt(age);
+				if (ageNum >= 18 && ageNum < 25) filterData.age.add('18-24');
+				else if (ageNum >= 25 && ageNum < 35) filterData.age.add('25-34');
+				else if (ageNum >= 35 && ageNum < 45) filterData.age.add('35-44');
+				else if (ageNum >= 45 && ageNum < 55) filterData.age.add('45-54');
+				else if (ageNum >= 55 && ageNum < 65) filterData.age.add('55-64');
+				else if (ageNum >= 65) filterData.age.add('65+');
+			}
+
+			// Gender
+			const gender = card.dataset.gender;
+			if (gender) {
+				filterData.gender.add(gender.toLowerCase());
+			}
+
+			// Ethnicity
+			const ethnicity = card.dataset.ethnicity;
+			if (ethnicity) {
+				filterData.ethnicity.add(ethnicity);
+			}
+
+			// Height
+			const height = card.dataset.height;
+			if (height) {
+				const heightNum = parseFloat(height);
+				if (heightNum < 60) filterData.height.add('Under 5\'0"');
+				else if (heightNum >= 60 && heightNum < 64) filterData.height.add('5\'0" - 5\'3"');
+				else if (heightNum >= 64 && heightNum < 68) filterData.height.add('5\'4" - 5\'7"');
+				else if (heightNum >= 68 && heightNum < 72) filterData.height.add('5\'8" - 5\'11"');
+				else if (heightNum >= 72) filterData.height.add('6\'0" and above');
+			}
+
+			// Weight
+			const weight = card.dataset.weight;
+			if (weight) {
+				const weightNum = parseFloat(weight);
+				if (weightNum < 120) filterData.weight.add('Under 120 lbs');
+				else if (weightNum >= 120 && weightNum < 150) filterData.weight.add('120-149 lbs');
+				else if (weightNum >= 150 && weightNum < 180) filterData.weight.add('150-179 lbs');
+				else if (weightNum >= 180 && weightNum < 210) filterData.weight.add('180-209 lbs');
+				else if (weightNum >= 210) filterData.weight.add('210+ lbs');
+			}
+		});
+
+		// Generate HTML for filter sections
+		let html = '';
+
+		// Age filter
+		if (filterData.age.size > 0) {
+			html += this.generateFilterSection('Age', 'age', Array.from(filterData.age).sort());
+		}
+
+		// Gender filter
+		if (filterData.gender.size > 0) {
+			const genderOptions = Array.from(filterData.gender).map(g =>
+				g === 'male' ? 'Male' : g === 'female' ? 'Female' : g
+			);
+			html += this.generateFilterSection('Gender', 'gender', genderOptions);
+		}
+
+		// Ethnicity filter
+		if (filterData.ethnicity.size > 0) {
+			html += this.generateFilterSection('Ethnicity', 'ethnicity', Array.from(filterData.ethnicity).sort());
+		}
+
+		// Height filter
+		if (filterData.height.size > 0) {
+			html += this.generateFilterSection('Height', 'height', Array.from(filterData.height));
+		}
+
+		// Weight filter
+		if (filterData.weight.size > 0) {
+			html += this.generateFilterSection('Weight', 'weight', Array.from(filterData.weight));
+		}
+
+		return html;
+	}
+
+	/**
 	 * Generate procedure filter sections based on case data
 	 * Creates the filter dropdowns matching PHP structure exactly
 	 */
@@ -1122,8 +1210,8 @@ class FilterSystem {
 
 		options.forEach(option => {
 			const id = `procedure-filter-${type}-${option.replace(/[^a-zA-Z0-9]/g, '-')}`;
-			// Only convert to lowercase for non-age filters
-			const value = type === 'age' ? option : option.toLowerCase();
+			// Only convert to lowercase for gender and ethnicity filters
+			const value = (type === 'gender' || type === 'ethnicity') ? option.toLowerCase() : option;
 
 			html += '<li class="brag-book-gallery-filter-option">';
 			html += `<input type="checkbox" id="${id}" value="${this.escapeHtml(value)}" data-filter-type="${type}">`;
@@ -1179,7 +1267,8 @@ class FilterSystem {
 
 		const div = document.createElement('div');
 		div.textContent = text;
-		return div.innerHTML;
+		// Also escape quotes for use in HTML attributes
+		return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 	}
 
 	/**

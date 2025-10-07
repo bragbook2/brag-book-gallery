@@ -80,8 +80,6 @@ class Dashboard_Page extends Settings_Base {
 		// Get current state
 		$api_tokens = get_option( 'brag_book_gallery_api_token', array() );
 		$has_api = ! empty( $api_tokens );
-		// Mode manager removed - default to 'default' mode
-		$current_mode = 'default';
 
 		// Calculate setup progress
 		$setup_steps = $this->calculate_setup_progress();
@@ -195,12 +193,10 @@ class Dashboard_Page extends Settings_Base {
 
 				<div class="stat-card">
 					<div class="stat-header">
-						<span class="stat-label"><?php esc_html_e( 'Active Mode', 'brag-book-gallery' ); ?></span>
+						<span class="stat-label"><?php esc_html_e( 'Synced Cases', 'brag-book-gallery' ); ?></span>
 					</div>
 					<div class="stat-value">
-						<span class="mode-badge mode-<?php echo esc_attr( $current_mode ); ?>">
-							<?php echo esc_html( ucfirst( $current_mode ) ); ?>
-						</span>
+						<?php echo esc_html( wp_count_posts( 'brag_book_cases' )->publish ?? 0 ); ?>
 					</div>
 				</div>
 
@@ -235,27 +231,25 @@ class Dashboard_Page extends Settings_Base {
 						</div>
 					</div>
 				<?php else : ?>
-					<?php if ( $current_mode === 'default' ) : ?>
-						<div class="action-card">
-							<div class="action-card-content">
-								<h3><?php esc_html_e( 'Default Setup', 'brag-book-gallery' ); ?></h3>
-								<p><?php esc_html_e( 'Configure gallery display and performance settings.', 'brag-book-gallery' ); ?></p>
-								<a href="<?php echo esc_url( admin_url( 'admin.php?page=brag-book-gallery-default' ) ); ?>" class="button button-primary">
-									<?php esc_html_e( 'Configure', 'brag-book-gallery' ); ?>
-								</a>
-							</div>
+					<div class="action-card">
+						<div class="action-card-content">
+							<h3><?php esc_html_e( 'Create Gallery Page', 'brag-book-gallery' ); ?></h3>
+							<p><?php esc_html_e( 'Create a page with the gallery shortcode to display your cases.', 'brag-book-gallery' ); ?></p>
+							<a href="<?php echo esc_url( admin_url( 'admin.php?page=brag-book-gallery-general' ) ); ?>" class="button button-primary">
+								<?php esc_html_e( 'Configure', 'brag-book-gallery' ); ?>
+							</a>
 						</div>
-					<?php else : ?>
-						<div class="action-card">
-							<div class="action-card-content">
-								<h3><?php esc_html_e( 'Local Settings', 'brag-book-gallery' ); ?></h3>
-								<p><?php esc_html_e( 'Manage sync settings and local gallery data.', 'brag-book-gallery' ); ?></p>
-								<a href="<?php echo esc_url( admin_url( 'admin.php?page=brag-book-gallery-local' ) ); ?>" class="button button-primary">
-									<?php esc_html_e( 'Configure', 'brag-book-gallery' ); ?>
-								</a>
-							</div>
+					</div>
+
+					<div class="action-card">
+						<div class="action-card-content">
+							<h3><?php esc_html_e( 'Sync from BRAG book', 'brag-book-gallery' ); ?></h3>
+							<p><?php esc_html_e( 'Synchronize procedures and cases from the BRAG book API.', 'brag-book-gallery' ); ?></p>
+							<a href="<?php echo esc_url( admin_url( 'admin.php?page=brag-book-gallery-sync' ) ); ?>" class="button button-primary">
+								<?php esc_html_e( 'Sync Now', 'brag-book-gallery' ); ?>
+							</a>
 						</div>
-					<?php endif; ?>
+					</div>
 
 					<div class="action-card">
 						<div class="action-card-content">
@@ -290,41 +284,51 @@ class Dashboard_Page extends Settings_Base {
 			</div>
 		</div>
 
-		<!-- Recent Activity -->
-		<?php if ( $current_mode === 'local' ) : ?>
+		<!-- Gallery Statistics -->
+		<?php if ( $has_api ) : ?>
 		<div class="brag-book-gallery-section">
 			<h2><?php esc_html_e( 'Gallery Statistics', 'brag-book-gallery' ); ?></h2>
 			<div class="brag-book-gallery-stats-grid">
 				<div class="stat-card">
 					<div class="stat-value">
-						<?php echo esc_html( wp_count_posts( 'brag_gallery' )->publish ?? 0 ); ?>
+						<?php echo esc_html( wp_count_posts( 'brag_book_cases' )->publish ?? 0 ); ?>
 					</div>
-					<div class="stat-label"><?php esc_html_e( 'Published Galleries', 'brag-book-gallery' ); ?></div>
+					<div class="stat-label"><?php esc_html_e( 'Synced Cases', 'brag-book-gallery' ); ?></div>
 				</div>
 				<div class="stat-card">
 					<div class="stat-value">
-						<?php echo esc_html( wp_count_terms( 'brag_category' ) ); ?>
-					</div>
-					<div class="stat-label"><?php esc_html_e( 'Categories', 'brag-book-gallery' ); ?></div>
-				</div>
-				<div class="stat-card">
-					<div class="stat-value">
-						<?php echo esc_html( wp_count_terms( 'brag_procedure' ) ); ?>
+						<?php echo esc_html( wp_count_terms( array( 'taxonomy' => \BRAGBookGallery\Includes\Extend\Taxonomies::TAXONOMY_PROCEDURES, 'hide_empty' => false ) ) ); ?>
 					</div>
 					<div class="stat-label"><?php esc_html_e( 'Procedures', 'brag-book-gallery' ); ?></div>
 				</div>
 				<div class="stat-card">
 					<div class="stat-value">
 						<?php
-						$last_sync = get_option( 'brag_book_gallery_last_sync', '' );
-						if ( $last_sync ) {
-							echo esc_html( human_time_diff( strtotime( $last_sync ), current_time( 'timestamp' ) ) . ' ' . __( 'ago', 'brag-book-gallery' ) );
+						$stage3_status = get_option( 'brag_book_stage3_last_run', array() );
+						if ( ! empty( $stage3_status['completed_at'] ) ) {
+							echo esc_html( human_time_diff( strtotime( $stage3_status['completed_at'] ), current_time( 'timestamp' ) ) . ' ' . __( 'ago', 'brag-book-gallery' ) );
 						} else {
 							esc_html_e( 'Never', 'brag-book-gallery' );
 						}
 						?>
 					</div>
 					<div class="stat-label"><?php esc_html_e( 'Last Sync', 'brag-book-gallery' ); ?></div>
+				</div>
+				<div class="stat-card">
+					<div class="stat-value">
+						<?php
+						// Count pages with the shortcode
+						global $wpdb;
+						$pages_with_gallery = $wpdb->get_var(
+							"SELECT COUNT(*) FROM {$wpdb->posts}
+							WHERE post_content LIKE '%[brag_book_gallery%'
+							AND post_status = 'publish'
+							AND post_type IN ('page', 'post')"
+						);
+						echo esc_html( $pages_with_gallery );
+						?>
+					</div>
+					<div class="stat-label"><?php esc_html_e( 'Gallery Pages', 'brag-book-gallery' ); ?></div>
 				</div>
 			</div>
 		</div>
@@ -386,86 +390,36 @@ class Dashboard_Page extends Settings_Base {
 		);
 		if ( $has_api ) $completed++;
 
-		// Step 2: Select Mode
-		// Mode manager removed - default to 'default' mode
-		$current_mode = 'default';
-		$mode_selected = $has_api && ( $current_mode === 'default' || $current_mode === 'local' );
-		$steps[] = array(
-			'title' => __( 'Select Operating Mode', 'brag-book-gallery' ),
-			'description' => __( 'Choose between Default or Local mode for your galleries.', 'brag-book-gallery' ),
-			'completed' => $mode_selected,
-			'action_url' => admin_url( 'admin.php?page=brag-book-gallery-mode' ),
-			'action_text' => __( 'Select Mode', 'brag-book-gallery' ),
+		// Step 2: Create Gallery Page
+		global $wpdb;
+		$pages_with_shortcode = $wpdb->get_var(
+			"SELECT COUNT(*) FROM {$wpdb->posts}
+			WHERE post_content LIKE '%[brag_book_gallery%'
+			AND post_status = 'publish'
+			AND post_type IN ('page', 'post')"
 		);
-		if ( $mode_selected ) $completed++;
+		$has_gallery_page = $pages_with_shortcode > 0;
 
-		// Step 3: Configure Gallery Settings
-		$mode_configured = false;
-		if ( $mode_selected ) {
-			if ( $current_mode === 'default' ) {
-				// For JavaScript mode, check if gallery page slug is configured
-				$gallery_slugs = get_option( 'brag_book_gallery_page_slug', array() );
-				// Check if we have at least one non-empty slug
-				if ( is_array( $gallery_slugs ) ) {
-					$mode_configured = count( array_filter( $gallery_slugs ) ) > 0;
-				} else if ( is_string( $gallery_slugs ) ) {
-					$mode_configured = ! empty( $gallery_slugs );
-				}
-				$settings_url = admin_url( 'admin.php?page=brag-book-gallery-default' );
-			} else {
-				// For Local mode, just check if mode is selected (local mode doesn't need additional config)
-				$mode_configured = true;
-				$settings_url = admin_url( 'admin.php?page=brag-book-gallery-local' );
-			}
-		}
-		if ( $mode_configured ) $completed++;
-
-		// Step 4: Create First Gallery
-		$has_gallery = false;
-		if ( $current_mode === 'local' ) {
-			$gallery_count = wp_count_posts( 'brag_gallery' );
-			$has_gallery = ( $gallery_count->publish ?? 0 ) > 0;
-		} else if ( $current_mode === 'default' ) {
-			// For JavaScript mode, check if gallery page exists (page with shortcode)
-			global $wpdb;
-
-			// First check for pages with the shortcode
-			$pages_with_shortcode = $wpdb->get_var(
-				"SELECT COUNT(*) FROM {$wpdb->posts}
-				WHERE post_content LIKE '%[brag_book_gallery%'
-				AND post_status = 'publish'
-				AND post_type IN ('page', 'post')"
-			);
-			$has_gallery = $pages_with_shortcode > 0;
-
-			// If no shortcode found, check if a page exists with the configured slug
-			if ( ! $has_gallery ) {
-				$gallery_slugs = get_option( 'brag_book_gallery_page_slug', array() );
-				if ( ! empty( $gallery_slugs ) ) {
-					// Handle both array and string formats
-					$slugs_to_check = is_array( $gallery_slugs ) ? $gallery_slugs : array( $gallery_slugs );
-					foreach ( $slugs_to_check as $slug ) {
-						if ( empty( $slug ) ) continue;
-						$page = get_page_by_path( $slug );
-						if ( $page && $page->post_status === 'publish' ) {
-							// Check if this page has the shortcode
-							if ( strpos( $page->post_content, '[brag_book_gallery' ) !== false ) {
-								$has_gallery = true;
-								break;
-							}
-						}
-					}
-				}
-			}
-		}
 		$steps[] = array(
-			'title' => __( 'Create Your First Gallery', 'brag-book-gallery' ),
-			'description' => __( 'Add your first before & after gallery to a page or post.', 'brag-book-gallery' ),
-			'completed' => $has_gallery,
-			'action_url' => admin_url( 'admin.php?page=brag-book-gallery-general' ),
-			'action_text' =>  __( 'Create Gallery', 'brag-book-gallery' )
+			'title' => __( 'Create Gallery Page', 'brag-book-gallery' ),
+			'description' => __( 'Create a page with the [brag_book_gallery] shortcode to display your cases.', 'brag-book-gallery' ),
+			'completed' => $has_gallery_page,
+			'action_url' => admin_url( 'post-new.php?post_type=page' ),
+			'action_text' => __( 'Create Page', 'brag-book-gallery' ),
 		);
-		if ( $has_gallery ) $completed++;
+		if ( $has_gallery_page ) $completed++;
+
+		// Step 3: Sync Cases
+		$has_synced_cases = ( wp_count_posts( 'brag_book_cases' )->publish ?? 0 ) > 0;
+
+		$steps[] = array(
+			'title' => __( 'Sync Cases from BRAG book', 'brag-book-gallery' ),
+			'description' => __( 'Synchronize your procedures and cases from the BRAG book API.', 'brag-book-gallery' ),
+			'completed' => $has_synced_cases,
+			'action_url' => admin_url( 'admin.php?page=brag-book-gallery-sync' ),
+			'action_text' => __( 'Sync Now', 'brag-book-gallery' ),
+		);
+		if ( $has_synced_cases ) $completed++;
 
 		$total = count( $steps );
 		$percentage = $total > 0 ? round( ( $completed / $total ) * 100 ) : 0;

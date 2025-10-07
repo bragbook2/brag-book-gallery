@@ -345,9 +345,10 @@ class Sidebar_Handler {
 		$count_display  = ( $show_filter_counts && $case_count > 0 ) ? sprintf( ' <span class="brag-book-gallery-nav-count">(%d)</span>', $case_count ) : '';
 
 		return sprintf(
-			'<li class="brag-book-gallery-nav-list-submenu-item"><a href="%s" class="brag-book-gallery-nav-link" data-procedure-id="%s" data-procedure-slug="%s" data-category="%s" data-nudity="%s">%s%s</a></li>',
+			'<li class="brag-book-gallery-nav-list-submenu-item"><a href="%s" class="brag-book-gallery-nav-link" data-procedure-id="%s" data-term-id="%s" data-procedure-slug="%s" data-category="%s" data-nudity="%s">%s%s</a></li>',
 			esc_url( $procedure_url ),
 			esc_attr( $procedure_id ),
+			esc_attr( $procedure->term_id ),
 			esc_attr( $procedure->slug ),
 			esc_attr( $category_slug ),
 			$nudity ? 'true' : 'false',

@@ -146,10 +146,6 @@ class Help_Page extends Settings_Base {
 					<h3><?php esc_html_e( 'Main Gallery Shortcode', 'brag-book-gallery' ); ?></h3>
 					<p><code style="display: block; padding: 10px; background: #f0f0f0; margin: 10px 0;">[brag_book_gallery]</code></p>
 					<p><?php esc_html_e( 'Displays the full gallery with filtering sidebar, search, and pagination. This is the main shortcode you\'ll use on your gallery page.', 'brag-book-gallery' ); ?></p>
-					<p><strong><?php esc_html_e( 'Optional Parameters:', 'brag-book-gallery' ); ?></strong></p>
-					<ul style="list-style: disc; margin-left: 20px;">
-						<li><code>website_property_id="123"</code> - <?php esc_html_e( 'Override the global Website Property ID', 'brag-book-gallery' ); ?></li>
-					</ul>
 				</div>
 
 				<div class="brag-book-gallery-card">
@@ -424,7 +420,7 @@ location ~ ^/gallery/([^/]+)/? {
 					<details class="brag-book-gallery-accordion-item">
 						<summary><?php esc_html_e( 'How often does the gallery update with new cases?', 'brag-book-gallery' ); ?></summary>
 						<div class="brag-book-gallery-accordion-content">
-							<p><?php esc_html_e( 'In Default mode, the gallery caches data for 1 hour. In Local mode, you need to run the Stage-Based Sync to update cases. You can set up Automatic Sync to run weekly or on a custom schedule.', 'brag-book-gallery' ); ?></p>
+							<p><?php esc_html_e( 'You can set up Automatic Sync to run weekly or on a custom schedule. You also have the option to manually sync the items at anytime.', 'brag-book-gallery' ); ?></p>
 						</div>
 					</details>
 
@@ -432,13 +428,6 @@ location ~ ^/gallery/([^/]+)/? {
 						<summary><?php esc_html_e( 'Can I customize the gallery colors and styling?', 'brag-book-gallery' ); ?></summary>
 						<div class="brag-book-gallery-accordion-content">
 							<p><?php esc_html_e( 'Yes! The plugin uses CSS classes prefixed with "brag-book-gallery-". You can add custom CSS in your theme or using the WordPress Customizer → Additional CSS.', 'brag-book-gallery' ); ?></p>
-						</div>
-					</details>
-
-					<details class="brag-book-gallery-accordion-item">
-						<summary><?php esc_html_e( 'What\'s the difference between Default and Local mode?', 'brag-book-gallery' ); ?></summary>
-						<div class="brag-book-gallery-accordion-content">
-							<p><?php esc_html_e( 'Default mode (recommended) loads data directly from the BRAG book API and stays in sync. Local mode imports cases into your WordPress database using the 3-stage sync process for offline access. Local mode requires running the sync to get updates.', 'brag-book-gallery' ); ?></p>
 						</div>
 					</details>
 

@@ -50,6 +50,7 @@ class Sync_Ajax_Handler {
 		add_action( 'wp_ajax_brag_book_sync_get_manifest_preview', [ self::class, 'handle_get_manifest_preview' ] );
 		add_action( 'wp_ajax_brag_book_sync_get_progress', [ self::class, 'handle_get_progress' ] );
 		add_action( 'wp_ajax_brag_book_sync_delete_file', [ self::class, 'handle_delete_file' ] );
+		add_action( 'wp_ajax_brag_book_sync_clear_stage3_status', [ self::class, 'handle_clear_stage3_status' ] );
 
 		// Legacy endpoints for backward compatibility
 		add_action( 'wp_ajax_brag_book_sync_data', [ self::class, 'handle_sync_start' ] );
@@ -75,6 +76,24 @@ class Sync_Ajax_Handler {
 			wp_send_json_error( 'Invalid nonce' );
 		}
 
+		// Get database instance for logging
+		$setup = \BRAGBookGallery\Includes\Core\Setup::get_instance();
+		$database = $setup->get_service( 'database' );
+
+		// Create initial log entry
+		$log_id = null;
+		if ( $database ) {
+			error_log( 'Data_Sync: Database service available, attempting to log sync operation' );
+			$log_id = $database->log_sync_operation( 'full', 'started', 0, 0, '', 'manual' );
+			if ( $log_id ) {
+				error_log( 'Data_Sync: Sync log created with ID: ' . $log_id );
+			} else {
+				error_log( 'Data_Sync: Failed to create sync log entry' );
+			}
+		} else {
+			error_log( 'Data_Sync: Database service not available!' );
+		}
+
 		try {
 			error_log( 'Data_Sync: Creating Data_Sync instance' );
 			// Initialize sync
@@ -85,16 +104,54 @@ class Sync_Ajax_Handler {
 			$result = $sync->run_two_stage_sync( true );
 			error_log( 'Data_Sync: run_two_stage_sync completed' );
 
+			// Update log entry with success
+			if ( $database && $log_id ) {
+				$items_processed = 0;
+				$items_failed = 0;
+
+				// Try to extract counts from result
+				if ( is_array( $result ) ) {
+					$items_processed = ( $result['cases_created'] ?? 0 ) + ( $result['cases_updated'] ?? 0 );
+					$items_failed = $result['cases_failed'] ?? 0;
+				}
+
+				$database->update_sync_log( $log_id, 'completed', $items_processed, $items_failed, '' );
+			}
+
+			// Update last sync time and status
+			update_option( 'brag_book_gallery_last_sync_time', current_time( 'mysql' ) );
+			update_option( 'brag_book_gallery_last_sync_status', 'success' );
+
 			// Send success response
 			wp_send_json_success( $result );
 
 		} catch ( \Exception $e ) {
 			error_log( 'Data_Sync start error: ' . $e->getMessage() );
 			error_log( 'Stack trace: ' . $e->getTraceAsString() );
+
+			// Update log entry with failure
+			if ( $database && $log_id ) {
+				$database->update_sync_log( $log_id, 'failed', 0, 0, $e->getMessage() );
+			}
+
+			// Update last sync status
+			update_option( 'brag_book_gallery_last_sync_time', current_time( 'mysql' ) );
+			update_option( 'brag_book_gallery_last_sync_status', 'error' );
+
 			wp_send_json_error( $e->getMessage() );
 		} catch ( \Error $e ) {
 			error_log( 'Data_Sync fatal error: ' . $e->getMessage() );
 			error_log( 'Stack trace: ' . $e->getTraceAsString() );
+
+			// Update log entry with failure
+			if ( $database && $log_id ) {
+				$database->update_sync_log( $log_id, 'failed', 0, 0, 'Fatal error: ' . $e->getMessage() );
+			}
+
+			// Update last sync status
+			update_option( 'brag_book_gallery_last_sync_time', current_time( 'mysql' ) );
+			update_option( 'brag_book_gallery_last_sync_status', 'error' );
+
 			wp_send_json_error( 'Fatal error: ' . $e->getMessage() );
 		}
 	}
@@ -266,6 +323,16 @@ class Sync_Ajax_Handler {
 			wp_send_json_error( 'Invalid nonce' );
 		}
 
+		// Get database instance for logging
+		$setup = \BRAGBookGallery\Includes\Core\Setup::get_instance();
+		$database = $setup->get_service( 'database' );
+
+		// Create initial log entry
+		$log_id = null;
+		if ( $database ) {
+			$log_id = $database->log_sync_operation( 'stage_1', 'started', 0, 0, '', 'manual' );
+		}
+
 		try {
 			error_log( 'AJAX: Creating Chunked_Data_Sync instance' );
 			// Use new Chunked_Data_Sync
@@ -277,14 +344,39 @@ class Sync_Ajax_Handler {
 			error_log( 'AJAX: Stage 1 result: ' . wp_json_encode( $result ) );
 
 			if ( $result['success'] ) {
+				// Update log entry
+				if ( $database && $log_id ) {
+					$items_processed = ( $result['procedures_created'] ?? 0 ) + ( $result['procedures_updated'] ?? 0 );
+					$database->update_sync_log( $log_id, 'completed', $items_processed, 0, '' );
+				}
+
+				// Update last sync time
+				update_option( 'brag_book_gallery_last_sync_time', current_time( 'mysql' ) );
+				update_option( 'brag_book_gallery_last_sync_status', 'success' );
+
 				wp_send_json_success( $result );
 			} else {
+				// Update log entry
+				if ( $database && $log_id ) {
+					$database->update_sync_log( $log_id, 'failed', 0, 0, $result['message'] ?? 'Unknown error' );
+				}
+
+				update_option( 'brag_book_gallery_last_sync_status', 'error' );
+
 				wp_send_json_error( $result );
 			}
 
 		} catch ( \Exception $e ) {
 			error_log( 'AJAX: Stage 1 sync exception: ' . $e->getMessage() );
 			error_log( 'AJAX: Stack trace: ' . $e->getTraceAsString() );
+
+			// Update log entry
+			if ( $database && $log_id ) {
+				$database->update_sync_log( $log_id, 'failed', 0, 0, $e->getMessage() );
+			}
+
+			update_option( 'brag_book_gallery_last_sync_status', 'error' );
+
 			wp_send_json_error( [
 				'message' => $e->getMessage(),
 				'stage'   => 1,
@@ -294,6 +386,14 @@ class Sync_Ajax_Handler {
 		} catch ( \Error $e ) {
 			error_log( 'AJAX: Stage 1 sync fatal error: ' . $e->getMessage() );
 			error_log( 'AJAX: Stack trace: ' . $e->getTraceAsString() );
+
+			// Update log entry
+			if ( $database && $log_id ) {
+				$database->update_sync_log( $log_id, 'failed', 0, 0, 'Fatal error: ' . $e->getMessage() );
+			}
+
+			update_option( 'brag_book_gallery_last_sync_status', 'error' );
+
 			wp_send_json_error( [
 				'message' => 'Fatal error: ' . $e->getMessage(),
 				'stage'   => 1,
@@ -320,19 +420,54 @@ class Sync_Ajax_Handler {
 			wp_send_json_error( 'Invalid nonce' );
 		}
 
+		// Get database instance for logging
+		$setup = \BRAGBookGallery\Includes\Core\Setup::get_instance();
+		$database = $setup->get_service( 'database' );
+
+		// Create initial log entry
+		$log_id = null;
+		if ( $database ) {
+			$log_id = $database->log_sync_operation( 'stage_2', 'started', 0, 0, '', 'manual' );
+		}
+
 		try {
 			// Use new Chunked_Data_Sync
 			$sync   = new \BRAGBookGallery\Includes\Sync\Chunked_Data_Sync();
 			$result = $sync->execute_stage_2();
 
 			if ( $result['success'] ) {
+				// Update log entry
+				if ( $database && $log_id ) {
+					$items_processed = ( $result['procedure_count'] ?? 0 );
+					$database->update_sync_log( $log_id, 'completed', $items_processed, 0, '' );
+				}
+
+				// Update last sync time
+				update_option( 'brag_book_gallery_last_sync_time', current_time( 'mysql' ) );
+				update_option( 'brag_book_gallery_last_sync_status', 'success' );
+
 				wp_send_json_success( $result );
 			} else {
+				// Update log entry
+				if ( $database && $log_id ) {
+					$database->update_sync_log( $log_id, 'failed', 0, 0, $result['message'] ?? 'Unknown error' );
+				}
+
+				update_option( 'brag_book_gallery_last_sync_status', 'error' );
+
 				wp_send_json_error( $result );
 			}
 
 		} catch ( \Exception $e ) {
 			error_log( 'Stage 2 sync error: ' . $e->getMessage() );
+
+			// Update log entry
+			if ( $database && $log_id ) {
+				$database->update_sync_log( $log_id, 'failed', 0, 0, $e->getMessage() );
+			}
+
+			update_option( 'brag_book_gallery_last_sync_status', 'error' );
+
 			wp_send_json_error( [
 				'message' => $e->getMessage(),
 				'stage'   => 2,
@@ -357,6 +492,16 @@ class Sync_Ajax_Handler {
 			wp_send_json_error( 'Invalid nonce' );
 		}
 
+		// Get database instance for logging
+		$setup = \BRAGBookGallery\Includes\Core\Setup::get_instance();
+		$database = $setup->get_service( 'database' );
+
+		// Create initial log entry
+		$log_id = null;
+		if ( $database ) {
+			$log_id = $database->log_sync_operation( 'stage_3', 'started', 0, 0, '', 'manual' );
+		}
+
 		try {
 			error_log( 'AJAX: Starting Stage 3 handler' );
 
@@ -368,14 +513,40 @@ class Sync_Ajax_Handler {
 			error_log( 'AJAX: Stage 3 execution completed' );
 
 			if ( $result['success'] ) {
+				// Update log entry
+				if ( $database && $log_id ) {
+					$items_processed = ( $result['created'] ?? 0 ) + ( $result['updated'] ?? 0 );
+					$items_failed = $result['failed'] ?? 0;
+					$database->update_sync_log( $log_id, 'completed', $items_processed, $items_failed, '' );
+				}
+
+				// Update last sync time
+				update_option( 'brag_book_gallery_last_sync_time', current_time( 'mysql' ) );
+				update_option( 'brag_book_gallery_last_sync_status', 'success' );
+
 				wp_send_json_success( $result );
 			} else {
+				// Update log entry
+				if ( $database && $log_id ) {
+					$database->update_sync_log( $log_id, 'failed', 0, 0, $result['message'] ?? 'Unknown error' );
+				}
+
+				update_option( 'brag_book_gallery_last_sync_status', 'error' );
+
 				wp_send_json_error( $result );
 			}
 
 		} catch ( \Exception $e ) {
 			error_log( 'Stage 3 sync Exception: ' . $e->getMessage() );
 			error_log( 'Stack trace: ' . $e->getTraceAsString() );
+
+			// Update log entry
+			if ( $database && $log_id ) {
+				$database->update_sync_log( $log_id, 'failed', 0, 0, $e->getMessage() );
+			}
+
+			update_option( 'brag_book_gallery_last_sync_status', 'error' );
+
 			wp_send_json_error( [
 				'message' => $e->getMessage(),
 				'stage'   => 3,
@@ -383,6 +554,14 @@ class Sync_Ajax_Handler {
 		} catch ( \Error $e ) {
 			error_log( 'Stage 3 sync Fatal Error: ' . $e->getMessage() );
 			error_log( 'Stack trace: ' . $e->getTraceAsString() );
+
+			// Update log entry
+			if ( $database && $log_id ) {
+				$database->update_sync_log( $log_id, 'failed', 0, 0, 'Fatal error: ' . $e->getMessage() );
+			}
+
+			update_option( 'brag_book_gallery_last_sync_status', 'error' );
+
 			wp_send_json_error( [
 				'message' => 'Fatal error: ' . $e->getMessage(),
 				'stage'   => 3,
@@ -659,6 +838,43 @@ class Sync_Ajax_Handler {
 		} catch ( \Exception $e ) {
 			error_log( 'Delete file error: ' . $e->getMessage() );
 			wp_send_json_error( 'Error deleting files: ' . $e->getMessage() );
+		}
+	}
+
+	/**
+	 * Handle clear Stage 3 status request
+	 *
+	 * @return void
+	 * @since 3.3.0
+	 */
+	public static function handle_clear_stage3_status(): void {
+		// Check permissions
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( 'Insufficient permissions' );
+		}
+
+		// Verify nonce
+		if ( ! check_ajax_referer( 'brag_book_gallery_sync', 'nonce', false ) ) {
+			wp_send_json_error( 'Invalid nonce' );
+		}
+
+		try {
+			// Delete the Stage 3 status option
+			$deleted = delete_option( 'brag_book_stage3_last_run' );
+
+			if ( $deleted ) {
+				wp_send_json_success( [
+					'message' => 'Stage 3 status cleared successfully'
+				] );
+			} else {
+				wp_send_json_success( [
+					'message' => 'No Stage 3 status to clear'
+				] );
+			}
+
+		} catch ( \Exception $e ) {
+			error_log( 'Clear Stage 3 status error: ' . $e->getMessage() );
+			wp_send_json_error( 'Error clearing Stage 3 status: ' . $e->getMessage() );
 		}
 	}
 }

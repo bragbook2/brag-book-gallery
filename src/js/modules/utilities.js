@@ -5,7 +5,7 @@
 class NudityWarningManager {
 	constructor() {
 		this.nudityAccepted = false;
-		this.storageKey = 'brag-book-nudity-accepted';
+		this.storageKey = 'brag-book-gallery-nudity-accepted';
 
 		// Check acceptance status BEFORE DOM loads to prevent flash
 		this.checkInitialAcceptance();
@@ -47,10 +47,10 @@ class NudityWarningManager {
 				this.handleProceedButtonClick(e.target);
 			}
 			// Prevent clicks on nudity warning overlay from bubbling to underlying elements
-			else if (e.target.matches('.brag-book-gallery-nudity-warning') || 
+			else if (e.target.matches('.brag-book-gallery-nudity-warning') ||
 					 e.target.closest('.brag-book-gallery-nudity-warning')) {
 				// Only prevent if not clicking on the proceed button
-				if (!e.target.matches('.brag-book-gallery-nudity-warning-button') && 
+				if (!e.target.matches('.brag-book-gallery-nudity-warning-button') &&
 					!e.target.closest('.brag-book-gallery-nudity-warning-button')) {
 					e.stopPropagation();
 					e.preventDefault();
@@ -76,37 +76,16 @@ class NudityWarningManager {
 		const allBlurredImages = document.querySelectorAll('.brag-book-gallery-nudity-blur');
 
 		allNudityWarnings.forEach(nudityWarning => {
-			if (typeof gsap !== 'undefined') {
-				gsap.to(nudityWarning, {
-					opacity: 0,
-					duration: 0.5,
-					ease: "power2.out",
-					onComplete: () => {
-						nudityWarning.style.display = 'none';
-					}
-				});
-			} else {
-				// Fallback without GSAP
-				nudityWarning.style.transition = 'opacity 0.5s ease-out';
-				nudityWarning.style.opacity = '0';
-				setTimeout(() => {
-					nudityWarning.style.display = 'none';
-				}, 500);
-			}
+			nudityWarning.style.transition = 'opacity 0.5s ease-out';
+			nudityWarning.style.opacity = '0';
+			setTimeout(() => {
+				nudityWarning.style.display = 'none';
+			}, 500);
 		});
 
 		allBlurredImages.forEach(blurredImage => {
-			if (typeof gsap !== 'undefined') {
-				gsap.to(blurredImage, {
-					filter: 'blur(0px)',
-					duration: 0.5,
-					ease: "power2.out"
-				});
-			} else {
-				// Fallback without GSAP
-				blurredImage.style.transition = 'filter 0.5s ease-out';
-				blurredImage.style.filter = 'blur(0px)';
-			}
+			blurredImage.style.transition = 'filter 0.5s ease-out';
+			blurredImage.style.filter = 'blur(0px)';
 		});
 	}
 
@@ -116,7 +95,6 @@ class NudityWarningManager {
 		try {
 			localStorage.removeItem(this.storageKey);
 			document.body.classList.remove('nudity-accepted');
-			console.log('✅ Nudity warning acceptance has been reset. Refresh the page to see warnings again.');
 		} catch (e) {
 			console.warn('Could not remove nudity acceptance status from localStorage:', e);
 		}

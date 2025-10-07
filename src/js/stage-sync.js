@@ -22,6 +22,7 @@ class StageSyncManager {
 		this.stopSyncBtn = document.getElementById('stop-sync-btn');
 		this.deleteSyncDataBtn = document.getElementById('delete-sync-data-btn');
 		this.deleteManifestBtn = document.getElementById('delete-manifest-btn');
+		this.clearStage3StatusBtn = document.getElementById('clear-stage3-status-btn');
 
 		this.syncDataStatus = document.getElementById('sync-data-status');
 		this.syncDataDate = document.getElementById('sync-data-date');
@@ -81,6 +82,9 @@ class StageSyncManager {
 		}
 		if (this.deleteManifestBtn) {
 			this.deleteManifestBtn.addEventListener('click', () => this.deleteManifest());
+		}
+		if (this.clearStage3StatusBtn) {
+			this.clearStage3StatusBtn.addEventListener('click', () => this.clearStage3Status());
 		}
 
 		// Auto-refresh file status every 30 seconds
@@ -372,7 +376,7 @@ class StageSyncManager {
 	async executeStage3() {
 		if (this.isRunning) return;
 
-		if (!confirm('Execute Stage 3: Process cases from manifest? This may take a long time depending on the number of cases.')) {
+		if (!confirm('Execute Stage 3: Process cases from manifest? This will process cases in batches.')) {
 			return;
 		}
 
@@ -396,47 +400,12 @@ class StageSyncManager {
 		}, 2000); // Poll every 2 seconds
 
 		try {
-			// Start the sync with a very long timeout (cases can take a while)
-			const response = await this.makeAjaxRequest('brag_book_sync_stage_3', {}, 600000); // 10 minute timeout
+			// Process Stage 3 in batches
+			await this.processStage3Batches(progressInterval);
 
 			// Stop progress polling
 			clearInterval(progressInterval);
 
-			if (response.success) {
-				const data = response.data;
-				this.showProgress('Stage 3 completed', 100);
-
-				// Show success message with proper stats
-				const created = data.created_posts || 0;
-				const updated = data.updated_posts || 0;
-				const failed = data.failed_cases || 0;
-				const processed = data.processed_cases || 0;
-				const total = data.total_cases || 0;
-
-				const message = `Stage 3 completed: ${created} created, ${updated} updated${failed > 0 ? `, ${failed} failed` : ''} (${processed}/${total} processed)`;
-
-				this.showNotice('success', message);
-
-				// Show any errors
-				if (data.errors && data.errors.length > 0) {
-					for (const error of data.errors.slice(0, 5)) {
-						this.showNotice('error', error);
-					}
-					if (data.errors.length > 5) {
-						this.showNotice('warning', `...and ${data.errors.length - 5} more errors`);
-					}
-				}
-
-				// Refresh file status to show Stage 3 status
-				await this.checkFileStatus();
-
-				// Hide progress after 2 seconds
-				setTimeout(() => {
-					this.fadeOut(this.stageProgress);
-				}, 2000);
-			} else {
-				throw new Error(response.data?.message || 'Stage 3 failed');
-			}
 		} catch (error) {
 			// Stop progress polling
 			clearInterval(progressInterval);
@@ -450,6 +419,80 @@ class StageSyncManager {
 			// Refresh button states
 			await this.checkFileStatus();
 		}
+	}
+
+	/**
+	 * Process Stage 3 in batches with automatic resumption
+	 */
+	async processStage3Batches(progressInterval) {
+		let needsContinue = true;
+		let totalProcessed = 0;
+		let totalCreated = 0;
+		let totalUpdated = 0;
+		let totalFailed = 0;
+		let totalCases = 0;
+		let lastProcessed = -1;
+		let stuckCount = 0;
+
+		while (needsContinue) {
+			// Process a batch (3 minute timeout per batch)
+			const response = await this.makeAjaxRequest('brag_book_sync_stage_3', {}, 180000);
+
+			if (!response.success) {
+				throw new Error(response.data?.message || response.data?.error || 'Stage 3 batch failed');
+			}
+
+			const data = response.data;
+			totalProcessed = data.processed_cases || 0;
+			totalCreated = data.created_posts || 0;
+			totalUpdated = data.updated_posts || 0;
+			totalFailed = data.failed_cases || 0;
+			totalCases = data.total_cases || 0;
+			needsContinue = data.needs_continue || false;
+
+			// Detect infinite loop - if no progress after 3 attempts, stop
+			if (totalProcessed === lastProcessed) {
+				stuckCount++;
+				console.warn(`Stage 3: No progress detected (attempt ${stuckCount}/3)`);
+				if (stuckCount >= 3) {
+					this.showNotice('warning', `Processing stopped at ${totalProcessed}/${totalCases} cases - no further progress possible`);
+					needsContinue = false;
+					break;
+				}
+			} else {
+				stuckCount = 0;
+			}
+			lastProcessed = totalProcessed;
+
+			// Update progress
+			const progress = data.progress || ((totalProcessed / totalCases) * 100);
+			this.showProgress(
+				`Stage 3: Processing cases... ${totalProcessed}/${totalCases}`,
+				progress
+			);
+
+			this.showNotice('info', `Batch complete: ${totalProcessed}/${totalCases} cases processed`);
+
+			// Brief pause between batches
+			if (needsContinue) {
+				await new Promise(resolve => setTimeout(resolve, 500));
+			}
+		}
+
+		// All batches complete
+		this.showProgress('Stage 3 completed', 100);
+
+		const message = `Stage 3 completed: ${totalCreated} created, ${totalUpdated} updated${totalFailed > 0 ? `, ${totalFailed} failed` : ''} (${totalProcessed}/${totalCases} processed)`;
+
+		this.showNotice('success', message);
+
+		// Refresh file status to show Stage 3 status
+		await this.checkFileStatus();
+
+		// Hide progress after 2 seconds
+		setTimeout(() => {
+			this.fadeOut(this.stageProgress);
+		}, 2000);
 	}
 
 	/**
@@ -532,7 +575,7 @@ class StageSyncManager {
 				throw new Error('Sync stopped by user');
 			}
 
-			// Stage 3
+			// Stage 3 (with batch processing)
 			this.showProgress('Full Sync - Stage 3: Processing cases...', 66);
 			this.showNotice('info', 'Starting Full Sync - Stage 3: Processing cases');
 
@@ -552,33 +595,66 @@ class StageSyncManager {
 				}
 			}, 2000);
 
-			const stage3Response = await this.makeAjaxRequest('brag_book_sync_stage_3', {}, 600000);
+			// Process Stage 3 in batches
+			let needsContinue = true;
+			let created = 0;
+			let updated = 0;
+			let failed = 0;
+			let processed = 0;
+			let total = 0;
+			let lastProcessed = -1;
+			let stuckCount = 0;
+
+			while (needsContinue) {
+				// Check if should stop
+				if (this.shouldStop) {
+					throw new Error('Sync stopped by user');
+				}
+
+				const stage3Response = await this.makeAjaxRequest('brag_book_sync_stage_3', {}, 180000);
+
+				if (!stage3Response.success) {
+					throw new Error(stage3Response.data?.message || stage3Response.data?.error || 'Stage 3 failed');
+				}
+
+				const stage3Data = stage3Response.data;
+				created = stage3Data.created_posts || 0;
+				updated = stage3Data.updated_posts || 0;
+				failed = stage3Data.failed_cases || 0;
+				processed = stage3Data.processed_cases || 0;
+				total = stage3Data.total_cases || 0;
+				needsContinue = stage3Data.needs_continue || false;
+
+				// Detect infinite loop - if no progress after 3 attempts, stop
+				if (processed === lastProcessed) {
+					stuckCount++;
+					console.warn(`Full Sync Stage 3: No progress detected (attempt ${stuckCount}/3)`);
+					if (stuckCount >= 3) {
+						this.showNotice('warning', `Stage 3 processing stopped at ${processed}/${total} cases - no further progress possible`);
+						needsContinue = false;
+						break;
+					}
+				} else {
+					stuckCount = 0;
+				}
+				lastProcessed = processed;
+
+				// Update progress (scale from 66% to 100%)
+				const batchProgress = total > 0 ? (processed / total) : 1;
+				const adjustedPercentage = 66 + (batchProgress * 34);
+				this.showProgress(`Full Sync - Stage 3: ${processed}/${total} cases`, adjustedPercentage);
+
+				// Brief pause between batches
+				if (needsContinue) {
+					await new Promise(resolve => setTimeout(resolve, 500));
+				}
+			}
+
 			clearInterval(this.currentProgressInterval);
 			this.currentProgressInterval = null;
 
-			if (!stage3Response.success) {
-				throw new Error(stage3Response.data?.message || 'Stage 3 failed');
-			}
-
-			const stage3Data = stage3Response.data;
-			const created = stage3Data.created_posts || 0;
-			const updated = stage3Data.updated_posts || 0;
-			const failed = stage3Data.failed_cases || 0;
-			const processed = stage3Data.processed_cases || 0;
-			const total = stage3Data.total_cases || 0;
-
 			const stage3Message = `Stage 3 completed: ${created} created, ${updated} updated${failed > 0 ? `, ${failed} failed` : ''} (${processed}/${total} processed)`;
 			this.showNotice('success', stage3Message);
-
-			// Show any errors
-			if (stage3Data.errors && stage3Data.errors.length > 0) {
-				for (const error of stage3Data.errors.slice(0, 5)) {
-					this.showNotice('error', error);
-				}
-				if (stage3Data.errors.length > 5) {
-					this.showNotice('warning', `...and ${stage3Data.errors.length - 5} more errors`);
-				}
-			}
 
 			// Final success message
 			this.showProgress('Full Sync completed successfully!', 100);
@@ -786,6 +862,9 @@ class StageSyncManager {
 
 		let html = `<div style="margin-bottom: 10px;">`;
 		html += `<strong>Last Run:</strong> ${status.completed_at}<br>`;
+		if (status.completed_at_human) {
+			html += `<span style="color: #666; font-size: 12px;">(${status.completed_at_human})</span><br>`;
+		}
 		html += `</div>`;
 
 		html += `<div style="border-top: 1px solid #ddd; padding-top: 10px;">`;
@@ -800,20 +879,53 @@ class StageSyncManager {
 		html += `</div>`;
 		html += `</div>`;
 
+		// Add clear button
+		html += `<button type="button" id="clear-stage3-status-btn" class="button button-link-delete" style="margin-top: 10px; font-size: 12px;" title="Clear Stage 3 status">`;
+		html += `<span class="dashicons dashicons-dismiss" style="font-size: 14px; line-height: 20px; margin-right: 3px;"></span>`;
+		html += `Clear Status`;
+		html += `</button>`;
+
 		this.stage3StatusContent.innerHTML = html;
 		this.stage3Status.style.display = 'block';
+
+		// Re-bind the clear button event after adding it to the DOM
+		const clearBtn = document.getElementById('clear-stage3-status-btn');
+		if (clearBtn) {
+			clearBtn.addEventListener('click', () => this.clearStage3Status());
+		}
+	}
+
+	/**
+	 * Clear Stage 3 status
+	 */
+	async clearStage3Status() {
+		if (!confirm('Are you sure you want to clear the Stage 3 status? This will not delete the synced posts.')) {
+			return;
+		}
+
+		try {
+			const response = await this.makeAjaxRequest('brag_book_sync_clear_stage3_status');
+
+			if (response.success) {
+				this.showNotice('success', 'Stage 3 status cleared successfully');
+				// Hide the status box
+				if (this.stage3Status) this.stage3Status.style.display = 'none';
+			} else {
+				this.showNotice('error', response.data?.message || 'Failed to clear Stage 3 status');
+			}
+		} catch (error) {
+			this.showNotice('error', `Error clearing Stage 3 status: ${error.message}`);
+		}
 	}
 
 	/**
 	 * Show progress
 	 */
 	showProgress(message, percentage = 0) {
-		console.log('showProgress called:', message, percentage); // Debug log
 		if (this.stageProgress) {
 			this.stageProgress.style.display = 'block';
 			this.stageProgress.style.opacity = '1'; // Ensure opacity is set to 1
 			this.stageProgress.style.transition = 'opacity 0.3s ease-in'; // Smooth fade in
-			console.log('Progress bar shown'); // Debug log
 		}
 		if (this.stageProgressFill) {
 			this.stageProgressFill.style.width = `${percentage}%`;

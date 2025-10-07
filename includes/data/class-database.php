@@ -55,7 +55,7 @@ class Database {
 	 * @since 3.0.0
 	 * @var string Semantic version string.
 	 */
-	private const CURRENT_DB_VERSION = '1.1.0';
+	private const CURRENT_DB_VERSION = '1.2.0';
 
 	/**
 	 * Cache group identifier for database operations.
@@ -79,7 +79,7 @@ class Database {
 	 * @since 3.0.0
 	 * @var array<int, string> Allowed sync types.
 	 */
-	private const VALID_SYNC_TYPES = [ 'full', 'partial', 'single' ];
+	private const VALID_SYNC_TYPES = [ 'full', 'partial', 'single', 'stage_1', 'stage_2', 'stage_3' ];
 
 	/**
 	 * Valid sync operation statuses.
@@ -95,7 +95,7 @@ class Database {
 	 * @since 3.0.0
 	 * @var array<int, string> Allowed sync sources.
 	 */
-	private const VALID_SYNC_SOURCES = [ 'manual', 'automatic' ];
+	private const VALID_SYNC_SOURCES = [ 'manual', 'automatic', 'cron', 'rest_api' ];
 
 	/**
 	 * Maximum error message length for TEXT field.
@@ -203,6 +203,11 @@ class Database {
 					self::CURRENT_DB_VERSION
 				) );
 
+				// Run version-specific migrations
+				if ( version_compare( $installed_version, '1.2.0', '<' ) ) {
+					$this->migrate_to_1_2_0();
+				}
+
 				$this->create_tables();
 				$this->invalidate_all_caches();
 			}
@@ -230,6 +235,51 @@ class Database {
 	}
 
 	/**
+	 * Migration to version 1.2.0
+	 *
+	 * Adds new sync types (stage_1, stage_2, stage_3) and sources (cron, rest_api)
+	 * to the sync_log table ENUM columns.
+	 *
+	 * @since 3.3.0
+	 * @return void
+	 */
+	private function migrate_to_1_2_0(): void {
+		$table_name = $this->get_sync_log_table();
+
+		// Check if table exists
+		if ( ! $this->table_exists( $table_name ) ) {
+			do_action( 'qm/debug', 'Migration 1.2.0: Table does not exist, will be created fresh' );
+			return;
+		}
+
+		// Get existing columns
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$columns = $this->wpdb->get_col( "DESCRIBE {$table_name}" );
+
+		// Only modify sync_type if it exists
+		if ( in_array( 'sync_type', $columns, true ) ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange
+			$this->wpdb->query(
+				"ALTER TABLE {$table_name}
+				MODIFY COLUMN sync_type ENUM('full', 'partial', 'single', 'stage_1', 'stage_2', 'stage_3') NOT NULL"
+			);
+			do_action( 'qm/debug', 'Migration 1.2.0: Updated sync_type column' );
+		}
+
+		// Only modify sync_source if it exists
+		if ( in_array( 'sync_source', $columns, true ) ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange
+			$this->wpdb->query(
+				"ALTER TABLE {$table_name}
+				MODIFY COLUMN sync_source ENUM('manual', 'automatic', 'cron', 'rest_api') NOT NULL DEFAULT 'manual'"
+			);
+			do_action( 'qm/debug', 'Migration 1.2.0: Updated sync_source column' );
+		}
+
+		do_action( 'qm/debug', 'Database migrated to version 1.2.0: Added new sync types and sources' );
+	}
+
+	/**
 	 * Create sync log table
 	 *
 	 * Creates table for tracking API sync operations and their status.
@@ -245,9 +295,9 @@ class Database {
 		// Define table schema.
 		$sql = "CREATE TABLE {$table_name} (
 			id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-			sync_type ENUM('full', 'partial', 'single') NOT NULL,
+			sync_type ENUM('full', 'partial', 'single', 'stage_1', 'stage_2', 'stage_3') NOT NULL,
 			sync_status ENUM('started', 'completed', 'failed') NOT NULL,
-			sync_source ENUM('manual', 'automatic') NOT NULL DEFAULT 'manual',
+			sync_source ENUM('manual', 'automatic', 'cron', 'rest_api') NOT NULL DEFAULT 'manual',
 			items_processed INT UNSIGNED DEFAULT 0,
 			items_failed INT UNSIGNED DEFAULT 0,
 			error_messages TEXT,
@@ -414,9 +464,17 @@ class Database {
 
 			// Clear related caches on successful insertion
 			if ( false !== $result ) {
+				$insert_id = $this->wpdb->insert_id;
+				error_log( 'BRAGBook Database: Successfully logged sync operation with ID: ' . $insert_id . ', type: ' . $sync_type . ', source: ' . $sync_source );
 				$this->clear_sync_caches();
-				return $this->wpdb->insert_id;
+				return $insert_id;
 			}
+
+			// Log insert failure
+			$error_msg = 'Failed to insert sync log: ' . $this->wpdb->last_error;
+			error_log( 'BRAGBook Database ERROR: ' . $error_msg );
+			error_log( 'BRAGBook Database: Data attempted: ' . print_r( $data, true ) );
+			do_action( 'qm/debug', $error_msg );
 
 			return false;
 		} catch ( \Exception $e ) {

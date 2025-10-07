@@ -16,8 +16,25 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 get_header();
 
-if ( have_posts() ) {
-	the_archive_description();
+// Get current term
+$term = get_queried_object();
+
+if ( $term && ! is_wp_error( $term ) ) {
+	?>
+	<div class="brag-book-procedures-archive">
+		<header class="page-header">
+			<h1 class="page-title"><?php echo esc_html( $term->name ); ?></h1>
+			<?php if ( ! empty( $term->description ) ) : ?>
+				<div class="taxonomy-description">
+					<?php
+					// Process shortcodes in the description
+					echo do_shortcode( wp_kses_post( wpautop( $term->description ) ) );
+					?>
+				</div>
+			<?php endif; ?>
+		</header>
+	</div>
+	<?php
 } else {
 	?>
 	<section class="no-results not-found">

@@ -171,6 +171,9 @@ wp-cli.local.yml
 /vendor/
 composer.phar
 
+# Allow assets/vendor (self-hosted libraries like GSAP)
+!assets/vendor/
+
 # NPM/Yarn
 node_modules/
 npm-debug.log

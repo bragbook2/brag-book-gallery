@@ -453,7 +453,7 @@ class General_Page extends Settings_Base {
 	 */
 	private function render_display_settings_tab(): void {
 		// Get current settings with default values
-		$columns = get_option( 'brag_book_gallery_columns', '3' );
+		$columns = get_option( 'brag_book_gallery_columns', '2' );
 		$items_per_page = get_option( 'brag_book_gallery_items_per_page', '10' );
 		$default_landing_text = '<h2>Go ahead, browse our before & afters... visualize your possibilities.</h2>' . "\n" .
 		                       '<p>Our gallery is full of our real patients. Keep in mind results vary.</p>';
@@ -1433,6 +1433,20 @@ class General_Page extends Settings_Base {
 	 * @return void
 	 */
 	private function save_general_settings(): void {
+		// If only saving custom CSS, don't touch other settings
+		if ( isset( $_POST['submit_css'] ) ) {
+			// Advanced Settings - Custom CSS with sanitization
+			if ( isset( $_POST['brag_book_gallery_custom_css'] ) ) {
+				// Sanitize CSS while preserving valid CSS syntax
+				$custom_css = wp_strip_all_tags( $_POST['brag_book_gallery_custom_css'] );
+				// Remove any potential XSS vectors while keeping CSS intact
+				$custom_css = str_replace( array( '<script', '</script', '<style', '</style', 'javascript:', 'expression(' ), '', $custom_css );
+				update_option( 'brag_book_gallery_custom_css', $custom_css );
+			}
+			$this->add_notice( __( 'Custom CSS saved successfully.', 'brag-book-gallery' ), 'success' );
+			return;
+		}
+
 		// Save landing page text (moved from save_default_settings)
 		if ( isset( $_POST['brag_book_gallery_landing_page_text'] ) ) {
 			// Clean escaped quotes from WYSIWYG editor before saving
@@ -1478,6 +1492,45 @@ class General_Page extends Settings_Base {
 							'success'
 						);
 					}
+				} else {
+					// Page already exists, use its ID
+					$page_id = $existing_page->ID;
+					update_option( 'brag_book_gallery_page_id', $page_id );
+				}
+
+				// Always check and create My Favorites child page if it doesn't exist
+				if ( ! empty( $page_id ) ) {
+					// Check if favorites page already exists as a child
+					$favorites_page = get_page_by_path( $new_slug . '/myfavorites' );
+
+					if ( ! $favorites_page ) {
+						// Create My Favorites child page
+						$favorites_page_data = array(
+							'post_title'    => 'My Favorites',
+							'post_name'     => 'myfavorites',
+							'post_parent'   => $page_id,
+							'post_status'   => 'publish',
+							'post_type'     => 'page',
+							'post_content'  => '[brag_book_gallery view="favorites"]',
+							'comment_status' => 'closed',
+							'ping_status'    => 'closed'
+						);
+
+						$favorites_page_id = wp_insert_post( $favorites_page_data );
+
+						if ( $favorites_page_id && ! is_wp_error( $favorites_page_id ) ) {
+							update_option( 'brag_book_gallery_favorites_page_id', $favorites_page_id );
+							$this->add_notice(
+								__( 'My Favorites child page created successfully.', 'brag-book-gallery' ),
+								'success'
+							);
+						} else {
+							$this->add_notice(
+								__( 'Could not create My Favorites page.', 'brag-book-gallery' ),
+								'warning'
+							);
+						}
+					}
 				}
 
 				// Update the slug
@@ -1492,7 +1545,7 @@ class General_Page extends Settings_Base {
 		}
 
 		// Gallery Display Settings
-		$columns = isset( $_POST['brag_book_gallery_columns'] ) ? sanitize_text_field( $_POST['brag_book_gallery_columns'] ) : '3';
+		$columns = isset( $_POST['brag_book_gallery_columns'] ) ? sanitize_text_field( $_POST['brag_book_gallery_columns'] ) : '2';
 		update_option( 'brag_book_gallery_columns', $columns );
 
 		$items_per_page = isset( $_POST['brag_book_gallery_items_per_page'] ) ? absint( $_POST['brag_book_gallery_items_per_page'] ) : 10;
@@ -1530,12 +1583,7 @@ class General_Page extends Settings_Base {
 			update_option( 'brag_book_gallery_custom_css', $custom_css );
 		}
 
-		// Only add notice if it was the main submit button, not the CSS one
-		if ( isset( $_POST['submit'] ) ) {
-			$this->add_notice( __( 'General settings saved successfully.', 'brag-book-gallery' ), 'success' );
-		} elseif ( isset( $_POST['submit_css'] ) ) {
-			$this->add_notice( __( 'Custom CSS saved successfully.', 'brag-book-gallery' ), 'success' );
-		}
+		$this->add_notice( __( 'General settings saved successfully.', 'brag-book-gallery' ), 'success' );
 	}
 
 	/**

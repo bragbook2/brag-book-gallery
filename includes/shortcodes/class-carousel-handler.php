@@ -276,6 +276,7 @@ final class Carousel_Handler {
 	 * - API configuration fallback handling
 	 * - Procedure slug to ID conversion with caching
 	 * - Safe boolean parameter processing
+	 * - Auto-detection of nudity flag from procedure term meta
 	 *
 	 * @since 3.0.0
 	 *
@@ -302,6 +303,7 @@ final class Carousel_Handler {
 		// Process procedure ID/slug.
 		$procedure_id   = null;
 		$procedure_slug = '';
+		$procedure_term = null;
 		if ( ! empty( $atts['procedure_id'] ) ) {
 			// Check if it's numeric (ID) or string (slug).
 			if ( is_numeric( $atts['procedure_id'] ) ) {
@@ -315,11 +317,26 @@ final class Carousel_Handler {
 					sanitize_text_field( $atts['website_property_id'] )
 				);
 
+				// Get the procedure term for nudity check
+				$procedure_term = get_term_by( 'slug', $procedure_slug, \BRAGBookGallery\Includes\Extend\Taxonomies::TAXONOMY_PROCEDURES );
+
 				// Debug logging with WordPress VIP compliance
 				if ( WP_DEBUG && WP_DEBUG_LOG ) {
 					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( 'BRAGBook Carousel: Converted slug "' . $procedure_slug . '" to ID: ' . ( $procedure_id ?: 'not found' ) );
 				}
+			}
+		}
+
+		// Auto-detect nudity from procedure term meta, unless explicitly set in shortcode
+		$nudity = filter_var( $atts['nudity'] ?? false, FILTER_VALIDATE_BOOLEAN );
+		if ( ! $nudity && $procedure_term && ! is_wp_error( $procedure_term ) ) {
+			$nudity_meta = get_term_meta( $procedure_term->term_id, 'nudity', true );
+			$nudity = 'true' === $nudity_meta;
+
+			if ( WP_DEBUG && WP_DEBUG_LOG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log( 'BRAGBook Carousel: Auto-detected nudity for ' . $procedure_slug . ': ' . ( $nudity ? 'true' : 'false' ) );
 			}
 		}
 
@@ -339,7 +356,7 @@ final class Carousel_Handler {
 				'show_pagination'     => filter_var( $atts['show_pagination'] ?? true, FILTER_VALIDATE_BOOLEAN ),
 				'auto_play'           => filter_var( $atts['auto_play'] ?? false, FILTER_VALIDATE_BOOLEAN ),
 				'class'               => sanitize_html_class( (string) $atts['class'] ),
-				'nudity'              => filter_var( $atts['nudity'] ?? false, FILTER_VALIDATE_BOOLEAN ),
+				'nudity'              => $nudity,
 			],
 		];
 	}
@@ -485,7 +502,23 @@ final class Carousel_Handler {
 		$procedure_name = self::get_procedure_name( $config );
 		?>
 		<div class="<?php echo esc_attr( $css_class ); ?>"
-			 data-carousel="<?php echo esc_attr( $carousel_id ); ?>">
+			 data-carousel="<?php echo esc_attr( $carousel_id ); ?>"
+			 <?php if ( ! empty( $config['procedure_slug'] ) ) : ?>
+			 data-procedure="<?php echo esc_attr( $config['procedure_slug'] ); ?>"
+			 <?php
+				// Get term to access both IDs
+				$procedure_term = get_term_by( 'slug', $config['procedure_slug'], \BRAGBookGallery\Includes\Extend\Taxonomies::TAXONOMY_PROCEDURES );
+				if ( $procedure_term && ! is_wp_error( $procedure_term ) ) {
+					// WordPress term ID
+					echo ' data-current-term-id="' . esc_attr( $procedure_term->term_id ) . '"';
+					// API procedure ID from term meta
+					$api_procedure_id = get_term_meta( $procedure_term->term_id, 'procedure_id', true );
+					if ( ! empty( $api_procedure_id ) ) {
+						echo ' data-current-procedure-id="' . esc_attr( $api_procedure_id ) . '"';
+					}
+				}
+				?>
+			 <?php endif; ?>>
 			<div class="brag-book-gallery-carousel-header">
 				<h2 class="brag-book-gallery-carousel-title"><?php echo esc_html( $procedure_name ); ?></h2>
 				<?php if ( $config['show_controls'] ) : ?>
@@ -510,7 +543,12 @@ final class Carousel_Handler {
 					$procedure_cases = self::get_cases_for_procedure( $procedure_slug, $config['procedure_id'], $limit );
 
 					// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- HTML is already escaped in method.
-					echo self::generate_carousel_items( $procedure_cases, $limit, $procedure_slug, $config );
+					echo self::generate_carousel_items(
+						$procedure_cases,
+						$limit,
+						$procedure_slug,
+						$config
+					);
 					?>
 				</div>
 			</div>
@@ -638,9 +676,10 @@ final class Carousel_Handler {
 			// Take only the first photo from this case to ensure variety.
 			$photo = $case['images'][0];
 
-			++ $slide_index;
-			++ $slide_count;
-			$slide_html = HTML_Renderer::generate_carousel_slide_from_photo(
+			++$slide_index;
+			++$slide_count;
+
+			$slide_html = self::generate_carousel_slide_html(
 				$photo,
 				$case,
 				$slide_index,
@@ -689,18 +728,6 @@ final class Carousel_Handler {
 		// Add custom CSS using centralized Asset_Manager method (prevents duplication).
 		Asset_Manager::add_custom_css( 'brag-book-gallery-main' );
 
-		// Check if GSAP should be loaded.
-		if ( ! Asset_Manager::is_gsap_enqueued() ) {
-			$gsap_cdn = 'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js';
-			wp_enqueue_script(
-				'gsap',
-				$gsap_cdn,
-				array(),
-				'3.12.2',
-				true
-			);
-		}
-
 		// Enqueue main gallery JavaScript (which includes carousel functionality).
 		if ( ! wp_script_is( 'brag-book-gallery-main', 'enqueued' ) ) {
 			$js_file = $plugin_path . 'assets/js/brag-book-gallery.js';
@@ -709,7 +736,7 @@ final class Carousel_Handler {
 			wp_enqueue_script(
 				'brag-book-gallery-main',
 				$plugin_url . 'assets/js/brag-book-gallery.js',
-				array( 'gsap' ),
+				array(),
 				$js_version,
 				true
 			);
@@ -885,7 +912,8 @@ final class Carousel_Handler {
 	 * Get cases for a specific procedure
 	 *
 	 * Queries WordPress posts to get cases for a specific procedure,
-	 * formatted for carousel display.
+	 * formatted for carousel display. Uses the same ordering logic as
+	 * the cases/gallery handlers to maintain consistent order.
 	 *
 	 * @param string $procedure_slug The procedure slug to filter by.
 	 * @param int|null $procedure_id The procedure ID to filter by.
@@ -894,7 +922,8 @@ final class Carousel_Handler {
 	 * @since 3.0.0
 	 */
 	private static function get_cases_for_procedure( string $procedure_slug, ?int $procedure_id, int $limit ): array {
-		$query_args = [
+
+		$query_args = array(
 			'post_type'      => \BRAGBookGallery\Includes\Extend\Post_Types::POST_TYPE_CASES,
 			'post_status'    => 'publish',
 			'posts_per_page' => $limit,
@@ -902,16 +931,55 @@ final class Carousel_Handler {
 			'order'          => 'DESC',
 			'no_found_rows'  => true,
 			'cache_results'  => true,
-		];
+		);
 
+		// Get procedure term to access case order list
 		if ( ! empty( $procedure_slug ) ) {
-			$query_args['tax_query'] = [
-				[
-					'taxonomy' => \BRAGBookGallery\Includes\Extend\Taxonomies::TAXONOMY_PROCEDURES,
-					'field'    => 'slug',
-					'terms'    => sanitize_title( $procedure_slug ),
-				],
-			];
+			$procedure_term = get_term_by( 'slug', $procedure_slug, \BRAGBookGallery\Includes\Extend\Taxonomies::TAXONOMY_PROCEDURES );
+
+			if ( $procedure_term && ! is_wp_error( $procedure_term ) ) {
+				// Get the case order list from term meta
+				$case_order_list = get_term_meta( $procedure_term->term_id, 'brag_book_gallery_case_order_list', true );
+
+				// If we have a case order list with WordPress IDs, use post__in for ordering
+				if ( is_array( $case_order_list ) && ! empty( $case_order_list ) ) {
+					// Extract WordPress post IDs from the case order list
+					$post_ids = [];
+					foreach ( $case_order_list as $case_data ) {
+						if ( is_array( $case_data ) && ! empty( $case_data['wp_id'] ) ) {
+							$post_ids[] = $case_data['wp_id'];
+						}
+					}
+
+					if ( ! empty( $post_ids ) ) {
+						// Limit to the requested number of items
+						$post_ids = array_slice( $post_ids, 0, $limit );
+
+						// Use post__in to get only these posts in this exact order
+						$query_args['post__in'] = $post_ids;
+						$query_args['orderby']  = 'post__in';
+						unset( $query_args['order'] );
+					} else {
+						// Fallback to taxonomy filter if no valid post IDs found
+						$query_args['tax_query'] = [
+							[
+								'taxonomy' => \BRAGBookGallery\Includes\Extend\Taxonomies::TAXONOMY_PROCEDURES,
+								'field'    => 'slug',
+								'terms'    => sanitize_title( $procedure_slug ),
+							],
+						];
+					}
+				} else {
+					// Fallback to taxonomy filter if no case order list
+					$query_args['tax_query'] = [
+						[
+							'taxonomy' => \BRAGBookGallery\Includes\Extend\Taxonomies::TAXONOMY_PROCEDURES,
+							'field'    => 'slug',
+							'terms'    => sanitize_title( $procedure_slug ),
+						],
+					];
+				}
+			}
 		}
 
 		$query = new \WP_Query( $query_args );
@@ -931,11 +999,12 @@ final class Carousel_Handler {
 
 				// Get first URL if available
 				$first_image_url = ! empty( $url_array ) ? $url_array[0] : '';
+				$case_id = get_post_meta( $post_id, 'brag_book_gallery_api_id', true );
 
 				// Only include cases that have images
 				if ( ! empty( $first_image_url ) ) {
 					$cases[] = [
-						'id'         => $post_id,
+						'id'         => $case_id,
 						'post_id'    => $post_id,
 						'title'      => get_the_title(),
 						'images'     => [
@@ -957,5 +1026,328 @@ final class Carousel_Handler {
 		wp_reset_postdata();
 
 		return $cases;
+	}
+
+	/**
+	 * Generate carousel slide from photo data
+	 *
+	 * Creates carousel slide HTML from photo and case data.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @param array  $photo          Photo data.
+	 * @param array  $case           Case data.
+	 * @param int    $slide_index    Slide index.
+	 * @param string $procedure_slug Procedure slug.
+	 * @param bool   $is_standalone  Whether this is a standalone carousel (no action buttons).
+	 * @param array  $config         Optional carousel configuration for nudity override.
+	 *
+	 * @return string Slide HTML.
+	 */
+	private static function generate_carousel_slide_html(
+		array $photo,
+		array $case,
+		int $slide_index,
+		string $procedure_slug = '',
+		bool $is_standalone = false,
+		array $config = []
+	): string {
+
+		$photo_data = self::extract_photo_data( $photo, $config );
+
+		$case_data = self::extract_case_data_for_slide( $case );
+
+		$slide_data = self::build_slide_data( $photo_data, $case_data, $slide_index );
+
+		$case_url = get_permalink( $case['post_id'] ?? $case['id'] );
+
+		// Get WordPress term ID from procedure slug
+		$procedure_term_id = null;
+		if ( ! empty( $config['procedure_slug'] ) ) {
+			$procedure_term = get_term_by( 'slug', $config['procedure_slug'], \BRAGBookGallery\Includes\Extend\Taxonomies::TAXONOMY_PROCEDURES );
+			if ( $procedure_term && ! is_wp_error( $procedure_term ) ) {
+				$procedure_term_id = $procedure_term->term_id;
+			}
+		}
+
+		return self::render_slide(
+			$photo_data,
+			$case_data,
+			$slide_data,
+			$case_url,
+			$is_standalone,
+			$procedure_term_id
+		);
+	}
+
+	/**
+	 * Extract photo data for carousel slide
+	 *
+	 * Processes photo array to extract necessary data.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @param array $photo  Photo data.
+	 * @param array $config Optional configuration for nudity override.
+	 *
+	 * @return array Processed photo data.
+	 */
+	private static function extract_photo_data( array $photo, array $config = [] ): array {
+		$image_url = $photo['postProcessedImageLocation'] ??
+					 $photo['url'] ??
+					 $photo['originalBeforeLocation'] ?? '';
+
+		$alt_text = ! empty( $photo['seoAltText'] )
+			? sanitize_text_field( $photo['seoAltText'] )
+			: __( 'Before and after procedure result', 'brag-book-gallery' );
+
+		// Check for nudity - either from photo data OR carousel-level override
+		$has_nudity = false;
+		if ( ! empty( $config['nudity'] ) ) {
+			// If carousel nudity parameter is true, always show nudity warning
+			$has_nudity = true;
+		} else {
+			// Otherwise, use photo's individual nudity flag
+			$has_nudity = ! empty( $photo['hasNudity'] ) || ! empty( $photo['nudity'] );
+		}
+
+		return array(
+			'id'         => sanitize_text_field( $photo['id'] ?? '' ),
+			'image_url'  => esc_url_raw( $image_url ),
+			'alt_text'   => $alt_text,
+			'has_nudity' => $has_nudity,
+		);
+	}
+
+	/**
+	 * Extract case data for carousel slide
+	 *
+	 * Processes case data for carousel rendering.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @param array $case Case data.
+	 *
+	 * @return array Processed case data.
+	 */
+	private static function extract_case_data_for_slide( array $case ): array {
+		$seo_suffix = '';
+		if ( ! empty( $case['caseDetails'] ) && is_array( $case['caseDetails'] ) ) {
+			$first_detail = reset( $case['caseDetails'] );
+			$seo_suffix = sanitize_title( $first_detail['seoSuffixUrl'] ?? '' );
+		}
+
+		return array(
+			'id'           => sanitize_text_field( $case['id'] ?? '' ),
+			'post_id'      => absint( $case['post_id'] ?? 0 ),
+			'seo_suffix'   => $seo_suffix,
+			'procedures'   => $case['procedures'] ?? array(),
+			'total_slides' => count( $case['photos'] ?? $case['images'] ?? array() ),
+		);
+	}
+
+	/**
+	 * Build slide-specific data
+	 *
+	 * Creates data array for individual slide.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @param array $photo_data  Photo data.
+	 * @param array $case_data   Case data.
+	 * @param int   $slide_index Slide index.
+	 *
+	 * @return array Slide data.
+	 */
+	private static function build_slide_data( array $photo_data, array $case_data, int $slide_index ): array {
+		$slide_id = sprintf( 'bd-%d', $slide_index );
+
+		if ( ! empty( $case_data['id'] ) && ! empty( $photo_data['id'] ) ) {
+			$slide_id = sprintf( '%s-%s', $case_data['id'], $photo_data['id'] );
+		}
+
+		/* translators: 1: current slide number, 2: total slides */
+		$aria_label = sprintf( __( 'Slide %1$d of %2$d', 'brag-book-gallery' ), $slide_index + 1, $case_data['total_slides'] );
+
+		return array(
+			'id'         => $slide_id,
+			'index'      => $slide_index,
+			'aria_label' => $aria_label,
+		);
+	}
+
+	/**
+	 * Render the complete carousel slide
+	 *
+	 * Assembles all components into complete slide HTML.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @param array    $photo_data    Photo data.
+	 * @param array    $case_data     Case data.
+	 * @param array    $slide_data    Slide data.
+	 * @param string   $case_url      Case URL.
+	 * @param bool     $is_standalone Whether this is a standalone carousel (no action buttons).
+	 * @param int|null $procedure_id  Optional procedure term ID for referrer tracking.
+	 *
+	 * @return string Complete slide HTML.
+	 */
+	private static function render_slide( array $photo_data, array $case_data, array $slide_data, string $case_url, bool $is_standalone = false, ?int $procedure_id = null ): string {
+		$slide_wrapper = self::render_slide_wrapper( $slide_data, $case_data, $procedure_id );
+		$nudity_warning = $photo_data['has_nudity'] ? HTML_Renderer::render_nudity_warning() : '';
+		$link_open = ! empty( $case_url ) ? self::render_slide_link_open( $case_url, $photo_data['alt_text'] ) : '';
+		$link_close = ! empty( $case_url ) ? '</a>' : '';
+		$image_element = self::render_slide_image( $photo_data );
+
+		// Only render action buttons for non-standalone carousels
+		$action_buttons = $is_standalone ? '' : self::render_slide_action_buttons( $case_data['id'] );
+
+		return sprintf(
+			'%s%s%s%s%s%s</div>',
+			$slide_wrapper,
+			$nudity_warning,
+			$link_open,
+			$image_element,
+			$link_close,
+			$action_buttons
+		);
+	}
+
+	/**
+	 * Render slide wrapper element
+	 *
+	 * Creates wrapper div for carousel slide.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @param array    $slide_data   Slide data.
+	 * @param array    $case_data    Case data.
+	 * @param int|null $procedure_id Optional procedure term ID for referrer tracking.
+	 *
+	 * @return string Wrapper HTML.
+	 */
+	private static function render_slide_wrapper( array $slide_data, array $case_data = [], ?int $procedure_id = null ): string {
+		$data_attributes = sprintf(
+			'data-slide="%s"',
+			esc_attr( $slide_data['id'] )
+		);
+
+		// Add case debugging data attributes
+		if ( ! empty( $case_data ) ) {
+			// API case ID.
+			if ( ! empty( $case_data['id'] ) ) {
+				$data_attributes .= sprintf(
+					' data-case-id="%s"',
+					esc_attr( $case_data['id'] )
+				);
+			}
+
+			// WordPress post ID
+			if ( ! empty( $case_data['post_id'] ) ) {
+				$data_attributes .= sprintf(
+					' data-post-id="%s"',
+					esc_attr( $case_data['post_id'] )
+				);
+			}
+
+			if ( ! empty( $case_data['seo_suffix'] ) ) {
+				$data_attributes .= sprintf(
+					' data-seo-suffix="%s"',
+					esc_attr( $case_data['seo_suffix'] )
+				);
+			}
+		}
+
+		// Add current term ID and procedure ID if provided
+		if ( ! empty( $procedure_id ) ) {
+			// WordPress term ID
+			$data_attributes .= sprintf(
+				' data-current-term-id="%s"',
+				esc_attr( $procedure_id )
+			);
+
+			// API procedure ID from term meta
+			$api_procedure_id = get_term_meta( $procedure_id, 'procedure_id', true );
+			if ( ! empty( $api_procedure_id ) ) {
+				$data_attributes .= sprintf(
+					' data-current-procedure-id="%s"',
+					esc_attr( $api_procedure_id )
+				);
+			}
+		}
+
+		return sprintf(
+			'<div class="brag-book-gallery-carousel-item" %s role="group" aria-roledescription="slide" aria-label="%s">',
+			$data_attributes,
+			esc_attr( $slide_data['aria_label'] )
+		);
+	}
+
+	/**
+	 * Render link opening tag
+	 *
+	 * Creates opening anchor tag for slide link.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @param string $case_url Case URL.
+	 * @param string $alt_text Alt text.
+	 *
+	 * @return string Link HTML.
+	 */
+	private static function render_slide_link_open( string $case_url, string $alt_text ): string {
+		return sprintf(
+			'<a href="%s" class="brag-book-gallery-carousel-link" aria-label="%s">',
+			esc_url( $case_url ),
+			/* translators: %s: image alt text */
+			esc_attr( sprintf( __( 'View case details for %s', 'brag-book-gallery' ), $alt_text ) )
+		);
+	}
+
+	/**
+	 * Render image element with picture tag
+	 *
+	 * Creates picture element for responsive images.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @param array $photo_data Photo data.
+	 *
+	 * @return string Picture HTML.
+	 */
+	private static function render_slide_image( array $photo_data ): string {
+		$blur_class = $photo_data['has_nudity'] ? ' class="brag-book-gallery-nudity-blur"' : '';
+
+		return sprintf(
+			'<picture class="brag-book-gallery-carousel-image"><source srcset="%s" type="image/jpeg"><img src="%s" alt="%s" loading="lazy"%s></picture>',
+			esc_url( $photo_data['image_url'] ),
+			esc_url( $photo_data['image_url'] ),
+			esc_attr( $photo_data['alt_text'] ),
+			$blur_class
+		);
+	}
+
+	/**
+	 * Render action buttons for carousel slide
+	 *
+	 * Creates favorite button for carousel items.
+	 *
+	 * @since 3.0.0
+	 *
+	 * @param string $case_id Case ID.
+	 *
+	 * @return string Action buttons HTML.
+	 */
+	private static function render_slide_action_buttons( string $case_id ): string {
+		// Check if favorites functionality is enabled
+		if ( ! \BRAGBookGallery\Includes\Core\Settings_Helper::is_favorites_enabled() ) {
+			return '';
+		}
+
+		return sprintf(
+			'<div class="brag-book-gallery-item-actions"><button class="brag-book-gallery-favorite-button" data-favorited="false" data-item-id="%s" aria-label="%s"><svg fill="rgba(255, 255, 255, 0.5)" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button></div>',
+			esc_attr( sprintf( 'case-%s', $case_id ) ),
+			esc_attr__( 'Add to favorites', 'brag-book-gallery' )
+		);
 	}
 }

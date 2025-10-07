@@ -157,6 +157,10 @@ final class Cases_Handler {
 		add_filter( 'category_description', 'do_shortcode' );
 		add_filter( 'tag_description', 'do_shortcode' );
 
+		// Register AJAX handlers for procedure navigation
+		add_action( 'wp_ajax_brag_book_get_adjacent_cases', [ self::class, 'ajax_get_adjacent_cases' ] );
+		add_action( 'wp_ajax_nopriv_brag_book_get_adjacent_cases', [ self::class, 'ajax_get_adjacent_cases' ] );
+
 		// Enable shortcodes in all taxonomy descriptions (including custom taxonomies)
 		add_action( 'init', [ $this, 'enable_shortcodes_in_taxonomy_descriptions' ] );
 
@@ -301,8 +305,20 @@ final class Cases_Handler {
 		$procedure_title  = sanitize_text_field( get_query_var( 'procedure_title', '' ) );
 		$case_suffix      = sanitize_text_field( get_query_var( 'case_suffix', '' ) );
 
+		// Check if we're on a taxonomy archive page
+		if ( empty( $filter_procedure ) && is_tax( 'brag_book_procedures' ) ) {
+			$term = get_queried_object();
+			if ( $term && ! is_wp_error( $term ) ) {
+				$filter_procedure = $term->slug;
+				if ( WP_DEBUG ) {
+					error_log( 'BRAGBook: Cases handler - Auto-detected procedure from taxonomy: ' . $filter_procedure );
+				}
+			}
+		}
+
 		// Debug logging for procedure detection
 		if ( WP_DEBUG ) {
+			error_log( 'BRAGBook: Cases handler - is_tax: ' . ( is_tax( 'brag_book_procedures' ) ? 'YES' : 'NO' ) );
 			error_log( 'BRAGBook: Cases handler - filter_procedure: ' . $filter_procedure );
 			error_log( 'BRAGBook: Cases handler - procedure_title: ' . $procedure_title );
 			error_log( 'BRAGBook: Cases handler - case_suffix: ' . $case_suffix );
@@ -685,6 +701,8 @@ final class Cases_Handler {
 	 * @param string $image_display_mode Image display mode.
 	 * @param bool $procedure_nudity Whether procedure has nudity.
 	 * @param string $procedure_context Procedure context from filter.
+	 * @param string $current_procedure_id Current procedure ID for referrer tracking.
+	 * @param string $current_term_id Current term ID for referrer tracking.
 	 *
 	 * @return string HTML output.
 	 * @since 3.0.0
@@ -694,7 +712,9 @@ final class Cases_Handler {
 		array $case,
 		string $image_display_mode,
 		bool $procedure_nudity = false,
-		string $procedure_context = ''
+		string $procedure_context = '',
+		string $current_procedure_id = '',
+		string $current_term_id = ''
 	): string {
 		$html = '';
 
@@ -711,10 +731,12 @@ final class Cases_Handler {
 		}
 
 		$html .= sprintf(
-			'<article class="brag-book-gallery-case-card" %s data-case-id="%s" data-procedure-ids="%s">',
+			'<article class="brag-book-gallery-case-card" %s data-case-id="%s" data-procedure-ids="%s" data-current-procedure-id="%s" data-current-term-id="%s">',
 			$data_attrs,
 			esc_attr( $case_info['case_id'] ),
-			esc_attr( $procedure_ids )
+			esc_attr( $procedure_ids ),
+			esc_attr( $current_procedure_id ),
+			esc_attr( $current_term_id )
 		);
 
 		// Get case URL.
@@ -1119,7 +1141,8 @@ final class Cases_Handler {
 	 * Builds and returns a WP_Query object for fetching case posts.
 	 *
 	 * Constructs a query with appropriate filters, sorting, and pagination settings.
-	 * When a procedure filter is provided, adds taxonomy query and custom sorting by case order.
+	 * When a procedure filter is provided, adds taxonomy query and custom sorting by case order
+	 * from the procedure taxonomy term meta.
 	 *
 	 * @param string $filter_procedure Optional. Procedure slug to filter cases by.
 	 *
@@ -1128,6 +1151,12 @@ final class Cases_Handler {
 	 *
 	 */
 	private static function get_cases_query( string $filter_procedure = '' ): \WP_Query {
+		// Debug logging at entry point
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( 'BRAGBook: get_cases_query() called with filter_procedure: "' . $filter_procedure . '"' );
+			error_log( 'BRAGBook: filter_procedure empty check: ' . ( empty( $filter_procedure ) ? 'EMPTY' : 'NOT EMPTY' ) );
+		}
+
 		// Base query arguments for fetching published case posts
 		$query_args = [
 			'post_type'      => Post_Types::POST_TYPE_CASES,
@@ -1141,23 +1170,130 @@ final class Cases_Handler {
 
 		// Add procedure-specific filtering and sorting if a filter is specified
 		if ( ! empty( $filter_procedure ) ) {
-			// Add taxonomy filter for the specified procedure
-			$query_args['tax_query'][] = [
-				'taxonomy' => Taxonomies::TAXONOMY_PROCEDURES,
-				'field'    => 'slug',
-				'terms'    => $filter_procedure,
-			];
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'BRAGBook: Filter procedure is not empty, proceeding with term lookup' );
+			}
+			// Get the procedure term to access its case order
+			$procedure_term = get_term_by( 'slug', $filter_procedure, Taxonomies::TAXONOMY_PROCEDURES );
 
-			// Use custom case order field for primary sorting when filtering by procedure
-			// This allows manual ordering of cases within a procedure category
-			$query_args['meta_key'] = 'brag_book_gallery_case_order';
-			$query_args['orderby']  = [
-				'meta_value_num' => 'ASC',  // Primary: Sort by manual case order (lower numbers first)
-				'date'           => 'DESC'  // Secondary: Sort by publish date (newest first)
-			];
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'BRAGBook: Taxonomy constant: ' . Taxonomies::TAXONOMY_PROCEDURES );
+				error_log( 'BRAGBook: Term lookup result: ' . ( $procedure_term ? 'FOUND (ID: ' . $procedure_term->term_id . ')' : 'NOT FOUND' ) );
+				if ( is_wp_error( $procedure_term ) ) {
+					error_log( 'BRAGBook: Term lookup error: ' . $procedure_term->get_error_message() );
+				}
+			}
+
+			if ( $procedure_term && ! is_wp_error( $procedure_term ) ) {
+				// Get the case order list from term meta
+				$case_order_list = get_term_meta( $procedure_term->term_id, 'brag_book_gallery_case_order_list', true );
+
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+					error_log( 'BRAGBook: Case order list for ' . $filter_procedure . ' (term ID: ' . $procedure_term->term_id . '): ' . print_r( $case_order_list, true ) );
+					error_log( 'BRAGBook: Case order list type: ' . gettype( $case_order_list ) . ', is_array: ' . ( is_array( $case_order_list ) ? 'YES' : 'NO' ) . ', count: ' . ( is_array( $case_order_list ) ? count( $case_order_list ) : 'N/A' ) );
+				}
+
+				// If we have a case order list with WordPress IDs, use post__in for ordering
+				if ( is_array( $case_order_list ) && ! empty( $case_order_list ) ) {
+					// Extract WordPress post IDs from the case order list
+					$post_ids = [];
+					foreach ( $case_order_list as $case_data ) {
+						if ( is_array( $case_data ) && ! empty( $case_data['wp_id'] ) ) {
+							$post_ids[] = $case_data['wp_id'];
+						}
+					}
+
+					if ( ! empty( $post_ids ) ) {
+						// Use post__in to get only these posts in this exact order
+						$query_args['post__in'] = $post_ids;
+						$query_args['orderby']  = 'post__in';
+						unset( $query_args['order'] );
+
+						if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+							error_log( 'BRAGBook: Using post__in with ' . count( $post_ids ) . ' WordPress IDs for ordering' );
+						}
+					} else {
+						// Fallback to taxonomy filter if no valid post IDs found
+						$query_args['tax_query'][] = [
+							'taxonomy' => Taxonomies::TAXONOMY_PROCEDURES,
+							'field'    => 'slug',
+							'terms'    => $filter_procedure,
+						];
+					}
+				} else {
+					// Fallback to taxonomy filter if no case order list
+					$query_args['tax_query'][] = [
+						'taxonomy' => Taxonomies::TAXONOMY_PROCEDURES,
+						'field'    => 'slug',
+						'terms'    => $filter_procedure,
+					];
+				}
+			}
 		}
 
 		return new \WP_Query( $query_args );
+	}
+
+	/**
+	 * Get WordPress post IDs from case order list
+	 *
+	 * Converts an array of case API IDs to WordPress post IDs while maintaining order.
+	 *
+	 * @param array $case_order_list Array of case API IDs in order.
+	 *
+	 * @return array Array of WordPress post IDs in the same order.
+	 * @since 3.3.0
+	 */
+	/**
+	 * Sort posts by case order list
+	 *
+	 * Sorts an array of WP_Post objects based on the case order list from taxonomy term meta.
+	 * The case order list contains arrays with 'wp_id' and 'api_id' keys.
+	 *
+	 * @param array $posts Array of WP_Post objects.
+	 * @param array $case_order_list Array of case data with 'wp_id' and 'api_id' keys.
+	 *
+	 * @return array Sorted array of WP_Post objects.
+	 * @since 3.3.0
+	 */
+	private static function sort_posts_by_case_order( array $posts, array $case_order_list ): array {
+		// Create a map of post ID to post object for quick lookup
+		$post_map = [];
+		foreach ( $posts as $post ) {
+			$post_map[ $post->ID ] = $post;
+		}
+
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( 'BRAGBook: Total posts to sort: ' . count( $posts ) );
+			error_log( 'BRAGBook: Case order list count: ' . count( $case_order_list ) );
+		}
+
+		// Build ordered array based on case order list (using WordPress post IDs)
+		$ordered_posts = [];
+		$used_post_ids = [];
+
+		foreach ( $case_order_list as $case_data ) {
+			// Support both new format (array with wp_id/api_id) and legacy format (just API IDs)
+			$wp_id = is_array( $case_data ) ? ( $case_data['wp_id'] ?? null ) : null;
+
+			if ( $wp_id && isset( $post_map[ $wp_id ] ) ) {
+				$ordered_posts[] = $post_map[ $wp_id ];
+				$used_post_ids[] = $wp_id;
+			}
+		}
+
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( 'BRAGBook: Sorted ' . count( $ordered_posts ) . ' posts by case order' );
+		}
+
+		// Add any remaining posts that weren't in the case order list
+		foreach ( $posts as $post ) {
+			if ( ! in_array( $post->ID, $used_post_ids, true ) ) {
+				$ordered_posts[] = $post;
+			}
+		}
+
+		return $ordered_posts;
 	}
 
 	/**
@@ -1861,19 +1997,27 @@ final class Cases_Handler {
 		array $case_data,
 		string $image_display_mode = 'single',
 		bool $procedure_nudity = false,
-		string $procedure_context = ''
+		string $procedure_context = '',
+		string $current_procedure_id = '',
+		string $current_term_id = ''
 	): string {
-		$case_id    = $case_data['id'] ?? $case_data['post_id'] ?? '';
+		$case_id    = $case_data['id'] ?: '';
 		$post_id    = $case_data['post_id'] ?? '';
 		$images     = $case_data['images'] ?? [];
 		$procedures = $case_data['procedures'] ?? [];
 
-		// Get procedure IDs from taxonomy terms
+		// Get API procedure IDs from taxonomy terms
 		$procedure_ids = [];
+
 		if ( $post_id ) {
 			$terms = wp_get_post_terms( $post_id, \BRAGBookGallery\Includes\Extend\Taxonomies::TAXONOMY_PROCEDURES );
 			if ( ! is_wp_error( $terms ) ) {
-				$procedure_ids = wp_list_pluck( $terms, 'term_id' );
+				foreach ( $terms as $term ) {
+					$api_procedure_id = get_term_meta( $term->term_id, 'procedure_id', true );
+					if ( ! empty( $api_procedure_id ) ) {
+						$procedure_ids[] = $api_procedure_id;
+					}
+				}
 			}
 		}
 
@@ -1889,10 +2033,9 @@ final class Cases_Handler {
 		}
 
 		// Build data attributes
-		$data_attrs = [
-			'data-post-id="' . $post_id . '"',
-		];
-
+		$data_attrs = array(
+			'data-card="true"'
+		);
 		$case_id   = get_post_meta( $post_id, 'brag_book_gallery_api_id', true );
 		$gender    = get_post_meta( $post_id, 'brag_book_gallery_gender', true );
 		$age       = get_post_meta( $post_id, 'brag_book_gallery_age', true );
@@ -1902,18 +2045,48 @@ final class Cases_Handler {
 			$data_attrs[] = 'data-case-id="' . $case_id . '"';
 		}
 
+		if ( $post_id ) {
+			$data_attrs[] = 'data-post-id="' . $post_id . '"';
+		}
+
+		if ( is_tax() ) {
+			$current_term_id = get_queried_object_id();
+			$data_attrs[] = 'data-current-term-id="' . esc_attr( $current_term_id ) . '"';
+
+			// Get API procedure ID from current term meta
+			$current_api_procedure_id = get_term_meta( $current_term_id, 'procedure_id', true );
+			if ( ! empty( $current_api_procedure_id ) ) {
+				$data_attrs[] = 'data-current-procedure-id="' . esc_attr( $current_api_procedure_id ) . '"';
+			}
+		}
+
+		if ( ! empty( $procedure_ids ) ) {
+			$data_attrs[] = 'data-procedure-ids="' . esc_attr( implode( ',', $procedure_ids ) ) . '"';
+		}
+
 		// Add demographic data attributes
 		if ( ! empty( $age ) ) {
 			$data_attrs[] = 'data-age="' . esc_attr( $age ) . '"';
 		}
+
 		if ( ! empty( $gender ) ) {
 			$data_attrs[] = 'data-gender="' . esc_attr( strtolower( $gender ) ) . '"';
 		}
+
 		if ( ! empty( $ethnicity ) ) {
 			$data_attrs[] = 'data-ethnicity="' . esc_attr( strtolower( $ethnicity ) ) . '"';
 		}
-		if ( ! empty( $procedure_ids ) ) {
-			$data_attrs[] = 'data-procedure-ids="' . esc_attr( implode( ',', $procedure_ids ) ) . '"';
+
+		// Get height and weight metadata
+		$height = get_post_meta( $post_id, 'brag_book_gallery_height', true );
+		$weight = get_post_meta( $post_id, 'brag_book_gallery_weight', true );
+
+		if ( ! empty( $height ) ) {
+			$data_attrs[] = 'data-height="' . esc_attr( $height ) . '"';
+		}
+
+		if ( ! empty( $weight ) ) {
+			$data_attrs[] = 'data-weight="' . esc_attr( $weight ) . '"';
 		}
 
 		// Get image URL - prioritize post-processed URLs, fallback to gallery images
@@ -2006,8 +2179,8 @@ final class Cases_Handler {
 					<div class="brag-book-gallery-case-card-summary-info">
 						<span
 							class="brag-book-gallery-case-card-summary-info__name"><?php
-							// Remove case ID from title (e.g., "Procedure Name #123" becomes "Procedure Name")
-							$title = get_the_title();
+							// Remove case ID/number from title (e.g., "Fillers #19329" becomes "Fillers")
+							$title = get_the_title( $post_id );
 							$title = preg_replace( '/ #\d+$/', '', $title );
 							echo esc_html( $title );
 							?></span>
@@ -2093,7 +2266,7 @@ final class Cases_Handler {
 			if ( ! empty( $procedure_name ) ) {
 				$query_args['tax_query'] = [
 					[
-						'taxonomy' => 'procedures',
+						'taxonomy' => Taxonomies::TAXONOMY_PROCEDURES,
 						'field'    => 'slug',
 						'terms'    => $procedure_name,
 					],
@@ -2129,12 +2302,18 @@ final class Cases_Handler {
 						$case_data['seoHeadline'] = get_the_title( $post_id ) ?: 'Untitled Case';
 					}
 
+					// Get current procedure ID and term ID from request
+					$current_procedure_id = isset( $_POST['current_procedure_id'] ) ? sanitize_text_field( wp_unslash( $_POST['current_procedure_id'] ) ) : '';
+					$current_term_id      = isset( $_POST['current_term_id'] ) ? sanitize_text_field( wp_unslash( $_POST['current_term_id'] ) ) : '';
+
 					// Render case card
 					$html .= self::render_case_card(
 						$case_data,
 						$image_display_mode,
 						$procedure_has_nudity,
-						$procedure_name
+						$procedure_name,
+						$current_procedure_id,
+						$current_term_id
 					);
 				}
 
@@ -2166,6 +2345,141 @@ final class Cases_Handler {
 			error_log( 'BRAG Book Gallery Load More Error: ' . $e->getMessage() );
 			wp_send_json_error( [ 'message' => 'Failed to load more cases' ] );
 		}
+	}
+
+	/**
+	 * AJAX handler to get adjacent cases for a specific procedure
+	 *
+	 * Returns the next and previous case URLs for navigation within a procedure
+	 *
+	 * @return void
+	 * @since 3.3.0
+	 */
+	public static function ajax_get_adjacent_cases(): void {
+		$procedure_slug  = isset( $_POST['procedure_slug'] ) ? sanitize_text_field( $_POST['procedure_slug'] ) : '';
+		$term_id         = isset( $_POST['term_id'] ) ? absint( $_POST['term_id'] ) : 0;
+		$current_post_id = isset( $_POST['post_id'] ) ? absint( $_POST['post_id'] ) : 0;
+
+		error_log( 'AJAX Adjacent Cases - Procedure: ' . $procedure_slug . ', Term ID: ' . $term_id . ', Post ID: ' . $current_post_id );
+
+		if ( empty( $current_post_id ) ) {
+			error_log( 'AJAX Adjacent Cases - Missing post ID' );
+			wp_send_json_error( [ 'message' => 'Missing post ID' ] );
+			return;
+		}
+
+		// Verify the post exists
+		$current_post = get_post( $current_post_id );
+		if ( ! $current_post || $current_post->post_type !== Post_Types::POST_TYPE_CASES ) {
+			error_log( 'AJAX Adjacent Cases - Invalid post ID: ' . $current_post_id );
+			wp_send_json_error( [ 'message' => 'Invalid post ID: ' . $current_post_id ] );
+			return;
+		}
+
+		// Get the procedure term - prefer term_id if provided, otherwise fallback to slug lookup
+		if ( ! empty( $term_id ) ) {
+			$procedure_term = get_term( $term_id, Taxonomies::TAXONOMY_PROCEDURES );
+			error_log( 'AJAX Adjacent Cases - Using term ID: ' . $term_id );
+		} elseif ( ! empty( $procedure_slug ) ) {
+			$procedure_term = get_term_by( 'slug', $procedure_slug, Taxonomies::TAXONOMY_PROCEDURES );
+			error_log( 'AJAX Adjacent Cases - Falling back to slug lookup: ' . $procedure_slug );
+		} else {
+			error_log( 'AJAX Adjacent Cases - No term ID or slug provided' );
+			wp_send_json_error( [ 'message' => 'Missing procedure identifier' ] );
+			return;
+		}
+
+		if ( ! $procedure_term || is_wp_error( $procedure_term ) ) {
+			error_log( 'AJAX Adjacent Cases - Invalid procedure term' );
+			wp_send_json_error( [ 'message' => 'Invalid procedure' ] );
+			return;
+		}
+
+		error_log( 'AJAX Adjacent Cases - Found procedure term: ' . $procedure_term->term_id . ' (' . $procedure_term->slug . ')' );
+
+		// Get case order list from taxonomy term meta
+		$case_order_list = get_term_meta( $procedure_term->term_id, 'brag_book_gallery_case_order_list', true );
+
+		if ( is_array( $case_order_list ) && ! empty( $case_order_list ) ) {
+			// Extract WordPress IDs from case order list
+			$case_ids = [];
+			foreach ( $case_order_list as $case_data ) {
+				if ( is_array( $case_data ) && ! empty( $case_data['wp_id'] ) ) {
+					$case_ids[] = $case_data['wp_id'];
+				}
+			}
+
+			error_log( 'AJAX Adjacent Cases - Using case order list with ' . count( $case_ids ) . ' cases' );
+		} else {
+			// Fallback to query if no case order list
+			$cases_query = new \WP_Query( [
+				'post_type'      => Post_Types::POST_TYPE_CASES,
+				'post_status'    => 'publish',
+				'posts_per_page' => -1,
+				'tax_query'      => [
+					[
+						'taxonomy' => Taxonomies::TAXONOMY_PROCEDURES,
+						'field'    => 'term_id',
+						'terms'    => $procedure_term->term_id,
+					],
+				],
+				'orderby'        => 'date',
+				'order'          => 'DESC',
+				'fields'         => 'ids',
+			] );
+
+			$case_ids = $cases_query->posts;
+			error_log( 'AJAX Adjacent Cases - Fallback to query, found ' . count( $case_ids ) . ' cases' );
+		}
+		$current_key = array_search( $current_post_id, $case_ids );
+
+		error_log( 'AJAX Adjacent Cases - Current post ID: ' . $current_post_id . ', found at index: ' . ( $current_key !== false ? $current_key : 'NOT FOUND' ) );
+		error_log( 'AJAX Adjacent Cases - Case IDs in order: ' . implode( ', ', array_slice( $case_ids, 0, 10 ) ) . ( count( $case_ids ) > 10 ? '...' : '' ) );
+
+		$next_url = null;
+		$prev_url = null;
+
+		if ( $current_key === false ) {
+			error_log( 'AJAX Adjacent Cases - Current case not found in procedure case order list' );
+			wp_send_json_success( [
+				'next'    => null,
+				'prev'    => null,
+				'message' => 'Case not found in this procedure',
+			] );
+			return;
+		}
+
+		// Get gallery page slug for URL construction
+		$gallery_slug = get_option( 'brag_book_gallery_page_slug', 'gallery' );
+
+		// Get next case
+		if ( isset( $case_ids[ $current_key + 1 ] ) ) {
+			$next_post_id = $case_ids[ $current_key + 1 ];
+			$next_case_api_id = get_post_meta( $next_post_id, 'brag_book_gallery_api_id', true );
+			if ( empty( $next_case_api_id ) ) {
+				$next_case_api_id = get_post_meta( $next_post_id, '_case_api_id', true );
+			}
+			// Build URL using the referrer procedure slug, not the case's primary procedure
+			$next_url = sprintf( '/%s/%s/%s/', $gallery_slug, $procedure_term->slug, $next_case_api_id ?: $next_post_id );
+			error_log( 'AJAX Adjacent Cases - Next case ID: ' . $next_post_id . ' (API: ' . $next_case_api_id . '), URL: ' . $next_url );
+		}
+
+		// Get previous case
+		if ( isset( $case_ids[ $current_key - 1 ] ) ) {
+			$prev_post_id = $case_ids[ $current_key - 1 ];
+			$prev_case_api_id = get_post_meta( $prev_post_id, 'brag_book_gallery_api_id', true );
+			if ( empty( $prev_case_api_id ) ) {
+				$prev_case_api_id = get_post_meta( $prev_post_id, '_case_api_id', true );
+			}
+			// Build URL using the referrer procedure slug, not the case's primary procedure
+			$prev_url = sprintf( '/%s/%s/%s/', $gallery_slug, $procedure_term->slug, $prev_case_api_id ?: $prev_post_id );
+			error_log( 'AJAX Adjacent Cases - Prev case ID: ' . $prev_post_id . ' (API: ' . $prev_case_api_id . '), URL: ' . $prev_url );
+		}
+
+		wp_send_json_success( [
+			'next' => $next_url,
+			'prev' => $prev_url,
+		] );
 	}
 
 	/**

@@ -809,9 +809,77 @@ class Case_Handler {
 	 * @return string Procedure details HTML.
 	 */
 	private function get_procedure_details_for_card( array $case_data ): string {
-		// This would need to pull from procedure meta or other sources
-		// For now, return empty - would need additional implementation
-		return '';
+		$html = '';
+
+		// Get the case post ID from case data
+		if ( empty( $case_data['id'] ) ) {
+			return $html;
+		}
+
+		// Find the post by case API ID
+		$posts = get_posts( [
+			'post_type'      => 'brag_book_cases',
+			'meta_key'       => 'brag_book_gallery_api_id',
+			'meta_value'     => $case_data['id'],
+			'posts_per_page' => 1,
+			'post_status'    => 'any',
+		] );
+
+		if ( empty( $posts ) ) {
+			// Try legacy meta key
+			$posts = get_posts( [
+				'post_type'      => 'brag_book_cases',
+				'meta_key'       => '_case_api_id',
+				'meta_value'     => $case_data['id'],
+				'posts_per_page' => 1,
+				'post_status'    => 'any',
+			] );
+		}
+
+		if ( empty( $posts ) ) {
+			return $html;
+		}
+
+		$post_id = $posts[0]->ID;
+
+		// Get procedure details JSON (try modern format first, then legacy)
+		$procedure_details_json = get_post_meta( $post_id, 'brag_book_gallery_procedure_details', true );
+		if ( empty( $procedure_details_json ) ) {
+			$procedure_details_json = get_post_meta( $post_id, '_case_procedure_details', true );
+		}
+
+		if ( empty( $procedure_details_json ) ) {
+			return $html;
+		}
+
+		// Decode JSON
+		$procedure_details = json_decode( $procedure_details_json, true );
+		if ( ! is_array( $procedure_details ) || empty( $procedure_details ) ) {
+			return $html;
+		}
+
+		// Build HTML for each procedure's details
+		foreach ( $procedure_details as $procedure_id => $details ) {
+			if ( ! is_array( $details ) || empty( $details ) ) {
+				continue;
+			}
+
+			foreach ( $details as $detail_label => $detail_value ) {
+				$html .= '<div class="detail-item">';
+				$html .= '<span class="detail-label">' . esc_html( $detail_label ) . ':</span> ';
+
+				// Handle array values (e.g., ["Upper", "Lower"])
+				if ( is_array( $detail_value ) ) {
+					$html .= '<span class="detail-value">' . esc_html( implode( ', ', $detail_value ) ) . '</span>';
+				} else {
+					$html .= '<span class="detail-value">' . esc_html( $detail_value ) . '</span>';
+				}
+
+				$html .= '</div>';
+			}
+		}
+
+		return $html;
 	}
 
 	/**
@@ -853,15 +921,28 @@ class Case_Handler {
 		// Generate procedures list for details
 		$procedures_list = $this->generate_procedures_list( $case_data['procedures'] );
 
+		// Get current procedure context if on taxonomy page
+		$current_procedure_id = '';
+		$current_term_id      = '';
+		if ( is_tax( 'brag_book_procedures' ) ) {
+			$current_term = get_queried_object();
+			if ( $current_term && ! is_wp_error( $current_term ) ) {
+				$current_term_id      = (string) $current_term->term_id;
+				$current_procedure_id = get_term_meta( $current_term->term_id, 'procedure_id', true ) ?: $current_term_id;
+			}
+		}
+
 		// Build the complete case card HTML
 		$html = sprintf(
-			'<article class="brag-book-gallery-case-card" data-post-id="%s" data-case-id="%s" data-age="%s" data-gender="%s" data-ethnicity="%s" data-procedure-ids="%s">',
+			'<article class="brag-book-gallery-case-card" data-post-id="%s" data-case-id="%s" data-age="%s" data-gender="%s" data-ethnicity="%s" data-procedure-ids="%s" data-current-procedure-id="%s" data-current-term-id="%s">',
 			$id,
 			$case_id,
 			$patient_age,
 			$patient_gender,
 			$patient_ethnicity,
-			$procedure_ids
+			$procedure_ids,
+			esc_attr( $current_procedure_id ),
+			esc_attr( $current_term_id )
 		);
 
 		// Image section

@@ -24,7 +24,7 @@ class Taxonomies {
 	/**
 	 * Taxonomy constants
 	 */
-	public const TAXONOMY_PROCEDURES = 'procedures';
+	public const TAXONOMY_PROCEDURES = 'brag_book_procedures';
 
 	/**
 	 * Initialize taxonomy functionality
@@ -36,6 +36,7 @@ class Taxonomies {
 	 */
 	public function __construct() {
 		add_action( 'init', [ $this, 'register_taxonomies' ] );
+		add_action( 'init', [ $this, 'maybe_flush_rewrites' ], 999 );
 
 		add_filter('term_link', [ $this, 'custom_procedure_term_link' ], 10, 3);
 
@@ -87,6 +88,10 @@ class Taxonomies {
 
 		// Get gallery page slug for URL structure
 		$gallery_slug = get_option('brag_book_gallery_page_slug', 'gallery' );
+		// Handle legacy array format
+		if ( is_array( $gallery_slug ) ) {
+			$gallery_slug = $gallery_slug[0] ?? 'gallery';
+		}
 
 		$procedures_args = [
 			'labels'                     => $procedures_labels,
@@ -99,7 +104,7 @@ class Taxonomies {
 			'show_tagcloud'              => true,
 			'show_in_rest'               => true,
 			'rewrite' => array(
-				'slug' => $gallery_slug . '/%procedure%',
+				'slug' => $gallery_slug,
 				'with_front' => false,
 				'hierarchical' => false
 			),
@@ -109,7 +114,7 @@ class Taxonomies {
 	}
 
 	public function custom_procedure_term_link( $link, $term, $taxonomy ): ?string {
-		if ($taxonomy === 'procedures') {
+		if ($taxonomy === self::TAXONOMY_PROCEDURES) {
 			$gallery_slug_option = get_option('brag_book_gallery_page_slug', 'gallery');
 			// Handle legacy array format
 			$gallery_slug = is_array( $gallery_slug_option ) ? ( $gallery_slug_option[0] ?? 'gallery' ) : $gallery_slug_option;
@@ -395,12 +400,23 @@ class Taxonomies {
 						<div style="max-height: 200px; overflow-y: auto; font-family: monospace; font-size: 12px;">
 							<?php
 							// Display cases in order
-							foreach ( $case_order_list as $position => $case_id ) {
-								echo sprintf(
-									'<div>Position %d: Case ID %s</div>',
-									esc_html( $position ),
-									esc_html( $case_id )
-								);
+							foreach ( $case_order_list as $case_data ) {
+								// Handle both new format (array) and legacy format (string/int)
+								if ( is_array( $case_data ) ) {
+									$wp_id = $case_data['wp_id'] ?? 'N/A';
+									$api_id = $case_data['api_id'] ?? 'N/A';
+									echo sprintf(
+										'<div>WordPress ID: %s | API Case ID: %s</div>',
+										esc_html( $wp_id ),
+										esc_html( $api_id )
+									);
+								} else {
+									// Legacy format (just API ID)
+									echo sprintf(
+										'<div>API Case ID: %s</div>',
+										esc_html( $case_data )
+									);
+								}
 							}
 							?>
 						</div>
@@ -698,5 +714,30 @@ class Taxonomies {
 		}
 
 		return true;
+	}
+
+	/**
+	 * Check if rewrites need to be flushed and flush them if needed
+	 *
+	 * This method runs once after taxonomy registration changes to ensure
+	 * WordPress recognizes the new taxonomy rewrite rules.
+	 *
+	 * @since 3.3.0
+	 * @return void
+	 */
+	public function maybe_flush_rewrites(): void {
+		$option_key = 'brag_book_taxonomy_version';
+		$current_version = '3.3.0_brag_book_procedures';
+		$saved_version = get_option( $option_key, '' );
+
+		// If the taxonomy version has changed, flush rewrites
+		if ( $saved_version !== $current_version ) {
+			flush_rewrite_rules( false );
+			update_option( $option_key, $current_version );
+
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'BRAGBook: Flushed rewrite rules after taxonomy update to ' . $current_version );
+			}
+		}
 	}
 }

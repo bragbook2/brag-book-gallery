@@ -1,593 +1,294 @@
 /**
- * Carousel Component
- * Reusable carousel with pagination, navigation, and touch/mouse support
- * Structure: wrapper > content > (track + buttons)
+ * Carousel Component for BRAGBook Gallery
+ * Adapted from Blocksmith carousel with BRAGBook-specific selectors
  */
 class Carousel {
-	/**
-	 * Initialize a new carousel instance
-	 * @param {HTMLElement} element - The carousel wrapper element
-	 * @param {Object} options - Configuration options
-	 */
-	constructor(element, options = {}) {
-		this.wrapper = element;
-		this.content = element.querySelector('.brag-book-gallery-carousel-content');
-		this.track = element.querySelector('.brag-book-gallery-carousel-track');
-		this.prevBtn = element.querySelector('[data-direction="prev"]');
-		this.nextBtn = element.querySelector('[data-direction="next"]');
-		this.paginationContainer = element.querySelector('.brag-book-gallery-carousel-pagination');
-
+	constructor(options) {
+		this.wrappers = {};
 		this.options = {
-			itemsPerView: options.itemsPerView || this.getItemsPerView(),
-			gap: options.gap || 16,
-			animationDuration: options.animationDuration || 0.4,
-			slideSelector: options.slideSelector || '.brag-book-gallery-carousel-item',
-			infinite: options.infinite !== false, // Default to true
-			autoplay: options.autoplay || false,
-			autoplayDelay: options.autoplayDelay || 3000,
-			pauseOnHover: options.pauseOnHover !== false, // Default to true
+			wrapper: '.brag-book-gallery-carousel-wrapper',
+			nav: '[data-direction]',
+			pagination: '.brag-book-gallery-carousel-pagination',
+			track: '.brag-book-gallery-carousel-track',
+			direction: 'horizontal',
+			autoplay: false,
+			autoplayInterval: 5000,
+			itemPerPage: 1,
+			itemPerGroup: 1,
 			...options
 		};
 
-		this.isDown = false;
-		this.startX = 0;
-		this.scrollLeft = 0;
-		this.currentSlide = 0;
-		this.autoplayTimer = null;
-		this.isPaused = false;
+		this.state = {
+			currentSlide: 0,
+			totalSlides: 0,
+			progress: 0
+		};
 
-		if (this.track) {
-			this.init();
-		}
+		this.setupIntersectionObserver();
+		this.init();
 	}
 
-	init() {
-		this.createLiveRegion();
-		this.addShareButtons();
-		this.setupEventListeners();
-		this.initializePagination();
-		this.updateCarouselButtons();
-		this.updateAriaLabels();
+	Wrapper = class {
+		constructor(w, index, options) {
+			this.wrapper = w;
+			this.nav = w.querySelectorAll(options.nav);
+			this.pagination = w.querySelector(options.pagination);
+			this.grid = w.querySelector(options.track);
+			this.index = index;
 
-		// Start autoplay if enabled
-		if (this.options.autoplay) {
-			this.startAutoplay();
-		}
-	}
+			if (this.grid) {
+				this.grid.setAttribute('data-wrapper-id', this.index);
+				this.items = this.grid.children;
 
-	addShareButtons() {
-		// Check if this is a standalone carousel (not part of the main gallery)
-		const isStandaloneCarousel = !this.wrapper.closest('.brag-book-gallery-wrapper');
-		
-		// Add share buttons to all carousel items (preserve existing images and links)
-		const slides = this.track.querySelectorAll(this.options.slideSelector);
+				const computedStyle = window.getComputedStyle(this.grid);
+				this.columnGap = parseInt(computedStyle.columnGap, 10);
+				this.rowGap = parseInt(computedStyle.rowGap, 10);
 
-		slides.forEach((slide) => {
-			// Check if slide already has an image element
-			const existingImage = slide.querySelector('.brag-book-gallery-carousel-image, img');
-
-			// Only add placeholder image if no image exists at all
-			if (!existingImage) {
-				// This is likely a placeholder slide without server-rendered content
-				const placeholderUrl = 'https://bragbookgallery.com/nitropack_static/FCmixFCiYNkGgqjxyaUSblqHbCgLrqyJ/assets/images/optimized/rev-407fb37/ngnqwvuungodwrpnrczq.supabase.co/storage/v1/object/sign/brag-photos/org_2vm5nGWtoCYuaQBCP587ez6cYXF/c68b56b086f4f8eef8292f3f23320f1b.Blepharoplasty%20-%20aa239d58-badc-4ded-a26b-f89c2dd059b6.jpg';
-
-				// Remove any existing span text
-				const textSpan = slide.querySelector('span');
-				if (textSpan) {
-					textSpan.remove();
-				}
-
-				// Check if this slide should have a case link
-				const caseId = slide.dataset.caseId;
-				const shouldHaveLink = caseId && caseId !== '';
-
-				// Create wrapper link if needed
-				if (shouldHaveLink) {
-					// Try to determine procedure slug from data or context
-					const procedureSlug = slide.dataset.procedureSlug || 'procedure';
-					const basePath = window.location.pathname.replace(/\/[^\/]+\/[^\/]+\/?$/, '');
-					const caseUrl = `${basePath}/${procedureSlug}/${caseId}/`.replace(/\/+/g, '/');
-
-					const link = document.createElement('a');
-					link.href = caseUrl;
-					link.className = 'brag-book-gallery-case-card-link';
-					link.dataset.caseId = caseId;
-
-					const img = document.createElement('img');
-					img.src = placeholderUrl;
-					img.alt = 'Before and after result';
-					img.className = 'brag-book-gallery-carousel-image';
-					img.loading = 'lazy';
-
-					link.appendChild(img);
-					slide.insertBefore(link, slide.firstChild);
-				} else {
-					// No link needed, just add the image
-					const img = document.createElement('img');
-					img.src = placeholderUrl;
-					img.alt = 'Before and after result';
-					img.className = 'brag-book-gallery-carousel-image';
-					img.loading = 'lazy';
-
-					slide.insertBefore(img, slide.firstChild);
-				}
+				this.itemPerPageMobile = parseInt(
+					this.grid.getAttribute('data-mobile-items') || 1,
+					10
+				);
+				this.itemPerPageTablet = parseInt(
+					this.grid.getAttribute('data-tablet-items') || 2,
+					10
+				);
+				this.itemPerPageDesktop = parseInt(
+					this.grid.getAttribute('data-desktop-items') || 3,
+					10
+				);
 			}
 
-			// Skip action buttons for standalone carousels
-			if (isStandaloneCarousel) {
-				return;
-			}
+			this.isDragging = false;
+			this.startX = 0;
+			this.scrollLeft = 0;
 
-			// Ensure item actions container exists
-			let actionsContainer = slide.querySelector('.brag-book-gallery-item-actions');
-			if (!actionsContainer) {
-				actionsContainer = document.createElement('div');
-				actionsContainer.className = 'brag-book-gallery-item-actions';
-				slide.appendChild(actionsContainer);
-			}
-
-			// Ensure heart button exists in actions container
-			if (!actionsContainer.querySelector('.brag-book-gallery-favorite-button')) {
-				const existingHeart = slide.querySelector('.brag-book-gallery-favorite-button');
-				if (existingHeart) {
-					actionsContainer.appendChild(existingHeart);
-				} else {
-					const heartBtn = document.createElement('button');
-					heartBtn.className = 'brag-book-gallery-favorite-button';
-					heartBtn.dataset.favorited = 'false';
-					heartBtn.dataset.itemId = slide.dataset.slide;
-					heartBtn.setAttribute('aria-label', 'Add to favorites');
-					heartBtn.innerHTML = `
-                        <svg fill="rgba(255, 255, 255, 0.5)" stroke="white" stroke-width="2" viewBox="0 0 24 24">
-                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-                        </svg>
-                    `;
-					actionsContainer.appendChild(heartBtn);
-				}
-			}
-
-			// Add share button if not present in actions container and sharing is enabled
-			if (!actionsContainer.querySelector('.brag-book-gallery-share-button') &&
-			    typeof bragBookGalleryConfig !== 'undefined' &&
-			    bragBookGalleryConfig.enableSharing === 'yes') {
-				const shareBtn = document.createElement('button');
-				shareBtn.className = 'brag-book-gallery-share-button';
-				shareBtn.dataset.itemId = slide.dataset.slide;
-				shareBtn.setAttribute('aria-label', 'Share this image');
-				shareBtn.innerHTML = `
-                    <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor">
-                        <path d="M672.22-100q-44.91 0-76.26-31.41-31.34-31.41-31.34-76.28 0-6 4.15-29.16L284.31-404.31q-14.46 15-34.36 23.5t-42.64 8.5q-44.71 0-76.01-31.54Q100-435.39 100-480q0-44.61 31.3-76.15 31.3-31.54 76.01-31.54 22.74 0 42.64 8.5 19.9 8.5 34.36 23.5l284.46-167.08q-2.38-7.38-3.27-14.46-.88-7.08-.88-15.08 0-44.87 31.43-76.28Q627.49-860 672.4-860t76.25 31.44Q780-797.13 780-752.22q0 44.91-31.41 76.26-31.41 31.34-76.28 31.34-22.85 0-42.5-8.69Q610.15-662 595.69-677L311.23-509.54q2.38 7.39 3.27 14.46.88 7.08.88 15.08t-.88 15.08q-.89 7.07-3.27 14.46L595.69-283q14.46-15 34.12-23.69 19.65-8.69 42.5-8.69 44.87 0 76.28 31.43Q780-252.51 780-207.6t-31.44 76.25Q717.13-100 672.22-100Zm.09-60q20.27 0 33.98-13.71Q720-187.42 720-207.69q0-20.27-13.71-33.98-13.71-13.72-33.98-13.72-20.27 0-33.98 13.72-13.72 13.71-13.72 33.98 0 20.27 13.72 33.98Q652.04-160 672.31-160Zm-465-272.31q20.43 0 34.25-13.71 13.83-13.71 13.83-33.98 0-20.27-13.83-33.98-13.82-13.71-34.25-13.71-20.11 0-33.71 13.71Q160-500.27 160-480q0 20.27 13.6 33.98 13.6 13.71 33.71 13.71Zm465-272.3q20.27 0 33.98-13.72Q720-732.04 720-752.31q0-20.27-13.71-33.98Q692.58-800 672.31-800q-20.27 0-33.98 13.71-13.72 13.71-13.72 33.98 0 20.27 13.72 33.98 13.71 13.72 33.98 13.72Zm0 496.92ZM207.69-480Zm464.62-272.31Z"/>
-                    </svg>
-                `;
-				actionsContainer.appendChild(shareBtn);
-			}
-		});
-	}
-
-	/**
-	 * Create screen reader live region for accessibility announcements
-	 */
-	createLiveRegion() {
-		// Create a live region for screen reader announcements
-		this.liveRegion = document.createElement('div');
-		this.liveRegion.setAttribute('aria-live', 'polite');
-		this.liveRegion.setAttribute('aria-atomic', 'true');
-		this.liveRegion.className = 'sr-only';
-		this.liveRegion.style.position = 'absolute';
-		this.liveRegion.style.width = '1px';
-		this.liveRegion.style.height = '1px';
-		this.liveRegion.style.padding = '0';
-		this.liveRegion.style.margin = '-1px';
-		this.liveRegion.style.overflow = 'hidden';
-		this.liveRegion.style.clip = 'rect(0, 0, 0, 0)';
-		this.liveRegion.style.whiteSpace = 'nowrap';
-		this.liveRegion.style.border = '0';
-		this.wrapper.appendChild(this.liveRegion);
-	}
-
-	setupEventListeners() {
-		// Scroll events
-		this.track.addEventListener('scroll', () => {
-			this.updateCarouselButtons();
-			this.updatePagination();
-		});
-
-		// Navigation buttons
-		if (this.prevBtn) {
-			this.prevBtn.addEventListener('click', () => {
-				this.navigate('prev');
-				// Reset autoplay timer on manual navigation
-				if (this.options.autoplay) {
-					this.stopAutoplay();
-					this.startAutoplay();
-				}
-			});
-		}
-		if (this.nextBtn) {
-			this.nextBtn.addEventListener('click', () => {
-				this.navigate('next');
-				// Reset autoplay timer on manual navigation
-				if (this.options.autoplay) {
-					this.stopAutoplay();
-					this.startAutoplay();
-				}
-			});
-		}
-
-		// Mouse drag
-		this.track.addEventListener('mousedown', (e) => this.handleMouseDown(e));
-		this.track.addEventListener('mouseleave', () => this.handleMouseLeave());
-		this.track.addEventListener('mouseup', () => this.handleMouseUp());
-		this.track.addEventListener('mousemove', (e) => this.handleMouseMove(e));
-
-		// Autoplay pause on hover
-		if (this.options.autoplay && this.options.pauseOnHover) {
-			this.wrapper.addEventListener('mouseenter', () => this.pauseAutoplay());
-			this.wrapper.addEventListener('mouseleave', () => this.resumeAutoplay());
-		}
-
-		// Mouse wheel - smooth horizontal scrolling
-		this.track.addEventListener('wheel', (e) => this.handleWheel(e), { passive: false });
-
-		// Keyboard navigation - arrow keys and tab
-		this.track.addEventListener('keydown', (e) => this.handleKeydown(e));
-
-		// Also listen for keyboard events on the wrapper and document when carousel has focus
-		this.wrapper.addEventListener('keydown', (e) => this.handleKeydown(e));
-
-		// Global keyboard listener when carousel or its children have focus
-		document.addEventListener('keydown', (e) => {
-			if (this.wrapper.contains(document.activeElement)) {
-				this.handleKeydown(e);
-			}
-		});
-
-		// Make track focusable for keyboard navigation
-		this.track.tabIndex = 0;
-		this.track.setAttribute('aria-label', 'Use arrow keys to navigate through slides');
-
-		// Focus management for slides
-		this.setupSlideFocusManagement();
-	}
-
-	handleMouseDown(e) {
-		this.isDown = true;
-		this.track.classList.add('brag-book-gallery-grabbing');
-		this.startX = e.pageX - this.track.offsetLeft;
-		this.scrollLeft = this.track.scrollLeft;
-	}
-
-	handleMouseLeave() {
-		this.isDown = false;
-		this.track.classList.remove('brag-book-gallery-grabbing');
-	}
-
-	handleMouseUp() {
-		this.isDown = false;
-		this.track.classList.remove('brag-book-gallery-grabbing');
-	}
-
-	handleMouseMove(e) {
-		if (!this.isDown) return;
-		e.preventDefault();
-		const x = e.pageX - this.track.offsetLeft;
-		const walk = (x - this.startX) * 2;
-		this.track.scrollLeft = this.scrollLeft - walk;
-	}
-
-	handleKeydown(e) {
-		// Don't handle if event is from an input or textarea
-		if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
-			return;
-		}
-
-		const slides = this.track.querySelectorAll(this.options.slideSelector);
-		if (slides.length === 0) return;
-
-		const currentIndex = this.getCurrentSlideIndex();
-		let handled = false;
-
-		switch(e.key) {
-			case 'ArrowLeft':
-				e.preventDefault();
-				e.stopPropagation();
-				this.navigateToSlide(Math.max(0, currentIndex - 1));
-				handled = true;
-				break;
-			case 'ArrowRight':
-				e.preventDefault();
-				e.stopPropagation();
-				this.navigateToSlide(Math.min(slides.length - 1, currentIndex + 1));
-				handled = true;
-				break;
-			case 'Home':
-				e.preventDefault();
-				e.stopPropagation();
-				this.navigateToSlide(0);
-				handled = true;
-				break;
-			case 'End':
-				e.preventDefault();
-				e.stopPropagation();
-				this.navigateToSlide(slides.length - 1);
-				handled = true;
-				break;
-			case 'PageUp':
-				e.preventDefault();
-				e.stopPropagation();
-				const itemsPerView = this.getItemsPerView();
-				this.navigateToSlide(Math.max(0, currentIndex - itemsPerView));
-				handled = true;
-				break;
-			case 'PageDown':
-				e.preventDefault();
-				e.stopPropagation();
-				const itemsPerPage = this.getItemsPerView();
-				this.navigateToSlide(Math.min(slides.length - 1, currentIndex + itemsPerPage));
-				handled = true;
-				break;
-		}
-
-		// Focus the track if we handled the event and it's not already focused
-		if (handled && document.activeElement !== this.track && !this.track.contains(document.activeElement)) {
-			this.track.focus();
-		}
-
-		// Reset autoplay timer on manual keyboard navigation
-		if (handled && this.options.autoplay) {
-			this.stopAutoplay();
-			this.startAutoplay();
-		}
-	}
-
-	/**
-	 * Handle mouse wheel events for horizontal scrolling
-	 * @param {WheelEvent} e - Wheel event
-	 */
-	handleWheel(e) {
-		// Prevent default vertical scrolling
-		e.preventDefault();
-
-		// Calculate scroll amount based on wheel delta
-		const delta = e.deltaY || e.deltaX;
-		const scrollAmount = Math.abs(delta) > 50 ? delta : delta * 3;
-
-		// Clear previous timeout to debounce updates
-		if (this.wheelTimeout) {
-			clearTimeout(this.wheelTimeout);
-		}
-
-		// Smoothly scroll the track horizontally
-		this.track.scrollBy({
-			left: scrollAmount,
-			behavior: 'smooth'
-		});
-
-		// Update UI elements after scrolling settles
-		this.wheelTimeout = setTimeout(() => {
-			this.updateCarouselButtons();
-			this.updatePagination();
-		}, 150);
-	}
-
-	/**
-	 * Determine how many items to show based on screen width
-	 * @returns {number} Number of items to display per view
-	 */
-	getItemsPerView() {
-		const width = window.innerWidth;
-		// Mobile: 1 item, Tablet: 2 items, Desktop: 3 items
-		if (width <= 480) return 1;
-		if (width <= 768) return 2;
-		return 3;
-	}
-
-	/**
-	 * Navigate to the next or previous slide
-	 * @param {string} direction - 'next' or 'prev'
-	 */
-	navigate(direction) {
-		const slides = this.track.querySelectorAll(this.options.slideSelector);
-		if (slides.length === 0) return;
-
-		const currentIndex = this.getCurrentSlideIndex();
-		let targetIndex;
-
-		if (this.options.infinite) {
-			// Infinite carousel: wrap around at ends
-			if (direction === 'next') {
-				targetIndex = currentIndex >= slides.length - 1 ? 0 : currentIndex + 1;
-			} else {
-				targetIndex = currentIndex <= 0 ? slides.length - 1 : currentIndex - 1;
-			}
-		} else {
-			// Finite carousel: stop at ends
-			targetIndex = direction === 'next'
-				? Math.min(slides.length - 1, currentIndex + 1)
-				: Math.max(0, currentIndex - 1);
-		}
-
-		this.navigateToSlide(targetIndex);
-	}
-
-	/**
-	 * Navigate to a specific slide by index
-	 * @param {number} index - Target slide index
-	 */
-	navigateToSlide(index) {
-		const slides = this.track.querySelectorAll(this.options.slideSelector);
-		if (slides.length === 0 || index < 0 || index >= slides.length) return;
-
-		const targetSlide = slides[index];
-		const slideWidth = targetSlide.offsetWidth;
-		const trackWidth = this.track.offsetWidth;
-
-		// Calculate optimal scroll position to center the slide
-		let scrollPosition = targetSlide.offsetLeft - (trackWidth - slideWidth) / 2;
-
-		// Ensure scroll position stays within bounds
-		scrollPosition = Math.max(0, Math.min(scrollPosition, this.track.scrollWidth - trackWidth));
-
-		// Use GSAP for smooth animation if available, otherwise use native scrolling
-		if (typeof gsap !== 'undefined') {
-			gsap.to(this.track, {
-				scrollLeft: scrollPosition,
-				duration: this.options.animationDuration,
-				ease: "power2.inOut",
-				onComplete: () => {
-					this.updateAriaLabels();
-					this.focusSlide(index);
-				}
-			});
-		} else {
-			// Fallback to native smooth scrolling
-			this.track.scrollTo({
-				left: scrollPosition,
-				behavior: 'smooth'
-			});
-
-			// Update accessibility after animation completes
-			setTimeout(() => {
-				this.updateAriaLabels();
-				this.focusSlide(index);
-			}, 300);
-		}
-
-		// Update current slide tracker
-		this.currentSlide = index;
-	}
-
-	/**
-	 * Get the index of the currently centered slide
-	 * @returns {number} Index of the current slide
-	 */
-	getCurrentSlideIndex() {
-		const slides = this.track.querySelectorAll(this.options.slideSelector);
-		const trackCenter = this.track.scrollLeft + this.track.offsetWidth / 2;
-
-		let closestIndex = 0;
-		let closestDistance = Infinity;
-
-		// Find the slide closest to the center of the viewport
-		slides.forEach((slide, index) => {
-			const slideCenter = slide.offsetLeft + slide.offsetWidth / 2;
-			const distance = Math.abs(slideCenter - trackCenter);
-
-			if (distance < closestDistance) {
-				closestDistance = distance;
-				closestIndex = index;
-			}
-		});
-
-		return closestIndex;
-	}
-
-	/**
-	 * Start automatic slide progression
-	 */
-	startAutoplay() {
-		// Don't start if autoplay is disabled or already running
-		if (!this.options.autoplay || this.autoplayTimer) return;
-
-		this.autoplayTimer = setInterval(() => {
-			// Only advance if not paused and user isn't dragging
-			if (!this.isPaused && !this.isDown) {
-				this.navigate('next');
-			}
-		}, this.options.autoplayDelay);
-	}
-
-	/**
-	 * Stop automatic slide progression
-	 */
-	stopAutoplay() {
-		if (this.autoplayTimer) {
-			clearInterval(this.autoplayTimer);
+			this.autoplay =
+				this.wrapper.getAttribute('data-carousel-autoplay') === 'true';
+			this.autoplayInterval = parseInt(
+				w.getAttribute('data-carousel-interval') || 5000,
+				10
+			);
 			this.autoplayTimer = null;
+			this.isHovered = false;
 		}
-	}
+	};
 
-	/**
-	 * Temporarily pause autoplay (on hover)
-	 */
-	pauseAutoplay() {
-		this.isPaused = true;
-	}
+	startAutoplay = (object) => {
+		if (!object.autoplay) return;
 
-	/**
-	 * Resume autoplay after pause
-	 */
-	resumeAutoplay() {
-		this.isPaused = false;
-	}
+		// Clear any existing timer
+		this.stopAutoplay(object);
 
-	/**
-	 * Set up focus management for keyboard accessibility
-	 */
-	setupSlideFocusManagement() {
-		const slides = this.track.querySelectorAll(this.options.slideSelector);
+		object.autoplayTimer = setInterval(() => {
+			if (!object.isHovered) {
+				const scroll = object.grid;
+				const maxScrollLeft = scroll.scrollWidth - scroll.offsetWidth;
 
-		slides.forEach((slide, index) => {
-			// Make slides focusable via keyboard
-			slide.tabIndex = -1;
+				if (scroll.scrollLeft >= maxScrollLeft) {
+					// If we're at the end, go back to start
+					scroll.scrollTo({
+						left: 0,
+						behavior: 'smooth'
+					});
+				} else {
+					// Otherwise, move to next slide
+					const firstItem = object.items[0];
+					if (!firstItem) return;
 
-			// Update current slide when focused
-			slide.addEventListener('focus', () => {
-				this.currentSlide = index;
-				// Don't auto-navigate on focus to prevent jarring movement
-			});
+					const itemWidth = firstItem.offsetWidth;
+					const slideWidth = itemWidth + object.columnGap;
 
-			// Focus slide when clicked (unless clicking a button)
-			slide.addEventListener('click', (e) => {
-				if (!e.target.closest('button')) {
-					slide.focus();
+					scroll.scrollTo({
+						left: scroll.scrollLeft + slideWidth,
+						behavior: 'smooth'
+					});
 				}
-			});
+			}
+		}, object.autoplayInterval);
+	};
+
+	stopAutoplay = (object) => {
+		if (object.autoplayTimer) {
+			clearInterval(object.autoplayTimer);
+			object.autoplayTimer = null;
+		}
+	};
+
+	setupAutoplay = (object) => {
+		if (!object.autoplay) return;
+
+		// Start autoplay
+		this.startAutoplay(object);
+
+		// Pause on hover
+		object.wrapper.addEventListener('mouseenter', () => {
+			object.isHovered = true;
 		});
 
-		// Make wrapper focusable for keyboard navigation
-		this.wrapper.tabIndex = -1;
-		this.wrapper.style.outline = 'none';
+		object.wrapper.addEventListener('mouseleave', () => {
+			object.isHovered = false;
+		});
 
-		// Focus track when wrapper is clicked (unless clicking interactive elements)
-		this.wrapper.addEventListener('click', (e) => {
-			if (!e.target.closest('button') && !e.target.closest('[tabindex]')) {
-				this.track.focus();
+		// Pause on focus within
+		object.wrapper.addEventListener('focusin', () => {
+			object.isHovered = true;
+		});
+
+		object.wrapper.addEventListener('focusout', () => {
+			object.isHovered = false;
+		});
+
+		// Pause on touch
+		object.wrapper.addEventListener('touchstart', () => {
+			object.isHovered = true;
+		});
+
+		object.wrapper.addEventListener('touchend', () => {
+			object.isHovered = false;
+		});
+	};
+
+	updateSlideStates = (object) => {
+		if (!object || !object.grid || !object.items.length) return;
+
+		const currentIndex = this.getCurrentSlideIndex(object);
+
+		// Remove all state classes first
+		Array.from(object.items).forEach((slide) => {
+			slide.classList.remove(
+				'is-active-slide',
+				'is-next-slide',
+				'is-prev-slide',
+				'is-next-next-slide',
+				'is-prev-prev-slide'
+			);
+		});
+
+		// Add appropriate classes
+		Array.from(object.items).forEach((slide, index) => {
+			// Active slide
+			if (index === currentIndex) {
+				slide.classList.add('is-active-slide');
+			}
+
+			// Next slide
+			if (index === currentIndex + 1) {
+				slide.classList.add('is-next-slide');
+			}
+
+			// Previous slide
+			if (index === currentIndex - 1) {
+				slide.classList.add('is-prev-slide');
+			}
+
+			// Next next slide
+			if (index === currentIndex + 2) {
+				slide.classList.add('is-next-next-slide');
+			}
+
+			// Previous previous slide
+			if (index === currentIndex - 2) {
+				slide.classList.add('is-prev-prev-slide');
 			}
 		});
-	}
+	};
 
-	/**
-	 * Focus a specific slide (only if track is currently focused)
-	 * @param {number} index - Slide index to focus
-	 */
-	focusSlide(index) {
-		const slides = this.track.querySelectorAll(this.options.slideSelector);
-		// Only focus slide if track currently has focus
-		if (slides[index] && document.activeElement === this.track) {
-			slides[index].focus();
+	setupTrackDrag = (object) => {
+		if (!object.grid) return;
+
+		let isDragging = false;
+		let startX = 0;
+		let startScrollLeft = 0;
+		let lastMouseX = 0;
+		let velocity = 0;
+		let animationFrameId = null;
+
+		const onMouseDown = (e) => {
+			isDragging = true;
+			startX = e.pageX;
+			lastMouseX = startX;
+			startScrollLeft = object.grid.scrollLeft;
+
+			object.grid.style.cursor = 'grabbing';
+			object.grid.style.userSelect = 'none';
+			object.grid.style.scrollBehavior = 'auto';
+
+			document.addEventListener('mousemove', onMouseMove);
+			document.addEventListener('mouseup', onMouseUp);
+		};
+
+		const onMouseMove = (e) => {
+			if (!isDragging) return;
+			e.preventDefault();
+
+			const currentX = e.pageX;
+			const deltaX = currentX - lastMouseX;
+			lastMouseX = currentX;
+
+			// Calculate velocity for momentum scrolling
+			velocity = deltaX * 2;
+
+			// Update scroll position with improved sensitivity
+			object.grid.scrollLeft = object.grid.scrollLeft - deltaX;
+		};
+
+		const onMouseUp = () => {
+			if (!isDragging) return;
+			isDragging = false;
+
+			object.grid.style.cursor = '';
+			object.grid.style.userSelect = '';
+
+			// Apply momentum scrolling
+			const applyMomentum = () => {
+				if (Math.abs(velocity) > 0.5) {
+					object.grid.scrollLeft -= velocity;
+					velocity *= 0.95; // Decay factor
+					animationFrameId = requestAnimationFrame(applyMomentum);
+				} else {
+					cancelAnimationFrame(animationFrameId);
+					object.grid.style.scrollBehavior = 'smooth';
+					this.snapToClosestSlide(object.grid);
+				}
+			};
+
+			applyMomentum();
+
+			document.removeEventListener('mousemove', onMouseMove);
+			document.removeEventListener('mouseup', onMouseUp);
+		};
+
+		object.grid.addEventListener('mousedown', onMouseDown);
+	};
+
+	initializePagination = (object) => {
+		if (!object.pagination || !object.items.length) return;
+
+		// Clear existing pagination dots
+		object.pagination.innerHTML = '';
+
+		// Calculate number of pages based on items per page and total items
+		let itemsPerPage;
+		const width = window.innerWidth;
+
+		if (width < 768) {
+			itemsPerPage = object.itemPerPageMobile;
+		} else if (width < 992) {
+			itemsPerPage = object.itemPerPageTablet;
+		} else {
+			itemsPerPage = object.itemPerPageDesktop;
 		}
-	}
 
-	/**
-	 * Initialize pagination dots for the carousel
-	 */
-	initializePagination() {
-		if (!this.paginationContainer) return;
+		const totalPages = Math.ceil(object.items.length / itemsPerPage);
 
-		// Clear existing pagination
-		this.paginationContainer.innerHTML = "";
-
-		const slides = this.track.querySelectorAll(this.options.slideSelector);
-		const itemsPerView = this.getItemsPerView();
-		const totalPages = Math.ceil(slides.length / itemsPerView);
-
-		// Create pagination dot for each page
+		// Create pagination dots
 		for (let i = 0; i < totalPages; i++) {
 			const dot = document.createElement('button');
 			dot.className = 'brag-book-gallery-pagination-dot';
-			dot.role = 'tab';
-			
+			dot.setAttribute('role', 'tab');
+			dot.setAttribute('aria-label', `Go to slide ${i + 1}`);
+			dot.setAttribute('tabindex', '0');
+
 			// Set first dot as active
 			if (i === 0) {
 				dot.classList.add('brag-book-gallery-active');
@@ -595,56 +296,65 @@ class Carousel {
 			} else {
 				dot.setAttribute('aria-selected', 'false');
 			}
-			
-			dot.setAttribute('data-page', i);
-			dot.setAttribute('aria-label', `Go to slide group ${i + 1}`);
 
-			// Add click handler for navigation
-			dot.addEventListener('click', () => this.goToPage(i));
+			// Store click handler reference
+			dot.clickHandler = () => {
+				// Calculate actual item width including gap
+				const firstItem = object.items[0];
+				if (!firstItem) return;
 
-			this.paginationContainer.appendChild(dot);
+				const itemWidth = firstItem.offsetWidth;
+				const slideWidth = itemWidth + object.columnGap;
+
+				// Scroll to the page (each page shows multiple items)
+				const targetScroll = i * object.grid.clientWidth;
+				this.smoothScrollTo(object.grid, targetScroll);
+			};
+
+			dot.addEventListener('click', dot.clickHandler);
+			object.pagination.appendChild(dot);
 		}
-	}
 
-	goToPage(pageIndex) {
-		const slides = this.track.querySelectorAll(this.options.slideSelector);
-		if (slides.length === 0) return;
+		// Set initial active state
+		this.updatePaginationState(object);
+	};
 
-		const itemWidth = slides[0].offsetWidth;
-		const itemsPerView = this.getItemsPerView();
-		const scrollPosition = pageIndex * itemsPerView * (itemWidth + this.options.gap);
+	updatePaginationState = (object) => {
+		if (!object.pagination) return;
 
-		this.currentSlide = pageIndex * itemsPerView;
+		const dots = object.pagination.querySelectorAll('.brag-book-gallery-pagination-dot');
+		if (!dots.length) return;
 
-		if (typeof gsap !== 'undefined') {
-			gsap.to(this.track, {
-				scrollLeft: scrollPosition,
-				duration: 0.5,
-				ease: "power2.inOut",
-				onComplete: () => this.updateAriaLabels()
-			});
+		let itemsPerPage;
+		const width = window.innerWidth;
+
+		if (width < 768) {
+			itemsPerPage = object.itemPerPageMobile;
+		} else if (width < 992) {
+			itemsPerPage = object.itemPerPageTablet;
 		} else {
-			this.track.scrollLeft = scrollPosition;
-			this.updateAriaLabels();
+			itemsPerPage = object.itemPerPageDesktop;
 		}
-	}
 
-	updatePagination() {
-		if (!this.paginationContainer) return;
+		// Calculate the current index based on scroll position and total width
+		const maxScroll = object.grid.scrollWidth - object.grid.clientWidth;
+		const currentPosition = object.grid.scrollLeft;
+		const slideWidth = object.grid.clientWidth;
+		const totalSlides = object.items.length;
+		const totalGroups = Math.ceil(totalSlides / itemsPerPage);
 
-		const slides = this.track.querySelectorAll(this.options.slideSelector);
-		if (slides.length === 0) return;
+		// Calculate the current group index
+		let currentIndex;
+		if (currentPosition >= maxScroll) {
+			// If we're at the end, select the last group
+			currentIndex = totalGroups - 1;
+		} else {
+			// Otherwise calculate the current group based on scroll position
+			currentIndex = Math.round(currentPosition / slideWidth);
+		}
 
-		const itemWidth = slides[0].offsetWidth;
-		const itemsPerView = this.getItemsPerView();
-		const currentScroll = this.track.scrollLeft;
-		const currentPage = Math.round(currentScroll / ((itemWidth + this.options.gap) * itemsPerView));
-
-		this.currentSlide = currentPage * itemsPerView;
-
-		const dots = this.paginationContainer.querySelectorAll('.brag-book-gallery-pagination-dot');
 		dots.forEach((dot, index) => {
-			if (index === currentPage) {
+			if (index === currentIndex) {
 				dot.classList.add('brag-book-gallery-active');
 				dot.setAttribute('aria-selected', 'true');
 			} else {
@@ -652,83 +362,299 @@ class Carousel {
 				dot.setAttribute('aria-selected', 'false');
 			}
 		});
-	}
+	};
 
-	updateCarouselButtons() {
-		// In infinite mode, buttons are never disabled
-		if (this.options.infinite) {
-			if (this.prevBtn) {
-				this.prevBtn.disabled = false;
+	setupIntersectionObserver = () => {
+		this.observer = new IntersectionObserver(
+			(entries) => {
+				entries.forEach((entry) => {
+					if (entry.isIntersecting) {
+						entry.target.classList.add('is-visible');
+						entry.target.querySelectorAll('img[data-src]').forEach((img) => {
+							img.src = img.dataset.src;
+							img.removeAttribute('data-src');
+						});
+					}
+				});
+			},
+			{
+				root: null,
+				rootMargin: '50px',
+				threshold: 0.1
 			}
-			if (this.nextBtn) {
-				this.nextBtn.disabled = false;
+		);
+	};
+
+	handleScroll = (object) => {
+		if (!object || !object.grid) return;
+
+		const currentPosition = object.grid.scrollLeft;
+		const totalWidth = object.grid.scrollWidth - object.grid.clientWidth;
+
+		// Update slide states
+		this.updateSlideStates(object);
+
+		// Update navigation buttons (disable at start/end)
+		if (object.nav.length >= 2) {
+			const prevButton = object.nav[0];
+			const nextButton = object.nav[1];
+
+			const isAtStart = currentPosition <= 0;
+			const isAtEnd = currentPosition >= totalWidth - 1;
+
+			if (prevButton) {
+				prevButton.disabled = isAtStart;
+				if (isAtStart) {
+					prevButton.setAttribute('disabled', 'disabled');
+				} else {
+					prevButton.removeAttribute('disabled');
+				}
 			}
+
+			if (nextButton) {
+				nextButton.disabled = isAtEnd;
+				if (isAtEnd) {
+					nextButton.setAttribute('disabled', 'disabled');
+				} else {
+					nextButton.removeAttribute('disabled');
+				}
+			}
+		}
+
+		// Update pagination
+		this.updatePaginationState(object);
+
+		// Update ARIA labels
+		this.updateAriaLabels(object);
+	};
+
+	updateAriaLabels = (object) => {
+		const currentIndex = this.getCurrentSlideIndex(object);
+		const totalSlides = object.items.length;
+
+		object.wrapper.setAttribute(
+			'aria-label',
+			`Carousel with ${totalSlides} slides`
+		);
+
+		Array.from(object.items).forEach((slide, index) => {
+			slide.setAttribute('aria-label', `Slide ${index + 1} of ${totalSlides}`);
+			slide.setAttribute('aria-hidden', (index !== currentIndex).toString());
+		});
+	};
+
+	handleNext = (object) => {
+		if (!object || !object.grid) {
+			console.log('handleNext: no object or grid');
 			return;
 		}
 
-		// Original finite mode logic
-		const scrollLeft = this.track.scrollLeft;
-		const scrollWidth = this.track.scrollWidth;
-		const clientWidth = this.track.clientWidth;
+		const scroll = object.grid;
+		const maxScrollLeft = scroll.scrollWidth - scroll.offsetWidth;
 
-		if (this.prevBtn) {
-			this.prevBtn.disabled = scrollLeft <= 0;
+		// Calculate actual slide width including gap
+		const firstItem = object.items[0];
+		if (!firstItem) return;
+
+		const itemWidth = firstItem.offsetWidth;
+		const slideWidth = itemWidth + object.columnGap;
+
+		if (scroll.scrollLeft < maxScrollLeft) {
+			const targetScroll = scroll.scrollLeft + slideWidth;
+			this.smoothScrollTo(scroll, targetScroll);
+		}
+	};
+
+	handlePrev = (object) => {
+		if (!object || !object.grid) {
+			console.log('handlePrev: no object or grid');
+			return;
 		}
 
-		if (this.nextBtn) {
-			this.nextBtn.disabled = scrollLeft >= scrollWidth - clientWidth - 1;
+		const scroll = object.grid;
+
+		// Calculate actual slide width including gap
+		const firstItem = object.items[0];
+		if (!firstItem) return;
+
+		const itemWidth = firstItem.offsetWidth;
+		const slideWidth = itemWidth + object.columnGap;
+
+		if (scroll.scrollLeft > 0) {
+			const targetScroll = scroll.scrollLeft - slideWidth;
+			this.smoothScrollTo(scroll, targetScroll);
 		}
-	}
+	};
 
-	updateAriaLabels() {
-		const slides = this.track.querySelectorAll(this.options.slideSelector);
-		const totalSlides = slides.length;
-		const currentIndex = this.getCurrentSlideIndex();
+	/**
+	 * Firefox-compatible smooth scrolling that works with scroll-snap
+	 */
+	smoothScrollTo = (element, targetScroll) => {
 
-		slides.forEach((slide, index) => {
-			const slideNumber = index + 1;
-			const isCurrent = index === currentIndex;
-			slide.setAttribute('aria-label', `Slide ${slideNumber} of ${totalSlides}${isCurrent ? ' (current)' : ''}`);
-			slide.setAttribute('aria-current', isCurrent ? 'true' : 'false');
+		// Temporarily disable scroll-snap for Firefox compatibility
+		const originalSnapType = element.style.scrollSnapType;
+		element.style.scrollSnapType = 'none';
+
+		// Try using scrollTo with behavior smooth
+		try {
+			element.scrollTo({
+				left: targetScroll,
+				behavior: 'smooth'
+			});
+		} catch (e) {
+			// Fallback for older browsers
+			element.scrollLeft = targetScroll;
+		}
+
+		// Re-enable scroll-snap after scroll completes
+		setTimeout(() => {
+			element.style.scrollSnapType = originalSnapType || 'x mandatory';
+		}, 500);
+	};
+
+	setupTouchEvents = (grid, object) => {
+		let touchStartX;
+		let touchStartY;
+		let initialScrollLeft;
+
+		const handleTouchStart = (e) => {
+			touchStartX = e.touches[0].clientX;
+			touchStartY = e.touches[0].clientY;
+			initialScrollLeft = grid.scrollLeft;
+		};
+
+		const handleTouchMove = (e) => {
+			if (!touchStartX || !touchStartY) return;
+
+			const touchCurrentX = e.touches[0].clientX;
+			const touchCurrentY = e.touches[0].clientY;
+			const deltaX = touchStartX - touchCurrentX;
+			const deltaY = Math.abs(touchStartY - touchCurrentY);
+
+			if (Math.abs(deltaX) > deltaY) {
+				e.preventDefault();
+				grid.scrollLeft = initialScrollLeft + deltaX;
+				this.handleScroll(object);
+			}
+		};
+
+		const handleTouchEnd = () => {
+			touchStartX = null;
+			touchStartY = null;
+			this.snapToClosestSlide(grid);
+		};
+
+		grid.addEventListener('touchstart', handleTouchStart, { passive: true });
+		grid.addEventListener('touchmove', handleTouchMove, { passive: false });
+		grid.addEventListener('touchend', handleTouchEnd);
+	};
+
+	snapToClosestSlide = (grid) => {
+		if (!grid.children[0]) return;
+
+		const slideWidth = grid.children[0].offsetWidth;
+		const scrollLeft = grid.scrollLeft;
+		const slideIndex = Math.round(scrollLeft / slideWidth);
+
+		grid.style.scrollBehavior = 'smooth';
+		grid.scrollTo({
+			left: slideIndex * slideWidth
+		});
+	};
+
+	getCurrentSlideIndex = (object) => {
+		if (!object.items[0]) return 0;
+
+		const scrollLeft = object.grid.scrollLeft;
+		const slideWidth = object.items[0].offsetWidth;
+		return Math.round(scrollLeft / slideWidth);
+	};
+
+	init = () => {
+		const carousels = document.querySelectorAll(this.options.wrapper);
+
+		carousels.forEach((wrapper, index) => {
+			this.wrappers[index] = new this.Wrapper(wrapper, index, this.options);
+			const object = this.wrappers[index];
+
+			if (!object.grid) return;
+
+			// Store bound event handlers
+			object.handleScroll = () => this.handleScroll(object);
+			object.handleResize = () => {
+				if (object.pagination) {
+					this.initializePagination(object);
+				}
+			};
+
+			object.grid.addEventListener('scroll', object.handleScroll, {
+				passive: true
+			});
+
+			// Initialize both touch and mouse drag
+			this.setupTouchEvents(object.grid, object);
+			this.setupTrackDrag(object);
+
+			if (object.pagination) {
+				this.initializePagination(object);
+				// Update pagination on window resize
+				window.addEventListener('resize', object.handleResize);
+			}
+
+			// Setup navigation buttons
+			const prevButton = wrapper.querySelector('[data-direction="prev"]');
+			const nextButton = wrapper.querySelector('[data-direction="next"]');
+
+			if (prevButton) {
+				prevButton.addEventListener('click', (e) => {
+					e.preventDefault();
+					this.handlePrev(object);
+				});
+			}
+
+			if (nextButton) {
+				nextButton.addEventListener('click', (e) => {
+					e.preventDefault();
+					this.handleNext(object);
+				});
+			}
+
+			// Initial state update
+			this.handleScroll(object);
+
+			// Setup autoplay
+			this.setupAutoplay(object);
+		});
+	};
+
+	destroy = () => {
+		Object.values(this.wrappers).forEach((object) => {
+			if (this.observer) {
+				this.observer.disconnect();
+			}
+
+			this.stopAutoplay(object);
+
+			if (object.grid) {
+				object.grid.removeEventListener('scroll', object.handleScroll);
+			}
+
+			if (object.pagination) {
+				const dots = object.pagination.querySelectorAll('.brag-book-gallery-pagination-dot');
+				dots.forEach((dot) => {
+					if (dot.clickHandler) {
+						dot.removeEventListener('click', dot.clickHandler);
+					}
+				});
+			}
+
+			if (object.handleResize) {
+				window.removeEventListener('resize', object.handleResize);
+			}
 		});
 
-		// Announce current slide to screen readers
-		if (this.liveRegion) {
-			this.liveRegion.textContent = `Slide ${currentIndex + 1} of ${totalSlides}`;
-		}
-	}
-
-	/**
-	 * Refresh the carousel after window resize or content changes
-	 */
-	refresh() {
-		// Recalculate responsive layout
-		this.options.itemsPerView = this.getItemsPerView();
-		
-		// Rebuild pagination for new layout
-		this.initializePagination();
-		this.updatePagination();
-		
-		// Update accessibility labels
-		this.updateAriaLabels();
-	}
-
-	/**
-	 * Navigate to a slide by its ID
-	 * @param {string} slideId - The slide's data-slide attribute value
-	 */
-	goToSlide(slideId) {
-		const slides = this.track.querySelectorAll(this.options.slideSelector);
-		const targetSlide = Array.from(slides).find(slide => slide.dataset.slide === slideId);
-
-		if (targetSlide) {
-			// Calculate which page contains this slide
-			const slideIndex = Array.from(slides).indexOf(targetSlide);
-			const itemsPerView = this.getItemsPerView();
-			const pageIndex = Math.floor(slideIndex / itemsPerView);
-			this.goToPage(pageIndex);
-		}
-	}
+		this.wrappers = {};
+	};
 }
 
 export default Carousel;

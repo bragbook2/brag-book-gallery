@@ -1,6 +1,6 @@
 === BRAGBook Gallery Changelog ===
 
-= 3.3.0 (2025-09-26) =
+= 3.3.0 (2025-10-07) =
 
 Added:
 * Automatic Sync Cron Jobs - Full implementation of WordPress cron-based automatic synchronization
@@ -17,8 +17,6 @@ Added:
   - Indicates overdue syncs when cron hasn't executed on schedule
   - Integrated status display directly in admin interface
 
-= 3.3.1 (2025-09-17) =
-
 Fixed:
 * Nudity Warnings on Case Cards - Fixed nudity warnings not appearing on individual case cards for procedures with nudity flags
   - Added missing nudity warning rendering logic to render_wordpress_case_card() method in Cases_Handler class
@@ -28,18 +26,6 @@ Fixed:
   - Added user email and favorites count display after content title on favorites page
   - Updated card HTML structure to match exact design specifications
   - Improved favorites grid rendering with proper user info integration
-
-Enhanced:
-* Performance Improvements - Increased default posts per page from 10 to 200 for better user experience
-  - Updated brag_book_gallery_items_per_page option default value across all relevant handlers
-  - Reduces need for pagination and improves gallery browsing experience
-* Card Structure - Updated JavaScript-generated favorite cards to match exact HTML structure
-  - Ensured consistency between server-rendered and client-rendered case cards
-  - Improved responsive design and styling consistency
-
-= 3.3.0 (2025-09-19) =
-
-Fixed:
 * Procedure Taxonomy Pages - Prevented unwanted API calls on procedure taxonomy pages
   - Fixed is_bragbook_page() method in Assets class to exclude procedure taxonomy pages
   - Added explicit check using is_tax('procedures') to prevent frontend assets from loading
@@ -60,6 +46,12 @@ Enhanced:
   - Enhanced duration formatting to match previous MM:SS display format
   - Updated sync status display to show warnings, duplicate counts, and comprehensive statistics
   - Maintains full data compatibility with previous sync status information
+* Performance Improvements - Increased default posts per page from 10 to 200 for better user experience
+  - Updated brag_book_gallery_items_per_page option default value across all relevant handlers
+  - Reduces need for pagination and improves gallery browsing experience
+* Card Structure - Updated JavaScript-generated favorite cards to match exact HTML structure
+  - Ensured consistency between server-rendered and client-rendered case cards
+  - Improved responsive design and styling consistency
 * Code Quality - Removed all development console.log statements from JavaScript modules
   - Cleaned up debugging code from all frontend JavaScript files for production
   - Improved code maintainability and reduced bundle size
@@ -67,9 +59,6 @@ Enhanced:
   - Simplified carousel implementation to use only native browser APIs
   - Removed complex animation library dependencies for better cross-browser compatibility
   - Eliminated autoplay and auto-scroll options as requested
-
-Changed:
-* Version Numbering - Updated to semantic versioning 3.3.0 for new feature improvements
 
 = 3.2.8 (2025-09-11) =
 

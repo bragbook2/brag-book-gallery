@@ -98,7 +98,7 @@ class Changelog_Page extends Settings_Base {
 				<div class="brag-book-gallery-changelog-version">
 					<h3>
 						<span class="version-badge version-minor">v3.3.0</span>
-						<?php esc_html_e( 'September 26, 2025', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Current Release', 'brag-book-gallery' ); ?>
+						<?php esc_html_e( 'October 7, 2025', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Current Release', 'brag-book-gallery' ); ?>
 					</h3>
 					<div class="brag-book-gallery-card">
 						<h4><?php esc_html_e( '🎉 New Features', 'brag-book-gallery' ); ?></h4>
@@ -109,27 +109,61 @@ class Changelog_Page extends Settings_Base {
 							<li><?php esc_html_e( 'Created visual cron status display on Sync Settings page showing next scheduled sync', 'brag-book-gallery' ); ?></li>
 							<li><?php esc_html_e( 'Added "Test Cron Now" button for manual cron job testing and validation', 'brag-book-gallery' ); ?></li>
 							<li><?php esc_html_e( 'Full 3-stage sync execution via cron (Procedures, Manifest, Cases)', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Detailed logging for all cron operations for debugging', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Automatic schedule clearing when sync is disabled', 'brag-book-gallery' ); ?></li>
 							<li><?php esc_html_e( 'Cron Status Monitoring: Real-time visibility of scheduled sync operations', 'brag-book-gallery' ); ?></li>
-							<li><?php esc_html_e( 'Shows exact date/time of next scheduled sync with human-readable countdown', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Shows exact date/time of next scheduled sync', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Displays human-readable countdown (e.g., "In 6 days")', 'brag-book-gallery' ); ?></li>
 							<li><?php esc_html_e( 'Indicates overdue syncs when cron hasn\'t executed on schedule', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Integrated status display directly in admin interface', 'brag-book-gallery' ); ?></li>
 						</ul>
 						<h4><?php esc_html_e( '🐛 Bug Fixes', 'brag-book-gallery' ); ?></h4>
 						<ul>
-							<li><?php esc_html_e( 'Fixed missing view="myfavorites" parameter documentation for [brag_book_gallery] shortcode', 'brag-book-gallery' ); ?></li>
-							<li><?php esc_html_e( 'Fixed fatal error in generate_case_slug() method: Return value must be of type string, int returned', 'brag-book-gallery' ); ?></li>
-							<li><?php esc_html_e( 'Removed unnecessary "case-" prefix from fallback slugs as per requirements', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Carousel Cross-Origin Images: Fixed Firefox cookie rejection errors for Cloudflare-protected images from BRAGBook API', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Added crossorigin="anonymous" attributes to all external image elements in JavaScript modules', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Prevents Firefox from rejecting Cloudflare __cf_bm cookies when loading before/after images', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Affected files: filter-system.js, global-utilities.js, main-app.js, carousel.js', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'JavaScript Build Errors: Fixed syntax errors in main-app.js caused by console statement cleanup', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Removed orphaned object literals left after automated console.log removal', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Fixed broken JavaScript that was preventing webpack builds from completing', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Nudity Warnings on Case Cards: Fixed nudity warnings not appearing on individual case cards for procedures with nudity flags', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Added missing nudity warning rendering logic to render_wordpress_case_card() method in Cases_Handler class', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Fixed inconsistent nudity detection by using WordPress taxonomy meta instead of API sidebar data', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Unified nudity detection approach across gallery and sidebar handlers for consistency', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Favorites Display: Enhanced favorites functionality with user information display', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Added user email and favorites count display after content title on favorites page', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Updated card HTML structure to match exact design specifications', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Improved favorites grid rendering with proper user info integration', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Procedure Taxonomy Pages: Prevented unwanted API calls on procedure taxonomy pages', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Fixed is_bragbook_page() method in Assets class to exclude procedure taxonomy pages', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Added explicit check using is_tax(\'procedures\') to prevent frontend assets from loading', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Resolves issue where sidebar and cases API endpoints were being called unnecessarily', 'brag-book-gallery' ); ?></li>
 						</ul>
-						<h4><?php esc_html_e( '⚡ Performance Improvements', 'brag-book-gallery' ); ?></h4>
+						<h4><?php esc_html_e( '⚡ Performance & Enhancements', 'brag-book-gallery' ); ?></h4>
 						<ul>
-							<li><?php esc_html_e( 'Optimized cron scheduling with automatic cleanup of old schedules', 'brag-book-gallery' ); ?></li>
-							<li><?php esc_html_e( 'Detailed logging for all cron operations for easier debugging', 'brag-book-gallery' ); ?></li>
-							<li><?php esc_html_e( 'Automatic schedule clearing when sync is disabled', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Sync Status Display: Enhanced file-based sync status to show comprehensive data equivalent to previous database system', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Updated parse_log_file_for_status() method to extract detailed procedure and case counts from log files', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Added warning detection for duplicate case IDs and other sync warnings', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Implemented accurate counting of procedures and cases created by parsing log entries', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Enhanced duration formatting to match previous MM:SS display format', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Updated sync status display to show warnings, duplicate counts, and comprehensive statistics', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Maintains full data compatibility with previous sync status information', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Performance Improvements: Increased default posts per page from 10 to 200 for better user experience', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Updated brag_book_gallery_items_per_page option default value across all relevant handlers', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Reduces need for pagination and improves gallery browsing experience', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Card Structure: Updated JavaScript-generated favorite cards to match exact HTML structure', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Ensured consistency between server-rendered and client-rendered case cards', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Improved responsive design and styling consistency', 'brag-book-gallery' ); ?></li>
 						</ul>
 						<h4><?php esc_html_e( '🔧 Code Quality', 'brag-book-gallery' ); ?></h4>
 						<ul>
-							<li><?php esc_html_e( 'Removed unused render_cases_grid() method from Cases_Handler class', 'brag-book-gallery' ); ?></li>
-							<li><?php esc_html_e( 'Verified Chunked_Data_Sync class is actively used via Sync_Ajax_Handler', 'brag-book-gallery' ); ?></li>
-							<li><?php esc_html_e( 'Added proper type casting in generate_case_slug() for string return type', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Code Quality: Removed all development console.log statements from JavaScript modules', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Cleaned up debugging code from all frontend JavaScript files for production', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Improved code maintainability and reduced bundle size', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Carousel Simplification: Removed GSAP dependency and autoplay functionality from carousel', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Simplified carousel implementation to use only native browser APIs', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Removed complex animation library dependencies for better cross-browser compatibility', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Eliminated autoplay and auto-scroll options as requested', 'brag-book-gallery' ); ?></li>
 						</ul>
 					</div>
 				</div>

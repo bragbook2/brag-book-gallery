@@ -137,6 +137,9 @@ class Endpoints {
 		'consultations'    => '/api/plugin/consultations',
 		'tracker'          => '/api/plugin/tracker',
 		'views'            => '/api/plugin/views',
+		'validate_token'   => '/api/plugin/v2/validation/token',
+		'cases_v2'         => '/api/plugin/v2/cases',
+		'case_detail_v2'   => '/api/plugin/v2/cases/%s',
 	);
 
 	/**
@@ -1549,6 +1552,257 @@ class Endpoints {
 			'POST',
 			false // Don't cache
 		);
+	}
+
+	/**
+	 * Validate API token
+	 *
+	 * Validates an API token with the BRAGBook service using Bearer authentication.
+	 *
+	 * @since 3.3.0
+	 *
+	 * @param string $api_token API token to validate
+	 * @param int    $website_property_id Website property ID
+	 *
+	 * @return array|null Validation response data on success, null on failure
+	 */
+	public function validate_token( string $api_token, int $website_property_id ): ?array {
+		// Validate inputs
+		if ( empty( $api_token ) || $website_property_id <= 0 ) {
+			$this->log_error( 'API token and website property ID are required for token validation' );
+			return null;
+		}
+
+		// Build URL with query parameter
+		$url = self::API_ENDPOINTS['validate_token'] . '?' . http_build_query( [
+			'websitePropertyId' => $website_property_id,
+		] );
+
+		$full_url = Setup::get_api_url() . $url;
+
+		// Make GET request with Bearer token authentication
+		$response = wp_remote_get( $full_url, [
+			'timeout' => self::API_TIMEOUT,
+			'headers' => [
+				'Authorization' => 'Bearer ' . $api_token,
+				'Accept' => 'application/json',
+				'User-Agent' => 'BRAG book Gallery Plugin/3.3.0',
+			],
+		] );
+
+		if ( is_wp_error( $response ) ) {
+			$this->log_error( 'Token validation API request failed: ' . $response->get_error_message() );
+			return null;
+		}
+
+		$response_code = wp_remote_retrieve_response_code( $response );
+		$response_body = wp_remote_retrieve_body( $response );
+
+		if ( $response_code !== 200 ) {
+			$this->log_error( sprintf( 'Token validation API returned status %d', $response_code ) );
+			return null;
+		}
+
+		// Decode JSON response
+		$data = json_decode( $response_body, true );
+
+		if ( json_last_error() !== JSON_ERROR_NONE ) {
+			$this->log_error( 'Invalid JSON response from token validation API: ' . json_last_error_msg() );
+			return null;
+		}
+
+		return $data;
+	}
+
+	/**
+	 * Get cases using v2 API
+	 *
+	 * Retrieves cases from the v2 cases endpoint using Bearer authentication.
+	 * This endpoint requires websitePropertyId and procedureId as query parameters.
+	 *
+	 * @since 3.3.0
+	 *
+	 * @param string      $api_token API token for authentication
+	 * @param int         $website_property_id Website property ID
+	 * @param int         $procedure_id Procedure ID to filter cases
+	 * @param int         $page Page number for pagination (default: 1)
+	 * @param int         $limit Number of items per page (default: 20)
+	 * @param string|null $member_id Optional member ID filter
+	 * @param string      $sort Sort order (default: 'position')
+	 * @param string|null $include Optional comma-separated list of fields to include
+	 * @param string|null $exclude Optional comma-separated list of fields to exclude
+	 *
+	 * @return array|null Cases response data on success, null on failure
+	 */
+	public function get_cases_v2(
+		string $api_token,
+		int $website_property_id,
+		int $procedure_id,
+		int $page = 1,
+		int $limit = 20,
+		?string $member_id = null,
+		?string $include = null,
+		?string $exclude = null
+	): ?array {
+		// Validate inputs
+		if ( empty( $api_token ) || $website_property_id <= 0 || $procedure_id <= 0 ) {
+			$this->log_error( 'API token, website property ID, and procedure ID are required for v2 cases endpoint' );
+			return null;
+		}
+
+		// Build query parameters
+		$params = [
+			'websitePropertyId' => $website_property_id,
+			'procedureId' => $procedure_id,
+			'page' => $page,
+			'limit' => $limit
+		];
+
+		// Add optional parameters if provided
+		if ( ! empty( $member_id ) ) {
+			$params['memberId'] = $member_id;
+		}
+
+		if ( ! empty( $include ) ) {
+			$params['include'] = $include;
+		}
+
+		if ( ! empty( $exclude ) ) {
+			$params['exclude'] = $exclude;
+		}
+
+		// Build URL with query parameters
+		$url = self::API_ENDPOINTS['cases_v2'] . '?' . http_build_query( $params );
+
+		$full_url = Setup::get_api_url() . $url;
+
+		// Make GET request with Bearer token authentication
+		$response = wp_remote_get( $full_url, [
+			'timeout' => self::API_TIMEOUT,
+			'headers' => [
+				'Authorization' => 'Bearer ' . $api_token,
+				'Accept' => 'application/json',
+				'User-Agent' => 'BRAG book Gallery Plugin/3.3.0',
+			],
+		] );
+
+		if ( is_wp_error( $response ) ) {
+			$this->log_error( 'v2 cases API request failed: ' . $response->get_error_message() );
+			return null;
+		}
+
+		$response_code = wp_remote_retrieve_response_code( $response );
+		$response_body = wp_remote_retrieve_body( $response );
+
+		if ( $response_code !== 200 ) {
+			$this->log_error( sprintf( 'v2 cases API returned status %d', $response_code ) );
+			return null;
+		}
+
+		// Decode JSON response
+		$data = json_decode( $response_body, true );
+
+		if ( json_last_error() !== JSON_ERROR_NONE ) {
+			$this->log_error( 'Invalid JSON response from v2 cases API: ' . json_last_error_msg() );
+			return null;
+		}
+
+		return $data;
+	}
+
+	/**
+	 * Get single case details using v2 API
+	 *
+	 * Retrieves a specific case from the v2 cases endpoint using Bearer authentication.
+	 * This endpoint requires case ID and websitePropertyId.
+	 *
+	 * @since 3.3.0
+	 *
+	 * @param string      $api_token API token for authentication
+	 * @param int         $case_id Case ID to retrieve
+	 * @param int         $website_property_id Website property ID
+	 * @param int|null    $procedure_id Optional procedure ID filter
+	 * @param string|null $member_id Optional member ID filter
+	 * @param string|null $include Optional comma-separated list of fields to include
+	 * @param string|null $exclude Optional comma-separated list of fields to exclude
+	 *
+	 * @return array|null Case data on success, null on failure
+	 */
+	public function get_case_detail_v2(
+		string $api_token,
+		int $case_id,
+		int $website_property_id,
+		?int $procedure_id = null,
+		?string $member_id = null,
+		?string $include = null,
+		?string $exclude = null
+	): ?array {
+		// Validate inputs
+		if ( empty( $api_token ) || $case_id <= 0 || $website_property_id <= 0 ) {
+			$this->log_error( 'API token, case ID, and website property ID are required for v2 case detail endpoint' );
+			return null;
+		}
+
+		// Build query parameters
+		$params = [
+			'websitePropertyId' => $website_property_id,
+		];
+
+		// Add optional parameters if provided
+		if ( ! empty( $procedure_id ) && $procedure_id > 0 ) {
+			$params['procedureId'] = $procedure_id;
+		}
+
+		if ( ! empty( $member_id ) ) {
+			$params['memberId'] = $member_id;
+		}
+
+		if ( ! empty( $include ) ) {
+			$params['include'] = $include;
+		}
+
+		if ( ! empty( $exclude ) ) {
+			$params['exclude'] = $exclude;
+		}
+
+		// Build URL with case ID and query parameters
+		$endpoint = sprintf( self::API_ENDPOINTS['case_detail_v2'], $case_id );
+		$url = $endpoint . '?' . http_build_query( $params );
+
+		$full_url = Setup::get_api_url() . $url;
+
+		// Make GET request with Bearer token authentication
+		$response = wp_remote_get( $full_url, [
+			'timeout' => self::API_TIMEOUT,
+			'headers' => [
+				'Authorization' => 'Bearer ' . $api_token,
+				'Accept' => 'application/json',
+				'User-Agent' => 'BRAG book Gallery Plugin/3.3.0',
+			],
+		] );
+
+		if ( is_wp_error( $response ) ) {
+			$this->log_error( 'v2 case detail API request failed: ' . $response->get_error_message() );
+			return null;
+		}
+
+		$response_code = wp_remote_retrieve_response_code( $response );
+		$response_body = wp_remote_retrieve_body( $response );
+
+		if ( $response_code !== 200 ) {
+			$this->log_error( sprintf( 'v2 case detail API returned status %d', $response_code ) );
+			return null;
+		}
+
+		// Decode JSON response
+		$data = json_decode( $response_body, true );
+
+		if ( json_last_error() !== JSON_ERROR_NONE ) {
+			$this->log_error( 'Invalid JSON response from v2 case detail API: ' . json_last_error_msg() );
+			return null;
+		}
+
+		return $data;
 	}
 
 	/**

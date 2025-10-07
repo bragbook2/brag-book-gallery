@@ -8,7 +8,6 @@
  *
  * Key Features:
  * - Intelligent asset versioning with file modification time cache busting
- * - GSAP library management with CDN fallback
  * - Custom CSS injection with XSS protection
  * - Script localization for AJAX endpoints and configuration
  * - Asset deduplication to prevent multiple loadings
@@ -71,25 +70,7 @@ final class Asset_Manager {
 	 * @since 3.0.0
 	 * @var string
 	 */
-	private const VERSION = '3.0.0';
-
-	/**
-	 * GSAP library version
-	 *
-	 * Version of the GreenSock Animation Platform library.
-	 *
-	 * @since 3.0.0
-	 * @var string
-	 */
-	private const GSAP_VERSION = '3.12.2';
-
-	/**
-	 * GSAP CDN URL pattern
-	 *
-	 * @since 3.0.0
-	 * @var string
-	 */
-	private const GSAP_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/gsap/';
+	private const VERSION = '3.3.0';
 
 	/**
 	 * Flag to track if custom CSS has been added
@@ -115,7 +96,7 @@ final class Asset_Manager {
 	 * Enqueue gallery assets
 	 *
 	 * Loads all necessary styles and scripts for the gallery functionality.
-	 * Includes GSAP for animations and custom CSS if configured.
+	 * Includes custom CSS if configured.
 	 *
 	 * @since 3.0.0
 	 *
@@ -124,30 +105,21 @@ final class Asset_Manager {
 	public static function enqueue_gallery_assets(): void {
 		$plugin_url = Setup::get_plugin_url();
 		$plugin_path = Setup::get_plugin_path();
-		$version = self::VERSION;
+
+		// Get file modification time for cache busting.
+		$css_file = $plugin_path . 'assets/css/brag-book-gallery.css';
+		$css_version = self::get_asset_version( $css_file );
 
 		// Enqueue gallery styles.
 		wp_enqueue_style(
 			'brag-book-gallery-main',
 			$plugin_url . 'assets/css/brag-book-gallery.css',
 			array(),
-			$version
+			$css_version
 		);
 
 		// Add custom CSS only once.
 		self::add_custom_css( 'brag-book-gallery-main' );
-
-		// Check if GSAP should be loaded from CDN or locally.
-		$gsap_url = self::get_gsap_url();
-
-		// Enqueue GSAP library.
-		wp_enqueue_script(
-			'gsap',
-			$gsap_url,
-			array(),
-			self::GSAP_VERSION,
-			true
-		);
 
 		// Get file modification time for cache busting.
 		$js_file = $plugin_path . 'assets/js/brag-book-gallery.js';
@@ -157,7 +129,7 @@ final class Asset_Manager {
 		wp_enqueue_script(
 			'brag-book-gallery-main',
 			$plugin_url . 'assets/js/brag-book-gallery.js',
-			array( 'gsap' ),
+			array(),
 			$js_version,
 			true
 		);
@@ -186,30 +158,21 @@ final class Asset_Manager {
 	public static function enqueue_cases_assets(): void {
 		$plugin_url = Setup::get_plugin_url();
 		$plugin_path = Setup::get_plugin_path();
-		$version = self::VERSION;
+
+		// Get file modification time for cache busting.
+		$css_file = $plugin_path . 'assets/css/brag-book-gallery.css';
+		$css_version = self::get_asset_version( $css_file );
 
 		// Enqueue gallery styles (reuse for cases).
 		wp_enqueue_style(
 			'brag-book-gallery-main',
 			$plugin_url . 'assets/css/brag-book-gallery.css',
 			array(),
-			$version
+			$css_version
 		);
 
 		// Add custom CSS only once.
 		self::add_custom_css( 'brag-book-gallery-main' );
-
-		// Check if GSAP should be loaded from CDN or locally.
-		$gsap_url = self::get_gsap_url();
-
-		// Enqueue GSAP library for filtering animations.
-		wp_enqueue_script(
-			'gsap',
-			$gsap_url,
-			array(),
-			self::GSAP_VERSION,
-			true
-		);
 
 		// Get file modification time for cache busting.
 		$js_file = $plugin_path . 'assets/js/brag-book-gallery.js';
@@ -219,7 +182,7 @@ final class Asset_Manager {
 		wp_enqueue_script(
 			'brag-book-gallery-main',
 			$plugin_url . 'assets/js/brag-book-gallery.js',
-			array( 'gsap' ),
+			array(),
 			$js_version,
 			true
 		);
@@ -506,19 +469,6 @@ final class Asset_Manager {
 	}
 
 	/**
-	 * Check if GSAP is already enqueued
-	 *
-	 * Determines if the GSAP animation library has been enqueued.
-	 *
-	 * @since 3.0.0
-	 *
-	 * @return bool True if GSAP is enqueued, false otherwise.
-	 */
-	public static function is_gsap_enqueued(): bool {
-		return wp_script_is( 'gsap', 'enqueued' );
-	}
-
-	/**
 	 * Get asset version with intelligent cache busting
 	 *
 	 * Implements a sophisticated versioning strategy that uses file modification
@@ -549,30 +499,6 @@ final class Asset_Manager {
 		return $version;
 	}
 
-	/**
-	 * Get GSAP library URL with fallback strategy
-	 *
-	 * Implements a robust loading strategy for the GSAP animation library:
-	 * 1. Checks for local version (offline development support)
-	 * 2. Falls back to CDN version with proper URL construction
-	 * 3. Validates URLs for security
-	 *
-	 * @since 3.0.0
-	 *
-	 * @return string Validated GSAP library URL.
-	 */
-	private static function get_gsap_url(): string {
-		$plugin_path = Setup::get_plugin_path();
-		$plugin_url = Setup::get_plugin_url();
-
-		// Use PHP 8.2 match expression for cleaner URL resolution
-		return match ( true ) {
-			file_exists( $plugin_path . 'assets/vendor/gsap.min.js' ) =>
-				esc_url_raw( $plugin_url . 'assets/vendor/gsap.min.js' ),
-			default =>
-				esc_url_raw( self::GSAP_CDN . self::GSAP_VERSION . '/gsap.min.js' ),
-		};
-	}
 
 	/**
 	 * Add custom CSS to a style handle with comprehensive security

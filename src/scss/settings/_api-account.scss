@@ -1,0 +1,52 @@
+// -----------------------------------------------------------------------------
+// API Account Information Styles
+// -----------------------------------------------------------------------------
+
+.brag-book-account-info {
+	background: #FFF;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	padding: 12px;
+	margin-top: 8px;
+}
+
+.account-info-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 8px;
+
+	&:last-child {
+		margin-bottom: 0;
+	}
+
+	strong {
+		min-width: 100px;
+		color: #1d2327;
+	}
+}
+
+.status-badge {
+	display: inline-block;
+	padding: 2px 8px;
+	border-radius: 3px;
+	font-size: 12px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+
+	&.status-active {
+		background: #d1f0d1;
+		color: #146914;
+	}
+
+	&.status-inactive {
+		background: #f0e0d1;
+		color: #996633;
+	}
+
+	&.status-expired {
+		background: #f0d1d1;
+		color: #991414;
+	}
+}

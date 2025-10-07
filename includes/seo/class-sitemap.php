@@ -785,7 +785,7 @@ final class Sitemap {
 	 */
 	private function get_sitemap_last_modified(): string {
 		$cache_key = 'brag_book_gallery_transient_sitemap_last_modified';
-		// $last_modified = false; // Cache_Manager::get( $cache_key );
+		$last_modified = false; // Cache_Manager::get( $cache_key );
 
 		if ( false !== $last_modified ) {
 			return $last_modified;

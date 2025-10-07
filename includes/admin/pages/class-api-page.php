@@ -139,6 +139,7 @@ class API_Page extends Settings_Base {
 		// Retrieve current API configuration from WordPress options
 		$api_tokens           = get_option( option: 'brag_book_gallery_api_token', default_value: array() );
 		$website_property_ids = get_option( option: 'brag_book_gallery_website_property_id', default_value: array() );
+		$account_info         = get_option( option: 'brag_book_gallery_account_info', default_value: array() );
 		$api_endpoint         = get_option( option: 'brag_book_gallery_api_endpoint', default_value: 'https://app.bragbookgallery.com' );
 		$api_timeout          = get_option( option: 'brag_book_gallery_api_timeout', default_value: 30 );
 		$enable_caching       = get_option( option: 'brag_book_gallery_enable_caching', default_value: 'yes' );
@@ -233,6 +234,52 @@ class API_Page extends Settings_Base {
 											</button>
 										</td>
 									</tr>
+									<?php if ( ! empty( $account_info[ $index ] ) ) : ?>
+										<?php $info = $account_info[ $index ]; ?>
+										<tr>
+											<th scope="row">
+												<label><?php esc_html_e( 'Account Information', 'brag-book-gallery' ); ?></label>
+											</th>
+											<td>
+												<div class="brag-book-account-info">
+													<?php if ( ! empty( $info['organization']['name'] ) ) : ?>
+														<div class="account-info-row">
+															<strong><?php esc_html_e( 'Organization:', 'brag-book-gallery' ); ?></strong>
+															<span><?php echo esc_html( $info['organization']['name'] ); ?></span>
+															<?php if ( ! empty( $info['organization']['status'] ) ) : ?>
+																<span class="status-badge status-<?php echo esc_attr( $info['organization']['status'] ); ?>">
+																	<?php echo esc_html( ucfirst( $info['organization']['status'] ) ); ?>
+																</span>
+															<?php endif; ?>
+														</div>
+													<?php endif; ?>
+													<?php if ( ! empty( $info['subscription']['status'] ) ) : ?>
+														<div class="account-info-row">
+															<strong><?php esc_html_e( 'Subscription:', 'brag-book-gallery' ); ?></strong>
+															<span class="status-badge status-<?php echo esc_attr( $info['subscription']['status'] ); ?>">
+																<?php echo esc_html( ucfirst( $info['subscription']['status'] ) ); ?>
+															</span>
+														</div>
+													<?php endif; ?>
+													<?php if ( ! empty( $info['usage'] ) ) : ?>
+														<div class="account-info-row">
+															<strong><?php esc_html_e( 'Usage:', 'brag-book-gallery' ); ?></strong>
+															<span>
+																<?php
+																printf(
+																	/* translators: 1: Number of cases, 2: Number of websites */
+																	esc_html__( '%1$d Cases, %2$d Websites', 'brag-book-gallery' ),
+																	absint( $info['usage']['totalCases'] ?? 0 ),
+																	absint( $info['usage']['totalWebsites'] ?? 0 )
+																);
+																?>
+															</span>
+														</div>
+													<?php endif; ?>
+												</div>
+											</td>
+										</tr>
+									<?php endif; ?>
 								</table>
 							</div>
 					<?php endforeach; ?>
@@ -951,6 +998,7 @@ class API_Page extends Settings_Base {
 			// Save the validated credentials
 			$saved_tokens       = get_option( 'brag_book_gallery_api_token', array() );
 			$saved_property_ids = get_option( 'brag_book_gallery_website_property_id', array() );
+			$saved_account_info = get_option( 'brag_book_gallery_account_info', array() );
 
 			// Ensure we have arrays
 			if ( ! is_array( $saved_tokens ) ) {
@@ -959,19 +1007,29 @@ class API_Page extends Settings_Base {
 			if ( ! is_array( $saved_property_ids ) ) {
 				$saved_property_ids = array();
 			}
+			if ( ! is_array( $saved_account_info ) ) {
+				$saved_account_info = array();
+			}
 
 			// Update the specific index
 			$saved_tokens[ $index ]       = $api_token;
 			$saved_property_ids[ $index ] = $website_property_id;
 
+			// Save account information if available
+			if ( isset( $validation['account_info'] ) ) {
+				$saved_account_info[ $index ] = $validation['account_info'];
+			}
+
 			// Save back to database
 			update_option( 'brag_book_gallery_api_token', $saved_tokens );
 			update_option( 'brag_book_gallery_website_property_id', $saved_property_ids );
+			update_option( 'brag_book_gallery_account_info', $saved_account_info );
 
 			error_log( 'BRAG book Gallery: Sending success response' );
 			wp_send_json_success( array(
-				'valid'   => true,
-				'message' => __( 'API credentials validated and saved successfully.', 'brag-book-gallery' ),
+				'valid'        => true,
+				'message'      => __( 'API credentials validated and saved successfully.', 'brag-book-gallery' ),
+				'account_info' => $validation['account_info'] ?? null,
 			) );
 		} else {
 			error_log( 'BRAG book Gallery: Validation failed: ' . $validation['message'] );
@@ -997,6 +1055,7 @@ class API_Page extends Settings_Base {
 		// Get current options and ensure they're arrays
 		$api_tokens    = get_option( 'brag_book_gallery_api_token', array() );
 		$property_ids  = get_option( 'brag_book_gallery_website_property_id', array() );
+		$account_info  = get_option( 'brag_book_gallery_account_info', array() );
 		$page_slugs    = get_option( 'brag_book_gallery_page_slug', array() );
 		$seo_titles    = get_option( 'brag_book_gallery_seo_page_title', array() );
 		$seo_descs     = get_option( 'brag_book_gallery_seo_page_description', array() );
@@ -1004,6 +1063,7 @@ class API_Page extends Settings_Base {
 		// Ensure all options are arrays
 		$api_tokens    = is_array( $api_tokens ) ? $api_tokens : array();
 		$property_ids  = is_array( $property_ids ) ? $property_ids : array();
+		$account_info  = is_array( $account_info ) ? $account_info : array();
 		$page_slugs    = is_array( $page_slugs ) ? $page_slugs : ( empty( $page_slugs ) ? array() : array( $page_slugs ) );
 		$seo_titles    = is_array( $seo_titles ) ? $seo_titles : ( empty( $seo_titles ) ? array() : array( $seo_titles ) );
 		$seo_descs     = is_array( $seo_descs ) ? $seo_descs : ( empty( $seo_descs ) ? array() : array( $seo_descs ) );
@@ -1014,6 +1074,9 @@ class API_Page extends Settings_Base {
 			unset( $property_ids[ $index ] );
 
 			// Only unset if the index exists in these arrays
+			if ( isset( $account_info[ $index ] ) ) {
+				unset( $account_info[ $index ] );
+			}
 			if ( isset( $page_slugs[ $index ] ) ) {
 				unset( $page_slugs[ $index ] );
 			}
@@ -1027,6 +1090,7 @@ class API_Page extends Settings_Base {
 			// Re-index arrays
 			$api_tokens   = array_values( $api_tokens );
 			$property_ids = array_values( $property_ids );
+			$account_info = array_values( $account_info );
 			$page_slugs   = array_values( $page_slugs );
 			$seo_titles   = array_values( $seo_titles );
 			$seo_descs    = array_values( $seo_descs );
@@ -1034,6 +1098,7 @@ class API_Page extends Settings_Base {
 			// Update options
 			update_option( 'brag_book_gallery_api_token', $api_tokens );
 			update_option( 'brag_book_gallery_website_property_id', $property_ids );
+			update_option( 'brag_book_gallery_account_info', $account_info );
 			// Ensure we store the first slug as a string, not an array
 			$first_slug = is_array( $page_slugs ) && ! empty( $page_slugs ) ? $page_slugs[0] : '';
 			update_option( 'brag_book_gallery_page_slug', $first_slug );
@@ -1245,6 +1310,30 @@ class API_Page extends Settings_Base {
 				}
 			}
 
+			// Store the gallery page ID
+			update_option( 'brag_book_gallery_page_id', $page_id );
+
+			// Create My Favorites child page
+			$favorites_page = get_page_by_path( $slug . '/myfavorites' );
+
+			if ( ! $favorites_page ) {
+				$favorites_page_data = array(
+					'post_title'     => 'My Favorites',
+					'post_name'      => 'myfavorites',
+					'post_parent'    => $page_id,
+					'post_status'    => 'publish',
+					'post_type'      => 'page',
+					'post_content'   => '[brag_book_gallery view="favorites"]',
+					'comment_status' => 'closed',
+					'ping_status'    => 'closed',
+				);
+				$favorites_page_id = wp_insert_post( $favorites_page_data, true );
+
+				if ( ! is_wp_error( $favorites_page_id ) ) {
+					update_option( 'brag_book_gallery_favorites_page_id', $favorites_page_id );
+				}
+			}
+
 			// Schedule rewrite rules flush instead of doing it immediately
 			// This prevents timeouts on managed hosting like WP Engine
 			wp_schedule_single_event( time() + 5, 'brag_book_gallery_delayed_rewrite_flush' );
@@ -1318,25 +1407,22 @@ class API_Page extends Settings_Base {
 			];
 		}
 
-		// Use sidebar endpoint for validation with both token and property ID
-		$test_endpoint = 'https://app.bragbookgallery.com/api/plugin/combine/sidebar';
+		// Use validation endpoint with GET request and Bearer authentication
+		$test_endpoint = 'https://app.bragbookgallery.com/api/plugin/v2/validation/token';
 
-		// Sidebar endpoint expects POST with arrays of tokens and property IDs
-		$request_body = [
-			'apiTokens' => [ $api_token ],
-			'websitePropertyIds' => [ intval( $website_property_id ) ],
-		];
+		// Add query parameter
+		$url = add_query_arg( 'websitePropertyId', intval( $website_property_id ), $test_endpoint );
 
-		// Make POST request to sidebar endpoint for validation
-		$response = wp_remote_post(
-			$test_endpoint,
+		// Make GET request with Bearer token authentication
+		$response = wp_remote_get(
+			$url,
 			[
 				'timeout' => 10,
 				'headers' => [
-					'Accept'       => 'application/json',
-					'Content-Type' => 'application/json',
+					'Authorization' => 'Bearer ' . $api_token,
+					'Accept'        => 'application/json',
+					'User-Agent'    => 'BRAG book Gallery Plugin/3.3.0',
 				],
-				'body'    => wp_json_encode( $request_body ),
 			]
 		);
 
@@ -1352,7 +1438,7 @@ class API_Page extends Settings_Base {
 		$data          = json_decode( $response_body, true );
 
 		// Check if response is successful
-		if ( 200 !== $response_code && 201 !== $response_code ) {
+		if ( 200 !== $response_code ) {
 			$error_message = $data['message'] ?? $data['error'] ?? __( 'Invalid API credentials.', 'brag-book-gallery' );
 
 			// Check for specific error patterns
@@ -1369,33 +1455,27 @@ class API_Page extends Settings_Base {
 		}
 
 		// Check if we got valid data back
-		if ( ! $data ) {
+		if ( ! $data || ! isset( $data['data'] ) ) {
 			return [
 				'valid'   => false,
 				'message' => __( 'Invalid response from API. No data returned.', 'brag-book-gallery' ),
 			];
 		}
 
-		// Check for error in response
-		if ( isset( $data['error'] ) && $data['error'] ) {
-			return [
-				'valid'   => false,
-				'message' => $data['message'] ?? __( 'API returned an error.', 'brag-book-gallery' ),
-			];
-		}
-
-		// Check if we have valid sidebar data (should have 'data' key with procedures)
-		if ( ! isset( $data['data'] ) ) {
-			return [
-				'valid'   => false,
-				'message' => __( 'Invalid response structure from API.', 'brag-book-gallery' ),
-			];
-		}
+		// Extract account information from validation response
+		$account_info = [
+			'organization' => $data['data']['organization'] ?? null,
+			'subscription' => $data['data']['subscription'] ?? null,
+			'usage'        => $data['data']['usage'] ?? null,
+			'websites'     => $data['data']['websites'] ?? [],
+			'tokenInfo'    => $data['data']['tokenInfo'] ?? null,
+		];
 
 		// If we got here, credentials are valid
 		return [
-			'valid'   => true,
-			'message' => __( 'API credentials are valid.', 'brag-book-gallery' ),
+			'valid'        => true,
+			'message'      => __( 'API credentials are valid.', 'brag-book-gallery' ),
+			'account_info' => $account_info,
 		];
 	}
 }

@@ -6,7 +6,6 @@ class ShareManager {
 	constructor(options = {}) {
 		this.options = {
 			shareMenuId: options.shareMenuId || 'shareMenu',
-			animateWithGsap: typeof gsap !== 'undefined',
 			onShare: options.onShare || (() => {}),
 			...options
 		};
@@ -117,14 +116,6 @@ class ShareManager {
 
 		// Show dropdown (positioned via CSS)
 		this.shareMenu.classList.add('active');
-
-		// Animate if GSAP available
-		if (this.options.animateWithGsap && typeof gsap !== 'undefined') {
-			gsap.fromTo(this.shareMenu,
-				{ y: -10, opacity: 0 },
-				{ y: 0, opacity: 1, duration: 0.2, ease: "power2.out" }
-			);
-		}
 	}
 
 	hideShareDropdown() {
@@ -135,23 +126,9 @@ class ShareManager {
 			this.activeButton.classList.remove('active');
 		}
 
-		if (this.options.animateWithGsap && typeof gsap !== 'undefined') {
-			gsap.to(this.shareMenu, {
-				y: -10,
-				opacity: 0,
-				duration: 0.15,
-				ease: "power2.in",
-				onComplete: () => {
-					this.shareMenu.classList.remove('active');
-					this.activeButton = null;
-					this.activeItem = null;
-				}
-			});
-		} else {
-			this.shareMenu.classList.remove('active');
-			this.activeButton = null;
-			this.activeItem = null;
-		}
+		this.shareMenu.classList.remove('active');
+		this.activeButton = null;
+		this.activeItem = null;
 	}
 
 	handleShare(type) {
@@ -279,29 +256,9 @@ class ShareManager {
 		notification.textContent = message;
 		notification.classList.add('active');
 
-		// Animate if GSAP available
-		if (this.options.animateWithGsap && typeof gsap !== 'undefined') {
-			gsap.fromTo(notification,
-				{ y: -20, opacity: 0 },
-				{ y: 0, opacity: 1, duration: 0.3, ease: "back.out(1.7)" }
-			);
-		}
-
 		// Hide after 3 seconds
 		setTimeout(() => {
-			if (this.options.animateWithGsap && typeof gsap !== 'undefined') {
-				gsap.to(notification, {
-					y: -20,
-					opacity: 0,
-					duration: 0.2,
-					ease: "power2.in",
-					onComplete: () => {
-						notification.classList.remove('active');
-					}
-				});
-			} else {
-				notification.classList.remove('active');
-			}
+			notification.classList.remove('active');
 		}, 3000);
 	}
 

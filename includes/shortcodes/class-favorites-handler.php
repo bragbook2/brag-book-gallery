@@ -1121,7 +1121,7 @@ final class Favorites_Handler {
 		}
 
 		// Get procedure information (assuming it's stored in taxonomies or meta)
-		$procedure_terms = get_the_terms( $post->ID, 'procedures' );
+		$procedure_terms = get_the_terms( $post->ID, 'brag_book_procedures' );
 		$procedure_name = 'Unknown Procedure';
 		$procedure_slug = 'procedure';
 

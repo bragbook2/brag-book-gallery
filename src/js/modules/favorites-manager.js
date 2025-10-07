@@ -629,30 +629,10 @@ class FavoritesManager {
 		notification.classList.remove('success', 'error');
 		notification.classList.add('active', type);
 
-		// Animate if GSAP available
-		if (typeof gsap !== 'undefined') {
-			gsap.fromTo(notification,
-				{ y: -20, opacity: 0 },
-				{ y: 0, opacity: 1, duration: 0.3, ease: "back.out(1.7)" }
-			);
-		}
-
 		// Hide after 3 seconds (or 5 for errors)
 		const hideDelay = type === 'error' ? 5000 : 3000;
 		setTimeout(() => {
-			if (typeof gsap !== 'undefined') {
-				gsap.to(notification, {
-					y: -20,
-					opacity: 0,
-					duration: 0.2,
-					ease: "power2.in",
-					onComplete: () => {
-						notification.classList.remove('active', 'success', 'error');
-					}
-				});
-			} else {
-				notification.classList.remove('active', 'success', 'error');
-			}
+			notification.classList.remove('active', 'success', 'error');
 		}, hideDelay);
 	}
 
@@ -718,22 +698,52 @@ class FavoritesManager {
 		const count = this.favorites.size;
 
 		countElements.forEach(countElement => {
-			if (typeof gsap !== 'undefined') {
-				gsap.to(countElement, {
-					opacity: 0,
-					duration: 0.1,
-					onComplete: () => {
-						countElement.textContent = `(${count})`;
-						gsap.to(countElement, { opacity: 1, duration: 0.1 });
-					}
-				});
-			} else {
-				countElement.textContent = `(${count})`;
-			}
+			countElement.textContent = `(${count})`;
 		});
+
+		// Update all favorite button states (including dynamically loaded ones)
+		this.updateAllButtonStates();
 
 		// Update favorites grid in sidebar
 		this.updateFavoritesDisplay();
+	}
+
+	/**
+	 * Update all favorite button states to reflect current favorites
+	 * This handles dynamically loaded content like carousels
+	 */
+	updateAllButtonStates() {
+		// Get all favorite buttons on the page
+		const allButtons = document.querySelectorAll('[data-favorited]');
+
+		allButtons.forEach(button => {
+			// Extract item ID from the button
+			let itemId = '';
+
+			// Check for WordPress post ID in parent case card
+			const caseCard = button.closest('.brag-book-gallery-case-card, .brag-book-gallery-carousel-item');
+			if (caseCard && caseCard.dataset.postId) {
+				itemId = caseCard.dataset.postId;
+			} else {
+				// Fallback to button's own data attributes
+				itemId = button.dataset.itemId || button.dataset.caseId || '';
+
+				// Extract numeric ID from values like "case-12345"
+				if (itemId) {
+					const matches = itemId.match(/(\d+)/);
+					if (matches) {
+						itemId = matches[1];
+					}
+				}
+			}
+
+			// Update button state based on whether item is favorited
+			if (itemId && this.favorites.has(itemId)) {
+				button.dataset.favorited = 'true';
+			} else if (itemId) {
+				button.dataset.favorited = 'false';
+			}
+		});
 	}
 
 	/**

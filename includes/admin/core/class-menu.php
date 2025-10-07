@@ -250,7 +250,7 @@ class Menu {
 				'brag-book-gallery'
 			),
 			'capability'  => 'manage_categories',
-			'menu_slug'   => 'edit-tags.php?taxonomy=procedures&post_type=brag_book_cases',
+			'menu_slug'   => 'edit-tags.php?taxonomy=brag_book_procedures&post_type=brag_book_cases',
 			'callback'    => '',
 			'condition'   => true,
 		);
@@ -465,7 +465,7 @@ class Menu {
 			WP_Filesystem();
 		}
 
-		$svg_path = dirname( __DIR__, 2 ) . '/assets/images/brag-book-emblem.svg';
+		$svg_path = dirname( __DIR__, 3 ) . '/assets/images/brag-book-emblem.svg';
 
 		if ( $wp_filesystem && $wp_filesystem->exists( $svg_path ) ) {
 			$svg_content = $wp_filesystem->get_contents( $svg_path );
