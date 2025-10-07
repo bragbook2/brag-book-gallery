@@ -17,9 +17,15 @@ namespace BRAGBookGallery\Includes\Core;
 use WP_Error;
 
 final class Updater {
-	private const API_BASE_URL = 'https://api.github.com/repos/%s/%s/releases/latest';
+	private const API_BASE_URL = 'https://api.github.com/repos/%s/%s/releases';
 	private const CACHE_KEY = 'brag_book_gallery_github_release';
 	private const CACHE_EXPIRATION = 3600; // 1 hour
+
+	// Release channels
+	public const CHANNEL_STABLE = 'stable';
+	public const CHANNEL_RC = 'rc';
+	public const CHANNEL_BETA = 'beta';
+
 	private readonly string $file;
 	private readonly string $basename;
 	private ?array $plugin = null;
@@ -29,6 +35,7 @@ final class Updater {
 	private ?string $authorize_token = null;
 	private ?array $github_response = null;
 	private ?string $github_version = null;
+	private ?string $release_channel = null;
 
 	/**
 	 * Initialize the updater
@@ -125,25 +132,51 @@ final class Updater {
 			return;
 		}
 
-		// Fetch from API
-		$response = $this->fetch_from_github();
+		// Fetch all releases from API
+		$all_releases = $this->fetch_from_github();
 
-		if ($response === null) {
+		if ($all_releases === null) {
 			return;
 		}
 
-		$this->github_response = $response;
-		$this->github_version = $this->extract_version($response);
+		// Filter releases based on user's channel preference
+		$filtered_release = $this->filter_releases_by_channel($all_releases);
 
-		// Cache the response
-		set_transient($cache_key, $response, self::CACHE_EXPIRATION);
+		if ($filtered_release === null) {
+			return;
+		}
+
+		$this->github_response = $filtered_release;
+		$this->github_version = $this->extract_version($filtered_release);
+
+		// Cache the filtered response
+		set_transient($cache_key, $filtered_release, self::CACHE_EXPIRATION);
 	}
 
 	/**
-	 * Generate cache key for transient
+	 * Get user's preferred release channel from settings
+	 */
+	private function get_release_channel(): string {
+		if ($this->release_channel !== null) {
+			return $this->release_channel;
+		}
+
+		$this->release_channel = get_option('brag_book_gallery_release_channel', self::CHANNEL_STABLE);
+
+		// Validate channel
+		if (!in_array($this->release_channel, [self::CHANNEL_STABLE, self::CHANNEL_RC, self::CHANNEL_BETA], true)) {
+			$this->release_channel = self::CHANNEL_STABLE;
+		}
+
+		return $this->release_channel;
+	}
+
+	/**
+	 * Generate cache key for transient (includes release channel)
 	 */
 	private function get_cache_key(): string {
-		return self::CACHE_KEY . '_' . md5($this->username . '_' . $this->repository);
+		$channel = $this->get_release_channel();
+		return self::CACHE_KEY . '_' . md5($this->username . '_' . $this->repository . '_' . $channel);
 	}
 
 	/**
@@ -199,7 +232,9 @@ final class Updater {
 		$body = wp_remote_retrieve_body($response);
 		$data = json_decode($body, true, 512, JSON_THROW_ON_ERROR);
 
-		if (!$this->validate_github_response($data)) {
+		// Validate that we got an array of releases
+		if (!is_array($data)) {
+			$this->log_error('GitHub API did not return an array of releases');
 			return null;
 		}
 
@@ -236,6 +271,119 @@ final class Updater {
 	 */
 	private function extract_version(array $response): string {
 		return ltrim($response['tag_name'] ?? '', 'v');
+	}
+
+	/**
+	 * Parse version and determine release type
+	 *
+	 * @param string $version Version string (e.g., "3.3.0", "3.3.1-rc1", "3.3.1-beta1")
+	 * @return array{version: string, channel: string, base_version: string}
+	 */
+	private function parse_version(string $version): array {
+		$version = ltrim($version, 'v');
+
+		if (str_contains($version, '-beta')) {
+			$base_version = explode('-beta', $version)[0];
+			return [
+				'version' => $version,
+				'channel' => self::CHANNEL_BETA,
+				'base_version' => $base_version,
+			];
+		}
+
+		if (str_contains($version, '-rc')) {
+			$base_version = explode('-rc', $version)[0];
+			return [
+				'version' => $version,
+				'channel' => self::CHANNEL_RC,
+				'base_version' => $base_version,
+			];
+		}
+
+		return [
+			'version' => $version,
+			'channel' => self::CHANNEL_STABLE,
+			'base_version' => $version,
+		];
+	}
+
+	/**
+	 * Filter releases based on user's channel preference
+	 *
+	 * @param array $releases All releases from GitHub API
+	 * @return array|null The best matching release or null if none found
+	 */
+	private function filter_releases_by_channel(array $releases): ?array {
+		$channel = $this->get_release_channel();
+
+		if (empty($releases) || !is_array($releases)) {
+			return null;
+		}
+
+		$valid_releases = [];
+
+		foreach ($releases as $release) {
+			// Skip drafts
+			if (!empty($release['draft'])) {
+				continue;
+			}
+
+			// Validate release structure
+			if (!$this->validate_github_response($release)) {
+				continue;
+			}
+
+			$version = $this->extract_version($release);
+			$parsed = $this->parse_version($version);
+
+			// Filter based on channel preference
+			switch ($channel) {
+				case self::CHANNEL_BETA:
+					// Beta channel: accept all releases (beta, rc, stable)
+					$valid_releases[] = [
+						'release' => $release,
+						'parsed' => $parsed,
+					];
+					break;
+
+				case self::CHANNEL_RC:
+					// RC channel: accept rc and stable, skip beta
+					if ($parsed['channel'] !== self::CHANNEL_BETA) {
+						$valid_releases[] = [
+							'release' => $release,
+							'parsed' => $parsed,
+						];
+					}
+					break;
+
+				case self::CHANNEL_STABLE:
+				default:
+					// Stable channel: only accept stable releases
+					if ($parsed['channel'] === self::CHANNEL_STABLE) {
+						$valid_releases[] = [
+							'release' => $release,
+							'parsed' => $parsed,
+						];
+					}
+					break;
+			}
+		}
+
+		if (empty($valid_releases)) {
+			return null;
+		}
+
+		// Sort by version (descending) - use base_version for comparison
+		usort($valid_releases, function ($a, $b) {
+			$version_a = $a['parsed']['version'];
+			$version_b = $b['parsed']['version'];
+
+			// Compare versions using PHP's version_compare
+			return version_compare($version_b, $version_a);
+		});
+
+		// Return the latest valid release
+		return $valid_releases[0]['release'];
 	}
 
 	/**

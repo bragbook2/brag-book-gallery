@@ -618,6 +618,39 @@ class General_Page extends Settings_Base {
 
 				<tr>
 					<th scope="row">
+						<label for="brag_book_gallery_release_channel">
+							<?php esc_html_e( 'Plugin Update Channel', 'brag-book-gallery' ); ?>
+						</label>
+					</th>
+					<td>
+						<?php
+						$release_channel = get_option( 'brag_book_gallery_release_channel', 'stable' );
+						?>
+						<select id="brag_book_gallery_release_channel" name="brag_book_gallery_release_channel">
+							<option value="stable" <?php selected( $release_channel, 'stable' ); ?>>
+								<?php esc_html_e( 'Stable (Recommended)', 'brag-book-gallery' ); ?>
+							</option>
+							<option value="rc" <?php selected( $release_channel, 'rc' ); ?>>
+								<?php esc_html_e( 'Release Candidate', 'brag-book-gallery' ); ?>
+							</option>
+							<option value="beta" <?php selected( $release_channel, 'beta' ); ?>>
+								<?php esc_html_e( 'Beta (Early Testing)', 'brag-book-gallery' ); ?>
+							</option>
+						</select>
+						<p class="description">
+							<?php esc_html_e( 'Choose which plugin updates to receive:', 'brag-book-gallery' ); ?>
+							<br/>
+							<strong><?php esc_html_e( 'Stable:', 'brag-book-gallery' ); ?></strong> <?php esc_html_e( 'Production-ready releases only (recommended for live sites)', 'brag-book-gallery' ); ?>
+							<br/>
+							<strong><?php esc_html_e( 'Release Candidate:', 'brag-book-gallery' ); ?></strong> <?php esc_html_e( 'Near-final versions for testing before stable release', 'brag-book-gallery' ); ?>
+							<br/>
+							<strong><?php esc_html_e( 'Beta:', 'brag-book-gallery' ); ?></strong> <?php esc_html_e( 'Early access to new features (not recommended for production sites)', 'brag-book-gallery' ); ?>
+						</p>
+					</td>
+				</tr>
+
+				<tr>
+					<th scope="row">
 						<label for="brag_book_gallery_expand_nav_menus">
 							<?php esc_html_e( 'Expand Navigation Menus', 'brag-book-gallery' ); ?>
 						</label>
@@ -1550,6 +1583,24 @@ class General_Page extends Settings_Base {
 
 		$items_per_page = isset( $_POST['brag_book_gallery_items_per_page'] ) ? absint( $_POST['brag_book_gallery_items_per_page'] ) : 10;
 		update_option( 'brag_book_gallery_items_per_page', $items_per_page );
+
+		// Plugin Update Channel
+		$release_channel = isset( $_POST['brag_book_gallery_release_channel'] ) ? sanitize_text_field( $_POST['brag_book_gallery_release_channel'] ) : 'stable';
+		// Validate channel value
+		if ( ! in_array( $release_channel, array( 'stable', 'rc', 'beta' ), true ) ) {
+			$release_channel = 'stable';
+		}
+		// Clear the updater cache when channel changes
+		$old_channel = get_option( 'brag_book_gallery_release_channel', 'stable' );
+		if ( $old_channel !== $release_channel ) {
+			// Clear all updater caches for all channels
+			delete_transient( 'brag_book_gallery_github_release_' . md5( 'bragbook2_brag-book-gallery_stable' ) );
+			delete_transient( 'brag_book_gallery_github_release_' . md5( 'bragbook2_brag-book-gallery_rc' ) );
+			delete_transient( 'brag_book_gallery_github_release_' . md5( 'bragbook2_brag-book-gallery_beta' ) );
+			// Clear WordPress update cache
+			delete_site_transient( 'update_plugins' );
+		}
+		update_option( 'brag_book_gallery_release_channel', $release_channel );
 
 		// Navigation and Filter Settings
 		// With hidden field, we always get a value (0 or 1)

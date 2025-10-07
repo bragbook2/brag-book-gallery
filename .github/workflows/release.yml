@@ -37,7 +37,7 @@ jobs:
         npm run clean
         npm run build
     
-    - name: Get version
+    - name: Get version and release type
       id: get_version
       run: |
         if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
@@ -46,8 +46,23 @@ jobs:
           VERSION=${GITHUB_REF#refs/tags/}
           VERSION=${VERSION#v}
         fi
+
+        # Detect release type from version string
+        if [[ "$VERSION" == *"-beta"* ]]; then
+          RELEASE_TYPE="beta"
+          IS_PRERELEASE="true"
+        elif [[ "$VERSION" == *"-rc"* ]]; then
+          RELEASE_TYPE="rc"
+          IS_PRERELEASE="true"
+        else
+          RELEASE_TYPE="stable"
+          IS_PRERELEASE="false"
+        fi
+
         echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-        echo "Building version: $VERSION"
+        echo "RELEASE_TYPE=$RELEASE_TYPE" >> $GITHUB_OUTPUT
+        echo "IS_PRERELEASE=$IS_PRERELEASE" >> $GITHUB_OUTPUT
+        echo "Building version: $VERSION (Type: $RELEASE_TYPE)"
     
     - name: Update version in plugin files
       run: |
@@ -92,29 +107,40 @@ jobs:
       with:
         tag_name: v${{ steps.get_version.outputs.VERSION }}
         name: Release version ${{ steps.get_version.outputs.VERSION }}
+        prerelease: ${{ steps.get_version.outputs.IS_PRERELEASE }}
         body: |
           ## 🎉 BRAG book Gallery v${{ steps.get_version.outputs.VERSION }}
-          
+
+          ${{ steps.get_version.outputs.RELEASE_TYPE == 'beta' && '### ⚠️ Beta Release
+          This is a pre-release version for early testing. Not recommended for production sites.
+          To receive beta updates, enable "Beta" channel in BRAG book → Settings → General → Release Channel.' || '' }}
+          ${{ steps.get_version.outputs.RELEASE_TYPE == 'rc' && '### 🚀 Release Candidate
+          This is a release candidate for testing. Near-final version before stable release.
+          To receive RC updates, enable "Release Candidate" channel in BRAG book → Settings → General → Release Channel.' || '' }}
+          ${{ steps.get_version.outputs.RELEASE_TYPE == 'stable' && '### ✅ Stable Release
+          This is a stable production release.' || '' }}
+
           ### Installation
           1. Download `brag-book-gallery.zip` from the assets below
           2. In WordPress admin, go to Plugins → Add New → Upload Plugin
           3. Choose the downloaded zip file and click "Install Now"
           4. Activate the plugin
-          
+
           ### Update Notes
           - The plugin will automatically check for updates from this repository
           - You can update directly from your WordPress admin when new versions are available
-          
+          - Configure update channel in plugin settings to receive different release types
+
           ### What's Changed
           <!-- Add your release notes here -->
           - Various improvements and bug fixes
-          
+
           ### Compatibility
           - WordPress: 6.0 or higher
           - PHP: 8.2 or higher
-          
+
           ---
-          
+
           **Full Changelog**: https://github.com/${{ github.repository }}/compare/v3.0.0...v${{ steps.get_version.outputs.VERSION }}
         files: |
           brag-book-gallery.zip
