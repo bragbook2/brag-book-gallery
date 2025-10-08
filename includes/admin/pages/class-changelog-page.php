@@ -93,12 +93,46 @@ class Changelog_Page extends Settings_Base {
 				</div>
 			</div>
 
+			<!-- Version 3.3.1 -->
+			<div class="brag-book-gallery-section">
+				<div class="brag-book-gallery-changelog-version">
+					<h3>
+						<span class="version-badge version-patch">v3.3.1</span>
+						<?php esc_html_e( 'October 8, 2025', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Current Release', 'brag-book-gallery' ); ?>
+					</h3>
+					<div class="brag-book-gallery-card">
+						<h4><?php esc_html_e( '🎉 New Features', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Column View: New shortcode view for displaying procedures organized by parent categories', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Adaptive grid layout automatically adjusts columns based on number of parent categories (1-5 columns)', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Responsive breakpoints for mobile, tablet, and desktop displays', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Usage: [brag_book_gallery view="column"]', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Procedure Banner Images: Support for banner images on procedure parent categories', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Retrieves banner images from banner_image term meta', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Implements responsive <picture> elements with multiple image sizes', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Includes lazy loading and async decoding for performance', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Automatic fallback to parent category name for alt text', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Multi-Channel Release System: Beta, RC, and stable release channels', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Users can opt into beta or RC releases for early access to new features', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Channel selection available in General Settings', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Automatic filtering of GitHub releases based on selected channel', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Enhanced update notification system with channel-specific warnings', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '🐛 Bug Fixes', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Asset Versioning: Updated Asset_Manager VERSION constant to match plugin version', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Column View Assets: Added missing asset enqueuing in handle_column_view() method', 'brag-book-gallery' ); ?></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
 			<!-- Version 3.3.0 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">
 					<h3>
 						<span class="version-badge version-minor">v3.3.0</span>
-						<?php esc_html_e( 'October 7, 2025', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Current Release', 'brag-book-gallery' ); ?>
+						<?php esc_html_e( 'October 7, 2025', 'brag-book-gallery' ); ?>
 					</h3>
 					<div class="brag-book-gallery-card">
 						<h4><?php esc_html_e( '🎉 New Features', 'brag-book-gallery' ); ?></h4>

@@ -139,6 +139,9 @@ final class Gallery_Handler {
 			case 'cases_only':
 				return Cases_Handler::handle( $validated_atts );
 
+			case 'column_view':
+				return self::handle_column_view( $validated_atts );
+
 			case 'procedure_view':
 				return self::handle_procedure_view( $validated_atts );
 
@@ -244,15 +247,22 @@ final class Gallery_Handler {
 			];
 		}
 
-		// 6. Check if procedure view is explicitly requested
+		// 6. Check if column view is explicitly requested
 		$view = $validated_atts['view'] ?? '';
+		if ( 'column' === $view ) {
+			return [
+				'type' => 'column_view',
+			];
+		}
+
+		// 7. Check if procedure view is explicitly requested
 		if ( 'procedure' === $view ) {
 			return [
 				'type' => 'procedure_view',
 			];
 		}
 
-		// 7. Default: Full gallery
+		// 8. Default: Full gallery
 		return [
 			'type' => 'full_gallery',
 		];
@@ -412,8 +422,9 @@ final class Gallery_Handler {
 			 role="application"
 			 aria-label="Before and After Gallery">
 			<!-- Skip to gallery content for accessibility -->
-			<a href="#gallery-content" class="brag-book-gallery-skip-link">Skip
-				to gallery content</a>
+			<a href="#gallery-content" class="brag-book-gallery-skip-link">
+				<?php esc_html_e( 'Skip to gallery content', 'brag-book-gallery' ); ?>
+			</a>
 			<!-- Mobile Gallery Navigation Bar -->
 			<div class="brag-book-gallery-mobile-header" role="navigation"
 				 aria-label="Gallery mobile navigation">
@@ -460,8 +471,7 @@ final class Gallery_Handler {
 			<div class="brag-book-gallery-mobile-overlay" data-overlay></div>
 
 			<div class="brag-book-gallery-container">
-				<div class="brag-book-gallery-sidebar" role="complementary"
-					 id="sidebar-nav" aria-label="Gallery filters">
+				<div class="brag-book-gallery-sidebar" role="complementary" id="sidebar-nav" aria-label="Gallery filters">
 					<div class="brag-book-gallery-sidebar-header hidden">
 						<h2 class="brag-book-gallery-sidebar-title">
 							<?php esc_html_e( 'Choose a Gallery', 'brag-book-gallery' ); ?>
@@ -1340,6 +1350,143 @@ final class Gallery_Handler {
 		</div>
 		<?php
 		return ob_get_clean();
+	}
+
+	/**
+	 * Handle column view - displays procedures organized by parent categories
+	 *
+	 * @param array $validated_atts Validated shortcode attributes.
+	 *
+	 * @return string Rendered column view content.
+	 * @since 3.3.1
+	 */
+	private static function handle_column_view( array $validated_atts ): string {
+		// Enqueue gallery assets
+		Asset_Manager::enqueue_gallery_assets();
+
+		// Get all procedure terms
+		$all_procedures = get_terms(
+			[
+				'taxonomy'   => Taxonomies::TAXONOMY_PROCEDURES,
+				'hide_empty' => false,
+				'orderby'    => 'name',
+				'order'      => 'ASC',
+			]
+		);
+
+		if ( is_wp_error( $all_procedures ) || empty( $all_procedures ) ) {
+			return sprintf(
+				'<p class="brag-book-gallery-error">%s</p>',
+				esc_html__( 'No procedures found.', 'brag-book-gallery' )
+			);
+		}
+
+		// Organize procedures by parent
+		$procedure_groups = [];
+		$parent_terms     = [];
+
+		foreach ( $all_procedures as $term ) {
+			if ( $term->parent === 0 ) {
+				// This is a parent category
+				$parent_terms[ $term->term_id ] = $term;
+				$procedure_groups[ $term->term_id ] = [
+					'parent' => $term,
+					'children' => [],
+				];
+			}
+		}
+
+		// Now organize children under parents
+		foreach ( $all_procedures as $term ) {
+			if ( $term->parent !== 0 && isset( $procedure_groups[ $term->parent ] ) ) {
+				$procedure_groups[ $term->parent ]['children'][] = $term;
+			}
+		}
+
+		// Calculate column count based on number of parent categories
+		$parent_count = count( $procedure_groups );
+		$column_class = self::get_column_class( $parent_count );
+
+		// Start output buffering
+		ob_start();
+		?>
+		<!-- Column Procedure View -->
+		<div class="brag-book-gallery-wrapper brag-book-gallery-wrapper--start" data-view="column">
+			<div class="brag-book-gallery-procedure-groups <?php echo esc_attr( $column_class ); ?>">
+				<?php foreach ( $procedure_groups as $group ) : ?>
+					<?php if ( ! empty( $group['children'] ) ) : ?>
+						<?php
+						// Get banner image for parent term
+						$parent_term_id = $group['parent']->term_id;
+						$banner_image_id = get_term_meta( $parent_term_id, 'banner_image', true );
+						?>
+						<div class="brag-book-gallery-procedure-group">
+							<?php if ( ! empty( $banner_image_id ) && is_numeric( $banner_image_id ) ) : ?>
+								<?php
+								// Get responsive image URLs
+								$image_full = wp_get_attachment_image_url( $banner_image_id, 'full' );
+								$image_large = wp_get_attachment_image_url( $banner_image_id, 'large' );
+								$image_medium = wp_get_attachment_image_url( $banner_image_id, 'medium' );
+								$image_alt = get_post_meta( $banner_image_id, '_wp_attachment_image_alt', true );
+								?>
+								<?php if ( $image_full ) : ?>
+									<div class="brag-book-gallery-group-banner">
+										<picture>
+											<source media="(min-width: 768px)" srcset="<?php echo esc_url( $image_large ?: $image_full ); ?>">
+											<source media="(min-width: 480px)" srcset="<?php echo esc_url( $image_medium ?: $image_full ); ?>">
+											<img src="<?php echo esc_url( $image_full ); ?>"
+											     alt="<?php echo esc_attr( $image_alt ?: $group['parent']->name ); ?>"
+											     class="brag-book-gallery-banner-image"
+											     loading="lazy"
+											     decoding="async">
+										</picture>
+									</div>
+								<?php endif; ?>
+							<?php endif; ?>
+							<h3 class="brag-book-gallery-group-title">
+								<?php echo esc_html( $group['parent']->name ); ?>
+							</h3>
+							<ul class="brag-book-gallery-procedure-list">
+								<?php foreach ( $group['children'] as $child_term ) : ?>
+									<li class="brag-book-gallery-procedure-item">
+										<a href="<?php echo esc_url( get_term_link( $child_term ) ); ?>"
+										   class="brag-book-gallery-procedure-link">
+											<?php echo esc_html( $child_term->name ); ?>
+										</a>
+									</li>
+								<?php endforeach; ?>
+							</ul>
+						</div>
+					<?php endif; ?>
+				<?php endforeach; ?>
+			</div>
+		</div>
+		<?php
+		return ob_get_clean();
+	}
+
+	/**
+	 * Get adaptive column class based on number of items
+	 *
+	 * @param int $count Number of columns needed.
+	 *
+	 * @return string CSS class for columns.
+	 * @since 3.3.1
+	 */
+	private static function get_column_class( int $count ): string {
+		if ( $count === 1 ) {
+			return 'columns-1';
+		} elseif ( $count === 2 ) {
+			return 'columns-2';
+		} elseif ( $count === 3 ) {
+			return 'columns-3';
+		} elseif ( $count === 4 ) {
+			return 'columns-4';
+		} elseif ( $count >= 5 ) {
+			return 'columns-5';
+		}
+
+		return 'columns-2'; // Default fallback
 	}
 
 	private static function handle_procedure_view( array $validated_atts ): string {

@@ -70,7 +70,7 @@ final class Asset_Manager {
 	 * @since 3.0.0
 	 * @var string
 	 */
-	private const VERSION = '3.3.0';
+	private const VERSION = '3.3.1';
 
 	/**
 	 * Flag to track if custom CSS has been added

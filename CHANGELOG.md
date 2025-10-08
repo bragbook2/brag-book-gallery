@@ -4,7 +4,29 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.3.0] - 2025-10-07 (Current Release)
+## [3.3.1] - 2025-10-08 (Current Release)
+
+### Added
+- **Column View**: New shortcode view for displaying procedures organized by parent categories
+  - Adaptive grid layout automatically adjusts columns based on number of parent categories (1-5 columns)
+  - Responsive breakpoints for mobile, tablet, and desktop displays
+  - Usage: `[brag_book_gallery view="column"]`
+- **Procedure Banner Images**: Support for banner images on procedure parent categories
+  - Retrieves banner images from `banner_image` term meta
+  - Implements responsive `<picture>` elements with multiple image sizes
+  - Includes lazy loading and async decoding for performance
+  - Automatic fallback to parent category name for alt text
+- **Multi-Channel Release System**: Beta, RC, and stable release channels
+  - Users can opt into beta or RC releases for early access to new features
+  - Channel selection available in General Settings
+  - Automatic filtering of GitHub releases based on selected channel
+  - Enhanced update notification system with channel-specific warnings
+
+### Fixed
+- **Asset Versioning**: Updated Asset_Manager VERSION constant to match plugin version
+- **Column View Assets**: Added missing asset enqueuing in `handle_column_view()` method
+
+## [3.3.0] - 2025-10-07
 
 ### Added
 - **Automatic Sync Cron Jobs**: Full implementation of WordPress cron-based automatic synchronization
