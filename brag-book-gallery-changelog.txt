@@ -1,5 +1,24 @@
 === BRAGBook Gallery Changelog ===
 
+= 3.3.2-beta2 (2025-10-09) =
+
+Fixed:
+* Landing Page Text Editor - Replaced TinyMCE with Trumbowyg WYSIWYG editor to resolve AMD/RequireJS conflicts
+  - Removed problematic WordPress TinyMCE editor that conflicted with Monaco Editor
+  - Implemented lightweight Trumbowyg editor with visual and HTML editing modes
+  - Fixed "Can only have one anonymous define call per script file" error
+  - Vanilla ES6 JavaScript implementation for better performance
+  - Toolbar includes formatting, bold, italic, links, lists, and HTML view toggle
+* Gallery Landing Page Error - Fixed null reference error in procedure referrer tracking
+  - Added null check in global-utilities.js before accessing regex match results
+  - Resolved "Cannot read properties of null (reading '1')" JavaScript error
+  - Error only occurred when visiting gallery landing page (non-procedure pages)
+
+= 3.3.2-beta1 (2025-10-09) =
+
+Added:
+* Initial beta release for testing multi-channel release system
+
 = 3.3.1 (2025-10-08) =
 
 Added:

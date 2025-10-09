@@ -93,12 +93,53 @@ class Changelog_Page extends Settings_Base {
 				</div>
 			</div>
 
+			<!-- Version 3.3.2-beta2 -->
+			<div class="brag-book-gallery-section">
+				<div class="brag-book-gallery-changelog-version">
+					<h3>
+						<span class="version-badge version-beta">v3.3.2-beta2</span>
+						<?php esc_html_e( 'October 9, 2025', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Current Beta', 'brag-book-gallery' ); ?>
+					</h3>
+					<div class="brag-book-gallery-card">
+						<h4><?php esc_html_e( '🐛 Bug Fixes', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Landing Page Text Editor: Replaced TinyMCE with Trumbowyg WYSIWYG editor to resolve AMD/RequireJS conflicts', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Removed problematic WordPress TinyMCE editor that conflicted with Monaco Editor', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Implemented lightweight Trumbowyg editor with visual and HTML editing modes', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Fixed "Can only have one anonymous define call per script file" error', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Vanilla ES6 JavaScript implementation for better performance', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Toolbar includes formatting, bold, italic, links, lists, and HTML view toggle', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Gallery Landing Page Error: Fixed null reference error in procedure referrer tracking', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Added null check in global-utilities.js before accessing regex match results', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Resolved "Cannot read properties of null (reading \'1\')" JavaScript error', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Error only occurred when visiting gallery landing page (non-procedure pages)', 'brag-book-gallery' ); ?></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
+			<!-- Version 3.3.2-beta1 -->
+			<div class="brag-book-gallery-section">
+				<div class="brag-book-gallery-changelog-version">
+					<h3>
+						<span class="version-badge version-beta">v3.3.2-beta1</span>
+						<?php esc_html_e( 'October 9, 2025', 'brag-book-gallery' ); ?>
+					</h3>
+					<div class="brag-book-gallery-card">
+						<h4><?php esc_html_e( '🎉 New Features', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Initial beta release for testing multi-channel release system', 'brag-book-gallery' ); ?></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
 			<!-- Version 3.3.1 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">
 					<h3>
 						<span class="version-badge version-patch">v3.3.1</span>
-						<?php esc_html_e( 'October 8, 2025', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Current Release', 'brag-book-gallery' ); ?>
+						<?php esc_html_e( 'October 8, 2025', 'brag-book-gallery' ); ?>
 					</h3>
 					<div class="brag-book-gallery-card">
 						<h4><?php esc_html_e( '🎉 New Features', 'brag-book-gallery' ); ?></h4>

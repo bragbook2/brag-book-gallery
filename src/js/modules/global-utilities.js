@@ -207,6 +207,11 @@ function initializeProcedureReferrerTracking() {
 	const procedurePattern = new RegExp(`\\/${escapedGallerySlug}\\/([^\\/]+)\\/?$`);
 	const procedureMatch = currentPath.match(procedurePattern);
 
+	// Only proceed if we're actually on a procedure page
+	if (!procedureMatch) {
+		return;
+	}
+
 	const procedureSlug = procedureMatch[1];
 
 	// Get procedure name from page title or heading

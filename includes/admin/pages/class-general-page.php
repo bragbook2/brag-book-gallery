@@ -73,14 +73,11 @@ class General_Page extends Settings_Base {
 		$this->page_title = __( 'General Settings', 'brag-book-gallery' );
 		$this->menu_title = __( 'General', 'brag-book-gallery' );
 
+		// AMD protection temporarily disabled for testing
+		// add_action( 'admin_footer', array( $this, 'remove_amd_loaders' ), 1 );
+
 		// Enqueue Monaco Editor for CSS editing
-		wp_enqueue_script(
-			'monaco-editor',
-			'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js',
-			array(),
-			'0.45.0',
-			true
-		);
+		add_action( 'admin_footer', array( $this, 'enqueue_monaco_conditionally' ), 20 );
 
 		// Handle form submission
 		if ( ( isset( $_POST['submit'] ) || isset( $_POST['submit_css'] ) ) && $this->save_settings( 'brag_book_gallery_general_settings', 'brag_book_gallery_general_nonce' ) ) {
@@ -148,6 +145,53 @@ class General_Page extends Settings_Base {
 				defaultPanel.classList.add('active');
 			}
 		});
+
+		// Trumbowyg WYSIWYG Editor initialization (Vanilla ES6)
+		(() => {
+			'use strict';
+
+			// Load Trumbowyg CSS
+			const trumbowygCSS = document.createElement('link');
+			trumbowygCSS.rel = 'stylesheet';
+			trumbowygCSS.href = 'https://cdn.jsdelivr.net/npm/trumbowyg@2.27.3/dist/ui/trumbowyg.min.css';
+			document.head.appendChild(trumbowygCSS);
+
+			// Load Trumbowyg JS
+			const trumbowygJS = document.createElement('script');
+			trumbowygJS.src = 'https://cdn.jsdelivr.net/npm/trumbowyg@2.27.3/dist/trumbowyg.min.js';
+			trumbowygJS.onload = () => {
+				console.log('BRAGBook: Trumbowyg loaded');
+
+				// Check if jQuery and Trumbowyg are available (Trumbowyg requires jQuery)
+				const $ = window.jQuery;
+				if (typeof $ !== 'undefined' && $.fn.trumbowyg) {
+					const editor = document.getElementById('brag_book_gallery_landing_page_text');
+
+					if (editor) {
+						$(editor).trumbowyg({
+							btns: [
+								['viewHTML'],
+								['undo', 'redo'],
+								['formatting'],
+								['strong', 'em', 'del'],
+								['link'],
+								['unorderedList', 'orderedList'],
+								['horizontalRule'],
+								['removeformat']
+							],
+							semantic: true,
+							autogrow: true,
+							removeformatPasted: true,
+							resetCss: true,
+							tagsToRemove: ['script', 'style']
+						});
+
+						console.log('BRAGBook: Trumbowyg initialized on landing page text');
+					}
+				}
+			};
+			document.head.appendChild(trumbowygJS);
+		})();
 
 		// Page slug functionality
 		(function() {
@@ -529,21 +573,19 @@ class General_Page extends Settings_Base {
 					</th>
 					<td>
 						<?php
-						wp_editor(
-							$landing_text,
-							'brag_book_gallery_landing_page_text',
-							array(
-								'textarea_name' => 'brag_book_gallery_landing_page_text',
-								'textarea_rows' => 8,
-								'media_buttons' => false,
-								'teeny'         => true,
-								'tinymce'       => true,
-								'quicktags'     => true
-							)
-						);
+						// Properly unslash the content - WordPress adds slashes when retrieving from options
+						$editor_content = wp_unslash( $landing_text );
 						?>
+
+						<!-- Trumbowyg WYSIWYG Editor Container -->
+						<div id="trumbowyg-editor-wrapper" style="margin-bottom: 10px;">
+							<textarea id="brag_book_gallery_landing_page_text"
+							          name="brag_book_gallery_landing_page_text"
+							          style="width: 100%;"><?php echo esc_textarea( $editor_content ); ?></textarea>
+						</div>
+
 						<p class="description">
-							<?php esc_html_e( 'Text displayed on the gallery landing page.', 'brag-book-gallery' ); ?>
+							<?php esc_html_e( 'Text displayed on the gallery landing page. Edit visually or switch to HTML view using the toolbar.', 'brag-book-gallery' ); ?>
 						</p>
 					</td>
 				</tr>
@@ -1065,25 +1107,25 @@ class General_Page extends Settings_Base {
 						</label>
 					</th>
 					<td>
-						<div id="monaco-editor-container" style="height: 400px; border: 1px solid #dcdcde; border-radius: 4px; margin-bottom: 10px;">
-							<div id="monaco-editor" style="height: 100%;"></div>
+						<div id="monaco-editor-wrapper" style="margin-bottom: 10px;">
+							<div id="monaco-editor-container" style="height: 500px; border: 1px solid #dcdcde; border-radius: 4px;"></div>
 						</div>
 						<textarea id="brag_book_gallery_custom_css"
 						          name="brag_book_gallery_custom_css"
 						          style="display: none;"><?php echo esc_textarea( $custom_css ); ?></textarea>
-						<div class="monaco-editor-toolbar">
+						<div class="monaco-editor-toolbar" style="margin-top: 10px; display: flex; align-items: center; gap: 10px;">
 							<button type="button" id="format-css" class="button button-secondary">
 								<?php esc_html_e( 'Format CSS', 'brag-book-gallery' ); ?>
 							</button>
 							<button type="button" id="reset-css" class="button button-secondary">
 								<?php esc_html_e( 'Reset', 'brag-book-gallery' ); ?>
 							</button>
-							<span class="monaco-editor-status">
+							<span class="monaco-editor-status" style="margin-left: auto; color: #666; font-size: 12px;">
 								<span id="css-line-count">0</span> <?php esc_html_e( 'lines', 'brag-book-gallery' ); ?> |
 								<span id="css-char-count">0</span> <?php esc_html_e( 'characters', 'brag-book-gallery' ); ?>
 							</span>
 						</div>
-						<p class="description">
+						<p class="description" style="margin-top: 10px;">
 							<?php esc_html_e( 'Add custom CSS styles to customize your gallery appearance. Monaco Editor provides IntelliSense, syntax highlighting, and error checking.', 'brag-book-gallery' ); ?>
 						</p>
 					</td>
@@ -1209,98 +1251,8 @@ class General_Page extends Settings_Base {
 				});
 			}
 
-			// Initialize Monaco Editor for CSS editing
-			let monacoEditor = null;
-
-			const initMonacoEditor = () => {
-				const container = document.getElementById('monaco-editor');
-				const textarea = document.getElementById('brag_book_gallery_custom_css');
-				const formatBtn = document.getElementById('format-css');
-				const resetBtn = document.getElementById('reset-css');
-				const lineCountEl = document.getElementById('css-line-count');
-				const charCountEl = document.getElementById('css-char-count');
-
-				if (!container || !textarea) return;
-
-				// Configure Monaco Editor
-				require.config({
-					paths: {
-						'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs'
-					}
-				});
-
-				require(['vs/editor/editor.main'], function() {
-					// Create Monaco Editor instance
-					monacoEditor = monaco.editor.create(container, {
-						value: textarea.value,
-						language: 'css',
-						theme: 'vs',
-						automaticLayout: true,
-						minimap: { enabled: false },
-						lineNumbers: 'on',
-						wordWrap: 'on',
-						tabSize: 4,
-						insertSpaces: false,
-						fontSize: 13,
-						fontFamily: 'Consolas, Monaco, "Courier New", monospace',
-						scrollBeyondLastLine: false,
-						renderLineHighlight: 'line',
-						selectOnLineNumbers: true,
-						roundedSelection: false,
-						readOnly: false,
-						cursorStyle: 'line',
-						showUnused: true,
-						folding: true,
-						foldingHighlight: true,
-						suggest: {
-							insertMode: 'replace'
-						}
-					});
-
-					// Update textarea when editor content changes
-					monacoEditor.onDidChangeModelContent(() => {
-						textarea.value = monacoEditor.getValue();
-						updateStats();
-					});
-
-					// Update statistics
-					const updateStats = () => {
-						const content = monacoEditor.getValue();
-						const lines = content.split('\n').length;
-						const chars = content.length;
-
-						if (lineCountEl) lineCountEl.textContent = lines;
-						if (charCountEl) charCountEl.textContent = chars;
-					};
-
-					// Format CSS button
-					if (formatBtn) {
-						formatBtn.addEventListener('click', () => {
-							monacoEditor.getAction('editor.action.formatDocument').run();
-						});
-					}
-
-					// Reset button
-					if (resetBtn) {
-						resetBtn.addEventListener('click', () => {
-							if (confirm('<?php esc_html_e( 'Are you sure you want to reset all custom CSS? This cannot be undone.', 'brag-book-gallery' ); ?>')) {
-								monacoEditor.setValue('');
-							}
-						});
-					}
-
-					// Initial stats update
-					updateStats();
-
-					// Focus editor for better UX
-					monacoEditor.focus();
-				});
-			};
-
-			// Initialize Monaco Editor if container exists
-			if (document.getElementById('monaco-editor-container')) {
-				initMonacoEditor();
-			}
+			// Monaco Editor initialization removed - now loaded conditionally via enqueue_monaco_conditionally()
+			// to prevent AMD/RequireJS conflicts with TinyMCE
 
 		});
 		</script>
@@ -1482,11 +1434,8 @@ class General_Page extends Settings_Base {
 
 		// Save landing page text (moved from save_default_settings)
 		if ( isset( $_POST['brag_book_gallery_landing_page_text'] ) ) {
-			// Clean escaped quotes from WYSIWYG editor before saving
-			$landing_text = $_POST['brag_book_gallery_landing_page_text'];
-			$landing_text = str_replace( '\"', '"', $landing_text );
-			$landing_text = str_replace( "\'", "'", $landing_text );
-			$landing_text = stripslashes( $landing_text );
+			// Use WordPress built-in function to properly handle slashes
+			$landing_text = wp_unslash( $_POST['brag_book_gallery_landing_page_text'] );
 			update_option(
 				'brag_book_gallery_landing_page_text',
 				wp_kses_post( $landing_text )
@@ -1676,6 +1625,213 @@ class General_Page extends Settings_Base {
 		} else {
 			$this->add_notice( __( 'Settings saved successfully.', 'brag-book-gallery' ) );
 		}
+	}
+
+	/**
+	 * Remove any AMD loaders to protect TinyMCE
+	 *
+	 * This function runs in admin_footer to remove any AMD loaders that might
+	 * have been added by other plugins or scripts, preventing conflicts with TinyMCE.
+	 *
+	 * @since 3.3.2
+	 * @return void
+	 */
+	public function remove_amd_loaders(): void {
+		?>
+		<script>
+		// AMD protection temporarily disabled for testing
+		console.log('BRAGBook: AMD protection disabled');
+		</script>
+		<?php
+	}
+
+	/**
+	 * Enqueue Monaco Editor conditionally to avoid AMD conflicts
+	 *
+	 * Loads Monaco Editor dynamically only when Custom CSS tab becomes active.
+	 * This runs AFTER AMD protection has removed any existing AMD loaders,
+	 * so Monaco can safely add its own AMD loader for the editor.
+	 *
+	 * @since 3.3.2
+	 * @return void
+	 */
+	public function enqueue_monaco_conditionally(): void {
+		?>
+		<script>
+		(function($) {
+			'use strict';
+
+			var monacoLoaded = false;
+			var monacoEditor = null;
+			var monacoRequire = null;
+
+			// Function to load Monaco Editor
+			function loadMonaco() {
+				if (monacoLoaded) return;
+				monacoLoaded = true;
+
+				console.log('BRAGBook: Loading Monaco Editor');
+
+				// Load Monaco loader script
+				var script = document.createElement('script');
+				script.src = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js';
+				script.onload = function() {
+					// Capture Monaco's require and define
+					monacoRequire = window.require;
+					var monacoDefine = window.define;
+
+					console.log('BRAGBook: Monaco loader loaded');
+
+					// Keep AMD available for Monaco but isolate it
+					// Monaco needs these to load its modules
+
+					// Configure Monaco using its own require
+					monacoRequire.config({
+						paths: {
+							'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs'
+						}
+					});
+
+					// Initialize Monaco when loaded using its own require
+					monacoRequire(['vs/editor/editor.main'], function() {
+						// Monaco is now loaded, capture the monaco global
+						var monacoInstance = window.monaco;
+
+						var textarea = document.getElementById('brag_book_gallery_custom_css');
+						var formatBtn = document.getElementById('format-css');
+						var resetBtn = document.getElementById('reset-css');
+						var lineCountEl = document.getElementById('css-line-count');
+						var charCountEl = document.getElementById('css-char-count');
+
+						// Use the existing container from the HTML
+						var container = document.getElementById('monaco-editor-container');
+
+						if (container && textarea && !monacoEditor && monacoInstance) {
+							console.log('BRAGBook: Initializing Monaco Editor');
+
+							monacoEditor = monacoInstance.editor.create(container, {
+								value: textarea.value,
+								language: 'css',
+								theme: 'vs',
+								automaticLayout: true,
+								minimap: { enabled: false },
+								scrollBeyondLastLine: false,
+								fontSize: 13,
+								lineNumbers: 'on',
+								wordWrap: 'on',
+								tabSize: 4,
+								insertSpaces: false,
+								fontFamily: 'Consolas, Monaco, "Courier New", monospace',
+								renderLineHighlight: 'line',
+								selectOnLineNumbers: true,
+								roundedSelection: false,
+								showUnused: true,
+								folding: true,
+								foldingHighlight: true
+							});
+
+							// Update statistics
+							var updateStats = function() {
+								var content = monacoEditor.getValue();
+								var lines = content.split('\n').length;
+								var chars = content.length;
+								if (lineCountEl) lineCountEl.textContent = lines;
+								if (charCountEl) charCountEl.textContent = chars;
+							};
+
+							// Sync Monaco content with textarea on change
+							monacoEditor.onDidChangeModelContent(function() {
+								textarea.value = monacoEditor.getValue();
+								updateStats();
+							});
+
+							// Format CSS button
+							if (formatBtn) {
+								formatBtn.addEventListener('click', function() {
+									monacoEditor.getAction('editor.action.formatDocument').run();
+								});
+							}
+
+							// Reset button
+							if (resetBtn) {
+								resetBtn.addEventListener('click', function() {
+									if (confirm('<?php esc_html_e( 'Are you sure you want to reset all custom CSS? This cannot be undone.', 'brag-book-gallery' ); ?>')) {
+										monacoEditor.setValue('');
+									}
+								});
+							}
+
+							// Initial stats update
+							updateStats();
+
+							// Focus editor for better UX
+							monacoEditor.focus();
+						}
+					});
+				};
+				document.head.appendChild(script);
+			}
+
+			// Function to dispose Monaco and clean up AMD
+			function disposeMonaco() {
+				if (monacoEditor) {
+					console.log('BRAGBook: Disposing Monaco Editor');
+
+					// Sync final content to textarea before disposing
+					var textarea = document.getElementById('brag_book_gallery_custom_css');
+					if (textarea && monacoEditor) {
+						textarea.value = monacoEditor.getValue();
+					}
+
+					// Dispose the editor
+					monacoEditor.dispose();
+					monacoEditor = null;
+
+					// Remove AMD loader to prevent TinyMCE conflicts
+					try {
+						if (typeof window.define === 'function' && window.define.amd) {
+							console.log('BRAGBook: Removing AMD loader after disposing Monaco');
+							delete window.define;
+							delete window.require;
+							delete window.monaco;
+						}
+					} catch (e) {
+						console.log('BRAGBook: Could not remove AMD (non-configurable)');
+					}
+
+					monacoLoaded = false;
+					monacoRequire = null;
+				}
+			}
+
+			// Load Monaco when Custom CSS tab is clicked
+			$(document).ready(function() {
+				// Check if we're on the General Settings page
+				if ($('#custom-css').length) {
+					var $tabLinks = $('.brag-book-gallery-side-tabs a');
+
+					// Load Monaco when Custom CSS tab is clicked
+					$('a[href="#custom-css"]').on('click', function() {
+						console.log('BRAGBook: Custom CSS tab activated, loading Monaco');
+						setTimeout(loadMonaco, 100);
+					});
+
+					// Dispose Monaco when switching away from Custom CSS tab
+					$tabLinks.not('a[href="#custom-css"]').on('click', function() {
+						console.log('BRAGBook: Switching away from Custom CSS tab');
+						disposeMonaco();
+					});
+
+					// If Custom CSS tab is active on page load (e.g., from URL hash)
+					if (window.location.hash === '#custom-css') {
+						setTimeout(loadMonaco, 100);
+					}
+				}
+
+			});
+		})(jQuery);
+		</script>
+		<?php
 	}
 
 }
