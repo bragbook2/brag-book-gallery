@@ -2455,25 +2455,25 @@ final class Cases_Handler {
 		// Get next case
 		if ( isset( $case_ids[ $current_key + 1 ] ) ) {
 			$next_post_id = $case_ids[ $current_key + 1 ];
-			$next_case_api_id = get_post_meta( $next_post_id, 'brag_book_gallery_api_id', true );
-			if ( empty( $next_case_api_id ) ) {
-				$next_case_api_id = get_post_meta( $next_post_id, '_case_api_id', true );
+			// Use WordPress permalink for absolute URL
+			$next_url = get_permalink( $next_post_id );
+			// Ensure absolute URL with domain
+			if ( ! preg_match( '/^https?:\/\//', $next_url ) ) {
+				$next_url = home_url( wp_make_link_relative( $next_url ) );
 			}
-			// Build URL using the referrer procedure slug, not the case's primary procedure
-			$next_url = sprintf( '/%s/%s/%s/', $gallery_slug, $procedure_term->slug, $next_case_api_id ?: $next_post_id );
-			error_log( 'AJAX Adjacent Cases - Next case ID: ' . $next_post_id . ' (API: ' . $next_case_api_id . '), URL: ' . $next_url );
+			error_log( 'AJAX Adjacent Cases - Next case ID: ' . $next_post_id . ', URL: ' . $next_url );
 		}
 
 		// Get previous case
 		if ( isset( $case_ids[ $current_key - 1 ] ) ) {
 			$prev_post_id = $case_ids[ $current_key - 1 ];
-			$prev_case_api_id = get_post_meta( $prev_post_id, 'brag_book_gallery_api_id', true );
-			if ( empty( $prev_case_api_id ) ) {
-				$prev_case_api_id = get_post_meta( $prev_post_id, '_case_api_id', true );
+			// Use WordPress permalink for absolute URL
+			$prev_url = get_permalink( $prev_post_id );
+			// Ensure absolute URL with domain
+			if ( ! preg_match( '/^https?:\/\//', $prev_url ) ) {
+				$prev_url = home_url( wp_make_link_relative( $prev_url ) );
 			}
-			// Build URL using the referrer procedure slug, not the case's primary procedure
-			$prev_url = sprintf( '/%s/%s/%s/', $gallery_slug, $procedure_term->slug, $prev_case_api_id ?: $prev_post_id );
-			error_log( 'AJAX Adjacent Cases - Prev case ID: ' . $prev_post_id . ' (API: ' . $prev_case_api_id . '), URL: ' . $prev_url );
+			error_log( 'AJAX Adjacent Cases - Prev case ID: ' . $prev_post_id . ', URL: ' . $prev_url );
 		}
 
 		wp_send_json_success( [

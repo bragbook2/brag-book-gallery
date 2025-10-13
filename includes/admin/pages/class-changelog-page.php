@@ -93,12 +93,32 @@ class Changelog_Page extends Settings_Base {
 				</div>
 			</div>
 
+			<!-- Version 3.3.2-beta3 -->
+			<div class="brag-book-gallery-section">
+				<div class="brag-book-gallery-changelog-version">
+					<h3>
+						<span class="version-badge version-beta">v3.3.2-beta3</span>
+						<?php esc_html_e( 'October 13, 2025', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Current Beta', 'brag-book-gallery' ); ?>
+					</h3>
+					<div class="brag-book-gallery-card">
+						<h4><?php esc_html_e( '🐛 Bug Fixes', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Case Navigation URLs: Fixed navigation buttons to use full absolute URLs with domain', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Updated PHP navigation button generation in class-case-handler.php to use WordPress permalinks', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Fixed AJAX endpoint in class-cases-handler.php to return absolute URLs instead of relative paths', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Navigation buttons now respect Case Ordering from taxonomy term meta', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Ensured JavaScript AJAX calls receive proper absolute URLs for next/previous case navigation', 'brag-book-gallery' ); ?></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
 			<!-- Version 3.3.2-beta2 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">
 					<h3>
 						<span class="version-badge version-beta">v3.3.2-beta2</span>
-						<?php esc_html_e( 'October 9, 2025', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Current Beta', 'brag-book-gallery' ); ?>
+						<?php esc_html_e( 'October 9, 2025', 'brag-book-gallery' ); ?>
 					</h3>
 					<div class="brag-book-gallery-card">
 						<h4><?php esc_html_e( '🐛 Bug Fixes', 'brag-book-gallery' ); ?></h4>

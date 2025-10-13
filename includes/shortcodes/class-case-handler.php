@@ -1066,6 +1066,10 @@ class Case_Handler {
 	/**
 	 * Render case navigation buttons
 	 *
+	 * Uses the Case Ordering system to display prev/next buttons only for cases
+	 * within the same procedure, respecting the custom ordering defined in the
+	 * brag_book_procedures taxonomy.
+	 *
 	 * @since 3.0.0
 	 * @param \WP_Post $case_post The current case post.
 	 * @param array $case_data The case data array.
@@ -1078,9 +1082,8 @@ class Case_Handler {
 		}
 
 		$primary_procedure_id = $case_data['procedures'][0]['procedure_id'];
-		$primary_procedure_slug = $case_data['procedures'][0]['slug'];
 
-		// Get all cases for this procedure, ordered by creation date
+		// Get all cases for this procedure in the correct order (from Case Ordering)
 		$procedure_cases = $this->get_cases_for_procedure( $primary_procedure_id );
 
 		if ( count( $procedure_cases ) <= 1 ) {
@@ -1101,27 +1104,14 @@ class Case_Handler {
 		}
 
 		$html = '';
-		$gallery_page_slug = get_option( 'brag_book_gallery_page_slug', 'gallery' );
 
 		// Previous case button
 		if ( $current_position > 0 ) {
 			$prev_case = $procedure_cases[ $current_position - 1 ];
+			// Force absolute URL by prepending home_url to the path
+			$prev_case_path = wp_make_link_relative( get_permalink( $prev_case->ID ) );
+			$prev_case_url = home_url( $prev_case_path );
 
-			// Get the SEO suffix URL or case ID for the previous case
-			$prev_case_seo_suffix = get_post_meta( $prev_case->ID, 'brag_book_gallery_seo_suffix_url', true );
-			if ( empty( $prev_case_seo_suffix ) ) {
-				$prev_case_seo_suffix = get_post_meta( $prev_case->ID, '_case_seo_suffix_url', true ); // Legacy fallback
-			}
-			if ( empty( $prev_case_seo_suffix ) ) {
-				// If no SEO suffix, try to use the case API ID
-				$prev_case_api_id = get_post_meta( $prev_case->ID, 'brag_book_gallery_api_id', true );
-				if ( empty( $prev_case_api_id ) ) {
-					$prev_case_api_id = get_post_meta( $prev_case->ID, '_case_api_id', true ); // Legacy fallback
-				}
-				$prev_case_seo_suffix = $prev_case_api_id ?: $prev_case->post_name; // Ultimate fallback to post slug
-			}
-
-			$prev_case_url = sprintf( '/%s/%s/%s/', $gallery_page_slug, $primary_procedure_slug, $prev_case_seo_suffix );
 			$html .= sprintf(
 				'<a href="%s" class="brag-book-gallery-nav-button brag-book-gallery-nav-button--prev" aria-label="Previous case">
 					<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M400-240 160-480l240-240 56 58-142 142h486v80H314l142 142-56 58Z"/></svg>
@@ -1137,29 +1127,10 @@ class Case_Handler {
 
 		// Next case button
 		if ( $current_position < count( $procedure_cases ) - 1 ) {
-
 			$next_case = $procedure_cases[ $current_position + 1 ];
-
-			// Get the SEO suffix URL or case ID for the next case
-			$next_case_seo_suffix = get_post_meta( $next_case->ID, 'brag_book_gallery_seo_suffix_url', true );
-			if ( empty( $next_case_seo_suffix ) ) {
-				$next_case_seo_suffix = get_post_meta( $next_case->ID, '_case_seo_suffix_url', true ); // Legacy fallback
-			}
-			if ( empty( $next_case_seo_suffix ) ) {
-				// If no SEO suffix, try to use the case API ID
-				$next_case_api_id = get_post_meta( $next_case->ID, 'brag_book_gallery_api_id', true );
-				if ( empty( $next_case_api_id ) ) {
-					$next_case_api_id = get_post_meta( $next_case->ID, '_case_api_id', true ); // Legacy fallback
-				}
-				$next_case_seo_suffix = $next_case_api_id ?: $next_case->post_name; // Ultimate fallback to post slug
-			}
-
-			$next_case_url = sprintf(
-				'/%s/%s/%s/',
-				$gallery_page_slug,
-				$primary_procedure_slug,
-				$next_case_seo_suffix
-			);
+			// Force absolute URL by prepending home_url to the path
+			$next_case_path = wp_make_link_relative( get_permalink( $next_case->ID ) );
+			$next_case_url = home_url( $next_case_path );
 
 			$html .= sprintf(
 				'<a href="%s" class="brag-book-gallery-nav-button brag-book-gallery-nav-button--next" aria-label="Next case">
@@ -1175,6 +1146,32 @@ class Case_Handler {
 		}
 
 		return $html;
+	}
+
+	/**
+	 * Ensure a URL is absolute with domain
+	 *
+	 * Converts relative URLs to absolute URLs by prepending the site URL.
+	 * Handles cases where plugins filter permalinks to be relative.
+	 *
+	 * @since 3.3.0
+	 * @param string $url The URL to check and convert.
+	 * @return string Absolute URL with domain.
+	 */
+	private function ensure_absolute_url( string $url ): string {
+		// Check if URL is already absolute (starts with http:// or https://)
+		if ( preg_match( '/^https?:\/\//', $url ) ) {
+			return $url;
+		}
+
+		// Get the site URL with proper scheme
+		$site_url = home_url( '/', is_ssl() ? 'https' : 'http' );
+
+		// If URL is relative, prepend the site URL
+		// Ensure no double slashes by removing leading slash from URL
+		$url = ltrim( $url, '/' );
+
+		return rtrim( $site_url, '/' ) . '/' . $url;
 	}
 
 	/**
@@ -1429,35 +1426,19 @@ class Case_Handler {
 	 * Creates the HTML content for a case detail view.
 	 *
 	 * @since 3.0.0
-	 * @param string $case_id The case ID
+	 * @param string $case_id The case ID (WordPress post ID)
 	 * @return string The generated HTML or empty string if case not found
 	 */
 	private function generate_case_detail_html( string $case_id ): string {
-		// Find the WordPress post for this case
-		$case_posts = get_posts( array(
-			'post_type'  => 'brag_book_cases',
-			'meta_query' => array(
-				array(
-					'key'   => 'brag_book_gallery_emr_id',
-					'value' => $case_id,
-					'compare' => '=',
-				),
-			),
-			'posts_per_page' => 1,
-		) );
+		// Treat case_id as WordPress post ID
+		$case_post = get_post( intval( $case_id ) );
 
-		if ( empty( $case_posts ) ) {
-			// Try fallback search by post title or other methods
+		// Verify it's a case post type and published
+		if ( ! $case_post || $case_post->post_type !== Post_Types::POST_TYPE_CASES || $case_post->post_status !== 'publish' ) {
 			return '';
 		}
 
-		$case_post = $case_posts[0];
-
-		// Use the existing render_case_html method
-		$atts = array(
-			'case_id' => $case_id,
-		);
-
-		return $this->render_case_html( $atts, $case_post );
+		// Generate case HTML using the existing method
+		return $this->generate_case_html( $case_post );
 	}
 }
