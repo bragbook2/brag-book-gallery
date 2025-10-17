@@ -2397,8 +2397,11 @@ document.addEventListener('DOMContentLoaded', () => {
 		}, 1000); // Wait for initial animations to complete
 
 		// Apply saved grid preference if available and on desktop
+		// Skip for tiles view which has fixed 2-column layout
+		const isTilesView = grid.classList.contains('brag-book-gallery-case-grid--tiles');
 		const isDesktop = window.innerWidth >= 1024;
-		if (isDesktop) {
+
+		if (isDesktop && !isTilesView) {
 			const savedColumns = localStorage.getItem('brag-book-gallery-grid-columns');
 			if (savedColumns) {
 				const columns = parseInt(savedColumns);

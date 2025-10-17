@@ -434,6 +434,209 @@ class General_Page extends Settings_Base {
 				initializeEventListeners();
 			}
 		})();
+
+		// Favorites page generation functionality
+		(function() {
+			'use strict';
+
+			let checkFavoritesTimeout = null;
+			let currentFavoritesPageExists = false;
+			let canGenerateFavoritesPage = false;
+
+			// DOM elements
+			const elements = {
+				favoritesPageStatus: document.getElementById('favorites-page-status-message'),
+				generateFavoritesBtn: document.getElementById('generate-favorites-page-btn'),
+				gallerySlugInput: document.getElementById('brag_book_gallery_page_slug')
+			};
+
+			/**
+			 * Check favorites page status via AJAX
+			 */
+			const checkFavoritesPageStatus = async () => {
+				if (!elements.favoritesPageStatus || !elements.generateFavoritesBtn) return;
+
+				const gallerySlug = elements.gallerySlugInput ? elements.gallerySlugInput.value.trim() : '';
+
+				if (!gallerySlug) {
+					elements.favoritesPageStatus.className = 'slug-status';
+					elements.favoritesPageStatus.innerHTML = '<?php esc_html_e( 'Please create the gallery page first.', 'brag-book-gallery' ); ?>';
+					elements.favoritesPageStatus.style.display = 'block';
+					elements.generateFavoritesBtn.disabled = true;
+					canGenerateFavoritesPage = false;
+					return;
+				}
+
+				// Show checking message
+				elements.favoritesPageStatus.className = 'slug-status';
+				elements.favoritesPageStatus.textContent = '<?php esc_html_e( 'Checking...', 'brag-book-gallery' ); ?>';
+				elements.favoritesPageStatus.style.display = 'block';
+				elements.generateFavoritesBtn.disabled = true;
+
+				if (typeof ajaxurl === 'undefined') return;
+
+				try {
+					const formData = new FormData();
+					formData.append('action', 'brag_book_gallery_check_favorites_page');
+					formData.append('gallery_slug', gallerySlug);
+					formData.append('nonce', '<?php echo wp_create_nonce( 'brag_book_gallery_check_favorites_page' ); ?>');
+
+					const controller = new AbortController();
+					const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+					const response = await fetch(ajaxurl, {
+						method: 'POST',
+						body: formData,
+						signal: controller.signal
+					});
+
+					clearTimeout(timeoutId);
+					const data = await response.json();
+
+					if (data.success) {
+						currentFavoritesPageExists = data.data.exists;
+						canGenerateFavoritesPage = data.data.can_generate || false;
+						const responseType = data.data.response_type || 'info';
+						const editLink = data.data.edit_link || '';
+
+						elements.favoritesPageStatus.className = `slug-status ${responseType}`;
+
+						let icon = '';
+						switch (responseType) {
+							case 'success': icon = '✓'; break;
+							case 'warning': icon = '⚠️'; break;
+							case 'error': icon = '❌'; break;
+							default: icon = 'ℹ️';
+						}
+
+						let statusMessage = `${icon} ${data.data.message}`;
+						if (editLink && currentFavoritesPageExists) {
+							statusMessage += ` <a href="${editLink}" target="_blank"><?php esc_html_e( 'Edit Page', 'brag-book-gallery' ); ?></a>`;
+						}
+
+						elements.favoritesPageStatus.innerHTML = statusMessage;
+
+						if (canGenerateFavoritesPage) {
+							elements.generateFavoritesBtn.disabled = false;
+							elements.generateFavoritesBtn.textContent = '<?php esc_html_e( 'Generate My Favorites Page', 'brag-book-gallery' ); ?>';
+						} else {
+							elements.generateFavoritesBtn.disabled = true;
+							elements.generateFavoritesBtn.textContent = currentFavoritesPageExists ?
+								'<?php esc_html_e( 'Page Already Exists', 'brag-book-gallery' ); ?>' :
+								'<?php esc_html_e( 'Generate My Favorites Page', 'brag-book-gallery' ); ?>';
+						}
+					} else {
+						elements.favoritesPageStatus.className = 'slug-status error';
+						elements.favoritesPageStatus.textContent = '<?php esc_html_e( 'Error checking page status', 'brag-book-gallery' ); ?>';
+						elements.generateFavoritesBtn.disabled = true;
+						canGenerateFavoritesPage = false;
+					}
+				} catch (error) {
+					console.error('Error checking favorites page status:', error);
+					elements.favoritesPageStatus.className = 'slug-status error';
+
+					if (error.name === 'AbortError') {
+						elements.favoritesPageStatus.textContent = '<?php esc_html_e( 'Request timed out. Please try again.', 'brag-book-gallery' ); ?>';
+					} else if (error.message && error.message.includes('fetch')) {
+						elements.favoritesPageStatus.textContent = '<?php esc_html_e( 'Connection error. Check your internet connection.', 'brag-book-gallery' ); ?>';
+					} else {
+						elements.favoritesPageStatus.textContent = '<?php esc_html_e( 'Error checking page status', 'brag-book-gallery' ); ?>';
+					}
+
+					elements.generateFavoritesBtn.disabled = true;
+					canGenerateFavoritesPage = false;
+				}
+			};
+
+			/**
+			 * Handle favorites page generation
+			 */
+			const handleGenerateFavoritesPage = async () => {
+				if (!elements.generateFavoritesBtn || !elements.favoritesPageStatus) return;
+
+				const gallerySlug = elements.gallerySlugInput ? elements.gallerySlugInput.value.trim() : '';
+
+				if (!gallerySlug || !canGenerateFavoritesPage) return;
+
+				try {
+					elements.generateFavoritesBtn.disabled = true;
+					elements.generateFavoritesBtn.textContent = '<?php esc_html_e( 'Creating...', 'brag-book-gallery' ); ?>';
+
+					const formData = new FormData();
+					formData.append('action', 'brag_book_gallery_generate_favorites_page');
+					formData.append('gallery_slug', gallerySlug);
+					formData.append('nonce', '<?php echo wp_create_nonce( 'brag_book_gallery_generate_favorites_page' ); ?>');
+
+					const controller = new AbortController();
+					const timeoutId = setTimeout(() => controller.abort(), 45000);
+
+					const response = await fetch(ajaxurl, {
+						method: 'POST',
+						body: formData,
+						signal: controller.signal
+					});
+
+					clearTimeout(timeoutId);
+					const data = await response.json();
+
+					if (data.success) {
+						elements.favoritesPageStatus.className = 'slug-status success';
+						elements.favoritesPageStatus.innerHTML = `✓ ${data.data.message}`;
+						elements.generateFavoritesBtn.textContent = '<?php esc_html_e( 'Page Already Exists', 'brag-book-gallery' ); ?>';
+						elements.generateFavoritesBtn.disabled = true;
+						currentFavoritesPageExists = true;
+						canGenerateFavoritesPage = false;
+
+						if (data.data.edit_link) {
+							elements.favoritesPageStatus.innerHTML += ` <a href="${data.data.edit_link}" target="_blank"><?php esc_html_e( 'Edit Page', 'brag-book-gallery' ); ?></a>`;
+						}
+					} else {
+						elements.favoritesPageStatus.className = 'slug-status error';
+						elements.favoritesPageStatus.textContent = data.data || '<?php esc_html_e( 'Failed to create page', 'brag-book-gallery' ); ?>';
+						elements.generateFavoritesBtn.textContent = '<?php esc_html_e( 'Generate My Favorites Page', 'brag-book-gallery' ); ?>';
+						elements.generateFavoritesBtn.disabled = false;
+					}
+				} catch (error) {
+					console.error('Error generating favorites page:', error);
+					elements.favoritesPageStatus.className = 'slug-status error';
+
+					if (error.name === 'AbortError') {
+						elements.favoritesPageStatus.textContent = '<?php esc_html_e( 'Page creation timed out. This may happen on managed hosting. Please check if the page was created and try refreshing.', 'brag-book-gallery' ); ?>';
+					} else if (error.message && error.message.includes('fetch')) {
+						elements.favoritesPageStatus.textContent = '<?php esc_html_e( 'Connection error. Please check your internet connection and try again.', 'brag-book-gallery' ); ?>';
+					} else {
+						elements.favoritesPageStatus.textContent = '<?php esc_html_e( 'Unexpected error during page creation', 'brag-book-gallery' ); ?>';
+					}
+
+					elements.generateFavoritesBtn.textContent = '<?php esc_html_e( 'Generate My Favorites Page', 'brag-book-gallery' ); ?>';
+					elements.generateFavoritesBtn.disabled = false;
+				}
+			};
+
+			/**
+			 * Initialize event listeners
+			 */
+			const initializeFavoritesEventListeners = () => {
+				// Check status when gallery slug changes
+				if (elements.gallerySlugInput) {
+					elements.gallerySlugInput.addEventListener('input', () => {
+						clearTimeout(checkFavoritesTimeout);
+						checkFavoritesTimeout = setTimeout(checkFavoritesPageStatus, 500);
+					});
+				}
+
+				// Generate button click handler
+				if (elements.generateFavoritesBtn) {
+					elements.generateFavoritesBtn.addEventListener('click', handleGenerateFavoritesPage);
+				}
+			};
+
+			if (document.readyState === 'loading') {
+				document.addEventListener('DOMContentLoaded', initializeFavoritesEventListeners);
+			} else {
+				initializeFavoritesEventListeners();
+			}
+		})();
 		</script>
 
 		<?php
@@ -498,6 +701,9 @@ class General_Page extends Settings_Base {
 	private function render_display_settings_tab(): void {
 		// Get current settings with default values
 		$columns = get_option( 'brag_book_gallery_columns', '2' );
+		$main_gallery_view = get_option( 'brag_book_gallery_main_gallery_view', 'default' );
+		$procedures_view = get_option( 'brag_book_gallery_procedures_view', 'default' );
+		$cases_view = get_option( 'brag_book_gallery_cases_view', 'default' );
 		$items_per_page = get_option( 'brag_book_gallery_items_per_page', '10' );
 		$default_landing_text = '<h2>Go ahead, browse our before & afters... visualize your possibilities.</h2>' . "\n" .
 		                       '<p>Our gallery is full of our real patients. Keep in mind results vary.</p>';
@@ -567,6 +773,69 @@ class General_Page extends Settings_Base {
 
 				<tr>
 					<th scope="row">
+						<?php esc_html_e( 'My Favorites Page', 'brag-book-gallery' ); ?>
+					</th>
+					<td>
+						<?php
+						// Check if favorites page already exists
+						$gallery_page_slug = get_option( 'brag_book_gallery_page_slug', '' );
+						$favorites_exists = false;
+						$favorites_edit_link = '';
+						$favorites_button_text = __( 'Generate My Favorites Page', 'brag-book-gallery' );
+						$favorites_button_disabled = true;
+						$show_initial_status = false;
+						$initial_status_message = '';
+						$initial_status_class = '';
+
+						if ( ! empty( $gallery_page_slug ) ) {
+							$favorites_full_path = $gallery_page_slug . '/myfavorites';
+							$favorites_page = get_page_by_path( $favorites_full_path );
+
+							if ( $favorites_page ) {
+								$favorites_exists = true;
+								$favorites_edit_link = get_edit_post_link( $favorites_page->ID, 'raw' );
+								$favorites_button_disabled = true;
+								$favorites_button_text = __( 'Page Already Exists', 'brag-book-gallery' );
+								$show_initial_status = true;
+								$initial_status_message = __( 'My Favorites page already exists.', 'brag-book-gallery' );
+								$initial_status_class = 'slug-status success';
+							} else {
+								$favorites_button_disabled = false;
+								$show_initial_status = true;
+								$initial_status_message = __( 'Ready to create My Favorites page.', 'brag-book-gallery' );
+								$initial_status_class = 'slug-status success';
+							}
+						} else {
+							$show_initial_status = true;
+							$initial_status_message = __( 'Please create the gallery page first.', 'brag-book-gallery' );
+							$initial_status_class = 'slug-status';
+						}
+						?>
+						<button type="button"
+						        id="generate-favorites-page-btn"
+						        class="button button-secondary"
+						        <?php echo $favorites_button_disabled ? 'disabled' : ''; ?>>
+							<?php echo esc_html( $favorites_button_text ); ?>
+						</button>
+						<div id="favorites-page-status-message" class="<?php echo esc_attr( $initial_status_class ); ?>" style="margin-top: 10px;">
+							<?php
+							if ( $show_initial_status ) {
+								$icon = $favorites_exists ? '✓' : ( empty( $gallery_page_slug ) ? '' : '✓' );
+								echo esc_html( $icon . ' ' . $initial_status_message );
+								if ( $favorites_exists && ! empty( $favorites_edit_link ) ) {
+									echo ' <a href="' . esc_url( $favorites_edit_link ) . '" target="_blank">' . esc_html__( 'Edit Page', 'brag-book-gallery' ) . '</a>';
+								}
+							}
+							?>
+						</div>
+						<p class="description">
+							<?php esc_html_e( 'Automatically creates a "My Favorites" child page under your gallery page. This button is only available after the gallery page is created.', 'brag-book-gallery' ); ?>
+						</p>
+					</td>
+				</tr>
+
+				<tr>
+					<th scope="row">
 						<label for="brag_book_gallery_landing_page_text">
 							<?php esc_html_e( 'Landing Page Text', 'brag-book-gallery' ); ?>
 						</label>
@@ -594,6 +863,72 @@ class General_Page extends Settings_Base {
 			<!-- Display Settings Section - Now Second -->
 			<h3><?php esc_html_e( 'Display Settings', 'brag-book-gallery' ); ?></h3>
 			<table class="form-table">
+				<tr>
+					<th scope="row">
+						<label for="brag_book_gallery_main_gallery_view">
+							<?php esc_html_e( 'Main Gallery View Type', 'brag-book-gallery' ); ?>
+						</label>
+					</th>
+					<td>
+						<select id="brag_book_gallery_main_gallery_view" name="brag_book_gallery_main_gallery_view">
+							<option value="default" <?php selected( $main_gallery_view, 'default' ); ?>>
+								<?php esc_html_e( 'Default', 'brag-book-gallery' ); ?>
+							</option>
+							<option value="columns" <?php selected( $main_gallery_view, 'columns' ); ?>>
+								<?php esc_html_e( 'Columns', 'brag-book-gallery' ); ?>
+							</option>
+							<option value="tiles" <?php selected( $main_gallery_view, 'tiles' ); ?>>
+								<?php esc_html_e( 'Tiles', 'brag-book-gallery' ); ?>
+							</option>
+						</select>
+						<p class="description">
+							<?php esc_html_e( 'Choose the view type for the main gallery display. Tiles view shows the landing page text.', 'brag-book-gallery' ); ?>
+						</p>
+					</td>
+				</tr>
+
+				<tr>
+					<th scope="row">
+						<label for="brag_book_gallery_procedures_view">
+							<?php esc_html_e( 'Procedures View Type', 'brag-book-gallery' ); ?>
+						</label>
+					</th>
+					<td>
+						<select id="brag_book_gallery_procedures_view" name="brag_book_gallery_procedures_view">
+							<option value="default" <?php selected( $procedures_view, 'default' ); ?>>
+								<?php esc_html_e( 'Default', 'brag-book-gallery' ); ?>
+							</option>
+							<option value="tiles" <?php selected( $procedures_view, 'tiles' ); ?>>
+								<?php esc_html_e( 'Tiles', 'brag-book-gallery' ); ?>
+							</option>
+						</select>
+						<p class="description">
+							<?php esc_html_e( 'Choose the view type for procedures display.', 'brag-book-gallery' ); ?>
+						</p>
+					</td>
+				</tr>
+
+				<tr>
+					<th scope="row">
+						<label for="brag_book_gallery_cases_view">
+							<?php esc_html_e( 'Cases View Type', 'brag-book-gallery' ); ?>
+						</label>
+					</th>
+					<td>
+						<select id="brag_book_gallery_cases_view" name="brag_book_gallery_cases_view">
+							<option value="default" <?php selected( $cases_view, 'default' ); ?>>
+								<?php esc_html_e( 'Default', 'brag-book-gallery' ); ?>
+							</option>
+							<option value="alternative" <?php selected( $cases_view, 'alternative' ); ?>>
+								<?php esc_html_e( 'Alternative', 'brag-book-gallery' ); ?>
+							</option>
+						</select>
+						<p class="description">
+							<?php esc_html_e( 'Choose the view type for cases display.', 'brag-book-gallery' ); ?>
+						</p>
+					</td>
+				</tr>
+
 				<tr>
 					<th scope="row">
 						<label>
@@ -1480,13 +1815,13 @@ class General_Page extends Settings_Base {
 					update_option( 'brag_book_gallery_page_id', $page_id );
 				}
 
-				// Always check and create My Favorites child page if it doesn't exist
+				// Always check and create My Favorites child page if it doesn't exist (fixed slug: myfavorites)
 				if ( ! empty( $page_id ) ) {
 					// Check if favorites page already exists as a child
 					$favorites_page = get_page_by_path( $new_slug . '/myfavorites' );
 
 					if ( ! $favorites_page ) {
-						// Create My Favorites child page
+						// Create My Favorites child page with fixed slug
 						$favorites_page_data = array(
 							'post_title'    => 'My Favorites',
 							'post_name'     => 'myfavorites',
@@ -1502,8 +1837,9 @@ class General_Page extends Settings_Base {
 
 						if ( $favorites_page_id && ! is_wp_error( $favorites_page_id ) ) {
 							update_option( 'brag_book_gallery_favorites_page_id', $favorites_page_id );
+							update_option( 'brag_book_gallery_favorites_slug', 'myfavorites' );
 							$this->add_notice(
-								__( 'My Favorites child page created successfully.', 'brag-book-gallery' ),
+								__( 'My Favorites page created successfully.', 'brag-book-gallery' ),
 								'success'
 							);
 						} else {
@@ -1512,6 +1848,10 @@ class General_Page extends Settings_Base {
 								'warning'
 							);
 						}
+					} else {
+						// Page already exists, ensure options are set correctly
+						update_option( 'brag_book_gallery_favorites_slug', 'myfavorites' );
+						update_option( 'brag_book_gallery_favorites_page_id', $favorites_page->ID );
 					}
 				}
 
@@ -1529,6 +1869,25 @@ class General_Page extends Settings_Base {
 		// Gallery Display Settings
 		$columns = isset( $_POST['brag_book_gallery_columns'] ) ? sanitize_text_field( $_POST['brag_book_gallery_columns'] ) : '2';
 		update_option( 'brag_book_gallery_columns', $columns );
+
+		// View Type Settings
+		$main_gallery_view = isset( $_POST['brag_book_gallery_main_gallery_view'] ) ? sanitize_text_field( $_POST['brag_book_gallery_main_gallery_view'] ) : 'default';
+		if ( ! in_array( $main_gallery_view, array( 'default', 'columns', 'tiles' ), true ) ) {
+			$main_gallery_view = 'default';
+		}
+		update_option( 'brag_book_gallery_main_gallery_view', $main_gallery_view );
+
+		$procedures_view = isset( $_POST['brag_book_gallery_procedures_view'] ) ? sanitize_text_field( $_POST['brag_book_gallery_procedures_view'] ) : 'default';
+		if ( ! in_array( $procedures_view, array( 'default', 'tiles' ), true ) ) {
+			$procedures_view = 'default';
+		}
+		update_option( 'brag_book_gallery_procedures_view', $procedures_view );
+
+		$cases_view = isset( $_POST['brag_book_gallery_cases_view'] ) ? sanitize_text_field( $_POST['brag_book_gallery_cases_view'] ) : 'default';
+		if ( ! in_array( $cases_view, array( 'default', 'alternative' ), true ) ) {
+			$cases_view = 'default';
+		}
+		update_option( 'brag_book_gallery_cases_view', $cases_view );
 
 		$items_per_page = isset( $_POST['brag_book_gallery_items_per_page'] ) ? absint( $_POST['brag_book_gallery_items_per_page'] ) : 10;
 		update_option( 'brag_book_gallery_items_per_page', $items_per_page );

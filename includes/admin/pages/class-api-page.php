@@ -92,6 +92,12 @@ class API_Page extends Settings_Base {
 		// Generate page
 		$this->register_ajax_action( 'brag_book_gallery_generate_page', array( $this, 'handle_generate_page' ) );
 
+		// Check favorites page status
+		$this->register_ajax_action( 'brag_book_gallery_check_favorites_page', array( $this, 'handle_check_favorites_page' ) );
+
+		// Generate favorites page
+		$this->register_ajax_action( 'brag_book_gallery_generate_favorites_page', array( $this, 'handle_generate_favorites_page' ) );
+
 		// Remove settings row
 		$this->register_ajax_action( 'brag_book_gallery_setting_remove_row', array( $this, 'handle_remove_row' ) );
 	}
@@ -1346,6 +1352,151 @@ class API_Page extends Settings_Base {
 			wp_send_json_success( array(
 				'page_id'   => $page_id,
 				'message'   => __( 'Gallery page created successfully! Rewrite rules will be updated shortly.', 'brag-book-gallery' ),
+				'url'       => get_permalink( $page_id ),
+				'edit_link' => get_edit_post_link( $page_id, 'raw' ),
+			) );
+
+		} catch ( Exception $e ) {
+			wp_send_json_error( sprintf(
+				__( 'Unexpected error creating page: %s', 'brag-book-gallery' ),
+				$e->getMessage()
+			) );
+		}
+	}
+
+	/**
+	 * Check favorites page status via AJAX
+	 *
+	 * Checks if the My Favorites page already exists as a child of the gallery page.
+	 * Uses a fixed slug of "myfavorites".
+	 *
+	 * @since 3.3.2
+	 * @return void
+	 */
+	public function handle_check_favorites_page(): void {
+		$this->verify_ajax_request( 'brag_book_gallery_check_favorites_page' );
+
+		$gallery_slug = sanitize_text_field( $_POST['gallery_slug'] ?? '' );
+
+		if ( empty( $gallery_slug ) ) {
+			wp_send_json_error( __( 'Gallery slug is required.', 'brag-book-gallery' ) );
+		}
+
+		// Get the gallery page to check if it exists
+		$gallery_page = get_page_by_path( $gallery_slug );
+		if ( ! $gallery_page ) {
+			wp_send_json_success( array(
+				'exists'        => false,
+				'can_generate'  => false,
+				'message'       => __( 'Please create the gallery page first.', 'brag-book-gallery' ),
+				'response_type' => 'warning',
+				'edit_link'     => '',
+			) );
+		}
+
+		// Check if favorites page exists as a child of the gallery page (fixed slug: myfavorites)
+		$full_path = $gallery_slug . '/myfavorites';
+		$existing_page = get_page_by_path( $full_path, OBJECT, array( 'page' ) );
+
+		$can_generate = false;
+		$response_type = 'info';
+
+		if ( $existing_page ) {
+			$page_content = $existing_page->post_content;
+			$has_shortcode = $this->has_gallery_shortcode( $page_content, 'favorites' );
+
+			if ( $has_shortcode ) {
+				$message = __( 'My Favorites page already exists.', 'brag-book-gallery' );
+				$response_type = 'success';
+			} else {
+				$message = __( 'Page exists but is missing the favorites shortcode.', 'brag-book-gallery' );
+				$response_type = 'warning';
+			}
+		} else {
+			$message = __( 'Ready to create My Favorites page.', 'brag-book-gallery' );
+			$response_type = 'success';
+			$can_generate = true;
+		}
+
+		wp_send_json_success( array(
+			'exists'        => (bool) $existing_page,
+			'can_generate'  => $can_generate,
+			'message'       => $message,
+			'response_type' => $response_type,
+			'edit_link'     => $existing_page ? get_edit_post_link( $existing_page->ID, 'raw' ) : '',
+		) );
+	}
+
+	/**
+	 * Generate My Favorites page via AJAX
+	 *
+	 * Creates a new favorites page as a child of the gallery page with the
+	 * [brag_book_gallery view="favorites"] shortcode. Uses a fixed slug of "myfavorites".
+	 *
+	 * @since 3.3.2
+	 * @return void
+	 */
+	public function handle_generate_favorites_page(): void {
+		// Set time limit to prevent timeouts on managed hosts
+		if ( ! wp_doing_cron() ) {
+			@set_time_limit( 60 );
+		}
+
+		$this->verify_ajax_request( 'brag_book_gallery_generate_favorites_page' );
+
+		$gallery_slug = sanitize_text_field( $_POST['gallery_slug'] ?? '' );
+
+		if ( empty( $gallery_slug ) ) {
+			wp_send_json_error( __( 'Gallery slug is required.', 'brag-book-gallery' ) );
+		}
+
+		// Get the gallery page to use as parent
+		$gallery_page = get_page_by_path( $gallery_slug );
+		if ( ! $gallery_page ) {
+			wp_send_json_error( __( 'Gallery page not found. Please create the gallery page first.', 'brag-book-gallery' ) );
+		}
+
+		// Double-check if page already exists as child (fixed slug: myfavorites)
+		$full_path = $gallery_slug . '/myfavorites';
+		if ( get_page_by_path( $full_path ) ) {
+			wp_send_json_error( __( 'My Favorites page already exists.', 'brag-book-gallery' ) );
+		}
+
+		// Create the favorites page with error handling
+		try {
+			$page_id = wp_insert_post( array(
+				'post_title'     => 'My Favorites',
+				'post_name'      => 'myfavorites',
+				'post_parent'    => $gallery_page->ID,
+				'post_content'   => '[brag_book_gallery view="favorites"]',
+				'post_status'    => 'publish',
+				'post_type'      => 'page',
+				'comment_status' => 'closed',
+				'ping_status'    => 'closed',
+			), true );
+
+			if ( is_wp_error( $page_id ) ) {
+				wp_send_json_error( sprintf(
+					__( 'Failed to create page: %s', 'brag-book-gallery' ),
+					$page_id->get_error_message()
+				) );
+			}
+
+			// Update favorites page ID
+			update_option( 'brag_book_gallery_favorites_page_id', $page_id );
+			update_option( 'brag_book_gallery_favorites_slug', 'myfavorites' );
+
+			// Schedule rewrite rules flush
+			wp_schedule_single_event( time() + 5, 'brag_book_gallery_delayed_rewrite_flush' );
+
+			// For immediate feedback, try a quick flush but don't block on it
+			if ( function_exists( 'wp_cache_flush' ) ) {
+				wp_cache_flush();
+			}
+
+			wp_send_json_success( array(
+				'page_id'   => $page_id,
+				'message'   => __( 'My Favorites page created successfully!', 'brag-book-gallery' ),
 				'url'       => get_permalink( $page_id ),
 				'edit_link' => get_edit_post_link( $page_id, 'raw' ),
 			) );

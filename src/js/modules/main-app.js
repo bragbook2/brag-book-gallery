@@ -5,6 +5,7 @@ import FavoritesManager from './favorites-manager.js';
 import ShareManager from './share-manager.js';
 import SearchAutocomplete from './search-autocomplete.js';
 import { NudityWarningManager, PhoneFormatter } from './utilities.js';
+import { initGallerySelector } from './gallery-selector.js';
 
 /**
  * Main Application Controller
@@ -46,6 +47,7 @@ class BRAGbookGalleryApp {
 		this.initializeDialogs();
 		this.initializeFilters();
 		this.initializeMobileMenu();
+		this.initializeGallerySelector();
 		this.initializeFavorites();
 		this.initializeSearch();
 		this.initializeShareManager();
@@ -76,11 +78,14 @@ class BRAGbookGalleryApp {
 			onClose: () => {}
 		});
 
-		// Bind consultation buttons to dialog opening
-		document.querySelectorAll('[data-action="request-consultation"]').forEach(button => {
-			button.addEventListener('click', () => {
+		// Bind consultation buttons to dialog opening using event delegation
+		// This works for buttons added dynamically (e.g., in tiles view)
+		document.addEventListener('click', (e) => {
+			const button = e.target.closest('[data-action="request-consultation"]');
+			if (button && this.components.consultationDialog) {
+				e.preventDefault();
 				this.components.consultationDialog.open();
-			});
+			}
 		});
 	}
 
@@ -271,6 +276,13 @@ class BRAGbookGalleryApp {
 	 */
 	initializeMobileMenu() {
 		this.components.mobileMenu = new MobileMenu();
+	}
+
+	/**
+	 * Initialize gallery selector navigation for tiles view
+	 */
+	initializeGallerySelector() {
+		initGallerySelector();
 	}
 
 	/**
@@ -1788,7 +1800,9 @@ class BRAGbookGalleryApp {
 		// Update all favorites count elements
 		const countElements = document.querySelectorAll('[data-favorites-count]');
 		countElements.forEach(element => {
-			element.textContent = `(${count})`;
+			// Check if this is in tiles view (no parentheses)
+			const isTilesView = element.closest('.brag-book-gallery-favorites-link--tiles');
+			element.textContent = isTilesView ? count : `(${count})`;
 		});
 	}
 
@@ -2001,7 +2015,9 @@ class BRAGbookGalleryApp {
 					// Update favorites count in navigation
 					const countElements = document.querySelectorAll('[data-favorites-count]');
 					countElements.forEach(element => {
-						element.textContent = `(${updatedFavorites.length})`;
+						// Check if this is in tiles view (no parentheses)
+						const isTilesView = element.closest('.brag-book-gallery-favorites-link--tiles');
+						element.textContent = isTilesView ? updatedFavorites.length : `(${updatedFavorites.length})`;
 						// Ensure it's visible
 						if (element.style) {
 							element.style.opacity = '1';
@@ -2016,7 +2032,9 @@ class BRAGbookGalleryApp {
 					// Update favorites count to 0
 					const countElements = document.querySelectorAll('[data-favorites-count]');
 					countElements.forEach(element => {
-						element.textContent = '(0)';
+						// Check if this is in tiles view (no parentheses)
+						const isTilesView = element.closest('.brag-book-gallery-favorites-link--tiles');
+						element.textContent = isTilesView ? '0' : '(0)';
 						if (element.style) {
 							element.style.opacity = '1';
 						}

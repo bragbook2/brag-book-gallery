@@ -698,7 +698,9 @@ class FavoritesManager {
 		const count = this.favorites.size;
 
 		countElements.forEach(countElement => {
-			countElement.textContent = `(${count})`;
+			// Check if this is in tiles view (no parentheses)
+			const isTilesView = countElement.closest('.brag-book-gallery-favorites-link--tiles');
+			countElement.textContent = isTilesView ? count : `(${count})`;
 		});
 
 		// Update all favorite button states (including dynamically loaded ones)

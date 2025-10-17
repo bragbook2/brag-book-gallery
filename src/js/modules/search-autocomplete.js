@@ -34,58 +34,115 @@ class SearchAutocomplete {
 	}
 
 	collectProcedures() {
-		// Collect all procedures from rendered sidebar DOM
+		// Collect all procedures from rendered sidebar DOM or tiles view
 		const procedureMap = new Map();
 		const sidebarNav = document.querySelector('.brag-book-gallery-nav');
+		const tilesNav = document.querySelector('.brag-book-gallery-tiles-view');
 
-		if (!sidebarNav) {
-			console.warn('BRAGBook Gallery: No sidebar nav found for search autocomplete');
+		// Check if we have either sidebar nav or tiles view
+		if (!sidebarNav && !tilesNav) {
+			console.warn('BRAGBook Gallery: No navigation found for search autocomplete');
 			this.procedures = [];
 			return;
 		}
 
 		// Extract procedures from sidebar navigation
-		const procedureLinks = sidebarNav.querySelectorAll('.brag-book-gallery-nav-link[data-procedure-slug]');
+		if (sidebarNav) {
+			const procedureLinks = sidebarNav.querySelectorAll('.brag-book-gallery-nav-link[data-procedure-slug]');
 
-		procedureLinks.forEach(link => {
-			const procedureSlug = link.getAttribute('data-procedure-slug');
-			const procedureId = link.getAttribute('data-procedure-id');
-			const category = link.getAttribute('data-category');
-			const nudity = link.getAttribute('data-nudity') === 'true';
-			const url = link.href;
+			procedureLinks.forEach(link => {
+				const procedureSlug = link.getAttribute('data-procedure-slug');
+				const procedureId = link.getAttribute('data-procedure-id');
+				const category = link.getAttribute('data-category');
+				const nudity = link.getAttribute('data-nudity') === 'true';
+				const url = link.href;
 
-			// Extract name and count from link text
-			const linkText = link.textContent.trim();
-			const countMatch = linkText.match(/\((\d+)\)$/);
-			const count = countMatch ? parseInt(countMatch[1], 10) : 0;
-			const name = linkText.replace(/\s*\(\d+\)$/, '').trim();
+				// Extract name and count from link text
+				const linkText = link.textContent.trim();
+				const countMatch = linkText.match(/\((\d+)\)$/);
+				const count = countMatch ? parseInt(countMatch[1], 10) : 0;
+				const name = linkText.replace(/\s*\(\d+\)$/, '').trim();
 
-			// Get category name from the parent details element
-			const categoryDetails = link.closest('details[data-category]');
-			const categoryName = categoryDetails ?
-				categoryDetails.querySelector('.brag-book-gallery-nav-button__label span')?.textContent?.trim() || category :
-				category;
+				// Get category name from the parent details element
+				const categoryDetails = link.closest('details[data-category]');
+				const categoryName = categoryDetails ?
+					categoryDetails.querySelector('.brag-book-gallery-nav-button__label span')?.textContent?.trim() || category :
+					category;
 
-			if (procedureSlug && name) {
-				// Create unique key combining category and procedure slug
-				const key = `${category}:${procedureSlug}`;
+				if (procedureSlug && name) {
+					// Create unique key combining category and procedure slug
+					const key = `${category}:${procedureSlug}`;
 
-				if (!procedureMap.has(key)) {
-					procedureMap.set(key, {
-						id: procedureSlug,
-						procedureId: procedureId,
-						name: name,
-						category: categoryName,
-						categorySlug: category,
-						count: count,
-						searchText: name.toLowerCase(),
-						url: url,
-						nudity: nudity,
-						fullName: `${name} (${count})`
-					});
+					if (!procedureMap.has(key)) {
+						procedureMap.set(key, {
+							id: procedureSlug,
+							procedureId: procedureId,
+							name: name,
+							category: categoryName,
+							categorySlug: category,
+							count: count,
+							searchText: name.toLowerCase(),
+							url: url,
+							nudity: nudity,
+							fullName: `${name} (${count})`
+						});
+					}
 				}
-			}
-		});
+			});
+		}
+
+		// Extract procedures from tiles view navigation
+		if (tilesNav) {
+			const procedureLinks = tilesNav.querySelectorAll('.brag-book-gallery-procedure-link');
+
+			procedureLinks.forEach(link => {
+				const url = link.href;
+				// Extract procedure slug from URL
+				const urlParts = url.split('/');
+				const procedureSlug = urlParts[urlParts.length - 2] || '';
+
+				// Extract name and count from link text
+				const nameSpan = link.querySelector('.brag-book-gallery-procedure-name');
+				const countSpan = link.querySelector('.brag-book-gallery-procedure-count');
+
+				if (!nameSpan) return;
+
+				const name = nameSpan.textContent.trim();
+				const countText = countSpan ? countSpan.textContent.trim() : '';
+				const countMatch = countText.match(/\((\d+)\)/);
+				const count = countMatch ? parseInt(countMatch[1], 10) : 0;
+
+				// Get category from the parent panel
+				const panel = link.closest('.brag-book-gallery-subcategory-panel');
+				const categoryId = panel ? panel.getAttribute('data-category-id') : '';
+
+				// Find the category button to get the category name
+				const categoryButton = categoryId ?
+					document.querySelector(`.brag-book-gallery-category-link[data-category-id="${categoryId}"]`) : null;
+				const categoryName = categoryButton ?
+					categoryButton.querySelector('.brag-book-gallery-category-name')?.textContent?.replace(/\s*\(\d+\)$/, '').trim() || '' : '';
+
+				if (procedureSlug && name) {
+					// Create unique key
+					const key = `${categoryId}:${procedureSlug}`;
+
+					if (!procedureMap.has(key)) {
+						procedureMap.set(key, {
+							id: procedureSlug,
+							procedureId: '',
+							name: name,
+							category: categoryName,
+							categorySlug: categoryId,
+							count: count,
+							searchText: name.toLowerCase(),
+							url: url,
+							nudity: false,
+							fullName: `${name} (${count})`
+						});
+					}
+				}
+			});
+		}
 
 		this.procedures = Array.from(procedureMap.values());
 
