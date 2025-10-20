@@ -1,5 +1,28 @@
 === BRAGBook Gallery Changelog ===
 
+= 3.3.2-beta4 (2025-10-20) =
+
+Added:
+* Alternative Favorites View - New tiles layout option for MyFavorites page
+  - Added MyFavorites View Type setting in Display Settings (default/alternative options)
+  - Alternative view features horizontal filter bar without sidebar navigation
+  - Provides consistent user experience with other tiles views (procedure tiles, case alternative)
+  - Setting: brag_book_gallery_favorites_view with options 'default' and 'alternative'
+
+Fixed:
+* Favorites Empty State Logic - Corrected JavaScript display conditions for empty favorites state
+  - Empty state now only shows when user has verified email but no saved favorites
+  - Previously showed email capture form inappropriately when user had no favorites
+  - Fixed initializeDedicatedFavoritesPage() and showEmptyFavoritesState() methods
+* Infinite Loop Prevention - Resolved circular call between Gallery_Handler and Favorites_Handler
+  - Added setting check before delegation to prevent recursive rendering
+  - Gallery_Handler now checks brag_book_gallery_favorites_view before delegating to Favorites_Handler
+  - Ensures proper routing for both default (sidebar) and alternative (tiles) views
+
+Enhanced:
+* Method Visibility - Made render_tiles_filter_bar() and render_full_gallery() public for better reusability
+* Wrapper Standardization - Updated favorites views to use standard brag-book-gallery-wrapper class
+
 = 3.3.2-beta2 (2025-10-09) =
 
 Fixed:

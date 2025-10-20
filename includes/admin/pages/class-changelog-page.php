@@ -93,12 +93,48 @@ class Changelog_Page extends Settings_Base {
 				</div>
 			</div>
 
+			<!-- Version 3.3.2-beta4 -->
+			<div class="brag-book-gallery-section">
+				<div class="brag-book-gallery-changelog-version">
+					<h3>
+						<span class="version-badge version-beta">v3.3.2-beta4</span>
+						<?php esc_html_e( 'October 20, 2025', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Current Beta', 'brag-book-gallery' ); ?>
+					</h3>
+					<div class="brag-book-gallery-card">
+						<h4><?php esc_html_e( '🎉 New Features', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Alternative Favorites View: New tiles layout option for MyFavorites page', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Added MyFavorites View Type setting in Display Settings with default and alternative options', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Alternative view features horizontal filter bar without sidebar navigation', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Provides consistent user experience with other tiles views (procedure tiles, case alternative)', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Setting: brag_book_gallery_favorites_view with options \'default\' and \'alternative\'', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '🐛 Bug Fixes', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Favorites Empty State Logic: Corrected JavaScript display conditions for empty favorites state', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Empty state now only shows when user has verified email but no saved favorites', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Previously showed email capture form inappropriately when user had no favorites', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Fixed initializeDedicatedFavoritesPage() and showEmptyFavoritesState() methods', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Infinite Loop Prevention: Resolved circular call between Gallery_Handler and Favorites_Handler', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Added setting check before delegation to prevent recursive rendering', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Gallery_Handler now checks brag_book_gallery_favorites_view before delegating to Favorites_Handler', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Ensures proper routing for both default (sidebar) and alternative (tiles) views', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '✨ Enhancements', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Method Visibility: Made render_tiles_filter_bar() and render_full_gallery() public for better reusability', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Wrapper Standardization: Updated favorites views to use standard brag-book-gallery-wrapper class', 'brag-book-gallery' ); ?></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
 			<!-- Version 3.3.2-beta3 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">
 					<h3>
 						<span class="version-badge version-beta">v3.3.2-beta3</span>
-						<?php esc_html_e( 'October 13, 2025', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Current Beta', 'brag-book-gallery' ); ?>
+						<?php esc_html_e( 'October 13, 2025', 'brag-book-gallery' ); ?>
 					</h3>
 					<div class="brag-book-gallery-card">
 						<h4><?php esc_html_e( '🐛 Bug Fixes', 'brag-book-gallery' ); ?></h4>
