@@ -3391,11 +3391,18 @@ class BRAGbookGalleryApp {
 		const hasCompleteUserInfo = userInfo && userInfo.email && userInfo.name && userInfo.phone;
 		const hasFavorites = existingFavorites && existingFavorites.length > 0;
 
-		if (!hasCompleteUserInfo || !hasFavorites) {
-			// Show email capture form if no complete user info or no favorites
+		// No user info at all - show email capture form
+		if (!hasCompleteUserInfo) {
 			if (emailCapture) emailCapture.style.display = 'block';
 			if (loadingEl) loadingEl.style.display = 'none';
 			if (gridContainer) gridContainer.style.display = 'none';
+			return;
+		}
+
+		// User has info but no favorites - show empty state
+		if (!hasFavorites) {
+			if (emailCapture) emailCapture.style.display = 'none';
+			this.showEmptyFavoritesState(gridContainer, loadingEl);
 			return;
 		}
 
@@ -3684,7 +3691,7 @@ class BRAGbookGalleryApp {
 
 		if (loadingEl) loadingEl.style.display = 'none';
 
-		// Hide the grid container
+		// Show the grid container to display empty state
 		if (gridContainer) {
 			gridContainer.style.display = 'block';
 
@@ -3699,17 +3706,17 @@ class BRAGbookGalleryApp {
 				caseGrid.style.display = 'none';
 			}
 
-			// Show the empty state
+			// Show the empty state (only when user has info but no favorites)
 			const emptyState = gridContainer.querySelector('.brag-book-gallery-favorites-empty');
 			if (emptyState) {
 				emptyState.style.display = 'block';
 			}
 		}
 
-		// Show the email capture form since user has no favorites
+		// Hide email capture - empty state should show instead
 		const emailCapture = document.getElementById('favoritesEmailCapture');
 		if (emailCapture) {
-			emailCapture.style.display = 'block';
+			emailCapture.style.display = 'none';
 		}
 	}
 

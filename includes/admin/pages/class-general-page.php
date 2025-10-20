@@ -704,6 +704,7 @@ class General_Page extends Settings_Base {
 		$main_gallery_view = get_option( 'brag_book_gallery_main_gallery_view', 'default' );
 		$procedures_view = get_option( 'brag_book_gallery_procedures_view', 'default' );
 		$cases_view = get_option( 'brag_book_gallery_cases_view', 'default' );
+		$favorites_view = get_option( 'brag_book_gallery_favorites_view', 'default' );
 		$items_per_page = get_option( 'brag_book_gallery_items_per_page', '10' );
 		$default_landing_text = '<h2>Go ahead, browse our before & afters... visualize your possibilities.</h2>' . "\n" .
 		                       '<p>Our gallery is full of our real patients. Keep in mind results vary.</p>';
@@ -925,6 +926,27 @@ class General_Page extends Settings_Base {
 						</select>
 						<p class="description">
 							<?php esc_html_e( 'Choose the view type for cases display.', 'brag-book-gallery' ); ?>
+						</p>
+					</td>
+				</tr>
+
+				<tr>
+					<th scope="row">
+						<label for="brag_book_gallery_favorites_view">
+							<?php esc_html_e( 'MyFavorites View Type', 'brag-book-gallery' ); ?>
+						</label>
+					</th>
+					<td>
+						<select id="brag_book_gallery_favorites_view" name="brag_book_gallery_favorites_view">
+							<option value="default" <?php selected( $favorites_view, 'default' ); ?>>
+								<?php esc_html_e( 'Default', 'brag-book-gallery' ); ?>
+							</option>
+							<option value="alternative" <?php selected( $favorites_view, 'alternative' ); ?>>
+								<?php esc_html_e( 'Alternative', 'brag-book-gallery' ); ?>
+							</option>
+						</select>
+						<p class="description">
+							<?php esc_html_e( 'Choose the view type for favorites display.', 'brag-book-gallery' ); ?>
 						</p>
 					</td>
 				</tr>
@@ -1888,6 +1910,12 @@ class General_Page extends Settings_Base {
 			$cases_view = 'default';
 		}
 		update_option( 'brag_book_gallery_cases_view', $cases_view );
+
+		$favorites_view = isset( $_POST['brag_book_gallery_favorites_view'] ) ? sanitize_text_field( $_POST['brag_book_gallery_favorites_view'] ) : 'default';
+		if ( ! in_array( $favorites_view, array( 'default', 'alternative' ), true ) ) {
+			$favorites_view = 'default';
+		}
+		update_option( 'brag_book_gallery_favorites_view', $favorites_view );
 
 		$items_per_page = isset( $_POST['brag_book_gallery_items_per_page'] ) ? absint( $_POST['brag_book_gallery_items_per_page'] ) : 10;
 		update_option( 'brag_book_gallery_items_per_page', $items_per_page );

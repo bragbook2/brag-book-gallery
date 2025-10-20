@@ -108,6 +108,16 @@ final class Gallery_Handler {
 		// Enqueue gallery assets
 		Asset_Manager::enqueue_gallery_assets();
 
+		// Localize script with minimal configuration for forms
+		Asset_Manager::localize_gallery_script(
+			[],
+			[],
+			[]
+		);
+
+		// Ensure consultation form configuration is available
+		Asset_Manager::ensure_consultation_form_config();
+
 		// Generate wrapper classes
 		$wrapper_class = self::generate_wrapper_classes();
 
@@ -230,6 +240,16 @@ final class Gallery_Handler {
 		// Enqueue gallery assets
 		Asset_Manager::enqueue_gallery_assets();
 
+		// Localize script with minimal configuration for forms
+		Asset_Manager::localize_gallery_script(
+			[],
+			[],
+			[]
+		);
+
+		// Ensure consultation form configuration is available
+		Asset_Manager::ensure_consultation_form_config();
+
 		// Generate wrapper classes
 		$wrapper_class = self::generate_wrapper_classes();
 
@@ -285,6 +305,16 @@ final class Gallery_Handler {
 
 		// Enqueue gallery assets
 		Asset_Manager::enqueue_gallery_assets();
+
+		// Localize script with minimal configuration for forms
+		Asset_Manager::localize_gallery_script(
+			[],
+			[],
+			[]
+		);
+
+		// Ensure consultation form configuration is available
+		Asset_Manager::ensure_consultation_form_config();
 
 		// Generate wrapper classes
 		$wrapper_class = self::generate_wrapper_classes();
@@ -440,8 +470,16 @@ final class Gallery_Handler {
 	private static function auto_detect_and_render( array $validated_atts ): string {
 		// Handle explicit view parameter
 		if ( ! empty( $validated_atts['view'] ) && 'myfavorites' === $validated_atts['view'] ) {
-			$validated_atts['is_favorites_page'] = true;
+			// Check if alternative view is requested
+			$favorites_view = get_option( 'brag_book_gallery_favorites_view', 'default' );
 
+			if ( 'alternative' === $favorites_view ) {
+				// Use alternative tiles view from Favorites_Handler
+				return Favorites_Handler::handle( $validated_atts );
+			}
+
+			// Default view: use full gallery with sidebar
+			$validated_atts['is_favorites_page'] = true;
 			return self::render_full_gallery( $validated_atts );
 		}
 
@@ -478,8 +516,16 @@ final class Gallery_Handler {
 				return self::handle_procedure_tiles_view( $validated_atts );
 
 			case 'favorites':
-				$validated_atts['is_favorites_page'] = true;
+				// Check if alternative view is requested
+				$favorites_view = get_option( 'brag_book_gallery_favorites_view', 'default' );
 
+				if ( 'alternative' === $favorites_view ) {
+					// Use alternative tiles view from Favorites_Handler
+					return Favorites_Handler::handle( $validated_atts );
+				}
+
+				// Default view: use full gallery with sidebar
+				$validated_atts['is_favorites_page'] = true;
 				return self::render_full_gallery( $validated_atts );
 
 			case 'cases_only':
@@ -682,7 +728,7 @@ final class Gallery_Handler {
 	 *
 	 * @return string Rendered gallery content.
 	 */
-	private static function render_full_gallery( array $validated_atts ): string {
+	public static function render_full_gallery( array $validated_atts ): string {
 		// Extract context information from attributes
 		$current_taxonomy  = $validated_atts['current_taxonomy'] ?? null;
 		$filter_procedure  = $validated_atts['procedure_slug'] ?? '';
@@ -2115,7 +2161,7 @@ final class Gallery_Handler {
 	 * @return string Rendered filter bar HTML.
 	 * @since 3.3.2
 	 */
-	private static function render_tiles_filter_bar(): string {
+	public static function render_tiles_filter_bar(): string {
 		ob_start();
 
 		// Get favorites URL
@@ -2258,6 +2304,16 @@ final class Gallery_Handler {
 
 		// Enqueue gallery assets
 		Asset_Manager::enqueue_gallery_assets();
+
+		// Localize script with minimal configuration for forms
+		Asset_Manager::localize_gallery_script(
+			[],
+			[],
+			[]
+		);
+
+		// Ensure consultation form configuration is available
+		Asset_Manager::ensure_consultation_form_config();
 
 		// Generate wrapper classes
 		$wrapper_class = self::generate_wrapper_classes();
