@@ -4,7 +4,7 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.3.2-beta4] - 2025-10-20 (Current Beta)
+## [3.3.2-beta5] - 2025-10-20 (Current Beta)
 
 ### Added
 - **Alternative Favorites View**: New tiles layout option for MyFavorites page

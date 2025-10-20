@@ -1,6 +1,6 @@
 === BRAGBook Gallery Changelog ===
 
-= 3.3.2-beta4 (2025-10-20) =
+= 3.3.2-beta5 (2025-10-20) =
 
 Added:
 * Alternative Favorites View - New tiles layout option for MyFavorites page

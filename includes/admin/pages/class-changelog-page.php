@@ -93,11 +93,11 @@ class Changelog_Page extends Settings_Base {
 				</div>
 			</div>
 
-			<!-- Version 3.3.2-beta4 -->
+			<!-- Version 3.3.2-beta5 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">
 					<h3>
-						<span class="version-badge version-beta">v3.3.2-beta4</span>
+						<span class="version-badge version-beta">v3.3.2-beta5</span>
 						<?php esc_html_e( 'October 20, 2025', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Current Beta', 'brag-book-gallery' ); ?>
 					</h3>
 					<div class="brag-book-gallery-card">
