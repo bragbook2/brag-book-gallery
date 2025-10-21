@@ -629,6 +629,9 @@ class General_Page extends Settings_Base {
 				if (elements.generateFavoritesBtn) {
 					elements.generateFavoritesBtn.addEventListener('click', handleGenerateFavoritesPage);
 				}
+
+				// Check status on initial page load
+				checkFavoritesPageStatus();
 			};
 
 			if (document.readyState === 'loading') {
