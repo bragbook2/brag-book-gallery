@@ -1225,7 +1225,7 @@ class API_Page extends Settings_Base {
 	 * @param string $content Page/post content to search
 	 * @return bool True if shortcode is found, false otherwise
 	 */
-	private function has_gallery_shortcode( string $content ): bool {
+	private function has_gallery_shortcode( string $content, string $view_type = '' ): bool {
 		if ( empty( $content ) ) {
 			return false;
 		}
@@ -1234,7 +1234,24 @@ class API_Page extends Settings_Base {
 		// This handles all variations and attribute combinations
 		$shortcode_regex = get_shortcode_regex( array( 'brag_book_gallery' ) );
 
-		return (bool) preg_match( "/$shortcode_regex/", $content );
+		// Check if shortcode exists
+		if ( ! preg_match( "/$shortcode_regex/", $content ) ) {
+			return false;
+		}
+
+		// If no specific view type requested, just check for shortcode existence
+		if ( empty( $view_type ) ) {
+			return true;
+		}
+
+		// Check for specific view attribute
+		// Match view="myfavorites" or view="favorites"
+		if ( 'favorites' === $view_type ) {
+			return (bool) preg_match( '/\[brag_book_gallery[^\]]*view=["\'](?:myfavorites|favorites)["\']/', $content );
+		}
+
+		// For other view types, check exact match
+		return (bool) preg_match( '/\[brag_book_gallery[^\]]*view=["\']' . preg_quote( $view_type, '/' ) . '["\']/', $content );
 	}
 
 	/**
@@ -1468,7 +1485,7 @@ class API_Page extends Settings_Base {
 				'post_title'     => 'My Favorites',
 				'post_name'      => 'myfavorites',
 				'post_parent'    => $gallery_page->ID,
-				'post_content'   => '[brag_book_gallery view="favorites"]',
+				'post_content'   => '[brag_book_gallery view="myfavorites"]',
 				'post_status'    => 'publish',
 				'post_type'      => 'page',
 				'comment_status' => 'closed',
