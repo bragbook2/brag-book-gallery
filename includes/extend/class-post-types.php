@@ -271,6 +271,7 @@ class Post_Types {
 		$seo_page_description = get_post_meta( $post->ID, 'brag_book_gallery_seo_page_description', true ) ?: get_post_meta( $post->ID, '_case_seo_page_description', true );
 		$seo_alt_text         = get_post_meta( $post->ID, 'brag_book_gallery_seo_alt_text', true ) ?: get_post_meta( $post->ID, '_case_seo_alt_text', true );
 		$doctor_name          = get_post_meta( $post->ID, 'brag_book_gallery_doctor_name', true ) ?: get_post_meta( $post->ID, '_case_doctor_name', true );
+		$member_id            = get_post_meta( $post->ID, 'brag_book_gallery_member_id', true ) ?: get_post_meta( $post->ID, '_case_member_id', true );
 
 		// Photo URLs
 		$post_processed_image_url          = get_post_meta( $post->ID, 'brag_book_gallery_post_processed_image_url', true ) ?: get_post_meta( $post->ID, '_case_post_processed_image_url', true );
@@ -346,6 +347,19 @@ class Post_Types {
 								   value="<?php echo esc_attr( $doctor_name ); ?>"
 								   class="regular-text"/>
 							<p class="description"><?php esc_html_e( 'Name of the doctor who performed the procedure', 'brag-book-gallery' ); ?></p>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row">
+							<label
+								for="brag_book_gallery_member_id"><?php esc_html_e( 'Member ID', 'brag-book-gallery' ); ?></label>
+						</th>
+						<td>
+							<input type="number" id="brag_book_gallery_member_id"
+								   name="brag_book_gallery_member_id"
+								   value="<?php echo esc_attr( $member_id ); ?>"
+								   class="regular-text"/>
+							<p class="description"><?php esc_html_e( 'Member ID associated with this case', 'brag-book-gallery' ); ?></p>
 						</td>
 					</tr>
 				</table>
@@ -1376,6 +1390,7 @@ class Post_Types {
 			'brag_book_gallery_gender'         => 'sanitize_text_field', // Updated field name
 			'brag_book_gallery_notes'          => 'sanitize_textarea_field',
 			'brag_book_gallery_doctor_name'    => 'sanitize_text_field',
+			'brag_book_gallery_member_id'      => 'absint',
 
 			// API data
 			'brag_book_gallery_api_id'         => 'absint',
