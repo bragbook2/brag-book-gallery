@@ -270,6 +270,7 @@ class Post_Types {
 		$seo_page_title       = get_post_meta( $post->ID, 'brag_book_gallery_seo_page_title', true ) ?: get_post_meta( $post->ID, '_case_seo_page_title', true );
 		$seo_page_description = get_post_meta( $post->ID, 'brag_book_gallery_seo_page_description', true ) ?: get_post_meta( $post->ID, '_case_seo_page_description', true );
 		$seo_alt_text         = get_post_meta( $post->ID, 'brag_book_gallery_seo_alt_text', true ) ?: get_post_meta( $post->ID, '_case_seo_alt_text', true );
+		$doctor_name          = get_post_meta( $post->ID, 'brag_book_gallery_doctor_name', true ) ?: get_post_meta( $post->ID, '_case_doctor_name', true );
 
 		// Photo URLs
 		$post_processed_image_url          = get_post_meta( $post->ID, 'brag_book_gallery_post_processed_image_url', true ) ?: get_post_meta( $post->ID, '_case_post_processed_image_url', true );
@@ -332,6 +333,19 @@ class Post_Types {
 									  rows="5"
 									  class="large-text"><?php echo esc_textarea( $case_notes ); ?></textarea>
 							<p class="description"><?php esc_html_e( 'Additional notes and description about this case', 'brag-book-gallery' ); ?></p>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row">
+							<label
+								for="brag_book_gallery_doctor_name"><?php esc_html_e( 'Doctor Name', 'brag-book-gallery' ); ?></label>
+						</th>
+						<td>
+							<input type="text" id="brag_book_gallery_doctor_name"
+								   name="brag_book_gallery_doctor_name"
+								   value="<?php echo esc_attr( $doctor_name ); ?>"
+								   class="regular-text"/>
+							<p class="description"><?php esc_html_e( 'Name of the doctor who performed the procedure', 'brag-book-gallery' ); ?></p>
 						</td>
 					</tr>
 				</table>
@@ -1361,6 +1375,7 @@ class Post_Types {
 			'brag_book_gallery_patient_age'    => 'absint',
 			'brag_book_gallery_gender'         => 'sanitize_text_field', // Updated field name
 			'brag_book_gallery_notes'          => 'sanitize_textarea_field',
+			'brag_book_gallery_doctor_name'    => 'sanitize_text_field',
 
 			// API data
 			'brag_book_gallery_api_id'         => 'absint',
