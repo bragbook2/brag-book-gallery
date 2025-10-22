@@ -719,6 +719,11 @@ class General_Page extends Settings_Base {
 		$show_filter_counts = get_option( 'brag_book_gallery_show_filter_counts', true );
 		$enable_favorites = get_option( 'brag_book_gallery_enable_favorites', true );
 		$enable_consultation = get_option( 'brag_book_gallery_enable_consultation', true );
+		$show_doctor = get_option( 'brag_book_gallery_show_doctor', false );
+
+		// Check if property ID 118 exists in website_property_id array
+		$website_property_ids = get_option( 'brag_book_gallery_website_property_id', array() );
+		$has_property_118 = is_array( $website_property_ids ) && in_array( '118', $website_property_ids, true );
 
 		// Show notice if not in default mode (for gallery settings section)
 		// Mode manager removed - default to 'default' mode
@@ -953,6 +958,35 @@ class General_Page extends Settings_Base {
 						</p>
 					</td>
 				</tr>
+
+				<?php if ( $has_property_118 ) : ?>
+				<tr>
+					<th scope="row">
+						<label for="brag_book_gallery_show_doctor">
+							<?php esc_html_e( 'Show Doctor Details', 'brag-book-gallery' ); ?>
+						</label>
+					</th>
+					<td>
+						<div class="brag-book-gallery-toggle-wrapper">
+							<label class="brag-book-gallery-toggle">
+								<input type="hidden" name="brag_book_gallery_show_doctor" value="0" />
+								<input type="checkbox"
+								       id="brag_book_gallery_show_doctor"
+								       name="brag_book_gallery_show_doctor"
+								       value="1"
+								       <?php checked( $show_doctor, true ); ?> />
+								<span class="brag-book-gallery-toggle-slider"></span>
+							</label>
+							<span class="brag-book-gallery-toggle-label">
+								<?php esc_html_e( 'Display doctor information in cases', 'brag-book-gallery' ); ?>
+							</span>
+						</div>
+						<p class="description">
+							<?php esc_html_e( 'When enabled, doctor details will be shown in case displays.', 'brag-book-gallery' ); ?>
+						</p>
+					</td>
+				</tr>
+				<?php endif; ?>
 
 				<tr>
 					<th scope="row">
@@ -1958,6 +1992,11 @@ class General_Page extends Settings_Base {
 		// With hidden field, we always get a value (0 or 1)
 		$enable_consultation = isset( $_POST['brag_book_gallery_enable_consultation'] ) && $_POST['brag_book_gallery_enable_consultation'] === '1';
 		update_option( 'brag_book_gallery_enable_consultation', $enable_consultation );
+
+		// Doctor Details Settings (only if property 118 exists)
+		// With hidden field, we always get a value (0 or 1)
+		$show_doctor = isset( $_POST['brag_book_gallery_show_doctor'] ) && $_POST['brag_book_gallery_show_doctor'] === '1';
+		update_option( 'brag_book_gallery_show_doctor', $show_doctor );
 
 		// Clear settings helper cache when favorites setting is updated
 		if ( class_exists( '\BRAGBookGallery\Includes\Core\Settings_Helper' ) ) {
