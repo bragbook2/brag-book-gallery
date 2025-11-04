@@ -218,7 +218,7 @@ final class Sync_Manual_Controls {
 			<h5><?php esc_html_e( 'Stage 1 Status', 'brag-book-gallery' ); ?></h5>
 			<div id="stage1-status-content" class="stage-status-content"></div>
 			<button type="button" id="delete-sync-data-btn" class="button button-link-delete" title="<?php esc_attr_e( 'Delete procedures.json file', 'brag-book-gallery' ); ?>">
-				<span class="dashicons dashicons-trash"></span>
+				<svg xmlns="http://www.w3.org/2000/svg" height="16px" viewBox="0 -960 960 960" width="16px" fill="currentColor" style="vertical-align: middle; margin-right: 4px;"><path d="m376-313.85 104-104 104 104L626.15-356l-104-104 104-104L584-606.15l-104 104-104-104L333.85-564l104 104-104 104L376-313.85ZM292.31-140Q262-140 241-161q-21-21-21-51.31V-720h-40v-60h180v-35.38h240V-780h180v60h-40v507.69Q740-182 719-161q-21 21-51.31 21H292.31Z"/></svg>
 				<?php esc_html_e( 'Delete Sync Data', 'brag-book-gallery' ); ?>
 			</button>
 		</div>
@@ -228,7 +228,7 @@ final class Sync_Manual_Controls {
 			<h5><?php esc_html_e( 'Manifest Preview', 'brag-book-gallery' ); ?></h5>
 			<div id="manifest-preview-content" class="stage-status-content"></div>
 			<button type="button" id="delete-manifest-btn" class="button button-link-delete" title="<?php esc_attr_e( 'Delete manifest.json file', 'brag-book-gallery' ); ?>">
-				<span class="dashicons dashicons-trash"></span>
+				<svg xmlns="http://www.w3.org/2000/svg" height="16px" viewBox="0 -960 960 960" width="16px" fill="currentColor" style="vertical-align: middle; margin-right: 4px;"><path d="m376-313.85 104-104 104 104L626.15-356l-104-104 104-104L584-606.15l-104 104-104-104L333.85-564l104 104-104 104L376-313.85ZM292.31-140Q262-140 241-161q-21-21-21-51.31V-720h-40v-60h180v-35.38h240V-780h180v60h-40v507.69Q740-182 719-161q-21 21-51.31 21H292.31Z"/></svg>
 				<?php esc_html_e( 'Delete Manifest', 'brag-book-gallery' ); ?>
 			</button>
 		</div>

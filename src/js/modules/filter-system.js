@@ -675,7 +675,7 @@ class FilterSystem {
 
 		// Main title (matching PHP structure)
 		const displayName = this.formatProcedureDisplayName(procedureName);
-		html += `<h2 class="brag-book-gallery-content-title"><strong>${this.escapeHtml(displayName)}</strong> Before &amp; After Gallery</h2>`;
+		html += `<h1 class="brag-book-gallery-content-title"><strong>${this.escapeHtml(displayName)}</strong> Before &amp; After Gallery</h1>`;
 
 		// Complete controls section matching PHP structure
 		html += '<div class="brag-book-gallery-controls">';
@@ -897,7 +897,6 @@ class FilterSystem {
 
 		// Case images section (matching PHP structure)
 		html += '<div class="brag-book-gallery-case-images single-image">';
-		html += '<div class="brag-book-gallery-single-image">';
 		html += '<div class="brag-book-gallery-image-container">';
 
 		// Skeleton loader
@@ -938,7 +937,6 @@ class FilterSystem {
 		}
 
 		html += '</div>'; // Close image-container
-		html += '</div>'; // Close single-image
 		html += '</div>'; // Close case-images
 
 		// Case details section (matching PHP structure)
@@ -1022,7 +1020,8 @@ class FilterSystem {
 			gender: new Set(),
 			ethnicity: new Set(),
 			height: new Set(),
-			weight: new Set()
+			weight: new Set(),
+			procedureDetails: new Map() // Map of detail name -> Set of values
 		};
 
 		// Extract filter values from data attributes
@@ -1072,6 +1071,32 @@ class FilterSystem {
 				else if (weightNum >= 180 && weightNum < 210) filterData.weight.add('180-209 lbs');
 				else if (weightNum >= 210) filterData.weight.add('210+ lbs');
 			}
+
+			// Procedure Details - extract all data-procedure-detail-* attributes
+			const datasetKeys = Object.keys(card.dataset);
+			datasetKeys.forEach(key => {
+				if (key.startsWith('procedureDetail')) {
+					// Convert camelCase to readable label (e.g., procedureDetailImplantType -> Implant Type)
+					const labelKey = key.replace('procedureDetail', '');
+					const label = labelKey.replace(/([A-Z])/g, ' $1').trim();
+
+					const value = card.dataset[key];
+					if (value) {
+						// Handle comma-separated values (for array fields)
+						const values = value.split(',').map(v => v.trim()).filter(v => v);
+						values.forEach(v => {
+							if (!filterData.procedureDetails.has(label)) {
+								filterData.procedureDetails.set(label, new Set());
+							}
+							// Capitalize first letter of each word for display
+							const displayValue = v.split(' ').map(word =>
+								word.charAt(0).toUpperCase() + word.slice(1)
+							).join(' ');
+							filterData.procedureDetails.get(label).add(displayValue);
+						});
+					}
+				}
+			});
 		});
 
 		// Generate HTML for filter sections
@@ -1105,6 +1130,17 @@ class FilterSystem {
 			html += this.generateFilterSection('Weight', 'weight', Array.from(filterData.weight));
 		}
 
+		// Procedure Details filters
+		if (filterData.procedureDetails.size > 0) {
+			filterData.procedureDetails.forEach((values, label) => {
+				if (values.size > 0) {
+					// Convert label to attribute name for filter type
+					const filterType = 'procedure_detail_' + label.toLowerCase().replace(/\s+/g, '_');
+					html += this.generateFilterSection(label, filterType, Array.from(values).sort());
+				}
+			});
+		}
+
 		return html;
 	}
 
@@ -1119,7 +1155,8 @@ class FilterSystem {
 			gender: new Set(),
 			ethnicity: new Set(),
 			height: new Set(),
-			weight: new Set()
+			weight: new Set(),
+			procedureDetails: new Map() // Map of detail name -> Set of values
 		};
 
 		// Extract filter values from case data
@@ -1161,6 +1198,35 @@ class FilterSystem {
 			}
 		});
 
+		// Extract procedure details from rendered DOM cards (since API data may not include them)
+		const caseCards = document.querySelectorAll('.brag-book-gallery-case-card');
+		caseCards.forEach(card => {
+			const datasetKeys = Object.keys(card.dataset);
+			datasetKeys.forEach(key => {
+				if (key.startsWith('procedureDetail')) {
+					// Convert camelCase to readable label (e.g., procedureDetailImplantType -> Implant Type)
+					const labelKey = key.replace('procedureDetail', '');
+					const label = labelKey.replace(/([A-Z])/g, ' $1').trim();
+
+					const value = card.dataset[key];
+					if (value) {
+						// Handle comma-separated values (for array fields)
+						const values = value.split(',').map(v => v.trim()).filter(v => v);
+						values.forEach(v => {
+							if (!filterData.procedureDetails.has(label)) {
+								filterData.procedureDetails.set(label, new Set());
+							}
+							// Capitalize first letter of each word for display
+							const displayValue = v.split(' ').map(word =>
+								word.charAt(0).toUpperCase() + word.slice(1)
+							).join(' ');
+							filterData.procedureDetails.get(label).add(displayValue);
+						});
+					}
+				}
+			});
+		});
+
 		// Generate HTML for filter sections
 		let html = '';
 
@@ -1190,6 +1256,17 @@ class FilterSystem {
 		// Weight filter
 		if (filterData.weight.size > 0) {
 			html += this.generateFilterSection('Weight', 'weight', Array.from(filterData.weight));
+		}
+
+		// Procedure Details filters
+		if (filterData.procedureDetails.size > 0) {
+			filterData.procedureDetails.forEach((values, label) => {
+				if (values.size > 0) {
+					// Convert label to attribute name for filter type
+					const filterType = 'procedure_detail_' + label.toLowerCase().replace(/\s+/g, '_');
+					html += this.generateFilterSection(label, filterType, Array.from(values).sort());
+				}
+			});
 		}
 
 		return html;

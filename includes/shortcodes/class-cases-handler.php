@@ -849,6 +849,40 @@ final class Cases_Handler {
 			$attrs        .= ' data-weight-full="' . esc_attr( $weight_value . $weight_unit ) . '"';
 		}
 
+		// Add procedure details as data attributes for filtering
+		// Try to get from post meta if we have the post ID
+		if ( ! empty( $attrs ) && strpos( $attrs, 'data-id="' ) !== false ) {
+			preg_match( '/data-id="(\d+)"/', $attrs, $matches );
+			if ( ! empty( $matches[1] ) ) {
+				$post_id = intval( $matches[1] );
+				$procedure_details_json = get_post_meta( $post_id, 'brag_book_gallery_procedure_details', true );
+				if ( ! empty( $procedure_details_json ) ) {
+					$procedure_details = json_decode( $procedure_details_json, true );
+					if ( is_array( $procedure_details ) ) {
+						foreach ( $procedure_details as $procedure_id => $details ) {
+							if ( is_array( $details ) ) {
+								foreach ( $details as $detail_label => $detail_value ) {
+									// Create a sanitized attribute name from the label (use dashes for dataset compatibility)
+									$attr_name = sanitize_title_with_dashes( $detail_label );
+
+									// Handle array values (e.g., ["Upper", "Lower"])
+									if ( is_array( $detail_value ) ) {
+										$attr_value = implode( ',', array_map( function( $val ) {
+											return strtolower( (string) $val );
+										}, $detail_value ) );
+									} else {
+										$attr_value = strtolower( (string) $detail_value );
+									}
+
+									$attrs .= ' data-procedure-detail-' . esc_attr( $attr_name ) . '="' . esc_attr( $attr_value ) . '"';
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
 		return $attrs;
 	}
 
@@ -915,6 +949,33 @@ final class Cases_Handler {
 			}
 		}
 
+		// Add procedure details as data attributes for filtering
+		$procedure_details_json = get_post_meta( $post_id, 'brag_book_gallery_procedure_details', true );
+		if ( ! empty( $procedure_details_json ) ) {
+			$procedure_details = json_decode( $procedure_details_json, true );
+			if ( is_array( $procedure_details ) ) {
+				foreach ( $procedure_details as $procedure_id => $details ) {
+					if ( is_array( $details ) ) {
+						foreach ( $details as $detail_label => $detail_value ) {
+							// Create a sanitized attribute name from the label (use dashes for dataset compatibility)
+							$attr_name = sanitize_title_with_dashes( $detail_label );
+
+							// Handle array values (e.g., ["Upper", "Lower"])
+							if ( is_array( $detail_value ) ) {
+								$attr_value = implode( ',', array_map( function( $val ) {
+									return strtolower( (string) $val );
+								}, $detail_value ) );
+							} else {
+								$attr_value = strtolower( (string) $detail_value );
+							}
+
+							$attrs .= ' data-procedure-detail-' . esc_attr( $attr_name ) . '="' . esc_attr( $attr_value ) . '"';
+						}
+					}
+				}
+			}
+		}
+
 		return $attrs;
 	}
 
@@ -945,9 +1006,8 @@ final class Cases_Handler {
 		$data_attrs = self::prepare_case_data_attributes_from_post_meta( $post );
 
 		// Get case ID from post meta (API ID).
-		$case_id = get_post_meta( $post->ID, 'brag_book_gallery_api_id', true );
+		$case_id = get_post_meta( $post->ID, 'brag_book_gallery_case_id', true );
 		if ( empty( $case_id ) ) {
-			$case_id = get_post_meta( $post->ID, '_case_api_id', true ); // Legacy fallback
 		}
 		if ( empty( $case_id ) ) {
 			$case_id = $post->ID; // Use WordPress post ID as fallback
@@ -956,13 +1016,11 @@ final class Cases_Handler {
 		// Get procedure IDs from post meta.
 		$procedure_ids = get_post_meta( $post->ID, 'brag_book_gallery_procedure_ids', true );
 		if ( empty( $procedure_ids ) ) {
-			$procedure_ids = get_post_meta( $post->ID, '_case_procedure_ids', true ); // Legacy fallback
 		}
 
 		// Get SEO suffix URL from post meta.
 		$seo_suffix_url = get_post_meta( $post->ID, 'brag_book_gallery_seo_suffix_url', true );
 		if ( empty( $seo_suffix_url ) ) {
-			$seo_suffix_url = get_post_meta( $post->ID, '_case_seo_suffix_url', true ); // Legacy fallback
 		}
 		if ( empty( $seo_suffix_url ) ) {
 			$seo_suffix_url = $post->post_name; // Use post slug as fallback
@@ -991,7 +1049,6 @@ final class Cases_Handler {
 		$after_urls1         = get_post_meta( $post->ID, 'brag_book_gallery_case_after_url1', true );
 		$post_processed_urls = get_post_meta( $post->ID, 'brag_book_gallery_case_post_processed_url', true );
 
-		// Legacy fallback for images.
 		if ( empty( $before_urls ) && empty( $after_urls1 ) && empty( $post_processed_urls ) ) {
 			$image_sets = get_post_meta( $post->ID, 'brag_book_gallery_image_url_sets', true );
 			if ( ! empty( $image_sets ) && is_array( $image_sets ) ) {
@@ -1840,16 +1897,16 @@ final class Cases_Handler {
 	private static function get_case_meta_data( int $post_id ): array {
 		// Meta field mapping: internal_key => [new_meta_key, legacy_meta_key]
 		$meta_fields = [
-			'case_id'           => [ 'brag_book_gallery_api_id', '_case_api_id', '' ],
-			'patient_age'       => [ 'brag_book_gallery_patient_age', '_case_patient_age', '' ],
-			'patient_gender'    => [ 'brag_book_gallery_patient_gender', '_case_patient_gender', '' ],
-			'patient_ethnicity' => [ 'brag_book_gallery_ethnicity', '_case_ethnicity', '' ],
-			'patient_height'    => [ 'brag_book_gallery_height', '_case_height', '' ],
-			'patient_weight'    => [ 'brag_book_gallery_weight', '_case_weight', '' ],
-			'procedure_date'    => [ 'brag_book_gallery_procedure_date', '_case_procedure_date', '' ],
-			'case_notes'        => [ 'brag_book_gallery_notes', '_case_notes', '' ],
-			'before_image'      => [ 'brag_book_gallery_case_before_url', '_case_before_image', '' ],
-			'after_image'       => [ 'brag_book_gallery_case_after_url1', '_case_after_image', '' ],
+			'case_id'           => [ 'brag_book_gallery_case_id', '' ],
+			'patient_age'       => [ 'brag_book_gallery_patient_age', '' ],
+			'patient_gender'    => [ 'brag_book_gallery_patient_gender', '' ],
+			'patient_ethnicity' => [ 'brag_book_gallery_ethnicity', '' ],
+			'patient_height'    => [ 'brag_book_gallery_height', '' ],
+			'patient_weight'    => [ 'brag_book_gallery_weight', '' ],
+			'procedure_date'    => [ 'brag_book_gallery_procedure_date', '' ],
+			'case_notes'        => [ 'brag_book_gallery_notes', '' ],
+			'before_image'      => [ 'brag_book_gallery_case_before_url', '' ],
+			'after_image'       => [ 'brag_book_gallery_case_after_url1', '' ],
 		];
 
 		$case_data = [];
@@ -2008,6 +2065,7 @@ final class Cases_Handler {
 
 		// Get API procedure IDs from taxonomy terms
 		$procedure_ids = [];
+		$assigned_procedure_ids = []; // Track already assigned procedure IDs to avoid duplicates
 
 		if ( $post_id ) {
 			$terms = wp_get_post_terms( $post_id, \BRAGBookGallery\Includes\Extend\Taxonomies::TAXONOMY_PROCEDURES );
@@ -2016,6 +2074,39 @@ final class Cases_Handler {
 					$api_procedure_id = get_term_meta( $term->term_id, 'procedure_id', true );
 					if ( ! empty( $api_procedure_id ) ) {
 						$procedure_ids[] = $api_procedure_id;
+						$assigned_procedure_ids[] = $api_procedure_id;
+					}
+				}
+			}
+
+			// Get additional procedures from brag_book_gallery_procedure_ids meta
+			$meta_procedure_ids = get_post_meta( $post_id, 'brag_book_gallery_procedure_ids', true );
+			if ( ! empty( $meta_procedure_ids ) ) {
+				$meta_ids = array_map( 'trim', explode( ',', $meta_procedure_ids ) );
+
+				foreach ( $meta_ids as $meta_id ) {
+					// Skip if already assigned via taxonomy
+					if ( in_array( $meta_id, $assigned_procedure_ids, true ) ) {
+						continue;
+					}
+
+					// Look up the term by procedure_id term meta
+					$terms_query = get_terms( [
+						'taxonomy'   => \BRAGBookGallery\Includes\Extend\Taxonomies::TAXONOMY_PROCEDURES,
+						'hide_empty' => false,
+						'meta_query' => [
+							[
+								'key'   => 'procedure_id',
+								'value' => $meta_id,
+							],
+						],
+					] );
+
+					if ( ! is_wp_error( $terms_query ) && ! empty( $terms_query ) ) {
+						$found_term = $terms_query[0];
+						// Add to procedures list
+						$procedures[] = $found_term;
+						$procedure_ids[] = $meta_id;
 					}
 				}
 			}
@@ -2036,7 +2127,7 @@ final class Cases_Handler {
 		$data_attrs = array(
 			'data-card="true"'
 		);
-		$case_id   = get_post_meta( $post_id, 'brag_book_gallery_api_id', true );
+		$case_id   = get_post_meta( $post_id, 'brag_book_gallery_case_id', true );
 		$gender    = get_post_meta( $post_id, 'brag_book_gallery_gender', true );
 		$age       = get_post_meta( $post_id, 'brag_book_gallery_age', true );
 		$ethnicity = get_post_meta( $post_id, 'brag_book_gallery_ethnicity', true );
@@ -2089,6 +2180,33 @@ final class Cases_Handler {
 			$data_attrs[] = 'data-weight="' . esc_attr( $weight ) . '"';
 		}
 
+		// Add procedure details as data attributes for filtering
+		$procedure_details_json = get_post_meta( $post_id, 'brag_book_gallery_procedure_details', true );
+		if ( ! empty( $procedure_details_json ) ) {
+			$procedure_details = json_decode( $procedure_details_json, true );
+			if ( is_array( $procedure_details ) ) {
+				foreach ( $procedure_details as $procedure_id => $details ) {
+					if ( is_array( $details ) ) {
+						foreach ( $details as $detail_label => $detail_value ) {
+							// Create a sanitized attribute name from the label (use dashes for dataset compatibility)
+							$attr_name = sanitize_title_with_dashes( $detail_label );
+
+							// Handle array values (e.g., ["Upper", "Lower"])
+							if ( is_array( $detail_value ) ) {
+								$attr_value = implode( ',', array_map( function( $val ) {
+									return strtolower( (string) $val );
+								}, $detail_value ) );
+							} else {
+								$attr_value = strtolower( (string) $detail_value );
+							}
+
+							$data_attrs[] = 'data-procedure-detail-' . esc_attr( $attr_name ) . '="' . esc_attr( $attr_value ) . '"';
+						}
+					}
+				}
+			}
+		}
+
 		// Get image URL - prioritize post-processed URLs, fallback to gallery images
 		$image_url = '';
 		$image_alt = '';
@@ -2102,7 +2220,7 @@ final class Cases_Handler {
 
 			// Fallback: Use gallery images if no post-processed URL available
 			if ( empty( $image_url ) ) {
-				$gallery_images = get_post_meta( $post_id, 'brag_book_gallery_images', true ) ?: get_post_meta( $post_id, '_case_gallery_images', true );
+				$gallery_images = get_post_meta( $post_id, 'brag_book_gallery_images', true );
 
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
 					error_log( "BRAGBook Debug: Post ID $post_id _case_gallery_images: " . print_r( $gallery_images, true ) );
@@ -2127,12 +2245,37 @@ final class Cases_Handler {
 			error_log( "BRAGBook Debug: Final image_url for case $case_id: " . ( $image_url ?: 'empty' ) );
 		}
 
+		// Get card type setting
+		$case_card_type = get_option( 'brag_book_gallery_case_card_type', 'default' );
+		$case_image_carousel = get_option( 'brag_book_gallery_case_image_carousel', false );
+		$card_type_class = '';
+		if ( 'v2' === $case_card_type ) {
+			$card_type_class = ' brag-book-gallery-case-card--v2';
+		} elseif ( 'v3' === $case_card_type ) {
+			$card_type_class = ' brag-book-gallery-case-card--v3';
+		}
+
+		// Get high-res images for carousel if enabled
+		$carousel_images = array();
+		if ( $case_image_carousel && ( 'v2' === $case_card_type || 'v3' === $case_card_type ) && $post_id ) {
+			$high_res_urls = get_post_meta( $post_id, 'brag_book_gallery_case_high_res_url', true );
+			if ( ! empty( $high_res_urls ) ) {
+				// Split by newlines and semicolons to get individual URLs
+				$urls = preg_split( '/[\r\n;]+/', $high_res_urls, -1, PREG_SPLIT_NO_EMPTY );
+				foreach ( $urls as $url ) {
+					$url = trim( $url );
+					if ( ! empty( $url ) ) {
+						$carousel_images[] = $url;
+					}
+				}
+			}
+		}
+
 		ob_start();
 		?>
-		<article class="brag-book-gallery-case-card" <?php echo implode( ' ', $data_attrs ); ?>>
+		<article class="brag-book-gallery-case-card<?php echo esc_attr( $card_type_class ); ?>" <?php echo implode( ' ', $data_attrs ); ?>>
 			<div class="brag-book-gallery-case-images single-image">
-				<div class="brag-book-gallery-single-image">
-					<div class="brag-book-gallery-image-container">
+				<div class="brag-book-gallery-image-container">
 						<div class="brag-book-gallery-skeleton-loader" style="display: none;"></div>
 						<div class="brag-book-gallery-item-actions">
 							<button class="brag-book-gallery-favorite-button"
@@ -2146,12 +2289,34 @@ final class Cases_Handler {
 								</svg>
 							</button>
 						</div>
-						<a href="<?php echo esc_url( $case_url ); ?>"
-						   class="brag-book-gallery-case-permalink"
-						   data-case-id="<?php echo esc_attr( $case_id ); ?>"
-						   data-procedure-ids="<?php echo esc_attr( implode( ',', $procedure_ids ) ); ?>">
-							<?php
-							if ( ! empty( $image_url ) ) : ?>
+						<?php if ( 'v2' === $case_card_type || 'v3' === $case_card_type ) : ?>
+							<!-- V2/V3: Image NOT wrapped in anchor (only arrow is clickable) -->
+							<?php if ( ! empty( $carousel_images ) ) : ?>
+								<!-- Gallery Carousel with multiple images -->
+								<div class="brag-book-gallery-case-carousel">
+									<?php foreach ( $carousel_images as $index => $carousel_url ) : ?>
+										<picture class="brag-book-gallery-picture" id="case-<?php echo esc_attr( $case_id ); ?>-img-<?php echo $index; ?>">
+											<img src="<?php echo esc_url( $carousel_url ); ?>"
+												 alt="<?php echo esc_attr( $image_alt ?: 'Case Image' ); ?> - Image <?php echo $index + 1; ?>"
+												 loading="<?php echo 0 === $index ? 'eager' : 'lazy'; ?>"
+												 data-image-type="carousel"
+												 data-image-url="<?php echo esc_url( $carousel_url ); ?>"
+												 onload="if(<?php echo $index; ?>===0){this.closest('.brag-book-gallery-image-container').querySelector('.brag-book-gallery-skeleton-loader').style.display='none';}"
+												 fetchpriority="<?php echo 0 === $index ? 'high' : 'low'; ?>">
+										</picture>
+									<?php endforeach; ?>
+								</div>
+								<?php if ( count( $carousel_images ) > 1 ) : ?>
+									<div class="brag-book-gallery-case-carousel-pagination">
+										<?php foreach ( $carousel_images as $index => $carousel_url ) : ?>
+											<a href="#case-<?php echo esc_attr( $case_id ); ?>-img-<?php echo $index; ?>"
+											   class="brag-book-gallery-case-carousel-dot"
+											   aria-label="Go to image <?php echo $index + 1; ?>"></a>
+										<?php endforeach; ?>
+									</div>
+								<?php endif; ?>
+							<?php elseif ( ! empty( $image_url ) ) : ?>
+								<!-- Single image fallback -->
 								<picture class="brag-book-gallery-picture">
 									<img src="<?php echo esc_url( $image_url ); ?>"
 										 alt="<?php echo esc_attr( $image_alt ?: 'Case Image' ); ?>"
@@ -2164,55 +2329,103 @@ final class Cases_Handler {
 							<?php else : ?>
 								<!-- DEBUG: No image URL found for case <?php echo esc_attr( $case_id ); ?> -->
 							<?php endif; ?>
-						</a>
+						<?php else : ?>
+							<!-- Default: Image wrapped in anchor -->
+							<a href="<?php echo esc_url( $case_url ); ?>"
+							   class="brag-book-gallery-case-permalink"
+							   data-case-id="<?php echo esc_attr( $case_id ); ?>"
+							   data-procedure-ids="<?php echo esc_attr( implode( ',', $procedure_ids ) ); ?>">
+								<?php
+								if ( ! empty( $image_url ) ) : ?>
+									<picture class="brag-book-gallery-picture">
+										<img src="<?php echo esc_url( $image_url ); ?>"
+											 alt="<?php echo esc_attr( $image_alt ?: 'Case Image' ); ?>"
+											 loading="eager"
+											 data-image-type="single"
+											 data-image-url="<?php echo esc_url( $image_url ); ?>"
+											 onload="this.closest('.brag-book-gallery-image-container').querySelector('.brag-book-gallery-skeleton-loader').style.display='none';"
+											 fetchpriority="high">
+									</picture>
+								<?php else : ?>
+									<!-- DEBUG: No image URL found for case <?php echo esc_attr( $case_id ); ?> -->
+								<?php endif; ?>
+							</a>
+						<?php endif; ?>
 						<?php
 						// Add nudity warning if needed
 						if ( $procedure_nudity ) {
 							echo self::render_nudity_warning();
 						}
 						?>
-					</div>
+						<?php if ( 'v2' === $case_card_type || 'v3' === $case_card_type ) : ?>
+							<!-- V2/V3 Card: Overlay with case name and arrow -->
+							<div class="brag-book-gallery-case-card-overlay">
+								<div class="brag-book-gallery-case-card-overlay-content">
+									<div class="brag-book-gallery-case-card-overlay-info">
+										<span class="brag-book-gallery-case-card-overlay-title">
+											<?php
+											$display_title = is_object( $primary_procedure ) ? $primary_procedure->name : $primary_procedure;
+											echo esc_html( $display_title );
+											?>
+										</span>
+										<span class="brag-book-gallery-case-card-overlay-case-number">Case #<?php echo esc_html( $case_id ); ?></span>
+									</div>
+									<a href="<?php echo esc_url( $case_url ); ?>"
+									   class="brag-book-gallery-case-card-overlay-button"
+									   data-case-id="<?php echo esc_attr( $case_id ); ?>"
+									   data-procedure-ids="<?php echo esc_attr( implode( ',', $procedure_ids ) ); ?>"
+									   aria-label="View case details">
+										<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor">
+											<path d="M504-480 348-636q-11-11-11-28t11-28q11-11 28-11t28 11l184 184q6 6 8.5 13t2.5 15q0 8-2.5 15t-8.5 13L404-268q-11 11-28 11t-28-11q-11-11-11-28t11-28l156-156Z"/>
+										</svg>
+									</a>
+								</div>
+							</div>
+						<?php endif; ?>
 				</div>
 			</div>
-			<details class="brag-book-gallery-case-card-details">
-				<summary class="brag-book-gallery-case-card-summary">
-					<div class="brag-book-gallery-case-card-summary-info">
-						<span
-							class="brag-book-gallery-case-card-summary-info__name"><?php
-							// Remove case ID/number from title (e.g., "Fillers #19329" becomes "Fillers")
-							$title = get_the_title( $post_id );
-							$title = preg_replace( '/ #\d+$/', '', $title );
-							echo esc_html( $title );
-							?></span>
-						<span
-							class="brag-book-gallery-case-card-summary-info__case-number">Case #<?php echo esc_html( $case_id ); ?></span>
-					</div>
-					<p class="brag-book-gallery-case-card-summary-details">
-						<strong>More Details</strong>
-						<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px"
-							 fill="currentColor">
-							<path
-								d="M444-288h72v-156h156v-72H516v-156h-72v156H288v72h156v156Zm36.28 192Q401-96 331-126t-122.5-82.5Q156-261 126-330.96t-30-149.5Q96-560 126-629.5q30-69.5 82.5-122T330.96-834q69.96-30 149.5-30t149.04 30q69.5 30 122 82.5T834-629.28q30 69.73 30 149Q864-401 834-331t-82.5 122.5Q699-156 629.28-126q-69.73 30-149 30Z"></path>
-						</svg>
-					</p>
-				</summary>
-				<div class="brag-book-gallery-case-card-details-content">
-					<p class="brag-book-gallery-case-card-details-content__title">Procedures Performed:</p>
-					<ul class="brag-book-gallery-case-card-procedures-list">
-						<?php if ( ! empty( $procedures ) && is_array( $procedures ) ) : ?>
-							<?php foreach ( $procedures as $procedure ) : ?>
+			<?php if ( 'v2' !== $case_card_type && 'v3' !== $case_card_type ) : ?>
+				<!-- Default Card: Show details/summary -->
+				<details class="brag-book-gallery-case-card-details">
+					<summary class="brag-book-gallery-case-card-summary">
+						<div class="brag-book-gallery-case-card-summary-info">
+							<span
+								class="brag-book-gallery-case-card-summary-info__name"><?php
+								// Use primary procedure name (from taxonomy context) instead of post title
+								// This ensures we show the correct procedure name, not "Combo Procedures"
+								$display_title = is_object( $primary_procedure ) ? $primary_procedure->name : $primary_procedure;
+								echo esc_html( $display_title );
+								?></span>
+							<span
+								class="brag-book-gallery-case-card-summary-info__case-number">Case #<?php echo esc_html( $case_id ); ?></span>
+						</div>
+						<p class="brag-book-gallery-case-card-summary-details">
+							<strong>More Details</strong>
+							<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px"
+								 fill="currentColor">
+								<path
+									d="M444-288h72v-156h156v-72H516v-156h-72v156H288v72h156v156Zm36.28 192Q401-96 331-126t-122.5-82.5Q156-261 126-330.96t-30-149.5Q96-560 126-629.5q30-69.5 82.5-122T330.96-834q69.96-30 149.5-30t149.04 30q69.5 30 122 82.5T834-629.28q30 69.73 30 149Q864-401 834-331t-82.5 122.5Q699-156 629.28-126q-69.73 30-149 30Z"></path>
+							</svg>
+						</p>
+					</summary>
+					<div class="brag-book-gallery-case-card-details-content">
+						<p class="brag-book-gallery-case-card-details-content__title">Procedures Performed:</p>
+						<ul class="brag-book-gallery-case-card-procedures-list">
+							<?php if ( ! empty( $procedures ) && is_array( $procedures ) ) : ?>
+								<?php foreach ( $procedures as $procedure ) : ?>
+									<li class="brag-book-gallery-case-card-procedures-list__item">
+										<?php echo esc_html( is_object( $procedure ) ? $procedure->name : $procedure ); ?>
+									</li>
+								<?php endforeach; ?>
+							<?php else : ?>
 								<li class="brag-book-gallery-case-card-procedures-list__item">
-									<?php echo esc_html( is_object( $procedure ) ? $procedure->name : $procedure ); ?>
+									<?php echo esc_html( is_object( $primary_procedure ) ? $primary_procedure->name : $primary_procedure ); ?>
 								</li>
-							<?php endforeach; ?>
-						<?php else : ?>
-							<li class="brag-book-gallery-case-card-procedures-list__item">
-								<?php echo esc_html( is_object( $primary_procedure ) ? $primary_procedure->name : $primary_procedure ); ?>
-							</li>
-						<?php endif; ?>
-					</ul>
-				</div>
-			</details>
+							<?php endif; ?>
+						</ul>
+					</div>
+				</details>
+			<?php endif; ?>
 		</article>
 		<?php
 		return ob_get_clean();
@@ -2289,12 +2502,12 @@ final class Cases_Handler {
 
 					// Build case data array from WordPress post
 					$case_data = [
-						'id'           => get_post_meta( $post_id, 'brag_book_gallery_api_id', true ) ?: get_post_meta( $post_id, '_case_api_id', true ),
-						'mainImageUrl' => get_post_meta( $post_id, 'brag_book_gallery_main_image_url', true ) ?: get_post_meta( $post_id, '_case_main_image_url', true ),
-						'age'          => get_post_meta( $post_id, 'brag_book_gallery_patient_age', true ) ?: get_post_meta( $post_id, '_case_age', true ),
-						'gender'       => get_post_meta( $post_id, 'brag_book_gallery_patient_gender', true ) ?: get_post_meta( $post_id, '_case_gender', true ),
-						'ethnicity'    => get_post_meta( $post_id, 'brag_book_gallery_ethnicity', true ) ?: get_post_meta( $post_id, '_case_ethnicity', true ),
-						'seoHeadline'  => get_post_meta( $post_id, 'brag_book_gallery_seo_headline', true ) ?: get_post_meta( $post_id, '_case_seo_headline', true ),
+						'id'           => get_post_meta( $post_id, 'brag_book_gallery_case_id', true ),
+						'mainImageUrl' => get_post_meta( $post_id, 'brag_book_gallery_main_image_url', true ),
+						'age'          => get_post_meta( $post_id, 'brag_book_gallery_patient_age', true ),
+						'gender'       => get_post_meta( $post_id, 'brag_book_gallery_patient_gender', true ),
+						'ethnicity'    => get_post_meta( $post_id, 'brag_book_gallery_ethnicity', true ),
+						'seoHeadline'  => get_post_meta( $post_id, 'brag_book_gallery_seo_headline', true ),
 					];
 
 					// Use case data or post title as fallback

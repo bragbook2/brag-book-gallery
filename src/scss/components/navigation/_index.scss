@@ -43,10 +43,6 @@
 		background-color: var(--wp--custom--brag-book-gallery--color--black);
 	}
 
-	&:focus {
-		outline: none;
-	}
-
 	&__label {
 		display: flex;
 		align-items: center;
@@ -136,10 +132,6 @@ body.brag-book-gallery-hide-filter-counts .brag-book-gallery-nav-count {
 			background-color: var(--wp--custom--brag-book-gallery--color--black);
 			transform: translate3d(0,-50%,0);
 		}
-	}
-
-	&:focus {
-		outline: none;
 	}
 }
 

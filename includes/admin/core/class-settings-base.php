@@ -159,63 +159,6 @@ abstract class Settings_Base {
 	abstract public function render(): void;
 
 	/**
-	 * Get configuration data for all navigation tabs
-	 *
-	 * Provides the complete navigation structure used throughout the settings interface.
-	 * Each tab includes localized labels and admin URLs. This method serves as the
-	 * central source of truth for navigation configuration.
-	 *
-	 * Tab structure includes:
-	 * - Consistent URL patterns following WordPress admin conventions
-	 * - Localized labels for internationalization support
-	 * - Unique slug identifiers for routing and state management
-	 *
-	 * Used by render_navigation() to generate the actual navigation HTML.
-	 *
-	 * @since 3.0.0
-	 * @return array Array of tab configuration with keys: label, url, slug
-	 */
-	protected function get_navigation_tabs(): array {
-		return array(
-			'general' => array(
-				'label' => __( 'General', 'brag-book-gallery' ),
-				'url'   => admin_url( 'admin.php?page=brag-book-gallery-settings' ),
-				'slug'  => 'brag-book-gallery-settings',
-			),
-			'mode' => array(
-				'label' => __( 'Mode', 'brag-book-gallery' ),
-				'url'   => admin_url( 'admin.php?page=brag-book-gallery-mode' ),
-				'slug'  => 'brag-book-gallery-mode',
-			),
-			'javascript' => array(
-				'label' => __( 'JavaScript Settings', 'brag-book-gallery' ),
-				'url'   => admin_url( 'admin.php?page=brag-book-gallery-javascript' ),
-				'slug'  => 'brag-book-gallery-javascript',
-			),
-			'local' => array(
-				'label' => __( 'Local Settings', 'brag-book-gallery' ),
-				'url'   => admin_url( 'admin.php?page=brag-book-gallery-local' ),
-				'slug'  => 'brag-book-gallery-local',
-			),
-			'api' => array(
-				'label' => __( 'API', 'brag-book-gallery' ),
-				'url'   => admin_url( 'admin.php?page=brag-book-gallery-api-settings' ),
-				'slug'  => 'brag-book-gallery-api-settings',
-			),
-			'help' => array(
-				'label' => __( 'Help', 'brag-book-gallery' ),
-				'url'   => admin_url( 'admin.php?page=brag-book-gallery-help' ),
-				'slug'  => 'brag-book-gallery-help',
-			),
-			'debug' => array(
-				'label' => __( 'Debug', 'brag-book-gallery' ),
-				'url'   => admin_url( 'admin.php?page=brag-book-gallery-debug' ),
-				'slug'  => 'brag-book-gallery-debug',
-			),
-		);
-	}
-
-	/**
 	 * Render the complete navigation tab system with intelligent visibility
 	 *
 	 * Generates the HTML navigation interface that appears on all settings pages.
@@ -278,15 +221,18 @@ abstract class Settings_Base {
 	 * @return void
 	 */
 	protected function render_header(): void {
+
 		// Get plugin version
 		$plugin_data = get_plugin_data( WP_PLUGIN_DIR . '/brag-book-gallery/brag-book-gallery.php' );
-		$version = isset( $plugin_data['Version'] ) ? $plugin_data['Version'] : '3.0.0';
+
+		// Set Plugin Version.
+		$version = isset( $plugin_data['Version'] ) ? $plugin_data['Version'] : 'Not Set';
 		?>
 		<div class="wrap brag-book-gallery-admin-wrap">
 			<div class="brag-book-gallery-admin-container">
 				<header class="brag-book-gallery-header">
 					<div class="brag-book-gallery-header__brand">
-						<svg class="brag-book-gallery-logo" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 2337 560.6">
+						<svg class="brag-book-gallery-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2337 560.6">
 							<g>
 								<rect fill="#161a1b" width="560.6" height="560.6"/>
 								<path fill="#FFF" d="M107.4,169.9h92.2c23.7,0,41.6,6.1,53.8,18.2,9.2,9.2,13.8,20.6,13.8,34.1v.6c0,6.3-.8,11.8-2.5,16.6-1.6,4.8-3.8,9-6.4,12.6-2.6,3.6-5.7,6.8-9.3,9.6-3.6,2.8-7.2,5.1-10.9,7.1,6,2.2,11.6,4.7,16.5,7.5,5,2.9,9.3,6.2,12.9,10.2s6.4,8.5,8.3,13.8c2,5.3,2.9,11.5,2.9,18.5v.6c0,9.2-1.8,17.4-5.4,24.4-3.6,7.1-8.8,13-15.4,17.7s-14.7,8.3-24.1,10.7c-9.4,2.5-19.8,3.7-31.1,3.7h-95.2v-206h0ZM192.6,256.7c11.7,0,21.1-2.3,28.2-6.9,7-4.6,10.6-11.6,10.6-21v-.6c0-8.2-3.1-14.7-9.2-19.3s-15.1-6.9-26.8-6.9h-51.9v54.8h49.3ZM203.2,343.8c12.3,0,22-2.4,29.1-7.1,7-4.7,10.6-11.8,10.6-21.2v-.6c0-8.8-3.5-15.6-10.4-20.5-6.9-4.8-17.6-7.2-31.8-7.2h-57.2v56.5h59.9Z"/>
@@ -387,13 +333,13 @@ abstract class Settings_Base {
 	 * @return bool True if all security checks pass, false if any check fails
 	 */
 	protected function save_settings( string $nonce_action, string $nonce_field ): bool {
-		// Verify nonce to prevent CSRF attacks
-		if ( ! isset( $_POST[ $nonce_field ] ) ||
-		     ! wp_verify_nonce( $_POST[ $nonce_field ], $nonce_action ) ) {
+
+		// Verify nonce to prevent CSRF attacks.
+		if ( ! isset( $_POST[ $nonce_field ] ) || ! wp_verify_nonce( $_POST[ $nonce_field ], $nonce_action ) ) {
 			return false;
 		}
 
-		// Check user capabilities to ensure proper authorization
+		// Check user capabilities to ensure proper authorization.
 		if ( ! current_user_can( 'manage_options' ) ) {
 			return false;
 		}
@@ -434,47 +380,6 @@ abstract class Settings_Base {
 			$message,
 			$type
 		);
-	}
-
-	/**
-	 * Get current mode
-	 *
-	 * @since 3.0.0
-	 * @return string Current mode (javascript or local).
-	 */
-	protected function get_current_mode(): string {
-		// Mode manager removed - default to 'default' mode
-		return 'default';
-	}
-
-	/**
-	 * Check if in JavaScript mode (legacy - redirects to default mode)
-	 *
-	 * @since 3.0.0
-	 * @return bool True if in JavaScript/default mode.
-	 */
-	protected function is_javascript_mode(): bool {
-		return $this->get_current_mode() === 'javascript';
-	}
-
-	/**
-	 * Check if in default mode
-	 *
-	 * @since 3.0.0
-	 * @return bool True if in default mode.
-	 */
-	protected function is_default_mode(): bool {
-		return $this->get_current_mode() === 'javascript'; // 'javascript' is the internal name for default mode
-	}
-
-	/**
-	 * Check if in Local mode
-	 *
-	 * @since 3.0.0
-	 * @return bool True if in Local mode.
-	 */
-	protected function is_local_mode(): bool {
-		return $this->get_current_mode() === 'local';
 	}
 
 	/**

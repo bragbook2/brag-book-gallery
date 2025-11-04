@@ -420,7 +420,8 @@ window.generateProcedureFilterOptions = function() {
 		gender: new Set(),
 		ethnicity: new Set(),
 		height: new Set(),
-		weight: new Set()
+		weight: new Set(),
+		procedureDetails: new Map() // Map of detail name -> Set of values
 	};
 
 	// First pass: collect actual values to determine which ranges have data
@@ -470,6 +471,32 @@ window.generateProcedureFilterOptions = function() {
 				weightValues.push(weightNum);
 			}
 		}
+
+		// Procedure Details - extract all data-procedure-detail-* attributes
+		const datasetKeys = Object.keys(card.dataset);
+		datasetKeys.forEach(key => {
+			if (key.startsWith('procedureDetail')) {
+				// Convert camelCase to readable label (e.g., procedureDetailImplantSize -> Implant Size)
+				const labelKey = key.replace('procedureDetail', '');
+				const label = labelKey.replace(/([A-Z])/g, ' $1').trim();
+
+				const value = card.dataset[key];
+				if (value) {
+					// Handle comma-separated values (for array fields)
+					const values = value.split(',').map(v => v.trim()).filter(v => v);
+					values.forEach(v => {
+						if (!filterData.procedureDetails.has(label)) {
+							filterData.procedureDetails.set(label, new Set());
+						}
+						// Capitalize first letter of each word for display
+						const displayValue = v.split(' ').map(word =>
+							word.charAt(0).toUpperCase() + word.slice(1)
+						).join(' ');
+						filterData.procedureDetails.get(label).add(displayValue);
+					});
+				}
+			}
+		});
 	});
 
 	// Only add age ranges that have actual data
@@ -625,6 +652,37 @@ window.generateFilterHTML = function(container, filterData) {
 		html += '</details>';
 	}
 
+	// Procedure Details filters
+	if (filterData.procedureDetails && filterData.procedureDetails.size > 0) {
+		filterData.procedureDetails.forEach((values, label) => {
+			if (values.size > 0) {
+				// Convert label to attribute name for filter type
+				const filterType = 'procedure_detail_' + label.toLowerCase().replace(/\s+/g, '_');
+
+				html += '<details class="brag-book-gallery-filter">';
+				html += '<summary class="brag-book-gallery-filter-label">';
+				html += `<span class="brag-book-gallery-filter-label__name">${escapeAttr(label)}</span>`;
+				html += '<svg class="brag-book-gallery-filter-label__arrow" width="16" height="16" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">';
+				html += '<path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>';
+				html += '</svg>';
+				html += '</summary>';
+				html += '<ul class="brag-book-gallery-filter-options">';
+
+				Array.from(values).sort().forEach(value => {
+					const id = `procedure-filter-${filterType}-${value.replace(/\s+/g, '-').toLowerCase()}`;
+					const lowerValue = value.toLowerCase();
+					html += `<li class="brag-book-gallery-filter-option">
+						<input type="checkbox" id="${id}" value="${escapeAttr(lowerValue)}" data-filter-type="${escapeAttr(filterType)}">
+						<label for="${id}">${escapeAttr(value)}</label>
+					</li>`;
+				});
+
+				html += '</ul>';
+				html += '</details>';
+			}
+		});
+	}
+
 	container.innerHTML = html || '<p>No filters available</p>';
 
 	// Add event listeners to all checkboxes
@@ -668,20 +726,35 @@ window.applyProcedureFilters = function() {
 		gender: [],
 		ethnicity: [],
 		height: [],
-		weight: []
+		weight: [],
+		procedureDetails: {} // Store procedure detail filters as object
 	};
 
 	// Collect selected filters
 	checkboxes.forEach(checkbox => {
 		const filterType = checkbox.dataset.filterType;
 		const value = checkbox.value;
-		if (window.bragBookProcedureFilters[filterType]) {
+
+		// Check if this is a procedure detail filter
+		if (filterType.startsWith('procedure_detail_')) {
+			// Extract the detail name (e.g., 'implant_size' from 'procedure_detail_implant_size')
+			const detailName = filterType.replace('procedure_detail_', '');
+			if (!window.bragBookProcedureFilters.procedureDetails[detailName]) {
+				window.bragBookProcedureFilters.procedureDetails[detailName] = [];
+			}
+			window.bragBookProcedureFilters.procedureDetails[detailName].push(value);
+		} else if (window.bragBookProcedureFilters[filterType]) {
 			window.bragBookProcedureFilters[filterType].push(value);
 		}
 	});
 
 	// Check if any filters are selected
-	const hasActiveFilters = Object.values(window.bragBookProcedureFilters).some(arr => arr.length > 0);
+	const hasActiveFilters = Object.keys(window.bragBookProcedureFilters).some(key => {
+		if (key === 'procedureDetails') {
+			return Object.keys(window.bragBookProcedureFilters.procedureDetails).length > 0;
+		}
+		return window.bragBookProcedureFilters[key].length > 0;
+	});
 
 	// Update filter badges
 	updateFilterBadges();
@@ -818,6 +891,38 @@ window.applyProcedureFilters = function() {
 			});
 
 			if (!weightMatch) show = false;
+		}
+
+		// Check procedure detail filters
+		if (show && Object.keys(window.bragBookProcedureFilters.procedureDetails).length > 0) {
+			// Check each procedure detail filter type
+			for (const detailName in window.bragBookProcedureFilters.procedureDetails) {
+				const filterValues = window.bragBookProcedureFilters.procedureDetails[detailName];
+				if (filterValues.length > 0) {
+					// Get the card's value for this procedure detail
+					const dataAttrName = 'procedureDetail' + detailName.split('_').map(word =>
+						word.charAt(0).toUpperCase() + word.slice(1)
+					).join('');
+					const cardValue = (card.dataset[dataAttrName] || '').toLowerCase();
+
+					// Check if the card's value matches any of the selected filter values
+					let detailMatch = false;
+					if (cardValue) {
+						// Handle comma-separated values (for array fields)
+						const cardValues = cardValue.split(',').map(v => v.trim());
+						filterValues.forEach(filterValue => {
+							if (cardValues.includes(filterValue.toLowerCase())) {
+								detailMatch = true;
+							}
+						});
+					}
+
+					if (!detailMatch) {
+						show = false;
+						break; // No need to check other details if this one doesn't match
+					}
+				}
+			}
 		}
 
 		// Show/hide card
@@ -1146,6 +1251,7 @@ window.clearProcedureFilters = function() {
 		window.bragBookProcedureFilters.ethnicity = [];
 		window.bragBookProcedureFilters.height = [];
 		window.bragBookProcedureFilters.weight = [];
+		window.bragBookProcedureFilters.procedureDetails = {};
 	}
 
 	// 3. Show all case cards
@@ -1917,8 +2023,19 @@ function updateFilterBadges() {
 		badge.setAttribute('data-filter-type', filterType);
 		badge.setAttribute('data-filter-value', filterValue);
 
-		// Capitalize filter type for display
-		const displayType = filterType.charAt(0).toUpperCase() + filterType.slice(1);
+		// Format the display type
+		let displayType;
+		if (filterType.startsWith('procedure_detail_')) {
+			// For procedure details, extract and format the label
+			// e.g., 'procedure_detail_implant_size' -> 'Implant Size'
+			const detailName = filterType.replace('procedure_detail_', '');
+			displayType = detailName.split('_').map(word =>
+				word.charAt(0).toUpperCase() + word.slice(1)
+			).join(' ');
+		} else {
+			// Capitalize standard filter type
+			displayType = filterType.charAt(0).toUpperCase() + filterType.slice(1);
+		}
 
 		badge.innerHTML = `
 			<span class="brag-book-gallery-badge-text">${displayType}: ${escapeHtml(displayValue)}</span>

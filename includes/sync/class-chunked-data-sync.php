@@ -219,7 +219,6 @@ class Chunked_Data_Sync {
 	 * @throws Exception If API request fails
 	 */
 	private function fetch_and_save_sidebar_data(): array {
-		error_log( 'Chunked Sync: Fetching sidebar data from API' );
 
 		// Get API configuration
 		$api_tokens = get_option( 'brag_book_gallery_api_token', [] );
@@ -243,8 +242,6 @@ class Chunked_Data_Sync {
 		$request_body = [
 			'apiTokens' => array_values( $valid_tokens ),
 		];
-
-		error_log( 'Chunked Sync: Making API request to: ' . $full_url );
 
 		// Make API request
 		$response = wp_remote_post( $full_url, [
@@ -284,8 +281,6 @@ class Chunked_Data_Sync {
 		if ( $bytes_written === false ) {
 			throw new Exception( 'Failed to save sync data to file' );
 		}
-
-		error_log( 'Chunked Sync: Saved sync data to file: ' . basename( $file_path ) );
 
 		return $data;
 	}
@@ -723,7 +718,7 @@ class Chunked_Data_Sync {
 			return [ 'case_ids' => [], 'pagination' => null ];
 		}
 
-		// Extract case IDs
+		// Extract case IDs (procedure-specific 'id' field, not 'caseId')
 		$case_ids = [];
 		foreach ( $response['data']['cases'] as $case ) {
 			if ( isset( $case['id'] ) ) {
@@ -1420,7 +1415,7 @@ class Chunked_Data_Sync {
 	 * @return array Normalized data in v1 format
 	 */
 	private function normalize_v2_to_v1( array $v2_data ): array {
-		$case_id = $v2_data['id'] ?? 'unknown';
+		$case_id = $v2_data['caseId'] ?? 'unknown';
 
 		// DEBUG: Log incoming v2 data structure
 		error_log( "=== NORMALIZATION DEBUG: Case {$case_id} ===" );
@@ -1439,7 +1434,8 @@ class Chunked_Data_Sync {
 		$normalized = [];
 
 		// Basic fields (unchanged)
-		$normalized['id']           = $v2_data['id'] ?? 0;
+		$normalized['id']           = $v2_data['id'] ?? 0; // Procedure-specific case ID
+		$normalized['caseId']       = $v2_data['caseId'] ?? 0;
 		$normalized['procedureIds'] = $v2_data['procedureIds'] ?? [];
 		$normalized['categoryIds']  = $v2_data['categoryIds'] ?? [];
 
@@ -1458,6 +1454,10 @@ class Chunked_Data_Sync {
 
 		// SEO data (convert from seoInfo to caseDetails array format)
 		if ( isset( $v2_data['seoInfo'] ) ) {
+			// Keep seoInfo at root level for slug generation
+			$normalized['seoInfo'] = $v2_data['seoInfo'];
+
+			// Also convert to caseDetails format for backward compatibility
 			$normalized['caseDetails'] = [
 				[
 					'seoSuffixUrl'       => $v2_data['seoInfo']['slug'] ?? '',
@@ -1500,6 +1500,11 @@ class Chunked_Data_Sync {
 		$normalized['createdAt']   = $v2_data['createdAt'] ?? '';
 		$normalized['updatedAt']   = $v2_data['updatedAt'] ?? '';
 
+		// Pass through creator information
+		if ( isset( $v2_data['creator'] ) ) {
+			$normalized['creator'] = $v2_data['creator'];
+		}
+
 		// DEBUG: Log normalized output
 		error_log( "Normalized Data Keys: " . implode( ', ', array_keys( $normalized ) ) );
 		error_log( "Normalized age: " . ( $normalized['age'] ?? 'NULL' ) );
@@ -1527,19 +1532,21 @@ class Chunked_Data_Sync {
 	 *
 	 * @return array Result with post_id and created flag
 	 */
-	private function create_or_update_case_post( array $case_details, $procedure_term, int $case_position = 0 ): array {
-		$case_id = $case_details['id'] ?? 'unknown';
-		error_log( "Chunked Sync: create_or_update_case_post called for case {$case_id}" );
+	private function create_or_update_case_post( array $case_details, object $procedure_term, int $case_position = 0 ): array {
+		$procedure_case_id = $case_details['id'] ?? '';
+		$global_case_id    = $case_details['caseId'] ?? '';
+		error_log( "Chunked Sync: create_or_update_case_post called for procedure case {$procedure_case_id} (global caseId: {$global_case_id})" );
 
-		// Check if post already exists by case API ID
+		// Check if post already exists by procedure-specific case ID
+		// Each procedure gets its own post, even if they share the same global caseId
 		$existing_posts = get_posts( [
 			'post_type'      => Post_Types::POST_TYPE_CASES,
-			'meta_key'       => '_case_api_id',
-			'meta_value'     => $case_details['id'],
+			'meta_key'       => 'brag_book_gallery_procedure_case_id',
+			'meta_value'     => $procedure_case_id,
 			'posts_per_page' => 1,
 		] );
 
-		error_log( "Chunked Sync: Found " . count( $existing_posts ) . " existing posts for case {$case_id}" );
+		error_log( "Chunked Sync: Found " . count( $existing_posts ) . " existing posts for procedure case {$procedure_case_id}" );
 
 		// Generate slug from case data
 		$slug = $this->generate_case_slug( $case_details );
@@ -1550,19 +1557,16 @@ class Chunked_Data_Sync {
 			'[brag_book_gallery]
 
 <!-- Case ID: %d, Procedure ID: %d, Synced: %s -->',
-			$case_details['id'] ?? 0,
+			$case_details['caseId'] ?? 0,
 			$case_details['procedureId'] ?? 0,
 			current_time( 'mysql' )
 		);
 
-		// Generate title from seoInfo or fallback to procedure name
-		if ( isset( $case_details['seoInfo']['title'] ) && ! empty( $case_details['seoInfo']['title'] ) ) {
-			$post_title = wp_strip_all_tags( $case_details['seoInfo']['title'] );
-		} else {
-			$procedure_name  = $procedure_term->name ?? 'Unknown Procedure';
-			$display_case_id = $case_details['id'] ?? 'unknown';
-			$post_title      = $procedure_name . ' #' . $display_case_id;
-		}
+		// Generate title using procedure name from manifest + caseId
+		// Always use the manifest procedure, not seoInfo.title (which may say "Combo Procedures")
+		$procedure_name  = $procedure_term->name ?? 'Unknown Procedure';
+		$display_case_id = $case_details['caseId'] ?? 'unknown';
+		$post_title      = $procedure_name . ' #' . $display_case_id;
 
 		// Prepare meta description
 		$meta_description = '';
@@ -1581,12 +1585,12 @@ class Chunked_Data_Sync {
 				'post_status'  => isset( $case_details['draft'] ) && $case_details['draft'] ? 'draft' : 'publish',
 			];
 			$result    = wp_update_post( $post_data );
-			error_log( "Chunked Sync: wp_update_post result for case {$case_id}: " . ( $result ? "success (ID: $result)" : "failed" ) );
+			error_log( "Chunked Sync: wp_update_post result for procedure case {$procedure_case_id}: " . ( $result ? "success (ID: $result)" : "failed" ) );
 			if ( is_wp_error( $result ) ) {
 				throw new Exception( "Failed to update post: " . $result->get_error_message() );
 			}
 			// Update sync timestamp and meta description
-			update_post_meta( $post_id, '_case_synced_at', current_time( 'mysql' ) );
+			update_post_meta( $post_id, 'brag_book_gallery_synced_at', current_time( 'mysql' ) );
 			if ( ! empty( $meta_description ) ) {
 				update_post_meta( $post_id, '_yoast_wpseo_metadesc', $meta_description );
 			}
@@ -1600,13 +1604,14 @@ class Chunked_Data_Sync {
 				'post_content' => $content,
 				'post_status'  => isset( $case_details['draft'] ) && $case_details['draft'] ? 'draft' : 'publish',
 				'meta_input'   => [
-					'_case_api_id'          => $case_details['id'],
-					'_case_synced_at'       => current_time( 'mysql' ),
-					'_yoast_wpseo_metadesc' => $meta_description,
+					'brag_book_gallery_procedure_case_id' => $procedure_case_id,
+					'brag_book_gallery_case_id'           => $global_case_id,
+					'brag_book_gallery_synced_at'         => current_time( 'mysql' ),
+					'_yoast_wpseo_metadesc'               => $meta_description,
 				],
 			];
 			$post_id   = wp_insert_post( $post_data );
-			error_log( "Chunked Sync: wp_insert_post result for case {$case_id}: " . ( is_wp_error( $post_id ) ? "error: " . $post_id->get_error_message() : "success (ID: $post_id)" ) );
+			error_log( "Chunked Sync: wp_insert_post result for procedure case {$procedure_case_id}: " . ( is_wp_error( $post_id ) ? "error: " . $post_id->get_error_message() : "success (ID: $post_id)" ) );
 			if ( is_wp_error( $post_id ) ) {
 				throw new Exception( "Failed to create post: " . $post_id->get_error_message() );
 			}
@@ -1619,48 +1624,26 @@ class Chunked_Data_Sync {
 		try {
 			Post_Types::save_api_response_data( $post_id, $case_details );
 		} catch ( Exception $e ) {
-			error_log( "Chunked Sync: Failed to save API data for case {$case_id}: " . $e->getMessage() );
+			error_log( "Chunked Sync: Failed to save API data for procedure case {$procedure_case_id}: " . $e->getMessage() );
 			// Don't throw - the post is created, just missing some metadata
 			// The title is already set properly
 		}
 
 		// Store additional sync-specific metadata
-		update_post_meta( $post_id, '_original_case_id', $case_id );
+		update_post_meta( $post_id, 'brag_book_gallery_original_case_id', $procedure_case_id );
 		update_post_meta( $post_id, '_procedure_id', $case_details['procedureId'] ?? '' );
 
-		// Store procedure IDs if multiple
+		// Store procedure IDs in meta (for reference only, not taxonomy assignment)
 		if ( isset( $case_details['procedureIds'] ) && is_array( $case_details['procedureIds'] ) ) {
-			update_post_meta( $post_id, '_case_procedure_ids', implode( ',', $case_details['procedureIds'] ) );
+			update_post_meta( $post_id, 'brag_book_gallery_procedure_ids', implode( ',', $case_details['procedureIds'] ) );
 		}
 
-		// Assign to procedure taxonomy - handle multiple procedures
-		$procedure_term_ids = [ $procedure_term->term_id ];
-
-		// If case has multiple procedures, assign all of them to the taxonomy
-		if ( isset( $case_details['procedureIds'] ) && is_array( $case_details['procedureIds'] ) && count( $case_details['procedureIds'] ) > 1 ) {
-			$procedure_term_ids = [];
-			foreach ( $case_details['procedureIds'] as $proc_id ) {
-				$term = $this->get_procedure_term_by_api_id( intval( $proc_id ) );
-				if ( $term ) {
-					$procedure_term_ids[] = $term->term_id;
-				}
-			}
-		} // Also check procedureDetails for multiple procedures
-		elseif ( isset( $case_details['procedureDetails'] ) && is_array( $case_details['procedureDetails'] ) && count( $case_details['procedureDetails'] ) > 1 ) {
-			$procedure_term_ids = [];
-			foreach ( array_keys( $case_details['procedureDetails'] ) as $proc_id ) {
-				$term = $this->get_procedure_term_by_api_id( intval( $proc_id ) );
-				if ( $term ) {
-					$procedure_term_ids[] = $term->term_id;
-				}
-			}
-		}
-
-		wp_set_object_terms( $post_id, $procedure_term_ids, Taxonomies::TAXONOMY_PROCEDURES );
+		// Assign to procedure taxonomy - ONLY the procedure from the manifest
+		// Since we're using procedure-specific IDs, each case belongs to exactly one procedure
+		wp_set_object_terms( $post_id, [ $procedure_term->term_id ], Taxonomies::TAXONOMY_PROCEDURES );
 
 		// Store the case position for ordering within this procedure
 		update_post_meta( $post_id, 'brag_book_gallery_case_order', $case_position );
-		update_post_meta( $post_id, '_case_order', $case_position ); // Legacy compatibility
 		error_log( "Chunked Sync: Set case order position to {$case_position} for post {$post_id}" );
 
 		return [
@@ -1671,32 +1654,35 @@ class Chunked_Data_Sync {
 
 
 	/**
-	 * Generate case slug from API data
+	 * Generate a slug for the case post
 	 *
-	 * Uses seoInfo.slug if available, otherwise falls back to case ID.
+	 * Priority order:
+	 * 1. seoInfo.slug (primary source)
+	 * 2. procedure-specific case ID (fallback)
 	 *
 	 * @param array $case_data Case data from API
 	 *
 	 * @return string Generated slug
 	 */
 	private function generate_case_slug( array $case_data ): string {
-		$case_id = $case_data['id'] ?? 'unknown';
+		// Use procedure-specific 'id' (from manifest) as fallback - this is unique per procedure
+		$procedure_case_id = $case_data['id'] ?? '';
 
-		// First, check for seoInfo.slug (primary source)
+		// Check for seoInfo.slug (primary source)
 		if ( isset( $case_data['seoInfo']['slug'] ) && ! empty( $case_data['seoInfo']['slug'] ) ) {
 			$slug = sanitize_title( $case_data['seoInfo']['slug'] );
 
 			// Make sure it's not empty after sanitization
 			if ( ! empty( $slug ) ) {
-				error_log( 'Chunked Sync: Using seoInfo.slug for case ' . $case_id . ': ' . $slug );
+				error_log( 'Chunked Sync: Using seoInfo.slug for procedure case ' . $procedure_case_id . ': ' . $slug );
 
 				return $slug;
 			}
 		}
 
-		// Fallback to case ID
-		$fallback_slug = (string) $case_id;
-		error_log( 'Chunked Sync: Using fallback slug for case ' . $case_id . ': ' . $fallback_slug );
+		// Fallback to procedure-specific case ID (from manifest)
+		$fallback_slug = (string) $procedure_case_id;
+		error_log( 'Chunked Sync: Using fallback slug (procedure case id) for case: ' . $fallback_slug );
 
 		return $fallback_slug;
 	}
@@ -1842,10 +1828,10 @@ class Chunked_Data_Sync {
 				continue;
 			}
 
-			// Try current format first (brag_book_gallery_api_id)
+			// Try current format first (brag_book_gallery_procedure_case_id)
 			$posts = get_posts( [
 				'post_type'      => \BRAGBookGallery\Includes\Extend\Post_Types::POST_TYPE_CASES,
-				'meta_key'       => 'brag_book_gallery_api_id',
+				'meta_key'       => 'brag_book_gallery_procedure_case_id',
 				'meta_value'     => $case_id,
 				'posts_per_page' => 1,
 				'post_status'    => 'any',
@@ -1855,7 +1841,7 @@ class Chunked_Data_Sync {
 			if ( empty( $posts ) ) {
 				$posts = get_posts( [
 					'post_type'      => \BRAGBookGallery\Includes\Extend\Post_Types::POST_TYPE_CASES,
-					'meta_key'       => '_case_api_id',
+					'meta_key'       => 'brag_book_gallery_procedure_case_id',
 					'meta_value'     => $case_id,
 					'posts_per_page' => 1,
 					'post_status'    => 'any',

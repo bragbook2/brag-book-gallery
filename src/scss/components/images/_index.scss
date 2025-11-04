@@ -99,10 +99,6 @@
 	color: var(--wp--custom--brag-book-gallery--color--grey)
 }
 
-.brag-book-gallery-single-image {
-	width: 100%;
-	position: relative
-}
 
 .brag-book-gallery-case-images.single-image img {
 	opacity: 1;
@@ -156,6 +152,10 @@
 	}
 }
 
+.brag-book-gallery-picture {
+	display: flex;
+}
+
 .brag-book-gallery-image-label {
 	position: absolute;
 	top: 8px;
@@ -177,8 +177,8 @@
 
 .brag-book-gallery-after-image .brag-book-gallery-item-actions {
 	position: absolute;
-	bottom: 10px;
-	right: 10px;
+	top: 8px;
+	right: 8px;
 	display: flex;
 	gap: 8px;
 	z-index: 30;
@@ -201,14 +201,109 @@
 }
 
 // Single image cards - buttons always visible and clickable
-.brag-book-gallery-single-image .brag-book-gallery-item-actions {
+.brag-book-gallery-case-images.single-image .brag-book-gallery-item-actions {
 	position: absolute;
-	bottom: 10px;
-	right: 10px;
+	top: 8px;
+	right: 8px;
 	display: flex;
 	gap: 8px;
 	opacity: 1;
 	visibility: visible;
 	pointer-events: auto;
-	z-index: 1;
+	z-index: 3; // Higher than V2 overlay (z-index: 2)
+}
+
+// Case card carousel (V2/V3 cards)
+.brag-book-gallery-image-container {
+	.brag-book-gallery-case-carousel {
+		display: flex;
+		overflow-x: auto;
+		overflow-y: hidden;
+		scroll-snap-type: x mandatory;
+		scroll-behavior: smooth;
+		scrollbar-width: none; // Firefox
+		-ms-overflow-style: none; // IE/Edge
+		gap: 0;
+
+		&::-webkit-scrollbar {
+			display: none; // Chrome/Safari
+		}
+
+		.brag-book-gallery-picture {
+			flex: 0 0 100%;
+			width: 100%;
+			scroll-snap-align: start;
+			scroll-snap-stop: always;
+
+			img {
+				width: 100%;
+				height: auto;
+				display: block;
+			}
+		}
+	}
+
+	.brag-book-gallery-case-carousel-pagination {
+		position: relative;
+		display: flex;
+		justify-content: center;
+		gap: var(--wp--custom--brag-book-gallery--spacer--sm, 8px);
+		padding: var(--wp--custom--brag-book-gallery--spacer--sm, 8px) 0;
+		z-index: 10;
+		background: white;
+
+		// V2 Desktop: overlay on images
+		.brag-book-gallery-case-card--v2 & {
+			@media (hover: hover) and (pointer: fine) {
+				position: absolute;
+				bottom: var(--wp--custom--brag-book-gallery--spacer--sm, 8px);
+				left: 50%;
+				transform: translateX(-50%);
+				padding: 0;
+				background: transparent;
+			}
+		}
+	}
+}
+
+.brag-book-gallery-case-carousel-dot {
+	width: var(--wp--custom--brag-book-gallery--spacer--lg, 16px);
+	height: var(--wp--custom--brag-book-gallery--spacer, 4px);
+	border-radius: 10em;
+	background: var(--wp--custom--brag-book-gallery--color--light-grey);
+	border: none;
+	cursor: pointer;
+	padding: 0;
+	transition: var(--wp--custom--brag-book-gallery--transition);
+	text-decoration: none;
+	display: block;
+	position: relative;
+
+	&::after {
+		content: '';
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		width: var(--wp--custom--brag-book-gallery--spacer--lg, 16px);
+		height: var(--wp--custom--brag-book-gallery--spacer, 4px);
+		border-radius: 50%;
+		background: transparent;
+	}
+
+	&:focus-visible {
+		outline: none;
+	}
+
+	&:hover {
+		background: var(--wp--custom--brag-book-gallery--color--grey);
+		transform: scale(1.2);
+	}
+
+	&:target,
+	&:focus {
+		background: var(--wp--custom--brag-book-gallery--color--black);
+		width: calc(8 * var(--wp--custom--brag-book-gallery--spacer, 4px));
+		border-radius: 10em;
+	}
 }

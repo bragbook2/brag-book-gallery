@@ -6,12 +6,19 @@
  * - Progress tracking and display
  * - Sync history management
  * - AJAX communication for sync operations
+ * - Time display updates
+ * - Cron test functionality
  *
  * @package BRAGBook
  * @since   3.0.0
+ * @version 3.3.0
  */
 
 'use strict';
+
+// Import sync modules
+import { initSyncTimeDisplay } from './modules/sync-time-display.js';
+import { initSyncCronTest } from './modules/sync-cron-test.js';
 
 /**
  * BRAG book Sync Admin Controller Class

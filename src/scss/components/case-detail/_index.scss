@@ -21,6 +21,12 @@
 	width: 100%;
 }
 
+.procedure-details-subheading {
+	font-size: var(--wp--custom--brag-book-gallery--text-base) !important;
+	margin: var(--wp--custom--brag-book-gallery--spacer--lg) 0 var(--wp--custom--brag-book-gallery--spacer--sm);
+	font-weight: var(--wp--custom--brag-book-gallery--font-weight--semibold);
+}
+
 .brag-book-gallery-main-single {
 	position: relative;
 	overflow: hidden;
