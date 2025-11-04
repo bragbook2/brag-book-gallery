@@ -4,7 +4,7 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.3.2-beta6] - 2025-11-04 (Current Beta)
+## [3.3.2-beta7] - 2025-11-04 (Current Beta)
 
 ### Added
 - **Doctor Details Display**: New "Show Doctor Details" toggle setting in Display Settings

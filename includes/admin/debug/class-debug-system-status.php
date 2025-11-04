@@ -98,11 +98,6 @@ final class Debug_System_Status {
 				</td>
 			</tr>
 			<tr>
-				<th><?php esc_html_e( 'Active Mode', 'brag-book-gallery' ); ?></th>
-				<td></td>
-				<td><?php $this->render_success_icon(); ?></td>
-			</tr>
-			<tr>
 				<th><?php esc_html_e( 'API Connection', 'brag-book-gallery' ); ?></th>
 				<td>
 					<?php

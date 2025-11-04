@@ -23,7 +23,7 @@
 
 .brag-book-gallery-wrapper {
 	--wp--custom--brag-book-gallery--color--black: oklch(13% 0.028 261.692);
-	--wp--custom--brag-book-gallery--color--grey: oklch(70.7% 0.022 261.325);
+	--wp--custom--brag-book-gallery--color--grey: oklch(44.6% 0.03 256.802);
 	--wp--custom--brag-book-gallery--color--light-grey: oklch(92.8% 0.006 264.531);
 	--wp--custom--brag-book-gallery--color--lighter-grey: oklch(96.7% 0.003 264.542);
 	--wp--custom--brag-book-gallery--color--lightest-grey: oklch(98.5% 0.002 247.839);
@@ -105,12 +105,6 @@
 
 		h2 {
 			font-size: var(--wp--custom--brag-book-gallery--text-7xl);
-		}
-
-		h3,
-		h4,
-		h5 {
-			font-size: var(--wp--custom--brag-book-gallery--text-6xl);
 		}
 	}
 }

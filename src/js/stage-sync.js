@@ -9,6 +9,8 @@
 
 'use strict';
 
+import { syncDialog } from './modules/sync-dialog.js';
+
 /**
  * Stage Sync Manager
  */
@@ -259,9 +261,23 @@ class StageSyncManager {
 	async executeStage1() {
 		if (this.isRunning) return;
 
-		if (!confirm('Execute Stage 1: Fetch sidebar data and process procedures?')) {
-			return;
-		}
+		// Show confirmation dialog
+		syncDialog.showConfirm(
+			'Execute Stage 1',
+			'Fetch sidebar data and process procedures?',
+			{
+				confirmText: 'Execute',
+				cancelText: 'Cancel',
+				confirmButtonClass: 'button-primary',
+				onConfirm: () => this.executeStage1Confirmed(),
+			}
+		);
+	}
+
+	/**
+	 * Execute Stage 1 after confirmation
+	 */
+	async executeStage1Confirmed() {
 
 		this.isRunning = true;
 		if (this.stage1Btn) this.stage1Btn.disabled = true;
@@ -306,9 +322,23 @@ class StageSyncManager {
 	async executeStage2() {
 		if (this.isRunning) return;
 
-		if (!confirm('Execute Stage 2: Build case ID manifest? This may take several minutes.')) {
-			return;
-		}
+		// Show confirmation dialog
+		syncDialog.showConfirm(
+			'Execute Stage 2',
+			'Build case ID manifest? This may take several minutes.',
+			{
+				confirmText: 'Execute',
+				cancelText: 'Cancel',
+				confirmButtonClass: 'button-primary',
+				onConfirm: () => this.executeStage2Confirmed(),
+			}
+		);
+	}
+
+	/**
+	 * Execute Stage 2 after confirmation
+	 */
+	async executeStage2Confirmed() {
 
 		this.isRunning = true;
 		if (this.stage2Btn) this.stage2Btn.disabled = true;
@@ -376,7 +406,24 @@ class StageSyncManager {
 	async executeStage3() {
 		if (this.isRunning) return;
 
-		if (!confirm('Execute Stage 3: Process cases from manifest? This will process cases in batches.')) {
+		// Show confirmation dialog
+		syncDialog.showConfirm(
+			'Execute Stage 3',
+			'Process cases from manifest? This will process cases in batches.',
+			{
+				confirmText: 'Execute',
+				cancelText: 'Cancel',
+				confirmButtonClass: 'button-primary',
+				onConfirm: () => this.executeStage3Confirmed(),
+			}
+		);
+	}
+
+	/**
+	 * Execute Stage 3 after confirmation
+	 */
+	async executeStage3Confirmed() {
+		if (false) {
 			return;
 		}
 
@@ -471,8 +518,6 @@ class StageSyncManager {
 				progress
 			);
 
-			this.showNotice('info', `Batch complete: ${totalProcessed}/${totalCases} cases processed`);
-
 			// Brief pause between batches
 			if (needsContinue) {
 				await new Promise(resolve => setTimeout(resolve, 500));
@@ -501,9 +546,23 @@ class StageSyncManager {
 	async executeFullSync() {
 		if (this.isRunning) return;
 
-		if (!confirm('Execute Full Sync? This will run all three stages sequentially and may take a considerable amount of time.')) {
-			return;
-		}
+		// Show confirmation dialog
+		syncDialog.showConfirm(
+			'Execute Full Sync',
+			'This will run all three stages sequentially and may take a considerable amount of time. Continue?',
+			{
+				confirmText: 'Execute',
+				cancelText: 'Cancel',
+				confirmButtonClass: 'button-primary',
+				onConfirm: () => this.executeFullSyncConfirmed(),
+			}
+		);
+	}
+
+	/**
+	 * Execute Full Sync after confirmation
+	 */
+	async executeFullSyncConfirmed() {
 
 		this.isRunning = true;
 		this.shouldStop = false;
@@ -513,7 +572,6 @@ class StageSyncManager {
 		try {
 			// Stage 1
 			this.showProgress('Full Sync - Stage 1: Fetching procedures...', 0);
-			this.showNotice('info', 'Starting Full Sync - Stage 1: Procedures');
 
 			const stage1Response = await this.makeAjaxRequest('brag_book_sync_stage_1');
 			if (!stage1Response.success) {
@@ -521,7 +579,6 @@ class StageSyncManager {
 			}
 
 			const stage1Data = stage1Response.data;
-			this.showNotice('success', `Stage 1 completed: ${stage1Data.procedures_created} procedures created, ${stage1Data.procedures_updated} updated`);
 			this.showProgress('Full Sync - Stage 1 completed', 33);
 
 			// Refresh file status
@@ -534,7 +591,6 @@ class StageSyncManager {
 
 			// Stage 2
 			this.showProgress('Full Sync - Stage 2: Building manifest...', 33);
-			this.showNotice('info', 'Starting Full Sync - Stage 2: Building manifest');
 
 			// Start progress polling for Stage 2
 			this.currentProgressInterval = setInterval(async () => {
@@ -561,10 +617,6 @@ class StageSyncManager {
 			}
 
 			const stage2Data = stage2Response.data;
-			const stage2Message = stage2Data.file_exists
-				? `Manifest already exists: ${stage2Data.procedure_count} procedures, ${stage2Data.case_count} cases`
-				: `Stage 2 completed: ${stage2Data.procedure_count} procedures, ${stage2Data.case_count} cases mapped`;
-			this.showNotice('success', stage2Message);
 			this.showProgress('Full Sync - Stage 2 completed', 66);
 
 			// Refresh file status
@@ -577,7 +629,6 @@ class StageSyncManager {
 
 			// Stage 3 (with batch processing)
 			this.showProgress('Full Sync - Stage 3: Processing cases...', 66);
-			this.showNotice('info', 'Starting Full Sync - Stage 3: Processing cases');
 
 			// Start progress polling for Stage 3
 			this.currentProgressInterval = setInterval(async () => {
@@ -653,12 +704,10 @@ class StageSyncManager {
 			clearInterval(this.currentProgressInterval);
 			this.currentProgressInterval = null;
 
-			const stage3Message = `Stage 3 completed: ${created} created, ${updated} updated${failed > 0 ? `, ${failed} failed` : ''} (${processed}/${total} processed)`;
-			this.showNotice('success', stage3Message);
-
 			// Final success message
 			this.showProgress('Full Sync completed successfully!', 100);
-			this.showNotice('success', 'Full Sync completed successfully! All three stages have been executed.');
+			const finalMessage = `Full Sync completed successfully! ${created} cases created, ${updated} updated${failed > 0 ? `, ${failed} failed` : ''} (${processed}/${total} total)`;
+			this.showNotice('success', finalMessage);
 
 			// Refresh file status to show final state
 			await this.checkFileStatus();
@@ -702,16 +751,25 @@ class StageSyncManager {
 	stopSync() {
 		if (!this.isRunning) return;
 
-		if (confirm('Are you sure you want to stop the sync process?')) {
-			this.shouldStop = true;
-			this.showNotice('info', 'Stopping sync process...');
+		syncDialog.showConfirm(
+			'Stop Sync',
+			'Are you sure you want to stop the sync process?',
+			{
+				confirmText: 'Stop',
+				cancelText: 'Cancel',
+				confirmButtonClass: 'button-danger',
+				onConfirm: () => {
+					this.shouldStop = true;
+					this.showNotice('info', 'Stopping sync process...');
 
-			// Clear any active progress interval
-			if (this.currentProgressInterval) {
-				clearInterval(this.currentProgressInterval);
-				this.currentProgressInterval = null;
+					// Clear any active progress interval
+					if (this.currentProgressInterval) {
+						clearInterval(this.currentProgressInterval);
+						this.currentProgressInterval = null;
+					}
+				},
 			}
-		}
+		);
 	}
 
 	/**
@@ -742,10 +800,22 @@ class StageSyncManager {
 			return;
 		}
 
-		if (!confirm('Are you sure you want to delete the sync data file? This will require running Stage 1 again.')) {
-			return;
-		}
+		syncDialog.showConfirm(
+			'Delete Sync Data',
+			'Are you sure you want to delete the sync data file? This will require running Stage 1 again.',
+			{
+				confirmText: 'Delete',
+				cancelText: 'Cancel',
+				confirmButtonClass: 'button-danger',
+				onConfirm: () => this.deleteSyncDataConfirmed(),
+			}
+		);
+	}
 
+	/**
+	 * Delete sync data file (confirmed)
+	 */
+	async deleteSyncDataConfirmed() {
 		try {
 			const response = await this.makeAjaxRequest('brag_book_sync_delete_file', { file: 'sync_data' });
 
@@ -769,10 +839,22 @@ class StageSyncManager {
 			return;
 		}
 
-		if (!confirm('Are you sure you want to delete the manifest file? This will require running Stage 2 again.')) {
-			return;
-		}
+		syncDialog.showConfirm(
+			'Delete Manifest',
+			'Are you sure you want to delete the manifest file? This will require running Stage 2 again.',
+			{
+				confirmText: 'Delete',
+				cancelText: 'Cancel',
+				confirmButtonClass: 'button-danger',
+				onConfirm: () => this.deleteManifestConfirmed(),
+			}
+		);
+	}
 
+	/**
+	 * Delete manifest file (confirmed)
+	 */
+	async deleteManifestConfirmed() {
 		try {
 			const response = await this.makeAjaxRequest('brag_book_sync_delete_file', { file: 'manifest' });
 
@@ -881,7 +963,7 @@ class StageSyncManager {
 
 		// Add clear button
 		html += `<button type="button" id="clear-stage3-status-btn" class="button button-link-delete" style="margin-top: 10px; font-size: 12px;" title="Clear Stage 3 status">`;
-		html += `<span class="dashicons dashicons-dismiss" style="font-size: 14px; line-height: 20px; margin-right: 3px;"></span>`;
+		html += `<svg xmlns="http://www.w3.org/2000/svg" height="16px" viewBox="0 -960 960 960" width="16px" fill="currentColor" style="vertical-align: middle; margin-right: 4px;"><path d="m336-293.85 144-144 144 144L666.15-336l-144-144 144-144L624-666.15l-144 144-144-144L293.85-624l144 144-144 144L336-293.85ZM480.07-100q-78.84 0-148.21-29.92t-120.68-81.21q-51.31-51.29-81.25-120.63Q100-401.1 100-479.93q0-78.84 29.92-148.21t81.21-120.68q51.29-51.31 120.63-81.25Q401.1-860 479.93-860q78.84 0 148.21 29.92t120.68 81.21q51.31 51.29 81.25 120.63Q860-558.9 860-480.07q0 78.84-29.92 148.21t-81.21 120.68q-51.29 51.31-120.63 81.25Q558.9-100 480.07-100Z"/></svg>`;
 		html += `Clear Status`;
 		html += `</button>`;
 
@@ -899,10 +981,22 @@ class StageSyncManager {
 	 * Clear Stage 3 status
 	 */
 	async clearStage3Status() {
-		if (!confirm('Are you sure you want to clear the Stage 3 status? This will not delete the synced posts.')) {
-			return;
-		}
+		syncDialog.showConfirm(
+			'Clear Stage 3 Status',
+			'Are you sure you want to clear the Stage 3 status? This will not delete the synced posts.',
+			{
+				confirmText: 'Clear',
+				cancelText: 'Cancel',
+				confirmButtonClass: 'button-danger',
+				onConfirm: () => this.clearStage3StatusConfirmed(),
+			}
+		);
+	}
 
+	/**
+	 * Clear Stage 3 status (confirmed)
+	 */
+	async clearStage3StatusConfirmed() {
 		try {
 			const response = await this.makeAjaxRequest('brag_book_sync_clear_stage3_status');
 
@@ -936,40 +1030,34 @@ class StageSyncManager {
 	}
 
 	/**
-	 * Show notice
+	 * Show notice using dialog
 	 */
 	showNotice(type, message) {
-		const noticesContainer = document.querySelector('.brag-book-gallery-notices');
-		if (!noticesContainer) return;
+		// Get title based on type
+		const titles = {
+			success: 'Success',
+			error: 'Error',
+			warning: 'Warning',
+			info: 'Information'
+		};
 
-		const noticeClass = type === 'error' ? 'notice-error' :
-						   type === 'success' ? 'notice-success' :
-						   type === 'info' ? 'notice-info' : 'notice-warning';
+		const title = titles[type] || 'Notification';
 
-		const notice = document.createElement('div');
-		notice.className = `notice ${noticeClass} is-dismissible`;
-		notice.innerHTML = `
-			<p>${message}</p>
-			<button type="button" class="notice-dismiss">
-				<span class="screen-reader-text">Dismiss this notice.</span>
-			</button>
-		`;
-
-		noticesContainer.appendChild(notice);
-
-		// Handle dismiss
-		const dismissBtn = notice.querySelector('.notice-dismiss');
-		if (dismissBtn) {
-			dismissBtn.addEventListener('click', () => {
-				this.fadeOut(notice, () => notice.remove());
-			});
-		}
-
-		// Auto-dismiss after 10 seconds for success messages
-		if (type === 'success') {
-			setTimeout(() => {
-				this.fadeOut(notice, () => notice.remove());
-			}, 10000);
+		// Show dialog based on type
+		switch (type) {
+			case 'success':
+				syncDialog.showSuccess(title, message);
+				break;
+			case 'error':
+				syncDialog.showError(title, message);
+				break;
+			case 'warning':
+				syncDialog.showWarning(title, message);
+				break;
+			case 'info':
+			default:
+				syncDialog.showInfo(title, message);
+				break;
 		}
 	}
 

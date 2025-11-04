@@ -687,7 +687,7 @@ final class SEO_Manager {
 		$case_number = 1;
 
 		foreach ( $case_ids as $key => $case_item ) {
-			$matches_id  = str_starts_with( $case_id_or_slug, 'case-' ) && (int) $case_item['id'] === (int) str_replace( 'case-', '', $case_id_or_slug );
+			$matches_id  = str_starts_with( $case_id_or_slug, 'case-' ) && (int) $case_item['caseId'] === (int) str_replace( 'case-', '', $case_id_or_slug );
 			$matches_seo = ! str_starts_with( $case_id_or_slug, 'case-' ) && $case_item['seoSuffixUrl'] === $case_id_or_slug;
 
 			if ( $matches_id || $matches_seo ) {

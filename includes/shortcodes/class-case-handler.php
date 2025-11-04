@@ -33,7 +33,7 @@ class Case_Handler {
 	 *
 	 * @var array
 	 */
-	private $missing_data_log = [];
+	private array $missing_data_log = [];
 
 	/**
 	 * Initialize the case handler
@@ -250,16 +250,16 @@ class Case_Handler {
 	private function get_case_meta_data( int $post_id ): array {
 		// Try new format first, fall back to legacy format
 		$meta_fields = [
-			'case_id' => ['brag_book_gallery_api_id', '_case_api_id'],
-			'patient_age' => ['brag_book_gallery_patient_age', '_case_patient_age'],
-			'patient_gender' => ['brag_book_gallery_patient_gender', '_case_patient_gender'],
-			'patient_ethnicity' => ['brag_book_gallery_ethnicity', '_case_ethnicity'],
-			'patient_height' => ['brag_book_gallery_height', '_case_height'],
-			'patient_weight' => ['brag_book_gallery_weight', '_case_weight'],
-			'procedure_date' => ['brag_book_gallery_procedure_date', '_case_procedure_date'],
-			'case_notes' => ['brag_book_gallery_notes', '_case_notes'],
-			'before_image' => ['brag_book_gallery_before_image', '_case_before_image'],
-			'after_image' => ['brag_book_gallery_after_image', '_case_after_image'],
+			'case_id' => ['brag_book_gallery_case_id'],
+			'patient_age' => ['brag_book_gallery_patient_age'],
+			'patient_gender' => ['brag_book_gallery_patient_gender'],
+			'patient_ethnicity' => ['brag_book_gallery_ethnicity'],
+			'patient_height' => ['brag_book_gallery_height'],
+			'patient_weight' => ['brag_book_gallery_weight'],
+			'procedure_date' => ['brag_book_gallery_procedure_date'],
+			'case_notes' => ['brag_book_gallery_notes'],
+			'before_image' => ['brag_book_gallery_before_image'],
+			'after_image' => ['brag_book_gallery_after_image'],
 		];
 
 		$case_data = [];
@@ -448,11 +448,28 @@ class Case_Handler {
 		$html .= '<div class="brag-book-gallery-brag-book-gallery-case-header">';
 		// Get the full title and parse it to wrap case number in span
 		$full_title = get_the_title( $case_post->ID );
-		// Replace #123 pattern with wrapped version
-		$formatted_title = preg_replace('/ (#\d+)$/', ' <span class="case-id">$1</span>', $full_title);
-		// Wrap the procedure name part in strong tag
-		$formatted_title = preg_replace('/^(.+?)( <span)/', '<strong>$1</strong>$2', $formatted_title);
-		$html .= '<h2 class="brag-book-gallery-content-title">' . $formatted_title . '</h2>';
+
+		// Check if SEO headline is set
+		$seo_headline = get_post_meta( $case_post->ID, 'brag_book_gallery_seo_headline', true );
+
+		if ( ! empty( $seo_headline ) ) {
+			// Use SEO headline for the strong tag, extract case ID from title
+			if ( preg_match('/ (#\d+)$/', $full_title, $matches) ) {
+				$case_id = $matches[1];
+				$formatted_title = '<strong>' . esc_html( $seo_headline ) . '</strong> <span class="case-id">' . esc_html( $case_id ) . '</span>';
+			} else {
+				// Fallback if no case ID found
+				$formatted_title = '<strong>' . esc_html( $seo_headline ) . '</strong>';
+			}
+		} else {
+			// Use default title formatting (procedure name + case ID)
+			// Replace #123 pattern with wrapped version
+			$formatted_title = preg_replace('/ (#\d+)$/', ' <span class="case-id">$1</span>', $full_title);
+			// Wrap the procedure name part in strong tag
+			$formatted_title = preg_replace('/^(.+?)( <span)/', '<strong>$1</strong>$2', $formatted_title);
+		}
+
+		$html .= '<h1 class="brag-book-gallery-content-title">' . $formatted_title . '</h1>';
 		$html .= '<div class="brag-book-gallery-case-nav-buttons">';
 		$html .= $this->render_case_navigation_buttons( $case_post, $case_data );
 		$html .= '</div>';
@@ -723,10 +740,9 @@ class Case_Handler {
 		if ( ! empty( $case_data['procedures'] ) ) {
 			$procedure_details = $this->get_procedure_details_for_card( $case_data );
 			if ( ! empty( $procedure_details ) ) {
-				$procedure_name = $case_data['procedures'][0]['name'];
 				$html .= '<div class="case-detail-card procedure-details-card">';
 				$html .= '<div class="card-header">';
-				$html .= '<h3 class="card-title">' . esc_html( $procedure_name ) . ' Type</h3>';
+				$html .= '<h3 class="card-title">' . esc_html__( 'Procedure Details', 'brag-book-gallery' ) . '</h3>';
 				$html .= '</div>';
 				$html .= '<div class="card-content">';
 				$html .= '<div class="procedure-details-grid">';
@@ -758,44 +774,56 @@ class Case_Handler {
 	}
 
 	/**
-	 * Get patient information for card display
+	 * Generate patient information HTML for a case card.
 	 *
-	 * @since 3.0.0
-	 * @param array $case_data The case data array.
-	 * @return string Patient information HTML.
+	 * @param array $case_data Case data from API or database.
+	 * @return string HTML markup for patient info display.
 	 */
 	private function get_patient_info_for_card( array $case_data ): string {
 		$info_html = '';
-		$case_id = $case_data['id'];
 
-		// Always show case ID
-		$info_html .= '<div class="brag-book-gallery-info-item">';
-		$info_html .= '<span class="brag-book-gallery-info-label">Case ID</span>';
-		$info_html .= '<span class="brag-book-gallery-info-value">' . esc_html( $case_id ) . '</span>';
-		$info_html .= '</div>';
+		// Use API case ID (caseId) instead of WordPress post ID.
+		$case_id = $case_data['api_case_id'] ?? $case_data['id'];
 
-		// Ethnicity
+		// Info item template for sprintf.
+		$item_template = '<div class="brag-book-gallery-info-item"><span class="brag-book-gallery-info-label">%s</span><span class="brag-book-gallery-info-value">%s</span></div>';
+
+		// Always display Case ID.
+		$info_html .= sprintf(
+			$item_template,
+			esc_html__( 'Case ID', 'brag-book-gallery' ),
+			esc_html( $case_id )
+		);
+
+		// Display ethnicity if available.
 		if ( ! empty( $case_data['patientEthnicity'] ) ) {
-			$info_html .= '<div class="brag-book-gallery-info-item">';
-			$info_html .= '<span class="brag-book-gallery-info-label">Ethnicity</span>';
-			$info_html .= '<span class="brag-book-gallery-info-value">' . esc_html( $case_data['patientEthnicity'] ) . '</span>';
-			$info_html .= '</div>';
+			$info_html .= sprintf(
+				$item_template,
+				esc_html__( 'Ethnicity', 'brag-book-gallery' ),
+				esc_html( $case_data['patientEthnicity'] )
+			);
 		}
 
-		// Gender
+		// Display gender if available.
 		if ( ! empty( $case_data['patientGender'] ) ) {
-			$info_html .= '<div class="brag-book-gallery-info-item">';
-			$info_html .= '<span class="brag-book-gallery-info-label">Gender</span>';
-			$info_html .= '<span class="brag-book-gallery-info-value">' . esc_html( $case_data['patientGender'] ) . '</span>';
-			$info_html .= '</div>';
+			$info_html .= sprintf(
+				$item_template,
+				esc_html__( 'Gender', 'brag-book-gallery' ),
+				esc_html( $case_data['patientGender'] )
+			);
 		}
 
-		// Age
+		// Display age with "years" suffix if available.
 		if ( ! empty( $case_data['patientAge'] ) ) {
-			$info_html .= '<div class="brag-book-gallery-info-item">';
-			$info_html .= '<span class="brag-book-gallery-info-label">Age</span>';
-			$info_html .= '<span class="brag-book-gallery-info-value">' . esc_html( $case_data['patientAge'] ) . ' years</span>';
-			$info_html .= '</div>';
+			$info_html .= sprintf(
+				$item_template,
+				esc_html__( 'Age', 'brag-book-gallery' ),
+				sprintf(
+				/* translators: %s: patient age in years */
+					esc_html__( '%s years', 'brag-book-gallery' ),
+					esc_html( $case_data['patientAge'] )
+				)
+			);
 		}
 
 		return $info_html;
@@ -811,51 +839,41 @@ class Case_Handler {
 	private function get_procedure_details_for_card( array $case_data ): string {
 		$html = '';
 
-		// Get the case post ID from case data
+		// Get the case post ID from case data (it's already the WordPress post ID)
 		if ( empty( $case_data['id'] ) ) {
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'BRAGBook Gallery: Missing case ID in get_procedure_details_for_card' );
+			}
 			return $html;
 		}
 
-		// Find the post by case API ID
-		$posts = get_posts( [
-			'post_type'      => 'brag_book_cases',
-			'meta_key'       => 'brag_book_gallery_api_id',
-			'meta_value'     => $case_data['id'],
-			'posts_per_page' => 1,
-			'post_status'    => 'any',
-		] );
+		$post_id = $case_data['id'];
 
-		if ( empty( $posts ) ) {
-			// Try legacy meta key
-			$posts = get_posts( [
-				'post_type'      => 'brag_book_cases',
-				'meta_key'       => '_case_api_id',
-				'meta_value'     => $case_data['id'],
-				'posts_per_page' => 1,
-				'post_status'    => 'any',
-			] );
-		}
-
-		if ( empty( $posts ) ) {
-			return $html;
-		}
-
-		$post_id = $posts[0]->ID;
-
-		// Get procedure details JSON (try modern format first, then legacy)
+		// Get procedure details JSON from post meta
 		$procedure_details_json = get_post_meta( $post_id, 'brag_book_gallery_procedure_details', true );
-		if ( empty( $procedure_details_json ) ) {
-			$procedure_details_json = get_post_meta( $post_id, '_case_procedure_details', true );
-		}
 
 		if ( empty( $procedure_details_json ) ) {
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( "BRAGBook Gallery: No procedure details found for post {$post_id}" );
+			}
 			return $html;
 		}
 
 		// Decode JSON
 		$procedure_details = json_decode( $procedure_details_json, true );
 		if ( ! is_array( $procedure_details ) || empty( $procedure_details ) ) {
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( "BRAGBook Gallery: Invalid procedure details JSON for post {$post_id}: " . $procedure_details_json );
+			}
 			return $html;
+		}
+
+		// Build a map of procedure IDs to names from the case data
+		$procedure_names = [];
+		if ( ! empty( $case_data['procedures'] ) ) {
+			foreach ( $case_data['procedures'] as $proc ) {
+				$procedure_names[ $proc['procedure_id'] ] = $proc['name'];
+			}
 		}
 
 		// Build HTML for each procedure's details
@@ -864,19 +882,33 @@ class Case_Handler {
 				continue;
 			}
 
+			// If we have multiple procedures with details, show which procedure these details belong to
+			if ( count( $procedure_details ) > 1 && isset( $procedure_names[ $procedure_id ] ) ) {
+				$html .= '<div class="procedure-details-group">';
+				$html .= '<p class="procedure-details-subheading">' . esc_html( $procedure_names[ $procedure_id ] ) . '</p>';
+			}
+
 			foreach ( $details as $detail_label => $detail_value ) {
-				$html .= '<div class="detail-item">';
-				$html .= '<span class="detail-label">' . esc_html( $detail_label ) . ':</span> ';
+				$html .= '<div class="brag-book-gallery-info-item">';
+				$html .= '<span class="brag-book-gallery-info-label">' . esc_html( $detail_label ) . '</span>';
 
 				// Handle array values (e.g., ["Upper", "Lower"])
 				if ( is_array( $detail_value ) ) {
-					$html .= '<span class="detail-value">' . esc_html( implode( ', ', $detail_value ) ) . '</span>';
+					$html .= '<span class="brag-book-gallery-info-value">' . esc_html( implode( ', ', $detail_value ) ) . '</span>';
 				} else {
-					$html .= '<span class="detail-value">' . esc_html( $detail_value ) . '</span>';
+					$html .= '<span class="brag-book-gallery-info-value">' . esc_html( $detail_value ) . '</span>';
 				}
 
 				$html .= '</div>';
 			}
+
+			if ( count( $procedure_details ) > 1 && isset( $procedure_names[ $procedure_id ] ) ) {
+				$html .= '</div>';
+			}
+		}
+
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG && ! empty( $html ) ) {
+			error_log( "BRAGBook Gallery: Successfully generated procedure details for post {$post_id}" );
 		}
 
 		return $html;
@@ -932,9 +964,12 @@ class Case_Handler {
 			}
 		}
 
+		// Get procedure details data attributes
+		$procedure_details_attrs = $this->get_procedure_details_attributes( $case_post->ID );
+
 		// Build the complete case card HTML
 		$html = sprintf(
-			'<article class="brag-book-gallery-case-card" data-post-id="%s" data-case-id="%s" data-age="%s" data-gender="%s" data-ethnicity="%s" data-procedure-ids="%s" data-current-procedure-id="%s" data-current-term-id="%s">',
+			'<article class="brag-book-gallery-case-card" data-test="testing" data-post-id="%s" data-case-id="%s" data-age="%s" data-gender="%s" data-ethnicity="%s" data-procedure-ids="%s" data-current-procedure-id="%s" data-current-term-id="%s"%s>',
 			$id,
 			$case_id,
 			$patient_age,
@@ -942,7 +977,8 @@ class Case_Handler {
 			$patient_ethnicity,
 			$procedure_ids,
 			esc_attr( $current_procedure_id ),
-			esc_attr( $current_term_id )
+			esc_attr( $current_term_id ),
+			$procedure_details_attrs
 		);
 
 		// Image section
@@ -950,12 +986,16 @@ class Case_Handler {
 		$html .= '<div class="brag-book-gallery-case-image-container">';
 
 		if ( $has_nudity ) {
-			$html .= '<div class="brag-book-gallery-nudity-warning" style="display: block;">';
-			$html .= '<div class="brag-book-gallery-nudity-content">';
-			$html .= '<p class="brag-book-gallery-nudity-text">' . esc_html__( 'This content contains nudity', 'brag-book-gallery' ) . '</p>';
-			$html .= '<button class="brag-book-gallery-nudity-proceed">' . esc_html__( 'Proceed', 'brag-book-gallery' ) . '</button>';
-			$html .= '</div>';
-			$html .= '</div>';
+			$html .= sprintf(
+				'<div class="brag-book-gallery-nudity-warning" style="display: block;">
+		            <div class="brag-book-gallery-nudity-content">
+		                <p class="brag-book-gallery-nudity-text">%s</p>
+		                <button class="brag-book-gallery-nudity-proceed">%s</button>
+		            </div>
+		        </div>',
+				esc_html__( 'This content contains nudity', 'brag-book-gallery' ),
+				esc_html__( 'Proceed', 'brag-book-gallery' )
+			);
 		}
 
 		// Skeleton loader
@@ -1262,6 +1302,86 @@ class Case_Handler {
 				$field
 			) );
 		}
+	}
+
+	/**
+	 * Get procedure details as data attributes
+	 *
+	 * Extracts procedure details from post meta and formats them as HTML data attributes
+	 * for use in filtering.
+	 *
+	 * @since 3.3.0
+	 * @param int $post_id The post ID.
+	 * @return string Space-prepended data attributes string (e.g., ' data-procedure-detail-implant-type="silicone"').
+	 */
+	private function get_procedure_details_attributes( int $post_id ): string {
+		$attrs = '';
+
+		// Get procedure details JSON from post meta
+		$procedure_details_json = get_post_meta( $post_id, 'brag_book_gallery_procedure_details', true );
+
+		// Debug logging
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( "BRAGBook Gallery Debug: Getting procedure details for post {$post_id}" );
+			error_log( "BRAGBook Gallery Debug: Raw JSON: " . var_export( $procedure_details_json, true ) );
+		}
+
+		if ( empty( $procedure_details_json ) ) {
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( "BRAGBook Gallery Debug: No procedure details JSON found for post {$post_id}" );
+			}
+			return $attrs;
+		}
+
+		// Decode JSON
+		$procedure_details = json_decode( $procedure_details_json, true );
+
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( "BRAGBook Gallery Debug: Decoded JSON: " . var_export( $procedure_details, true ) );
+		}
+
+		if ( ! is_array( $procedure_details ) ) {
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( "BRAGBook Gallery: Invalid procedure details JSON for post {$post_id}: " . $procedure_details_json );
+			}
+			return $attrs;
+		}
+
+		// Build data attributes from procedure details
+		foreach ( $procedure_details as $procedure_id => $details ) {
+			if ( ! is_array( $details ) ) {
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+					error_log( "BRAGBook Gallery Debug: Procedure ID {$procedure_id} details is not an array" );
+				}
+				continue;
+			}
+
+			foreach ( $details as $detail_label => $detail_value ) {
+				// Create a sanitized attribute name from the label (use dashes for dataset compatibility)
+				$attr_name = sanitize_title_with_dashes( $detail_label );
+
+				// Handle array values (e.g., ["Upper", "Lower"])
+				if ( is_array( $detail_value ) ) {
+					$attr_value = implode( ',', array_map( function( $val ) {
+						return strtolower( (string) $val );
+					}, $detail_value ) );
+				} else {
+					$attr_value = strtolower( (string) $detail_value );
+				}
+
+				$attrs .= ' data-procedure-detail-' . esc_attr( $attr_name ) . '="' . esc_attr( $attr_value ) . '"';
+
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+					error_log( "BRAGBook Gallery Debug: Added attribute data-procedure-detail-{$attr_name}=\"{$attr_value}\"" );
+				}
+			}
+		}
+
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( "BRAGBook Gallery Debug: Final attributes for post {$post_id}: " . $attrs );
+		}
+
+		return $attrs;
 	}
 
 	/**

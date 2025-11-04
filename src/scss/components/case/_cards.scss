@@ -133,6 +133,215 @@
 			}
 		}
 	}
+
+	// V2 Card Overlay Styles
+	&-overlay {
+		// Mobile/Tablet: Show below card with white background
+		position: relative;
+		background: white;
+		color: inherit;
+		padding: var(--wp--custom--brag-book-gallery--spacer--md, 12px) var(--wp--custom--brag-book-gallery--spacer--lg, 16px);
+		border-bottom-left-radius: var(--wp--custom--brag-book-gallery--rounded, 4px);
+		border-bottom-right-radius: var(--wp--custom--brag-book-gallery--rounded, 4px);
+		box-shadow: var(--wp--custom--brag-book-gallery--shadow-lg);
+
+		// Desktop: Absolute positioned overlay with hover effect at bottom
+		@media (hover: hover) and (pointer: fine) {
+			position: absolute;
+			top: 0;
+			left: 0;
+			right: 0;
+			bottom: 0;
+			opacity: 0;
+			visibility: hidden;
+			transition: opacity 0.3s ease, visibility 0.3s ease;
+			display: flex;
+			align-items: flex-end; // Position content at bottom
+			justify-content: flex-start;
+			background: rgba(0, 0, 0, 0.85);
+			color: white;
+			border-radius: 0;
+			z-index: 2;
+			box-shadow: none;
+			padding: var(--wp--custom--brag-book-gallery--spacer--lg, 16px);
+
+			.brag-book-gallery-image-container:hover & {
+				opacity: 1;
+				visibility: visible;
+			}
+		}
+
+		&-content {
+			display: flex;
+			flex-direction: row;
+			align-items: center;
+			justify-content: space-between;
+			gap: var(--wp--custom--brag-book-gallery--spacer--md, 12px);
+			width: 100%;
+
+			@media (hover: hover) and (pointer: fine) {
+				// Keep horizontal layout on desktop too
+				flex-direction: row;
+				align-items: center;
+			}
+		}
+
+		&-info {
+			display: flex;
+			flex-direction: column;
+			gap: var(--wp--custom--brag-book-gallery--spacer--xs, 4px);
+			flex: 1;
+			text-align: left; // Text on far left
+		}
+
+		&-title {
+			font-size: var(--wp--custom--brag-book-gallery--text-sm);
+			font-weight: var(--wp--custom--brag-book-gallery--font-weight--regular);
+			line-height: 1.3;
+			margin: 0;
+
+			@media (hover: hover) and (pointer: fine) {
+				font-size: var(--wp--custom--brag-book-gallery--text-lg, 18px);
+				font-weight: var(--wp--custom--brag-book-gallery--font-weight--bold, 700);
+			}
+		}
+
+		&-case-number {
+			font-size: var(--wp--custom--brag-book-gallery--text-xs);
+			font-weight: var(--wp--custom--brag-book-gallery--font-weight--regular);
+			margin: 0;
+
+			@media (hover: hover) and (pointer: fine) {
+				font-size: var(--wp--custom--brag-book-gallery--text-sm, 14px);
+				opacity: 0.9;
+			}
+		}
+
+		&-button {
+			background: black;
+			color: white;
+			border: none;
+			border-radius: 50%;
+			width: 40px;
+			height: 40px;
+			flex-shrink: 0;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			cursor: pointer;
+			transition: transform 0.2s ease, box-shadow 0.2s ease;
+			box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+			text-decoration: none; // Remove underline for anchor tag
+
+			@media (hover: hover) and (pointer: fine) {
+				background: white;
+				color: var(--wp--custom--brag-book-gallery--color--primary, #0066cc);
+				width: 48px;
+				height: 48px;
+
+				&:hover {
+					box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
+				}
+			}
+
+			svg {
+				width: 20px;
+				height: 20px;
+
+				@media (hover: hover) and (pointer: fine) {
+					width: 24px;
+					height: 24px;
+				}
+			}
+		}
+	}
+
+	// V2 Card: Add shadow to image container
+	&--v2 {
+		box-shadow: var(--wp--custom--brag-book-gallery--shadow-md);
+
+		.brag-book-gallery-image-container {
+			box-shadow: var(--wp--custom--brag-book-gallery--shadow-lg);
+		}
+	}
+
+	// V3 Card: Force mobile overlay style on all devices (no hover effect)
+	&--v3 {
+		box-shadow: var(--wp--custom--brag-book-gallery--shadow-md);
+
+		.brag-book-gallery-image-container {
+			box-shadow: var(--wp--custom--brag-book-gallery--shadow-lg);
+		}
+
+		.brag-book-gallery-case-card-overlay {
+			// Override desktop hover styles - keep it as mobile style
+			@media (hover: hover) and (pointer: fine) {
+				position: relative;
+				top: auto;
+				left: auto;
+				right: auto;
+				bottom: auto;
+				opacity: 1;
+				visibility: visible;
+				display: block;
+				align-items: initial;
+				justify-content: initial;
+				background: white;
+				color: inherit;
+				border-radius: 0;
+				z-index: auto;
+				box-shadow: var(--wp--custom--brag-book-gallery--shadow-lg);
+				padding: var(--wp--custom--brag-book-gallery--spacer--md, 12px) var(--wp--custom--brag-book-gallery--spacer--lg, 16px);
+				border-bottom-left-radius: var(--wp--custom--brag-book-gallery--rounded, 4px);
+				border-bottom-right-radius: var(--wp--custom--brag-book-gallery--rounded, 4px);
+			}
+
+			.brag-book-gallery-case-card-overlay-content {
+				@media (hover: hover) and (pointer: fine) {
+					// Keep horizontal layout like mobile
+					flex-direction: row;
+					align-items: center;
+					justify-content: space-between;
+				}
+			}
+
+			.brag-book-gallery-case-card-overlay-title {
+				@media (hover: hover) and (pointer: fine) {
+					// Use mobile font size
+					font-size: var(--wp--custom--brag-book-gallery--text-sm);
+					font-weight: var(--wp--custom--brag-book-gallery--font-weight--regular);
+				}
+			}
+
+			.brag-book-gallery-case-card-overlay-case-number {
+				@media (hover: hover) and (pointer: fine) {
+					// Use mobile font size
+					font-size: var(--wp--custom--brag-book-gallery--text-xs);
+					opacity: 1;
+				}
+			}
+
+			.brag-book-gallery-case-card-overlay-button {
+				@media (hover: hover) and (pointer: fine) {
+					// Use mobile button size and colors
+					background: #000;
+					color: #FFF !important;
+					width: 40px;
+					height: 40px;
+
+					&:hover {
+						box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+					}
+
+					svg {
+						width: 20px;
+						height: 20px;
+					}
+				}
+			}
+		}
+	}
+
 }
 
 

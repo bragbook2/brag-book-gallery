@@ -708,6 +708,8 @@ class General_Page extends Settings_Base {
 		$procedures_view = get_option( 'brag_book_gallery_procedures_view', 'default' );
 		$cases_view = get_option( 'brag_book_gallery_cases_view', 'default' );
 		$favorites_view = get_option( 'brag_book_gallery_favorites_view', 'default' );
+		$case_card_type = get_option( 'brag_book_gallery_case_card_type', 'default' );
+		$case_image_carousel = get_option( 'brag_book_gallery_case_image_carousel', false );
 		$items_per_page = get_option( 'brag_book_gallery_items_per_page', '10' );
 		$default_landing_text = '<h2>Go ahead, browse our before & afters... visualize your possibilities.</h2>' . "\n" .
 		                       '<p>Our gallery is full of our real patients. Keep in mind results vary.</p>';
@@ -721,9 +723,9 @@ class General_Page extends Settings_Base {
 		$enable_consultation = get_option( 'brag_book_gallery_enable_consultation', true );
 		$show_doctor = get_option( 'brag_book_gallery_show_doctor', false );
 
-		// Check if property ID 118 exists in website_property_id array
+		// Check if property ID 111 exists in website_property_id array
 		$website_property_ids = get_option( 'brag_book_gallery_website_property_id', array() );
-		$has_property_118 = is_array( $website_property_ids ) && in_array( '118', $website_property_ids, true );
+		$has_property_111 = is_array( $website_property_ids ) && in_array( '111', $website_property_ids, true );
 
 		// Show notice if not in default mode (for gallery settings section)
 		// Mode manager removed - default to 'default' mode
@@ -959,7 +961,55 @@ class General_Page extends Settings_Base {
 					</td>
 				</tr>
 
-				<?php if ( $has_property_118 ) : ?>
+				<tr>
+					<th scope="row">
+						<label for="brag_book_gallery_case_card_type">
+							<?php esc_html_e( 'Case Card Type', 'brag-book-gallery' ); ?>
+						</label>
+					</th>
+					<td>
+						<select id="brag_book_gallery_case_card_type" name="brag_book_gallery_case_card_type">
+							<option value="default" <?php selected( $case_card_type, 'default' ); ?>>
+								<?php esc_html_e( 'Default', 'brag-book-gallery' ); ?>
+							</option>
+							<option value="v2" <?php selected( $case_card_type, 'v2' ); ?>>
+								<?php esc_html_e( 'V2', 'brag-book-gallery' ); ?>
+							</option>
+							<option value="v3" <?php selected( $case_card_type, 'v3' ); ?>>
+								<?php esc_html_e( 'V3', 'brag-book-gallery' ); ?>
+							</option>
+						</select>
+						<p class="description">
+							<?php esc_html_e( 'Choose the card design type for case display.', 'brag-book-gallery' ); ?>
+						</p>
+					</td>
+				</tr>
+
+				<tr>
+					<th scope="row">
+						<label for="brag_book_gallery_case_image_carousel">
+							<?php esc_html_e( 'Enable Case Image Carousel', 'brag-book-gallery' ); ?>
+						</label>
+					</th>
+					<td>
+						<div class="brag-book-gallery-toggle-wrapper">
+							<label class="brag-book-gallery-toggle">
+								<input type="hidden" name="brag_book_gallery_case_image_carousel" value="0" />
+								<input type="checkbox"
+								       id="brag_book_gallery_case_image_carousel"
+								       name="brag_book_gallery_case_image_carousel"
+								       value="1"
+								       <?php checked( $case_image_carousel, true ); ?> />
+								<span class="brag-book-gallery-toggle-slider"></span>
+							</label>
+							<span class="brag-book-gallery-toggle-label">
+								<?php esc_html_e( 'Show carousel of high-resolution images in V2/V3 cards', 'brag-book-gallery' ); ?>
+							</span>
+						</div>
+					</td>
+				</tr>
+
+				<?php if ( $has_property_111 ) : ?>
 				<tr>
 					<th scope="row">
 						<label for="brag_book_gallery_show_doctor">
@@ -1954,6 +2004,15 @@ class General_Page extends Settings_Base {
 		}
 		update_option( 'brag_book_gallery_favorites_view', $favorites_view );
 
+		$case_card_type = isset( $_POST['brag_book_gallery_case_card_type'] ) ? sanitize_text_field( $_POST['brag_book_gallery_case_card_type'] ) : 'default';
+		if ( ! in_array( $case_card_type, array( 'default', 'v2', 'v3' ), true ) ) {
+			$case_card_type = 'default';
+		}
+		update_option( 'brag_book_gallery_case_card_type', $case_card_type );
+
+		$case_image_carousel = isset( $_POST['brag_book_gallery_case_image_carousel'] ) && '1' === $_POST['brag_book_gallery_case_image_carousel'];
+		update_option( 'brag_book_gallery_case_image_carousel', $case_image_carousel );
+
 		$items_per_page = isset( $_POST['brag_book_gallery_items_per_page'] ) ? absint( $_POST['brag_book_gallery_items_per_page'] ) : 10;
 		update_option( 'brag_book_gallery_items_per_page', $items_per_page );
 
@@ -1993,7 +2052,7 @@ class General_Page extends Settings_Base {
 		$enable_consultation = isset( $_POST['brag_book_gallery_enable_consultation'] ) && $_POST['brag_book_gallery_enable_consultation'] === '1';
 		update_option( 'brag_book_gallery_enable_consultation', $enable_consultation );
 
-		// Doctor Details Settings (only if property 118 exists)
+		// Doctor Details Settings (only if property 111 exists)
 		// With hidden field, we always get a value (0 or 1)
 		$show_doctor = isset( $_POST['brag_book_gallery_show_doctor'] ) && $_POST['brag_book_gallery_show_doctor'] === '1';
 		update_option( 'brag_book_gallery_show_doctor', $show_doctor );

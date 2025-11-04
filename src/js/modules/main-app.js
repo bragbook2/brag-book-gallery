@@ -2252,7 +2252,7 @@ class BRAGbookGalleryApp {
 
 		return `
 			<article class="brag-book-gallery-case-card" data-case-id="${caseId}">
-				<div class="brag-book-gallery-image-container brag-book-gallery-single-image">
+				<div class="brag-book-gallery-image-container">
 					<div class="brag-book-gallery-skeleton-loader" style="display:none;"></div>
 					<div class="brag-book-gallery-item-actions">
 						<button class="brag-book-gallery-favorite-button" data-favorited="${isFavorited}" data-item-id="case-${caseId}" aria-label="${isFavorited ? 'Remove from' : 'Add to'} favorites">
@@ -3495,9 +3495,9 @@ class BRAGbookGalleryApp {
 			const existingTitle = gridContainer.querySelector('.brag-book-gallery-content-title');
 			if (!existingTitle) {
 				const titleHtml = `
-					<h2 class="brag-book-gallery-content-title">
+					<h1 class="brag-book-gallery-content-title">
 						<strong>My</strong><span>Favorites</span>
-					</h2>
+					</h1>
 				`;
 				grid.insertAdjacentHTML('beforebegin', titleHtml);
 			}
@@ -3598,7 +3598,6 @@ class BRAGbookGalleryApp {
 
 		// Case images section (matching PHP structure)
 		html += '<div class="brag-book-gallery-case-images single-image">';
-		html += '<div class="brag-book-gallery-single-image">';
 		html += '<div class="brag-book-gallery-image-container">';
 
 		// Skeleton loader
@@ -3625,7 +3624,6 @@ class BRAGbookGalleryApp {
 		html += '</a>'; // Close case link
 
 		html += '</div>'; // Close image-container
-		html += '</div>'; // Close single-image
 		html += '</div>'; // Close case-images
 
 		// Case details section (matching PHP structure)

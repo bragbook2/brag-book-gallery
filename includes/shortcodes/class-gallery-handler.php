@@ -566,7 +566,7 @@ final class Gallery_Handler {
 		// 2. Check if we're on a single case post page
 		if ( is_singular( \BRAGBookGallery\Includes\Extend\Post_Types::POST_TYPE_CASES ) ) {
 			$post_id = get_the_ID();
-			$case_id = get_post_meta( $post_id, 'brag_book_gallery_api_id', true ) ?: get_post_meta( $post_id, '_case_api_id', true );
+			$case_id = get_post_meta( $post_id, 'brag_book_gallery_case_id', true );
 
 			return [
 				'type'    => 'single_case',
@@ -981,7 +981,7 @@ final class Gallery_Handler {
 						<?php esc_html_e( 'Powered by', 'brag-book-gallery' ); ?>
 						<a href="https://bragbookgallery.com/"
 						   class="brag-book-gallery-powered-by-link"
-						   target="_blank" rel="noopener noreferrer">
+						>
 							<?php esc_html_e( 'BRAG book Gallery', 'brag-book-gallery' ); ?>
 						</a>
 					</div>
@@ -1004,10 +1004,10 @@ final class Gallery_Handler {
 					} elseif ( $current_taxonomy ) {
 						// Show procedure-specific content
 						?>
-						<h2 class="brag-book-gallery-content-title">
+						<h1 class="brag-book-gallery-content-title">
 							<strong><?php echo esc_html( $current_taxonomy->name ); ?></strong>
 							Before &amp; After Gallery
-						</h2>
+						</h1>
 
 						<!-- Filter controls will be added here by JavaScript -->
 						<div class="brag-book-gallery-controls">
@@ -2335,10 +2335,10 @@ final class Gallery_Handler {
 					<?php echo self::render_tiles_filter_bar(); ?>
 
 					<!-- Content Title -->
-					<h2 class="brag-book-gallery-content-title">
+					<h1 class="brag-book-gallery-content-title">
 						<strong><?php echo esc_html( $procedure_term->name ); ?></strong>
 						Before &amp; After Gallery
-					</h2>
+					</h1>
 
 					<!-- Case Grid - 2x2 tiles layout -->
 					<div class="brag-book-gallery-case-grid brag-book-gallery-case-grid--tiles grid-initialized"

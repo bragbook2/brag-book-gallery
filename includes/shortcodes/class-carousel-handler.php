@@ -846,7 +846,7 @@ final class Carousel_Handler {
 				$query->the_post();
 				$post_id = get_the_ID();
 
-				$case_id = get_post_meta( $post_id, 'brag_book_gallery_api_id', true ) ?: get_post_meta( $post_id, '_case_api_id', true );
+				$case_id = get_post_meta( $post_id, 'brag_book_gallery_case_id', true );
 				$images = get_post_meta( $post_id, 'images', true ) ?: [];
 
 				// Ensure images is an array
@@ -999,7 +999,7 @@ final class Carousel_Handler {
 
 				// Get first URL if available
 				$first_image_url = ! empty( $url_array ) ? $url_array[0] : '';
-				$case_id = get_post_meta( $post_id, 'brag_book_gallery_api_id', true );
+				$case_id = get_post_meta( $post_id, 'brag_book_gallery_case_id', true );
 
 				// Only include cases that have images
 				if ( ! empty( $first_image_url ) ) {

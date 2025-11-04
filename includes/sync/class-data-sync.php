@@ -2237,7 +2237,6 @@ class Data_Sync {
 		return array_unique( $procedure_ids );
 	}
 
-
 	/**
 	 * Process a batch of cases concurrently for better performance
 	 *
@@ -2537,7 +2536,7 @@ class Data_Sync {
 			$request_body  = $base_request_body;
 			$existing_post = $this->find_existing_case_post( $case_id );
 			if ( $existing_post ) {
-				$stored_procedure_ids = get_post_meta( $existing_post->ID, '_case_procedure_ids', true );
+				$stored_procedure_ids = get_post_meta( $existing_post->ID, 'brag_book_gallery_procedure_ids', true );
 				if ( ! empty( $stored_procedure_ids ) ) {
 					$request_body['procedureIds'] = array_map( 'intval', explode( ',', $stored_procedure_ids ) );
 				}
@@ -2728,7 +2727,7 @@ class Data_Sync {
 				\BRAGBookGallery\Includes\Extend\Post_Types::save_api_response_data( $post_id, $procedure_case_data, $progress_callback );
 
 				// Store the original case ID and procedure mapping
-				update_post_meta( $post_id, '_original_case_id', $case_id );
+				update_post_meta( $post_id, 'brag_book_gallery_original_case_id', $case_id );
 				update_post_meta( $post_id, '_procedure_id', $procedure_id );
 				update_post_meta( $post_id, '_procedure_index', $procedure_index );
 
@@ -2838,7 +2837,7 @@ class Data_Sync {
 			'meta_query'     => [
 				'relation' => 'AND',
 				[
-					'key'     => '_original_case_id',
+					'key'     => 'brag_book_gallery_original_case_id',
 					'value'   => $original_case_id,
 					'compare' => '=',
 				],
@@ -3067,7 +3066,7 @@ class Data_Sync {
 		$procedure_id  = null;
 		$existing_post = $this->find_existing_case_post( $case_id );
 		if ( $existing_post ) {
-			$stored_procedure_ids = get_post_meta( $existing_post->ID, '_case_procedure_ids', true );
+			$stored_procedure_ids = get_post_meta( $existing_post->ID, 'brag_book_gallery_procedure_ids', true );
 			if ( ! empty( $stored_procedure_ids ) ) {
 				$procedure_ids_array = explode( ',', $stored_procedure_ids );
 				$procedure_id        = intval( $procedure_ids_array[0] );
@@ -3108,7 +3107,7 @@ class Data_Sync {
 	 * @return array Normalized data in v1 format
 	 */
 	private function normalize_v2_case_data( array $v2_data ): array {
-		$case_id = $v2_data['id'] ?? 'unknown';
+		$case_id = $v2_data['caseId'] ?? 'unknown';
 
 		// DEBUG: Log incoming v2 data structure
 		error_log( "=== DATA_SYNC NORMALIZATION DEBUG: Case {$case_id} ===" );
@@ -3127,7 +3126,7 @@ class Data_Sync {
 		$normalized = [];
 
 		// Basic fields
-		$normalized['id']           = $v2_data['id'] ?? 0;
+		$normalized['caseId']       = $v2_data['caseId'] ?? 0;
 		$normalized['procedureIds'] = $v2_data['procedureIds'] ?? [];
 		$normalized['categoryIds']  = $v2_data['categoryIds'] ?? [];
 
@@ -3186,6 +3185,11 @@ class Data_Sync {
 		$normalized['createdAt']   = $v2_data['createdAt'] ?? '';
 		$normalized['updatedAt']   = $v2_data['updatedAt'] ?? '';
 
+		// Pass through creator information
+		if ( isset( $v2_data['creator'] ) ) {
+			$normalized['creator'] = $v2_data['creator'];
+		}
+
 		// DEBUG: Log normalized output
 		error_log( "Normalized Data Keys: " . implode( ', ', array_keys( $normalized ) ) );
 		error_log( "Normalized age: " . ( $normalized['age'] ?? 'NULL' ) );
@@ -3205,9 +3209,9 @@ class Data_Sync {
 	}
 
 	/**
-	 * Find existing case post by API case ID
+	 * Find existing case post by procedure case ID
 	 *
-	 * @param int $case_id API case ID
+	 * @param int $case_id Procedure case ID
 	 *
 	 * @return \WP_Post|null Existing post or null
 	 * @since 3.0.0
@@ -3215,7 +3219,7 @@ class Data_Sync {
 	private function find_existing_case_post( int $case_id ): ?\WP_Post {
 		$posts = get_posts( [
 			'post_type'   => 'brag_book_cases',
-			'meta_key'    => '_case_api_id',
+			'meta_key'    => 'brag_book_gallery_procedure_case_id',
 			'meta_value'  => $case_id,
 			'numberposts' => 1,
 			'post_status' => 'any',
@@ -3246,7 +3250,7 @@ class Data_Sync {
 			'[brag_book_gallery]
 
 <!-- Case ID: %d, Procedure ID: %d, Synced: %s -->',
-			$case_data['id'] ?? 0,
+			$case_data['caseId'] ?? 0,
 			$case_data['procedureId'] ?? 0,
 			current_time( 'mysql' )
 		);
@@ -3264,8 +3268,8 @@ class Data_Sync {
 			'post_content' => $content,
 			'post_status'  => isset( $case_data['draft'] ) && $case_data['draft'] ? 'draft' : 'publish',
 			'meta_input'   => [
-				'_case_api_id'       => $case_data['id'],
-				'_case_synced_at'    => current_time( 'mysql' ),
+				'brag_book_gallery_case_id'       => $case_data['caseId'],
+				'brag_book_gallery_synced_at'    => current_time( 'mysql' ),
 				'_yoast_wpseo_metadesc' => $meta_description,
 			],
 		];
@@ -3305,7 +3309,7 @@ class Data_Sync {
 			'[brag_book_gallery]
 
 <!-- Case ID: %d, Procedure ID: %d, Synced: %s -->',
-			$case_data['id'] ?? 0,
+			$case_data['caseId'] ?? 0,
 			$case_data['procedureId'] ?? 0,
 			current_time( 'mysql' )
 		);
@@ -3334,7 +3338,7 @@ class Data_Sync {
 		}
 
 		// Update sync timestamp
-		update_post_meta( $post_id, '_case_synced_at', current_time( 'mysql' ) );
+		update_post_meta( $post_id, 'brag_book_gallery_synced_at', current_time( 'mysql' ) );
 
 		return $post_id;
 	}
@@ -3511,7 +3515,7 @@ class Data_Sync {
 		}
 
 		// Fallback: build title from case data
-		$case_id = $case_data['id'] ?? 'Unknown';
+		$case_id = $case_data['caseId'] ?? 'Unknown';
 		$age     = $case_data['age'] ?? '';
 		$gender  = $case_data['gender'] ?? '';
 
@@ -3564,7 +3568,7 @@ class Data_Sync {
 	 * @since 3.0.0
 	 */
 	private function generate_case_slug( array $case_data ): string {
-		$case_id = $case_data['id'] ?? 'unknown';
+		$case_id = $case_data['caseId'] ?? 'unknown';
 
 		// First, check for seoInfo.slug (primary source)
 		if ( isset( $case_data['seoInfo']['slug'] ) && ! empty( $case_data['seoInfo']['slug'] ) ) {
@@ -3798,7 +3802,7 @@ class Data_Sync {
 			foreach ( $unassigned_posts->posts as $post_id ) {
 				try {
 					// Try to get original procedure ID from meta
-					$original_case_id = get_post_meta( $post_id, '_original_case_id', true );
+					$original_case_id = get_post_meta( $post_id, 'brag_book_gallery_original_case_id', true );
 					$procedure_id     = get_post_meta( $post_id, '_procedure_id', true );
 
 					if ( $procedure_id ) {
@@ -3811,7 +3815,7 @@ class Data_Sync {
 						];
 					} else {
 						// Try to get procedure IDs from stored case data
-						$procedure_ids_meta = get_post_meta( $post_id, '_case_procedure_ids', true );
+						$procedure_ids_meta = get_post_meta( $post_id, 'brag_book_gallery_procedure_ids', true );
 						if ( $procedure_ids_meta ) {
 							$procedure_ids = explode( ',', $procedure_ids_meta );
 							$case_data     = [ 'procedureIds' => array_map( 'intval', $procedure_ids ) ];
@@ -3942,7 +3946,7 @@ class Data_Sync {
 			'Case %s: Post ID %d, API ID %d, Procedure ID %d',
 			$operation_type,
 			$post_id,
-			$case_data['id'] ?? 0,
+			$case_data['caseId'] ?? 0,
 			$procedure_id
 		);
 
@@ -3954,7 +3958,7 @@ class Data_Sync {
 				'operation'       => $operation_type,
 				'item_type'       => 'case',
 				'wordpress_id'    => $post_id,
-				'api_id'          => $case_data['id'] ?? null,
+				'api_id'          => $case_data['caseId'] ?? null,
 				'parent_id'       => $procedure_id,
 				'status'          => 'success',
 				'details'         => $safe_details,
@@ -4469,10 +4473,10 @@ class Data_Sync {
 		// Get WordPress post IDs for these case IDs in order
 		$ordered_post_ids = [];
 		foreach ( $case_ids_in_order as $case_id ) {
-			// Try current format first (brag_book_gallery_api_id)
+			// Try current format first (brag_book_gallery_procedure_case_id)
 			$posts = get_posts( [
 				'post_type'   => 'brag_book_cases',
-				'meta_key'    => 'brag_book_gallery_api_id',
+				'meta_key'    => 'brag_book_gallery_procedure_case_id',
 				'meta_value'  => $case_id,
 				'numberposts' => 1,
 				'fields'      => 'ids'
@@ -4482,7 +4486,7 @@ class Data_Sync {
 			if ( empty( $posts ) ) {
 				$posts = get_posts( [
 					'post_type'   => 'brag_book_cases',
-					'meta_key'    => '_case_api_id',
+					'meta_key'    => 'brag_book_gallery_procedure_case_id',
 					'meta_value'  => $case_id,
 					'numberposts' => 1,
 					'fields'      => 'ids'
@@ -4575,15 +4579,12 @@ class Data_Sync {
 	 * @since 3.3.3
 	 */
 	private function resume_sync( array $state ): array {
-		error_log( 'BRAG book Gallery Sync: Resuming sync from saved state' );
-		error_log( 'BRAG book Gallery Sync: State: ' . wp_json_encode( $state ) );
 
 		// Update session ID
 		$this->sync_session_id = $state['session_id'];
 
 		// Check if state is too old (older than 1 hour)
 		if ( isset( $state['timestamp'] ) && ( time() - $state['timestamp'] ) > 3600 ) {
-			error_log( 'BRAG book Gallery Sync: State too old, starting fresh' );
 			$this->clear_sync_state();
 
 			return $this->run_two_stage_sync( $state['include_cases'] ?? true );
@@ -4591,15 +4592,11 @@ class Data_Sync {
 
 		// Continue from where we left off based on stage
 		if ( ! isset( $state['stage'] ) ) {
-			error_log( 'BRAG book Gallery Sync: No stage in state, starting fresh' );
 			$this->clear_sync_state();
 
 			return $this->run_two_stage_sync( $state['include_cases'] ?? true );
 		}
 
-		// For now, just restart - full resume logic would be complex
-		// In future, could resume from specific procedure/page
-		error_log( 'BRAG book Gallery Sync: Resuming by restarting sync (future: implement granular resume)' );
 		$this->clear_sync_state();
 
 		return $this->run_two_stage_sync( $state['include_cases'] ?? true );

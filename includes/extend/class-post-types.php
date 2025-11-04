@@ -254,28 +254,30 @@ class Post_Types {
 		wp_nonce_field( 'save_case_api_data', 'case_api_data_nonce' );
 
 
-		// Get existing values (check new format first, then fallback to old format)
-		$api_case_id          = get_post_meta( $post->ID, 'brag_book_gallery_api_id', true ) ?: get_post_meta( $post->ID, '_case_api_id', true );
-		$case_notes           = get_post_meta( $post->ID, 'brag_book_gallery_notes', true ) ?: get_post_meta( $post->ID, '_case_notes', true );
-		$patient_age          = get_post_meta( $post->ID, 'brag_book_gallery_patient_age', true ) ?: get_post_meta( $post->ID, '_case_patient_age', true );
-		$patient_gender       = get_post_meta( $post->ID, 'brag_book_gallery_gender', true ) ?: get_post_meta( $post->ID, 'brag_book_gallery_patient_gender', true ) ?: get_post_meta( $post->ID, '_case_patient_gender', true );
-		$ethnicity            = get_post_meta( $post->ID, 'brag_book_gallery_ethnicity', true ) ?: get_post_meta( $post->ID, '_case_ethnicity', true );
-		$height               = get_post_meta( $post->ID, 'brag_book_gallery_height', true ) ?: get_post_meta( $post->ID, '_case_height', true );
-		$height_unit          = get_post_meta( $post->ID, 'brag_book_gallery_height_unit', true ) ?: get_post_meta( $post->ID, '_case_height_unit', true );
-		$weight               = get_post_meta( $post->ID, 'brag_book_gallery_weight', true ) ?: get_post_meta( $post->ID, '_case_weight', true );
-		$weight_unit          = get_post_meta( $post->ID, 'brag_book_gallery_weight_unit', true ) ?: get_post_meta( $post->ID, '_case_weight_unit', true );
-		$procedure_ids        = get_post_meta( $post->ID, 'brag_book_gallery_procedure_ids', true ) ?: get_post_meta( $post->ID, '_case_procedure_ids', true );
-		$seo_suffix_url       = get_post_meta( $post->ID, 'brag_book_gallery_seo_suffix_url', true ) ?: get_post_meta( $post->ID, '_case_seo_suffix_url', true );
-		$seo_headline         = get_post_meta( $post->ID, 'brag_book_gallery_seo_headline', true ) ?: get_post_meta( $post->ID, '_case_seo_headline', true );
-		$seo_page_title       = get_post_meta( $post->ID, 'brag_book_gallery_seo_page_title', true ) ?: get_post_meta( $post->ID, '_case_seo_page_title', true );
-		$seo_page_description = get_post_meta( $post->ID, 'brag_book_gallery_seo_page_description', true ) ?: get_post_meta( $post->ID, '_case_seo_page_description', true );
-		$seo_alt_text         = get_post_meta( $post->ID, 'brag_book_gallery_seo_alt_text', true ) ?: get_post_meta( $post->ID, '_case_seo_alt_text', true );
-		$doctor_name          = get_post_meta( $post->ID, 'brag_book_gallery_doctor_name', true ) ?: get_post_meta( $post->ID, '_case_doctor_name', true );
-		$member_id            = get_post_meta( $post->ID, 'brag_book_gallery_member_id', true ) ?: get_post_meta( $post->ID, '_case_member_id', true );
+		// Get existing values
+		$procedure_case_id    = get_post_meta( $post->ID, 'brag_book_gallery_procedure_case_id', true );
+		$case_id              = get_post_meta( $post->ID, 'brag_book_gallery_case_id', true );
+		$case_notes           = get_post_meta( $post->ID, 'brag_book_gallery_notes', true );
+		$patient_age          = get_post_meta( $post->ID, 'brag_book_gallery_patient_age', true );
+		$patient_gender       = get_post_meta( $post->ID, 'brag_book_gallery_gender', true ) ?: get_post_meta( $post->ID, 'brag_book_gallery_patient_gender', true );
+		$ethnicity            = get_post_meta( $post->ID, 'brag_book_gallery_ethnicity', true );
+		$height               = get_post_meta( $post->ID, 'brag_book_gallery_height', true );
+		$height_unit          = get_post_meta( $post->ID, 'brag_book_gallery_height_unit', true );
+		$weight               = get_post_meta( $post->ID, 'brag_book_gallery_weight', true );
+		$weight_unit          = get_post_meta( $post->ID, 'brag_book_gallery_weight_unit', true );
+		$weight_unit          = get_post_meta( $post->ID, 'brag_book_gallery_weight_unit', true );
+		$procedure_ids        = get_post_meta( $post->ID, 'brag_book_gallery_procedure_ids', true );
+		$seo_suffix_url       = get_post_meta( $post->ID, 'brag_book_gallery_seo_suffix_url', true );
+		$seo_headline         = get_post_meta( $post->ID, 'brag_book_gallery_seo_headline', true );
+		$seo_page_title       = get_post_meta( $post->ID, 'brag_book_gallery_seo_page_title', true );
+		$seo_page_description = get_post_meta( $post->ID, 'brag_book_gallery_seo_page_description', true );
+		$seo_alt_text         = get_post_meta( $post->ID, 'brag_book_gallery_seo_alt_text', true );
+		$doctor_name          = get_post_meta( $post->ID, 'brag_book_gallery_doctor_name', true );
+		$member_id            = get_post_meta( $post->ID, 'brag_book_gallery_member_id', true );
 
 		// Photo URLs
-		$post_processed_image_url          = get_post_meta( $post->ID, 'brag_book_gallery_post_processed_image_url', true ) ?: get_post_meta( $post->ID, '_case_post_processed_image_url', true );
-		$high_res_post_processed_image_url = get_post_meta( $post->ID, 'brag_book_gallery_high_res_post_processed_image_url', true ) ?: get_post_meta( $post->ID, '_case_high_res_post_processed_image_url', true );
+		$post_processed_image_url          = get_post_meta( $post->ID, 'brag_book_gallery_post_processed_image_url', true );
+		$high_res_post_processed_image_url = get_post_meta( $post->ID, 'brag_book_gallery_high_res_post_processed_image_url', true );
 
 		?>
 		<div class="brag-book-gallery-admin-wrap">
@@ -297,19 +299,32 @@ class Post_Types {
 			<div id="api-basic" class="tab-content active">
 				<h4><?php esc_html_e( 'Basic Information', 'brag-book-gallery' ); ?></h4>
 				<table class="form-table">
-					<tr>
-						<th scope="row">
-							<label
-								for="brag_book_gallery_api_id"><?php esc_html_e( 'API Case ID', 'brag-book-gallery' ); ?></label>
-						</th>
-						<td>
-							<input type="number" id="brag_book_gallery_api_id"
-								   name="brag_book_gallery_api_id"
-								   value="<?php echo esc_attr( $api_case_id ); ?>"
-								   class="regular-text"/>
-							<p class="description"><?php esc_html_e( 'Unique case ID from the BRAGBook API', 'brag-book-gallery' ); ?></p>
-						</td>
-					</tr>
+				<tr>
+					<th scope="row">
+						<label
+							for="brag_book_gallery_procedure_case_id"><?php esc_html_e( 'Procedure Case ID', 'brag-book-gallery' ); ?></label>
+					</th>
+					<td>
+						<input type="number" id="brag_book_gallery_procedure_case_id"
+							   name="brag_book_gallery_procedure_case_id"
+							   value="<?php echo esc_attr( $procedure_case_id ); ?>"
+							   class="regular-text"/>
+						<p class="description"><?php esc_html_e( 'The procedure-specific case ID (id field from API)', 'brag-book-gallery' ); ?></p>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row">
+						<label
+							for="brag_book_gallery_case_id"><?php esc_html_e( 'Case ID', 'brag-book-gallery' ); ?></label>
+					</th>
+					<td>
+						<input type="number" id="brag_book_gallery_case_id"
+							   name="brag_book_gallery_case_id"
+							   value="<?php echo esc_attr( $case_id ); ?>"
+							   class="regular-text"/>
+						<p class="description"><?php esc_html_e( 'The main case ID (caseId field from API)', 'brag-book-gallery' ); ?></p>
+					</td>
+				</tr>
 					<tr>
 						<th scope="row">
 							<label
@@ -467,7 +482,7 @@ class Post_Types {
 				// Get procedure details JSON
 				$procedure_details_json = get_post_meta( $post->ID, 'brag_book_gallery_procedure_details', true );
 				if ( empty( $procedure_details_json ) ) {
-					$procedure_details_json = get_post_meta( $post->ID, '_case_procedure_details', true );
+					$procedure_details_json = get_post_meta( $post->ID, 'brag_book_gallery_procedure_details', true );
 				}
 
 				$procedure_details = ! empty( $procedure_details_json ) ? json_decode( $procedure_details_json, true ) : [];
@@ -1092,7 +1107,7 @@ class Post_Types {
 		wp_nonce_field( 'save_case_images', 'case_images_nonce' );
 
 		// Get existing gallery images (check new format first, then fallback to old format)
-		$gallery_images = get_post_meta( $post->ID, 'brag_book_gallery_images', true ) ?: get_post_meta( $post->ID, '_case_gallery_images', true );
+		$gallery_images = get_post_meta( $post->ID, 'brag_book_gallery_images', true );
 		if ( ! is_array( $gallery_images ) ) {
 			$gallery_images = [];
 		}
@@ -1236,7 +1251,7 @@ class Post_Types {
 		echo '</div>';
 
 			// Show download status for images
-			$api_downloaded_images = get_post_meta( $post->ID, '_case_api_downloaded_images', true );
+			$api_downloaded_images = get_post_meta( $post->ID, 'brag_book_gallery_api_downloaded_images', true );
 			if ( ! empty( $api_downloaded_images ) ) {
 				echo '<div class="brag-book-info-box" style="margin-top: 20px;">';
 				echo '<h4>📥 ' . esc_html__( 'Downloaded Images', 'brag-book-gallery' ) . '</h4>';
@@ -1313,13 +1328,13 @@ class Post_Types {
 		$api_images_deleted = self::delete_api_downloaded_images( $post_id );
 
 		// Delete any remaining gallery images that weren't from API
-		$gallery_images  = get_post_meta( $post_id, '_case_gallery_images', true );
+		$gallery_images  = get_post_meta( $post_id, 'brag_book_gallery_gallery_images', true );
 		$gallery_deleted = 0;
 
 		if ( is_array( $gallery_images ) ) {
 			foreach ( $gallery_images as $attachment_id ) {
 				// Check if this image belongs to this case
-				$image_case_id = get_post_meta( $attachment_id, '_case_post_id', true );
+				$image_case_id = get_post_meta( $attachment_id, 'brag_book_gallery_attachment_case_post_id', true );
 				if ( $image_case_id == $post_id ) {
 					if ( wp_delete_attachment( $attachment_id, true ) ) {
 						$gallery_deleted ++;
@@ -1393,7 +1408,8 @@ class Post_Types {
 			'brag_book_gallery_member_id'      => 'absint',
 
 			// API data
-			'brag_book_gallery_api_id'         => 'absint',
+			'brag_book_gallery_case_id',
+					'brag_book_gallery_procedure_case_id'         => 'absint',
 			'brag_book_gallery_patient_id'     => 'sanitize_text_field',
 			'brag_book_gallery_org_id'         => 'sanitize_text_field',
 			'brag_book_gallery_quality_score'  => 'absint',
@@ -1417,9 +1433,6 @@ class Post_Types {
 			if ( isset( $_POST[ $field ] ) ) {
 				$value = call_user_func( $sanitize_function, $_POST[ $field ] );
 				update_post_meta( $post_id, $field, $value );
-				// Also save with old prefix for backward compatibility
-				$old_field = '_case_' . str_replace( 'brag_book_gallery_', '', $field );
-				update_post_meta( $post_id, $old_field, $value );
 			}
 		}
 
@@ -1437,9 +1450,6 @@ class Post_Types {
 			if ( isset( $_POST[ $field ] ) ) {
 				$value = $_POST[ $field ] === '1' ? '1' : '0';
 				update_post_meta( $post_id, $field, $value );
-				// Also save with old prefix for backward compatibility
-				$old_field = '_case_' . str_replace( 'brag_book_gallery_', '', $field );
-				update_post_meta( $post_id, $old_field, $value );
 			}
 		}
 
@@ -1485,7 +1495,7 @@ class Post_Types {
 				// Save with new format
 				update_post_meta( $post_id, 'brag_book_gallery_image_url_sets', $sanitized_sets );
 				// Also save with old format for backward compatibility
-				update_post_meta( $post_id, '_case_image_url_sets', $sanitized_sets );
+				update_post_meta( $post_id, 'brag_book_gallery_image_url_sets', $sanitized_sets );
 			}
 		}
 
@@ -1573,13 +1583,13 @@ class Post_Types {
 				$gallery_images = array_filter( $gallery_images ); // Remove empty values
 				update_post_meta( $post_id, 'brag_book_gallery_images', $gallery_images );
 				// Also save with old prefix for backward compatibility
-				update_post_meta( $post_id, '_case_gallery_images', $gallery_images );
+				update_post_meta( $post_id, 'brag_book_gallery_gallery_images', $gallery_images );
 			}
 			// Handle old format (case_gallery_images) for backward compatibility
 			elseif ( isset( $_POST['case_gallery_images'] ) ) {
 				$gallery_images = array_map( 'absint', explode( ',', $_POST['case_gallery_images'] ) );
 				$gallery_images = array_filter( $gallery_images ); // Remove empty values
-				update_post_meta( $post_id, '_case_gallery_images', $gallery_images );
+				update_post_meta( $post_id, 'brag_book_gallery_gallery_images', $gallery_images );
 				// Also save with new prefix
 				update_post_meta( $post_id, 'brag_book_gallery_images', $gallery_images );
 			}
@@ -1632,7 +1642,7 @@ class Post_Types {
 
 			// Save in both new and legacy formats
 			update_post_meta( $post_id, 'brag_book_gallery_image_url_sets', $image_url_sets );
-			update_post_meta( $post_id, '_case_image_url_sets', $image_url_sets );
+			update_post_meta( $post_id, 'brag_book_gallery_image_url_sets', $image_url_sets );
 		}
 	}
 
@@ -1651,7 +1661,8 @@ class Post_Types {
 			'brag_book_gallery_notes',
 
 			// API data
-			'brag_book_gallery_api_id',
+			'brag_book_gallery_case_id',
+			'brag_book_gallery_procedure_case_id',
 			'brag_book_gallery_patient_id',
 			'brag_book_gallery_user_id',
 			'brag_book_gallery_org_id',
@@ -1818,7 +1829,7 @@ class Post_Types {
 	 * @since 3.0.0
 	 */
 	public static function save_api_response_data( int $post_id, array $api_data, ?callable $progress_callback = null ): bool {
-		$case_id = $api_data['id'] ?? 'unknown';
+		$case_id = $api_data['caseId'] ?? 'unknown';
 
 		// DEBUG: Log received data
 		error_log( "=== SAVE_API_RESPONSE_DATA DEBUG: Post {$post_id}, Case {$case_id} ===" );
@@ -1844,7 +1855,7 @@ class Post_Types {
 		if ( ! isset( $api_data['isForWebsite'] ) || ! $api_data['isForWebsite'] ) {
 			error_log( sprintf(
 				'[BRAG Book Gallery] Skipping case ID %s - not approved for website (isForWebsite: %s)',
-				$api_data['id'] ?? 'unknown',
+				$api_data['caseId'] ?? 'unknown',
 				isset( $api_data['isForWebsite'] ) ? ( $api_data['isForWebsite'] ? 'true' : 'false' ) : 'not set'
 			) );
 
@@ -1854,7 +1865,8 @@ class Post_Types {
 		// Map API response fields to post meta (new format with brag_book_gallery_ prefix)
 		$field_mapping = [
 			// Basic Info
-			'id'                => 'brag_book_gallery_api_id',
+			'id'                => 'brag_book_gallery_procedure_case_id',
+			'caseId'            => 'brag_book_gallery_case_id',
 			'patientId'         => 'brag_book_gallery_patient_id',
 			'userId'            => 'brag_book_gallery_user_id',
 			'orgId'             => 'brag_book_gallery_org_id',
@@ -1886,46 +1898,20 @@ class Post_Types {
 			'updatedAt'         => 'brag_book_gallery_updated_at',
 		];
 
-		// Legacy field mapping for backward compatibility
-		$legacy_field_mapping = [
-			// Basic Info
-			'id'                => '_case_api_id',
-			'patientId'         => '_case_patient_id',
-			'userId'            => '_case_user_id',
-			'orgId'             => '_case_org_id',
-			'emrId'             => '_case_emr_id',
-
-			// Patient Data
-			'age'               => '_case_patient_age',
-			'gender'            => '_case_patient_gender',
-			'ethnicity'         => '_case_ethnicity',
-			'height'            => '_case_height',
-			'heightUnit'        => '_case_height_unit',
-			'weight'            => '_case_weight',
-			'weightUnit'        => '_case_weight_unit',
-
-			// Additional fields
-			'details'           => '_case_notes',
-			'description'       => '_case_notes', // v2 description maps to notes field (legacy)
-		];
 
 		// Save basic fields
 		if ( $progress_callback ) {
 			$progress_callback( "Writing case data fields for post {$post_id}..." );
 		}
 
-		// Save both new and legacy field formats for backward compatibility
-		$all_mappings = [ $field_mapping, $legacy_field_mapping ];
-
-		foreach ( $all_mappings as $mapping_index => $mapping ) {
-			$mapping_type = $mapping_index === 0 ? 'modern' : 'legacy';
-			foreach ( $mapping as $api_field => $meta_key ) {
+	// Save field mappings
+		foreach ( $field_mapping as $api_field => $meta_key ) {
 				if ( isset( $api_data[ $api_field ] ) ) {
 					$value = $api_data[ $api_field ];
 
 					// DEBUG: Log specific fields we're tracking
 					if ( in_array( $api_field, [ 'age', 'gender', 'ethnicity', 'height', 'weight' ] ) ) {
-						error_log( "Saving {$mapping_type} field '{$api_field}' => '{$meta_key}': " . var_export( $value, true ) );
+						error_log( "Saving field '{$api_field}' => '{$meta_key}': " . var_export( $value, true ) );
 					}
 
 					// Convert boolean values
@@ -1933,19 +1919,20 @@ class Post_Types {
 						$value = $value ? '1' : '0';
 					}
 
-					// Sanitize based on field type (check both new and legacy formats)
+					// Sanitize based on field type
 					if ( in_array( $meta_key, [
-						'brag_book_gallery_api_id', '_case_api_id',
-						'brag_book_gallery_patient_age', '_case_patient_age',
-						'brag_book_gallery_height', '_case_height',
-						'brag_book_gallery_weight', '_case_weight',
-						'brag_book_gallery_quality_score', '_case_quality_score',
-						'brag_book_gallery_after1_timeframe', '_case_after1_timeframe',
-						'brag_book_gallery_after2_timeframe', '_case_after2_timeframe'
+						'brag_book_gallery_case_id',
+					'brag_book_gallery_procedure_case_id',
+						'brag_book_gallery_patient_age',
+						'brag_book_gallery_height',
+						'brag_book_gallery_weight',
+						'brag_book_gallery_quality_score',
+						'brag_book_gallery_after1_timeframe',
+						'brag_book_gallery_after2_timeframe'
 					] ) ) {
 						$value = absint( $value );
 					} elseif ( in_array( $meta_key, [
-						'brag_book_gallery_notes', '_case_notes'
+						'brag_book_gallery_notes'
 					] ) ) {
 						$value = wp_kses_post( $value );
 					} elseif ( in_array( $meta_key, [
@@ -1964,19 +1951,52 @@ class Post_Types {
 					update_post_meta( $post_id, $meta_key, $value );
 				}
 			}
-		}
 
 		// Handle procedure IDs - save in both formats
 		if ( isset( $api_data['procedureIds'] ) && is_array( $api_data['procedureIds'] ) ) {
 			$procedure_ids = implode( ',', array_map( 'absint', $api_data['procedureIds'] ) );
 			update_post_meta( $post_id, 'brag_book_gallery_procedure_ids', $procedure_ids );
-			update_post_meta( $post_id, '_case_procedure_ids', $procedure_ids ); // Legacy compatibility
 		}
 
 		// Handle category IDs (v2 API field)
 		if ( isset( $api_data['categoryIds'] ) && is_array( $api_data['categoryIds'] ) ) {
 			$category_ids = implode( ',', array_map( 'absint', $api_data['categoryIds'] ) );
 			update_post_meta( $post_id, 'brag_book_gallery_category_ids', $category_ids );
+		}
+
+		// Handle creator/doctor information
+		if ( isset( $api_data['creator'] ) && is_array( $api_data['creator'] ) ) {
+			$creator = $api_data['creator'];
+
+			// Map creator.id to member ID
+			if ( isset( $creator['id'] ) ) {
+				update_post_meta( $post_id, 'brag_book_gallery_member_id', absint( $creator['id'] ) );
+			}
+
+			// Map creator.profileLink to profile link
+			if ( isset( $creator['profileLink'] ) && ! empty( $creator['profileLink'] ) ) {
+				update_post_meta( $post_id, 'brag_book_gallery_profile_link', esc_url_raw( $creator['profileLink'] ) );
+			}
+
+			// Build doctor name from firstName + lastName + ', ' + suffix
+			$doctor_name_parts = [];
+			if ( isset( $creator['firstName'] ) && ! empty( $creator['firstName'] ) ) {
+				$doctor_name_parts[] = sanitize_text_field( $creator['firstName'] );
+			}
+			if ( isset( $creator['lastName'] ) && ! empty( $creator['lastName'] ) ) {
+				$doctor_name_parts[] = sanitize_text_field( $creator['lastName'] );
+			}
+
+			if ( ! empty( $doctor_name_parts ) ) {
+				$doctor_name = implode( ' ', $doctor_name_parts );
+
+				// Add suffix if present
+				if ( isset( $creator['suffix'] ) && ! empty( $creator['suffix'] ) ) {
+					$doctor_name .= ', ' . sanitize_text_field( $creator['suffix'] );
+				}
+
+				update_post_meta( $post_id, 'brag_book_gallery_doctor_name', $doctor_name );
+			}
 		}
 
 		// Handle SEO data from caseDetails and update post title
@@ -1989,57 +2009,66 @@ class Post_Types {
 				if ( isset( $case_detail['seoSuffixUrl'] ) ) {
 					$seo_suffix = sanitize_text_field( $case_detail['seoSuffixUrl'] );
 					update_post_meta( $post_id, 'brag_book_gallery_seo_suffix_url', $seo_suffix );
-					update_post_meta( $post_id, '_case_seo_suffix_url', $seo_suffix ); // Legacy compatibility
 				}
 				if ( isset( $case_detail['seoHeadline'] ) && ! empty( $case_detail['seoHeadline'] ) ) {
 					$seo_headline = sanitize_text_field( $case_detail['seoHeadline'] );
 					update_post_meta( $post_id, 'brag_book_gallery_seo_headline', $seo_headline );
-					update_post_meta( $post_id, '_case_seo_headline', $seo_headline ); // Legacy compatibility
 				}
 				if ( isset( $case_detail['seoPageTitle'] ) && ! empty( $case_detail['seoPageTitle'] ) ) {
 					$seo_page_title = sanitize_text_field( $case_detail['seoPageTitle'] );
 					update_post_meta( $post_id, 'brag_book_gallery_seo_page_title', $seo_page_title );
-					update_post_meta( $post_id, '_case_seo_page_title', $seo_page_title ); // Legacy compatibility
 				}
 				if ( isset( $case_detail['seoPageDescription'] ) && ! empty( $case_detail['seoPageDescription'] ) ) {
 					$seo_page_description = sanitize_textarea_field( $case_detail['seoPageDescription'] );
 					update_post_meta( $post_id, 'brag_book_gallery_seo_page_description', $seo_page_description );
-					update_post_meta( $post_id, '_case_seo_page_description', $seo_page_description ); // Legacy compatibility
 				}
 			}
 		}
 
 		// Update post title based on naming logic
+		// Use the assigned taxonomy term name, not procedureIds (which may have multiple)
 		$case_id    = $api_data['id'] ?? $post_id;
 		$post_title = $seo_headline ?: '';
 
-		// If no seoHeadline, check for multiple procedures
+		// If no seoHeadline, generate title from assigned procedure taxonomy
 		if ( ! $post_title ) {
-			// Check if this case has multiple procedures
-			$has_multiple_procedures = false;
+			// Get the procedure taxonomy term assigned to this post
+			$terms = wp_get_post_terms( $post_id, \BRAGBookGallery\Includes\Extend\Taxonomies::TAXONOMY_PROCEDURES );
 
-			// Check procedureIds array
-			if ( isset( $api_data['procedureIds'] ) && is_array( $api_data['procedureIds'] ) && count( $api_data['procedureIds'] ) > 1 ) {
-				$has_multiple_procedures = true;
-			}
-			// Or check procedureDetails array
-			elseif ( isset( $api_data['procedureDetails'] ) && is_array( $api_data['procedureDetails'] ) && count( $api_data['procedureDetails'] ) > 1 ) {
-				$has_multiple_procedures = true;
-			}
-
-			if ( $has_multiple_procedures ) {
-				// Use "Combo Procedures" for multi-procedure cases
-				$display_case_id = $api_data['original_case_id'] ?? $case_id;
-				$post_title = 'Combo Procedures #' . $display_case_id;
+			if ( ! is_wp_error( $terms ) && ! empty( $terms ) ) {
+				// Use the first (and should be only) assigned procedure term
+				$procedure_name  = $terms[0]->name;
+				$display_case_id = $api_data['caseId'] ?? $case_id;
+				$post_title      = $procedure_name . ' #' . $display_case_id;
 			} else {
-				// Single procedure - use procedure name
-				$procedure_name = self::get_primary_procedure_name( $api_data );
+				// Fallback: try to get procedure name from stored procedure IDs
+				$display_case_id = $api_data['caseId'] ?? $case_id;
+				$procedure_name  = null;
+
+				// Check if we have procedure IDs in the API data
+				if ( isset( $api_data['procedureIds'] ) && is_array( $api_data['procedureIds'] ) && ! empty( $api_data['procedureIds'] ) ) {
+					// Get the first procedure ID
+					$first_procedure_id = $api_data['procedureIds'][0];
+
+					// Look up the procedure term by its API ID
+					$procedure_terms = get_terms( [
+						'taxonomy'   => \BRAGBookGallery\Includes\Extend\Taxonomies::TAXONOMY_PROCEDURES,
+						'meta_key'   => 'procedure_id',
+						'meta_value' => $first_procedure_id,
+						'hide_empty' => false,
+						'number'     => 1,
+					] );
+
+					if ( ! is_wp_error( $procedure_terms ) && ! empty( $procedure_terms ) ) {
+						$procedure_name = $procedure_terms[0]->name;
+					}
+				}
+
+				// Generate title with procedure name if found, otherwise use generic "Case"
 				if ( $procedure_name ) {
-					// For single procedure cases, use the original case ID
-					$display_case_id = $api_data['original_case_id'] ?? $case_id;
-					$post_title      = $procedure_name . ' #' . $display_case_id;
+					$post_title = $procedure_name . ' #' . $display_case_id;
 				} else {
-					$post_title = "Case #{$case_id}";
+					$post_title = "Case #{$display_case_id}";
 				}
 			}
 		}
@@ -2058,15 +2087,14 @@ class Post_Types {
 		if ( isset( $api_data['procedureDetails'] ) && is_array( $api_data['procedureDetails'] ) ) {
 			// Save the full procedure details as JSON for reference (both modern and legacy)
 			update_post_meta( $post_id, 'brag_book_gallery_procedure_details', wp_json_encode( $api_data['procedureDetails'] ) );
-			update_post_meta( $post_id, '_case_procedure_details', wp_json_encode( $api_data['procedureDetails'] ) );
+			update_post_meta( $post_id, 'brag_book_gallery_procedure_details', wp_json_encode( $api_data['procedureDetails'] ) );
 
 			// Extract and save individual procedure details for easier querying
 			foreach ( $api_data['procedureDetails'] as $procedure_id => $details ) {
 				if ( is_array( $details ) ) {
 					foreach ( $details as $detail_key => $detail_values ) {
-						// Create meta keys (modern and legacy)
+						// Create meta key
 						$modern_meta_key = 'brag_book_gallery_procedure_detail_' . $procedure_id . '_' . sanitize_key( $detail_key );
-						$legacy_meta_key = '_case_procedure_detail_' . $procedure_id . '_' . sanitize_key( $detail_key );
 
 						// Save as array if multiple values, string if single value
 						$value = null;
@@ -2078,9 +2106,8 @@ class Post_Types {
 							$value = $detail_values;
 						}
 
-						// Save in both formats
+						// Save meta
 						update_post_meta( $post_id, $modern_meta_key, $value );
-						update_post_meta( $post_id, $legacy_meta_key, $value );
 					}
 				}
 			}
@@ -2189,16 +2216,14 @@ class Post_Types {
 
 				// Save legacy individual URL fields (keep existing functionality for backwards compatibility)
 				if ( isset( $photo_set['postProcessedImageLocation'] ) ) {
-					update_post_meta( $post_id, '_case_post_processed_image_url', esc_url_raw( $photo_set['postProcessedImageLocation'] ) ); // Legacy compatibility
 				}
 				if ( isset( $photo_set['highResPostProcessedImageLocation'] ) ) {
-					update_post_meta( $post_id, '_case_high_res_post_processed_image_url', esc_url_raw( $photo_set['highResPostProcessedImageLocation'] ) ); // Legacy compatibility
 				}
 				if ( isset( $photo_set['seoAltText'] ) ) {
-					update_post_meta( $post_id, '_case_seo_alt_text', sanitize_text_field( $photo_set['seoAltText'] ) );
+					update_post_meta( $post_id, 'brag_book_gallery_seo_alt_text', sanitize_text_field( $photo_set['seoAltText'] ) );
 				}
 				if ( isset( $photo_set['isNude'] ) ) {
-					update_post_meta( $post_id, '_case_is_nude', $photo_set['isNude'] ? '1' : '0' );
+					update_post_meta( $post_id, 'brag_book_gallery_is_nude', $photo_set['isNude'] ? '1' : '0' );
 				}
 			}
 
@@ -2211,7 +2236,6 @@ class Post_Types {
 				error_log( "BRAG Book Gallery: Image URL sets being saved: " . wp_json_encode( $image_url_sets ) );
 
 				update_post_meta( $post_id, 'brag_book_gallery_image_url_sets', $image_url_sets );
-				update_post_meta( $post_id, '_case_image_url_sets', $image_url_sets ); // Legacy compatibility
 				if ( $progress_callback ) {
 					$progress_callback( "Saved " . count( $image_url_sets ) . " image URL sets for post {$post_id}" );
 				}
@@ -2222,7 +2246,7 @@ class Post_Types {
 		}
 
 		// Store the full API response for reference
-		update_post_meta( $post_id, '_case_api_response', $api_data );
+		update_post_meta( $post_id, 'brag_book_gallery_api_response', $api_data );
 
 		return true;
 	}
@@ -2420,8 +2444,8 @@ class Post_Types {
 		global $wpdb;
 		$existing_attachment_id = $wpdb->get_var( $wpdb->prepare(
 			"SELECT p.ID FROM {$wpdb->posts} p
-					INNER JOIN {$wpdb->postmeta} pm1 ON p.ID = pm1.post_id AND pm1.meta_key = '_case_source_url'
-					INNER JOIN {$wpdb->postmeta} pm2 ON p.ID = pm2.post_id AND pm2.meta_key = '_case_post_id'
+					INNER JOIN {$wpdb->postmeta} pm1 ON p.ID = pm1.post_id AND pm1.meta_key = 'brag_book_gallery_attachment_source_url'
+					INNER JOIN {$wpdb->postmeta} pm2 ON p.ID = pm2.post_id AND pm2.meta_key = 'brag_book_gallery_attachment_case_post_id'
 					WHERE p.post_type = 'attachment'
 					AND pm1.meta_value = %s
 					AND pm2.meta_value = %d
@@ -2449,7 +2473,7 @@ class Post_Types {
 		// Generate filename and alt text based on case name and position
 		$case_post   = get_post( $post_id );
 		$case_title  = $case_post ? $case_post->post_title : '';
-		$case_api_id = get_post_meta( $post_id, '_case_api_id', true ) ?: $post_id;
+		$case_api_id = get_post_meta( $post_id, true ) ?: $post_id;
 
 		// Generate SEO-friendly filename: procedure-name-id-position.jpg
 		$filename_base = '';
@@ -2506,9 +2530,9 @@ class Post_Types {
 		}
 
 		// Add metadata to track this image belongs to the case
-		update_post_meta( $attachment_id, '_case_post_id', $post_id );
-		update_post_meta( $attachment_id, '_case_source_url', esc_url_raw( $image_url ) );
-		update_post_meta( $attachment_id, '_case_downloaded_date', current_time( 'mysql' ) );
+		update_post_meta( $attachment_id, 'brag_book_gallery_attachment_case_post_id', $post_id );
+		update_post_meta( $attachment_id, 'brag_book_gallery_attachment_source_url', esc_url_raw( $image_url ) );
+		update_post_meta( $attachment_id, 'brag_book_gallery_attachment_downloaded_date', current_time( 'mysql' ) );
 
 		// Set alt text for the attachment
 		if ( ! empty( $alt_text ) ) {
@@ -2533,7 +2557,7 @@ class Post_Types {
 		$deleted_count = 0;
 
 		// Method 1: Get API-downloaded image IDs from case meta
-		$api_images = get_post_meta( $post_id, '_case_api_downloaded_images', true );
+		$api_images = get_post_meta( $post_id, 'brag_book_gallery_api_downloaded_images', true );
 		if ( is_array( $api_images ) ) {
 			foreach ( $api_images as $attachment_id ) {
 				if ( wp_delete_attachment( $attachment_id, true ) ) {
@@ -2547,7 +2571,7 @@ class Post_Types {
 			'post_type'      => 'attachment',
 			'meta_query'     => [
 				[
-					'key'   => '_case_post_id',
+					'key'   => 'brag_book_gallery_attachment_case_post_id',
 					'value' => $post_id,
 				],
 			],
@@ -2565,14 +2589,14 @@ class Post_Types {
 		}
 
 		// Clean up the meta fields
-		delete_post_meta( $post_id, '_case_api_downloaded_images' );
+		delete_post_meta( $post_id, 'brag_book_gallery_api_downloaded_images' );
 
 		// Remove deleted images from gallery
-		$gallery_images = get_post_meta( $post_id, '_case_gallery_images', true );
+		$gallery_images = get_post_meta( $post_id, 'brag_book_gallery_gallery_images', true );
 		if ( is_array( $gallery_images ) ) {
 			$all_deleted_images = array_merge( $api_images ?: [], $associated_images );
 			$updated_gallery    = array_diff( $gallery_images, $all_deleted_images );
-			update_post_meta( $post_id, '_case_gallery_images', $updated_gallery );
+			update_post_meta( $post_id, 'brag_book_gallery_gallery_images', $updated_gallery );
 		}
 
 		return $deleted_count;
@@ -2589,7 +2613,7 @@ class Post_Types {
 	 * @since 3.0.0
 	 */
 	public static function get_case_procedure_details( int $post_id ): array {
-		$procedure_details_json = get_post_meta( $post_id, '_case_procedure_details', true );
+		$procedure_details_json = get_post_meta( $post_id, 'brag_book_gallery_procedure_details', true );
 
 		if ( empty( $procedure_details_json ) ) {
 			return [];
@@ -2618,13 +2642,13 @@ class Post_Types {
 		// Find all images tagged with _case_post_id
 		$case_images = get_posts( [
 			'post_type'      => 'attachment',
-			'meta_key'       => '_case_post_id',
+			'meta_key'       => 'brag_book_gallery_attachment_case_post_id',
 			'fields'         => 'ids',
 			'posts_per_page' => - 1,
 		] );
 
 		foreach ( $case_images as $attachment_id ) {
-			$case_id = get_post_meta( $attachment_id, '_case_post_id', true );
+			$case_id = get_post_meta( $attachment_id, 'brag_book_gallery_attachment_case_post_id', true );
 
 			// Check if the associated case still exists
 			if ( ! $case_id || ! get_post( $case_id ) || get_post_type( $case_id ) !== self::POST_TYPE_CASES ) {
@@ -2649,7 +2673,7 @@ class Post_Types {
 		// Count all case images
 		$case_images = get_posts( [
 			'post_type'      => 'attachment',
-			'meta_key'       => '_case_post_id',
+			'meta_key'       => 'brag_book_gallery_attachment_case_post_id',
 			'fields'         => 'ids',
 			'posts_per_page' => - 1,
 		] );
@@ -2662,8 +2686,8 @@ class Post_Types {
 		];
 
 		foreach ( $case_images as $attachment_id ) {
-			$case_id    = get_post_meta( $attachment_id, '_case_post_id', true );
-			$source_url = get_post_meta( $attachment_id, '_case_source_url', true );
+			$case_id    = get_post_meta( $attachment_id, 'brag_book_gallery_attachment_case_post_id', true );
+			$source_url = get_post_meta( $attachment_id, 'brag_book_gallery_attachment_source_url', true );
 
 			// Check if orphaned
 			if ( ! $case_id || ! get_post( $case_id ) || get_post_type( $case_id ) !== self::POST_TYPE_CASES ) {
@@ -2863,15 +2887,15 @@ class Post_Types {
 				$meta_query[] = [
 					'relation' => 'OR',
 					[
-						'key'     => '_case_post_id',
+						'key'     => 'brag_book_gallery_attachment_case_post_id',
 						'compare' => 'EXISTS',
 					],
 					[
-						'key'     => '_case_source_url',
+						'key'     => 'brag_book_gallery_attachment_source_url',
 						'compare' => 'EXISTS',
 					],
 					[
-						'key'     => '_case_downloaded_date',
+						'key'     => 'brag_book_gallery_attachment_downloaded_date',
 						'compare' => 'EXISTS',
 					],
 				];
@@ -2880,7 +2904,7 @@ class Post_Types {
 			case 'api_downloaded':
 				// Show only API downloaded images
 				$meta_query[] = [
-					'key'     => '_case_source_url',
+					'key'     => 'brag_book_gallery_attachment_source_url',
 					'compare' => 'EXISTS',
 				];
 				break;
@@ -2890,11 +2914,11 @@ class Post_Types {
 				$meta_query[] = [
 					'relation' => 'AND',
 					[
-						'key'     => '_case_post_id',
+						'key'     => 'brag_book_gallery_attachment_case_post_id',
 						'compare' => 'EXISTS',
 					],
 					[
-						'key'     => '_case_source_url',
+						'key'     => 'brag_book_gallery_attachment_source_url',
 						'compare' => 'NOT EXISTS',
 					],
 				];
@@ -2919,9 +2943,9 @@ class Post_Types {
 	 * @since 3.0.0
 	 */
 	public function add_brag_book_marker_to_attachment( $response, $attachment, $meta ): array {
-		$case_post_id  = get_post_meta( $attachment->ID, '_case_post_id', true );
-		$source_url    = get_post_meta( $attachment->ID, '_case_source_url', true );
-		$download_date = get_post_meta( $attachment->ID, '_case_downloaded_date', true );
+		$case_post_id  = get_post_meta( $attachment->ID, 'brag_book_gallery_attachment_case_post_id', true );
+		$source_url    = get_post_meta( $attachment->ID, 'brag_book_gallery_attachment_source_url', true );
+		$download_date = get_post_meta( $attachment->ID, 'brag_book_gallery_attachment_downloaded_date', true );
 
 		if ( $case_post_id || $source_url || $download_date ) {
 			$response['brag_book_gallery'] = true;

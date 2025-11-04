@@ -19,6 +19,9 @@ namespace BRAGBookGallery\Includes\Admin\Pages;
 
 use BRAGBookGallery\Includes\Admin\Core\Settings_Base;
 use BRAGBookGallery\Includes\Admin\UI\Traits\Trait_Ajax_Handler;
+use BRAGBookGallery\Includes\Admin\Sync\Sync_Manual_Controls;
+use BRAGBookGallery\Includes\Admin\Sync\Sync_Automatic_Settings;
+use BRAGBookGallery\Includes\Admin\Sync\Sync_History_Manager;
 use BRAGBookGallery\Includes\Sync\Data_Sync;
 use Exception;
 use Error;
@@ -36,7 +39,6 @@ if ( ! defined( 'WPINC' ) ) {
  * @since 3.0.0
  */
 class Sync_Page extends Settings_Base {
-
 	use Trait_Ajax_Handler;
 
 	/**
@@ -56,14 +58,36 @@ class Sync_Page extends Settings_Base {
 	];
 
 	/**
+	 * Manual sync controls component
+	 *
+	 * @since 3.3.0
+	 * @var Sync_Manual_Controls
+	 */
+	private Sync_Manual_Controls $manual_controls;
+
+	/**
+	 * Automatic sync settings component
+	 *
+	 * @since 3.3.0
+	 * @var Sync_Automatic_Settings
+	 */
+	private Sync_Automatic_Settings $automatic_settings;
+
+	/**
+	 * Sync history manager component
+	 *
+	 * @since 3.3.0
+	 * @var Sync_History_Manager
+	 */
+	private Sync_History_Manager $history_manager;
+
+	/**
 	 * Constructor
 	 *
 	 * @since 3.0.0
 	 */
 	public function __construct() {
 		parent::__construct();
-
-		error_log( 'BRAG book Gallery Sync: Sync_Page constructor - registering AJAX actions' );
 
 		// Register AJAX actions directly
 		add_action( 'wp_ajax_brag_book_sync_procedures', [ $this, 'handle_sync_procedures' ] );
@@ -84,9 +108,6 @@ class Sync_Page extends Settings_Base {
 		add_action( 'wp_ajax_brag_book_get_sync_report', [ $this, 'handle_get_sync_report' ] );
 		add_action( 'wp_ajax_brag_book_gallery_test_cron', [ $this, 'handle_test_cron' ] );
 
-		// Register optimized sync AJAX handlers
-		// The autoloader will load the class when needed
-
 		// Register automatic sync cron hook
 		add_action( 'brag_book_gallery_automatic_sync', [ $this, 'handle_automatic_sync_cron' ] );
 
@@ -106,6 +127,11 @@ class Sync_Page extends Settings_Base {
 	protected function init(): void {
 		// Set page slug for Settings_Base
 		$this->page_slug = $this->page_config['menu_slug'];
+
+		// Initialize component classes
+		$this->manual_controls = new Sync_Manual_Controls();
+		$this->automatic_settings = new Sync_Automatic_Settings( $this->page_config['option_name'] );
+		$this->history_manager = new Sync_History_Manager();
 
 		// Register settings
 		register_setting(
@@ -156,7 +182,7 @@ class Sync_Page extends Settings_Base {
 					<?php esc_html_e( 'Synchronize procedures and cases from the BRAG book API. This process may take several minutes depending on the amount of data.', 'brag-book-gallery' ); ?>
 				</p>
 
-				<?php $this->render_manual_sync_section(); ?>
+				<?php $this->manual_controls->render(); ?>
 			</div>
 
 			<!-- Auto Sync Settings Section -->
@@ -248,7 +274,7 @@ class Sync_Page extends Settings_Base {
 							<label for="auto_sync_enabled"><?php esc_html_e( 'Enable Automatic Sync', 'brag-book-gallery' ); ?></label>
 						</th>
 						<td>
-							<?php $this->render_auto_sync_field(); ?>
+							<?php $this->automatic_settings->render_auto_sync_field(); ?>
 						</td>
 					</tr>
 					<tr>
@@ -256,7 +282,7 @@ class Sync_Page extends Settings_Base {
 							<label for="sync_frequency"><?php esc_html_e( 'Sync Frequency', 'brag-book-gallery' ); ?></label>
 						</th>
 						<td>
-							<?php $this->render_sync_frequency_field(); ?>
+							<?php $this->automatic_settings->render_sync_frequency_field(); ?>
 						</td>
 					</tr>
 				</table>
@@ -337,7 +363,7 @@ class Sync_Page extends Settings_Base {
 			}
 			?>
 
-			<?php $this->render_sync_history_table(); ?>
+			<?php $this->history_manager->render(); ?>
 		</div>
 
 		<?php

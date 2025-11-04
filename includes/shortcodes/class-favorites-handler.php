@@ -545,7 +545,7 @@ final class Favorites_Handler {
 				// If it's a valid WordPress post of type brag_book_cases
 				if ( $test_post && $test_post->post_type === 'brag_book_cases' ) {
 					$wp_post_id = $test_post_id;
-					$api_case_id = get_post_meta( $wp_post_id, 'brag_book_gallery_api_id', true ) ?: get_post_meta( $wp_post_id, '_case_api_id', true );
+					$api_case_id = get_post_meta( $wp_post_id, 'brag_book_gallery_case_id', true );
 				}
 			}
 
@@ -938,8 +938,7 @@ final class Favorites_Handler {
 		?>
 		<article class="brag-book-gallery-case-card brag-book-gallery-favorites-card" <?php echo implode( ' ', $data_attrs ); ?>>
 			<div class="brag-book-gallery-case-images single-image">
-				<div class="brag-book-gallery-single-image">
-					<div class="brag-book-gallery-image-container">
+				<div class="brag-book-gallery-image-container">
 						<div class="brag-book-gallery-skeleton-loader" style="display: none;"></div>
 						<div class="brag-book-gallery-item-actions">
 							<button class="brag-book-gallery-favorite-button favorited"
@@ -969,7 +968,6 @@ final class Favorites_Handler {
 								</div>
 							<?php endif; ?>
 						</a>
-					</div>
 				</div>
 			</div>
 			<details class="brag-book-gallery-case-card-details">
@@ -1221,12 +1219,12 @@ final class Favorites_Handler {
 			'meta_query' => [
 				'relation' => 'OR',
 				[
-					'key' => 'brag_book_gallery_api_id',
+					'key' => 'brag_book_gallery_case_id',
 					'value' => $api_case_id,
 					'compare' => '='
 				],
 				[
-					'key' => '_case_api_id',
+					'key' => 'brag_book_gallery_case_id',
 					'value' => $api_case_id,
 					'compare' => '='
 				]
