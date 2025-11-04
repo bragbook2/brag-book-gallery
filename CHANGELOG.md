@@ -4,28 +4,24 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.3.2-beta5] - 2025-10-20 (Current Beta)
+## [3.3.2-beta6] - 2025-11-04 (Current Beta)
 
 ### Added
-- **Alternative Favorites View**: New tiles layout option for MyFavorites page
-  - Added MyFavorites View Type setting in Display Settings (default/alternative options)
-  - Alternative view features horizontal filter bar without sidebar navigation
-  - Provides consistent user experience with other tiles views (procedure tiles, case alternative)
-  - Setting: `brag_book_gallery_favorites_view` with options 'default' and 'alternative'
+- **Doctor Details Display**: New "Show Doctor Details" toggle setting in Display Settings
+  - Allows administrators to control visibility of doctor information on case pages
+  - Setting: `brag_book_gallery_show_doctor_details` (default: false)
+- **Doctor Name Field**: Added Doctor Name field to case post meta in Basic Information tab
+  - Stores doctor name as `_brag_book_gallery_doctor_name` post meta
+  - Displayed in admin interface for case management
+- **Member ID Field**: Added Member ID number field to case post meta in Basic Information tab
+  - Stores member ID as `_brag_book_gallery_member_id` post meta
+  - Useful for tracking and organizing cases by member
 
 ### Fixed
-- **Favorites Empty State Logic**: Corrected JavaScript display conditions for empty favorites state
-  - Empty state now only shows when user has verified email but no saved favorites
-  - Previously showed email capture form inappropriately when user had no favorites
-  - Fixed `initializeDedicatedFavoritesPage()` and `showEmptyFavoritesState()` methods
-- **Infinite Loop Prevention**: Resolved circular call between Gallery_Handler and Favorites_Handler
-  - Added setting check before delegation to prevent recursive rendering
-  - Gallery_Handler now checks `brag_book_gallery_favorites_view` before delegating to Favorites_Handler
-  - Ensures proper routing for both default (sidebar) and alternative (tiles) views
-
-### Enhanced
-- **Method Visibility**: Made `render_tiles_filter_bar()` and `render_full_gallery()` public for better reusability
-- **Wrapper Standardization**: Updated favorites views to use standard `brag-book-gallery-wrapper` class
+- **Generate Favorites Page Button**: Fixed button functionality and status checking
+  - Added initial status check on page load to show correct button state
+  - Button now properly detects existing favorites page before showing generate option
+  - Fixed edge case where button showed incorrect state after page refresh
 
 ## [3.3.2-beta2] - 2025-10-09
 

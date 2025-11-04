@@ -93,37 +93,32 @@ class Changelog_Page extends Settings_Base {
 				</div>
 			</div>
 
-			<!-- Version 3.3.2-beta5 -->
+			<!-- Version 3.3.2-beta6 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">
 					<h3>
-						<span class="version-badge version-beta">v3.3.2-beta5</span>
-						<?php esc_html_e( 'October 20, 2025', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Current Beta', 'brag-book-gallery' ); ?>
+						<span class="version-badge version-beta">v3.3.2-beta6</span>
+						<?php esc_html_e( 'November 4, 2025', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Current Beta', 'brag-book-gallery' ); ?>
 					</h3>
 					<div class="brag-book-gallery-card">
 						<h4><?php esc_html_e( '🎉 New Features', 'brag-book-gallery' ); ?></h4>
 						<ul>
-							<li><?php esc_html_e( 'Alternative Favorites View: New tiles layout option for MyFavorites page', 'brag-book-gallery' ); ?></li>
-							<li><?php esc_html_e( 'Added MyFavorites View Type setting in Display Settings with default and alternative options', 'brag-book-gallery' ); ?></li>
-							<li><?php esc_html_e( 'Alternative view features horizontal filter bar without sidebar navigation', 'brag-book-gallery' ); ?></li>
-							<li><?php esc_html_e( 'Provides consistent user experience with other tiles views (procedure tiles, case alternative)', 'brag-book-gallery' ); ?></li>
-							<li><?php esc_html_e( 'Setting: brag_book_gallery_favorites_view with options \'default\' and \'alternative\'', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Doctor Details Display: New "Show Doctor Details" toggle setting in Display Settings', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Allows administrators to control visibility of doctor information on case pages', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Setting: brag_book_gallery_show_doctor_details (default: false)', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Doctor Name Field: Added Doctor Name field to case post meta in Basic Information tab', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Stores doctor name as _brag_book_gallery_doctor_name post meta', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Displayed in admin interface for case management', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Member ID Field: Added Member ID number field to case post meta in Basic Information tab', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Stores member ID as _brag_book_gallery_member_id post meta', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Useful for tracking and organizing cases by member', 'brag-book-gallery' ); ?></li>
 						</ul>
 						<h4><?php esc_html_e( '🐛 Bug Fixes', 'brag-book-gallery' ); ?></h4>
 						<ul>
-							<li><?php esc_html_e( 'Favorites Empty State Logic: Corrected JavaScript display conditions for empty favorites state', 'brag-book-gallery' ); ?></li>
-							<li><?php esc_html_e( 'Empty state now only shows when user has verified email but no saved favorites', 'brag-book-gallery' ); ?></li>
-							<li><?php esc_html_e( 'Previously showed email capture form inappropriately when user had no favorites', 'brag-book-gallery' ); ?></li>
-							<li><?php esc_html_e( 'Fixed initializeDedicatedFavoritesPage() and showEmptyFavoritesState() methods', 'brag-book-gallery' ); ?></li>
-							<li><?php esc_html_e( 'Infinite Loop Prevention: Resolved circular call between Gallery_Handler and Favorites_Handler', 'brag-book-gallery' ); ?></li>
-							<li><?php esc_html_e( 'Added setting check before delegation to prevent recursive rendering', 'brag-book-gallery' ); ?></li>
-							<li><?php esc_html_e( 'Gallery_Handler now checks brag_book_gallery_favorites_view before delegating to Favorites_Handler', 'brag-book-gallery' ); ?></li>
-							<li><?php esc_html_e( 'Ensures proper routing for both default (sidebar) and alternative (tiles) views', 'brag-book-gallery' ); ?></li>
-						</ul>
-						<h4><?php esc_html_e( '✨ Enhancements', 'brag-book-gallery' ); ?></h4>
-						<ul>
-							<li><?php esc_html_e( 'Method Visibility: Made render_tiles_filter_bar() and render_full_gallery() public for better reusability', 'brag-book-gallery' ); ?></li>
-							<li><?php esc_html_e( 'Wrapper Standardization: Updated favorites views to use standard brag-book-gallery-wrapper class', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Generate Favorites Page Button: Fixed button functionality and status checking', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Added initial status check on page load to show correct button state', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Button now properly detects existing favorites page before showing generate option', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Fixed edge case where button showed incorrect state after page refresh', 'brag-book-gallery' ); ?></li>
 						</ul>
 					</div>
 				</div>
@@ -753,6 +748,10 @@ class Changelog_Page extends Settings_Base {
 
 		.version-patch {
 			background: #007cba;
+		}
+
+		.version-beta {
+			background: #f0b849;
 		}
 
 		.brag-book-gallery-changelog-version ul {
