@@ -1008,20 +1008,15 @@ final class Cases_Handler {
 		// Get case ID from post meta (API ID).
 		$case_id = get_post_meta( $post->ID, 'brag_book_gallery_case_id', true );
 		if ( empty( $case_id ) ) {
-		}
-		if ( empty( $case_id ) ) {
 			$case_id = $post->ID; // Use WordPress post ID as fallback
 		}
 
 		// Get procedure IDs from post meta.
 		$procedure_ids = get_post_meta( $post->ID, 'brag_book_gallery_procedure_ids', true );
-		if ( empty( $procedure_ids ) ) {
-		}
 
 		// Get SEO suffix URL from post meta.
 		$seo_suffix_url = get_post_meta( $post->ID, 'brag_book_gallery_seo_suffix_url', true );
-		if ( empty( $seo_suffix_url ) ) {
-		}
+
 		if ( empty( $seo_suffix_url ) ) {
 			$seo_suffix_url = $post->post_name; // Use post slug as fallback
 		}
@@ -2257,8 +2252,11 @@ final class Cases_Handler {
 
 		// Get high-res images for carousel if enabled
 		$carousel_images = array();
+
 		if ( $case_image_carousel && ( 'v2' === $case_card_type || 'v3' === $case_card_type ) && $post_id ) {
+
 			$high_res_urls = get_post_meta( $post_id, 'brag_book_gallery_case_high_res_url', true );
+
 			if ( ! empty( $high_res_urls ) ) {
 				// Split by newlines and semicolons to get individual URLs
 				$urls = preg_split( '/[\r\n;]+/', $high_res_urls, -1, PREG_SPLIT_NO_EMPTY );

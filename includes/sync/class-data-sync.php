@@ -36,7 +36,6 @@ if ( ! defined( 'WPINC' ) ) {
  * @since 3.0.0
  */
 class Data_Sync {
-
 	use Trait_Api;
 
 	/**
@@ -101,26 +100,12 @@ class Data_Sync {
 	 * @since 3.0.0
 	 */
 	public function __construct() {
-		error_log( 'BRAG book Gallery Sync: Data_Sync constructor started' );
-
 		try {
 			global $wpdb;
-			error_log( 'BRAG book Gallery Sync: Got $wpdb global' );
-
 			$this->log_table = $wpdb->prefix . 'brag_book_sync_log';
-			error_log( 'BRAG book Gallery Sync: Set log_table property' );
-
 			$this->sync_session_id = uniqid( 'sync_', true );
-			error_log( 'BRAG book Gallery Sync: Set sync_session_id property' );
-
-			// Initialize file-based sync status
 			$this->init_sync_status_file();
-			error_log( 'BRAG book Gallery Sync: Initialized sync status file' );
-
-			error_log( 'BRAG book Gallery Sync: About to create HIPAA-compliant sync table' );
 			$this->maybe_create_sync_table();
-			error_log( 'BRAG book Gallery Sync: HIPAA-compliant sync table ready' );
-			error_log( 'BRAG book Gallery Sync: Data_Sync constructor completed successfully' );
 		} catch ( Exception $e ) {
 			error_log( 'BRAG book Gallery Sync: Constructor failed with exception: ' . $e->getMessage() );
 			error_log( 'BRAG book Gallery Sync: Exception trace: ' . $e->getTraceAsString() );
@@ -162,13 +147,6 @@ class Data_Sync {
 		$initial_memory = memory_get_usage( true );
 		$initial_real   = memory_get_usage( false );
 		$memory_limit   = $this->get_memory_limit_bytes();
-		error_log( sprintf(
-			'BRAG book Gallery Sync: [MEMORY] Initial state - Reserved: %s, Real: %s, Limit: %s (%.1f%% used)',
-			size_format( $initial_memory ),
-			size_format( $initial_real ),
-			size_format( $memory_limit ),
-			( $initial_memory / $memory_limit ) * 100
-		) );
 
 		// Record start time for execution limit checking
 		$this->sync_start_time = time();
@@ -194,18 +172,9 @@ class Data_Sync {
 		if ( $original_time_limit > 0 && $original_time_limit < 60 ) {
 			// If we have less than 60 seconds, use 80% of available time
 			$this->max_execution_time = intval( $original_time_limit * 0.8 );
-			error_log( "BRAG book Gallery Sync: Adjusted execution time limit to {$this->max_execution_time}s based on {$original_time_limit}s available" );
 		}
 
 		try {
-			error_log( 'BRAG book Gallery Sync: ===== STARTING TWO-STAGE SYNC =====' );
-			error_log( 'BRAG book Gallery Sync: Initializing sync session: ' . $this->sync_session_id );
-			error_log( 'BRAG book Gallery Sync: Include cases: ' . ( $include_cases ? 'YES' : 'NO' ) );
-			error_log( 'BRAG book Gallery Sync: Original time limit: ' . $original_time_limit );
-			error_log( 'BRAG book Gallery Sync: Original memory limit: ' . $original_memory_limit );
-			error_log( 'BRAG book Gallery Sync: Current time limit: ' . ini_get( 'max_execution_time' ) );
-			error_log( 'BRAG book Gallery Sync: Current memory limit: ' . ini_get( 'memory_limit' ) );
-
 			// STAGE 1: Sync procedures from sidebar API
 			error_log( 'BRAG book Gallery Sync: ===== STAGE 1: PROCEDURE SYNC =====' );
 			$stage1_result = $this->sync_procedures_stage1();
@@ -222,7 +191,6 @@ class Data_Sync {
 
 			// STAGE 2: Sync cases (if requested)
 			if ( $include_cases ) {
-				error_log( 'BRAG book Gallery Sync: ===== STAGE 2: CASE SYNC =====' );
 				// Get sidebar data file from stage 1 result
 				if ( empty( $stage1_result['sidebar_data_file'] ) || ! file_exists( $stage1_result['sidebar_data_file'] ) ) {
 					error_log( 'BRAG book Gallery Sync: ERROR - Sidebar data file not found from stage 1' );

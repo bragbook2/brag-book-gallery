@@ -179,10 +179,23 @@ class Sidebar_Handler {
 			'order'      => 'ASC',
 		] );
 
-
 		if ( is_wp_error( $parent_terms ) || empty( $parent_terms ) ) {
 			return '';
 		}
+
+		// Sort by order number first, then alphabetically
+		usort( $parent_terms, function( $a, $b ) {
+			$order_a = (int) get_term_meta( $a->term_id, 'procedure_order', true );
+			$order_b = (int) get_term_meta( $b->term_id, 'procedure_order', true );
+
+			// If orders are different, sort by order
+			if ( $order_a !== $order_b ) {
+				return $order_a - $order_b;
+			}
+
+			// If orders are the same (or both 0), sort alphabetically
+			return strcasecmp( $a->name, $b->name );
+		} );
 
 		$filters = [];
 		foreach ( $parent_terms as $parent_term ) {
@@ -220,6 +233,22 @@ class Sidebar_Handler {
 
 		if ( is_wp_error( $child_terms ) ) {
 			$child_terms = [];
+		}
+
+		// Sort by order number first, then alphabetically
+		if ( ! empty( $child_terms ) ) {
+			usort( $child_terms, function( $a, $b ) {
+				$order_a = (int) get_term_meta( $a->term_id, 'procedure_order', true );
+				$order_b = (int) get_term_meta( $b->term_id, 'procedure_order', true );
+
+				// If orders are different, sort by order
+				if ( $order_a !== $order_b ) {
+					return $order_a - $order_b;
+				}
+
+				// If orders are the same (or both 0), sort alphabetically
+				return strcasecmp( $a->name, $b->name );
+			} );
 		}
 
 		// Calculate total case count

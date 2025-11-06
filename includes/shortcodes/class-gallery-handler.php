@@ -1792,6 +1792,22 @@ final class Gallery_Handler {
 			]
 		);
 
+		// Sort by order number first, then alphabetically
+		if ( ! is_wp_error( $all_procedures ) && ! empty( $all_procedures ) ) {
+			usort( $all_procedures, function( $a, $b ) {
+				$order_a = (int) get_term_meta( $a->term_id, 'procedure_order', true );
+				$order_b = (int) get_term_meta( $b->term_id, 'procedure_order', true );
+
+				// If orders are different, sort by order
+				if ( $order_a !== $order_b ) {
+					return $order_a - $order_b;
+				}
+
+				// If orders are the same (or both 0), sort alphabetically
+				return strcasecmp( $a->name, $b->name );
+			} );
+		}
+
 		if ( is_wp_error( $all_procedures ) || empty( $all_procedures ) ) {
 			return sprintf(
 				'<p class="brag-book-gallery-error">%s</p>',
@@ -1830,7 +1846,8 @@ final class Gallery_Handler {
 		?>
 		<!-- Column Procedure View -->
 		<div class="brag-book-gallery-wrapper brag-book-gallery-wrapper--start" data-view="column">
-			<div class="brag-book-gallery-procedure-groups <?php echo esc_attr( $column_class ); ?>">
+			<div class="
+			brag-book-gallery-procedure-groups <?php echo esc_attr( $column_class ); ?>">
 				<?php foreach ( $procedure_groups as $group ) : ?>
 					<?php if ( ! empty( $group['children'] ) ) : ?>
 						<?php
@@ -2055,6 +2072,22 @@ final class Gallery_Handler {
 			'orderby'    => 'name',
 			'order'      => 'ASC',
 		] );
+
+		// Sort by order number first, then alphabetically
+		if ( ! is_wp_error( $parent_terms ) && ! empty( $parent_terms ) ) {
+			usort( $parent_terms, function( $a, $b ) {
+				$order_a = (int) get_term_meta( $a->term_id, 'procedure_order', true );
+				$order_b = (int) get_term_meta( $b->term_id, 'procedure_order', true );
+
+				// If orders are different, sort by order
+				if ( $order_a !== $order_b ) {
+					return $order_a - $order_b;
+				}
+
+				// If orders are the same (or both 0), sort alphabetically
+				return strcasecmp( $a->name, $b->name );
+			} );
+		}
 
 		if ( is_wp_error( $parent_terms ) || empty( $parent_terms ) ) {
 			return '<p class="brag-book-gallery-no-categories">' . esc_html__( 'No categories available', 'brag-book-gallery' ) . '</p>';

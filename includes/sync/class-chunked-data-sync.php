@@ -1672,7 +1672,12 @@ class Chunked_Data_Sync {
 		if ( isset( $case_data['seoInfo']['slug'] ) && ! empty( $case_data['seoInfo']['slug'] ) ) {
 			$slug = sanitize_title( $case_data['seoInfo']['slug'] );
 
-			// Make sure it's not empty after sanitization
+			// Remove 'case-' prefix if present
+			if ( str_starts_with( $slug, 'case-' ) ) {
+				$slug = substr( $slug, 5 ); // Remove 'case-' (5 characters)
+			}
+
+			// Make sure it's not empty after sanitization and processing
 			if ( ! empty( $slug ) ) {
 				error_log( 'Chunked Sync: Using seoInfo.slug for procedure case ' . $procedure_case_id . ': ' . $slug );
 

@@ -1,5 +1,13 @@
 === BRAGBook Gallery Changelog ===
 
+= 3.3.2-beta8 (2025-11-06) =
+
+Fixed:
+* General Bug Fixes - Various bug fixes and stability improvements
+* Case Details - Enhanced case details display and functionality
+* Titles - Improved title handling and display
+* Sync Updates - Updated synchronization functionality and reliability
+
 = 3.3.2-beta5 (2025-10-20) =
 
 Added:

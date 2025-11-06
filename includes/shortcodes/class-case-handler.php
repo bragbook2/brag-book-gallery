@@ -349,22 +349,65 @@ class Case_Handler {
 	private function get_case_procedures( int $post_id ): array {
 		$procedure_terms = wp_get_post_terms( $post_id, Taxonomies::TAXONOMY_PROCEDURES );
 
-		if ( is_wp_error( $procedure_terms ) || empty( $procedure_terms ) ) {
-			$this->log_missing_data( $post_id, 'procedures_taxonomy' );
-			return [];
+		$procedures = [];
+		$added_procedure_ids = [];
+
+		// First, add procedures from taxonomy terms
+		if ( ! is_wp_error( $procedure_terms ) && ! empty( $procedure_terms ) ) {
+			foreach ( $procedure_terms as $term ) {
+				$procedure_meta = $this->get_procedure_meta( $term->term_id );
+				$proc_id = $procedure_meta['procedure_id'] ?: $term->term_id;
+
+				$procedures[] = [
+					'id' => $proc_id,
+					'procedure_id' => $proc_id,
+					'name' => $term->name,
+					'slug' => $term->slug,
+					'seoSuffixUrl' => $term->slug,
+					'nudity' => 'true' === $procedure_meta['nudity'],
+				];
+
+				$added_procedure_ids[] = $proc_id;
+			}
 		}
 
-		$procedures = [];
-		foreach ( $procedure_terms as $term ) {
-			$procedure_meta = $this->get_procedure_meta( $term->term_id );
-			$procedures[] = [
-				'id' => $procedure_meta['procedure_id'] ?: $term->term_id,
-				'procedure_id' => $procedure_meta['procedure_id'] ?: $term->term_id,
-				'name' => $term->name,
-				'slug' => $term->slug,
-				'seoSuffixUrl' => $term->slug,
-				'nudity' => 'true' === $procedure_meta['nudity'],
-			];
+		// Second, add procedures from post meta that aren't already included
+		$meta_procedure_ids = get_post_meta( $post_id, 'brag_book_gallery_procedure_ids', true );
+
+		if ( ! empty( $meta_procedure_ids ) ) {
+			// Handle both comma-separated string and array formats
+			$procedure_ids_array = is_array( $meta_procedure_ids )
+				? $meta_procedure_ids
+				: array_filter( array_map( 'trim', explode( ',', $meta_procedure_ids ) ) );
+
+			foreach ( $procedure_ids_array as $procedure_id ) {
+				// Skip if already added from taxonomy
+				if ( in_array( $procedure_id, $added_procedure_ids, true ) ) {
+					continue;
+				}
+
+				// Find the taxonomy term with this procedure_id in term meta
+				$term = $this->get_term_by_procedure_id( $procedure_id );
+
+				if ( $term ) {
+					$procedure_meta = $this->get_procedure_meta( $term->term_id );
+					$procedures[] = [
+						'id' => $procedure_id,
+						'procedure_id' => $procedure_id,
+						'name' => $term->name,
+						'slug' => $term->slug,
+						'seoSuffixUrl' => $term->slug,
+						'nudity' => 'true' === $procedure_meta['nudity'],
+					];
+
+					$added_procedure_ids[] = $procedure_id;
+				}
+			}
+		}
+
+		// Log if no procedures found at all
+		if ( empty( $procedures ) ) {
+			$this->log_missing_data( $post_id, 'procedures_taxonomy' );
 		}
 
 		return $procedures;
@@ -384,6 +427,35 @@ class Case_Handler {
 			'nudity'       => get_term_meta( $term_id, 'nudity', true ) ?: 'false',
 			'banner_image' => get_term_meta( $term_id, 'banner_image', true ) ?: '',
 		];
+	}
+
+	/**
+	 * Find taxonomy term by procedure ID stored in term meta
+	 *
+	 * @since 3.3.1
+	 * @param string|int $procedure_id The procedure ID to search for.
+	 * @return \WP_Term|null The term object if found, null otherwise.
+	 */
+	private function get_term_by_procedure_id( $procedure_id ): ?\WP_Term {
+		$terms = get_terms(
+			[
+				'taxonomy'   => Taxonomies::TAXONOMY_PROCEDURES,
+				'hide_empty' => false,
+				'meta_query' => [
+					[
+						'key'     => 'procedure_id',
+						'value'   => $procedure_id,
+						'compare' => '=',
+					],
+				],
+			]
+		);
+
+		if ( is_wp_error( $terms ) || empty( $terms ) ) {
+			return null;
+		}
+
+		return $terms[0];
 	}
 
 	/**
@@ -707,64 +779,79 @@ class Case_Handler {
 
 		// Procedures performed card
 		if ( ! empty( $case_data['procedures'] ) ) {
-			$html .= '<div class="case-detail-card procedures-performed-card">';
-			$html .= '<div class="card-header">';
-			$html .= '<h3 class="card-title">Procedures Performed</h3>';
-			$html .= '</div>';
-			$html .= '<div class="card-content">';
-			$html .= '<div class="brag-book-gallery-procedure-badges-list">';
+			$procedures_html = '';
+
 			foreach ( $case_data['procedures'] as $procedure ) {
-				$html .= '<span class="procedure-badge">' . esc_html( $procedure['name'] ) . '</span>';
+				$procedures_html .= sprintf(
+					'<span class="procedure-badge">%s</span>',
+					esc_html( $procedure['name'] )
+				);
 			}
-			$html .= '</div>';
-			$html .= '</div>';
-			$html .= '</div>';
+
+			$html .= sprintf(
+				'<div class="case-detail-card procedures-performed-card">' .
+					'<div class="card-header">' .
+						'<h3 class="card-title">' . esc_html__( 'Procedures Performed', 'brag-book-gallery' ) . '</h3>' .
+					'</div>' .
+					'<div class="card-content">' .
+						'<div class="brag-book-gallery-procedure-badges-list">%s</div>' .
+					'</div>' .
+					'</div>',
+				$procedures_html
+			);
 		}
 
 		// Patient information card
 		$patient_info = $this->get_patient_info_for_card( $case_data );
+
 		if ( ! empty( $patient_info ) ) {
-			$html .= '<div class="case-detail-card patient-details-card">';
-			$html .= '<div class="card-header">';
-			$html .= '<h3 class="card-title">Patient Information</h3>';
-			$html .= '</div>';
-			$html .= '<div class="card-content">';
-			$html .= '<div class="patient-info-grid">';
-			$html .= $patient_info;
-			$html .= '</div>';
-			$html .= '</div>';
-			$html .= '</div>';
+			$html .= sprintf(
+				'<div class="case-detail-card patient-details-card">' .
+					'<div class="card-header">' .
+						'<h3 class="card-title">' . esc_html__( 'Patient Information', 'brag-book-gallery') . '</h3>' .
+					'</div>' .
+					'<div class="card-content">' .
+						'<div class="patient-info-grid">%s</div>' .
+					'</div>' .
+				'</div>',
+				$patient_info
+			);
 		}
 
-		// Procedure details card (if available)
+		// Procedure details card (if available).
 		if ( ! empty( $case_data['procedures'] ) ) {
+
 			$procedure_details = $this->get_procedure_details_for_card( $case_data );
+
 			if ( ! empty( $procedure_details ) ) {
-				$html .= '<div class="case-detail-card procedure-details-card">';
-				$html .= '<div class="card-header">';
-				$html .= '<h3 class="card-title">' . esc_html__( 'Procedure Details', 'brag-book-gallery' ) . '</h3>';
-				$html .= '</div>';
-				$html .= '<div class="card-content">';
-				$html .= '<div class="procedure-details-grid">';
-				$html .= $procedure_details;
-				$html .= '</div>';
-				$html .= '</div>';
-				$html .= '</div>';
+				$html .= sprintf(
+					'<div class="case-detail-card procedure-details-card">' .
+						'<div class="card-header">' .
+							'<h3 class="card-title">%s</h3>' .
+						'</div>' .
+						'<div class="card-content">' .
+							'<div class="procedure-details-grid">%s</div>' .
+						'</div>' .
+						'</div>',
+						esc_html__( 'Procedure Details', 'brag-book-gallery' ),
+					$procedure_details
+				);
 			}
 		}
 
 		// Case notes card
 		if ( ! empty( $case_data['caseNotes'] ) ) {
-			$html .= '<div class="case-detail-card case-notes-card">';
-			$html .= '<div class="card-header">';
-			$html .= '<h3 class="card-title">Case Notes</h3>';
-			$html .= '</div>';
-			$html .= '<div class="card-content">';
-			$html .= '<div class="case-details-content">';
-			$html .= wp_kses_post( wpautop( $case_data['caseNotes'] ) );
-			$html .= '</div>';
-			$html .= '</div>';
-			$html .= '</div>';
+			$html .= sprintf(
+				'<div class="case-detail-card case-notes-card">' .
+					'<div class="card-header">' .
+						'<h3 class="card-title">' . esc_html__( 'Case Notes', 'brag-book-gallery' ) . '</h3>' .
+					'</div>' .
+					'<div class="card-content">' .
+						'<div class="case-details-content">%s</div>' .
+					'</div>' .
+				'</div>',
+				wp_kses_post( wpautop( $case_data['caseNotes'] ) )
+			);
 		}
 
 		$html .= '</div>';
@@ -787,13 +874,6 @@ class Case_Handler {
 
 		// Info item template for sprintf.
 		$item_template = '<div class="brag-book-gallery-info-item"><span class="brag-book-gallery-info-label">%s</span><span class="brag-book-gallery-info-value">%s</span></div>';
-
-		// Always display Case ID.
-		$info_html .= sprintf(
-			$item_template,
-			esc_html__( 'Case ID', 'brag-book-gallery' ),
-			esc_html( $case_id )
-		);
 
 		// Display ethnicity if available.
 		if ( ! empty( $case_data['patientEthnicity'] ) ) {

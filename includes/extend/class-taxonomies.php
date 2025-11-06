@@ -170,6 +170,12 @@ class Taxonomies {
 		</div>
 
 		<div class="form-field">
+			<label for="procedure_order"><?php esc_html_e( 'Order', 'brag-book-gallery' ); ?></label>
+			<input type="number" name="procedure_order" id="procedure_order" value="0" min="0" />
+			<p class="description"><?php esc_html_e( 'Order for displaying this procedure (lower numbers appear first)', 'brag-book-gallery' ); ?></p>
+		</div>
+
+		<div class="form-field">
 			<label for="nudity"><?php esc_html_e( 'Contains Nudity', 'brag-book-gallery' ); ?></label>
 			<div class="procedure-nudity-toggle">
 				<label class="toggle-switch">
@@ -313,6 +319,7 @@ class Taxonomies {
 		// Get existing values
 		$procedure_id = get_term_meta( $term->term_id, 'procedure_id', true );
 		$member_id = get_term_meta( $term->term_id, 'member_id', true );
+		$procedure_order = get_term_meta( $term->term_id, 'procedure_order', true );
 		$nudity = get_term_meta( $term->term_id, 'nudity', true );
 		$banner_image_id = get_term_meta( $term->term_id, 'banner_image', true );
 		$gallery_details = get_term_meta( $term->term_id, 'brag_book_gallery_details', true );
@@ -336,6 +343,16 @@ class Taxonomies {
 			<td>
 				<input type="text" name="member_id" id="member_id" value="<?php echo esc_attr( $member_id ); ?>" />
 				<p class="description"><?php esc_html_e( 'Member/Doctor ID associated with this procedure', 'brag-book-gallery' ); ?></p>
+			</td>
+		</tr>
+
+		<tr class="form-field">
+			<th scope="row">
+				<label for="procedure_order"><?php esc_html_e( 'Order', 'brag-book-gallery' ); ?></label>
+			</th>
+			<td>
+				<input type="number" name="procedure_order" id="procedure_order" value="<?php echo esc_attr( $procedure_order ); ?>" min="0" />
+				<p class="description"><?php esc_html_e( 'Order for displaying this procedure (lower numbers appear first)', 'brag-book-gallery' ); ?></p>
 			</td>
 		</tr>
 
@@ -567,6 +584,12 @@ class Taxonomies {
 			update_term_meta( $term_id, 'member_id', $member_id );
 		}
 
+		// Save procedure order
+		if ( isset( $_POST['procedure_order'] ) ) {
+			$procedure_order = absint( $_POST['procedure_order'] );
+			update_term_meta( $term_id, 'procedure_order', $procedure_order );
+		}
+
 		// Save nudity flag
 		$nudity = isset( $_POST['nudity'] ) && 'true' === $_POST['nudity'] ? 'true' : 'false';
 		update_term_meta( $term_id, 'nudity', $nudity );
@@ -611,6 +634,7 @@ class Taxonomies {
 			if ( 'posts' === $key ) {
 				$new_columns['procedure_id'] = __( 'Procedure ID', 'brag-book-gallery' );
 				$new_columns['member_id'] = __( 'Member ID', 'brag-book-gallery' );
+				$new_columns['procedure_order'] = __( 'Order', 'brag-book-gallery' );
 				$new_columns['banner_image'] = __( 'Banner Image', 'brag-book-gallery' );
 				$new_columns['nudity'] = __( 'Contains Nudity', 'brag-book-gallery' );
 			}
@@ -648,6 +672,11 @@ class Taxonomies {
 			case 'member_id':
 				$member_id = get_term_meta( $term_id, 'member_id', true );
 				$content = $member_id ?: '—';
+				break;
+
+			case 'procedure_order':
+				$procedure_order = get_term_meta( $term_id, 'procedure_order', true );
+				$content = '' !== $procedure_order ? $procedure_order : '0';
 				break;
 
 			case 'nudity':

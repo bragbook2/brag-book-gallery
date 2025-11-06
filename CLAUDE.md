@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-BRAGBook Gallery is a WordPress plugin (v3.3.0) for displaying before/after medical and cosmetic procedure galleries. The plugin uses modern PHP 8.2+ with namespacing and follows WordPress coding standards.
+BRAGBook Gallery is a WordPress plugin (v3.3.2-beta8) for displaying before/after medical and cosmetic procedure galleries. The plugin uses modern PHP 8.2+ with namespacing and follows WordPress coding standards.
 
 ## Common Development Commands
 

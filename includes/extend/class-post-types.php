@@ -2026,50 +2026,48 @@ class Post_Types {
 		}
 
 		// Update post title based on naming logic
-		// Use the assigned taxonomy term name, not procedureIds (which may have multiple)
+		// Always use the assigned taxonomy term name for procedure-specific posts
+		// Don't use seoHeadline as it may be the same across different procedure posts for the same case
 		$case_id    = $api_data['id'] ?? $post_id;
-		$post_title = $seo_headline ?: '';
+		$post_title = '';
 
-		// If no seoHeadline, generate title from assigned procedure taxonomy
-		if ( ! $post_title ) {
-			// Get the procedure taxonomy term assigned to this post
-			$terms = wp_get_post_terms( $post_id, \BRAGBookGallery\Includes\Extend\Taxonomies::TAXONOMY_PROCEDURES );
+		// Get the procedure taxonomy term assigned to this post
+		$terms = wp_get_post_terms( $post_id, \BRAGBookGallery\Includes\Extend\Taxonomies::TAXONOMY_PROCEDURES );
 
-			if ( ! is_wp_error( $terms ) && ! empty( $terms ) ) {
-				// Use the first (and should be only) assigned procedure term
-				$procedure_name  = $terms[0]->name;
-				$display_case_id = $api_data['caseId'] ?? $case_id;
-				$post_title      = $procedure_name . ' #' . $display_case_id;
+		if ( ! is_wp_error( $terms ) && ! empty( $terms ) ) {
+			// Use the first (and should be only) assigned procedure term
+			$procedure_name  = $terms[0]->name;
+			$display_case_id = $api_data['caseId'] ?? $case_id;
+			$post_title      = $procedure_name . ' #' . $display_case_id;
+		} else {
+			// Fallback: try to get procedure name from stored procedure IDs
+			$display_case_id = $api_data['caseId'] ?? $case_id;
+			$procedure_name  = null;
+
+			// Check if we have procedure IDs in the API data
+			if ( isset( $api_data['procedureIds'] ) && is_array( $api_data['procedureIds'] ) && ! empty( $api_data['procedureIds'] ) ) {
+				// Get the first procedure ID
+				$first_procedure_id = $api_data['procedureIds'][0];
+
+				// Look up the procedure term by its API ID
+				$procedure_terms = get_terms( [
+					'taxonomy'   => \BRAGBookGallery\Includes\Extend\Taxonomies::TAXONOMY_PROCEDURES,
+					'meta_key'   => 'procedure_id',
+					'meta_value' => $first_procedure_id,
+					'hide_empty' => false,
+					'number'     => 1,
+				] );
+
+				if ( ! is_wp_error( $procedure_terms ) && ! empty( $procedure_terms ) ) {
+					$procedure_name = $procedure_terms[0]->name;
+				}
+			}
+
+			// Generate title with procedure name if found, otherwise use generic "Case"
+			if ( $procedure_name ) {
+				$post_title = $procedure_name . ' #' . $display_case_id;
 			} else {
-				// Fallback: try to get procedure name from stored procedure IDs
-				$display_case_id = $api_data['caseId'] ?? $case_id;
-				$procedure_name  = null;
-
-				// Check if we have procedure IDs in the API data
-				if ( isset( $api_data['procedureIds'] ) && is_array( $api_data['procedureIds'] ) && ! empty( $api_data['procedureIds'] ) ) {
-					// Get the first procedure ID
-					$first_procedure_id = $api_data['procedureIds'][0];
-
-					// Look up the procedure term by its API ID
-					$procedure_terms = get_terms( [
-						'taxonomy'   => \BRAGBookGallery\Includes\Extend\Taxonomies::TAXONOMY_PROCEDURES,
-						'meta_key'   => 'procedure_id',
-						'meta_value' => $first_procedure_id,
-						'hide_empty' => false,
-						'number'     => 1,
-					] );
-
-					if ( ! is_wp_error( $procedure_terms ) && ! empty( $procedure_terms ) ) {
-						$procedure_name = $procedure_terms[0]->name;
-					}
-				}
-
-				// Generate title with procedure name if found, otherwise use generic "Case"
-				if ( $procedure_name ) {
-					$post_title = $procedure_name . ' #' . $display_case_id;
-				} else {
-					$post_title = "Case #{$display_case_id}";
-				}
+				$post_title = "Case #{$display_case_id}";
 			}
 		}
 
