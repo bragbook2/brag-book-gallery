@@ -278,7 +278,14 @@ class FavoritesManager {
 
 		if (!caseId) {
 			// If still no case ID, show error
-			this.showFormError(form, 'Unable to determine case ID. Please try clicking the favorite button again.');
+			this.showDetailedFormError(form, {
+				title: 'Case Identification Error',
+				message: 'Unable to determine which case to favorite.',
+				details: [
+					'This usually happens when the page hasn\'t fully loaded',
+					'Try refreshing the page and clicking the favorite button again'
+				]
+			});
 			return;
 		}
 
@@ -287,8 +294,19 @@ class FavoritesManager {
 		const name = formData.get('fav-name') || '';
 		const phone = formData.get('fav-phone') || '';
 
-		if (!email || !name || !phone) {
-			this.showFormError(form, 'Please fill in all required fields.');
+		// Validate fields individually and collect errors
+		const validationErrors = [];
+		if (!name) validationErrors.push('Name is required');
+		if (!email) validationErrors.push('Email is required');
+		else if (!this.isValidEmail(email)) validationErrors.push('Email address is not valid');
+		if (!phone) validationErrors.push('Phone number is required');
+
+		if (validationErrors.length > 0) {
+			this.showDetailedFormError(form, {
+				title: 'Form Validation Error',
+				message: 'Please correct the following issues:',
+				details: validationErrors
+			});
 			return;
 		}
 
@@ -359,11 +377,8 @@ class FavoritesManager {
 				this.lastAddedFavorite = null;
 				this.lastAddedButton = null;
 			} else {
-				// Show error message in form
-				const errorDiv = document.createElement('div');
-				errorDiv.className = 'brag-book-gallery-form-error';
-				errorDiv.textContent = response.data.message || 'Failed to save. Please try again.';
-				form.appendChild(errorDiv);
+				// Parse and show detailed error
+				this.parseAndShowDetailedError(form, response, 'save');
 
 				// If there was an error, remove the favorite that was added
 				if (this.lastAddedFavorite && this.lastAddedButton) {
@@ -374,11 +389,16 @@ class FavoritesManager {
 		.catch(error => {
 			console.error('Error submitting favorites form:', error);
 
-			// Show error message in form
-			const errorDiv = document.createElement('div');
-			errorDiv.className = 'brag-book-gallery-form-error';
-			errorDiv.textContent = 'An error occurred. Please try again.';
-			form.appendChild(errorDiv);
+			// Show detailed network error
+			this.showDetailedFormError(form, {
+				title: 'Connection Error',
+				message: 'Unable to communicate with the server.',
+				details: [
+					'Check your internet connection',
+					'The server may be temporarily unavailable',
+					`Technical details: ${error.message}`
+				]
+			});
 
 			// If there was an error, remove the favorite that was added
 			if (this.lastAddedFavorite && this.lastAddedButton) {
@@ -591,6 +611,152 @@ class FavoritesManager {
 		if (submitButton) {
 			submitButton.disabled = false;
 		}
+	}
+
+	/**
+	 * Show detailed error message in form with structured information
+	 * @param {HTMLFormElement} form - The form element
+	 * @param {Object} errorInfo - Error information object
+	 * @param {string} errorInfo.title - Error title
+	 * @param {string} errorInfo.message - Main error message
+	 * @param {Array<string>} errorInfo.details - Array of detail strings
+	 */
+	showDetailedFormError(form, errorInfo) {
+		// Clear existing messages
+		this.clearLookupMessages(form);
+
+		// Create error container
+		const errorDiv = document.createElement('div');
+		errorDiv.className = 'brag-book-gallery-form-error brag-book-gallery-form-error--detailed';
+
+		// Add title if provided
+		if (errorInfo.title) {
+			const titleElement = document.createElement('strong');
+			titleElement.className = 'brag-book-gallery-form-error__title';
+			titleElement.textContent = errorInfo.title;
+			errorDiv.appendChild(titleElement);
+		}
+
+		// Add main message
+		if (errorInfo.message) {
+			const messageElement = document.createElement('p');
+			messageElement.className = 'brag-book-gallery-form-error__message';
+			messageElement.textContent = errorInfo.message;
+			errorDiv.appendChild(messageElement);
+		}
+
+		// Add details list if provided
+		if (errorInfo.details && errorInfo.details.length > 0) {
+			const detailsList = document.createElement('ul');
+			detailsList.className = 'brag-book-gallery-form-error__details';
+			errorInfo.details.forEach(detail => {
+				const listItem = document.createElement('li');
+				listItem.textContent = detail;
+				detailsList.appendChild(listItem);
+			});
+			errorDiv.appendChild(detailsList);
+		}
+
+		form.appendChild(errorDiv);
+
+		// Reset button state if needed
+		const submitButton = form.querySelector('button[type="submit"]');
+		if (submitButton) {
+			submitButton.disabled = false;
+		}
+	}
+
+	/**
+	 * Parse server error response and show detailed error
+	 * @param {HTMLFormElement} form - The form element
+	 * @param {Object} response - Server response object
+	 * @param {string} action - Action being performed ('save', 'lookup', etc.)
+	 */
+	parseAndShowDetailedError(form, response, action = 'save') {
+		const errorMessage = response.data?.message || response.message || 'Unknown error occurred';
+
+		// Categorize error types and provide helpful context
+		let errorInfo = {
+			title: 'Error',
+			message: errorMessage,
+			details: []
+		};
+
+		// Check for specific error patterns and enhance the message
+		const lowerMessage = errorMessage.toLowerCase();
+
+		if (lowerMessage.includes('security') || lowerMessage.includes('verification')) {
+			errorInfo.title = 'Security Verification Failed';
+			errorInfo.details = [
+				'Your session may have expired',
+				'Try refreshing the page and submitting again',
+				'If the problem persists, clear your browser cache'
+			];
+		} else if (lowerMessage.includes('required fields') || lowerMessage.includes('fill in')) {
+			errorInfo.title = 'Form Validation Error';
+			errorInfo.details = [
+				'All fields (Name, Email, Phone) are required',
+				'Make sure no fields are left empty'
+			];
+		} else if (lowerMessage.includes('valid email')) {
+			errorInfo.title = 'Invalid Email Address';
+			errorInfo.details = [
+				'Please enter a valid email address',
+				'Example: yourname@example.com'
+			];
+		} else if (lowerMessage.includes('case not found') || lowerMessage.includes('not available')) {
+			errorInfo.title = 'Case Not Available';
+			errorInfo.details = [
+				'This case may have been removed or is no longer available',
+				'The case might not be properly synced',
+				'Contact support if you believe this is an error'
+			];
+		} else if (lowerMessage.includes('api') && (lowerMessage.includes('token') || lowerMessage.includes('configuration'))) {
+			errorInfo.title = 'API Configuration Error';
+			errorInfo.message = 'There is a problem with the site\'s API configuration.';
+			errorInfo.details = [
+				'This is not an issue with your submission',
+				'Please contact the site administrator',
+				'Technical detail: API authentication failed'
+			];
+		} else if (lowerMessage.includes('http') || lowerMessage.includes('status')) {
+			errorInfo.title = 'Server Communication Error';
+			errorInfo.details = [
+				'The server returned an unexpected response',
+				'This may be a temporary issue',
+				'Try again in a few moments',
+				`Technical detail: ${errorMessage}`
+			];
+		} else if (lowerMessage.includes('timeout') || lowerMessage.includes('network')) {
+			errorInfo.title = 'Network Error';
+			errorInfo.details = [
+				'Unable to reach the server',
+				'Check your internet connection',
+				'The server may be experiencing high traffic'
+			];
+		} else {
+			// Generic error - provide the message and general troubleshooting
+			errorInfo.title = `Failed to ${action === 'save' ? 'Save Favorite' : 'Lookup Favorites'}`;
+			errorInfo.details = [
+				'If this problem continues, try:',
+				'• Refreshing the page',
+				'• Clearing your browser cache',
+				'• Trying again in a few minutes',
+				'• Contacting support if the issue persists'
+			];
+		}
+
+		this.showDetailedFormError(form, errorInfo);
+	}
+
+	/**
+	 * Validate email address format
+	 * @param {string} email - Email address to validate
+	 * @returns {boolean} - Whether the email is valid
+	 */
+	isValidEmail(email) {
+		const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+		return emailRegex.test(email);
 	}
 
 	/**

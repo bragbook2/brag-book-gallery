@@ -221,13 +221,13 @@ class Data_Sync {
 					error_log( 'BRAG book Gallery Sync: Cleaned up sync data file: ' . basename( $stage1_result['sidebar_data_file'] ) );
 				}
 
-				// Merge results
+				// Merge results.
 				$total_result['cases_created']         = $stage2_result['created'];
 				$total_result['cases_updated']         = $stage2_result['updated'];
 				$total_result['cases_errors']          = $stage2_result['errors'];
 				$total_result['cases_warnings']        = $stage2_result['warnings'] ?? [];
 				$total_result['total_cases_processed'] = $stage2_result['total_processed'];
-				// No longer tracking duplicates
+				// No longer tracking duplicates.
 				$total_result['duplicate_occurrences'] = $stage2_result['duplicate_occurrences'] ?? 0;
 				$total_result['errors']                = array_merge( $total_result['errors'], $stage2_result['errors'] );
 				$total_result['warnings']              = array_merge( $total_result['warnings'] ?? [], $stage2_result['warnings'] ?? [] );

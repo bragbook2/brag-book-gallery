@@ -2288,7 +2288,14 @@ final class Cases_Handler {
 							</button>
 						</div>
 						<?php if ( 'v2' === $case_card_type || 'v3' === $case_card_type ) : ?>
-							<!-- V2/V3: Image NOT wrapped in anchor (only arrow is clickable) -->
+							<!-- V2: Image NOT wrapped in anchor (only arrow is clickable) -->
+							<!-- V3: Image wrapped in anchor for clickability -->
+							<?php if ( 'v3' === $case_card_type ) : ?>
+								<a href="<?php echo esc_url( $case_url ); ?>"
+								   class="brag-book-gallery-case-permalink"
+								   data-case-id="<?php echo esc_attr( $case_id ); ?>"
+								   data-procedure-ids="<?php echo esc_attr( implode( ',', $procedure_ids ) ); ?>">
+							<?php endif; ?>
 							<?php if ( ! empty( $carousel_images ) ) : ?>
 								<!-- Gallery Carousel with multiple images -->
 								<div class="brag-book-gallery-case-carousel">
@@ -2326,6 +2333,9 @@ final class Cases_Handler {
 								</picture>
 							<?php else : ?>
 								<!-- DEBUG: No image URL found for case <?php echo esc_attr( $case_id ); ?> -->
+							<?php endif; ?>
+							<?php if ( 'v3' === $case_card_type ) : ?>
+								</a>
 							<?php endif; ?>
 						<?php else : ?>
 							<!-- Default: Image wrapped in anchor -->

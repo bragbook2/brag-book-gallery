@@ -4,7 +4,23 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.3.2-beta8] - 2025-11-06 (Current Beta)
+## [3.3.2-beta9] - 2025-11-07 (Current Beta)
+
+### Fixed
+- **Stage 3 Sync Title Assignment**: Fixed issue where case post titles were being overwritten with incorrect procedure names
+  - Moved taxonomy assignment to occur before `save_api_response_data()` call
+  - Ensures correct procedure term is available when title is regenerated
+  - Previously, cases from different procedures could all show the same procedure name (e.g., all showing "Tummy Tuck")
+  - Fixed in `includes/sync/class-chunked-data-sync.php:1619-1643`
+
+### Enhanced
+- **V3 Card Image Clickability**: Added anchor link around images in v3 card type
+  - Images in v3 cards are now fully clickable and link to case detail page
+  - Previously only the arrow button in the overlay was clickable
+  - V2 cards remain unchanged (arrow-only clickability)
+  - Enhanced in `includes/shortcodes/class-cases-handler.php:2290-2340`
+
+## [3.3.2-beta8] - 2025-11-06
 
 ### Fixed
 - **General Bug Fixes**: Various bug fixes and stability improvements

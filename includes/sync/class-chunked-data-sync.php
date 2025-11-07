@@ -1562,8 +1562,6 @@ class Chunked_Data_Sync {
 			current_time( 'mysql' )
 		);
 
-		// Generate title using procedure name from manifest + caseId
-		// Always use the manifest procedure, not seoInfo.title (which may say "Combo Procedures")
 		$procedure_name  = $procedure_term->name ?? 'Unknown Procedure';
 		$display_case_id = $case_details['caseId'] ?? 'unknown';
 		$post_title      = $procedure_name . ' #' . $display_case_id;
@@ -1618,16 +1616,10 @@ class Chunked_Data_Sync {
 			$created = true;
 		}
 
-		// Use the Post_Types method to save all API data properly
-		// This handles all the field mapping including both new and legacy formats
-		// Wrap in try-catch to ensure post is not left in incomplete state
-		try {
-			Post_Types::save_api_response_data( $post_id, $case_details );
-		} catch ( Exception $e ) {
-			error_log( "Chunked Sync: Failed to save API data for procedure case {$procedure_case_id}: " . $e->getMessage() );
-			// Don't throw - the post is created, just missing some metadata
-			// The title is already set properly
-		}
+		// Assign to procedure taxonomy FIRST - ONLY the procedure from the manifest
+		// Since we're using procedure-specific IDs, each case belongs to exactly one procedure
+		// This MUST happen before save_api_response_data() so the correct procedure is used for the title
+		wp_set_object_terms( $post_id, [ $procedure_term->term_id ], Taxonomies::TAXONOMY_PROCEDURES );
 
 		// Store additional sync-specific metadata
 		update_post_meta( $post_id, 'brag_book_gallery_original_case_id', $procedure_case_id );
@@ -1638,9 +1630,17 @@ class Chunked_Data_Sync {
 			update_post_meta( $post_id, 'brag_book_gallery_procedure_ids', implode( ',', $case_details['procedureIds'] ) );
 		}
 
-		// Assign to procedure taxonomy - ONLY the procedure from the manifest
-		// Since we're using procedure-specific IDs, each case belongs to exactly one procedure
-		wp_set_object_terms( $post_id, [ $procedure_term->term_id ], Taxonomies::TAXONOMY_PROCEDURES );
+		// Use the Post_Types method to save all API data properly
+		// This handles all the field mapping including both new and legacy formats
+		// The taxonomy assignment above ensures save_api_response_data() uses the correct procedure for the title
+		// Wrap in try-catch to ensure post is not left in incomplete state
+		try {
+			Post_Types::save_api_response_data( $post_id, $case_details );
+		} catch ( Exception $e ) {
+			error_log( "Chunked Sync: Failed to save API data for procedure case {$procedure_case_id}: " . $e->getMessage() );
+			// Don't throw - the post is created, just missing some metadata
+			// The title is already set properly
+		}
 
 		// Store the case position for ordering within this procedure
 		update_post_meta( $post_id, 'brag_book_gallery_case_order', $case_position );
