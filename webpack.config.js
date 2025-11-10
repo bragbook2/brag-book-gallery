@@ -5,12 +5,12 @@
 const path = require('path');
 
 module.exports = {
+	cache: false,
 	entry: {
 		frontend: './src/js/frontend.js',
 		admin: './src/js/admin.js',
 		'sync-admin': './src/js/sync-admin.js',
-		'stage-sync': './src/js/stage-sync.js',
-		'gutenberg-sidebar': './src/js/gutenberg-sidebar.js'
+		'stage-sync': './src/js/stage-sync.js'
 	},
 	output: {
 		path: path.resolve(__dirname, 'assets/js'),
@@ -20,8 +20,7 @@ module.exports = {
 				frontend: 'brag-book-gallery.js',
 				admin: 'brag-book-gallery-admin.js',
 				'sync-admin': 'brag-book-gallery-sync-admin.js',
-				'stage-sync': 'brag-book-gallery-stage-sync.js',
-				'gutenberg-sidebar': 'gutenberg-sidebar.js'
+				'stage-sync': 'brag-book-gallery-stage-sync.js'
 			};
 			return nameMap[pathData.chunk.name] || '[name].js';
 		}
