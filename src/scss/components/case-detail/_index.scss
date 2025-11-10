@@ -98,23 +98,20 @@
 }
 
 .brag-book-gallery-case-card-details-grid {
-	display: flex;
-	flex-wrap: wrap;
+	display: grid;
 	gap: var(--wp--custom--brag-book-gallery--spacer--2xl, 24px);
 
-	// All cards are flexible by default
-	.case-detail-card {
-		flex: 1 1 300px; // Grow, shrink, with 300px basis
-		min-width: 250px;
+	// Mobile: 1 column
+	grid-template-columns: 1fr;
 
-		@media (min-width: 768px) {
-			flex: 1 1 calc(50% - 12px); // Take up to 50% width on tablets
-			max-width: 100%;
-		}
+	// Tablet: 2 columns
+	@media (min-width: 768px) {
+		grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+	}
 
-		@media (min-width: 1200px) {
-			flex: 1 1 calc(33.333% - 16px); // Take up to 33% width on desktop
-		}
+	// Desktop: auto-fit with minimum 250px, allows up to 4 columns
+	@media (min-width: 1200px) {
+		grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
 	}
 }
 
@@ -124,8 +121,7 @@
 	overflow: hidden;
 
 	&.case-notes-card {
-		flex: 1 1 100%; // Always full width
-		max-width: 100%;
+		margin-top: var(--wp--custom--brag-book-gallery--spacer--2xl, 24px);
 	}
 }
 

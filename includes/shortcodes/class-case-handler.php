@@ -818,6 +818,23 @@ class Case_Handler {
 			);
 		}
 
+		// PostOp information card
+		$postop_info = $this->get_postop_info_for_card( $case_data );
+
+		if ( ! empty( $postop_info ) ) {
+			$html .= sprintf(
+				'<div class="case-detail-card postop-info-card">' .
+					'<div class="card-header">' .
+						'<h3 class="card-title">' . esc_html__( 'Post-Operative Information', 'brag-book-gallery' ) . '</h3>' .
+					'</div>' .
+					'<div class="card-content">' .
+						'<div class="postop-info-grid">%s</div>' .
+					'</div>' .
+				'</div>',
+				$postop_info
+			);
+		}
+
 		// Procedure details card (if available).
 		if ( ! empty( $case_data['procedures'] ) ) {
 
@@ -839,7 +856,10 @@ class Case_Handler {
 			}
 		}
 
-		// Case notes card
+		// Close grid
+		$html .= '</div>';
+
+		// Case notes card - outside the grid, full width
 		if ( ! empty( $case_data['caseNotes'] ) ) {
 			$html .= sprintf(
 				'<div class="case-detail-card case-notes-card">' .
@@ -854,7 +874,7 @@ class Case_Handler {
 			);
 		}
 
-		$html .= '</div>';
+		// Close section
 		$html .= '</div>';
 
 		return $html;
@@ -989,6 +1009,67 @@ class Case_Handler {
 
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG && ! empty( $html ) ) {
 			error_log( "BRAGBook Gallery: Successfully generated procedure details for post {$post_id}" );
+		}
+
+		return $html;
+	}
+
+	/**
+	 * Get PostOp information for card display
+	 *
+	 * @since 3.3.2
+	 * @param array $case_data The case data array.
+	 * @return string PostOp info HTML.
+	 */
+	private function get_postop_info_for_card( array $case_data ): string {
+		$html = '';
+
+		// Get the case post ID from case data
+		if ( empty( $case_data['id'] ) ) {
+			return $html;
+		}
+
+		$post_id = $case_data['id'];
+
+		// Info item template for sprintf
+		$item_template = '<div class="brag-book-gallery-info-item"><span class="brag-book-gallery-info-label">%s</span><span class="brag-book-gallery-info-value">%s</span></div>';
+
+		// Get PostOp meta fields
+		$technique          = get_post_meta( $post_id, 'brag_book_gallery_postop_technique', true );
+		$revision_surgery   = get_post_meta( $post_id, 'brag_book_gallery_postop_revision_surgery', true );
+		$after1_timeframe   = get_post_meta( $post_id, 'brag_book_gallery_postop_after1_timeframe', true );
+		$after1_unit        = get_post_meta( $post_id, 'brag_book_gallery_postop_after1_unit', true );
+
+		// Display technique if available
+		if ( ! empty( $technique ) ) {
+			$html .= sprintf(
+				$item_template,
+				esc_html__( 'Technique', 'brag-book-gallery' ),
+				esc_html( $technique )
+			);
+		}
+
+		// Display revision surgery if available
+		if ( ! empty( $revision_surgery ) && $revision_surgery === '1' ) {
+			$html .= sprintf(
+				$item_template,
+				esc_html__( 'Revision Surgery', 'brag-book-gallery' ),
+				esc_html__( 'Yes', 'brag-book-gallery' )
+			);
+		}
+
+		// Display after timeframe if available
+		if ( ! empty( $after1_timeframe ) && ! empty( $after1_unit ) ) {
+			$html .= sprintf(
+				$item_template,
+				esc_html__( 'Photo Taken', 'brag-book-gallery' ),
+				sprintf(
+					/* translators: 1: timeframe number, 2: time unit (e.g., months, weeks) */
+					esc_html__( '%1$s %2$s post-op', 'brag-book-gallery' ),
+					esc_html( $after1_timeframe ),
+					esc_html( $after1_unit )
+				)
+			);
 		}
 
 		return $html;

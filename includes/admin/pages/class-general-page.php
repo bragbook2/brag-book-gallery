@@ -62,36 +62,39 @@ class General_Page extends Settings_Base {
 		// Don't translate here - translations happen in render method
 	}
 
-	/**
-	 * Render the general settings page
-	 *
-	 * @since 3.0.0
-	 * @return void
-	 */
 	public function render(): void {
-		// Set localized page titles now that translation functions are available
-		$this->page_title = __( 'General Settings', 'brag-book-gallery' );
-		$this->menu_title = __( 'General', 'brag-book-gallery' );
 
-		// AMD protection temporarily disabled for testing
-		// add_action( 'admin_footer', array( $this, 'remove_amd_loaders' ), 1 );
+		// Set localized page titles now that translation functions are available.
+		$this->page_title = esc_html__( 'General Settings', 'brag-book-gallery' );
+		$this->menu_title = esc_html__( 'General', 'brag-book-gallery' );
 
-		// Enqueue Monaco Editor for CSS editing
-		add_action( 'admin_footer', array( $this, 'enqueue_monaco_conditionally' ), 20 );
+		// Enqueue Monaco Editor for CSS editing.
+		add_action(
+			'admin_footer',
+			array( $this, 'enqueue_monaco_conditionally' ),
+			20
+		);
 
-		// Handle form submission
-		if ( ( isset( $_POST['submit'] ) || isset( $_POST['submit_css'] ) ) && $this->save_settings( 'brag_book_gallery_general_settings', 'brag_book_gallery_general_nonce' ) ) {
+		// Handle form submission.
+		if (
+			( isset( $_POST['submit'] ) || isset( $_POST['submit_css'] ) ) &&
+			$this->save_settings(
+				'brag_book_gallery_general_settings',
+				'brag_book_gallery_general_nonce'
+			)
+		) {
 			$this->save_general_settings();
 		}
 
-		// Handle default settings form submission
-		if ( isset( $_POST['submit_default'] ) && $this->save_settings( 'brag_book_gallery_default_settings', 'brag_book_gallery_default_nonce' ) ) {
+		// Handle default settings form submission.
+		if (
+			isset( $_POST['submit_default'] ) &&
+			$this->save_settings(
+				'brag_book_gallery_default_settings',
+				'brag_book_gallery_default_nonce'
+			)
+		) {
 			$this->save_default_settings();
-		}
-
-		// Handle mode switch submission
-		if ( isset( $_POST['switch_mode'] ) ) {
-			$this->handle_mode_switch();
 		}
 
 		$this->render_header();
@@ -696,39 +699,44 @@ class General_Page extends Settings_Base {
 	}
 
 	/**
-	 * Render Display & Gallery Settings tab content
+	 * Render display settings tab
 	 *
 	 * @since 3.0.0
 	 * @return void
 	 */
 	private function render_display_settings_tab(): void {
-		// Get current settings with default values
-		$columns = get_option( 'brag_book_gallery_columns', '2' );
-		$main_gallery_view = get_option( 'brag_book_gallery_main_gallery_view', 'default' );
-		$procedures_view = get_option( 'brag_book_gallery_procedures_view', 'default' );
-		$cases_view = get_option( 'brag_book_gallery_cases_view', 'default' );
-		$favorites_view = get_option( 'brag_book_gallery_favorites_view', 'default' );
-		$case_card_type = get_option( 'brag_book_gallery_case_card_type', 'default' );
-		$case_image_carousel = get_option( 'brag_book_gallery_case_image_carousel', false );
-		$items_per_page = get_option( 'brag_book_gallery_items_per_page', '10' );
-		$default_landing_text = '<h2>Go ahead, browse our before & afters... visualize your possibilities.</h2>' . "\n" .
-		                       '<p>Our gallery is full of our real patients. Keep in mind results vary.</p>';
-		$landing_text = get_option( 'brag_book_gallery_landing_page_text', $default_landing_text );
-		$slug = get_option( 'brag_book_gallery_page_slug', '' );
 
-		// Get new toggle settings
-		$expand_nav_menus = get_option( 'brag_book_gallery_expand_nav_menus', false );
-		$show_filter_counts = get_option( 'brag_book_gallery_show_filter_counts', true );
-		$enable_favorites = get_option( 'brag_book_gallery_enable_favorites', true );
-		$enable_consultation = get_option( 'brag_book_gallery_enable_consultation', true );
-		$show_doctor = get_option( 'brag_book_gallery_show_doctor', false );
+		// Gallery display settings.
+		$columns             = absint( get_option( 'brag_book_gallery_columns', 2 ) );
+		$main_gallery_view   = sanitize_text_field( get_option( 'brag_book_gallery_main_gallery_view', 'default' ) );
+		$procedures_view     = sanitize_text_field( get_option( 'brag_book_gallery_procedures_view', 'default' ) );
+		$cases_view          = sanitize_text_field( get_option( 'brag_book_gallery_cases_view', 'default' ) );
+		$favorites_view      = sanitize_text_field( get_option( 'brag_book_gallery_favorites_view', 'default' ) );
+		$case_card_type      = sanitize_text_field( get_option( 'brag_book_gallery_case_card_type', 'default' ) );
+		$case_image_carousel = (bool) get_option( 'brag_book_gallery_case_image_carousel', false );
+		$items_per_page      = absint( get_option( 'brag_book_gallery_items_per_page', 200 ) );
 
-		// Check if property ID 111 exists in website_property_id array
-		$website_property_ids = get_option( 'brag_book_gallery_website_property_id', array() );
-		$has_property_111 = is_array( $website_property_ids ) && in_array( '111', $website_property_ids, true );
+		// Landing page content.
+		$default_landing_text = sprintf(
+			'<h2>%s</h2>' . "\n" . '<p>%s</p>',
+			__( 'Go ahead, browse our before & afters... visualize your possibilities.', 'brag-book-gallery' ),
+			__( 'Our gallery is full of our real patients. Keep in mind results vary.', 'brag-book-gallery' )
+		);
+		$landing_text = wp_kses_post( get_option( 'brag_book_gallery_landing_page_text', $default_landing_text ) );
+		$slug         = sanitize_title( get_option( 'brag_book_gallery_page_slug', '' ) );
 
-		// Show notice if not in default mode (for gallery settings section)
-		// Mode manager removed - default to 'default' mode
+		// Toggle settings.
+		$expand_nav_menus    = (bool) get_option( 'brag_book_gallery_expand_nav_menus', false );
+		$show_filter_counts  = (bool) get_option( 'brag_book_gallery_show_filter_counts', true );
+		$enable_favorites    = (bool) get_option( 'brag_book_gallery_enable_favorites', true );
+		$enable_consultation = (bool) get_option( 'brag_book_gallery_enable_consultation', true );
+		$show_doctor         = (bool) get_option( 'brag_book_gallery_show_doctor', false );
+
+		// Property ID validation.
+		$website_property_ids = (array) get_option( 'brag_book_gallery_website_property_id', array() );
+		$has_property_111     = in_array( '111', $website_property_ids, true );
+
+		// Current mode (default only)
 		$current_mode = 'default';
 		?>
 
@@ -1254,26 +1262,16 @@ class General_Page extends Settings_Base {
 	}
 
 	/**
-	 * Render Mode Settings tab content
-	 *
-	 * @since 3.0.0
-	 * @return void
-	 */
-	private function render_mode_settings_tab(): void {
-		$this->render_mode_settings();
-	}
-
-
-	/**
 	 * Render SEO Settings tab content
 	 *
 	 * @since 3.0.0
 	 * @return void
 	 */
 	private function render_seo_settings_tab(): void {
-		// Get SEO options (handle array format from API settings)
+
+		// Get SEO options (handle array format from API settings).
 		$seo_title_option = get_option( 'brag_book_gallery_seo_page_title', '' );
-		$seo_title = '';
+
 		if ( is_array( $seo_title_option ) ) {
 			$seo_title = ! empty( $seo_title_option[0] ) ? (string) $seo_title_option[0] : '';
 		} else {
@@ -1281,7 +1279,7 @@ class General_Page extends Settings_Base {
 		}
 
 		$seo_desc_option = get_option( 'brag_book_gallery_seo_page_description', '' );
-		$seo_description = '';
+
 		if ( is_array( $seo_desc_option ) ) {
 			$seo_description = ! empty( $seo_desc_option[0] ) ? (string) $seo_desc_option[0] : '';
 		} else {
@@ -1704,374 +1702,359 @@ class General_Page extends Settings_Base {
 	}
 
 	/**
-	 * Render mode settings section
-	 *
-	 * @since 3.0.0
-	 * @return void
-	 */
-	private function render_mode_settings(): void {
-		// Get mode manager instance
-		// Mode manager removed - default to 'default' mode
-		$current_mode = 'default';
-
-		?>
-		<h2><?php esc_html_e( 'Mode Settings', 'brag-book-gallery' ); ?></h2>
-
-		<!-- Current Mode Status -->
-		<div class="brag-book-gallery-notice brag-book-gallery-notice--info inline">
-			<p>
-				<strong><?php esc_html_e( 'Active Mode:', 'brag-book-gallery' ); ?></strong>
-				<span class="brag-mode-badge <?php echo esc_attr( $current_mode ); ?>">
-					<?php echo esc_html( ucfirst( $current_mode ) ); ?> Mode
-				</span>
-			</p>
-			<p>
-				<?php
-				if ( $current_mode === 'default' ) {
-					esc_html_e( 'Content is loaded dynamically from the BRAG book API. URLs are virtual and galleries update in real-time.', 'brag-book-gallery' );
-				} else {
-					esc_html_e( 'Content is stored locally in WordPress. Galleries use native post types and taxonomies for better SEO and performance.', 'brag-book-gallery' );
-				}
-				?>
-			</p>
-		</div>
-
-
-		<!-- Mode Switcher -->
-		<form id="brag-mode-switch-form" method="post" style="margin-top: 20px;">
-			<?php wp_nonce_field( 'brag_book_gallery_mode_switch', 'mode_switch_nonce' ); ?>
-
-			<table class="form-table">
-				<tr>
-					<th scope="row"><?php esc_html_e( 'Operating Mode', 'brag-book-gallery' ); ?></th>
-					<td>
-						<fieldset>
-							<label style="display: block; margin-bottom: 20px;">
-								<input type="radio" name="gallery_mode" value="default"
-									<?php checked( $current_mode, 'default' ); ?>>
-								<strong><?php esc_html_e( 'Default Mode', 'brag-book-gallery' ); ?></strong>
-								<p class="description" style="margin-left: 24px; margin-top: 5px;">
-									<?php esc_html_e( 'Dynamic API-driven content. Best for real-time updates and minimal database usage.', 'brag-book-gallery' ); ?>
-								</p>
-							</label>
-
-							<label style="display: block; opacity: 0.6; cursor: not-allowed;">
-								<input type="radio" name="gallery_mode" value="local"
-									<?php checked( $current_mode, 'local' ); ?> disabled>
-								<strong><?php esc_html_e( 'Local Mode', 'brag-book-gallery' ); ?></strong>
-								<span style="display: inline-block; margin-left: 10px; padding: 2px 8px; background: #f0f0f1; border-radius: 3px; font-size: 12px; font-weight: 600; color: #666;">
-									<?php esc_html_e( 'COMING SOON', 'brag-book-gallery' ); ?>
-								</span>
-								<p class="description" style="margin-left: 24px; margin-top: 5px;">
-									<?php esc_html_e( 'WordPress native content. Best for SEO, performance, and offline access.', 'brag-book-gallery' ); ?>
-									<br><em style="color: #666;"><?php esc_html_e( 'This mode is currently under development and will be available in a future update.', 'brag-book-gallery' ); ?></em>
-								</p>
-							</label>
-						</fieldset>
-					</td>
-				</tr>
-			</table>
-
-			<div class="brag-book-gallery-tab-actions">
-				<button type="submit" name="switch_mode" class="button button-primary"
-					<?php echo ( $current_mode === 'default' ) ? 'disabled' : ''; ?>>
-					<?php esc_html_e( 'Switch Mode', 'brag-book-gallery' ); ?>
-				</button>
-				<?php if ( $current_mode === 'default' ) : ?>
-					<span class="description" style="display: inline-block; margin-left: 10px; line-height: 30px;">
-						<?php esc_html_e( 'Default Mode is currently active', 'brag-book-gallery' ); ?>
-					</span>
-				<?php endif; ?>
-			</div>
-		</form>
-
-		<style>
-		.brag-mode-badge {
-			display: inline-block;
-			padding: 3px 8px;
-			border-radius: 3px;
-			font-size: 12px;
-			font-weight: 600;
-			text-transform: uppercase;
-		}
-		.brag-mode-badge.default {
-			background: #2271b1;
-			color: white;
-		}
-		.brag-mode-badge.local {
-			background: #00a32a;
-			color: white;
-		}
-		</style>
-		<?php
-	}
-
-	/**
-	 * Handle mode switch submission
-	 *
-	 * @since 3.0.0
-	 * @return void
-	 */
-	private function handle_mode_switch(): void {
-		// Verify nonce
-		if ( ! isset( $_POST['mode_switch_nonce'] ) || ! wp_verify_nonce( $_POST['mode_switch_nonce'], 'brag_book_gallery_mode_switch' ) ) {
-			$this->add_notice( __( 'Security check failed. Please try again.', 'brag-book-gallery' ), 'error' );
-			return;
-		}
-
-		$new_mode = isset( $_POST['gallery_mode'] ) ? sanitize_text_field( $_POST['gallery_mode'] ) : '';
-
-		if ( ! in_array( $new_mode, [ 'default', 'local' ], true ) ) {
-			$this->add_notice( __( 'Invalid mode selected.', 'brag-book-gallery' ), 'error' );
-			return;
-		}
-
-		// Local mode is not yet available
-		if ( $new_mode === 'local' ) {
-			$this->add_notice( __( 'Local Mode is not yet available. Coming soon in a future update.', 'brag-book-gallery' ), 'warning' );
-			return;
-		}
-
-		// Get mode manager and switch mode
-		// Mode manager removed - default to 'default' mode
-		$current_mode = 'default';
-
-		if ( $current_mode === $new_mode ) {
-			$this->add_notice( sprintf( __( '%s Mode is already active.', 'brag-book-gallery' ), ucfirst( $new_mode ) ), 'info' );
-			return;
-		}
-
-		// Attempt to switch modes
-		try {
-			$result = $mode_manager->switch_mode( $new_mode );
-
-			if ( $result ) {
-				$this->add_notice( sprintf( __( 'Successfully switched to %s Mode.', 'brag-book-gallery' ), ucfirst( $new_mode ) ), 'success' );
-			} else {
-				$this->add_notice( __( 'Failed to switch modes. Please try again.', 'brag-book-gallery' ), 'error' );
-			}
-		} catch ( \Exception $e ) {
-			$this->add_notice( sprintf( __( 'Error switching modes: %s', 'brag-book-gallery' ), $e->getMessage() ), 'error' );
-		}
-	}
-
-	/**
 	 * Save general settings
 	 *
 	 * @since 3.0.0
 	 * @return void
 	 */
 	private function save_general_settings(): void {
-		// If only saving custom CSS, don't touch other settings
+
+		// Handle custom CSS save separately
 		if ( isset( $_POST['submit_css'] ) ) {
-			// Advanced Settings - Custom CSS with sanitization
-			if ( isset( $_POST['brag_book_gallery_custom_css'] ) ) {
-				// Sanitize CSS while preserving valid CSS syntax
-				$custom_css = wp_strip_all_tags( $_POST['brag_book_gallery_custom_css'] );
-				// Remove any potential XSS vectors while keeping CSS intact
-				$custom_css = str_replace( array( '<script', '</script', '<style', '</style', 'javascript:', 'expression(' ), '', $custom_css );
-				update_option( 'brag_book_gallery_custom_css', $custom_css );
-			}
-			$this->add_notice( __( 'Custom CSS saved successfully.', 'brag-book-gallery' ), 'success' );
+			$this->save_custom_css();
 			return;
 		}
 
-		// Save landing page text (moved from save_default_settings)
-		if ( isset( $_POST['brag_book_gallery_landing_page_text'] ) ) {
-			// Use WordPress built-in function to properly handle slashes
-			$landing_text = wp_unslash( $_POST['brag_book_gallery_landing_page_text'] );
-			update_option(
-				'brag_book_gallery_landing_page_text',
-				wp_kses_post( $landing_text )
-			);
-		}
+		// Save landing page text
+		$this->save_landing_page_text();
 
-		// Save combined gallery settings and create page if needed (moved from save_default_settings)
-		if ( isset( $_POST['brag_book_gallery_page_slug'] ) ) {
-			$new_slug = sanitize_title( $_POST['brag_book_gallery_page_slug'] );
+		// Save gallery page slug and create pages if needed
+		$this->save_gallery_page_slug();
 
-			// Get existing slug from option
-			$old_slug = get_option( 'brag_book_gallery_page_slug', '' );
+		// Save gallery display settings
+		$this->save_display_settings();
 
-			if ( ! empty( $new_slug ) && $new_slug !== $old_slug ) {
-				// Check if page with this slug exists
-				$existing_page = get_page_by_path( $new_slug );
+		// Save view type settings
+		$this->save_view_settings();
 
-				if ( ! $existing_page ) {
-					// Create the page with the gallery shortcode
-					$page_data = array(
-						'post_title'    => ucwords( str_replace( '-', ' ', $new_slug ) ),
-						'post_name'     => $new_slug,
-						'post_status'   => 'publish',
-						'post_type'     => 'page',
-						'post_content'  => '[brag_book_gallery]',
-						'comment_status' => 'closed',
-						'ping_status'    => 'closed'
-					);
+		// Save plugin release channel
+		$this->save_release_channel();
 
-					$page_id = wp_insert_post( $page_data );
+		// Save navigation and filter settings
+		$this->save_navigation_settings();
 
-					if ( $page_id && ! is_wp_error( $page_id ) ) {
-						update_option( 'brag_book_gallery_page_id', $page_id );
-						$this->add_notice(
-							sprintf( __( 'Gallery page "%s" created successfully.', 'brag-book-gallery' ), $new_slug ),
-							'success'
-						);
-					}
-				} else {
-					// Page already exists, use its ID
-					$page_id = $existing_page->ID;
-					update_option( 'brag_book_gallery_page_id', $page_id );
-				}
+		// Save feature toggles
+		$this->save_feature_toggles();
 
-				// Always check and create My Favorites child page if it doesn't exist (fixed slug: myfavorites)
-				if ( ! empty( $page_id ) ) {
-					// Check if favorites page already exists as a child
-					$favorites_page = get_page_by_path( $new_slug . '/myfavorites' );
-
-					if ( ! $favorites_page ) {
-						// Create My Favorites child page with fixed slug
-						$favorites_page_data = array(
-							'post_title'    => 'My Favorites',
-							'post_name'     => 'myfavorites',
-							'post_parent'   => $page_id,
-							'post_status'   => 'publish',
-							'post_type'     => 'page',
-							'post_content'  => '[brag_book_gallery view="favorites"]',
-							'comment_status' => 'closed',
-							'ping_status'    => 'closed'
-						);
-
-						$favorites_page_id = wp_insert_post( $favorites_page_data );
-
-						if ( $favorites_page_id && ! is_wp_error( $favorites_page_id ) ) {
-							update_option( 'brag_book_gallery_favorites_page_id', $favorites_page_id );
-							update_option( 'brag_book_gallery_favorites_slug', 'myfavorites' );
-							$this->add_notice(
-								__( 'My Favorites page created successfully.', 'brag-book-gallery' ),
-								'success'
-							);
-						} else {
-							$this->add_notice(
-								__( 'Could not create My Favorites page.', 'brag-book-gallery' ),
-								'warning'
-							);
-						}
-					} else {
-						// Page already exists, ensure options are set correctly
-						update_option( 'brag_book_gallery_favorites_slug', 'myfavorites' );
-						update_option( 'brag_book_gallery_favorites_page_id', $favorites_page->ID );
-					}
-				}
-
-				// Update the slug
-				update_option( 'brag_book_gallery_page_slug', $new_slug );
-
-				// Also update the old gallery_slug option for backward compatibility
-				update_option( 'brag_book_gallery_slug', $new_slug );
-
-				// Flush rewrite rules after changing slug
-				flush_rewrite_rules();
-			}
-		}
-
-		// Gallery Display Settings
-		$columns = isset( $_POST['brag_book_gallery_columns'] ) ? sanitize_text_field( $_POST['brag_book_gallery_columns'] ) : '2';
-		update_option( 'brag_book_gallery_columns', $columns );
-
-		// View Type Settings
-		$main_gallery_view = isset( $_POST['brag_book_gallery_main_gallery_view'] ) ? sanitize_text_field( $_POST['brag_book_gallery_main_gallery_view'] ) : 'default';
-		if ( ! in_array( $main_gallery_view, array( 'default', 'columns', 'tiles' ), true ) ) {
-			$main_gallery_view = 'default';
-		}
-		update_option( 'brag_book_gallery_main_gallery_view', $main_gallery_view );
-
-		$procedures_view = isset( $_POST['brag_book_gallery_procedures_view'] ) ? sanitize_text_field( $_POST['brag_book_gallery_procedures_view'] ) : 'default';
-		if ( ! in_array( $procedures_view, array( 'default', 'tiles' ), true ) ) {
-			$procedures_view = 'default';
-		}
-		update_option( 'brag_book_gallery_procedures_view', $procedures_view );
-
-		$cases_view = isset( $_POST['brag_book_gallery_cases_view'] ) ? sanitize_text_field( $_POST['brag_book_gallery_cases_view'] ) : 'default';
-		if ( ! in_array( $cases_view, array( 'default', 'alternative' ), true ) ) {
-			$cases_view = 'default';
-		}
-		update_option( 'brag_book_gallery_cases_view', $cases_view );
-
-		$favorites_view = isset( $_POST['brag_book_gallery_favorites_view'] ) ? sanitize_text_field( $_POST['brag_book_gallery_favorites_view'] ) : 'default';
-		if ( ! in_array( $favorites_view, array( 'default', 'alternative' ), true ) ) {
-			$favorites_view = 'default';
-		}
-		update_option( 'brag_book_gallery_favorites_view', $favorites_view );
-
-		$case_card_type = isset( $_POST['brag_book_gallery_case_card_type'] ) ? sanitize_text_field( $_POST['brag_book_gallery_case_card_type'] ) : 'default';
-		if ( ! in_array( $case_card_type, array( 'default', 'v2', 'v3' ), true ) ) {
-			$case_card_type = 'default';
-		}
-		update_option( 'brag_book_gallery_case_card_type', $case_card_type );
-
-		$case_image_carousel = isset( $_POST['brag_book_gallery_case_image_carousel'] ) && '1' === $_POST['brag_book_gallery_case_image_carousel'];
-		update_option( 'brag_book_gallery_case_image_carousel', $case_image_carousel );
-
-		$items_per_page = isset( $_POST['brag_book_gallery_items_per_page'] ) ? absint( $_POST['brag_book_gallery_items_per_page'] ) : 10;
-		update_option( 'brag_book_gallery_items_per_page', $items_per_page );
-
-		// Plugin Update Channel
-		$release_channel = isset( $_POST['brag_book_gallery_release_channel'] ) ? sanitize_text_field( $_POST['brag_book_gallery_release_channel'] ) : 'stable';
-		// Validate channel value
-		if ( ! in_array( $release_channel, array( 'stable', 'rc', 'beta' ), true ) ) {
-			$release_channel = 'stable';
-		}
-		// Clear the updater cache when channel changes
-		$old_channel = get_option( 'brag_book_gallery_release_channel', 'stable' );
-		if ( $old_channel !== $release_channel ) {
-			// Clear all updater caches for all channels
-			delete_transient( 'brag_book_gallery_github_release_' . md5( 'bragbook2_brag-book-gallery_stable' ) );
-			delete_transient( 'brag_book_gallery_github_release_' . md5( 'bragbook2_brag-book-gallery_rc' ) );
-			delete_transient( 'brag_book_gallery_github_release_' . md5( 'bragbook2_brag-book-gallery_beta' ) );
-			// Clear WordPress update cache
-			delete_site_transient( 'update_plugins' );
-		}
-		update_option( 'brag_book_gallery_release_channel', $release_channel );
-
-		// Navigation and Filter Settings
-		// With hidden field, we always get a value (0 or 1)
-		$expand_nav_menus = isset( $_POST['brag_book_gallery_expand_nav_menus'] ) && $_POST['brag_book_gallery_expand_nav_menus'] === '1';
-		update_option( 'brag_book_gallery_expand_nav_menus', $expand_nav_menus );
-
-		$show_filter_counts = isset( $_POST['brag_book_gallery_show_filter_counts'] ) && $_POST['brag_book_gallery_show_filter_counts'] === '1';
-		update_option( 'brag_book_gallery_show_filter_counts', $show_filter_counts );
-
-		// Favorites Settings
-		// With hidden field, we always get a value (0 or 1)
-		$enable_favorites = isset( $_POST['brag_book_gallery_enable_favorites'] ) && $_POST['brag_book_gallery_enable_favorites'] === '1';
-		update_option( 'brag_book_gallery_enable_favorites', $enable_favorites );
-
-		// Consultation Settings
-		// With hidden field, we always get a value (0 or 1)
-		$enable_consultation = isset( $_POST['brag_book_gallery_enable_consultation'] ) && $_POST['brag_book_gallery_enable_consultation'] === '1';
-		update_option( 'brag_book_gallery_enable_consultation', $enable_consultation );
-
-		// Doctor Details Settings (only if property 111 exists)
-		// With hidden field, we always get a value (0 or 1)
-		$show_doctor = isset( $_POST['brag_book_gallery_show_doctor'] ) && $_POST['brag_book_gallery_show_doctor'] === '1';
-		update_option( 'brag_book_gallery_show_doctor', $show_doctor );
-
-		// Clear settings helper cache when favorites setting is updated
+		// Clear settings cache
 		if ( class_exists( '\BRAGBookGallery\Includes\Core\Settings_Helper' ) ) {
 			\BRAGBookGallery\Includes\Core\Settings_Helper::clear_cache();
 		}
 
-		// Advanced Settings - Custom CSS with sanitization
-		if ( isset( $_POST['brag_book_gallery_custom_css'] ) ) {
-			// Sanitize CSS while preserving valid CSS syntax
-			$custom_css = wp_strip_all_tags( $_POST['brag_book_gallery_custom_css'] );
-			// Remove any potential XSS vectors while keeping CSS intact
-			$custom_css = str_replace( array( '<script', '</script', '<style', '</style', 'javascript:', 'expression(' ), '', $custom_css );
-			update_option( 'brag_book_gallery_custom_css', $custom_css );
+		$this->add_notice(
+			__( 'General settings saved successfully.', 'brag-book-gallery' ),
+			'success'
+		);
+	}
+
+	/**
+	 * Save custom CSS
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	private function save_custom_css(): void {
+		if ( ! isset( $_POST['brag_book_gallery_custom_css'] ) ) {
+			return;
 		}
 
-		$this->add_notice( __( 'General settings saved successfully.', 'brag-book-gallery' ), 'success' );
+		// Sanitize CSS while preserving valid syntax
+		$custom_css = wp_strip_all_tags( wp_unslash( $_POST['brag_book_gallery_custom_css'] ) );
+
+		// Remove potential XSS vectors
+		$dangerous_patterns = array( '<script', '</script', '<style', '</style', 'javascript:', 'expression(' );
+		$custom_css = str_replace( $dangerous_patterns, '', $custom_css );
+
+		update_option( 'brag_book_gallery_custom_css', $custom_css );
+
+		$this->add_notice(
+			__( 'Custom CSS saved successfully.', 'brag-book-gallery' ),
+			'success'
+		);
+	}
+
+	/**
+	 * Save landing page text
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	private function save_landing_page_text(): void {
+		if ( ! isset( $_POST['brag_book_gallery_landing_page_text'] ) ) {
+			return;
+		}
+
+		$landing_text = wp_kses_post( wp_unslash( $_POST['brag_book_gallery_landing_page_text'] ) );
+		update_option( 'brag_book_gallery_landing_page_text', $landing_text );
+	}
+
+	/**
+	 * Save gallery page slug and create pages
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	private function save_gallery_page_slug(): void {
+		if ( ! isset( $_POST['brag_book_gallery_page_slug'] ) ) {
+			return;
+		}
+
+		$new_slug = sanitize_title( wp_unslash( $_POST['brag_book_gallery_page_slug'] ) );
+		$old_slug = get_option( 'brag_book_gallery_page_slug', '' );
+
+		// Only proceed if slug changed and is not empty
+		if ( empty( $new_slug ) || $new_slug === $old_slug ) {
+			return;
+		}
+
+		// Check if page exists or create new one
+		$existing_page = get_page_by_path( $new_slug );
+
+		if ( ! $existing_page ) {
+			$page_id = $this->create_gallery_page( $new_slug );
+		} else {
+			$page_id = $existing_page->ID;
+			update_option( 'brag_book_gallery_page_id', $page_id );
+		}
+
+		// Create My Favorites child page if parent was created/found
+		if ( ! empty( $page_id ) ) {
+			$this->create_favorites_page( $new_slug, $page_id );
+		}
+
+		// Update slug options
+		update_option( 'brag_book_gallery_page_slug', $new_slug );
+		update_option( 'brag_book_gallery_slug', $new_slug ); // Backward compatibility
+
+		// Flush rewrite rules after slug change
+		flush_rewrite_rules();
+	}
+
+	/**
+	 * Create gallery page with shortcode
+	 *
+	 * @since 3.0.0
+	 * @param string $slug Page slug.
+	 * @return int|false Page ID on success, false on failure.
+	 */
+	private function create_gallery_page( string $slug ): false|int {
+		$page_data = array(
+			'post_title'     => ucwords( str_replace( '-', ' ', $slug ) ),
+			'post_name'      => $slug,
+			'post_status'    => 'publish',
+			'post_type'      => 'page',
+			'post_content'   => '[brag_book_gallery]',
+			'comment_status' => 'closed',
+			'ping_status'    => 'closed',
+		);
+
+		$page_id = wp_insert_post( $page_data );
+
+		if ( $page_id && ! is_wp_error( $page_id ) ) {
+			update_option( 'brag_book_gallery_page_id', $page_id );
+			$this->add_notice(
+				sprintf(
+				/* translators: %s: gallery page slug */
+					__( 'Gallery page "%s" created successfully.', 'brag-book-gallery' ),
+					$slug
+				),
+				'success'
+			);
+			return $page_id;
+		}
+
+		return false;
+	}
+
+	/**
+	 * Create My Favorites child page
+	 *
+	 * @since 3.0.0
+	 * @param string $parent_slug Parent page slug.
+	 * @param int    $parent_id   Parent page ID.
+	 * @return void
+	 */
+	private function create_favorites_page( string $parent_slug, int $parent_id ): void {
+		// Check if favorites page already exists
+		$favorites_full_path = sprintf( '%s/myfavorites', $parent_slug );
+		$favorites_page      = get_page_by_path( $favorites_full_path );
+
+		if ( $favorites_page ) {
+			// Page exists, update options
+			update_option( 'brag_book_gallery_favorites_slug', 'myfavorites' );
+			update_option( 'brag_book_gallery_favorites_page_id', $favorites_page->ID );
+			return;
+		}
+
+		// Create My Favorites child page
+		$favorites_page_data = array(
+			'post_title'     => __( 'My Favorites', 'brag-book-gallery' ),
+			'post_name'      => 'myfavorites',
+			'post_parent'    => $parent_id,
+			'post_status'    => 'publish',
+			'post_type'      => 'page',
+			'post_content'   => '[brag_book_gallery view="favorites"]',
+			'comment_status' => 'closed',
+			'ping_status'    => 'closed',
+		);
+
+		$favorites_page_id = wp_insert_post( $favorites_page_data );
+
+		if ( $favorites_page_id && ! is_wp_error( $favorites_page_id ) ) {
+			update_option( 'brag_book_gallery_favorites_page_id', $favorites_page_id );
+			update_option( 'brag_book_gallery_favorites_slug', 'myfavorites' );
+			$this->add_notice(
+				__( 'My Favorites page created successfully.', 'brag-book-gallery' ),
+				'success'
+			);
+		} else {
+			$this->add_notice(
+				__( 'Could not create My Favorites page.', 'brag-book-gallery' ),
+				'warning'
+			);
+		}
+	}
+
+	/**
+	 * Save gallery display settings
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	private function save_display_settings(): void {
+		// Columns (integer)
+		$columns = isset( $_POST['brag_book_gallery_columns'] )
+			? absint( $_POST['brag_book_gallery_columns'] )
+			: 2;
+		update_option( 'brag_book_gallery_columns', $columns );
+
+		// Items per page (integer)
+		$items_per_page = isset( $_POST['brag_book_gallery_items_per_page'] )
+			? absint( $_POST['brag_book_gallery_items_per_page'] )
+			: 200;
+		update_option( 'brag_book_gallery_items_per_page', $items_per_page );
+
+		// Case image carousel (boolean)
+		$case_image_carousel = isset( $_POST['brag_book_gallery_case_image_carousel'] )
+							   && '1' === $_POST['brag_book_gallery_case_image_carousel'];
+		update_option( 'brag_book_gallery_case_image_carousel', $case_image_carousel );
+	}
+
+	/**
+	 * Save view type settings
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	private function save_view_settings(): void {
+
+		// View settings with allowed values.
+		$view_settings = array(
+			'brag_book_gallery_main_gallery_view' => array( 'default', 'columns', 'tiles' ),
+			'brag_book_gallery_procedures_view'   => array( 'default', 'tiles' ),
+			'brag_book_gallery_cases_view'        => array( 'default', 'alternative' ),
+			'brag_book_gallery_favorites_view'    => array( 'default', 'alternative' ),
+			'brag_book_gallery_case_card_type'    => array( 'default', 'v2', 'v3' ),
+		);
+
+		foreach ( $view_settings as $option_name => $allowed_values ) {
+			$value = isset( $_POST[ $option_name ] )
+				? sanitize_text_field( wp_unslash( $_POST[ $option_name ] ) )
+				: 'default';
+
+			// Validate against allowed values
+			if ( ! in_array( $value, $allowed_values, true ) ) {
+				$value = 'default';
+			}
+
+			update_option( $option_name, $value );
+		}
+	}
+
+	/**
+	 * Save plugin release channel
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	private function save_release_channel(): void {
+
+		if ( ! isset( $_POST['brag_book_gallery_release_channel'] ) ) {
+			return;
+		}
+
+		$allowed_channels = array(
+			'stable',
+			'rc',
+			'beta'
+		);
+
+		$release_channel  = sanitize_text_field( wp_unslash( $_POST['brag_book_gallery_release_channel'] ) );
+
+		// Validate channel value.
+		if ( ! in_array( $release_channel, $allowed_channels, true ) ) {
+			$release_channel = 'stable';
+		}
+
+		// Clear updater cache if channel changed.
+		$old_channel = get_option( 'brag_book_gallery_release_channel', 'stable' );
+
+		if ( $old_channel !== $release_channel ) {
+			// Clear all channel caches
+			foreach ( $allowed_channels as $channel ) {
+				delete_transient(
+					'brag_book_gallery_github_release_' . md5( 'bragbook2_brag-book-gallery_' . $channel )
+				);
+			}
+			delete_site_transient( 'update_plugins' );
+		}
+
+		update_option( 'brag_book_gallery_release_channel', $release_channel );
+	}
+
+	/**
+	 * Save navigation and filter settings
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	private function save_navigation_settings(): void {
+
+		// Expand navigation menus.
+		$expand_nav_menus = isset( $_POST['brag_book_gallery_expand_nav_menus'] ) && '1' === $_POST['brag_book_gallery_expand_nav_menus'];
+
+		update_option(
+			'brag_book_gallery_expand_nav_menus',
+			$expand_nav_menus
+		);
+
+		// Show filter counts
+		$show_filter_counts = isset( $_POST['brag_book_gallery_show_filter_counts'] ) && '1' === $_POST['brag_book_gallery_show_filter_counts'];
+
+		update_option(
+			'brag_book_gallery_show_filter_counts',
+			$show_filter_counts
+		);
+	}
+
+	/**
+	 * Save feature toggle settings
+	 *
+	 * @since 3.0.0
+	 * @return void
+	 */
+	private function save_feature_toggles(): void {
+
+		$features = array(
+			'brag_book_gallery_enable_favorites',
+			'brag_book_gallery_enable_consultation',
+			'brag_book_gallery_show_doctor',
+		);
+
+		foreach ( $features as $feature ) {
+			$value = isset( $_POST[ $feature ] ) && '1' === $_POST[ $feature ];
+			update_option( $feature, $value );
+		}
 	}
 
 	/**
@@ -2081,56 +2064,85 @@ class General_Page extends Settings_Base {
 	 * @return void
 	 */
 	private function save_default_settings(): void {
-		// Save SEO settings
-		if ( isset( $_POST['brag_book_gallery_seo_title'] ) ) {
-			update_option( 'brag_book_gallery_seo_page_title', sanitize_text_field( $_POST['brag_book_gallery_seo_title'] ) );
-		}
+		$saved_seo = $this->save_seo_settings();
+		$saved_performance = $this->save_performance_settings();
 
-		if ( isset( $_POST['brag_book_gallery_seo_description'] ) ) {
-			update_option( 'brag_book_gallery_seo_page_description', sanitize_textarea_field( $_POST['brag_book_gallery_seo_description'] ) );
-		}
-
-		// Save performance settings
-		if ( isset( $_POST['ajax_timeout'] ) ) {
-			update_option( 'brag_book_gallery_ajax_timeout', absint( $_POST['ajax_timeout'] ) );
-		}
-
-		if ( isset( $_POST['cache_duration'] ) ) {
-			update_option( 'brag_book_gallery_cache_duration', absint( $_POST['cache_duration'] ) );
-		}
-
-		// With hidden field, lazy_load is always set
-		if ( isset( $_POST['lazy_load'] ) ) {
-			$lazy_load = $_POST['lazy_load'] === 'yes' ? 'yes' : 'no';
-			update_option( 'brag_book_gallery_lazy_load', $lazy_load );
-		}
-
-		// Determine which form was submitted and show appropriate message
-		if ( isset( $_POST['brag_book_gallery_seo_title'] ) || isset( $_POST['brag_book_gallery_seo_description'] ) ) {
-			$this->add_notice( __( 'SEO settings saved successfully.', 'brag-book-gallery' ) );
-		} elseif ( isset( $_POST['ajax_timeout'] ) || isset( $_POST['cache_duration'] ) || isset( $_POST['lazy_load'] ) ) {
-			$this->add_notice( __( 'Performance settings saved successfully.', 'brag-book-gallery' ) );
+		// Show appropriate success message
+		if ( $saved_seo ) {
+			$this->add_notice(
+				__( 'SEO settings saved successfully.', 'brag-book-gallery' ),
+				'success'
+			);
+		} elseif ( $saved_performance ) {
+			$this->add_notice(
+				__( 'Performance settings saved successfully.', 'brag-book-gallery' ),
+				'success'
+			);
 		} else {
-			$this->add_notice( __( 'Settings saved successfully.', 'brag-book-gallery' ) );
+			$this->add_notice(
+				__( 'Settings saved successfully.', 'brag-book-gallery' ),
+				'success'
+			);
 		}
 	}
 
 	/**
-	 * Remove any AMD loaders to protect TinyMCE
+	 * Save SEO settings
 	 *
-	 * This function runs in admin_footer to remove any AMD loaders that might
-	 * have been added by other plugins or scripts, preventing conflicts with TinyMCE.
-	 *
-	 * @since 3.3.2
-	 * @return void
+	 * @since 3.0.0
+	 * @return bool True if SEO settings were saved, false otherwise.
 	 */
-	public function remove_amd_loaders(): void {
-		?>
-		<script>
-		// AMD protection temporarily disabled for testing
-		console.log('BRAGBook: AMD protection disabled');
-		</script>
-		<?php
+	private function save_seo_settings(): bool {
+		$saved = false;
+
+		// SEO page title
+		if ( isset( $_POST['brag_book_gallery_seo_title'] ) ) {
+			$seo_title = sanitize_text_field( wp_unslash( $_POST['brag_book_gallery_seo_title'] ) );
+			update_option( 'brag_book_gallery_seo_page_title', $seo_title );
+			$saved = true;
+		}
+
+		// SEO page description
+		if ( isset( $_POST['brag_book_gallery_seo_description'] ) ) {
+			$seo_description = sanitize_textarea_field( wp_unslash( $_POST['brag_book_gallery_seo_description'] ) );
+			update_option( 'brag_book_gallery_seo_page_description', $seo_description );
+			$saved = true;
+		}
+
+		return $saved;
+	}
+
+	/**
+	 * Save performance settings
+	 *
+	 * @since 3.0.0
+	 * @return bool True if performance settings were saved, false otherwise.
+	 */
+	private function save_performance_settings(): bool {
+		$saved = false;
+
+		// AJAX timeout (milliseconds)
+		if ( isset( $_POST['ajax_timeout'] ) ) {
+			$ajax_timeout = absint( $_POST['ajax_timeout'] );
+			update_option( 'brag_book_gallery_ajax_timeout', $ajax_timeout );
+			$saved = true;
+		}
+
+		// Cache duration (seconds)
+		if ( isset( $_POST['cache_duration'] ) ) {
+			$cache_duration = absint( $_POST['cache_duration'] );
+			update_option( 'brag_book_gallery_cache_duration', $cache_duration );
+			$saved = true;
+		}
+
+		// Lazy load images
+		if ( isset( $_POST['lazy_load'] ) ) {
+			$lazy_load = 'yes' === $_POST['lazy_load'] ? 'yes' : 'no';
+			update_option( 'brag_book_gallery_lazy_load', $lazy_load );
+			$saved = true;
+		}
+
+		return $saved;
 	}
 
 	/**

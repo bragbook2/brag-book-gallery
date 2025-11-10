@@ -147,7 +147,7 @@ final class Sync_Automatic_Settings {
 	/**
 	 * Render sync frequency field
 	 *
-	 * Displays radio buttons for weekly or custom scheduling with date/time pickers.
+	 * Displays day of week and time selection for weekly sync scheduling.
 	 *
 	 * @since 3.3.0
 	 *
@@ -155,62 +155,74 @@ final class Sync_Automatic_Settings {
 	 */
 	public function render_sync_frequency_field(): void {
 		$settings    = $this->get_settings();
-		$value       = $settings['sync_frequency'] ?? 'weekly';
-		$custom_date = $settings['sync_custom_date'] ?? '';
-		$custom_time = $settings['sync_custom_time'] ?? '12:00';
+		$sync_day    = $settings['sync_day'] ?? '0'; // Default to Sunday
+		$sync_time   = $settings['sync_time'] ?? '02:00'; // Default to 2:00 AM
 
-		$frequencies = array(
-			'weekly' => array(
-				'label'       => __( 'Weekly', 'brag-book-gallery' ),
-				'description' => __( 'Sync once per week at a specified time', 'brag-book-gallery' ),
-			),
-			'custom' => array(
-				'label'       => __( 'Custom Date/Time', 'brag-book-gallery' ),
-				'description' => __( 'Schedule a one-time sync at a specific date and time', 'brag-book-gallery' ),
-			),
+		$days_of_week = array(
+			'0' => __( 'Sunday', 'brag-book-gallery' ),
+			'1' => __( 'Monday', 'brag-book-gallery' ),
+			'2' => __( 'Tuesday', 'brag-book-gallery' ),
+			'3' => __( 'Wednesday', 'brag-book-gallery' ),
+			'4' => __( 'Thursday', 'brag-book-gallery' ),
+			'5' => __( 'Friday', 'brag-book-gallery' ),
+			'6' => __( 'Saturday', 'brag-book-gallery' ),
 		);
 		?>
 		<div class="sync-frequency-wrapper">
-			<?php foreach ( $frequencies as $freq_value => $freq_data ) : ?>
-				<div class="sync-frequency-option">
-					<input type="radio"
-						   name="<?php echo esc_attr( $this->option_name ); ?>[sync_frequency]"
-						   value="<?php echo esc_attr( $freq_value ); ?>"
-						   class="sync-frequency-radio"
-						   id="sync_frequency_<?php echo esc_attr( $freq_value ); ?>"
-						   <?php checked( $value, $freq_value ); ?> />
-					<label for="sync_frequency_<?php echo esc_attr( $freq_value ); ?>">
-						<span class="sync-frequency-label" data-description="<?php echo esc_attr( $freq_data['description'] ); ?>">
-							<?php echo esc_html( $freq_data['label'] ); ?>
-						</span>
-					</label>
+			<div class="sync-schedule-fields">
+				<div class="sync-schedule-field">
+					<label for="sync_day"><?php esc_html_e( 'Day of Week:', 'brag-book-gallery' ); ?></label>
+					<select name="<?php echo esc_attr( $this->option_name ); ?>[sync_day]"
+							id="sync_day"
+							class="sync-day-select">
+						<?php foreach ( $days_of_week as $day_value => $day_label ) : ?>
+							<option value="<?php echo esc_attr( $day_value ); ?>"
+									<?php selected( $sync_day, $day_value ); ?>>
+								<?php echo esc_html( $day_label ); ?>
+							</option>
+						<?php endforeach; ?>
+					</select>
 				</div>
-			<?php endforeach; ?>
-
-			<div class="sync-custom-schedule" style="<?php echo 'custom' === $value ? 'display: block;' : 'display: none;'; ?>">
-				<div class="sync-custom-fields">
-					<div class="sync-custom-field">
-						<label for="sync_custom_date"><?php esc_html_e( 'Date:', 'brag-book-gallery' ); ?></label>
-						<input type="date"
-							   name="<?php echo esc_attr( $this->option_name ); ?>[sync_custom_date]"
-							   id="sync_custom_date"
-							   value="<?php echo esc_attr( $custom_date ); ?>"
-							   class="sync-custom-date" />
-					</div>
-					<div class="sync-custom-field">
-						<label for="sync_custom_time"><?php esc_html_e( 'Time:', 'brag-book-gallery' ); ?></label>
-						<input type="time"
-							   name="<?php echo esc_attr( $this->option_name ); ?>[sync_custom_time]"
-							   id="sync_custom_time"
-							   value="<?php echo esc_attr( $custom_time ); ?>"
-							   class="sync-custom-time" />
-					</div>
+				<div class="sync-schedule-field">
+					<label for="sync_time"><?php esc_html_e( 'Time:', 'brag-book-gallery' ); ?></label>
+					<input type="time"
+						   name="<?php echo esc_attr( $this->option_name ); ?>[sync_time]"
+						   id="sync_time"
+						   value="<?php echo esc_attr( $sync_time ); ?>"
+						   class="sync-time" />
 				</div>
 			</div>
 		</div>
 		<p class="description">
-			<?php esc_html_e( 'Choose how often procedures should be automatically synced from the API. Use "Custom Date/Time" to schedule a one-time sync at a specific date and time.', 'brag-book-gallery' ); ?>
+			<?php esc_html_e( 'Procedures will be automatically synced once per week on the selected day and time.', 'brag-book-gallery' ); ?>
 		</p>
+		<style>
+			.sync-schedule-fields {
+				display: flex;
+				gap: 20px;
+				align-items: flex-end;
+				margin-top: 10px;
+			}
+			.sync-schedule-field {
+				display: flex;
+				flex-direction: column;
+				gap: 5px;
+			}
+			.sync-schedule-field label {
+				font-weight: 600;
+				margin: 0;
+			}
+			.sync-day-select {
+				min-width: 150px;
+			}
+			.sync-time {
+				min-width: 150px;
+				padding: 0 8px;
+				height: 30px;
+				font-size: 14px;
+				line-height: 2;
+			}
+		</style>
 		<?php
 	}
 

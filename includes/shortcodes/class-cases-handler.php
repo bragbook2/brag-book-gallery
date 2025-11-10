@@ -2690,10 +2690,8 @@ final class Cases_Handler {
 			$case_ids = $cases_query->posts;
 			error_log( 'AJAX Adjacent Cases - Fallback to query, found ' . count( $case_ids ) . ' cases' );
 		}
-		$current_key = array_search( $current_post_id, $case_ids );
 
-		error_log( 'AJAX Adjacent Cases - Current post ID: ' . $current_post_id . ', found at index: ' . ( $current_key !== false ? $current_key : 'NOT FOUND' ) );
-		error_log( 'AJAX Adjacent Cases - Case IDs in order: ' . implode( ', ', array_slice( $case_ids, 0, 10 ) ) . ( count( $case_ids ) > 10 ? '...' : '' ) );
+		$current_key = array_search( $current_post_id, $case_ids );
 
 		$next_url = null;
 		$prev_url = null;

@@ -2224,15 +2224,16 @@ class Data_Sync {
 			// Update progress: Starting API fetch
 			$this->update_step_progress( "[FETCH] Fetching case details for {$batch_size} cases from {$procedure_name}" );
 
-			// Since we're processing 1 case at a time, fetch just that case
+			// Fetch case details using v2 API endpoint with normalization
 			$fetch_start_time = microtime( true );
-			// For single case, just fetch it directly without batch
-			if ( $batch_size === 1 ) {
-				$single_case_id       = $case_batch[0];
-				$single_case_data     = $this->fetch_single_case_details( $single_case_id );
-				$case_details_results = [ $single_case_id => $single_case_data ];
-			} else {
-				$case_details_results = $this->fetch_case_details_batch( $case_batch );
+			$case_details_results = [];
+			foreach ( $case_batch as $case_id ) {
+				try {
+					$case_details_results[ $case_id ] = $this->fetch_case_details( $case_id );
+				} catch ( Exception $e ) {
+					error_log( "BRAG book Gallery Sync: Failed to fetch case {$case_id}: " . $e->getMessage() );
+					$case_details_results[ $case_id ] = null;
+				}
 			}
 			$fetch_duration = round( microtime( true ) - $fetch_start_time, 2 );
 
@@ -3083,6 +3084,10 @@ class Data_Sync {
 		error_log( "Has patientInfo: " . ( isset( $v2_data['patientInfo'] ) ? 'YES' : 'NO' ) );
 		error_log( "Has seoInfo: " . ( isset( $v2_data['seoInfo'] ) ? 'YES' : 'NO' ) );
 		error_log( "Has photoSets: " . ( isset( $v2_data['photoSets'] ) ? 'YES (' . count( $v2_data['photoSets'] ) . ' sets)' : 'NO' ) );
+		error_log( "Has postOp: " . ( isset( $v2_data['postOp'] ) ? 'YES' : 'NO' ) );
+		if ( isset( $v2_data['postOp'] ) ) {
+			error_log( "postOp data in v2: " . print_r( $v2_data['postOp'], true ) );
+		}
 
 		if ( isset( $v2_data['photoSets'][0]['images'] ) ) {
 			$first_images = $v2_data['photoSets'][0]['images'];
@@ -3158,6 +3163,11 @@ class Data_Sync {
 			$normalized['creator'] = $v2_data['creator'];
 		}
 
+		// Pass through postOp information
+		if ( isset( $v2_data['postOp'] ) ) {
+			$normalized['postOp'] = $v2_data['postOp'];
+		}
+
 		// DEBUG: Log normalized output
 		error_log( "Normalized Data Keys: " . implode( ', ', array_keys( $normalized ) ) );
 		error_log( "Normalized age: " . ( $normalized['age'] ?? 'NULL' ) );
@@ -3170,6 +3180,10 @@ class Data_Sync {
 		}
 		if ( isset( $normalized['caseDetails'][0] ) ) {
 			error_log( "Normalized seoPageTitle: " . ( $normalized['caseDetails'][0]['seoPageTitle'] ?? 'MISSING' ) );
+		}
+		error_log( "Normalized has postOp: " . ( isset( $normalized['postOp'] ) ? 'YES' : 'NO' ) );
+		if ( isset( $normalized['postOp'] ) ) {
+			error_log( "Normalized postOp data: " . print_r( $normalized['postOp'], true ) );
 		}
 		error_log( "=== END DATA_SYNC NORMALIZATION DEBUG ===" );
 

@@ -97,14 +97,27 @@ final class Gallery_Handler {
 	 * Handle procedures shortcode
 	 *
 	 * Displays cases in a tiles grid layout using WP_Query.
-	 * Shows the first 20 cases.
+	 * Shows all cases, with optional filtering by member_id.
 	 *
-	 * @param array $atts Shortcode attributes (not used currently).
+	 * @param array $atts Shortcode attributes. Supports:
+	 *                    - member_id: Filter cases by member ID.
 	 *
 	 * @return string Rendered cases grid HTML.
 	 * @since 3.3.2
 	 */
 	public static function handle_procedures_shortcode( array $atts ): string {
+		// Parse shortcode attributes
+		$atts = shortcode_atts(
+			array(
+				'member_id' => '',
+			),
+			$atts,
+			'brag_book_gallery_procedures'
+		);
+
+		// Sanitize member_id
+		$member_id = ! empty( $atts['member_id'] ) ? sanitize_text_field( $atts['member_id'] ) : '';
+
 		// Enqueue gallery assets
 		Asset_Manager::enqueue_gallery_assets();
 
@@ -121,14 +134,25 @@ final class Gallery_Handler {
 		// Generate wrapper classes
 		$wrapper_class = self::generate_wrapper_classes();
 
-		// Query for first 20 cases
-		$query_args = [
+		// Build query arguments
+		$query_args = array(
 			'post_type'      => \BRAGBookGallery\Includes\Extend\Post_Types::POST_TYPE_CASES,
 			'post_status'    => 'publish',
-			'posts_per_page' => 20,
+			'posts_per_page' => -1,
 			'orderby'        => 'date',
 			'order'          => 'DESC',
-		];
+		);
+
+		// Add meta query filter if member_id is provided
+		if ( ! empty( $member_id ) ) {
+			$query_args['meta_query'] = array(
+				array(
+					'key'     => 'brag_book_gallery_member_id',
+					'value'   => $member_id,
+					'compare' => '=',
+				),
+			);
+		}
 
 		$cases_query = new \WP_Query( $query_args );
 
@@ -159,9 +183,27 @@ final class Gallery_Handler {
 				// Get image display mode from settings
 				$image_display_mode = get_option( 'brag_book_gallery_image_display_mode', 'single' );
 
+				// Track case IDs to prevent duplicates when filtering by member_id
+				$displayed_case_ids = array();
+
 				while ( $cases_query->have_posts() ) :
 					$cases_query->the_post();
 					$post = get_post();
+
+					// If filtering by member_id, check for duplicate case IDs
+					if ( ! empty( $member_id ) ) {
+						$case_id = get_post_meta( $post->ID, 'brag_book_gallery_case_id', true );
+
+						// Skip if this case ID has already been displayed
+						if ( ! empty( $case_id ) && in_array( $case_id, $displayed_case_ids, true ) ) {
+							continue;
+						}
+
+						// Track this case ID
+						if ( ! empty( $case_id ) ) {
+							$displayed_case_ids[] = $case_id;
+						}
+					}
 
 					// Debug: Log rendering attempt
 					if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {

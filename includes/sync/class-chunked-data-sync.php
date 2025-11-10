@@ -141,19 +141,19 @@ class Chunked_Data_Sync {
 		$upload_dir = wp_upload_dir();
 		$base_url   = $upload_dir['baseurl'] . '/brag-book-gallery-sync';
 
-		$result = [
-			'sync_data'     => [
+		$result = array(
+			'sync_data'     => array(
 				'exists' => $this->sync_data_exists(),
 				'path'   => $this->get_sync_data_file(),
 				'date'   => $this->date_string,
-			],
-			'manifest'      => [
+			),
+			'manifest'      => array(
 				'exists' => $this->manifest_exists(),
 				'path'   => $this->get_manifest_file(),
 				'date'   => $this->date_string,
-			],
+			),
 			'stage3_status' => $this->get_stage3_status(),
-		];
+		);
 
 		// Add URLs for existing files
 		if ( $result['sync_data']['exists'] ) {
@@ -173,24 +173,19 @@ class Chunked_Data_Sync {
 	 * @return array Result with success status and details
 	 */
 	public function execute_stage_1(): array {
-		error_log( 'Chunked Sync: Starting Stage 1 - Fetch sidebar data and process procedures' );
 
 		try {
-			// Step 1: Check if sync data file exists for today
+			// Step 1: Check if sync data file exists for today.
 			if ( $this->sync_data_exists() ) {
-				error_log( 'Chunked Sync: Sync data file exists for today, using existing file' );
 				$sidebar_data = $this->load_sync_data();
 			} else {
-				error_log( 'Chunked Sync: No sync data for today, fetching from API' );
 				$sidebar_data = $this->fetch_and_save_sidebar_data();
 			}
 
-			// Step 2: Process procedures from the data
+			// Step 2: Process procedures from the data.
 			$result = $this->process_procedures_from_data( $sidebar_data );
 
-			error_log( 'Chunked Sync: Stage 1 completed successfully' );
-
-			return [
+			return array(
 				'success'            => true,
 				'stage'              => 1,
 				'file_created'       => ! $this->sync_data_exists(),
@@ -198,17 +193,15 @@ class Chunked_Data_Sync {
 				'procedures_updated' => $result['updated'],
 				'total_procedures'   => $result['total'],
 				'message'            => 'Stage 1 completed: Procedures processed',
-			];
+			);
 
 		} catch ( Exception $e ) {
-			error_log( 'Chunked Sync: Stage 1 failed: ' . $e->getMessage() );
-
-			return [
+			return array(
 				'success' => false,
 				'stage'   => 1,
 				'error'   => $e->getMessage(),
 				'message' => 'Stage 1 failed: ' . $e->getMessage(),
-			];
+			);
 		}
 	}
 
@@ -222,6 +215,7 @@ class Chunked_Data_Sync {
 
 		// Get API configuration
 		$api_tokens = get_option( 'brag_book_gallery_api_token', [] );
+
 		if ( empty( $api_tokens ) || empty( $api_tokens[0] ) ) {
 			throw new Exception( 'No API tokens configured' );
 		}
@@ -239,26 +233,30 @@ class Chunked_Data_Sync {
 		$endpoint     = '/api/plugin/combine/sidebar';
 		$full_url     = $api_base_url . $endpoint;
 
-		$request_body = [
+		$request_body = array(
 			'apiTokens' => array_values( $valid_tokens ),
-		];
+		);
 
 		// Make API request
-		$response = wp_remote_post( $full_url, [
-			'timeout'   => 30,
-			'headers'   => [
-				'Content-Type' => 'application/json',
-				'Accept'       => 'application/json',
-			],
-			'body'      => wp_json_encode( $request_body ),
-			'sslverify' => true,
-		] );
+		$response = wp_remote_post(
+			$full_url,
+			array(
+				'timeout'   => 30,
+				'headers'   => array(
+					'Content-Type' => 'application/json',
+					'Accept'       => 'application/json',
+				),
+				'body'      => wp_json_encode( $request_body ),
+				'sslverify' => true,
+			)
+		);
 
 		if ( is_wp_error( $response ) ) {
 			throw new Exception( 'API request failed: ' . $response->get_error_message() );
 		}
 
 		$response_code = wp_remote_retrieve_response_code( $response );
+
 		if ( $response_code !== 200 ) {
 			throw new Exception( 'API returned error status: ' . $response_code );
 		}
@@ -339,8 +337,10 @@ class Chunked_Data_Sync {
 		}
 
 		foreach ( $sidebar_data['data'] as $category ) {
-			// Process parent category
+
+			// Process parent category.
 			$parent_result = $this->create_or_update_procedure( $category, null );
+
 			if ( $parent_result['created'] ) {
 				$created_count ++;
 			} else {
@@ -355,11 +355,11 @@ class Chunked_Data_Sync {
 				foreach ( $category['procedures'] as $procedure ) {
 					$child_result = $this->create_or_update_procedure( $procedure, $parent_term_id );
 					if ( $child_result['created'] ) {
-						$created_count ++;
+						$created_count++;
 					} else {
-						$updated_count ++;
+						$updated_count++;
 					}
-					$total_count ++;
+					$total_count++;
 				}
 			}
 		}
@@ -458,14 +458,14 @@ class Chunked_Data_Sync {
 				$manifest   = $this->load_manifest();
 				$case_count = $this->count_cases_in_manifest( $manifest );
 
-				return [
+				return array(
 					'success'         => true,
 					'stage'           => 2,
 					'file_exists'     => true,
 					'procedure_count' => count( $manifest ),
 					'case_count'      => $case_count,
 					'message'         => 'Manifest already exists for today',
-				];
+				);
 			}
 
 			// Load sync data
@@ -1503,6 +1503,11 @@ class Chunked_Data_Sync {
 		// Pass through creator information
 		if ( isset( $v2_data['creator'] ) ) {
 			$normalized['creator'] = $v2_data['creator'];
+		}
+
+		// Pass through postOp information
+		if ( isset( $v2_data['postOp'] ) ) {
+			$normalized['postOp'] = $v2_data['postOp'];
 		}
 
 		// DEBUG: Log normalized output

@@ -279,7 +279,7 @@ class Sync_Page extends Settings_Base {
 					</tr>
 					<tr>
 						<th scope="row">
-							<label for="sync_frequency"><?php esc_html_e( 'Sync Frequency', 'brag-book-gallery' ); ?></label>
+							<label for="sync_day"><?php esc_html_e( 'Sync Schedule', 'brag-book-gallery' ); ?></label>
 						</th>
 						<td>
 							<?php $this->automatic_settings->render_sync_frequency_field(); ?>
@@ -347,25 +347,6 @@ class Sync_Page extends Settings_Base {
 			<?php submit_button( __( 'Save Settings', 'brag-book-gallery' ) ); ?>
 		</form>
 
-		<!-- Sync History Section -->
-		<div class="brag-book-gallery-section" style="margin-top: 30px;">
-			<h2><?php esc_html_e( 'Sync History & Logs', 'brag-book-gallery' ); ?></h2>
-			<p class="description">
-				<?php esc_html_e( 'View and manage synchronization history and logs.', 'brag-book-gallery' ); ?>
-			</p>
-
-			<?php
-			// Check if database needs update
-			$setup = \BRAGBookGallery\Includes\Core\Setup::get_instance();
-			$database = $setup->get_service( 'database' );
-			if ( $database ) {
-				$database->check_database_version();
-			}
-			?>
-
-			<?php $this->history_manager->render(); ?>
-		</div>
-
 		<?php
 		$this->render_footer();
 	}
@@ -403,30 +384,21 @@ class Sync_Page extends Settings_Base {
 		// Update auto sync setting
 		$new_settings['auto_sync_enabled'] = isset( $_POST[ $this->page_config['option_name'] ]['auto_sync_enabled'] );
 
-		// Update sync frequency
-		if ( isset( $_POST[ $this->page_config['option_name'] ]['sync_frequency'] ) ) {
-			$allowed_frequencies = [ 'weekly', 'custom' ];
-			$frequency = sanitize_text_field( $_POST[ $this->page_config['option_name'] ]['sync_frequency'] );
-			if ( in_array( $frequency, $allowed_frequencies, true ) ) {
-				$new_settings['sync_frequency'] = $frequency;
+		// Update sync day (day of week: 0-6, where 0 is Sunday)
+		if ( isset( $_POST[ $this->page_config['option_name'] ]['sync_day'] ) ) {
+			$sync_day = sanitize_text_field( $_POST[ $this->page_config['option_name'] ]['sync_day'] );
+			// Validate day is 0-6
+			if ( in_array( $sync_day, [ '0', '1', '2', '3', '4', '5', '6' ], true ) ) {
+				$new_settings['sync_day'] = $sync_day;
 			}
 		}
 
-		// Update custom sync date (only if custom frequency is selected)
-		if ( isset( $_POST[ $this->page_config['option_name'] ]['sync_custom_date'] ) ) {
-			$custom_date = sanitize_text_field( $_POST[ $this->page_config['option_name'] ]['sync_custom_date'] );
-			// Validate date format (YYYY-MM-DD)
-			if ( empty( $custom_date ) || preg_match( '/^\d{4}-\d{2}-\d{2}$/', $custom_date ) ) {
-				$new_settings['sync_custom_date'] = $custom_date;
-			}
-		}
-
-		// Update custom sync time (only if custom frequency is selected)
-		if ( isset( $_POST[ $this->page_config['option_name'] ]['sync_custom_time'] ) ) {
-			$custom_time = sanitize_text_field( $_POST[ $this->page_config['option_name'] ]['sync_custom_time'] );
+		// Update sync time
+		if ( isset( $_POST[ $this->page_config['option_name'] ]['sync_time'] ) ) {
+			$sync_time = sanitize_text_field( $_POST[ $this->page_config['option_name'] ]['sync_time'] );
 			// Validate time format (HH:MM)
-			if ( preg_match( '/^([01]?\d|2[0-3]):[0-5]\d$/', $custom_time ) ) {
-				$new_settings['sync_custom_time'] = $custom_time;
+			if ( preg_match( '/^([01]?\d|2[0-3]):[0-5]\d$/', $sync_time ) ) {
+				$new_settings['sync_time'] = $sync_time;
 			}
 		}
 
@@ -458,9 +430,8 @@ class Sync_Page extends Settings_Base {
 	protected function get_default_settings(): array {
 		return [
 			'auto_sync_enabled'    => false,
-			'sync_frequency'       => 'weekly',
-			'sync_custom_date'     => '',
-			'sync_custom_time'     => '02:00',
+			'sync_day'             => '0',      // Sunday
+			'sync_time'            => '02:00',  // 2:00 AM
 			'last_sync_time'       => '',
 			'sync_status'          => 'never',
 			'sync_mode'            => 'wp_engine', // Default to WP Engine optimized
@@ -2293,70 +2264,65 @@ class Sync_Page extends Settings_Base {
 
 		// If auto sync is enabled, schedule new event
 		if ( ! empty( $settings['auto_sync_enabled'] ) ) {
-			$frequency = $settings['sync_frequency'] ?? 'weekly';
+			$sync_day  = $settings['sync_day'] ?? '0';     // Default to Sunday
+			$sync_time = $settings['sync_time'] ?? '02:00'; // Default to 2:00 AM
 
-			// Handle custom date/time scheduling
-			if ( $frequency === 'custom' ) {
-				$custom_date = $settings['sync_custom_date'] ?? '';
-				$custom_time = $settings['sync_custom_time'] ?? '02:00';
+			// Parse the time
+			$time_parts = explode( ':', $sync_time );
+			$hour       = (int) $time_parts[0];
+			$minute     = (int) ( $time_parts[1] ?? 0 );
 
-				if ( ! empty( $custom_date ) && ! empty( $custom_time ) ) {
-					// Create timestamp from custom date and time
-					$custom_datetime = $custom_date . ' ' . $custom_time . ':00';
-					$timestamp = strtotime( $custom_datetime );
+			// Calculate next occurrence of the specified day and time
+			$start_time = $this->calculate_next_weekly_occurrence( (int) $sync_day, $hour, $minute );
 
-					if ( $timestamp && $timestamp > time() ) {
-						// Schedule a one-time event for the custom date/time
-						$result = wp_schedule_single_event( $timestamp, $hook_name );
+			// Schedule the recurring weekly event
+			$result = wp_schedule_event( $start_time, 'weekly', $hook_name );
 
-						if ( false === $result ) {
-							error_log( 'BRAG Book Gallery: Failed to schedule custom automatic sync' );
-						} else {
-							error_log( "BRAG Book Gallery: Scheduled automatic sync for custom date/time: {$custom_datetime}" );
-						}
-					} else {
-						error_log( 'BRAG Book Gallery: Invalid custom date/time or date in the past' );
-					}
-				} else {
-					error_log( 'BRAG Book Gallery: Custom frequency selected but date/time not provided' );
-				}
+			if ( false === $result ) {
+				error_log( 'BRAG Book Gallery: Failed to schedule automatic sync cron job' );
 			} else {
-				// Handle standard frequencies
-				$start_time = time();
-
-				// Only weekly frequency is supported now
-
-				// For weekly, optionally apply custom time
-				$custom_time = $settings['sync_custom_time'] ?? '02:00';
-				if ( ! empty( $custom_time ) && $frequency === 'weekly' ) {
-					// Calculate next occurrence at the specified time
-					$time_parts = explode( ':', $custom_time );
-					$hour = (int) $time_parts[0];
-					$minute = (int) ( $time_parts[1] ?? 0 );
-
-					if ( $frequency === 'weekly' ) {
-						// Next weekly occurrence at the specified time (same day of week)
-						$next_run = mktime( $hour, $minute, 0 );
-						if ( $next_run <= time() ) {
-							$next_run = mktime( $hour, $minute, 0 ) + WEEK_IN_SECONDS;
-						}
-						$start_time = $next_run;
-					}
-				}
-
-				// Schedule the recurring event
-				$result = wp_schedule_event( $start_time, $frequency, $hook_name );
-
-				if ( false === $result ) {
-					error_log( 'BRAG Book Gallery: Failed to schedule automatic sync cron job' );
-				} else {
-					$next_time = date( 'Y-m-d H:i:s', $start_time );
-					error_log( "BRAG Book Gallery: Scheduled automatic sync with frequency: {$frequency}, next run: {$next_time}" );
-				}
+				$next_time = wp_date( 'l, F j, Y \a\t g:i A', $start_time );
+				$day_name  = date( 'l', $start_time );
+				error_log( "BRAG Book Gallery: Scheduled weekly automatic sync for {$day_name} at {$sync_time}, next run: {$next_time}" );
 			}
 		} else {
 			error_log( 'BRAG Book Gallery: Automatic sync disabled, cron job cleared' );
 		}
+	}
+
+	/**
+	 * Calculate next occurrence of a specific day of week and time
+	 *
+	 * @since 3.3.2-beta10
+	 * @param int $target_day   Day of week (0=Sunday, 6=Saturday)
+	 * @param int $target_hour  Hour (0-23)
+	 * @param int $target_minute Minute (0-59)
+	 * @return int Unix timestamp of next occurrence
+	 */
+	private function calculate_next_weekly_occurrence( int $target_day, int $target_hour, int $target_minute ): int {
+		$current_time = time();
+		$current_day  = (int) date( 'w', $current_time ); // 0 (Sunday) through 6 (Saturday)
+
+		// Calculate days until target day
+		$days_until_target = ( $target_day - $current_day + 7 ) % 7;
+
+		// If it's today, check if the time has passed
+		if ( $days_until_target === 0 ) {
+			$today_target_time = mktime( $target_hour, $target_minute, 0 );
+			if ( $today_target_time > $current_time ) {
+				// Time hasn't passed today, schedule for today
+				return $today_target_time;
+			} else {
+				// Time has passed today, schedule for next week
+				$days_until_target = 7;
+			}
+		}
+
+		// Calculate the timestamp for the target day and time
+		$next_occurrence = strtotime( "+{$days_until_target} days", $current_time );
+		$next_occurrence = mktime( $target_hour, $target_minute, 0, date( 'm', $next_occurrence ), date( 'd', $next_occurrence ), date( 'Y', $next_occurrence ) );
+
+		return $next_occurrence;
 	}
 
 	/**
