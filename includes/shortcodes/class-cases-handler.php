@@ -790,8 +790,17 @@ final class Cases_Handler {
 			error_log( 'BRAGBook: render_case_card - NOT adding nudity warning for case: ' . $case_info['case_id'] . ' (procedure_nudity = false)' );
 		}
 
-		// Add case title if available.
-		if ( ! empty( $case_info['seo_headline'] ) ) {
+		// Add case title or doctor name based on settings.
+		$show_doctor = (bool) get_option( 'brag_book_gallery_show_doctor', false );
+
+		if ( $show_doctor ) {
+			// Show doctor name if option is active
+			$doctor_name = $case['doctorName'] ?? $case['doctor_name'] ?? '';
+			if ( ! empty( $doctor_name ) ) {
+				$html .= '<h3 class="case-title doctor-name">' . esc_html( $doctor_name ) . '</h3>';
+			}
+		} elseif ( ! empty( $case_info['seo_headline'] ) ) {
+			// Show case title as before
 			$html .= '<h3 class="case-title">' . esc_html( $case_info['seo_headline'] ) . '</h3>';
 		}
 
@@ -1105,6 +1114,23 @@ final class Cases_Handler {
 			$html .= '<div class="brag-book-gallery-case-images no-image">';
 			$html .= '<div class="placeholder-image">' . esc_html__( 'No image available', 'brag-book-gallery' ) . '</div>';
 			$html .= '</div>';
+		}
+
+		// Add case title or doctor name based on settings.
+		$show_doctor = (bool) get_option( 'brag_book_gallery_show_doctor', false );
+
+		if ( $show_doctor ) {
+			// Show doctor name if option is active
+			$doctor_name = get_post_meta( $post->ID, 'brag_book_gallery_doctor_name', true );
+			if ( ! empty( $doctor_name ) ) {
+				$html .= '<h3 class="case-title doctor-name">' . esc_html( $doctor_name ) . '</h3>';
+			}
+		} else {
+			// Show case SEO headline if available
+			$seo_headline = get_post_meta( $post->ID, 'brag_book_gallery_seo_headline', true );
+			if ( ! empty( $seo_headline ) ) {
+				$html .= '<h3 class="case-title">' . esc_html( $seo_headline ) . '</h3>';
+			}
 		}
 
 		$html .= '</a>'; // Close case link
@@ -2372,11 +2398,23 @@ final class Cases_Handler {
 									<div class="brag-book-gallery-case-card-overlay-info">
 										<span class="brag-book-gallery-case-card-overlay-title">
 											<?php
-											$display_title = is_object( $primary_procedure ) ? $primary_procedure->name : $primary_procedure;
+											// Check if we should show doctor name instead of procedure
+											$show_doctor = (bool) get_option( 'brag_book_gallery_show_doctor', false );
+
+											if ( $show_doctor && $post_id ) {
+												// Show doctor name if option is active
+												$doctor_name = get_post_meta( $post_id, 'brag_book_gallery_doctor_name', true );
+												$display_title = ! empty( $doctor_name ) ? $doctor_name : ( is_object( $primary_procedure ) ? $primary_procedure->name : $primary_procedure );
+											} else {
+												// Show procedure name as default
+												$display_title = is_object( $primary_procedure ) ? $primary_procedure->name : $primary_procedure;
+											}
 											echo esc_html( $display_title );
 											?>
 										</span>
-										<span class="brag-book-gallery-case-card-overlay-case-number">Case #<?php echo esc_html( $case_id ); ?></span>
+										<?php if ( ! $show_doctor ) : ?>
+											<span class="brag-book-gallery-case-card-overlay-case-number">Case #<?php echo esc_html( $case_id ); ?></span>
+										<?php endif; ?>
 									</div>
 									<a href="<?php echo esc_url( $case_url ); ?>"
 									   class="brag-book-gallery-case-card-overlay-button"

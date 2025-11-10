@@ -93,12 +93,41 @@ class Changelog_Page extends Settings_Base {
 				</div>
 			</div>
 
+			<!-- Version 3.3.2-beta10 -->
+			<div class="brag-book-gallery-section">
+				<div class="brag-book-gallery-changelog-version">
+					<h3>
+						<span class="version-badge version-beta">v3.3.2-beta10</span>
+						<?php esc_html_e( 'November 10, 2025', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Current Beta', 'brag-book-gallery' ); ?>
+					</h3>
+					<div class="brag-book-gallery-card">
+						<h4><?php esc_html_e( '🎉 New Features', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Doctor Profile URL Field: Added brag_book_gallery_doctor_profile_url meta field to case post types', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Allows storing URL to doctor\'s profile page with URL input validation', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Doctor Suffix Field: Added brag_book_gallery_doctor_suffix meta field to case post types', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Stores professional suffix (e.g., MD, PhD, DDS)', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Both fields added to case meta box in WordPress admin with proper sanitization', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '✨ Enhancements', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'V3 Card Doctor Display: Enhanced v3 card type to show doctor name when "Show Doctor Details" option is enabled', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Doctor name now displays in card overlay instead of procedure name when toggle is active', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Controlled by brag_book_gallery_show_doctor option (set to 1 to enable)', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Falls back to procedure name if doctor name is not available', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'V3 Card Case Number: Case number now hidden on v3 cards when doctor name display is enabled', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Provides cleaner appearance when showing doctor information', 'brag-book-gallery' ); ?></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
 			<!-- Version 3.3.2-beta7 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">
 					<h3>
 						<span class="version-badge version-beta">v3.3.2-beta7</span>
-						<?php esc_html_e( 'November 4, 2025', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Current Beta', 'brag-book-gallery' ); ?>
+						<?php esc_html_e( 'November 4, 2025', 'brag-book-gallery' ); ?>
 					</h3>
 					<div class="brag-book-gallery-card">
 						<h4><?php esc_html_e( '🎉 New Features', 'brag-book-gallery' ); ?></h4>

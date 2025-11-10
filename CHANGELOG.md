@@ -4,7 +4,32 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.3.2-beta9] - 2025-11-07 (Current Beta)
+## [3.3.2-beta10] - 2025-11-10 (Current Beta)
+
+### Added
+- **Doctor Profile URL Field**: Added `brag_book_gallery_doctor_profile_url` meta field to case post types
+  - Allows storing URL to doctor's profile page
+  - Field type: URL input with validation
+  - Added to case meta box in WordPress admin
+  - Automatically saved with proper URL sanitization (`esc_url_raw`)
+- **Doctor Suffix Field**: Added `brag_book_gallery_doctor_suffix` meta field to case post types
+  - Stores professional suffix (e.g., MD, PhD, DDS)
+  - Field type: Text input
+  - Added to case meta box in WordPress admin
+  - Sanitized using `sanitize_text_field`
+
+### Enhanced
+- **V3 Card Doctor Display**: Enhanced v3 card type to show doctor name when "Show Doctor Details" option is enabled
+  - Doctor name now displays in card overlay instead of procedure name when toggle is active
+  - Controlled by `brag_book_gallery_show_doctor` option (set to `1` to enable)
+  - Falls back to procedure name if doctor name is not available
+  - Works with both `render_case_card` and `render_wordpress_case_card` methods
+  - Enhanced in `includes/shortcodes/class-cases-handler.php`
+- **V3 Card Case Number**: Case number now hidden on v3 cards when doctor name display is enabled
+  - Provides cleaner appearance when showing doctor information
+  - Case number still displays when doctor option is disabled
+
+## [3.3.2-beta9] - 2025-11-07
 
 ### Fixed
 - **Stage 3 Sync Title Assignment**: Fixed issue where case post titles were being overwritten with incorrect procedure names
