@@ -1,6 +1,6 @@
 {
 	"name": "brag-book-gallery",
-	"version": "3.3.2-beta12",
+	"version": "3.3.2-beta13",
 	"description": "BRAGBook Gallery WordPress Plugin",
 	"author": "Candace Crowe Design",
 	"license": "GPL-2.0-or-later",
@@ -11,8 +11,12 @@
 	},
 	"scripts": {
 		"build": "npm run build:js && npm run build:css",
-		"build:js": "webpack --mode=production",
-		"build:css": "sass src/scss/frontend.scss:assets/css/brag-book-gallery.css src/scss/admin.scss:assets/css/brag-book-gallery-admin.css --style=compressed",
+		"build:js": "npm run build:js:dev && npm run build:js:prod",
+		"build:js:dev": "webpack --mode=development",
+		"build:js:prod": "webpack --mode=production",
+		"build:css": "npm run build:css:dev && npm run build:css:prod",
+		"build:css:dev": "sass src/scss/frontend.scss:assets/css/brag-book-gallery.css src/scss/admin.scss:assets/css/brag-book-gallery-admin.css --style=expanded --no-source-map",
+		"build:css:prod": "sass src/scss/frontend.scss:assets/css/brag-book-gallery.min.css src/scss/admin.scss:assets/css/brag-book-gallery-admin.min.css --style=compressed --no-source-map",
 		"watch": "concurrently \"npm run watch:js\" \"npm run watch:css\"",
 		"watch:js": "webpack --mode=development --watch",
 		"watch:css": "sass --watch src/scss:assets/css --style=expanded",

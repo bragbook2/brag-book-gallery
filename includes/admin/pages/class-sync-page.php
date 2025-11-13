@@ -2065,18 +2065,19 @@ class Sync_Page extends Settings_Base {
 
 			// Get plugin paths for file versioning
 			$plugin_path = \BRAGBookGallery\Includes\Core\Setup::get_plugin_path();
+			$suffix = ( defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ) ? '' : '.min';
 
 			// Get file modification times for cache busting
-			$sync_admin_file = $plugin_path . 'assets/js/brag-book-gallery-sync-admin.js';
+			$sync_admin_file = $plugin_path . 'assets/js/brag-book-gallery-sync-admin' . $suffix . '.js';
 			$sync_admin_version = file_exists( $sync_admin_file ) ? filemtime( $sync_admin_file ) : '3.3.2';
 
-			$stage_sync_file = $plugin_path . 'assets/js/brag-book-gallery-stage-sync.js';
+			$stage_sync_file = $plugin_path . 'assets/js/brag-book-gallery-stage-sync' . $suffix . '.js';
 			$stage_sync_version = file_exists( $stage_sync_file ) ? filemtime( $stage_sync_file ) : '3.3.0';
 
 			// Enqueue main sync admin script
 			wp_enqueue_script(
 				'brag-book-file-sync-admin',
-				plugins_url( 'assets/js/brag-book-gallery-sync-admin.js', dirname( __DIR__, 2 ) ),
+				plugins_url( 'assets/js/brag-book-gallery-sync-admin' . $suffix . '.js', dirname( __DIR__, 2 ) ),
 				[],
 				$sync_admin_version,
 				true
@@ -2085,7 +2086,7 @@ class Sync_Page extends Settings_Base {
 			// Enqueue stage sync script
 			wp_enqueue_script(
 				'brag-book-stage-sync',
-				plugins_url( 'assets/js/brag-book-gallery-stage-sync.js', dirname( __DIR__, 2 ) ),
+				plugins_url( 'assets/js/brag-book-gallery-stage-sync' . $suffix . '.js', dirname( __DIR__, 2 ) ),
 				[ 'jquery' ],
 				$stage_sync_version,
 				true

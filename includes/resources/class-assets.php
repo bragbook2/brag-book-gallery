@@ -351,11 +351,12 @@ class Assets {
 	 * @since 3.0.0
 	 */
 	private function enqueue_admin_styles(): void {
+		$suffix = ( defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ) ? '' : '.min';
 
 		// Admin styles.
 		wp_enqueue_style(
 			handle: 'brag-book-gallery-admin-style',
-			src: Setup::get_asset_url( asset_path: 'assets/css/brag-book-gallery-admin.css' ),
+			src: Setup::get_asset_url( asset_path: 'assets/css/brag-book-gallery-admin' . $suffix . '.css' ),
 			deps: array(),
 			ver: $this->get_asset_version()
 		);
@@ -376,6 +377,7 @@ class Assets {
 	 * @since 3.0.0
 	 */
 	private function enqueue_admin_scripts(): void {
+		$suffix = ( defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ) ? '' : '.min';
 
 		// Ensure jQuery is loaded.
 		wp_enqueue_script( handle: 'jquery' );
@@ -386,7 +388,7 @@ class Assets {
 		// Admin main script
 		wp_enqueue_script(
 			handle: 'brag-book-gallery-admin-script',
-			src: Setup::get_asset_url( 'assets/js/brag-book-gallery-admin.js' ),
+			src: Setup::get_asset_url( 'assets/js/brag-book-gallery-admin' . $suffix . '.js' ),
 			deps: array(
 				'jquery',
 				'jquery-ui-accordion'

@@ -1168,7 +1168,7 @@ final class Setup {
 	 */
 	public function cleanup_wp_cache(): void {
 		// Only run if WP Engine object cache is available
-		if ( ! function_exists( 'wp_cache_delete' ) || ! brag_book_is_wp_engine() ) {
+		if ( ! function_exists( 'wp_cache_delete' ) ) {
 			return;
 		}
 

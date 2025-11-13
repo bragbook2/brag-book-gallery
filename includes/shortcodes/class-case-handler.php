@@ -791,7 +791,7 @@ class Case_Handler {
 			$html .= sprintf(
 				'<div class="case-detail-card procedures-performed-card">' .
 					'<div class="card-header">' .
-						'<h3 class="card-title">' . esc_html__( 'Procedures Performed', 'brag-book-gallery' ) . '</h3>' .
+						'<h2 class="card-title">' . esc_html__( 'Procedures Performed', 'brag-book-gallery' ) . '</h2>' .
 					'</div>' .
 					'<div class="card-content">' .
 						'<div class="brag-book-gallery-procedure-badges-list">%s</div>' .
@@ -808,7 +808,7 @@ class Case_Handler {
 			$html .= sprintf(
 				'<div class="case-detail-card patient-details-card">' .
 					'<div class="card-header">' .
-						'<h3 class="card-title">' . esc_html__( 'Patient Information', 'brag-book-gallery') . '</h3>' .
+						'<h2 class="card-title">' . esc_html__( 'Patient Information', 'brag-book-gallery') . '</h2>' .
 					'</div>' .
 					'<div class="card-content">' .
 						'<div class="patient-info-grid">%s</div>' .
@@ -825,7 +825,7 @@ class Case_Handler {
 			$html .= sprintf(
 				'<div class="case-detail-card postop-info-card">' .
 					'<div class="card-header">' .
-						'<h3 class="card-title">' . esc_html__( 'Post-Operative Information', 'brag-book-gallery' ) . '</h3>' .
+						'<h2 class="card-title">' . esc_html__( 'Post-Operative Information', 'brag-book-gallery' ) . '</h2>' .
 					'</div>' .
 					'<div class="card-content">' .
 						'<div class="postop-info-grid">%s</div>' .
@@ -844,7 +844,7 @@ class Case_Handler {
 				$html .= sprintf(
 					'<div class="case-detail-card procedure-details-card">' .
 						'<div class="card-header">' .
-							'<h3 class="card-title">%s</h3>' .
+							'<h2 class="card-title">%s</h2>' .
 						'</div>' .
 						'<div class="card-content">' .
 							'<div class="procedure-details-grid">%s</div>' .
@@ -864,7 +864,7 @@ class Case_Handler {
 			$html .= sprintf(
 				'<div class="case-detail-card case-notes-card">' .
 					'<div class="card-header">' .
-						'<h3 class="card-title">' . esc_html__( 'Case Notes', 'brag-book-gallery' ) . '</h3>' .
+						'<h2 class="card-title">' . esc_html__( 'Case Notes', 'brag-book-gallery' ) . '</h2>' .
 					'</div>' .
 					'<div class="card-content">' .
 						'<div class="case-details-content">%s</div>' .

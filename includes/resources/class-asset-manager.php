@@ -93,6 +93,20 @@ final class Asset_Manager {
 	private static $version_cache = array();
 
 	/**
+	 * Get asset suffix based on SCRIPT_DEBUG constant
+	 *
+	 * Returns '.min' for production (minified assets) or empty string for development.
+	 * Follows WordPress best practices for conditional asset loading.
+	 *
+	 * @since 3.3.2
+	 *
+	 * @return string Asset suffix ('.min' or '').
+	 */
+	private static function get_asset_suffix(): string {
+		return ( defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ) ? '' : '.min';
+	}
+
+	/**
 	 * Enqueue gallery assets
 	 *
 	 * Loads all necessary styles and scripts for the gallery functionality.
@@ -105,15 +119,16 @@ final class Asset_Manager {
 	public static function enqueue_gallery_assets(): void {
 		$plugin_url = Setup::get_plugin_url();
 		$plugin_path = Setup::get_plugin_path();
+		$suffix = self::get_asset_suffix();
 
 		// Get file modification time for cache busting.
-		$css_file = $plugin_path . 'assets/css/brag-book-gallery.css';
+		$css_file = $plugin_path . 'assets/css/brag-book-gallery' . $suffix . '.css';
 		$css_version = self::get_asset_version( $css_file );
 
 		// Enqueue gallery styles.
 		wp_enqueue_style(
 			'brag-book-gallery-main',
-			$plugin_url . 'assets/css/brag-book-gallery.css',
+			$plugin_url . 'assets/css/brag-book-gallery' . $suffix . '.css',
 			array(),
 			$css_version
 		);
@@ -122,13 +137,13 @@ final class Asset_Manager {
 		self::add_custom_css( 'brag-book-gallery-main' );
 
 		// Get file modification time for cache busting.
-		$js_file = $plugin_path . 'assets/js/brag-book-gallery.js';
+		$js_file = $plugin_path . 'assets/js/brag-book-gallery' . $suffix . '.js';
 		$js_version = self::get_asset_version( $js_file );
 
 		// Enqueue main gallery script.
 		wp_enqueue_script(
 			'brag-book-gallery-main',
-			$plugin_url . 'assets/js/brag-book-gallery.js',
+			$plugin_url . 'assets/js/brag-book-gallery' . $suffix . '.js',
 			array(),
 			$js_version,
 			true
@@ -158,15 +173,16 @@ final class Asset_Manager {
 	public static function enqueue_cases_assets(): void {
 		$plugin_url = Setup::get_plugin_url();
 		$plugin_path = Setup::get_plugin_path();
+		$suffix = self::get_asset_suffix();
 
 		// Get file modification time for cache busting.
-		$css_file = $plugin_path . 'assets/css/brag-book-gallery.css';
+		$css_file = $plugin_path . 'assets/css/brag-book-gallery' . $suffix . '.css';
 		$css_version = self::get_asset_version( $css_file );
 
 		// Enqueue gallery styles (reuse for cases).
 		wp_enqueue_style(
 			'brag-book-gallery-main',
-			$plugin_url . 'assets/css/brag-book-gallery.css',
+			$plugin_url . 'assets/css/brag-book-gallery' . $suffix . '.css',
 			array(),
 			$css_version
 		);
@@ -175,13 +191,13 @@ final class Asset_Manager {
 		self::add_custom_css( 'brag-book-gallery-main' );
 
 		// Get file modification time for cache busting.
-		$js_file = $plugin_path . 'assets/js/brag-book-gallery.js';
+		$js_file = $plugin_path . 'assets/js/brag-book-gallery' . $suffix . '.js';
 		$js_version = self::get_asset_version( $js_file );
 
 		// Enqueue main gallery script for filtering functionality.
 		wp_enqueue_script(
 			'brag-book-gallery-main',
-			$plugin_url . 'assets/js/brag-book-gallery.js',
+			$plugin_url . 'assets/js/brag-book-gallery' . $suffix . '.js',
 			array(),
 			$js_version,
 			true

@@ -7,7 +7,6 @@
 .brag-book-gallery-case-card {
 	transition: var(--wp--custom--brag-book-gallery--transition);
 	position: relative;
-	cursor: pointer;
 
 	&-link {
 		position: relative;
@@ -20,6 +19,7 @@
 		border-radius: var(--wp--custom--brag-book-gallery--rounded);
 		box-shadow: var(--wp--custom--brag-book-gallery--shadow-lg);
 		overflow: hidden;
+		cursor: pointer;
 
 		&:focus {
 			outline: none;
@@ -36,6 +36,7 @@
 		container-type: inline-size;
 		box-shadow: var(--wp--custom--brag-book-gallery--shadow-lg);
 		padding: var(--wp--custom--brag-book-gallery--spacer--sm) var(--wp--custom--brag-book-gallery--spacer--md) !important;
+		cursor: pointer;
 
 		[open] & {
 			border-radius: 0 0 var(--wp--custom--brag-book-gallery--rounded,4px) var(--wp--custom--brag-book-gallery--rounded,4px);
@@ -123,11 +124,14 @@
 
 	&-details {
 		&-content {
+			display: flex;
+			flex-direction: column;
+			gap: var(--wp--custom--brag-book-gallery--spacer--md);
 			background-color: var(--wp--custom--brag-book-gallery--color--lighter-grey);
 			padding: var(--wp--custom--brag-book-gallery--spacer--lg,16px);
 
 			&__title {
-				margin: 0 0 var(--wp--custom--brag-book-gallery--spacer);
+				margin: 0;
 				font-weight: var(--wp--custom--brag-book-gallery--font-weight--semibold);
 				font-size: var(--wp--custom--brag-book-gallery--text-sm);
 			}

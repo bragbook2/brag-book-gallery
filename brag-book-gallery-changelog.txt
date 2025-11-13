@@ -1,5 +1,28 @@
 === BRAGBook Gallery Changelog ===
 
+= 3.3.2-beta13 (2025-11-12) =
+
+Added:
+* Minified Assets - Implemented intelligent asset minification system
+  - Production mode loads .min.js and .min.css files for optimal performance
+  - Development mode (SCRIPT_DEBUG enabled) loads non-minified versions for debugging
+  - Webpack generates both minified and non-minified JavaScript files
+  - Sass generates both compressed and expanded CSS files
+  - File size reductions: JS 50-54%, CSS 10-13%
+  - Updated Asset_Manager, Assets, and Sync_Page classes to use suffix-based loading
+* Procedure Links - Added clickable links to procedures in case card details
+  - Each procedure in "Procedures Performed" list now links to its taxonomy page
+  - Includes hover animations and accessibility improvements
+  - Added brag-book-gallery-case-card-procedures-list__link CSS class
+  - Enhanced user navigation to related cases by procedure
+
+Fixed:
+* Sitemap Generation - Fixed critical TypeError in Sitemap class
+  - Resolved "Return value must be of type string, null returned" error
+  - Fixed undefined variable references when Cache_Manager was removed
+  - Updated get_sitemap_content(), generate_sitemap(), is_rate_limited(), and get_cached_data()
+  - All variables now properly initialized before use
+
 = 3.3.2-beta9 (2025-11-07) =
 
 Fixed:

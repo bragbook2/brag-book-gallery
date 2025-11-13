@@ -303,7 +303,7 @@ final class Sitemap {
 	public function generate_sitemap(): string {
 		try {
 			$cache_key = 'brag_book_gallery_transient_sitemap_content';
-			// $cached_content = false; // Cache_Manager::get( $cache_key );
+			$cached_content = false; // Cache_Manager::get( $cache_key );
 
 			if ( ! empty( $cached_content ) ) {
 				$this->track_performance( 'sitemap_generate', 'cache_hit' );
@@ -350,7 +350,7 @@ final class Sitemap {
 	 * @return string Sitemap XML content.
 	 */
 	private function get_sitemap_content(): string {
-		// $cached_content = false; // Cache_Manager::get( 'brag_book_gallery_transient_sitemap_content' );
+		$cached_content = false; // Cache_Manager::get( 'brag_book_gallery_transient_sitemap_content' );
 
 		if ( false !== $cached_content ) {
 			return $cached_content;
@@ -1193,7 +1193,7 @@ final class Sitemap {
 	 */
 	private function is_rate_limited( string $identifier, int $limit = 10, int $window = 60 ): bool {
 		$cache_key = 'brag_book_gallery_transient_rate_limit_' . $identifier;
-		// $requests = false; // Cache_Manager::get( $cache_key ) ?: 0;
+		$requests = 0; // Cache_Manager::get( $cache_key ) ?: 0;
 
 		if ( $requests >= $limit ) {
 			$this->log_warning( 'Rate limit exceeded', [
@@ -1229,7 +1229,7 @@ final class Sitemap {
 		}
 
 		// Check transient cache (second fastest)
-		// $cached_data = false; // Cache_Manager::get( $cache_key );
+		$cached_data = false; // Cache_Manager::get( $cache_key );
 		if ( false !== $cached_data ) {
 			$this->memory_cache[ $cache_key ] = $cached_data;
 			$this->track_performance( 'cache_lookup', 'transient_hit' );

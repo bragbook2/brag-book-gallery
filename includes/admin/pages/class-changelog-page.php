@@ -93,12 +93,44 @@ class Changelog_Page extends Settings_Base {
 				</div>
 			</div>
 
+			<!-- Version 3.3.2-beta13 -->
+			<div class="brag-book-gallery-section">
+				<div class="brag-book-gallery-changelog-version">
+					<h3>
+						<span class="version-badge version-beta">v3.3.2-beta13</span>
+						<?php esc_html_e( 'November 12, 2025', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Current Beta', 'brag-book-gallery' ); ?>
+					</h3>
+					<div class="brag-book-gallery-card">
+						<h4><?php esc_html_e( '🎉 New Features', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Minified Assets: Implemented intelligent asset minification system for optimal performance', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Production mode loads .min.js and .min.css files (50-54% smaller JS, 10-13% smaller CSS)', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Development mode (SCRIPT_DEBUG enabled) loads non-minified versions for debugging', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Webpack generates both minified and non-minified JavaScript files', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Sass generates both compressed and expanded CSS files', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Procedure Links: Added clickable links to procedures in case card details', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Each procedure in "Procedures Performed" list now links to its taxonomy page', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Includes hover animations with subtle lift effect and box shadow', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Proper ARIA labels for accessibility (View [Procedure] cases)', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '🐛 Bug Fixes', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Sitemap Generation: Fixed critical TypeError in Sitemap class', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Resolved "Return value must be of type string, null returned" error', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Fixed undefined variable references when Cache_Manager was removed', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Updated get_sitemap_content(), generate_sitemap(), is_rate_limited(), and get_cached_data()', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'All variables now properly initialized before use', 'brag-book-gallery' ); ?></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
 			<!-- Version 3.3.2-beta10 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">
 					<h3>
 						<span class="version-badge version-beta">v3.3.2-beta10</span>
-						<?php esc_html_e( 'November 10, 2025', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Current Beta', 'brag-book-gallery' ); ?>
+						<?php esc_html_e( 'November 10, 2025', 'brag-book-gallery' ); ?>
 					</h3>
 					<div class="brag-book-gallery-card">
 						<h4><?php esc_html_e( '🎉 New Features', 'brag-book-gallery' ); ?></h4>

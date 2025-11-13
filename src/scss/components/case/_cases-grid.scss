@@ -76,7 +76,7 @@
 		}
 
 		.brag-book-gallery-back-button {
-			color: var(--wp--custom--brag-book-gallery--color--primary, #007cba);
+			color: var(--wp--custom--brag-book-gallery--color--primary, #D94540);
 			text-decoration: none;
 			font-weight: 500;
 
@@ -295,7 +295,7 @@
 	}
 
 	&:focus {
-		outline: 2px solid var(--wp--custom--brag-book-gallery--color--primary, #007cba);
+		outline: 2px solid var(--wp--custom--brag-book-gallery--color--primary, #D94540);
 		outline-offset: 2px;
 	}
 
@@ -305,10 +305,10 @@
 
 	// Primary variant (for Request Consultation)
 	&--primary {
-		background: var(--wp--custom--brag-book-gallery--color--primary, #007cba);
+		background: var(--wp--custom--brag-book-gallery--color--primary, #D94540);
 
 		&:hover {
-			background: var(--wp--custom--brag-book-gallery--color--primary-dark, #005a87);
+			background: var(--wp--custom--brag-book-gallery--color--primary-dark, #d94540);
 		}
 	}
 
@@ -648,13 +648,13 @@
 	cursor: pointer;
 
 	&:hover {
-		border-color: var(--wp--custom--brag-book-gallery--color--primary, #007cba);
+		border-color: var(--wp--custom--brag-book-gallery--color--primary, #D94540);
 		box-shadow: var(--wp--custom--brag-book-gallery--shadow-lg);
 		transform: translateY(-2px);
 	}
 
 	&:focus {
-		outline: 2px solid var(--wp--custom--brag-book-gallery--color--primary, #007cba);
+		outline: 2px solid var(--wp--custom--brag-book-gallery--color--primary, #D94540);
 		outline-offset: 2px;
 	}
 }

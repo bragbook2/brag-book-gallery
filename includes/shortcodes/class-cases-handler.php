@@ -2459,13 +2459,35 @@ final class Cases_Handler {
 						<ul class="brag-book-gallery-case-card-procedures-list">
 							<?php if ( ! empty( $procedures ) && is_array( $procedures ) ) : ?>
 								<?php foreach ( $procedures as $procedure ) : ?>
+									<?php
+									$procedure_name = is_object( $procedure ) ? $procedure->name : $procedure;
+									$procedure_url = is_object( $procedure ) ? get_term_link( $procedure ) : '#';
+									if ( is_wp_error( $procedure_url ) ) {
+										$procedure_url = '#';
+									}
+									?>
 									<li class="brag-book-gallery-case-card-procedures-list__item">
-										<?php echo esc_html( is_object( $procedure ) ? $procedure->name : $procedure ); ?>
+										<a href="<?php echo esc_url( $procedure_url ); ?>"
+										   class="brag-book-gallery-case-card-procedures-list__link"
+										   aria-label="View <?php echo esc_attr( $procedure_name ); ?> cases">
+											<?php echo esc_html( $procedure_name ); ?>
+										</a>
 									</li>
 								<?php endforeach; ?>
 							<?php else : ?>
+								<?php
+								$procedure_name = is_object( $primary_procedure ) ? $primary_procedure->name : $primary_procedure;
+								$procedure_url = is_object( $primary_procedure ) ? get_term_link( $primary_procedure ) : '#';
+								if ( is_wp_error( $procedure_url ) ) {
+									$procedure_url = '#';
+								}
+								?>
 								<li class="brag-book-gallery-case-card-procedures-list__item">
-									<?php echo esc_html( is_object( $primary_procedure ) ? $primary_procedure->name : $primary_procedure ); ?>
+									<a href="<?php echo esc_url( $procedure_url ); ?>"
+									   class="brag-book-gallery-case-card-procedures-list__link"
+									   aria-label="View <?php echo esc_attr( $procedure_name ); ?> cases">
+										<?php echo esc_html( $procedure_name ); ?>
+									</a>
 								</li>
 							<?php endif; ?>
 						</ul>

@@ -4,7 +4,34 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.3.2-beta10] - 2025-11-10 (Current Beta)
+## [3.3.2-beta13] - 2025-11-12 (Current Beta)
+
+### Added
+- **Minified Assets**: Implemented intelligent asset minification system
+  - Production mode loads `.min.js` and `.min.css` files for optimal performance
+  - Development mode (`SCRIPT_DEBUG` enabled) loads non-minified versions for debugging
+  - Webpack generates both minified and non-minified JavaScript files
+  - Sass generates both compressed and expanded CSS files
+  - File size reductions: JavaScript 50-54%, CSS 10-13%
+  - Added `get_asset_suffix()` helper method to determine asset file suffix
+  - Updated in `webpack.config.js`, `package.json`, `includes/resources/class-asset-manager.php:105-107`, `includes/resources/class-assets.php:353-398`, and `includes/admin/pages/class-sync-page.php:2062-2093`
+- **Procedure Links**: Added clickable links to procedures in case card details
+  - Each procedure in "Procedures Performed" list now links to its taxonomy page via `get_term_link()`
+  - Includes hover animations with subtle lift effect and box shadow
+  - Added `brag-book-gallery-case-card-procedures-list__link` CSS class with full styling
+  - Proper ARIA labels for accessibility ("View [Procedure] cases")
+  - Enhanced user navigation to related cases by procedure
+  - Enhanced in `includes/shortcodes/class-cases-handler.php:2457-2494` and `src/scss/components/case/_procedures-list.scss`
+
+### Fixed
+- **Sitemap Generation**: Fixed critical `TypeError` in Sitemap class
+  - Resolved "Return value must be of type string, null returned" error
+  - Fixed undefined variable references when Cache_Manager was removed
+  - Updated `get_sitemap_content()`, `generate_sitemap()`, `is_rate_limited()`, and `get_cached_data()` methods
+  - All variables now properly initialized before use (lines 306, 353, 1196, 1232)
+  - Fixed in `includes/seo/class-sitemap.php`
+
+## [3.3.2-beta10] - 2025-11-10
 
 ### Added
 - **Doctor Profile URL Field**: Added `brag_book_gallery_doctor_profile_url` meta field to case post types

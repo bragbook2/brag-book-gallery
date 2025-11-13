@@ -3,61 +3,82 @@
  */
 
 const path = require('path');
+const TerserPlugin = require('terser-webpack-plugin');
 
-module.exports = {
-	cache: false,
-	entry: {
-		frontend: './src/js/frontend.js',
-		admin: './src/js/admin.js',
-		'sync-admin': './src/js/sync-admin.js',
-		'stage-sync': './src/js/stage-sync.js'
-	},
-	output: {
-		path: path.resolve(__dirname, 'assets/js'),
-		filename: (pathData) => {
-			// Map entry names to desired output filenames
-			const nameMap = {
-				frontend: 'brag-book-gallery.js',
-				admin: 'brag-book-gallery-admin.js',
-				'sync-admin': 'brag-book-gallery-sync-admin.js',
-				'stage-sync': 'brag-book-gallery-stage-sync.js'
-			};
-			return nameMap[pathData.chunk.name] || '[name].js';
-		}
-	},
-	module: {
-		rules: [
-			{
-				test: /\.js$/,
-				exclude: /node_modules/,
-				use: {
-					loader: 'babel-loader',
-					options: {
-						presets: [
-							'@babel/preset-env',
-							['@babel/preset-react', { pragma: 'wp.element.createElement' }]
-						]
+module.exports = (env, argv) => {
+	const isProduction = argv.mode === 'production';
+
+	return {
+		cache: false,
+		entry: {
+			frontend: './src/js/frontend.js',
+			admin: './src/js/admin.js',
+			'sync-admin': './src/js/sync-admin.js',
+			'stage-sync': './src/js/stage-sync.js'
+		},
+		output: {
+			path: path.resolve(__dirname, 'assets/js'),
+			filename: (pathData) => {
+				// Map entry names to desired output filenames
+				const nameMap = {
+					frontend: 'brag-book-gallery.js',
+					admin: 'brag-book-gallery-admin.js',
+					'sync-admin': 'brag-book-gallery-sync-admin.js',
+					'stage-sync': 'brag-book-gallery-stage-sync.js'
+				};
+				const baseName = nameMap[pathData.chunk.name] || '[name].js';
+				// Add .min suffix for production builds
+				return isProduction ? baseName.replace('.js', '.min.js') : baseName;
+			}
+		},
+		module: {
+			rules: [
+				{
+					test: /\.js$/,
+					exclude: /node_modules/,
+					use: {
+						loader: 'babel-loader',
+						options: {
+							presets: [
+								'@babel/preset-env',
+								['@babel/preset-react', { pragma: 'wp.element.createElement' }]
+							]
+						}
 					}
 				}
+			]
+		},
+		resolve: {
+			alias: {
+				'@utils': path.resolve(__dirname, 'src/js/utils'),
+				'@components': path.resolve(__dirname, 'src/js/components'),
+				'@filters': path.resolve(__dirname, 'src/js/filters'),
+				'@gallery': path.resolve(__dirname, 'src/js/gallery')
 			}
-		]
-	},
-	resolve: {
-		alias: {
-			'@utils': path.resolve(__dirname, 'src/js/utils'),
-			'@components': path.resolve(__dirname, 'src/js/components'),
-			'@filters': path.resolve(__dirname, 'src/js/filters'),
-			'@gallery': path.resolve(__dirname, 'src/js/gallery')
+		},
+		optimization: {
+			minimize: isProduction,
+			minimizer: [
+				new TerserPlugin({
+					terserOptions: {
+						format: {
+							comments: false,
+						},
+					},
+					extractComments: false,
+				}),
+			],
+		},
+		devtool: isProduction ? false : 'source-map',
+		externals: {
+			jquery: 'jQuery',
+			'@wordpress/plugins': ['wp', 'plugins'],
+			'@wordpress/editor': ['wp', 'editor'],
+			'@wordpress/element': ['wp', 'element'],
+			'@wordpress/components': ['wp', 'components'],
+			'@wordpress/data': ['wp', 'data'],
+			'@wordpress/i18n': ['wp', 'i18n'],
+			'wp': 'wp'
 		}
-	},
-	externals: {
-		jquery: 'jQuery',
-		'@wordpress/plugins': ['wp', 'plugins'],
-		'@wordpress/editor': ['wp', 'editor'],
-		'@wordpress/element': ['wp', 'element'],
-		'@wordpress/components': ['wp', 'components'],
-		'@wordpress/data': ['wp', 'data'],
-		'@wordpress/i18n': ['wp', 'i18n'],
-		'wp': 'wp'
-	}
+	};
 };

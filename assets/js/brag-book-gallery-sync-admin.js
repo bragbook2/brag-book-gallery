@@ -1,1 +1,1642 @@
-!function(){"use strict";class t{constructor(t){this.pageLoadTime=new Date,this.initialServerTime=new Date(t),this.updateInterval=null,this.elements={serverTime:null,browserTime:null}}init(){this.elements.serverTime=document.getElementById("server-time"),this.elements.browserTime=document.getElementById("browser-time"),this.updateTimes(),this.updateInterval=setInterval(()=>this.updateTimes(),1e3)}updateTimes(){this.updateServerTime(),this.updateBrowserTime()}updateServerTime(){if(!this.elements.serverTime)return;const t=new Date,e=Math.floor((t-this.pageLoadTime)/1e3),s=new Date(this.initialServerTime.getTime()+1e3*e);this.elements.serverTime.textContent=this.formatDateTime(s)}updateBrowserTime(){if(!this.elements.browserTime)return;const t=new Date;this.elements.browserTime.textContent=this.formatDateTime(t)}formatDateTime(t){return`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,"0")}-${String(t.getDate()).padStart(2,"0")} ${String(t.getHours()).padStart(2,"0")}:${String(t.getMinutes()).padStart(2,"0")}:${String(t.getSeconds()).padStart(2,"0")}`}destroy(){this.updateInterval&&(clearInterval(this.updateInterval),this.updateInterval=null)}}function e(){const e=document.getElementById("server-time");if(!e)return;const s=e.dataset.initialTime||"undefined"!=typeof bragBookSyncData&&bragBookSyncData.serverTime;if(!s)return void console.warn("BRAG book Sync: Initial server time not available");const n=new t(s);n.init(),window.bragBookSyncTimeDisplay=n}"loading"===document.readyState?document.addEventListener("DOMContentLoaded",e):e();class s{constructor(t={}){this.ajaxUrl=t.ajaxUrl||window.ajaxurl||"/wp-admin/admin-ajax.php",this.nonce=t.nonce||"",this.messages=t.messages||{running:"Running...",triggering:"Triggering cron job...",testFailed:"Test failed",ajaxError:"AJAX request failed",testCronNow:"Test Cron Now"},this.elements={button:null,resultContainer:null},this.autoDismissTimeout=5e3}init(){this.elements.button=document.getElementById("test-cron-sync"),this.elements.resultContainer=document.getElementById("test-cron-result"),this.elements.button&&this.bindEvents()}bindEvents(){this.elements.button.addEventListener("click",t=>{t.preventDefault(),this.handleTestCron()})}async handleTestCron(){const t=this.elements.button;t.disabled=!0,t.textContent=this.messages.running,this.showNotice(this.messages.triggering,"info");try{const e=new FormData;e.append("action","brag_book_gallery_test_cron"),e.append("nonce",this.nonce);const s=await fetch(this.ajaxUrl,{method:"POST",body:e}),n=await s.json();t.disabled=!1,t.textContent=this.messages.testCronNow,n.success?this.showNotice(n.data.message,"success"):this.showNotice(n.data||this.messages.testFailed,"error")}catch(e){console.error("BRAG book Sync: Cron test error:",e),t.disabled=!1,t.textContent=this.messages.testCronNow,this.showNotice(this.messages.ajaxError,"error")}}showNotice(t,e="info"){if(!this.elements.resultContainer)return;const s=document.createElement("div");s.className=`notice notice-${e} is-dismissible`,s.innerHTML=`<p>${this.escapeHtml(t)}</p>`,this.elements.resultContainer.innerHTML="",this.elements.resultContainer.appendChild(s),this.autoDismissNotice(s)}autoDismissNotice(t){setTimeout(()=>{t.style.transition="opacity 300ms",t.style.opacity="0",setTimeout(()=>{t.remove()},300)},this.autoDismissTimeout)}escapeHtml(t){const e=document.createElement("div");return e.textContent=t,e.innerHTML}}function n(){if(!document.getElementById("test-cron-sync"))return;const t={};"undefined"!=typeof bragBookSync&&(t.ajaxUrl=bragBookSync.ajax_url,t.nonce=bragBookSync.sync_nonce,t.messages=bragBookSync.messages||{});const e=new s(t);e.init(),window.bragBookSyncCronTest=e}"loading"===document.readyState?document.addEventListener("DOMContentLoaded",n):n(),void 0===window.BRAGbookSyncAdmin&&(window.BRAGbookSyncAdmin=class{constructor(){this.config="undefined"!=typeof bragBookSync?bragBookSync:{},this.ajaxUrl=this.config.ajax_url||"/wp-admin/admin-ajax.php",this.nonces={sync:this.config.sync_nonce||"",general:this.config.nonce||"",testAuto:this.config.test_auto_nonce||"",clearLog:this.config.clear_log_nonce||"",delete:this.config.delete_nonce||""},this.messages=this.config.messages||{},this.syncInProgress=!1,this.progressTimer=null,this.syncStartTime=null,"loading"===document.readyState?document.addEventListener("DOMContentLoaded",()=>this.init()):this.init()}init(){this.bindSyncControls(),this.bindHistoryControls(),this.bindProgressHandlers(),this.setupNoticeObserver(),this.setupExitWarning(),this.checkExistingSync()}bindSyncControls(){}bindHistoryControls(){document.querySelectorAll(".view-details").forEach(t=>{t.addEventListener("click",t=>{const e=t.target.getAttribute("data-details");this.showSyncDetails(e)})}),document.querySelectorAll(".delete-sync-record").forEach(t=>{t.addEventListener("click",t=>{const e=t.target.getAttribute("data-sync-id"),s=t.target.closest("tr"),n=s?s.querySelector("td:first-child"):null,r=n?n.textContent.trim():"this sync record";this.deleteSyncRecord(e,r)})})}bindProgressHandlers(){}async checkExistingSync(){try{const t=new FormData;t.append("action","brag_book_get_detailed_progress"),t.append("nonce",this.nonces.general);const e=await fetch(this.ajaxUrl,{method:"POST",body:t}),s=await e.json();s.success&&"idle"!==s.data.stage?(this.updateSyncsInProgress([s.data]),this.setSyncInProgress(!0),this.showProgress(),this.updateProgress(s.data.current_step,s.data.overall_percentage,s.data.procedure_progress.percentage,s.data.recent_cases||[])):(this.updateSyncsInProgress([]),this.setSyncInProgress(!1))}catch(t){console.error("BRAGbook Sync Admin: Error checking existing sync:",t),this.updateSyncsInProgress([]),this.setSyncInProgress(!1)}}async resumeSync(){try{const t=new FormData;t.append("action","brag_book_full_sync"),t.append("nonce",this.nonces.sync);const e=await fetch(this.ajaxUrl,{method:"POST",body:t}),s=await e.json();this.handleSyncResult(s)}catch(t){console.error("Resume sync error:",t),this.handleSyncError(t.message)}}updateSyncsInProgress(t){const e=document.getElementById("no-active-syncs"),s=document.getElementById("active-syncs-list");if(e&&s)if(0===t.length)e.style.display="block",s.style.display="none",s.innerHTML="";else{e.style.display="none",s.style.display="block";let n="";t.forEach((t,e)=>{const s=`sync-${e}`,r=Math.round(t.overall_percentage||0),o=t.current_step||"Processing...";n+=`\n\t\t\t\t\t\t<div class="brag-book-gallery-active-sync" data-sync-id="${s}">\n\t\t\t\t\t\t\t<div class="sync-header">\n\t\t\t\t\t\t\t\t<strong>Data Sync in Progress</strong>\n\t\t\t\t\t\t\t\t<button type="button" class="button button-secondary button-small stop-individual-sync" data-sync-id="${s}">\n\t\t\t\t\t\t\t\t\tStop Sync\n\t\t\t\t\t\t\t\t</button>\n\t\t\t\t\t\t\t</div>\n\t\t\t\t\t\t\t<div class="sync-progress-summary">\n\t\t\t\t\t\t\t\t<div class="progress-text">\n\t\t\t\t\t\t\t\t\t<span class="current-step">${o}</span>\n\t\t\t\t\t\t\t\t\t<span class="progress-percentage">${r}%</span>\n\t\t\t\t\t\t\t\t</div>\n\t\t\t\t\t\t\t\t<div class="progress-bar-container">\n\t\t\t\t\t\t\t\t\t<div class="progress-bar">\n\t\t\t\t\t\t\t\t\t\t<div class="progress-fill" style="width: ${r}%"></div>\n\t\t\t\t\t\t\t\t\t</div>\n\t\t\t\t\t\t\t\t</div>\n\t\t\t\t\t\t\t</div>\n\t\t\t\t\t\t</div>\n\t\t\t\t\t`}),s.innerHTML=n,document.querySelectorAll(".stop-individual-sync").forEach(t=>{t.addEventListener("click",()=>this.stopSync())})}}async stopSync(){try{const t=new FormData;t.append("action","brag_book_stop_sync"),t.append("nonce",this.nonces.general);const e=await fetch(this.ajaxUrl,{method:"POST",body:t}),s=await e.json();s.success?(this.showNotice(s.data.message,"info"),this.setSyncInProgress(!1)):this.showNotice(s.data.message,"error")}catch(t){console.error("Stop sync error:",t),this.showNotice("Failed to stop sync: "+t.message,"error")}}async deleteSyncRecord(t,e){const s=this.messages.confirm_delete_record||"Are you sure you want to delete this sync record?";if(confirm(`${s}\n\nRecord: ${e}`))try{const e=new FormData;e.append("action","brag_book_delete_sync_record"),e.append("nonce",this.nonces.delete),e.append("sync_id",t);const s=await fetch(this.ajaxUrl,{method:"POST",body:e}),n=await s.json();n.success?(this.showNotice(n.data.message,"success"),setTimeout(()=>window.location.reload(),1500)):this.showNotice(n.data.message,"error")}catch(t){console.error("Delete record error:",t),this.showNotice("Failed to delete sync record: "+t.message,"error")}}showSyncDetails(t){try{const e=JSON.parse(t);if(e.activity_log&&"object"==typeof e.activity_log)this.showActivityLogReport(e);else{const t=JSON.stringify(e,null,2);alert("Sync Details:\n\n"+t)}}catch(e){alert("Sync Details:\n\n"+t)}}showActivityLogReport(t){const e=document.createElement("div");e.style.cssText="\n\t\t\t\tposition: fixed;\n\t\t\t\ttop: 0;\n\t\t\t\tleft: 0;\n\t\t\t\tright: 0;\n\t\t\t\tbottom: 0;\n\t\t\t\tbackground: rgba(0,0,0,0.8);\n\t\t\t\tz-index: 10000;\n\t\t\t\tdisplay: flex;\n\t\t\t\talign-items: center;\n\t\t\t\tjustify-content: center;\n\t\t\t";const s=document.createElement("div");s.style.cssText="\n\t\t\t\tbackground: #fff;\n\t\t\t\tpadding: 20px;\n\t\t\t\tborder-radius: 5px;\n\t\t\t\tmax-width: 80%;\n\t\t\t\tmax-height: 80%;\n\t\t\t\toverflow-y: auto;\n\t\t\t\tbox-shadow: 0 4px 20px rgba(0,0,0,0.3);\n\t\t\t";let n='<h2 style="margin-top: 0;">Sync Activity Report</h2>';if(n+="<h3>Summary</h3>",n+='<div style="background: #f9f9f9; padding: 10px; border-radius: 3px; margin-bottom: 20px;">',n+=`<p><strong>Procedures Created:</strong> ${t.created||0}</p>`,n+=`<p><strong>Procedures Updated:</strong> ${t.updated||0}</p>`,n+=`<p><strong>Cases Created:</strong> ${t.cases_created||0}</p>`,n+=`<p><strong>Cases Updated:</strong> ${t.cases_updated||0}</p>`,n+=`<p><strong>Total Cases Processed:</strong> ${t.total_processed||0}</p>`,t.duration&&(n+=`<p><strong>Duration:</strong> ${t.duration}</p>`),n+="</div>",t.activity_log){n+="<h3>Activity Log</h3>",n+='<div style="background: #f1f1f1; padding: 10px; border-radius: 3px; font-family: monospace; font-size: 12px; max-height: 300px; overflow-y: auto;">';const e=t.activity_log;e.current_step&&(n+=`<div style="margin-bottom: 10px;"><strong>Final Step:</strong> ${e.current_step}</div>`),e.overall_percentage&&(n+=`<div style="margin-bottom: 10px;"><strong>Progress:</strong> ${e.overall_percentage}% complete</div>`),e.updated_at&&(n+=`<div style="margin-bottom: 10px;"><strong>Completed:</strong> ${e.updated_at}</div>`),n+="</div>"}n+='<div style="text-align: right; margin-top: 20px;">',n+='<button id="close-sync-report" style="background: #0073aa; color: white; border: none; padding: 8px 16px; border-radius: 3px; cursor: pointer;">Close</button>',n+="</div>",s.innerHTML=n,e.appendChild(s),document.body.appendChild(e),document.getElementById("close-sync-report").addEventListener("click",()=>{document.body.removeChild(e)}),e.addEventListener("click",t=>{t.target===e&&document.body.removeChild(e)})}setSyncInProgress(t){this.syncInProgress=t,t?this.startProgressPolling():this.stopProgressPolling()}showProgress(){const t=document.getElementById("sync-progress");t&&(t.style.display="block");const e=document.getElementById("sync-progress-details");e&&(e.style.display="block")}hideProgress(){const t=document.getElementById("sync-progress");t&&(t.style.display="none");const e=document.getElementById("sync-progress-details");e&&(e.style.display="none")}updateProgress(t,e,s,n=[]){const r=document.getElementById("sync-overall-fill"),o=document.getElementById("sync-overall-percentage"),a=document.getElementById("sync-current-operation"),i=document.getElementById("sync-current-fill"),c=document.getElementById("sync-current-percentage"),d=document.getElementById("sync-status-text"),l=document.getElementById("sync-time-elapsed");r&&(r.style.width=e+"%",r.setAttribute("data-percentage",Math.round(e)+"%")),o&&(o.textContent=Math.round(e)+"%");const g=this.syncStartTime?Math.floor((Date.now()-this.syncStartTime)/1e3):0;if(l){const t=Math.floor(g/60),e=g%60;let s="Time: ";s+=t>0?`${t}m ${e}s`:`${e}s`,l.textContent=s}a&&(a.textContent=t),i&&(i.style.width=s+"%"),c&&(c.textContent=Math.round(s)+"%"),d&&(100===e?(d.textContent="Completed",d.style.color="#22c55e"):e>0?(d.textContent="In Progress",d.style.color="#D94540"):(d.textContent="Ready",d.style.color="#1e293b"));const u=document.querySelector(".sync-progress-overview");u&&(u.classList.remove("sync-in-progress","sync-completed","sync-error"),100===e?u.classList.add("sync-completed"):e>0&&u.classList.add("sync-in-progress"));const p=document.querySelector(".sync-status-badge");p&&(100===e?(p.className="sync-status-badge completed",p.innerHTML='<span class="status-indicator"></span>Completed'):e>0&&(p.className="sync-status-badge syncing",p.innerHTML='<span class="status-indicator active"></span>Syncing')),this.updateProgressLog(n)}setProgressBarsCompleted(){const t=document.getElementById("sync-overall-fill"),e=document.getElementById("sync-current-fill");t&&(t.style.backgroundColor="#00a32a",t.style.transition="background-color 0.3s ease"),e&&(e.style.backgroundColor="#00a32a",e.style.transition="background-color 0.3s ease"),document.querySelectorAll(".progress-fill").forEach(t=>{t.style.backgroundColor="#00a32a",t.style.transition="background-color 0.3s ease"})}formatStageLabel(t){switch(t){case"procedures":return"Procedure Synchronization";case"cases":return"Case Creation";case"completed":return"Sync Completed";case"idle":return"Idle";default:return t.charAt(0).toUpperCase()+t.slice(1)}}addProgressLogEntry(t,e="success"){const s=document.getElementById("sync-progress-items");if(!s)return;const n=document.createElement("li");n.className=`sync-log-item sync-log-item--${e}`;const r=(new Date).toLocaleTimeString();switch(n.textContent=`[${r}] ${t}`,e){case"success":n.style.cssText="padding: 5px 10px; margin: 1px 0; background: #fff; border-left: 3px solid #00a32a; font-size: 11px; color: #333;";break;case"info":n.style.cssText="padding: 5px 10px; margin: 1px 0; background: #f0f0f1; border-left: 3px solid #72aee6; font-size: 11px; color: #555;";break;case"warning":n.style.cssText="padding: 5px 10px; margin: 1px 0; background: #fff8e1; border-left: 3px solid #ff9800; font-size: 11px; color: #333;";break;case"error":n.style.cssText="padding: 5px 10px; margin: 1px 0; background: #ffebee; border-left: 3px solid #f44336; font-size: 11px; color: #333;"}s.appendChild(n),s.scrollTop=s.scrollHeight}updateProgressLog(t){t&&t.length>0&&t.forEach(t=>{this.addProgressLogEntry(`✓ ${t}`,"success")})}startProgressPolling(){this.progressTimer&&clearInterval(this.progressTimer);let t="",e="",s="",n=0;this.progressTimer=setInterval(async()=>{try{const r=new FormData;r.append("action","brag_book_get_detailed_progress"),r.append("nonce",this.nonces.general);const o=await fetch(this.ajaxUrl,{method:"POST",body:r}),a=await o.json();if(a.success&&"idle"!==a.data.stage){const r=a.data;if("completed"===r.stage)return this.addProgressLogEntry("🎉 Synchronization completed successfully!","success"),this.updateProgress(r.current_step,r.overall_percentage,r.procedure_progress.percentage,r.recent_cases||[]),this.setProgressBarsCompleted(),this.setSyncInProgress(!1),void this.updateSyncsInProgress([]);if(t!==r.stage){const e=this.formatStageLabel(r.stage);this.addProgressLogEntry(`[STAGE] ${e}`,"info"),t=r.stage}e!==r.current_step&&(this.addProgressLogEntry(`⏳ ${r.current_step}`,"info"),e=r.current_step),r.current_procedure&&s!==r.current_procedure&&(this.addProgressLogEntry(`📋 Processing procedure: ${r.current_procedure}`,"info"),s=r.current_procedure),r.taxonomy_mapping_issues&&r.taxonomy_mapping_issues.length>0&&r.taxonomy_mapping_issues.forEach(t=>{this.addProgressLogEntry(`Taxonomy: ${t}`,"warning")}),r.overall_percentage-n>=5&&(this.addProgressLogEntry(`Overall progress: ${Math.round(r.overall_percentage)}%`,"info"),n=r.overall_percentage),r.errors&&r.errors.length>0&&r.errors.forEach(t=>{this.addProgressLogEntry(`Error: ${t}`,"error")}),r.warnings&&r.warnings.length>0&&r.warnings.forEach(t=>{this.addProgressLogEntry(`Warning: ${t}`,"warning")}),this.updateProgress(r.current_step,r.overall_percentage,r.procedure_progress.percentage,r.recent_cases||[]),this.updateSyncsInProgress([r])}else a.success&&"idle"===a.data.stage&&(this.addProgressLogEntry("Synchronization completed successfully","success"),this.updateProgress("Sync Completed",100,100,[]),this.setProgressBarsCompleted(),this.setSyncInProgress(!1),this.updateSyncsInProgress([]))}catch(t){console.error("Progress polling error:",t),this.addProgressLogEntry(`Polling error: ${t.message}`,"error")}},1500)}stopProgressPolling(){this.progressTimer&&(clearInterval(this.progressTimer),this.progressTimer=null)}handleSyncResult(t){if(t.success){if(t.data&&t.data.needs_resume){this.addProgressLogEntry("⏸ Sync paused to prevent timeout - resuming...","warning");const e=t.data.progress||0;return this.updateProgress(t.data.message||"Resuming sync...",e,e,[]),(t.data.created>0||t.data.updated>0)&&(this.addProgressLogEntry("Progress so far:","info"),t.data.created>0&&this.addProgressLogEntry(`   • Procedures Created: ${t.data.created}`,"info"),t.data.updated>0&&this.addProgressLogEntry(`   • Procedures Updated: ${t.data.updated}`,"info"),t.data.cases_created>0&&this.addProgressLogEntry(`   • Cases Created: ${t.data.cases_created}`,"info"),t.data.cases_updated>0&&this.addProgressLogEntry(`   • Cases Updated: ${t.data.cases_updated}`,"info")),void setTimeout(()=>{this.addProgressLogEntry("↻ Continuing sync...","info"),this.resumeSync()},2e3)}if(this.addProgressLogEntry("🎉 Sync completed successfully!","success"),this.updateProgress("Sync Completed",100,100,[]),this.setProgressBarsCompleted(),t.data){const e=t.data;this.addProgressLogEntry("Final Statistics:","info"),this.addProgressLogEntry(`   • Procedures Created: ${e.created||0}`,"success"),this.addProgressLogEntry(`   • Procedures Updated: ${e.updated||0}`,"success"),this.addProgressLogEntry(`   • Cases Created: ${e.cases_created||0}`,"success"),this.addProgressLogEntry(`   • Cases Updated: ${e.cases_updated||0}`,"success"),e.duration&&this.addProgressLogEntry(`   • Total Duration: ${e.duration}`,"info")}this.showNotice(this.messages.sync_complete||"Sync completed successfully!","success"),this.showResults(t.data),setTimeout(()=>window.location.reload(),5e3)}else this.handleSyncError(t.data?.message||"Unknown error occurred");this.setSyncInProgress(!1)}handleSyncError(t){this.setSyncInProgress(!1),this.addProgressLogEntry(`💥 Sync failed: ${t}`,"error"),this.showNotice(this.messages.sync_error+" "+t,"error")}showResults(t){const e=document.getElementById("sync-results"),s=document.getElementById("sync-results-content");if(e&&s){let n='<div class="brag-book-gallery-results">';n+=`<p><strong>Procedures Created:</strong> ${t.created||0}</p>`,n+=`<p><strong>Procedures Updated:</strong> ${t.updated||0}</p>`,n+=`<p><strong>Cases Created:</strong> ${t.cases_created||0}</p>`,n+=`<p><strong>Cases Updated:</strong> ${t.cases_updated||0}</p>`,t.duration&&(n+=`<p><strong>Duration:</strong> ${t.duration}</p>`),n+="</div>",s.innerHTML=n,e.style.display="block"}}showNotice(t,e="info"){const s=document.querySelector(".brag-book-gallery-notices");if(!s)return void console.log(e.toUpperCase()+": "+t);const n=document.createElement("div");n.className=`notice notice-${e} is-dismissible`,n.innerHTML=`<p>${t}</p>`,s.appendChild(n),this.autoDismissNotice(n)}autoDismissNotice(t){setTimeout(()=>{t.parentNode&&(t.style.transition="opacity 0.3s ease",t.style.opacity="0",setTimeout(()=>{t.parentNode&&t.parentNode.removeChild(t)},300))},5e3)}setupNoticeObserver(){const t=document.querySelector(".brag-book-gallery-notices");t&&(t.querySelectorAll(".notice").forEach(t=>{this.autoDismissNotice(t)}),new MutationObserver(t=>{t.forEach(t=>{t.addedNodes.forEach(t=>{1===t.nodeType&&t.classList&&t.classList.contains("notice")&&this.autoDismissNotice(t)})})}).observe(t,{childList:!0,subtree:!0}))}setupExitWarning(){if(!document.querySelector(".brag-book-gallery-admin-wrap"))return;this.createExitWarningDialog(),this.boundBeforeUnload=t=>{if(this.syncInProgress)return t.preventDefault(),t.returnValue="",""},window.addEventListener("beforeunload",this.boundBeforeUnload);let t=!1;document.addEventListener("mousemove",e=>{if(!this.syncInProgress)return;const s=document.querySelector(".brag-book-gallery-admin-wrap");if(!s)return;const n=s.getBoundingClientRect();(e.clientX<n.left||e.clientX>n.right||e.clientY<n.top||e.clientY>n.bottom)&&!t&&(t=!0)}),document.addEventListener("click",e=>{if(!this.syncInProgress)return void(t=!1);const s=document.querySelector(".brag-book-gallery-admin-wrap");if(!s)return void console.error("BRAGbook Sync Admin: wrap not found during click");const n=s.getBoundingClientRect();if(e.clientX<n.left||e.clientX>n.right||e.clientY<n.top||e.clientY>n.bottom){e.preventDefault(),e.stopPropagation(),e.stopImmediatePropagation();const t=e.target.closest("a"),s=t&&t.href?t.href:null;return this.showExitWarningDialog(s),!1}const r=e.target.closest("a");return r&&r.href&&!r.target&&!r.href.startsWith("#")&&window.location.href.split("?")[0]!==r.href.split("?")[0]?(e.preventDefault(),e.stopPropagation(),e.stopImmediatePropagation(),this.showExitWarningDialog(r.href),!1):void 0},!0)}createExitWarningDialog(){const t=document.createElement("dialog");t.id="sync-exit-warning-dialog",t.className="sync-exit-warning-dialog",t.innerHTML='\n\t\t\t\t<div style="\n\t\t\t\t\tbackground: white;\n\t\t\t\t\tborder-radius: 0.5rem;\n\t\t\t\t\tbox-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);\n\t\t\t\t\tmax-width: 28rem;\n\t\t\t\t\twidth: 100%;\n\t\t\t\t">\n\t\t\t\t\t<div style="padding: 1.5rem;">\n\t\t\t\t\t\t<div style="display: flex; align-items: flex-start;">\n\t\t\t\t\t\t\t<div style="\n\t\t\t\t\t\t\t\tflex-shrink: 0;\n\t\t\t\t\t\t\t\tdisplay: flex;\n\t\t\t\t\t\t\t\talign-items: center;\n\t\t\t\t\t\t\t\tjustify-content: center;\n\t\t\t\t\t\t\t\theight: 3rem;\n\t\t\t\t\t\t\t\twidth: 3rem;\n\t\t\t\t\t\t\t\tborder-radius: 9999px;\n\t\t\t\t\t\t\t\tbackground-color: #FEF2F2;\n\t\t\t\t\t\t\t\tmargin-right: 1rem;\n\t\t\t\t\t\t\t">\n\t\t\t\t\t\t\t\t<svg style="height: 1.5rem; width: 1.5rem; color: #DC2626;" fill="none" viewBox="0 0 24 24" stroke="currentColor">\n\t\t\t\t\t\t\t\t\t<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />\n\t\t\t\t\t\t\t\t</svg>\n\t\t\t\t\t\t\t</div>\n\t\t\t\t\t\t\t<div style="flex: 1; margin-top: 0;">\n\t\t\t\t\t\t\t\t<h3 style="\n\t\t\t\t\t\t\t\t\tfont-size: 1.125rem;\n\t\t\t\t\t\t\t\t\tfont-weight: 600;\n\t\t\t\t\t\t\t\t\tcolor: #111827;\n\t\t\t\t\t\t\t\t\tmargin: 0 0 0.5rem 0;\n\t\t\t\t\t\t\t\t">Sync In Progress</h3>\n\t\t\t\t\t\t\t\t<p style="\n\t\t\t\t\t\t\t\t\tfont-size: 0.875rem;\n\t\t\t\t\t\t\t\t\tcolor: #6B7280;\n\t\t\t\t\t\t\t\t\tmargin: 0;\n\t\t\t\t\t\t\t\t">A data synchronization is currently running. If you leave this page, the sync will be interrupted and may leave your data in an incomplete state.</p>\n\t\t\t\t\t\t\t</div>\n\t\t\t\t\t\t</div>\n\t\t\t\t\t</div>\n\t\t\t\t\t<div style="\n\t\t\t\t\t\tbackground-color: #F9FAFB;\n\t\t\t\t\t\tpadding: 1rem 1.5rem;\n\t\t\t\t\t\tdisplay: flex;\n\t\t\t\t\t\tgap: 0.75rem;\n\t\t\t\t\t\tjustify-content: flex-end;\n\t\t\t\t\t\tborder-bottom-left-radius: 0.5rem;\n\t\t\t\t\t\tborder-bottom-right-radius: 0.5rem;\n\t\t\t\t\t">\n\t\t\t\t\t\t<button id="sync-exit-cancel" type="button" style="\n\t\t\t\t\t\t\tpadding: 0.5rem 1rem;\n\t\t\t\t\t\t\tborder: 1px solid #D1D5DB;\n\t\t\t\t\t\t\tborder-radius: 0.375rem;\n\t\t\t\t\t\t\tbackground-color: white;\n\t\t\t\t\t\t\tfont-size: 0.875rem;\n\t\t\t\t\t\t\tfont-weight: 500;\n\t\t\t\t\t\t\tcolor: #374151;\n\t\t\t\t\t\t\tcursor: pointer;\n\t\t\t\t\t\t\ttransition: background-color 0.2s;\n\t\t\t\t\t\t">Stay on Page</button>\n\t\t\t\t\t\t<button id="sync-exit-confirm" type="button" style="\n\t\t\t\t\t\t\tpadding: 0.5rem 1rem;\n\t\t\t\t\t\t\tborder: none;\n\t\t\t\t\t\t\tborder-radius: 0.375rem;\n\t\t\t\t\t\t\tbackground-color: #DC2626;\n\t\t\t\t\t\t\tfont-size: 0.875rem;\n\t\t\t\t\t\t\tfont-weight: 500;\n\t\t\t\t\t\t\tcolor: white;\n\t\t\t\t\t\t\tcursor: pointer;\n\t\t\t\t\t\t\ttransition: background-color 0.2s;\n\t\t\t\t\t\t">Leave Anyway</button>\n\t\t\t\t\t</div>\n\t\t\t\t</div>\n\t\t\t';const e=t.querySelector("#sync-exit-cancel"),s=t.querySelector("#sync-exit-confirm");e.addEventListener("mouseenter",()=>{e.style.backgroundColor="#F3F4F6"}),e.addEventListener("mouseleave",()=>{e.style.backgroundColor="white"}),s.addEventListener("mouseenter",()=>{s.style.backgroundColor="#B91C1C"}),s.addEventListener("mouseleave",()=>{s.style.backgroundColor="#DC2626"}),e.addEventListener("click",()=>{t.close(),this.pendingNavigation=null}),s.addEventListener("click",()=>{t.close(),this.pendingNavigation&&(window.location.href=this.pendingNavigation)});const n=document.createElement("style");n.textContent="\n\t\t\t\t.sync-exit-warning-dialog::backdrop {\n\t\t\t\t\tbackground-color: rgba(0, 0, 0, 0.5);\n\t\t\t\t\tbackdrop-filter: blur(4px);\n\t\t\t\t}\n\t\t\t",document.head.appendChild(n),document.body.appendChild(t),this.exitWarningDialog=t}showExitWarningDialog(t=null){this.exitWarningDialog&&(this.pendingNavigation=t,this.exitWarningDialog.showModal())}},new window.BRAGbookSyncAdmin)}();
+/******/ (function() { // webpackBootstrap
+/******/ 	"use strict";
+/******/ 	var __webpack_modules__ = ({
+
+/***/ "./src/js/modules/sync-cron-test.js":
+/*!******************************************!*\
+  !*** ./src/js/modules/sync-cron-test.js ***!
+  \******************************************/
+/***/ (function(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   SyncCronTest: function() { return /* binding */ SyncCronTest; },
+/* harmony export */   initSyncCronTest: function() { return /* binding */ initSyncCronTest; }
+/* harmony export */ });
+/**
+ * Sync Cron Test Module
+ *
+ * Handles manual triggering of the automatic sync cron job for testing purposes.
+ * Provides AJAX interface for testing cron functionality without waiting for
+ * the scheduled time.
+ *
+ * @package    BRAGBookGallery
+ * @subpackage Admin\Sync
+ * @since      3.3.0
+ */
+
+/**
+ * Sync Cron Test Class
+ *
+ * Manages the cron test button and displays results including:
+ * - Manual cron job triggering
+ * - Success/error notifications
+ * - Auto-dismissing notices
+ *
+ * @since 3.3.0
+ */
+class SyncCronTest {
+  /**
+   * Constructor
+   *
+   * @since 3.3.0
+   *
+   * @param {Object} config - Configuration object
+   * @param {string} config.ajaxUrl - WordPress AJAX URL
+   * @param {string} config.nonce - Security nonce for AJAX requests
+   * @param {Object} config.messages - Localized messages
+   */
+  constructor(config = {}) {
+    this.ajaxUrl = config.ajaxUrl || window.ajaxurl || '/wp-admin/admin-ajax.php';
+    this.nonce = config.nonce || '';
+    this.messages = config.messages || {
+      running: 'Running...',
+      triggering: 'Triggering cron job...',
+      testFailed: 'Test failed',
+      ajaxError: 'AJAX request failed',
+      testCronNow: 'Test Cron Now'
+    };
+    this.elements = {
+      button: null,
+      resultContainer: null
+    };
+    this.autoDismissTimeout = 5000; // 5 seconds
+  }
+
+  /**
+   * Initialize cron test
+   *
+   * Finds DOM elements and binds event listeners.
+   *
+   * @since 3.3.0
+   *
+   * @return {void}
+   */
+  init() {
+    this.elements.button = document.getElementById('test-cron-sync');
+    this.elements.resultContainer = document.getElementById('test-cron-result');
+    if (!this.elements.button) {
+      return;
+    }
+    this.bindEvents();
+  }
+
+  /**
+   * Bind event listeners
+   *
+   * Attaches click handler to the test cron button.
+   *
+   * @since 3.3.0
+   *
+   * @return {void}
+   */
+  bindEvents() {
+    this.elements.button.addEventListener('click', e => {
+      e.preventDefault();
+      this.handleTestCron();
+    });
+  }
+
+  /**
+   * Handle test cron button click
+   *
+   * Initiates the AJAX request to trigger the cron job.
+   *
+   * @since 3.3.0
+   *
+   * @return {Promise<void>}
+   */
+  async handleTestCron() {
+    const button = this.elements.button;
+
+    // Disable button and show loading state
+    button.disabled = true;
+    button.textContent = this.messages.running;
+
+    // Show initial notice
+    this.showNotice(this.messages.triggering, 'info');
+    try {
+      // Prepare form data
+      const formData = new FormData();
+      formData.append('action', 'brag_book_gallery_test_cron');
+      formData.append('nonce', this.nonce);
+
+      // Send AJAX request
+      const response = await fetch(this.ajaxUrl, {
+        method: 'POST',
+        body: formData
+      });
+      const result = await response.json();
+
+      // Re-enable button
+      button.disabled = false;
+      button.textContent = this.messages.testCronNow;
+
+      // Handle response
+      if (result.success) {
+        this.showNotice(result.data.message, 'success');
+      } else {
+        this.showNotice(result.data || this.messages.testFailed, 'error');
+      }
+    } catch (error) {
+      // Handle error
+      console.error('BRAG book Sync: Cron test error:', error);
+      button.disabled = false;
+      button.textContent = this.messages.testCronNow;
+      this.showNotice(this.messages.ajaxError, 'error');
+    }
+  }
+
+  /**
+   * Show notice message
+   *
+   * Displays a WordPress-style notice with auto-dismiss functionality.
+   *
+   * @since 3.3.0
+   *
+   * @param {string} message - Message to display
+   * @param {string} type - Notice type (success, error, warning, info)
+   *
+   * @return {void}
+   */
+  showNotice(message, type = 'info') {
+    if (!this.elements.resultContainer) {
+      return;
+    }
+    const notice = document.createElement('div');
+    notice.className = `notice notice-${type} is-dismissible`;
+    notice.innerHTML = `<p>${this.escapeHtml(message)}</p>`;
+
+    // Clear previous notices
+    this.elements.resultContainer.innerHTML = '';
+
+    // Add new notice
+    this.elements.resultContainer.appendChild(notice);
+
+    // Auto-dismiss after timeout
+    this.autoDismissNotice(notice);
+  }
+
+  /**
+   * Auto-dismiss notice
+   *
+   * Fades out and removes a notice after the configured timeout.
+   *
+   * @since 3.3.0
+   *
+   * @param {HTMLElement} notice - Notice element to dismiss
+   *
+   * @return {void}
+   */
+  autoDismissNotice(notice) {
+    setTimeout(() => {
+      // Fade out animation
+      notice.style.transition = 'opacity 300ms';
+      notice.style.opacity = '0';
+
+      // Remove from DOM after fade
+      setTimeout(() => {
+        notice.remove();
+      }, 300);
+    }, this.autoDismissTimeout);
+  }
+
+  /**
+   * Escape HTML for safe display
+   *
+   * Prevents XSS by escaping HTML special characters.
+   *
+   * @since 3.3.0
+   *
+   * @param {string} text - Text to escape
+   *
+   * @return {string} Escaped text
+   */
+  escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+}
+
+/**
+ * Initialize cron test on DOM ready
+ *
+ * Looks for the cron test button and initializes the functionality
+ * if configuration is available.
+ *
+ * @since 3.3.0
+ *
+ * @return {void}
+ */
+function initSyncCronTest() {
+  // Check if we're on the sync page
+  const button = document.getElementById('test-cron-sync');
+  if (!button) {
+    return;
+  }
+
+  // Get configuration from localized data
+  const config = {};
+  if (typeof bragBookSync !== 'undefined') {
+    config.ajaxUrl = bragBookSync.ajax_url;
+    config.nonce = bragBookSync.sync_nonce;
+    config.messages = bragBookSync.messages || {};
+  }
+
+  // Initialize cron test
+  const cronTest = new SyncCronTest(config);
+  cronTest.init();
+
+  // Store instance for potential access
+  window.bragBookSyncCronTest = cronTest;
+}
+
+// Auto-initialize if DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initSyncCronTest);
+} else {
+  initSyncCronTest();
+}
+
+/***/ }),
+
+/***/ "./src/js/modules/sync-time-display.js":
+/*!*********************************************!*\
+  !*** ./src/js/modules/sync-time-display.js ***!
+  \*********************************************/
+/***/ (function(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   SyncTimeDisplay: function() { return /* binding */ SyncTimeDisplay; },
+/* harmony export */   initSyncTimeDisplay: function() { return /* binding */ initSyncTimeDisplay; }
+/* harmony export */ });
+/**
+ * Sync Time Display Module
+ *
+ * Handles real-time display of server time, browser time, and timezone information
+ * for the sync settings page. Updates every second to show synchronized clocks.
+ *
+ * @package    BRAGBookGallery
+ * @subpackage Admin\Sync
+ * @since      3.3.0
+ */
+
+/**
+ * Sync Time Display Class
+ *
+ * Manages the display and updating of time information including:
+ * - Server time (calculated from initial PHP timestamp)
+ * - Browser/local time
+ * - Server timezone display
+ *
+ * @since 3.3.0
+ */
+class SyncTimeDisplay {
+  /**
+   * Constructor
+   *
+   * @since 3.3.0
+   *
+   * @param {string} initialServerTime - ISO 8601 formatted server time from PHP
+   */
+  constructor(initialServerTime) {
+    this.pageLoadTime = new Date();
+    this.initialServerTime = new Date(initialServerTime);
+    this.updateInterval = null;
+    this.elements = {
+      serverTime: null,
+      browserTime: null
+    };
+  }
+
+  /**
+   * Initialize time display
+   *
+   * Finds DOM elements and starts the update timer.
+   *
+   * @since 3.3.0
+   *
+   * @return {void}
+   */
+  init() {
+    // Get DOM elements
+    this.elements.serverTime = document.getElementById('server-time');
+    this.elements.browserTime = document.getElementById('browser-time');
+
+    // Update immediately
+    this.updateTimes();
+
+    // Update every second
+    this.updateInterval = setInterval(() => this.updateTimes(), 1000);
+  }
+
+  /**
+   * Update time displays
+   *
+   * Calculates current server time and browser time,
+   * then updates the display elements.
+   *
+   * @since 3.3.0
+   *
+   * @return {void}
+   */
+  updateTimes() {
+    this.updateServerTime();
+    this.updateBrowserTime();
+  }
+
+  /**
+   * Update server time display
+   *
+   * Calculates the current server time based on elapsed time since
+   * page load and the initial server timestamp from PHP.
+   *
+   * @since 3.3.0
+   *
+   * @return {void}
+   */
+  updateServerTime() {
+    if (!this.elements.serverTime) {
+      return;
+    }
+    const now = new Date();
+    const elapsed = Math.floor((now - this.pageLoadTime) / 1000);
+    const currentServerTime = new Date(this.initialServerTime.getTime() + elapsed * 1000);
+    this.elements.serverTime.textContent = this.formatDateTime(currentServerTime);
+  }
+
+  /**
+   * Update browser time display
+   *
+   * Displays the current local browser time.
+   *
+   * @since 3.3.0
+   *
+   * @return {void}
+   */
+  updateBrowserTime() {
+    if (!this.elements.browserTime) {
+      return;
+    }
+    const now = new Date();
+    this.elements.browserTime.textContent = this.formatDateTime(now);
+  }
+
+  /**
+   * Format date/time for display
+   *
+   * Formats a Date object as YYYY-MM-DD HH:MM:SS
+   *
+   * @since 3.3.0
+   *
+   * @param {Date} date - Date object to format
+   *
+   * @return {string} Formatted date/time string
+   */
+  formatDateTime(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  }
+
+  /**
+   * Stop time updates
+   *
+   * Clears the update interval. Call this when unmounting or leaving the page.
+   *
+   * @since 3.3.0
+   *
+   * @return {void}
+   */
+  destroy() {
+    if (this.updateInterval) {
+      clearInterval(this.updateInterval);
+      this.updateInterval = null;
+    }
+  }
+}
+
+/**
+ * Initialize time display on DOM ready
+ *
+ * Looks for the server time element and initializes the time display
+ * if the initial server time is available.
+ *
+ * @since 3.3.0
+ *
+ * @return {void}
+ */
+function initSyncTimeDisplay() {
+  // Check if we're on the sync page
+  const serverTimeEl = document.getElementById('server-time');
+  if (!serverTimeEl) {
+    return;
+  }
+
+  // Get initial server time from data attribute or global variable
+  const initialServerTime = serverTimeEl.dataset.initialTime || typeof bragBookSyncData !== 'undefined' && bragBookSyncData.serverTime;
+  if (!initialServerTime) {
+    console.warn('BRAG book Sync: Initial server time not available');
+    return;
+  }
+
+  // Initialize time display
+  const timeDisplay = new SyncTimeDisplay(initialServerTime);
+  timeDisplay.init();
+
+  // Store instance for potential cleanup
+  window.bragBookSyncTimeDisplay = timeDisplay;
+}
+
+// Auto-initialize if DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initSyncTimeDisplay);
+} else {
+  initSyncTimeDisplay();
+}
+
+/***/ })
+
+/******/ 	});
+/************************************************************************/
+/******/ 	// The module cache
+/******/ 	var __webpack_module_cache__ = {};
+/******/ 	
+/******/ 	// The require function
+/******/ 	function __webpack_require__(moduleId) {
+/******/ 		// Check if module is in cache
+/******/ 		var cachedModule = __webpack_module_cache__[moduleId];
+/******/ 		if (cachedModule !== undefined) {
+/******/ 			return cachedModule.exports;
+/******/ 		}
+/******/ 		// Create a new module (and put it into the cache)
+/******/ 		var module = __webpack_module_cache__[moduleId] = {
+/******/ 			// no module.id needed
+/******/ 			// no module.loaded needed
+/******/ 			exports: {}
+/******/ 		};
+/******/ 	
+/******/ 		// Execute the module function
+/******/ 		__webpack_modules__[moduleId](module, module.exports, __webpack_require__);
+/******/ 	
+/******/ 		// Return the exports of the module
+/******/ 		return module.exports;
+/******/ 	}
+/******/ 	
+/************************************************************************/
+/******/ 	/* webpack/runtime/define property getters */
+/******/ 	!function() {
+/******/ 		// define getter functions for harmony exports
+/******/ 		__webpack_require__.d = function(exports, definition) {
+/******/ 			for(var key in definition) {
+/******/ 				if(__webpack_require__.o(definition, key) && !__webpack_require__.o(exports, key)) {
+/******/ 					Object.defineProperty(exports, key, { enumerable: true, get: definition[key] });
+/******/ 				}
+/******/ 			}
+/******/ 		};
+/******/ 	}();
+/******/ 	
+/******/ 	/* webpack/runtime/hasOwnProperty shorthand */
+/******/ 	!function() {
+/******/ 		__webpack_require__.o = function(obj, prop) { return Object.prototype.hasOwnProperty.call(obj, prop); }
+/******/ 	}();
+/******/ 	
+/******/ 	/* webpack/runtime/make namespace object */
+/******/ 	!function() {
+/******/ 		// define __esModule on exports
+/******/ 		__webpack_require__.r = function(exports) {
+/******/ 			if(typeof Symbol !== 'undefined' && Symbol.toStringTag) {
+/******/ 				Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
+/******/ 			}
+/******/ 			Object.defineProperty(exports, '__esModule', { value: true });
+/******/ 		};
+/******/ 	}();
+/******/ 	
+/************************************************************************/
+var __webpack_exports__ = {};
+// This entry needs to be wrapped in an IIFE because it needs to be isolated against other modules in the chunk.
+!function() {
+/*!******************************!*\
+  !*** ./src/js/sync-admin.js ***!
+  \******************************/
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */ var _modules_sync_time_display_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./modules/sync-time-display.js */ "./src/js/modules/sync-time-display.js");
+/* harmony import */ var _modules_sync_cron_test_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./modules/sync-cron-test.js */ "./src/js/modules/sync-cron-test.js");
+/**
+ * BRAG book Sync Admin JavaScript
+ *
+ * Handles sync page functionality including:
+ * - Manual sync operations
+ * - Progress tracking and display
+ * - Sync history management
+ * - AJAX communication for sync operations
+ * - Time display updates
+ * - Cron test functionality
+ *
+ * @package BRAGBook
+ * @since   3.0.0
+ * @version 3.3.0
+ */
+
+
+
+// Import sync modules
+
+
+
+/**
+ * BRAG book Sync Admin Controller Class
+ * Manages sync page interactions and AJAX communications
+ */
+if (typeof window.BRAGbookSyncAdmin === 'undefined') {
+  window.BRAGbookSyncAdmin = class {
+    /**
+     * Initialize the sync admin interface controller
+     */
+    constructor() {
+      // Get localized data from PHP
+      this.config = typeof bragBookSync !== 'undefined' ? bragBookSync : {};
+      this.ajaxUrl = this.config.ajax_url || '/wp-admin/admin-ajax.php';
+      this.nonces = {
+        sync: this.config.sync_nonce || '',
+        general: this.config.nonce || '',
+        testAuto: this.config.test_auto_nonce || '',
+        clearLog: this.config.clear_log_nonce || '',
+        delete: this.config.delete_nonce || ''
+      };
+      this.messages = this.config.messages || {};
+
+      // Sync state tracking
+      this.syncInProgress = false;
+      this.progressTimer = null;
+      this.syncStartTime = null;
+
+      // Initialize when DOM is ready
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => this.init());
+      } else {
+        this.init();
+      }
+    }
+
+    /**
+     * Initialize all event listeners and UI components
+     */
+    init() {
+      this.bindSyncControls();
+      this.bindHistoryControls();
+      this.bindProgressHandlers();
+
+      // Setup auto-dismiss for notices
+      this.setupNoticeObserver();
+
+      // Setup exit intent warning
+      this.setupExitWarning();
+
+      // Check for existing sync on page load
+      this.checkExistingSync();
+    }
+
+    /**
+     * Bind sync control event listeners
+     */
+    bindSyncControls() {
+      // Legacy sync buttons removed - using Stage-Based Sync instead
+    }
+
+    /**
+     * Bind history control event listeners
+     */
+    bindHistoryControls() {
+      // View details buttons
+      document.querySelectorAll('.view-details').forEach(btn => {
+        btn.addEventListener('click', e => {
+          const details = e.target.getAttribute('data-details');
+          this.showSyncDetails(details);
+        });
+      });
+
+      // Delete record buttons
+      document.querySelectorAll('.delete-sync-record').forEach(btn => {
+        btn.addEventListener('click', e => {
+          const recordId = e.target.getAttribute('data-sync-id');
+          // Try to get the date from the row
+          const row = e.target.closest('tr');
+          const dateCell = row ? row.querySelector('td:first-child') : null;
+          const recordDate = dateCell ? dateCell.textContent.trim() : 'this sync record';
+          this.deleteSyncRecord(recordId, recordDate);
+        });
+      });
+    }
+
+    /**
+     * Bind progress tracking handlers
+     */
+    bindProgressHandlers() {
+      // Progress monitoring will be handled by polling during sync
+    }
+
+    /**
+     * Check for existing sync progress on page load
+     */
+    async checkExistingSync() {
+      try {
+        const formData = new FormData();
+        formData.append('action', 'brag_book_get_detailed_progress');
+        formData.append('nonce', this.nonces.general);
+        const response = await fetch(this.ajaxUrl, {
+          method: 'POST',
+          body: formData
+        });
+        const result = await response.json();
+        if (result.success && result.data.stage !== 'idle') {
+          // Update syncs in progress section
+          this.updateSyncsInProgress([result.data]);
+
+          // Resume the sync display
+          this.setSyncInProgress(true);
+          this.showProgress();
+
+          // Update progress display with current state
+          this.updateProgress(result.data.current_step, result.data.overall_percentage, result.data.procedure_progress.percentage, result.data.recent_cases || []);
+        } else {
+          // Update syncs in progress to show no active syncs
+          this.updateSyncsInProgress([]);
+          // Ensure sync in progress flag is false
+          this.setSyncInProgress(false);
+        }
+      } catch (error) {
+        console.error('BRAGbook Sync Admin: Error checking existing sync:', error);
+        // Don't show error to user as this is just a background check
+        this.updateSyncsInProgress([]);
+        // Ensure sync in progress flag is false on error
+        this.setSyncInProgress(false);
+      }
+    }
+
+    /**
+     * Resume sync operation after pause
+     */
+    async resumeSync() {
+      try {
+        const formData = new FormData();
+        formData.append('action', 'brag_book_full_sync');
+        formData.append('nonce', this.nonces.sync);
+        const response = await fetch(this.ajaxUrl, {
+          method: 'POST',
+          body: formData
+        });
+        const result = await response.json();
+        this.handleSyncResult(result);
+      } catch (error) {
+        console.error('Resume sync error:', error);
+        this.handleSyncError(error.message);
+      }
+    }
+
+    /**
+     * Update the syncs in progress section
+     */
+    updateSyncsInProgress(activeSyncs) {
+      const noActiveSyncs = document.getElementById('no-active-syncs');
+      const activeSyncsList = document.getElementById('active-syncs-list');
+      if (!noActiveSyncs || !activeSyncsList) {
+        return;
+      }
+      if (activeSyncs.length === 0) {
+        // Show "no active syncs" message
+        noActiveSyncs.style.display = 'block';
+        activeSyncsList.style.display = 'none';
+        activeSyncsList.innerHTML = '';
+      } else {
+        // Show active syncs list
+        noActiveSyncs.style.display = 'none';
+        activeSyncsList.style.display = 'block';
+
+        // Generate HTML for active syncs
+        let html = '';
+        activeSyncs.forEach((sync, index) => {
+          const syncId = `sync-${index}`;
+          const percentage = Math.round(sync.overall_percentage || 0);
+          const currentStep = sync.current_step || 'Processing...';
+          html += `
+						<div class="brag-book-gallery-active-sync" data-sync-id="${syncId}">
+							<div class="sync-header">
+								<strong>Data Sync in Progress</strong>
+								<button type="button" class="button button-secondary button-small stop-individual-sync" data-sync-id="${syncId}">
+									Stop Sync
+								</button>
+							</div>
+							<div class="sync-progress-summary">
+								<div class="progress-text">
+									<span class="current-step">${currentStep}</span>
+									<span class="progress-percentage">${percentage}%</span>
+								</div>
+								<div class="progress-bar-container">
+									<div class="progress-bar">
+										<div class="progress-fill" style="width: ${percentage}%"></div>
+									</div>
+								</div>
+							</div>
+						</div>
+					`;
+        });
+        activeSyncsList.innerHTML = html;
+
+        // Bind stop buttons for individual syncs
+        document.querySelectorAll('.stop-individual-sync').forEach(btn => {
+          btn.addEventListener('click', () => this.stopSync());
+        });
+      }
+    }
+
+    /**
+     * Stop sync operation
+     */
+    async stopSync() {
+      try {
+        const formData = new FormData();
+        formData.append('action', 'brag_book_stop_sync');
+        formData.append('nonce', this.nonces.general);
+        const response = await fetch(this.ajaxUrl, {
+          method: 'POST',
+          body: formData
+        });
+        const result = await response.json();
+        if (result.success) {
+          this.showNotice(result.data.message, 'info');
+          this.setSyncInProgress(false);
+        } else {
+          this.showNotice(result.data.message, 'error');
+        }
+      } catch (error) {
+        console.error('Stop sync error:', error);
+        this.showNotice('Failed to stop sync: ' + error.message, 'error');
+      }
+    }
+
+    /**
+     * Delete sync record
+     */
+    async deleteSyncRecord(recordId, recordDate) {
+      const confirmMsg = this.messages.confirm_delete_record || 'Are you sure you want to delete this sync record?';
+      if (!confirm(`${confirmMsg}\n\nRecord: ${recordDate}`)) {
+        return;
+      }
+      try {
+        const formData = new FormData();
+        formData.append('action', 'brag_book_delete_sync_record');
+        formData.append('nonce', this.nonces.delete);
+        formData.append('sync_id', recordId); // Changed from record_id to sync_id
+
+        const response = await fetch(this.ajaxUrl, {
+          method: 'POST',
+          body: formData
+        });
+        const result = await response.json();
+        if (result.success) {
+          this.showNotice(result.data.message, 'success');
+          setTimeout(() => window.location.reload(), 1500);
+        } else {
+          this.showNotice(result.data.message, 'error');
+        }
+      } catch (error) {
+        console.error('Delete record error:', error);
+        this.showNotice('Failed to delete sync record: ' + error.message, 'error');
+      }
+    }
+
+    /**
+     * Show sync details in a modal or alert
+     */
+    showSyncDetails(detailsJson) {
+      try {
+        const details = JSON.parse(detailsJson);
+
+        // Check if there's an activity log to display
+        if (details.activity_log && typeof details.activity_log === 'object') {
+          this.showActivityLogReport(details);
+        } else {
+          // Fallback to JSON view for older records without activity log
+          const formatted = JSON.stringify(details, null, 2);
+          alert('Sync Details:\n\n' + formatted);
+        }
+      } catch (error) {
+        alert('Sync Details:\n\n' + detailsJson);
+      }
+    }
+
+    /**
+     * Show formatted activity log report
+     */
+    showActivityLogReport(details) {
+      // Create a modal-style dialog
+      const modal = document.createElement('div');
+      modal.style.cssText = `
+				position: fixed;
+				top: 0;
+				left: 0;
+				right: 0;
+				bottom: 0;
+				background: rgba(0,0,0,0.8);
+				z-index: 10000;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+			`;
+      const content = document.createElement('div');
+      content.style.cssText = `
+				background: #fff;
+				padding: 20px;
+				border-radius: 5px;
+				max-width: 80%;
+				max-height: 80%;
+				overflow-y: auto;
+				box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+			`;
+
+      // Build the report content
+      let reportHtml = '<h2 style="margin-top: 0;">Sync Activity Report</h2>';
+
+      // Summary section
+      reportHtml += '<h3>Summary</h3>';
+      reportHtml += '<div style="background: #f9f9f9; padding: 10px; border-radius: 3px; margin-bottom: 20px;">';
+      reportHtml += `<p><strong>Procedures Created:</strong> ${details.created || 0}</p>`;
+      reportHtml += `<p><strong>Procedures Updated:</strong> ${details.updated || 0}</p>`;
+      reportHtml += `<p><strong>Cases Created:</strong> ${details.cases_created || 0}</p>`;
+      reportHtml += `<p><strong>Cases Updated:</strong> ${details.cases_updated || 0}</p>`;
+      reportHtml += `<p><strong>Total Cases Processed:</strong> ${details.total_processed || 0}</p>`;
+      if (details.duration) {
+        reportHtml += `<p><strong>Duration:</strong> ${details.duration}</p>`;
+      }
+      reportHtml += '</div>';
+
+      // Activity log section
+      if (details.activity_log) {
+        reportHtml += '<h3>Activity Log</h3>';
+        reportHtml += '<div style="background: #f1f1f1; padding: 10px; border-radius: 3px; font-family: monospace; font-size: 12px; max-height: 300px; overflow-y: auto;">';
+
+        // Format the current step and progress info
+        const log = details.activity_log;
+        if (log.current_step) {
+          reportHtml += `<div style="margin-bottom: 10px;"><strong>Final Step:</strong> ${log.current_step}</div>`;
+        }
+        if (log.overall_percentage) {
+          reportHtml += `<div style="margin-bottom: 10px;"><strong>Progress:</strong> ${log.overall_percentage}% complete</div>`;
+        }
+        if (log.updated_at) {
+          reportHtml += `<div style="margin-bottom: 10px;"><strong>Completed:</strong> ${log.updated_at}</div>`;
+        }
+        reportHtml += '</div>';
+      }
+
+      // Close button
+      reportHtml += '<div style="text-align: right; margin-top: 20px;">';
+      reportHtml += '<button id="close-sync-report" style="background: #0073aa; color: white; border: none; padding: 8px 16px; border-radius: 3px; cursor: pointer;">Close</button>';
+      reportHtml += '</div>';
+      content.innerHTML = reportHtml;
+      modal.appendChild(content);
+      document.body.appendChild(modal);
+
+      // Add close functionality
+      document.getElementById('close-sync-report').addEventListener('click', () => {
+        document.body.removeChild(modal);
+      });
+
+      // Close on background click
+      modal.addEventListener('click', e => {
+        if (e.target === modal) {
+          document.body.removeChild(modal);
+        }
+      });
+    }
+
+    /**
+     * Set sync in progress state
+     */
+    setSyncInProgress(inProgress) {
+      this.syncInProgress = inProgress;
+
+      // Legacy sync button updates removed - using Stage-Based Sync instead
+
+      if (inProgress) {
+        this.startProgressPolling();
+      } else {
+        this.stopProgressPolling();
+      }
+    }
+
+    /**
+     * Show progress section
+     */
+    showProgress() {
+      const progressSection = document.getElementById('sync-progress');
+      if (progressSection) {
+        progressSection.style.display = 'block';
+      }
+
+      // Also show the progress details section
+      const progressDetails = document.getElementById('sync-progress-details');
+      if (progressDetails) {
+        progressDetails.style.display = 'block';
+      }
+    }
+
+    /**
+     * Hide progress section
+     */
+    hideProgress() {
+      const progressSection = document.getElementById('sync-progress');
+      if (progressSection) {
+        progressSection.style.display = 'none';
+      }
+
+      // Also hide the progress details section
+      const progressDetails = document.getElementById('sync-progress-details');
+      if (progressDetails) {
+        progressDetails.style.display = 'none';
+      }
+    }
+
+    /**
+     * Update progress display
+     */
+    updateProgress(message, overall, current, recentCases = []) {
+      const overallFill = document.getElementById('sync-overall-fill');
+      const overallPercentage = document.getElementById('sync-overall-percentage');
+      const currentOperation = document.getElementById('sync-current-operation');
+      const currentFill = document.getElementById('sync-current-fill');
+      const currentPercentage = document.getElementById('sync-current-percentage');
+      const statusText = document.getElementById('sync-status-text');
+      const timeElapsed = document.getElementById('sync-time-elapsed');
+      if (overallFill) {
+        overallFill.style.width = overall + '%';
+        // Add data-percentage attribute for CSS display
+        overallFill.setAttribute('data-percentage', Math.round(overall) + '%');
+      }
+      if (overallPercentage) {
+        // Just show percentage without time
+        overallPercentage.textContent = Math.round(overall) + '%';
+      }
+
+      // Always update time and resource monitoring
+      // Use real data from server if available, otherwise calculate locally
+      const elapsed = this.syncStartTime ? Math.floor((Date.now() - this.syncStartTime) / 1000) : 0;
+      if (timeElapsed) {
+        const minutes = Math.floor(elapsed / 60);
+        const seconds = elapsed % 60;
+        let timeStr = 'Time: ';
+        if (minutes > 0) {
+          timeStr += `${minutes}m ${seconds}s`;
+        } else {
+          timeStr += `${seconds}s`;
+        }
+        timeElapsed.textContent = timeStr;
+      }
+      if (currentOperation) {
+        currentOperation.textContent = message;
+      }
+      if (currentFill) {
+        currentFill.style.width = current + '%';
+      }
+      if (currentPercentage) {
+        currentPercentage.textContent = Math.round(current) + '%';
+      }
+
+      // Update status text based on progress
+      if (statusText) {
+        if (overall === 100) {
+          statusText.textContent = 'Completed';
+          statusText.style.color = '#22c55e'; // Green for completed
+        } else if (overall > 0) {
+          statusText.textContent = 'In Progress';
+          statusText.style.color = '#D94540'; // Brand red for in progress
+        } else {
+          statusText.textContent = 'Ready';
+          statusText.style.color = '#1e293b'; // Default dark color
+        }
+      }
+
+      // Update sync progress overview class for state-based styling
+      const progressOverview = document.querySelector('.sync-progress-overview');
+      if (progressOverview) {
+        progressOverview.classList.remove('sync-in-progress', 'sync-completed', 'sync-error');
+        if (overall === 100) {
+          progressOverview.classList.add('sync-completed');
+        } else if (overall > 0) {
+          progressOverview.classList.add('sync-in-progress');
+        }
+      }
+
+      // Update sync status badge
+      const statusBadge = document.querySelector('.sync-status-badge');
+      if (statusBadge) {
+        if (overall === 100) {
+          statusBadge.className = 'sync-status-badge completed';
+          statusBadge.innerHTML = '<span class="status-indicator"></span>Completed';
+        } else if (overall > 0) {
+          statusBadge.className = 'sync-status-badge syncing';
+          statusBadge.innerHTML = '<span class="status-indicator active"></span>Syncing';
+        }
+      }
+
+      // Update progress details log
+      this.updateProgressLog(recentCases);
+    }
+
+    /**
+     * Set progress bars to completed state (green color)
+     */
+    setProgressBarsCompleted() {
+      const overallFill = document.getElementById('sync-overall-fill');
+      const currentFill = document.getElementById('sync-current-fill');
+
+      // Change progress bars to green to indicate completion
+      if (overallFill) {
+        overallFill.style.backgroundColor = '#00a32a'; // WordPress success green
+        overallFill.style.transition = 'background-color 0.3s ease';
+      }
+      if (currentFill) {
+        currentFill.style.backgroundColor = '#00a32a'; // WordPress success green
+        currentFill.style.transition = 'background-color 0.3s ease';
+      }
+
+      // Also update any progress bars in the syncs in progress section
+      document.querySelectorAll('.progress-fill').forEach(fill => {
+        fill.style.backgroundColor = '#00a32a';
+        fill.style.transition = 'background-color 0.3s ease';
+      });
+    }
+
+    /**
+     * Format stage labels for better readability
+     */
+    formatStageLabel(stage) {
+      switch (stage) {
+        case 'procedures':
+          return 'Procedure Synchronization';
+        case 'cases':
+          return 'Case Creation';
+        case 'completed':
+          return 'Sync Completed';
+        case 'idle':
+          return 'Idle';
+        default:
+          return stage.charAt(0).toUpperCase() + stage.slice(1);
+      }
+    }
+
+    /**
+     * Add a single entry to the progress log (keeps running history)
+     */
+    addProgressLogEntry(message, type = 'success') {
+      const progressItems = document.getElementById('sync-progress-items');
+      if (!progressItems) {
+        // Legacy element not found - silently skip
+        return;
+      }
+      const li = document.createElement('li');
+      li.className = `sync-log-item sync-log-item--${type}`;
+
+      // Add timestamp to entries
+      const timestamp = new Date().toLocaleTimeString();
+      li.textContent = `[${timestamp}] ${message}`;
+
+      // Style based on type
+      switch (type) {
+        case 'success':
+          li.style.cssText = 'padding: 5px 10px; margin: 1px 0; background: #fff; border-left: 3px solid #00a32a; font-size: 11px; color: #333;';
+          break;
+        case 'info':
+          li.style.cssText = 'padding: 5px 10px; margin: 1px 0; background: #f0f0f1; border-left: 3px solid #72aee6; font-size: 11px; color: #555;';
+          break;
+        case 'warning':
+          li.style.cssText = 'padding: 5px 10px; margin: 1px 0; background: #fff8e1; border-left: 3px solid #ff9800; font-size: 11px; color: #333;';
+          break;
+        case 'error':
+          li.style.cssText = 'padding: 5px 10px; margin: 1px 0; background: #ffebee; border-left: 3px solid #f44336; font-size: 11px; color: #333;';
+          break;
+      }
+      progressItems.appendChild(li);
+
+      // Auto-scroll to bottom to show latest entries
+      progressItems.scrollTop = progressItems.scrollHeight;
+    }
+
+    /**
+     * Update the progress log with recent cases (enhanced version)
+     */
+    updateProgressLog(recentCases) {
+      // Add recent cases as individual entries (don't clear existing log)
+      if (recentCases && recentCases.length > 0) {
+        recentCases.forEach(caseInfo => {
+          this.addProgressLogEntry(`✓ ${caseInfo}`, 'success');
+        });
+      }
+    }
+
+    /**
+     * Start progress polling
+     */
+    startProgressPolling() {
+      if (this.progressTimer) {
+        clearInterval(this.progressTimer);
+      }
+      let lastStage = '';
+      let lastStep = '';
+      let lastProcedure = '';
+      let lastOverallPercentage = 0;
+      this.progressTimer = setInterval(async () => {
+        try {
+          const formData = new FormData();
+          formData.append('action', 'brag_book_get_detailed_progress');
+          formData.append('nonce', this.nonces.general);
+          const response = await fetch(this.ajaxUrl, {
+            method: 'POST',
+            body: formData
+          });
+          const result = await response.json();
+          if (result.success && result.data.stage !== 'idle') {
+            const data = result.data;
+
+            // Check if this is the completion stage
+            if (data.stage === 'completed') {
+              this.addProgressLogEntry('🎉 Synchronization completed successfully!', 'success');
+
+              // Update progress bars to 100% with completion styling
+              this.updateProgress(data.current_step, data.overall_percentage, data.procedure_progress.percentage, data.recent_cases || []);
+
+              // Apply completion styling to progress bars
+              this.setProgressBarsCompleted();
+
+              // Stop polling and update UI
+              this.setSyncInProgress(false);
+              this.updateSyncsInProgress([]);
+              return;
+            }
+
+            // Log stage changes with improved formatting
+            if (lastStage !== data.stage) {
+              const stageLabel = this.formatStageLabel(data.stage);
+              this.addProgressLogEntry(`[STAGE] ${stageLabel}`, 'info');
+              lastStage = data.stage;
+            }
+
+            // Log step changes
+            if (lastStep !== data.current_step) {
+              this.addProgressLogEntry(`⏳ ${data.current_step}`, 'info');
+              lastStep = data.current_step;
+            }
+
+            // Log procedure changes
+            if (data.current_procedure && lastProcedure !== data.current_procedure) {
+              this.addProgressLogEntry(`📋 Processing procedure: ${data.current_procedure}`, 'info');
+              lastProcedure = data.current_procedure;
+            }
+
+            // Log taxonomy mapping issues if present
+            if (data.taxonomy_mapping_issues && data.taxonomy_mapping_issues.length > 0) {
+              data.taxonomy_mapping_issues.forEach(issue => {
+                this.addProgressLogEntry(`Taxonomy: ${issue}`, 'warning');
+              });
+            }
+
+            // Log significant progress jumps
+            const overallDiff = data.overall_percentage - lastOverallPercentage;
+            if (overallDiff >= 5) {
+              // Log every 5% increase
+              this.addProgressLogEntry(`Overall progress: ${Math.round(data.overall_percentage)}%`, 'info');
+              lastOverallPercentage = data.overall_percentage;
+            }
+
+            // Log errors or warnings
+            if (data.errors && data.errors.length > 0) {
+              data.errors.forEach(error => {
+                this.addProgressLogEntry(`Error: ${error}`, 'error');
+              });
+            }
+            if (data.warnings && data.warnings.length > 0) {
+              data.warnings.forEach(warning => {
+                this.addProgressLogEntry(`Warning: ${warning}`, 'warning');
+              });
+            }
+
+            // Update main progress display
+            this.updateProgress(data.current_step, data.overall_percentage, data.procedure_progress.percentage, data.recent_cases || []);
+
+            // Update syncs in progress section
+            this.updateSyncsInProgress([data]);
+          } else if (result.success && result.data.stage === 'idle') {
+            this.addProgressLogEntry('Synchronization completed successfully', 'success');
+
+            // Force both progress bars to 100% before completion
+            this.updateProgress('Sync Completed', 100, 100, []);
+            this.setProgressBarsCompleted();
+
+            // Sync completed
+            this.setSyncInProgress(false);
+            this.updateSyncsInProgress([]);
+          }
+        } catch (error) {
+          console.error('Progress polling error:', error);
+          this.addProgressLogEntry(`Polling error: ${error.message}`, 'error');
+        }
+      }, 1500); // Poll more frequently for better responsiveness
+    }
+
+    /**
+     * Stop progress polling
+     */
+    stopProgressPolling() {
+      if (this.progressTimer) {
+        clearInterval(this.progressTimer);
+        this.progressTimer = null;
+      }
+    }
+
+    /**
+     * Handle sync result
+     */
+    handleSyncResult(result) {
+      if (result.success) {
+        // Check if sync needs to resume (paused for resource limits)
+        if (result.data && result.data.needs_resume) {
+          this.addProgressLogEntry('⏸ Sync paused to prevent timeout - resuming...', 'warning');
+
+          // Update progress display
+          const progress = result.data.progress || 0;
+          this.updateProgress(result.data.message || 'Resuming sync...', progress, progress, []);
+
+          // Log current stats
+          if (result.data.created > 0 || result.data.updated > 0) {
+            this.addProgressLogEntry(`Progress so far:`, 'info');
+            if (result.data.created > 0) this.addProgressLogEntry(`   • Procedures Created: ${result.data.created}`, 'info');
+            if (result.data.updated > 0) this.addProgressLogEntry(`   • Procedures Updated: ${result.data.updated}`, 'info');
+            if (result.data.cases_created > 0) this.addProgressLogEntry(`   • Cases Created: ${result.data.cases_created}`, 'info');
+            if (result.data.cases_updated > 0) this.addProgressLogEntry(`   • Cases Updated: ${result.data.cases_updated}`, 'info');
+          }
+
+          // Wait a moment then resume sync automatically
+          setTimeout(() => {
+            this.addProgressLogEntry('↻ Continuing sync...', 'info');
+            this.resumeSync();
+          }, 2000);
+
+          // Keep sync in progress
+          return;
+        }
+
+        // Normal completion
+        this.addProgressLogEntry('🎉 Sync completed successfully!', 'success');
+
+        // Force both progress bars to 100% and set completion styling
+        this.updateProgress('Sync Completed', 100, 100, []);
+        this.setProgressBarsCompleted();
+
+        // Log final statistics
+        if (result.data) {
+          const data = result.data;
+          this.addProgressLogEntry(`Final Statistics:`, 'info');
+          this.addProgressLogEntry(`   • Procedures Created: ${data.created || 0}`, 'success');
+          this.addProgressLogEntry(`   • Procedures Updated: ${data.updated || 0}`, 'success');
+          this.addProgressLogEntry(`   • Cases Created: ${data.cases_created || 0}`, 'success');
+          this.addProgressLogEntry(`   • Cases Updated: ${data.cases_updated || 0}`, 'success');
+          if (data.duration) {
+            this.addProgressLogEntry(`   • Total Duration: ${data.duration}`, 'info');
+          }
+        }
+        this.showNotice(this.messages.sync_complete || 'Sync completed successfully!', 'success');
+        this.showResults(result.data);
+        setTimeout(() => window.location.reload(), 5000);
+      } else {
+        this.handleSyncError(result.data?.message || 'Unknown error occurred');
+      }
+      this.setSyncInProgress(false);
+    }
+
+    /**
+     * Handle sync error
+     */
+    handleSyncError(message) {
+      this.setSyncInProgress(false);
+      this.addProgressLogEntry(`💥 Sync failed: ${message}`, 'error');
+      this.showNotice(this.messages.sync_error + ' ' + message, 'error');
+    }
+
+    /**
+     * Show sync results
+     */
+    showResults(data) {
+      const resultsSection = document.getElementById('sync-results');
+      const resultsContent = document.getElementById('sync-results-content');
+      if (resultsSection && resultsContent) {
+        let html = '<div class="brag-book-gallery-results">';
+        html += `<p><strong>Procedures Created:</strong> ${data.created || 0}</p>`;
+        html += `<p><strong>Procedures Updated:</strong> ${data.updated || 0}</p>`;
+        html += `<p><strong>Cases Created:</strong> ${data.cases_created || 0}</p>`;
+        html += `<p><strong>Cases Updated:</strong> ${data.cases_updated || 0}</p>`;
+        if (data.duration) {
+          html += `<p><strong>Duration:</strong> ${data.duration}</p>`;
+        }
+        html += '</div>';
+        resultsContent.innerHTML = html;
+        resultsSection.style.display = 'block';
+      }
+    }
+
+    /**
+     * Show notification message
+     */
+    showNotice(message, type = 'info') {
+      const noticesContainer = document.querySelector('.brag-book-gallery-notices');
+      if (!noticesContainer) {
+        console.log(type.toUpperCase() + ': ' + message);
+        return;
+      }
+      const notice = document.createElement('div');
+      notice.className = `notice notice-${type} is-dismissible`;
+      notice.innerHTML = `<p>${message}</p>`;
+      noticesContainer.appendChild(notice);
+
+      // Auto-dismiss after 5 seconds
+      this.autoDismissNotice(notice);
+    }
+
+    /**
+     * Auto-dismiss a notice after 5 seconds with fade effect
+     */
+    autoDismissNotice(notice) {
+      setTimeout(() => {
+        if (notice.parentNode) {
+          notice.style.transition = 'opacity 0.3s ease';
+          notice.style.opacity = '0';
+          setTimeout(() => {
+            if (notice.parentNode) {
+              notice.parentNode.removeChild(notice);
+            }
+          }, 300);
+        }
+      }, 5000);
+    }
+
+    /**
+     * Setup notice auto-dismiss observer for dynamically added notices
+     */
+    setupNoticeObserver() {
+      const noticesContainer = document.querySelector('.brag-book-gallery-notices');
+      if (!noticesContainer) {
+        return;
+      }
+
+      // Auto-dismiss any existing notices on page load
+      noticesContainer.querySelectorAll('.notice').forEach(notice => {
+        this.autoDismissNotice(notice);
+      });
+
+      // Watch for new notices being added
+      const observer = new MutationObserver(mutations => {
+        mutations.forEach(mutation => {
+          mutation.addedNodes.forEach(node => {
+            if (node.nodeType === 1 && node.classList && node.classList.contains('notice')) {
+              this.autoDismissNotice(node);
+            }
+          });
+        });
+      });
+      observer.observe(noticesContainer, {
+        childList: true,
+        subtree: true
+      });
+    }
+
+    /**
+     * Setup exit warning when sync is in progress
+     */
+    setupExitWarning() {
+      // Verify wrap element exists
+      const wrap = document.querySelector('.brag-book-gallery-admin-wrap');
+      if (!wrap) {
+        return;
+      }
+
+      // Create exit warning dialog
+      this.createExitWarningDialog();
+
+      // Bind beforeunload event
+      this.boundBeforeUnload = e => {
+        if (this.syncInProgress) {
+          e.preventDefault();
+          e.returnValue = '';
+          return '';
+        }
+      };
+      window.addEventListener('beforeunload', this.boundBeforeUnload);
+
+      // Track if mouse leaves the main wrap area
+      let mouseOutsideWrap = false;
+      document.addEventListener('mousemove', e => {
+        if (!this.syncInProgress) {
+          return;
+        }
+        const wrap = document.querySelector('.brag-book-gallery-admin-wrap');
+        if (!wrap) {
+          return;
+        }
+        const rect = wrap.getBoundingClientRect();
+        const isOutside = e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom;
+        if (isOutside && !mouseOutsideWrap) {
+          mouseOutsideWrap = true;
+        }
+      });
+
+      // Intercept clicks outside the wrap area
+      document.addEventListener('click', e => {
+        if (!this.syncInProgress) {
+          mouseOutsideWrap = false;
+          return;
+        }
+        const wrap = document.querySelector('.brag-book-gallery-admin-wrap');
+        if (!wrap) {
+          console.error('BRAGbook Sync Admin: wrap not found during click');
+          return;
+        }
+
+        // Check if click is outside the wrap
+        const rect = wrap.getBoundingClientRect();
+        const isOutside = e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom;
+        if (isOutside) {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+
+          // Check if it's a link
+          const link = e.target.closest('a');
+          const targetUrl = link && link.href ? link.href : null;
+          this.showExitWarningDialog(targetUrl);
+          return false;
+        }
+
+        // Also intercept link clicks even inside wrap if navigating away
+        const link = e.target.closest('a');
+        if (link && link.href && !link.target && !link.href.startsWith('#')) {
+          const currentPage = window.location.href.split('?')[0];
+          const targetPage = link.href.split('?')[0];
+          if (currentPage !== targetPage) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            this.showExitWarningDialog(link.href);
+            return false;
+          }
+        }
+      }, true); // Use capture phase to catch event early
+    }
+
+    /**
+     * Create the exit warning dialog element
+     */
+    createExitWarningDialog() {
+      const dialog = document.createElement('dialog');
+      dialog.id = 'sync-exit-warning-dialog';
+      dialog.className = 'sync-exit-warning-dialog';
+      dialog.innerHTML = `
+				<div style="
+					background: white;
+					border-radius: 0.5rem;
+					box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+					max-width: 28rem;
+					width: 100%;
+				">
+					<div style="padding: 1.5rem;">
+						<div style="display: flex; align-items: flex-start;">
+							<div style="
+								flex-shrink: 0;
+								display: flex;
+								align-items: center;
+								justify-content: center;
+								height: 3rem;
+								width: 3rem;
+								border-radius: 9999px;
+								background-color: #FEF2F2;
+								margin-right: 1rem;
+							">
+								<svg style="height: 1.5rem; width: 1.5rem; color: #DC2626;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+								</svg>
+							</div>
+							<div style="flex: 1; margin-top: 0;">
+								<h3 style="
+									font-size: 1.125rem;
+									font-weight: 600;
+									color: #111827;
+									margin: 0 0 0.5rem 0;
+								">Sync In Progress</h3>
+								<p style="
+									font-size: 0.875rem;
+									color: #6B7280;
+									margin: 0;
+								">A data synchronization is currently running. If you leave this page, the sync will be interrupted and may leave your data in an incomplete state.</p>
+							</div>
+						</div>
+					</div>
+					<div style="
+						background-color: #F9FAFB;
+						padding: 1rem 1.5rem;
+						display: flex;
+						gap: 0.75rem;
+						justify-content: flex-end;
+						border-bottom-left-radius: 0.5rem;
+						border-bottom-right-radius: 0.5rem;
+					">
+						<button id="sync-exit-cancel" type="button" style="
+							padding: 0.5rem 1rem;
+							border: 1px solid #D1D5DB;
+							border-radius: 0.375rem;
+							background-color: white;
+							font-size: 0.875rem;
+							font-weight: 500;
+							color: #374151;
+							cursor: pointer;
+							transition: background-color 0.2s;
+						">Stay on Page</button>
+						<button id="sync-exit-confirm" type="button" style="
+							padding: 0.5rem 1rem;
+							border: none;
+							border-radius: 0.375rem;
+							background-color: #DC2626;
+							font-size: 0.875rem;
+							font-weight: 500;
+							color: white;
+							cursor: pointer;
+							transition: background-color 0.2s;
+						">Leave Anyway</button>
+					</div>
+				</div>
+			`;
+
+      // Add hover effects via inline event handlers
+      const cancelBtn = dialog.querySelector('#sync-exit-cancel');
+      const confirmBtn = dialog.querySelector('#sync-exit-confirm');
+      cancelBtn.addEventListener('mouseenter', () => {
+        cancelBtn.style.backgroundColor = '#F3F4F6';
+      });
+      cancelBtn.addEventListener('mouseleave', () => {
+        cancelBtn.style.backgroundColor = 'white';
+      });
+      confirmBtn.addEventListener('mouseenter', () => {
+        confirmBtn.style.backgroundColor = '#B91C1C';
+      });
+      confirmBtn.addEventListener('mouseleave', () => {
+        confirmBtn.style.backgroundColor = '#DC2626';
+      });
+
+      // Bind button handlers
+      cancelBtn.addEventListener('click', () => {
+        dialog.close();
+        this.pendingNavigation = null;
+      });
+      confirmBtn.addEventListener('click', () => {
+        dialog.close();
+        if (this.pendingNavigation) {
+          window.location.href = this.pendingNavigation;
+        }
+      });
+
+      // Add backdrop styles
+      const style = document.createElement('style');
+      style.textContent = `
+				.sync-exit-warning-dialog::backdrop {
+					background-color: rgba(0, 0, 0, 0.5);
+					backdrop-filter: blur(4px);
+				}
+			`;
+      document.head.appendChild(style);
+      document.body.appendChild(dialog);
+      this.exitWarningDialog = dialog;
+    }
+
+    /**
+     * Show exit warning dialog
+     */
+    showExitWarningDialog(targetUrl = null) {
+      if (!this.exitWarningDialog) {
+        return;
+      }
+      this.pendingNavigation = targetUrl;
+      this.exitWarningDialog.showModal();
+    }
+  };
+
+  // Initialize when the script loads
+  new window.BRAGbookSyncAdmin();
+}
+}();
+/******/ })()
+;
+//# sourceMappingURL=brag-book-gallery-sync-admin.js.map

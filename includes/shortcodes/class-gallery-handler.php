@@ -106,7 +106,8 @@ final class Gallery_Handler {
 	 * @since 3.3.2
 	 */
 	public static function handle_procedures_shortcode( array $atts ): string {
-		// Parse shortcode attributes
+
+		// Parse shortcode attributes.
 		$atts = shortcode_atts(
 			array(
 				'member_id' => '',
@@ -156,12 +157,6 @@ final class Gallery_Handler {
 
 		$cases_query = new \WP_Query( $query_args );
 
-		// Debug: Log query results
-		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			error_log( 'BRAGBook Gallery Procedures Shortcode: Query args: ' . print_r( $query_args, true ) );
-			error_log( 'BRAGBook Gallery Procedures Shortcode: Found ' . $cases_query->found_posts . ' cases' );
-		}
-
 		if ( ! $cases_query->have_posts() ) {
 			$debug_info = '';
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
@@ -183,38 +178,30 @@ final class Gallery_Handler {
 				// Get image display mode from settings
 				$image_display_mode = get_option( 'brag_book_gallery_image_display_mode', 'single' );
 
-				// Track case IDs to prevent duplicates when filtering by member_id
+				// Track case IDs to prevent duplicates when filtering by member_id.
 				$displayed_case_ids = array();
 
 				while ( $cases_query->have_posts() ) :
 					$cases_query->the_post();
 					$post = get_post();
 
-					// If filtering by member_id, check for duplicate case IDs
-					if ( ! empty( $member_id ) ) {
-						$case_id = get_post_meta( $post->ID, 'brag_book_gallery_case_id', true );
+					$case_id = get_post_meta( $post->ID, 'brag_book_gallery_case_id', true );
 
-						// Skip if this case ID has already been displayed
-						if ( ! empty( $case_id ) && in_array( $case_id, $displayed_case_ids, true ) ) {
-							continue;
-						}
-
-						// Track this case ID
-						if ( ! empty( $case_id ) ) {
-							$displayed_case_ids[] = $case_id;
-						}
+					// Skip if this case ID has already been displayed
+					if ( ! empty( $case_id ) && in_array( $case_id, $displayed_case_ids, true ) ) {
+						continue;
 					}
 
-					// Debug: Log rendering attempt
-					if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-						error_log( 'BRAGBook Gallery: Rendering case card for post ID ' . $post->ID );
+					// Track this case ID.
+					if ( ! empty( $case_id ) ) {
+						$displayed_case_ids[] = $case_id;
 					}
 
-					// Get taxonomy for this case
+					// Get taxonomy for this case.
 					$procedure_terms = wp_get_post_terms( $post->ID, Taxonomies::TAXONOMY_PROCEDURES );
 					$procedure_taxonomy = ! empty( $procedure_terms ) && ! is_wp_error( $procedure_terms ) ? $procedure_terms[0] : null;
 
-					// Check for nudity
+					// Check for nudity.
 					$procedure_nudity = false;
 					if ( $procedure_taxonomy ) {
 						$nudity_meta = get_term_meta( $procedure_taxonomy->term_id, 'nudity', true );
@@ -251,11 +238,6 @@ final class Gallery_Handler {
 						'',
 						$procedure_taxonomy ? (string) $procedure_taxonomy->term_id : ''
 					);
-
-					// Debug: Check if card was rendered
-					if ( defined( 'WP_DEBUG' ) && WP_DEBUG && empty( $card_html ) ) {
-						error_log( 'BRAGBook Gallery: Empty card HTML for post ID ' . $post->ID );
-					}
 
 					echo $card_html;
 
