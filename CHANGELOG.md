@@ -4,7 +4,24 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.3.2-beta13] - 2025-11-12 (Current Beta)
+## [3.3.2-beta14] - 2025-11-13 (Current Beta)
+
+### Enhanced
+- **Search Input Accessibility**: Improved search input ARIA attributes for better screen reader support
+  - Added `role="combobox"` to mobile search input for proper accessibility compliance
+  - Standardized class names across mobile and desktop search inputs (both use `brag-book-gallery-search-input`)
+  - Enhanced ARIA labels, autocomplete attributes, and controls
+  - Updated in `includes/shortcodes/class-gallery-handler.php:891-906, 943-956, 2251-2264`
+- **HTML Semantics**: Improved semantic HTML structure throughout the plugin
+  - Changed non-heading titles from `<h4>` to `<p>` tags where headings were not semantically appropriate
+  - Updated Gallery Checker "Page Status" title in `includes/admin/debug/class-gallery-checker.php:424`
+  - Updated nudity warning title in `src/js/modules/filter-system.js:932`
+  - Improves document outline and accessibility for screen readers
+- **Chart Colors**: Updated consultation chart colors in Communications page
+  - Changed chart border and background colors from `#D94540` to `#CC0000` for consistency
+  - Updated in `includes/admin/pages/class-communications-page.php:587, 623-624`
+
+## [3.3.2-beta13] - 2025-11-12
 
 ### Added
 - **Minified Assets**: Implemented intelligent asset minification system

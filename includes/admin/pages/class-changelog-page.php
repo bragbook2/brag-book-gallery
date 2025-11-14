@@ -93,12 +93,35 @@ class Changelog_Page extends Settings_Base {
 				</div>
 			</div>
 
+			<!-- Version 3.3.2-beta14 -->
+			<div class="brag-book-gallery-section">
+				<div class="brag-book-gallery-changelog-version">
+					<h3>
+						<span class="version-badge version-beta">v3.3.2-beta14</span>
+						<?php esc_html_e( 'November 13, 2025', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Current Beta', 'brag-book-gallery' ); ?>
+					</h3>
+					<div class="brag-book-gallery-card">
+						<h4><?php esc_html_e( '✨ Enhancements', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Search Input Accessibility: Improved search input ARIA attributes for better screen reader support', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Added role="combobox" to mobile search input for proper accessibility compliance', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Standardized class names across mobile and desktop search inputs', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Enhanced ARIA labels, autocomplete attributes, and controls', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'HTML Semantics: Improved semantic HTML structure throughout the plugin', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Changed non-heading titles from h4 to p tags where headings were not semantically appropriate', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Improves document outline and accessibility for screen readers', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Chart Colors: Updated consultation chart colors in Communications page for consistency', 'brag-book-gallery' ); ?></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
 			<!-- Version 3.3.2-beta13 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">
 					<h3>
 						<span class="version-badge version-beta">v3.3.2-beta13</span>
-						<?php esc_html_e( 'November 12, 2025', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Current Beta', 'brag-book-gallery' ); ?>
+						<?php esc_html_e( 'November 12, 2025', 'brag-book-gallery' ); ?>
 					</h3>
 					<div class="brag-book-gallery-card">
 						<h4><?php esc_html_e( '🎉 New Features', 'brag-book-gallery' ); ?></h4>

@@ -76,7 +76,7 @@
 		}
 
 		.brag-book-gallery-back-button {
-			color: var(--wp--custom--brag-book-gallery--color--primary, #D94540);
+			color: var(--wp--custom--brag-book-gallery--color--primary, #CC0000);
 			text-decoration: none;
 			font-weight: 500;
 
@@ -295,7 +295,7 @@
 	}
 
 	&:focus {
-		outline: 2px solid var(--wp--custom--brag-book-gallery--color--primary, #D94540);
+		outline: 2px solid var(--wp--custom--brag-book-gallery--color--primary, #CC0000);
 		outline-offset: 2px;
 	}
 
@@ -305,7 +305,7 @@
 
 	// Primary variant (for Request Consultation)
 	&--primary {
-		background: var(--wp--custom--brag-book-gallery--color--primary, #D94540);
+		background: var(--wp--custom--brag-book-gallery--color--primary, #CC0000);
 
 		&:hover {
 			background: var(--wp--custom--brag-book-gallery--color--primary-dark, #d94540);
@@ -648,13 +648,13 @@
 	cursor: pointer;
 
 	&:hover {
-		border-color: var(--wp--custom--brag-book-gallery--color--primary, #D94540);
+		border-color: var(--wp--custom--brag-book-gallery--color--primary, #CC0000);
 		box-shadow: var(--wp--custom--brag-book-gallery--shadow-lg);
 		transform: translateY(-2px);
 	}
 
 	&:focus {
-		outline: 2px solid var(--wp--custom--brag-book-gallery--color--primary, #D94540);
+		outline: 2px solid var(--wp--custom--brag-book-gallery--color--primary, #CC0000);
 		outline-offset: 2px;
 	}
 }

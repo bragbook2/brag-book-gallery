@@ -1,5 +1,21 @@
 === BRAGBook Gallery Changelog ===
 
+= 3.3.2-beta14 (2025-11-13) =
+
+Enhanced:
+* Search Input Accessibility - Improved search input ARIA attributes for better screen reader support
+  - Added role="combobox" to mobile search input for proper accessibility
+  - Standardized class names across mobile and desktop search inputs
+  - Enhanced ARIA labels and autocomplete attributes
+  - Updated in includes/shortcodes/class-gallery-handler.php
+* HTML Semantics - Improved semantic HTML structure
+  - Changed non-heading titles from h4 to p tags where appropriate
+  - Updated Gallery Checker page status title (includes/admin/debug/class-gallery-checker.php)
+  - Updated nudity warning title (src/js/modules/filter-system.js)
+* Chart Colors - Updated consultation chart colors in Communications page
+  - Changed chart border and background colors from #D94540 to #CC0000
+  - Updated in includes/admin/pages/class-communications-page.php
+
 = 3.3.2-beta13 (2025-11-12) =
 
 Added:

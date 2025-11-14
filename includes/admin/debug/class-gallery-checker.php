@@ -421,7 +421,7 @@ class Gallery_Checker {
 							<polyline points="12 6 12 12 16 14"></polyline>
 						</svg>
 					</div>
-					<h4 class="config-card-title"><?php esc_html_e( 'Page Status', 'brag-book-gallery' ); ?></h4>
+					<p class="config-card-title"><?php esc_html_e( 'Page Status', 'brag-book-gallery' ); ?></p>
 				</div>
 				<div class="config-card-content">
 					<?php if ( $page ) : ?>

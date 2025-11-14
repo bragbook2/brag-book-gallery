@@ -527,7 +527,7 @@ if (typeof window.BRAGbookSyncAdmin === 'undefined') {
 					statusText.style.color = '#22c55e'; // Green for completed
 				} else if (overall > 0) {
 					statusText.textContent = 'In Progress';
-					statusText.style.color = '#D94540'; // Brand red for in progress
+					statusText.style.color = '#CC0000'; // Brand red for in progress
 				} else {
 					statusText.textContent = 'Ready';
 					statusText.style.color = '#1e293b'; // Default dark color

@@ -29,9 +29,9 @@
 			min-height: 60px;
 
 			&:hover {
-				border-color: #D94540;
+				border-color: #CC0000;
 				background: #fef2f2;
-				color: #D94540;
+				color: #CC0000;
 				transform: translateY(-1px);
 				box-shadow: 0 4px 12px rgba(217, 69, 64, 0.1);
 			}
@@ -43,14 +43,14 @@
 			cursor: pointer;
 
 			&:checked + label {
-				border-color: #D94540;
-				background: #D94540;
+				border-color: #CC0000;
+				background: #CC0000;
 				color: white;
 				box-shadow: 0 4px 16px rgba(217, 69, 64, 0.3);
 			}
 
 			&:focus + label {
-				outline: 2px solid #D94540;
+				outline: 2px solid #CC0000;
 				outline-offset: 2px;
 			}
 		}
@@ -115,7 +115,7 @@
 
 			&:focus {
 				outline: none;
-				border-color: #D94540;
+				border-color: #CC0000;
 				box-shadow: 0 0 0 2px rgba(217, 69, 64, 0.1);
 			}
 		}
@@ -571,14 +571,14 @@
 
 		&:hover {
 			background: #fef2f2;
-			border-color: #D94540;
+			border-color: #CC0000;
 			box-shadow: 0 4px 6px -1px rgba(217, 69, 64, 0.1), 0 2px 4px -1px rgba(217, 69, 64, 0.06);
 		}
 
 		&:focus-within {
-			outline: 2px solid #D94540;
+			outline: 2px solid #CC0000;
 			outline-offset: 2px;
-			border-color: #D94540;
+			border-color: #CC0000;
 		}
 	}
 }
@@ -597,8 +597,8 @@
 	flex-shrink: 0;
 
 	&:checked {
-		border-color: #D94540;
-		background: #D94540;
+		border-color: #CC0000;
+		background: #CC0000;
 
 		&::after {
 			content: '';
@@ -614,7 +614,7 @@
 	}
 
 	&:focus {
-		outline: 2px solid #D94540;
+		outline: 2px solid #CC0000;
 		outline-offset: 2px;
 	}
 
@@ -626,8 +626,8 @@
 
 .sync-frequency-option:has(.sync-frequency-radio:checked) label {
 	background: #fef2f2;
-	border-color: #D94540;
-	color: #D94540;
+	border-color: #CC0000;
+	color: #CC0000;
 	box-shadow: 0 4px 6px -1px rgba(217, 69, 64, 0.1), 0 2px 4px -1px rgba(217, 69, 64, 0.06);
 }
 
@@ -675,7 +675,7 @@
 		box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 
 		&:focus {
-			border-color: #D94540;
+			border-color: #CC0000;
 			box-shadow: 0 0 0 3px rgba(217, 69, 64, 0.1);
 			outline: none;
 		}
@@ -716,7 +716,7 @@
 			font-family: 'Courier New', monospace;
 			font-size: 14px;
 			font-weight: 600;
-			color: #D94540;
+			color: #CC0000;
 			box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 
 			&.completed {
@@ -758,7 +758,7 @@
 		color: #1e293b;
 
 		&#sync-status-text {
-			color: #D94540;
+			color: #CC0000;
 
 			&.completed {
 				color: #22c55e;
@@ -882,7 +882,7 @@ body.wp-admin {
 				content: '';
 				width: 6px;
 				height: 32px;
-				background: linear-gradient(135deg, #D94540, #a82b27);
+				background: linear-gradient(135deg, #CC0000, #a82b27);
 				border-radius: 3px;
 			}
 		}
@@ -970,7 +970,7 @@ body.wp-admin {
 				left: 0;
 				right: 0;
 				height: 4px;
-				background: linear-gradient(90deg, #D94540, #f87171);
+				background: linear-gradient(90deg, #CC0000, #f87171);
 			}
 
 			&.time-monitor::before {
@@ -1086,7 +1086,7 @@ body.wp-admin {
 			}
 
 			&.primary {
-				background: linear-gradient(135deg, #D94540, #a82b27);
+				background: linear-gradient(135deg, #CC0000, #a82b27);
 				color: white;
 				box-shadow: 0 4px 6px -1px rgba(217, 69, 64, 0.3);
 

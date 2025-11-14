@@ -929,7 +929,7 @@ class FilterSystem {
 		if (shouldAddNudityWarning) {
 			html += '<div class="brag-book-gallery-nudity-warning">';
 			html += '<div class="brag-book-gallery-nudity-warning-content">';
-			html += '<h4 class="brag-book-gallery-nudity-warning-title">Nudity Warning</h4>';
+			html += '<p class="brag-book-gallery-nudity-warning-title">Nudity Warning</p>';
 			html += '<p class="brag-book-gallery-nudity-warning-caption">This procedure may contain nudity or sensitive content. Click to proceed if you wish to view.</p>';
 			html += '<button class="brag-book-gallery-nudity-warning-button" type="button">Proceed</button>';
 			html += '</div>';

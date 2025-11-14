@@ -219,7 +219,7 @@
   --slate-900: #0f172a;
   --slate-950: #020617;
   /* Brand Primary (custom dark) */
-  --brag-book-gallery-primary: #D94540;
+  --brag-book-gallery-primary: #CC0000;
   --brag-book-gallery-white: #FFF;
   /* Blue (Accent) */
   --blue-50: #eff6ff;
@@ -4561,9 +4561,9 @@
   min-height: 60px;
 }
 .sync-frequency-wrapper .sync-frequency-option label:hover {
-  border-color: #D94540;
+  border-color: #CC0000;
   background: #fef2f2;
-  color: #D94540;
+  color: #CC0000;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(217, 69, 64, 0.1);
 }
@@ -4573,13 +4573,13 @@
   cursor: pointer;
 }
 .sync-frequency-wrapper .sync-frequency-option .sync-frequency-radio:checked + label {
-  border-color: #D94540;
-  background: #D94540;
+  border-color: #CC0000;
+  background: #CC0000;
   color: white;
   box-shadow: 0 4px 16px rgba(217, 69, 64, 0.3);
 }
 .sync-frequency-wrapper .sync-frequency-option .sync-frequency-radio:focus + label {
-  outline: 2px solid #D94540;
+  outline: 2px solid #CC0000;
   outline-offset: 2px;
 }
 .sync-frequency-wrapper .sync-frequency-option .sync-frequency-label {
@@ -4636,7 +4636,7 @@
 .sync-custom-schedule .sync-custom-field input[type=date]:focus,
 .sync-custom-schedule .sync-custom-field input[type=time]:focus {
   outline: none;
-  border-color: #D94540;
+  border-color: #CC0000;
   box-shadow: 0 0 0 2px rgba(217, 69, 64, 0.1);
 }
 
@@ -5022,13 +5022,13 @@
 }
 .sync-frequency-option label:hover {
   background: #fef2f2;
-  border-color: #D94540;
+  border-color: #CC0000;
   box-shadow: 0 4px 6px -1px rgba(217, 69, 64, 0.1), 0 2px 4px -1px rgba(217, 69, 64, 0.06);
 }
 .sync-frequency-option label:focus-within {
-  outline: 2px solid #D94540;
+  outline: 2px solid #CC0000;
   outline-offset: 2px;
-  border-color: #D94540;
+  border-color: #CC0000;
 }
 
 .sync-frequency-radio {
@@ -5045,8 +5045,8 @@
   flex-shrink: 0;
 }
 .sync-frequency-radio:checked {
-  border-color: #D94540;
-  background: #D94540;
+  border-color: #CC0000;
+  background: #CC0000;
 }
 .sync-frequency-radio:checked::after {
   content: "";
@@ -5060,7 +5060,7 @@
   background: #ffffff;
 }
 .sync-frequency-radio:focus {
-  outline: 2px solid #D94540;
+  outline: 2px solid #CC0000;
   outline-offset: 2px;
 }
 .sync-frequency-radio:checked + .sync-frequency-label {
@@ -5070,8 +5070,8 @@
 
 .sync-frequency-option:has(.sync-frequency-radio:checked) label {
   background: #fef2f2;
-  border-color: #D94540;
-  color: #D94540;
+  border-color: #CC0000;
+  color: #CC0000;
   box-shadow: 0 4px 6px -1px rgba(217, 69, 64, 0.1), 0 2px 4px -1px rgba(217, 69, 64, 0.06);
 }
 
@@ -5117,7 +5117,7 @@
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 }
 .sync-custom-field input:focus {
-  border-color: #D94540;
+  border-color: #CC0000;
   box-shadow: 0 0 0 3px rgba(217, 69, 64, 0.1);
   outline: none;
 }
@@ -5153,7 +5153,7 @@
   font-family: "Courier New", monospace;
   font-size: 14px;
   font-weight: 600;
-  color: #D94540;
+  color: #CC0000;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 .sync-progress-overview .sync-progress-header .sync-timer.completed {
@@ -5190,7 +5190,7 @@
   color: #1e293b;
 }
 .stat-item span#sync-status-text {
-  color: #D94540;
+  color: #CC0000;
 }
 .stat-item span#sync-status-text.completed {
   color: #22c55e;
@@ -5294,7 +5294,7 @@ body.wp-admin #wpfooter {
   content: "";
   width: 6px;
   height: 32px;
-  background: linear-gradient(135deg, #D94540, #a82b27);
+  background: linear-gradient(135deg, #CC0000, #a82b27);
   border-radius: 3px;
 }
 .sync-control-center .control-header .sync-status-badge {
@@ -5369,7 +5369,7 @@ body.wp-admin #wpfooter {
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(90deg, #D94540, #f87171);
+  background: linear-gradient(90deg, #CC0000, #f87171);
 }
 .sync-control-center .resource-monitors .monitor-card.time-monitor::before {
   background: linear-gradient(90deg, #3b82f6, #60a5fa);
@@ -5466,7 +5466,7 @@ body.wp-admin #wpfooter {
   left: 100%;
 }
 .sync-control-center .sync-action-controls .sync-action-button.primary {
-  background: linear-gradient(135deg, #D94540, #a82b27);
+  background: linear-gradient(135deg, #CC0000, #a82b27);
   color: white;
   box-shadow: 0 4px 6px -1px rgba(217, 69, 64, 0.3);
 }

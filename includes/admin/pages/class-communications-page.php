@@ -584,7 +584,7 @@ class Communications_Page extends Settings_Base {
 						datasets: [{
 							label: 'Consultations',
 							data: dailyData.map(d => d.count),
-							borderColor: '#D94540',
+							borderColor: '#CC0000',
 							backgroundColor: 'rgba(217, 69, 64, 0.1)',
 							tension: 0.3,
 							fill: true
@@ -620,8 +620,8 @@ class Communications_Page extends Settings_Base {
 						datasets: [{
 							label: 'Consultations',
 							data: monthlyData.map(d => d.count),
-							backgroundColor: '#D94540',
-							borderColor: '#D94540',
+							backgroundColor: '#CC0000',
+							borderColor: '#CC0000',
 							borderWidth: 1
 						}]
 					},

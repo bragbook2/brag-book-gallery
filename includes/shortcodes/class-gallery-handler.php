@@ -891,13 +891,18 @@ final class Gallery_Handler {
 						<path stroke-linecap="round" stroke-linejoin="round"
 							  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
 					</svg>
-					<input type="search"
-						   class="brag-book-gallery-mobile-search-input"
-						   placeholder="Search Procedures..."
-						   name="procedure-search"
-						   aria-label="Search cosmetic procedures"
-						   aria-describedby="mobile-search-hint"
-						   autocomplete="off">
+					<input
+						type="search"
+						role="combobox"
+						class="brag-book-gallery-search-input"
+						placeholder="Search Procedures..."
+						aria-label="Search cosmetic procedures"
+						aria-describedby="search-hint"
+						aria-autocomplete="list"
+						aria-controls="search-results"
+						autocomplete="off"
+						aria-expanded="false"
+					/>
 					<span id="mobile-search-hint" class="sr-only">
 						<?php
 						echo esc_html__( 'Start typing to search for procedures: ', 'brag-book-gallery' );
@@ -938,15 +943,18 @@ final class Gallery_Handler {
 							<path stroke-linecap="round" stroke-linejoin="round"
 								  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
 						</svg>
-						<input type="search"
-							   class="brag-book-gallery-search-input"
-							   placeholder="Search Procedures..."
-							   aria-label="Search cosmetic procedures"
-							   aria-describedby="search-hint"
-							   aria-autocomplete="list"
-							   aria-controls="search-results"
-							   autocomplete="off"
-							   aria-expanded="false">
+						<input
+							type="search"
+							role="combobox"
+							class="brag-book-gallery-search-input"
+							placeholder="Search Procedures..."
+							aria-label="Search cosmetic procedures"
+							aria-describedby="search-hint"
+							aria-autocomplete="list"
+							aria-controls="search-results"
+							autocomplete="off"
+							aria-expanded="false"
+						/>
 						<span id="search-hint" class="sr-only">
 							<?php
 							echo esc_html__( 'Start typing to search for procedures: ', 'brag-book-gallery' );
@@ -2243,15 +2251,17 @@ final class Gallery_Handler {
 								<path stroke-linecap="round" stroke-linejoin="round"
 									  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
 							</svg>
-							<input type="search"
-								   class="brag-book-gallery-search-input"
-								   placeholder="<?php esc_attr_e( 'Search categories...', 'brag-book-gallery' ); ?>"
-								   aria-label="<?php esc_attr_e( 'Search categories', 'brag-book-gallery' ); ?>"
-								   aria-describedby="search-hint-tiles"
-								   aria-autocomplete="list"
-								   aria-controls="search-results-tiles"
-								   autocomplete="off"
-								   aria-expanded="false">
+							<input
+								type="search"
+								class="brag-book-gallery-search-input"
+								placeholder="<?php esc_attr_e( 'Search categories...', 'brag-book-gallery' ); ?>"
+								aria-label="<?php esc_attr_e( 'Search categories', 'brag-book-gallery' ); ?>"
+								aria-describedby="search-hint-tiles"
+								aria-autocomplete="list"
+								aria-controls="search-results-tiles"
+								autocomplete="off"
+								aria-expanded="false"
+							/>
 							<span id="search-hint-tiles" class="sr-only">
 								<?php
 								echo esc_html__( 'Start typing to search for categories: ', 'brag-book-gallery' );
