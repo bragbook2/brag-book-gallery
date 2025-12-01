@@ -545,8 +545,12 @@ class Case_Handler {
 		$html .= '<div class="brag-book-gallery-case-nav-buttons">';
 		$html .= $this->render_case_navigation_buttons( $case_post, $case_data );
 		$html .= '</div>';
-		$html .= '</div>';
-		$html .= '</div>';
+		$html .= '</div>'; // Close case-header
+
+		// Doctor profile section (only shown when property ID 111 is active)
+		$html .= $this->render_doctor_profile_section( $case_post->ID );
+
+		$html .= '</div>'; // Close header-section
 
 		// Main content section
 		$html .= '<div class="brag-book-gallery-brag-book-gallery-case-content">';
@@ -818,29 +822,16 @@ class Case_Handler {
 			);
 		}
 
-		// PostOp information card
-		$postop_info = $this->get_postop_info_for_card( $case_data );
-
-		if ( ! empty( $postop_info ) ) {
-			$html .= sprintf(
-				'<div class="case-detail-card postop-info-card">' .
-					'<div class="card-header">' .
-						'<h2 class="card-title">' . esc_html__( 'Post-Operative Information', 'brag-book-gallery' ) . '</h2>' .
-					'</div>' .
-					'<div class="card-content">' .
-						'<div class="postop-info-grid">%s</div>' .
-					'</div>' .
-				'</div>',
-				$postop_info
-			);
-		}
-
-		// Procedure details card (if available).
+		// Procedure details card (if available) - includes post-op information
 		if ( ! empty( $case_data['procedures'] ) ) {
 
 			$procedure_details = $this->get_procedure_details_for_card( $case_data );
+			$postop_info = $this->get_postop_info_for_card( $case_data );
 
-			if ( ! empty( $procedure_details ) ) {
+			// Combine procedure details and post-op info
+			$combined_details = $procedure_details . $postop_info;
+
+			if ( ! empty( $combined_details ) ) {
 				$html .= sprintf(
 					'<div class="case-detail-card procedure-details-card">' .
 						'<div class="card-header">' .
@@ -851,7 +842,7 @@ class Case_Handler {
 						'</div>' .
 						'</div>',
 						esc_html__( 'Procedure Details', 'brag-book-gallery' ),
-					$procedure_details
+					$combined_details
 				);
 			}
 		}
@@ -1721,5 +1712,144 @@ class Case_Handler {
 
 		// Generate case HTML using the existing method
 		return $this->generate_case_html( $case_post );
+	}
+
+	/**
+	 * Check if doctors taxonomy is enabled
+	 *
+	 * Doctors taxonomy is only enabled when website property ID 111 is configured.
+	 *
+	 * @since 3.3.3
+	 * @return bool True if doctors taxonomy should be enabled.
+	 */
+	private function is_doctors_taxonomy_enabled(): bool {
+		$website_property_ids = get_option( 'brag_book_gallery_website_property_id', [] );
+
+		if ( ! is_array( $website_property_ids ) ) {
+			$website_property_ids = [ $website_property_ids ];
+		}
+
+		return in_array( 111, array_map( 'intval', $website_property_ids ), true );
+	}
+
+	/**
+	 * Get doctor information for a case post
+	 *
+	 * Retrieves the doctor term and its metadata for a given case post.
+	 *
+	 * @since 3.3.3
+	 * @param int $post_id The case post ID.
+	 * @return array|null Doctor data array or null if not found.
+	 */
+	private function get_doctor_for_case( int $post_id ): ?array {
+		// Check if doctors taxonomy is enabled
+		if ( ! $this->is_doctors_taxonomy_enabled() ) {
+			return null;
+		}
+
+		// Check if taxonomy exists
+		if ( ! taxonomy_exists( Taxonomies::TAXONOMY_DOCTORS ) ) {
+			return null;
+		}
+
+		// Get the doctor terms for this post
+		$doctor_terms = wp_get_post_terms( $post_id, Taxonomies::TAXONOMY_DOCTORS );
+
+		if ( empty( $doctor_terms ) || is_wp_error( $doctor_terms ) ) {
+			return null;
+		}
+
+		$doctor_term = $doctor_terms[0];
+
+		// Get doctor meta
+		$member_id     = get_term_meta( $doctor_term->term_id, 'doctor_member_id', true );
+		$first_name    = get_term_meta( $doctor_term->term_id, 'doctor_first_name', true );
+		$last_name     = get_term_meta( $doctor_term->term_id, 'doctor_last_name', true );
+		$suffix        = get_term_meta( $doctor_term->term_id, 'doctor_suffix', true );
+		$profile_url   = get_term_meta( $doctor_term->term_id, 'doctor_profile_url', true );
+		$profile_photo = get_term_meta( $doctor_term->term_id, 'doctor_profile_photo', true );
+
+		return [
+			'term_id'       => $doctor_term->term_id,
+			'name'          => $doctor_term->name,
+			'member_id'     => $member_id,
+			'first_name'    => $first_name,
+			'last_name'     => $last_name,
+			'suffix'        => $suffix,
+			'profile_url'   => $profile_url,
+			'profile_photo' => $profile_photo,
+		];
+	}
+
+	/**
+	 * Render doctor profile section for case header
+	 *
+	 * Displays the doctor's profile photo, name, and link below the case title.
+	 *
+	 * @since 3.3.3
+	 * @param int $post_id The case post ID.
+	 * @return string Doctor profile HTML or empty string if not available.
+	 */
+	private function render_doctor_profile_section( int $post_id ): string {
+		$doctor = $this->get_doctor_for_case( $post_id );
+
+		if ( ! $doctor ) {
+			return '';
+		}
+
+		$html = '<div class="brag-book-gallery-doctor-profile">';
+
+		// Profile photo (48x48 circle)
+		$html .= '<div class="brag-book-gallery-doctor-photo">';
+		if ( ! empty( $doctor['profile_photo'] ) ) {
+			$photo_url = wp_get_attachment_image_url( $doctor['profile_photo'], [ 48, 48 ] );
+			if ( $photo_url ) {
+				$html .= sprintf(
+					'<img src="%s" alt="%s" width="48" height="48" class="brag-book-gallery-doctor-avatar">',
+					esc_url( $photo_url ),
+					esc_attr( $doctor['name'] )
+				);
+			} else {
+				$html .= $this->render_doctor_placeholder_avatar();
+			}
+		} else {
+			$html .= $this->render_doctor_placeholder_avatar();
+		}
+		$html .= '</div>';
+
+		// Doctor name and link
+		$html .= '<div class="brag-book-gallery-doctor-info">';
+
+		if ( ! empty( $doctor['profile_url'] ) ) {
+			$html .= sprintf(
+				'<a href="%s" class="brag-book-gallery-doctor-name">%s</a>',
+				esc_url( $doctor['profile_url'] ),
+				esc_html( $doctor['name'] )
+			);
+		} else {
+			$html .= sprintf(
+				'<span class="brag-book-gallery-doctor-name">%s</span>',
+				esc_html( $doctor['name'] )
+			);
+		}
+
+		$html .= '</div>';
+		$html .= '</div>';
+
+		return $html;
+	}
+
+	/**
+	 * Render placeholder avatar for doctor without photo
+	 *
+	 * @since 3.3.3
+	 * @return string Placeholder avatar HTML.
+	 */
+	private function render_doctor_placeholder_avatar(): string {
+		return '<div class="brag-book-gallery-doctor-avatar brag-book-gallery-doctor-avatar--placeholder">'
+			. '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24" height="24">'
+			. '<path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>'
+			. '</svg>'
+			. '</div>';
 	}
 }

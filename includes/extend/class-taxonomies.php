@@ -25,6 +25,12 @@ class Taxonomies {
 	 * Taxonomy constants
 	 */
 	public const TAXONOMY_PROCEDURES = 'brag_book_procedures';
+	public const TAXONOMY_DOCTORS    = 'brag_book_doctors';
+
+	/**
+	 * Website property ID that enables the doctors taxonomy
+	 */
+	private const DOCTORS_ENABLED_PROPERTY_ID = 111;
 
 	/**
 	 * Initialize taxonomy functionality
@@ -40,7 +46,7 @@ class Taxonomies {
 
 		add_filter('term_link', [ $this, 'custom_procedure_term_link' ], 10, 3);
 
-		// Add taxonomy meta fields
+		// Add taxonomy meta fields for Procedures
 		add_action( self::TAXONOMY_PROCEDURES . '_add_form_fields', [ $this, 'add_procedure_meta_fields' ] );
 		add_action( self::TAXONOMY_PROCEDURES . '_edit_form_fields', [ $this, 'edit_procedure_meta_fields' ] );
 		add_action( 'edited_' . self::TAXONOMY_PROCEDURES, [ $this, 'save_procedure_meta' ] );
@@ -48,8 +54,36 @@ class Taxonomies {
 		add_filter( 'manage_edit-' . self::TAXONOMY_PROCEDURES . '_columns', [ $this, 'add_procedure_columns' ] );
 		add_filter( 'manage_' . self::TAXONOMY_PROCEDURES . '_custom_column', [ $this, 'add_procedure_column_content' ], 10, 3 );
 
-		// Enqueue media scripts for procedures taxonomy pages
-		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_procedure_admin_scripts' ] );
+		// Add taxonomy meta fields for Doctors (only if enabled)
+		if ( $this->is_doctors_taxonomy_enabled() ) {
+			add_action( self::TAXONOMY_DOCTORS . '_add_form_fields', [ $this, 'add_doctor_meta_fields' ] );
+			add_action( self::TAXONOMY_DOCTORS . '_edit_form_fields', [ $this, 'edit_doctor_meta_fields' ] );
+			add_action( 'edited_' . self::TAXONOMY_DOCTORS, [ $this, 'save_doctor_meta' ] );
+			add_action( 'create_' . self::TAXONOMY_DOCTORS, [ $this, 'save_doctor_meta' ] );
+			add_filter( 'manage_edit-' . self::TAXONOMY_DOCTORS . '_columns', [ $this, 'add_doctor_columns' ] );
+			add_filter( 'manage_' . self::TAXONOMY_DOCTORS . '_custom_column', [ $this, 'add_doctor_column_content' ], 10, 3 );
+		}
+
+		// Enqueue media scripts for taxonomy pages
+		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_taxonomy_admin_scripts' ] );
+	}
+
+	/**
+	 * Check if doctors taxonomy is enabled
+	 *
+	 * Doctors taxonomy is only enabled when website property ID 111 is configured.
+	 *
+	 * @since 3.3.3
+	 * @return bool True if doctors taxonomy should be enabled.
+	 */
+	public function is_doctors_taxonomy_enabled(): bool {
+		$website_property_ids = get_option( 'brag_book_gallery_website_property_id', [] );
+
+		if ( ! is_array( $website_property_ids ) ) {
+			$website_property_ids = [ $website_property_ids ];
+		}
+
+		return in_array( self::DOCTORS_ENABLED_PROPERTY_ID, array_map( 'intval', $website_property_ids ), true );
 	}
 
 	/**
@@ -111,6 +145,61 @@ class Taxonomies {
 		];
 
 		register_taxonomy( self::TAXONOMY_PROCEDURES, [ 'brag_book_cases' ], $procedures_args );
+
+		// Register Doctors taxonomy (only if enabled for website property ID 111)
+		if ( $this->is_doctors_taxonomy_enabled() ) {
+			$this->register_doctors_taxonomy();
+		}
+	}
+
+	/**
+	 * Register the Doctors taxonomy
+	 *
+	 * Creates a taxonomy for managing doctors/providers with custom meta fields.
+	 * Only registered when website property ID 111 is configured.
+	 *
+	 * @since 3.3.3
+	 * @return void
+	 */
+	private function register_doctors_taxonomy(): void {
+		$doctors_labels = [
+			'name'                       => _x( 'Doctors', 'Taxonomy general name', 'brag-book-gallery' ),
+			'singular_name'              => _x( 'Doctor', 'Taxonomy singular name', 'brag-book-gallery' ),
+			'menu_name'                  => __( 'Doctors', 'brag-book-gallery' ),
+			'all_items'                  => __( 'All Doctors', 'brag-book-gallery' ),
+			'parent_item'                => __( 'Parent Doctor', 'brag-book-gallery' ),
+			'parent_item_colon'          => __( 'Parent Doctor:', 'brag-book-gallery' ),
+			'new_item_name'              => __( 'New Doctor Name', 'brag-book-gallery' ),
+			'add_new_item'               => __( 'Add New Doctor', 'brag-book-gallery' ),
+			'edit_item'                  => __( 'Edit Doctor', 'brag-book-gallery' ),
+			'update_item'                => __( 'Update Doctor', 'brag-book-gallery' ),
+			'view_item'                  => __( 'View Doctor', 'brag-book-gallery' ),
+			'separate_items_with_commas' => __( 'Separate doctors with commas', 'brag-book-gallery' ),
+			'add_or_remove_items'        => __( 'Add or remove doctors', 'brag-book-gallery' ),
+			'choose_from_most_used'      => __( 'Choose from the most used', 'brag-book-gallery' ),
+			'popular_items'              => __( 'Popular Doctors', 'brag-book-gallery' ),
+			'search_items'               => __( 'Search Doctors', 'brag-book-gallery' ),
+			'not_found'                  => __( 'Not Found', 'brag-book-gallery' ),
+			'no_terms'                   => __( 'No doctors', 'brag-book-gallery' ),
+			'items_list'                 => __( 'Doctors list', 'brag-book-gallery' ),
+			'items_list_navigation'      => __( 'Doctors list navigation', 'brag-book-gallery' ),
+		];
+
+		$doctors_args = [
+			'labels'             => $doctors_labels,
+			'hierarchical'       => false,
+			'public'             => false, // Not publicly queryable - used as information feed for cases.
+			'publicly_queryable' => false, // No front-end archive/term pages.
+			'show_ui'            => true,
+			'show_in_menu'       => false,
+			'show_admin_column'  => true,
+			'show_in_nav_menus'  => false, // Not shown in navigation menus.
+			'show_tagcloud'      => false,
+			'show_in_rest'       => true,
+			'rewrite'            => false, // No URL rewrites needed.
+		];
+
+		register_taxonomy( self::TAXONOMY_DOCTORS, [ 'brag_book_cases' ], $doctors_args );
 	}
 
 	public function custom_procedure_term_link( $link, $term, $taxonomy ): ?string {
@@ -124,23 +213,32 @@ class Taxonomies {
 	}
 
 	/**
-	 * Enqueue admin scripts for procedure taxonomy pages
+	 * Enqueue admin scripts for taxonomy pages
 	 *
 	 * Loads WordPress media scripts on taxonomy administration pages
-	 * to enable banner image selection functionality.
+	 * to enable image selection functionality for procedures and doctors.
 	 *
 	 * @since 3.0.0
 	 * @param string $hook_suffix The current admin page hook suffix.
 	 * @return void
 	 */
-	public function enqueue_procedure_admin_scripts( string $hook_suffix ): void {
-		// Check if we're on the procedures taxonomy pages
+	public function enqueue_taxonomy_admin_scripts( string $hook_suffix ): void {
+		// Check if we're on taxonomy pages
 		if ( 'edit-tags.php' === $hook_suffix || 'term.php' === $hook_suffix ) {
 			$screen = get_current_screen();
-			if ( $screen && self::TAXONOMY_PROCEDURES === $screen->taxonomy ) {
-				// Enqueue WordPress media scripts
-				wp_enqueue_media();
-				wp_enqueue_script( 'jquery' );
+			if ( $screen ) {
+				$supported_taxonomies = [ self::TAXONOMY_PROCEDURES ];
+
+				// Add doctors taxonomy if enabled
+				if ( $this->is_doctors_taxonomy_enabled() ) {
+					$supported_taxonomies[] = self::TAXONOMY_DOCTORS;
+				}
+
+				if ( in_array( $screen->taxonomy, $supported_taxonomies, true ) ) {
+					// Enqueue WordPress media scripts
+					wp_enqueue_media();
+					wp_enqueue_script( 'jquery' );
+				}
 			}
 		}
 	}
@@ -756,7 +854,7 @@ class Taxonomies {
 	 */
 	public function maybe_flush_rewrites(): void {
 		$option_key = 'brag_book_taxonomy_version';
-		$current_version = '3.3.0_brag_book_procedures';
+		$current_version = '3.3.3_brag_book_doctors';
 		$saved_version = get_option( $option_key, '' );
 
 		// If the taxonomy version has changed, flush rewrites
@@ -768,5 +866,443 @@ class Taxonomies {
 				error_log( 'BRAGBook: Flushed rewrite rules after taxonomy update to ' . $current_version );
 			}
 		}
+	}
+
+	/**
+	 * Add meta fields to doctor add form
+	 *
+	 * Renders form fields for doctor metadata including first name, last name,
+	 * suffix, profile URL, profile photo, and member ID.
+	 *
+	 * @since 3.3.3
+	 * @return void
+	 */
+	public function add_doctor_meta_fields(): void {
+		wp_nonce_field( 'save_doctor_meta', 'doctor_meta_nonce' );
+		?>
+		<div class="form-field">
+			<label for="doctor_member_id"><?php esc_html_e( 'Member ID', 'brag-book-gallery' ); ?></label>
+			<input type="text" name="doctor_member_id" id="doctor_member_id" value="" />
+			<p class="description"><?php esc_html_e( 'Unique member ID from the BRAGBook API', 'brag-book-gallery' ); ?></p>
+		</div>
+
+		<div class="form-field">
+			<label for="doctor_first_name"><?php esc_html_e( 'First Name', 'brag-book-gallery' ); ?></label>
+			<input type="text" name="doctor_first_name" id="doctor_first_name" value="" />
+			<p class="description"><?php esc_html_e( 'Doctor\'s first name', 'brag-book-gallery' ); ?></p>
+		</div>
+
+		<div class="form-field">
+			<label for="doctor_last_name"><?php esc_html_e( 'Last Name', 'brag-book-gallery' ); ?></label>
+			<input type="text" name="doctor_last_name" id="doctor_last_name" value="" />
+			<p class="description"><?php esc_html_e( 'Doctor\'s last name', 'brag-book-gallery' ); ?></p>
+		</div>
+
+		<div class="form-field">
+			<label for="doctor_suffix"><?php esc_html_e( 'Suffix', 'brag-book-gallery' ); ?></label>
+			<input type="text" name="doctor_suffix" id="doctor_suffix" value="" />
+			<p class="description"><?php esc_html_e( 'Professional suffix (e.g., MD, DO, DDS)', 'brag-book-gallery' ); ?></p>
+		</div>
+
+		<div class="form-field">
+			<label for="doctor_profile_url"><?php esc_html_e( 'Profile URL', 'brag-book-gallery' ); ?></label>
+			<input type="url" name="doctor_profile_url" id="doctor_profile_url" value="" />
+			<p class="description"><?php esc_html_e( 'URL to the doctor\'s profile page', 'brag-book-gallery' ); ?></p>
+		</div>
+
+		<div class="form-field">
+			<label for="doctor_profile_photo"><?php esc_html_e( 'Profile Photo', 'brag-book-gallery' ); ?></label>
+			<input type="hidden" id="doctor_profile_photo" name="doctor_profile_photo" value="" />
+			<button type="button" class="button" id="upload_doctor_photo_button">
+				<?php esc_html_e( 'Choose Profile Photo', 'brag-book-gallery' ); ?>
+			</button>
+			<button type="button" class="button" id="remove_doctor_photo_button" style="display:none;">
+				<?php esc_html_e( 'Remove Photo', 'brag-book-gallery' ); ?>
+			</button>
+			<div id="doctor_photo_preview" style="margin-top: 10px;"></div>
+			<p class="description"><?php esc_html_e( 'Profile photo for this doctor', 'brag-book-gallery' ); ?></p>
+		</div>
+
+		<script>
+		jQuery(document).ready(function($) {
+			var doctorMediaUploader;
+
+			$('#upload_doctor_photo_button').click(function(e) {
+				e.preventDefault();
+				if (doctorMediaUploader) {
+					doctorMediaUploader.open();
+					return;
+				}
+				doctorMediaUploader = wp.media.frames.file_frame = wp.media({
+					title: '<?php echo esc_js( __( 'Choose Profile Photo', 'brag-book-gallery' ) ); ?>',
+					button: {
+						text: '<?php echo esc_js( __( 'Choose Photo', 'brag-book-gallery' ) ); ?>'
+					},
+					multiple: false
+				});
+				doctorMediaUploader.on('select', function() {
+					var attachment = doctorMediaUploader.state().get('selection').first().toJSON();
+					$('#doctor_profile_photo').val(attachment.id);
+					$('#doctor_photo_preview').html('<img src="' + attachment.url + '" style="max-width: 150px; height: auto; border-radius: 50%;" />');
+					$('#remove_doctor_photo_button').show();
+				});
+				doctorMediaUploader.open();
+			});
+
+			$('#remove_doctor_photo_button').click(function(e) {
+				e.preventDefault();
+				$('#doctor_profile_photo').val('');
+				$('#doctor_photo_preview').html('');
+				$(this).hide();
+			});
+		});
+		</script>
+		<?php
+	}
+
+	/**
+	 * Add meta fields to doctor edit form
+	 *
+	 * Renders editable form fields for doctor metadata on the
+	 * taxonomy edit page with pre-populated values.
+	 *
+	 * @since 3.3.3
+	 * @param \WP_Term $term The term being edited.
+	 * @return void
+	 */
+	public function edit_doctor_meta_fields( \WP_Term $term ): void {
+		// Get existing values
+		$member_id     = get_term_meta( $term->term_id, 'doctor_member_id', true );
+		$first_name    = get_term_meta( $term->term_id, 'doctor_first_name', true );
+		$last_name     = get_term_meta( $term->term_id, 'doctor_last_name', true );
+		$suffix        = get_term_meta( $term->term_id, 'doctor_suffix', true );
+		$profile_url   = get_term_meta( $term->term_id, 'doctor_profile_url', true );
+		$profile_photo = get_term_meta( $term->term_id, 'doctor_profile_photo', true );
+
+		wp_nonce_field( 'save_doctor_meta', 'doctor_meta_nonce' );
+		?>
+		<tr class="form-field">
+			<th scope="row">
+				<label for="doctor_member_id"><?php esc_html_e( 'Member ID', 'brag-book-gallery' ); ?></label>
+			</th>
+			<td>
+				<input type="text" name="doctor_member_id" id="doctor_member_id" value="<?php echo esc_attr( $member_id ); ?>" />
+				<p class="description"><?php esc_html_e( 'Unique member ID from the BRAGBook API', 'brag-book-gallery' ); ?></p>
+			</td>
+		</tr>
+
+		<tr class="form-field">
+			<th scope="row">
+				<label for="doctor_first_name"><?php esc_html_e( 'First Name', 'brag-book-gallery' ); ?></label>
+			</th>
+			<td>
+				<input type="text" name="doctor_first_name" id="doctor_first_name" value="<?php echo esc_attr( $first_name ); ?>" />
+				<p class="description"><?php esc_html_e( 'Doctor\'s first name', 'brag-book-gallery' ); ?></p>
+			</td>
+		</tr>
+
+		<tr class="form-field">
+			<th scope="row">
+				<label for="doctor_last_name"><?php esc_html_e( 'Last Name', 'brag-book-gallery' ); ?></label>
+			</th>
+			<td>
+				<input type="text" name="doctor_last_name" id="doctor_last_name" value="<?php echo esc_attr( $last_name ); ?>" />
+				<p class="description"><?php esc_html_e( 'Doctor\'s last name', 'brag-book-gallery' ); ?></p>
+			</td>
+		</tr>
+
+		<tr class="form-field">
+			<th scope="row">
+				<label for="doctor_suffix"><?php esc_html_e( 'Suffix', 'brag-book-gallery' ); ?></label>
+			</th>
+			<td>
+				<input type="text" name="doctor_suffix" id="doctor_suffix" value="<?php echo esc_attr( $suffix ); ?>" />
+				<p class="description"><?php esc_html_e( 'Professional suffix (e.g., MD, DO, DDS)', 'brag-book-gallery' ); ?></p>
+			</td>
+		</tr>
+
+		<tr class="form-field">
+			<th scope="row">
+				<label for="doctor_profile_url"><?php esc_html_e( 'Profile URL', 'brag-book-gallery' ); ?></label>
+			</th>
+			<td>
+				<input type="url" name="doctor_profile_url" id="doctor_profile_url" value="<?php echo esc_url( $profile_url ); ?>" class="regular-text" />
+				<p class="description"><?php esc_html_e( 'URL to the doctor\'s profile page', 'brag-book-gallery' ); ?></p>
+			</td>
+		</tr>
+
+		<tr class="form-field">
+			<th scope="row">
+				<label for="doctor_profile_photo"><?php esc_html_e( 'Profile Photo', 'brag-book-gallery' ); ?></label>
+			</th>
+			<td>
+				<input type="hidden" id="doctor_profile_photo" name="doctor_profile_photo" value="<?php echo esc_attr( $profile_photo ); ?>" />
+				<button type="button" class="button" id="upload_doctor_photo_button">
+					<?php esc_html_e( 'Choose Profile Photo', 'brag-book-gallery' ); ?>
+				</button>
+				<button type="button" class="button" id="remove_doctor_photo_button" style="<?php echo empty( $profile_photo ) ? 'display:none;' : ''; ?>">
+					<?php esc_html_e( 'Remove Photo', 'brag-book-gallery' ); ?>
+				</button>
+				<div id="doctor_photo_preview" style="margin-top: 10px;">
+					<?php if ( $profile_photo ) : ?>
+						<?php
+						echo wp_get_attachment_image(
+							$profile_photo,
+							[ 150, 150 ],
+							false,
+							[ 'style' => 'border-radius: 50%;' ]
+						);
+						?>
+					<?php endif; ?>
+				</div>
+				<p class="description"><?php esc_html_e( 'Profile photo for this doctor', 'brag-book-gallery' ); ?></p>
+			</td>
+		</tr>
+
+		<script>
+		jQuery(document).ready(function($) {
+			var doctorMediaUploader;
+
+			$('#upload_doctor_photo_button').click(function(e) {
+				e.preventDefault();
+				if (doctorMediaUploader) {
+					doctorMediaUploader.open();
+					return;
+				}
+				doctorMediaUploader = wp.media.frames.file_frame = wp.media({
+					title: '<?php echo esc_js( __( 'Choose Profile Photo', 'brag-book-gallery' ) ); ?>',
+					button: {
+						text: '<?php echo esc_js( __( 'Choose Photo', 'brag-book-gallery' ) ); ?>'
+					},
+					multiple: false
+				});
+				doctorMediaUploader.on('select', function() {
+					var attachment = doctorMediaUploader.state().get('selection').first().toJSON();
+					$('#doctor_profile_photo').val(attachment.id);
+					$('#doctor_photo_preview').html('<img src="' + attachment.url + '" style="max-width: 150px; height: auto; border-radius: 50%;" />');
+					$('#remove_doctor_photo_button').show();
+				});
+				doctorMediaUploader.open();
+			});
+
+			$('#remove_doctor_photo_button').click(function(e) {
+				e.preventDefault();
+				$('#doctor_profile_photo').val('');
+				$('#doctor_photo_preview').html('');
+				$(this).hide();
+			});
+		});
+		</script>
+		<?php
+	}
+
+	/**
+	 * Save doctor meta data
+	 *
+	 * Handles saving of custom meta fields for doctor taxonomy
+	 * with proper nonce verification and capability checks.
+	 *
+	 * @since 3.3.3
+	 * @param int $term_id The term ID being saved.
+	 * @return void
+	 */
+	public function save_doctor_meta( int $term_id ): void {
+		// Verify nonce
+		if ( ! isset( $_POST['doctor_meta_nonce'] ) || ! wp_verify_nonce( $_POST['doctor_meta_nonce'], 'save_doctor_meta' ) ) {
+			return;
+		}
+
+		// Check user capabilities
+		if ( ! current_user_can( 'manage_categories' ) ) {
+			return;
+		}
+
+		// Save member ID
+		if ( isset( $_POST['doctor_member_id'] ) ) {
+			update_term_meta( $term_id, 'doctor_member_id', sanitize_text_field( $_POST['doctor_member_id'] ) );
+		}
+
+		// Save first name
+		if ( isset( $_POST['doctor_first_name'] ) ) {
+			update_term_meta( $term_id, 'doctor_first_name', sanitize_text_field( $_POST['doctor_first_name'] ) );
+		}
+
+		// Save last name
+		if ( isset( $_POST['doctor_last_name'] ) ) {
+			update_term_meta( $term_id, 'doctor_last_name', sanitize_text_field( $_POST['doctor_last_name'] ) );
+		}
+
+		// Save suffix
+		if ( isset( $_POST['doctor_suffix'] ) ) {
+			update_term_meta( $term_id, 'doctor_suffix', sanitize_text_field( $_POST['doctor_suffix'] ) );
+		}
+
+		// Save profile URL
+		if ( isset( $_POST['doctor_profile_url'] ) ) {
+			$profile_url = esc_url_raw( $_POST['doctor_profile_url'] );
+			if ( ! empty( $profile_url ) ) {
+				update_term_meta( $term_id, 'doctor_profile_url', $profile_url );
+			} else {
+				delete_term_meta( $term_id, 'doctor_profile_url' );
+			}
+		}
+
+		// Save profile photo
+		if ( isset( $_POST['doctor_profile_photo'] ) ) {
+			$photo_id = absint( $_POST['doctor_profile_photo'] );
+			if ( $photo_id ) {
+				update_term_meta( $term_id, 'doctor_profile_photo', $photo_id );
+			} else {
+				delete_term_meta( $term_id, 'doctor_profile_photo' );
+			}
+		}
+	}
+
+	/**
+	 * Add custom columns to doctor taxonomy table
+	 *
+	 * Adds columns for displaying doctor metadata in the
+	 * taxonomy administration table.
+	 *
+	 * @since 3.3.3
+	 * @param array $columns Existing columns array.
+	 * @return array Modified columns array.
+	 */
+	public function add_doctor_columns( array $columns ): array {
+		$new_columns = [];
+
+		foreach ( $columns as $key => $value ) {
+			if ( 'name' === $key ) {
+				$new_columns['doctor_photo'] = __( 'Photo', 'brag-book-gallery' );
+			}
+			$new_columns[ $key ] = $value;
+			if ( 'name' === $key ) {
+				$new_columns['doctor_member_id'] = __( 'Member ID', 'brag-book-gallery' );
+				$new_columns['doctor_suffix']    = __( 'Suffix', 'brag-book-gallery' );
+			}
+		}
+
+		return $new_columns;
+	}
+
+	/**
+	 * Add content to custom doctor columns
+	 *
+	 * Displays the meta data content in the custom columns.
+	 *
+	 * @since 3.3.3
+	 * @param string $content The column content (empty by default).
+	 * @param string $column_name The column name.
+	 * @param int    $term_id The term ID.
+	 * @return string The column content.
+	 */
+	public function add_doctor_column_content( string $content, string $column_name, int $term_id ): string {
+		switch ( $column_name ) {
+			case 'doctor_photo':
+				$photo_id = get_term_meta( $term_id, 'doctor_profile_photo', true );
+				if ( $photo_id ) {
+					$content = wp_get_attachment_image(
+						$photo_id,
+						[ 40, 40 ],
+						false,
+						[ 'style' => 'border-radius: 50%;' ]
+					);
+				} else {
+					$content = '<span class="dashicons dashicons-admin-users" style="font-size: 40px; width: 40px; height: 40px; color: #ccc;"></span>';
+				}
+				break;
+
+			case 'doctor_member_id':
+				$member_id = get_term_meta( $term_id, 'doctor_member_id', true );
+				$content   = $member_id ?: '—';
+				break;
+
+			case 'doctor_suffix':
+				$suffix  = get_term_meta( $term_id, 'doctor_suffix', true );
+				$content = $suffix ?: '—';
+				break;
+		}
+
+		return $content;
+	}
+
+	/**
+	 * Helper method to get doctor meta
+	 *
+	 * Retrieves all meta data for a given doctor term.
+	 *
+	 * @since 3.3.3
+	 * @param int $term_id The term ID.
+	 * @return array Array of meta data.
+	 */
+	public function get_doctor_meta( int $term_id ): array {
+		return [
+			'member_id'     => get_term_meta( $term_id, 'doctor_member_id', true ),
+			'first_name'    => get_term_meta( $term_id, 'doctor_first_name', true ),
+			'last_name'     => get_term_meta( $term_id, 'doctor_last_name', true ),
+			'suffix'        => get_term_meta( $term_id, 'doctor_suffix', true ),
+			'profile_url'   => get_term_meta( $term_id, 'doctor_profile_url', true ),
+			'profile_photo' => get_term_meta( $term_id, 'doctor_profile_photo', true ),
+		];
+	}
+
+	/**
+	 * Helper method to save doctor meta data
+	 *
+	 * Programmatically save doctor meta data from an array.
+	 *
+	 * @since 3.3.3
+	 * @param int   $term_id The term ID.
+	 * @param array $meta_data Array of meta data to save.
+	 * @return bool True on success, false on failure.
+	 */
+	public function save_doctor_meta_data( int $term_id, array $meta_data ): bool {
+		if ( ! term_exists( $term_id ) ) {
+			return false;
+		}
+
+		$field_map = [
+			'member_id'     => 'doctor_member_id',
+			'first_name'    => 'doctor_first_name',
+			'last_name'     => 'doctor_last_name',
+			'suffix'        => 'doctor_suffix',
+			'profile_url'   => 'doctor_profile_url',
+			'profile_photo' => 'doctor_profile_photo',
+		];
+
+		foreach ( $meta_data as $key => $value ) {
+			if ( ! isset( $field_map[ $key ] ) ) {
+				continue;
+			}
+
+			$meta_key = $field_map[ $key ];
+
+			switch ( $key ) {
+				case 'member_id':
+				case 'first_name':
+				case 'last_name':
+				case 'suffix':
+					update_term_meta( $term_id, $meta_key, sanitize_text_field( $value ) );
+					break;
+				case 'profile_url':
+					$url = esc_url_raw( $value );
+					if ( $url ) {
+						update_term_meta( $term_id, $meta_key, $url );
+					} else {
+						delete_term_meta( $term_id, $meta_key );
+					}
+					break;
+				case 'profile_photo':
+					$image_id = absint( $value );
+					if ( $image_id ) {
+						update_term_meta( $term_id, $meta_key, $image_id );
+					} else {
+						delete_term_meta( $term_id, $meta_key );
+					}
+					break;
+			}
+		}
+
+		return true;
 	}
 }

@@ -1651,6 +1651,9 @@ class Chunked_Data_Sync {
 		update_post_meta( $post_id, 'brag_book_gallery_case_order', $case_position );
 		error_log( "Chunked Sync: Set case order position to {$case_position} for post {$post_id}" );
 
+		// Assign doctor taxonomy if enabled (website property ID 111)
+		$this->maybe_assign_doctor_taxonomy( $post_id, $case_details );
+
 		return [
 			'post_id' => $post_id,
 			'created' => $created,
@@ -1886,5 +1889,222 @@ class Chunked_Data_Sync {
 		}
 
 		return $status;
+	}
+
+	/**
+	 * Check if doctors taxonomy is enabled
+	 *
+	 * Doctors taxonomy is only enabled when website property ID 111 is configured.
+	 *
+	 * @return bool True if doctors taxonomy should be enabled.
+	 * @since 3.3.3
+	 */
+	private function is_doctors_taxonomy_enabled(): bool {
+		$website_property_ids = get_option( 'brag_book_gallery_website_property_id', [] );
+
+		if ( ! is_array( $website_property_ids ) ) {
+			$website_property_ids = [ $website_property_ids ];
+		}
+
+		return in_array( 111, array_map( 'intval', $website_property_ids ), true );
+	}
+
+	/**
+	 * Assign doctor taxonomy to a case post if enabled
+	 *
+	 * Creates or updates the doctor term based on case creator data,
+	 * then assigns the term to the case post.
+	 *
+	 * @param int   $post_id   The case post ID.
+	 * @param array $case_data The case data from API.
+	 *
+	 * @return void
+	 * @since 3.3.3
+	 */
+	private function maybe_assign_doctor_taxonomy( int $post_id, array $case_data ): void {
+		// Only process if doctors taxonomy is enabled
+		if ( ! $this->is_doctors_taxonomy_enabled() ) {
+			return;
+		}
+
+		// Check if taxonomy exists (it should be registered if enabled)
+		if ( ! taxonomy_exists( Taxonomies::TAXONOMY_DOCTORS ) ) {
+			error_log( 'Chunked Sync: Doctors taxonomy is enabled but not registered' );
+
+			return;
+		}
+
+		// Extract creator/doctor data from case
+		$creator = $case_data['creator'] ?? null;
+
+		if ( empty( $creator ) || ! is_array( $creator ) ) {
+			error_log( "Chunked Sync: No creator data found for post {$post_id}" );
+
+			return;
+		}
+
+		// Get member ID - required field
+		$member_id = $creator['id'] ?? null;
+
+		if ( empty( $member_id ) ) {
+			error_log( "Chunked Sync: No member ID found in creator data for post {$post_id}" );
+
+			return;
+		}
+
+		// Create or update the doctor term
+		$doctor_term = $this->create_or_update_doctor_term( $creator );
+
+		if ( ! $doctor_term ) {
+			error_log( "Chunked Sync: Failed to create/update doctor term for member {$member_id}" );
+
+			return;
+		}
+
+		// Assign the doctor term to the case post
+		$result = wp_set_object_terms( $post_id, [ $doctor_term->term_id ], Taxonomies::TAXONOMY_DOCTORS );
+
+		if ( is_wp_error( $result ) ) {
+			error_log( "Chunked Sync: Failed to assign doctor term to post {$post_id}: " . $result->get_error_message() );
+		} else {
+			error_log( "Chunked Sync: ✓ Assigned doctor '{$doctor_term->name}' (term ID: {$doctor_term->term_id}) to post {$post_id}" );
+		}
+	}
+
+	/**
+	 * Create or update a doctor taxonomy term
+	 *
+	 * Finds existing term by member ID or creates a new one.
+	 * Updates term meta with doctor information from API.
+	 *
+	 * @param array $creator_data The creator data from API case response.
+	 *
+	 * @return \WP_Term|null The doctor term or null on failure.
+	 * @since 3.3.3
+	 */
+	private function create_or_update_doctor_term( array $creator_data ): ?\WP_Term {
+		$member_id   = absint( $creator_data['id'] ?? 0 );
+		$first_name  = sanitize_text_field( $creator_data['firstName'] ?? '' );
+		$last_name   = sanitize_text_field( $creator_data['lastName'] ?? '' );
+		$suffix      = sanitize_text_field( $creator_data['suffix'] ?? '' );
+		$profile_url = isset( $creator_data['profileLink'] ) ? esc_url_raw( $creator_data['profileLink'] ) : '';
+
+		if ( empty( $member_id ) ) {
+			return null;
+		}
+
+		// Build the doctor display name
+		$name_parts  = array_filter( [ $first_name, $last_name ] );
+		$doctor_name = implode( ' ', $name_parts );
+
+		if ( ! empty( $suffix ) ) {
+			$doctor_name .= ', ' . $suffix;
+		}
+
+		// Fallback if no name provided
+		if ( empty( $doctor_name ) ) {
+			$doctor_name = "Doctor {$member_id}";
+		}
+
+		// Check if term already exists by member ID
+		$existing_terms = get_terms( [
+			'taxonomy'   => Taxonomies::TAXONOMY_DOCTORS,
+			'hide_empty' => false,
+			'meta_query' => [
+				[
+					'key'   => 'doctor_member_id',
+					'value' => $member_id,
+					'type'  => 'NUMERIC',
+				],
+			],
+			'number'     => 1,
+		] );
+
+		if ( ! empty( $existing_terms ) && ! is_wp_error( $existing_terms ) ) {
+			$term = $existing_terms[0];
+
+			// Update existing term name if it has changed
+			if ( $term->name !== $doctor_name ) {
+				wp_update_term( $term->term_id, Taxonomies::TAXONOMY_DOCTORS, [
+					'name' => $doctor_name,
+					'slug' => sanitize_title( $doctor_name . '-' . $member_id ),
+				] );
+				error_log( "Chunked Sync: Updated doctor term name to '{$doctor_name}' (term ID: {$term->term_id})" );
+			}
+
+			// Update term meta
+			$this->update_doctor_term_meta( $term->term_id, $first_name, $last_name, $suffix, $member_id, $profile_url );
+
+			return get_term( $term->term_id, Taxonomies::TAXONOMY_DOCTORS );
+		}
+
+		// Create new term
+		$result = wp_insert_term(
+			$doctor_name,
+			Taxonomies::TAXONOMY_DOCTORS,
+			[
+				'slug'        => sanitize_title( $doctor_name . '-' . $member_id ),
+				'description' => sprintf(
+					/* translators: %s: member ID */
+					__( 'Doctor profile for member ID %s', 'brag-book-gallery' ),
+					$member_id
+				),
+			]
+		);
+
+		if ( is_wp_error( $result ) ) {
+			// Check if term already exists with same slug
+			if ( $result->get_error_code() === 'term_exists' ) {
+				$term_id = $result->get_error_data( 'term_exists' );
+				$term    = get_term( $term_id, Taxonomies::TAXONOMY_DOCTORS );
+
+				if ( $term && ! is_wp_error( $term ) ) {
+					// Update meta for the existing term
+					$this->update_doctor_term_meta( $term->term_id, $first_name, $last_name, $suffix, $member_id, $profile_url );
+					error_log( "Chunked Sync: Using existing doctor term '{$doctor_name}' (term ID: {$term->term_id})" );
+
+					return $term;
+				}
+			}
+
+			error_log( "Chunked Sync: Failed to create doctor term '{$doctor_name}': " . $result->get_error_message() );
+
+			return null;
+		}
+
+		$term_id = $result['term_id'];
+
+		// Save term meta
+		$this->update_doctor_term_meta( $term_id, $first_name, $last_name, $suffix, $member_id, $profile_url );
+
+		error_log( "Chunked Sync: ✓ Created new doctor term '{$doctor_name}' (term ID: {$term_id})" );
+
+		return get_term( $term_id, Taxonomies::TAXONOMY_DOCTORS );
+	}
+
+	/**
+	 * Update doctor term meta fields
+	 *
+	 * @param int    $term_id     The term ID.
+	 * @param string $first_name  Doctor's first name.
+	 * @param string $last_name   Doctor's last name.
+	 * @param string $suffix      Professional suffix.
+	 * @param int    $member_id   Member ID from API.
+	 * @param string $profile_url Profile URL.
+	 *
+	 * @return void
+	 * @since 3.3.3
+	 */
+	private function update_doctor_term_meta( int $term_id, string $first_name, string $last_name, string $suffix, int $member_id, string $profile_url ): void {
+		update_term_meta( $term_id, 'doctor_member_id', $member_id );
+		update_term_meta( $term_id, 'doctor_first_name', $first_name );
+		update_term_meta( $term_id, 'doctor_last_name', $last_name );
+		update_term_meta( $term_id, 'doctor_suffix', $suffix );
+
+		if ( ! empty( $profile_url ) ) {
+			update_term_meta( $term_id, 'doctor_profile_url', $profile_url );
+		}
+
+		// Note: Profile photo is not synced from API - must be manually uploaded
 	}
 }

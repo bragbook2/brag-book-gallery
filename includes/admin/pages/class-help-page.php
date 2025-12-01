@@ -119,7 +119,7 @@ class Help_Page extends Settings_Base {
 							</ul>
 						</li>
 						<li>
-							<strong><?php esc_html_e( 'Sync Gallery Data (Required for Local Mode)', 'brag-book-gallery' ); ?></strong>
+							<strong><?php esc_html_e( 'Sync Gallery Data', 'brag-book-gallery' ); ?></strong>
 							<ul style="list-style: disc; margin-left: 20px; margin-top: 5px;">
 								<li><?php esc_html_e( 'Go to', 'brag-book-gallery' ); ?> <a href="<?php echo esc_url( admin_url( 'admin.php?page=brag-book-gallery-sync' ) ); ?>"><?php esc_html_e( 'Sync Settings', 'brag-book-gallery' ); ?></a></li>
 								<li><?php esc_html_e( 'Click "Full Sync" to import all gallery data', 'brag-book-gallery' ); ?></li>
@@ -145,7 +145,22 @@ class Help_Page extends Settings_Base {
 				<div class="brag-book-gallery-card">
 					<h3><?php esc_html_e( 'Main Gallery Shortcode', 'brag-book-gallery' ); ?></h3>
 					<p><code style="display: block; padding: 10px; background: #f0f0f0; margin: 10px 0;">[brag_book_gallery]</code></p>
-					<p><?php esc_html_e( 'Displays the full gallery with filtering sidebar, search, and pagination. This is the main shortcode you\'ll use on your gallery page.', 'brag-book-gallery' ); ?></p>
+					<p><?php esc_html_e( 'The primary shortcode for displaying the gallery. It automatically detects the page context and renders the appropriate view.', 'brag-book-gallery' ); ?></p>
+
+					<p><strong><?php esc_html_e( 'View Parameter:', 'brag-book-gallery' ); ?></strong></p>
+					<p><?php esc_html_e( 'Use the view parameter to force a specific display mode:', 'brag-book-gallery' ); ?></p>
+					<ul style="list-style: disc; margin-left: 20px;">
+						<li><code>[brag_book_gallery]</code> - <?php esc_html_e( 'Auto-detects context (default). Shows full gallery with sidebar on main page, procedure cases on taxonomy pages, or single case details.', 'brag-book-gallery' ); ?></li>
+						<li><code>[brag_book_gallery view="myfavorites"]</code> - <?php esc_html_e( 'Displays the user\'s saved favorites. This is used on the auto-generated My Favorites page.', 'brag-book-gallery' ); ?></li>
+						<li><code>[brag_book_gallery view="column"]</code> - <?php esc_html_e( 'Displays procedures in a column/list layout.', 'brag-book-gallery' ); ?></li>
+						<li><code>[brag_book_gallery view="procedure"]</code> - <?php esc_html_e( 'Displays procedure tiles view.', 'brag-book-gallery' ); ?></li>
+					</ul>
+
+					<p><strong><?php esc_html_e( 'Other Parameters:', 'brag-book-gallery' ); ?></strong></p>
+					<ul style="list-style: disc; margin-left: 20px;">
+						<li><code>case_id</code> - <?php esc_html_e( 'Display a specific case by ID', 'brag-book-gallery' ); ?></li>
+						<li><code>cases_only</code> - <?php esc_html_e( 'Set to "true" to show only the cases grid without sidebar (true/false)', 'brag-book-gallery' ); ?></li>
+					</ul>
 				</div>
 
 				<div class="brag-book-gallery-card">
@@ -168,23 +183,6 @@ class Help_Page extends Settings_Base {
 					<p><code style="display: block; padding: 10px; background: #f0f0f0; margin: 10px 0;">[bragbook_carousel_shortcode procedure="arm-lift" limit="5" title="0" details="0"]</code></p>
 				</div>
 
-				<div class="brag-book-gallery-card">
-					<h3><?php esc_html_e( 'Cases Grid Shortcode', 'brag-book-gallery' ); ?></h3>
-					<p><code style="display: block; padding: 10px; background: #f0f0f0; margin: 10px 0;">[brag_book_gallery_cases]</code></p>
-					<p><?php esc_html_e( 'Displays cases in a grid layout without the filtering sidebar. Good for embedding specific cases on other pages.', 'brag-book-gallery' ); ?></p>
-				</div>
-
-				<div class="brag-book-gallery-card">
-					<h3><?php esc_html_e( 'Single Case Shortcode', 'brag-book-gallery' ); ?></h3>
-					<p><code style="display: block; padding: 10px; background: #f0f0f0; margin: 10px 0;">[brag_book_gallery_case case_id="12345"]</code></p>
-					<p><?php esc_html_e( 'Displays a single specific case with all its details and images.', 'brag-book-gallery' ); ?></p>
-				</div>
-
-				<div class="brag-book-gallery-card">
-					<h3><?php esc_html_e( 'Favorites Shortcode', 'brag-book-gallery' ); ?></h3>
-					<p><code style="display: block; padding: 10px; background: #f0f0f0; margin: 10px 0;">[brag_book_gallery_favorites]</code></p>
-					<p><?php esc_html_e( 'Displays the user\'s favorited cases. Users can add cases to favorites by clicking the heart icon on any case.', 'brag-book-gallery' ); ?></p>
-				</div>
 			</div>
 
 			<!-- Common Tasks -->
@@ -192,7 +190,7 @@ class Help_Page extends Settings_Base {
 				<h2><?php esc_html_e( 'Common Tasks', 'brag-book-gallery' ); ?></h2>
 
 				<div class="brag-book-gallery-card">
-					<h3><?php esc_html_e( 'Sync Gallery Data (Local Mode)', 'brag-book-gallery' ); ?></h3>
+					<h3><?php esc_html_e( 'Sync Gallery Data', 'brag-book-gallery' ); ?></h3>
 					<p><?php esc_html_e( 'The Stage-Based Sync system imports your gallery data in three sequential stages:', 'brag-book-gallery' ); ?></p>
 
 					<h4><?php esc_html_e( 'Stage-Based Sync Process:', 'brag-book-gallery' ); ?></h4>
@@ -272,20 +270,15 @@ class Help_Page extends Settings_Base {
 
 				<div class="brag-book-gallery-card">
 					<h3><?php esc_html_e( 'Clear Gallery Cache', 'brag-book-gallery' ); ?></h3>
-					<p><?php esc_html_e( 'If your gallery isn\'t showing the latest cases, you have several options:', 'brag-book-gallery' ); ?></p>
+					<p><?php esc_html_e( 'If your gallery isn\'t showing the latest cases:', 'brag-book-gallery' ); ?></p>
 
-					<h4><?php esc_html_e( 'Quick Cache Clear:', 'brag-book-gallery' ); ?></h4>
+					<h4><?php esc_html_e( 'Cache Management:', 'brag-book-gallery' ); ?></h4>
 					<ol>
-						<li><?php esc_html_e( 'Go to', 'brag-book-gallery' ); ?> <a href="<?php echo esc_url( admin_url( 'admin.php?page=brag-book-gallery-settings&tab=javascript' ) ); ?>"><?php esc_html_e( 'JavaScript Settings', 'brag-book-gallery' ); ?></a></li>
-						<li><?php esc_html_e( 'Click the "Clear API Cache" button', 'brag-book-gallery' ); ?></li>
-						<li><?php esc_html_e( 'Refresh your gallery page', 'brag-book-gallery' ); ?></li>
-					</ol>
-
-					<h4><?php esc_html_e( 'Advanced Cache Management:', 'brag-book-gallery' ); ?></h4>
-					<ol>
-						<li><?php esc_html_e( 'Go to', 'brag-book-gallery' ); ?> <a href="<?php echo esc_url( admin_url( 'admin.php?page=brag-book-gallery-debug#cache-management' ) ); ?>"><?php esc_html_e( 'Debug Tools → Cache Management', 'brag-book-gallery' ); ?></a></li>
+						<li><?php esc_html_e( 'Go to', 'brag-book-gallery' ); ?> <a href="<?php echo esc_url( admin_url( 'admin.php?page=brag-book-gallery-debug' ) ); ?>"><?php esc_html_e( 'Debug Tools', 'brag-book-gallery' ); ?></a></li>
+						<li><?php esc_html_e( 'Navigate to the Cache Management tab', 'brag-book-gallery' ); ?></li>
 						<li><?php esc_html_e( 'View detailed cache information and expiration times', 'brag-book-gallery' ); ?></li>
 						<li><?php esc_html_e( 'Clear individual cache items or all cached data', 'brag-book-gallery' ); ?></li>
+						<li><?php esc_html_e( 'Refresh your gallery page', 'brag-book-gallery' ); ?></li>
 					</ol>
 				</div>
 
@@ -382,7 +375,7 @@ location ~ ^/gallery/([^/]+)/? {
 						<li>
 							<strong><?php esc_html_e( 'Clear Cache', 'brag-book-gallery' ); ?></strong>
 							<ul style="list-style: disc; margin-left: 20px;">
-								<li><?php esc_html_e( 'Clear plugin cache from JavaScript Settings or Debug Tools → Cache Management', 'brag-book-gallery' ); ?></li>
+								<li><?php esc_html_e( 'Clear plugin cache from Debug Tools → Cache Management', 'brag-book-gallery' ); ?></li>
 								<li><?php esc_html_e( 'Clear browser cache (Ctrl+Shift+R or Cmd+Shift+R)', 'brag-book-gallery' ); ?></li>
 							</ul>
 						</li>
@@ -434,7 +427,7 @@ location ~ ^/gallery/([^/]+)/? {
 					<details class="brag-book-gallery-accordion-item">
 						<summary><?php esc_html_e( 'How do I enable the consultation form?', 'brag-book-gallery' ); ?></summary>
 						<div class="brag-book-gallery-accordion-content">
-							<p><?php esc_html_e( 'Go to Consultation Settings and configure your form preferences. The consultation button will automatically appear on gallery pages and case details.', 'brag-book-gallery' ); ?></p>
+							<p><?php esc_html_e( 'Go to Communications Settings and configure your consultation form preferences. The consultation button will automatically appear on gallery pages and case details.', 'brag-book-gallery' ); ?></p>
 						</div>
 					</details>
 
@@ -448,7 +441,7 @@ location ~ ^/gallery/([^/]+)/? {
 					<details class="brag-book-gallery-accordion-item">
 						<summary><?php esc_html_e( 'What should I do if my gallery isn\'t displaying?', 'brag-book-gallery' ); ?></summary>
 						<div class="brag-book-gallery-accordion-content">
-							<p><?php esc_html_e( 'First, check that your API credentials are configured in API Settings. If using Local mode, ensure you\'ve run the Stage-Based Sync to import cases. Then visit Debug Tools → Diagnostic Tools to run the Gallery Checker and verify your page setup. If issues persist, try clearing the cache from Cache Management tab and flushing rewrite rules from the Flush Rules tab.', 'brag-book-gallery' ); ?></p>
+							<p><?php esc_html_e( 'First, check that your API credentials are configured in API Settings. Ensure you\'ve run the Stage-Based Sync to import cases. Then visit Debug Tools → Diagnostic Tools to run the Gallery Checker and verify your page setup. If issues persist, try clearing the cache from the Cache Management tab and flushing rewrite rules from the Flush Rules tab.', 'brag-book-gallery' ); ?></p>
 						</div>
 					</details>
 
@@ -498,9 +491,9 @@ location ~ ^/gallery/([^/]+)/? {
 					</details>
 
 					<details class="brag-book-gallery-accordion-item">
-						<summary><?php esc_html_e( 'How do the new Debug Tools help me troubleshoot issues?', 'brag-book-gallery' ); ?></summary>
+						<summary><?php esc_html_e( 'How do the Debug Tools help me troubleshoot issues?', 'brag-book-gallery' ); ?></summary>
 						<div class="brag-book-gallery-accordion-content">
-							<p><?php esc_html_e( 'The Debug Tools in version 3.2.0+ provide comprehensive diagnostic capabilities:', 'brag-book-gallery' ); ?></p>
+							<p><?php esc_html_e( 'The Debug Tools provide comprehensive diagnostic capabilities:', 'brag-book-gallery' ); ?></p>
 							<ul style="list-style: disc; margin-left: 20px;">
 								<li><strong><?php esc_html_e( 'Diagnostic Tools:', 'brag-book-gallery' ); ?></strong> <?php esc_html_e( 'System status overview, gallery page validation, rewrite rules analysis, and query variables debugging', 'brag-book-gallery' ); ?></li>
 								<li><strong><?php esc_html_e( 'Cache Management:', 'brag-book-gallery' ); ?></strong> <?php esc_html_e( 'View all cached items with expiration times and selectively clear individual cache entries', 'brag-book-gallery' ); ?></li>
@@ -564,15 +557,6 @@ location ~ ^/gallery/([^/]+)/? {
 							<tr>
 								<th><?php esc_html_e( 'PHP Version', 'brag-book-gallery' ); ?></th>
 								<td><?php echo esc_html( phpversion() ); ?></td>
-							</tr>
-							<tr>
-								<th><?php esc_html_e( 'Active Mode', 'brag-book-gallery' ); ?></th>
-								<td>
-									<?php
-									// Mode manager removed - default to 'Default'
-									echo esc_html( 'Default' );
-									?>
-								</td>
 							</tr>
 							<tr>
 								<th><?php esc_html_e( 'Gallery Page', 'brag-book-gallery' ); ?></th>

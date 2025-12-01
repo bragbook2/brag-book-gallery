@@ -540,6 +540,36 @@ class Menu {
 		);
 
 		/**
+		 * Doctors Submenu
+		 *
+		 * Links to the taxonomy edit screen for 'brag_book_doctors'.
+		 * Provides interface for managing doctor/provider terms.
+		 *
+		 * Note: Empty callback because WordPress handles taxonomy screens automatically
+		 * when menu_slug points to a taxonomy edit page.
+		 *
+		 * Visibility: Only shown when website property ID 111 is configured
+		 * Capability: manage_categories (allows administrators)
+		 *
+		 * @since 3.3.3
+		 */
+		$this->menu_config['submenus']['doctors'] = array(
+			'parent_slug' => 'brag-book-gallery-settings',
+			'page_title'  => __(
+				'Doctors Management',
+				'brag-book-gallery'
+			),
+			'menu_title'  => __(
+				'Doctors',
+				'brag-book-gallery'
+			),
+			'capability'  => 'manage_categories',
+			'menu_slug'   => 'edit-tags.php?taxonomy=brag_book_doctors&post_type=brag_book_cases',
+			'callback'    => '', // Empty callback - WordPress core handles rendering.
+			'condition'   => $this->is_doctors_taxonomy_enabled(), // Only visible when property ID 111 is configured.
+		);
+
+		/**
 		 * Sync Settings Submenu
 		 *
 		 * Manages procedure synchronization settings and operations.
@@ -1066,5 +1096,26 @@ class Menu {
 
 		// Fallback to creating new instance.
 		return new Communications_Page();
+	}
+
+	/**
+	 * Check if doctors taxonomy is enabled
+	 *
+	 * Doctors taxonomy is only enabled when website property ID 111 is configured.
+	 * This mirrors the logic in the Taxonomies class.
+	 *
+	 * @since 3.3.3
+	 * @access private
+	 *
+	 * @return bool True if doctors taxonomy should be enabled.
+	 */
+	private function is_doctors_taxonomy_enabled(): bool {
+		$website_property_ids = get_option( 'brag_book_gallery_website_property_id', [] );
+
+		if ( ! is_array( $website_property_ids ) ) {
+			$website_property_ids = [ $website_property_ids ];
+		}
+
+		return in_array( 111, array_map( 'intval', $website_property_ids ), true );
 	}
 }

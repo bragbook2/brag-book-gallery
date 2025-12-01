@@ -93,12 +93,45 @@ class Changelog_Page extends Settings_Base {
 				</div>
 			</div>
 
+			<!-- Version 3.3.2-beta15 -->
+			<div class="brag-book-gallery-section">
+				<div class="brag-book-gallery-changelog-version">
+					<h3>
+						<span class="version-badge version-beta">v3.3.2-beta15</span>
+						<?php esc_html_e( 'December 1, 2025', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Current Beta', 'brag-book-gallery' ); ?>
+					</h3>
+					<div class="brag-book-gallery-card">
+						<h4><?php esc_html_e( '🎉 New Features', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Doctors Taxonomy: New brag_book_doctors taxonomy for managing doctor profiles (visible when website property ID 111 is active)', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Term meta fields include: First Name, Last Name, Suffix, Profile URL, Profile Photo (media upload), and Member ID', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Doctors submenu added to BRAG Book admin menu when property ID 111 is enabled', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Automatic doctor term creation during Stage 3 data sync from case creator information', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '✨ Enhancements', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Case View Doctor Profile: When property ID 111 is active, doctor profile photo (48x48 circle) and name displayed below case title', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Doctor profile section includes clickable link to doctor profile URL when available', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Cases Grid Doctor Display: When Show Doctor option is enabled, case cards display doctor photo and name instead of procedure name and case number', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Doctor information pulled from taxonomy terms with fallback to post meta', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Updated v2 and v3 card overlays to support doctor display mode', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '🎨 Styling', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'New CSS styles for doctor profile section in case view header', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'New CSS styles for doctor avatar and name in case card overlays', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Doctor name links styled consistently in black without underline', 'brag-book-gallery' ); ?></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
 			<!-- Version 3.3.2-beta14 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">
 					<h3>
 						<span class="version-badge version-beta">v3.3.2-beta14</span>
-						<?php esc_html_e( 'November 13, 2025', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Current Beta', 'brag-book-gallery' ); ?>
+						<?php esc_html_e( 'November 13, 2025', 'brag-book-gallery' ); ?>
 					</h3>
 					<div class="brag-book-gallery-card">
 						<h4><?php esc_html_e( '✨ Enhancements', 'brag-book-gallery' ); ?></h4>

@@ -794,10 +794,16 @@ final class Cases_Handler {
 		$show_doctor = (bool) get_option( 'brag_book_gallery_show_doctor', false );
 
 		if ( $show_doctor ) {
-			// Show doctor name if option is active
-			$doctor_name = $case['doctorName'] ?? $case['doctor_name'] ?? '';
-			if ( ! empty( $doctor_name ) ) {
-				$html .= '<h3 class="case-title doctor-name">' . esc_html( $doctor_name ) . '</h3>';
+			// Show doctor info with profile photo from taxonomy if available
+			$post_id = get_the_ID();
+			if ( $post_id ) {
+				$html .= self::render_doctor_card_info( $post_id, $case_info['seo_headline'] ?? '' );
+			} else {
+				// Fallback to case data if no post context
+				$doctor_name = $case['doctorName'] ?? $case['doctor_name'] ?? '';
+				if ( ! empty( $doctor_name ) ) {
+					$html .= '<h3 class="case-title doctor-name">' . esc_html( $doctor_name ) . '</h3>';
+				}
 			}
 		} elseif ( ! empty( $case_info['seo_headline'] ) ) {
 			// Show case title as before
@@ -1120,11 +1126,9 @@ final class Cases_Handler {
 		$show_doctor = (bool) get_option( 'brag_book_gallery_show_doctor', false );
 
 		if ( $show_doctor ) {
-			// Show doctor name if option is active
-			$doctor_name = get_post_meta( $post->ID, 'brag_book_gallery_doctor_name', true );
-			if ( ! empty( $doctor_name ) ) {
-				$html .= '<h3 class="case-title doctor-name">' . esc_html( $doctor_name ) . '</h3>';
-			}
+			// Show doctor info with profile photo from taxonomy
+			$seo_headline = get_post_meta( $post->ID, 'brag_book_gallery_seo_headline', true );
+			$html .= self::render_doctor_card_info( $post->ID, $seo_headline ?: '' );
 		} else {
 			// Show case SEO headline if available
 			$seo_headline = get_post_meta( $post->ID, 'brag_book_gallery_seo_headline', true );
@@ -1805,9 +1809,9 @@ final class Cases_Handler {
 		?>
 		<div class="brag-book-gallery-nudity-warning">
 			<div class="brag-book-gallery-nudity-warning-content">
-				<h4 class="brag-book-gallery-nudity-warning-title">
+				<p class="brag-book-gallery-nudity-warning-title">
 					<?php esc_html_e( 'Nudity Warning', 'brag-book-gallery' ); ?>
-				</h4>
+				</p>
 				<p class="brag-book-gallery-nudity-warning-caption">
 					<?php esc_html_e( 'Click to proceed if you wish to view.', 'brag-book-gallery' ); ?>
 				</p>
@@ -2395,27 +2399,43 @@ final class Cases_Handler {
 							<!-- V2/V3 Card: Overlay with case name and arrow -->
 							<div class="brag-book-gallery-case-card-overlay">
 								<div class="brag-book-gallery-case-card-overlay-content">
+									<?php
+									// Check if we should show doctor info instead of procedure
+									$show_doctor = (bool) get_option( 'brag_book_gallery_show_doctor', false );
+									$doctor_data = null;
+
+									if ( $show_doctor && $post_id ) {
+										$doctor_data = self::get_doctor_for_post( $post_id );
+									}
+
+									if ( $show_doctor && $doctor_data ) :
+									?>
+									<div class="brag-book-gallery-case-card-overlay-info brag-book-gallery-case-card-overlay-info--doctor">
+										<?php if ( ! empty( $doctor_data['photo_url'] ) ) : ?>
+											<img src="<?php echo esc_url( $doctor_data['photo_url'] ); ?>"
+												 alt="<?php echo esc_attr( $doctor_data['name'] ); ?>"
+												 width="48" height="48"
+												 class="brag-book-gallery-case-card-overlay-doctor-avatar">
+										<?php else : ?>
+											<div class="brag-book-gallery-case-card-overlay-doctor-avatar brag-book-gallery-case-card-overlay-doctor-avatar--placeholder">
+												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+													<path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+												</svg>
+											</div>
+										<?php endif; ?>
+										<span class="brag-book-gallery-case-card-overlay-title"><?php echo esc_html( $doctor_data['name'] ); ?></span>
+									</div>
+									<?php else : ?>
 									<div class="brag-book-gallery-case-card-overlay-info">
 										<span class="brag-book-gallery-case-card-overlay-title">
 											<?php
-											// Check if we should show doctor name instead of procedure
-											$show_doctor = (bool) get_option( 'brag_book_gallery_show_doctor', false );
-
-											if ( $show_doctor && $post_id ) {
-												// Show doctor name if option is active
-												$doctor_name = get_post_meta( $post_id, 'brag_book_gallery_doctor_name', true );
-												$display_title = ! empty( $doctor_name ) ? $doctor_name : ( is_object( $primary_procedure ) ? $primary_procedure->name : $primary_procedure );
-											} else {
-												// Show procedure name as default
-												$display_title = is_object( $primary_procedure ) ? $primary_procedure->name : $primary_procedure;
-											}
+											$display_title = is_object( $primary_procedure ) ? $primary_procedure->name : $primary_procedure;
 											echo esc_html( $display_title );
 											?>
 										</span>
-										<?php if ( ! $show_doctor ) : ?>
-											<span class="brag-book-gallery-case-card-overlay-case-number">Case #<?php echo esc_html( $case_id ); ?></span>
-										<?php endif; ?>
+										<span class="brag-book-gallery-case-card-overlay-case-number">Case #<?php echo esc_html( $case_id ); ?></span>
 									</div>
+									<?php endif; ?>
 									<a href="<?php echo esc_url( $case_url ); ?>"
 									   class="brag-book-gallery-case-card-overlay-button"
 									   data-case-id="<?php echo esc_attr( $case_id ); ?>"
@@ -2772,5 +2792,121 @@ final class Cases_Handler {
 	 */
 	public static function clear_cache(): void {
 		wp_cache_flush_group( self::CACHE_GROUP );
+	}
+
+	/**
+	 * Check if doctors taxonomy is enabled
+	 *
+	 * Doctors taxonomy is only enabled when website property ID 111 is configured.
+	 *
+	 * @return bool True if doctors taxonomy should be enabled.
+	 * @since 3.3.3
+	 */
+	private static function is_doctors_taxonomy_enabled(): bool {
+		$website_property_ids = get_option( 'brag_book_gallery_website_property_id', [] );
+
+		if ( ! is_array( $website_property_ids ) ) {
+			$website_property_ids = [ $website_property_ids ];
+		}
+
+		return in_array( 111, array_map( 'intval', $website_property_ids ), true );
+	}
+
+	/**
+	 * Get doctor information from taxonomy for a post
+	 *
+	 * Retrieves the doctor term and its metadata for a given case post.
+	 *
+	 * @param int $post_id The case post ID.
+	 * @return array|null Doctor data array or null if not found.
+	 * @since 3.3.3
+	 */
+	private static function get_doctor_for_post( int $post_id ): ?array {
+		// Check if doctors taxonomy is enabled
+		if ( ! self::is_doctors_taxonomy_enabled() ) {
+			return null;
+		}
+
+		// Check if taxonomy exists
+		if ( ! taxonomy_exists( Taxonomies::TAXONOMY_DOCTORS ) ) {
+			return null;
+		}
+
+		// Get the doctor terms for this post
+		$doctor_terms = wp_get_post_terms( $post_id, Taxonomies::TAXONOMY_DOCTORS );
+
+		if ( empty( $doctor_terms ) || is_wp_error( $doctor_terms ) ) {
+			return null;
+		}
+
+		$doctor_term = $doctor_terms[0];
+
+		// Get doctor meta
+		$profile_photo = get_term_meta( $doctor_term->term_id, 'doctor_profile_photo', true );
+		$profile_url   = get_term_meta( $doctor_term->term_id, 'doctor_profile_url', true );
+
+		// Get photo URL if we have an attachment ID
+		$photo_url = '';
+		if ( ! empty( $profile_photo ) ) {
+			$photo_url = wp_get_attachment_image_url( $profile_photo, [ 48, 48 ] );
+		}
+
+		return [
+			'term_id'    => $doctor_term->term_id,
+			'name'       => $doctor_term->name,
+			'photo_url'  => $photo_url ?: '',
+			'profile_url' => $profile_url ?: '',
+		];
+	}
+
+	/**
+	 * Render doctor info HTML for case card
+	 *
+	 * Renders the doctor profile photo and name for display in case cards.
+	 *
+	 * @param int $post_id The case post ID.
+	 * @param string $fallback_name Fallback name to display if no doctor found.
+	 * @return string HTML output for doctor info.
+	 * @since 3.3.3
+	 */
+	private static function render_doctor_card_info( int $post_id, string $fallback_name = '' ): string {
+		$doctor = self::get_doctor_for_post( $post_id );
+
+		if ( ! $doctor ) {
+			// Fall back to post meta if taxonomy not available
+			$doctor_name = get_post_meta( $post_id, 'brag_book_gallery_doctor_name', true );
+			if ( ! empty( $doctor_name ) ) {
+				return '<h3 class="case-title doctor-name">' . esc_html( $doctor_name ) . '</h3>';
+			}
+			if ( ! empty( $fallback_name ) ) {
+				return '<h3 class="case-title">' . esc_html( $fallback_name ) . '</h3>';
+			}
+			return '';
+		}
+
+		$html = '<div class="brag-book-gallery-case-doctor">';
+
+		// Profile photo (48x48 circle)
+		if ( ! empty( $doctor['photo_url'] ) ) {
+			$html .= sprintf(
+				'<img src="%s" alt="%s" width="48" height="48" class="brag-book-gallery-case-doctor-avatar">',
+				esc_url( $doctor['photo_url'] ),
+				esc_attr( $doctor['name'] )
+			);
+		} else {
+			// Placeholder avatar
+			$html .= '<div class="brag-book-gallery-case-doctor-avatar brag-book-gallery-case-doctor-avatar--placeholder">'
+				. '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24" height="24">'
+				. '<path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>'
+				. '</svg>'
+				. '</div>';
+		}
+
+		// Doctor name
+		$html .= '<span class="brag-book-gallery-case-doctor-name">' . esc_html( $doctor['name'] ) . '</span>';
+
+		$html .= '</div>';
+
+		return $html;
 	}
 }

@@ -933,6 +933,98 @@ body.brag-book-gallery-page:not(.disable-custom-font) .brag-book-gallery-favorit
   }
 }
 
+.brag-book-gallery-case-doctor {
+  display: flex;
+  align-items: center;
+  gap: var(--wp--custom--brag-book-gallery--spacer--sm, 8px);
+}
+
+.brag-book-gallery-case-doctor-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.brag-book-gallery-case-doctor-avatar--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--wp--custom--brag-book-gallery--color--light-grey, #e5e7eb);
+  color: var(--wp--custom--brag-book-gallery--color--grey, #9ca3af);
+}
+.brag-book-gallery-case-doctor-avatar--placeholder svg {
+  width: 16px;
+  height: 16px;
+}
+
+.brag-book-gallery-case-doctor-name {
+  font-size: var(--wp--custom--brag-book-gallery--text-sm);
+  font-weight: var(--wp--custom--brag-book-gallery--font-weight--medium, 500);
+  line-height: 1.3;
+}
+
+.brag-book-gallery-case-card-overlay-info--doctor {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--wp--custom--brag-book-gallery--spacer--sm, 8px);
+}
+
+.brag-book-gallery-case-card-overlay-doctor-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+@media (hover: hover) and (pointer: fine) {
+  .brag-book-gallery-case-card-overlay-doctor-avatar {
+    width: 48px;
+    height: 48px;
+  }
+}
+.brag-book-gallery-case-card-overlay-doctor-avatar--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.6);
+}
+@media (hover: hover) and (pointer: fine) {
+  .brag-book-gallery-case-card-overlay-doctor-avatar--placeholder {
+    background-color: rgba(255, 255, 255, 0.2);
+  }
+}
+.brag-book-gallery-case-card-overlay-doctor-avatar--placeholder svg {
+  width: 20px;
+  height: 20px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .brag-book-gallery-case-card-overlay-doctor-avatar--placeholder svg {
+    width: 24px;
+    height: 24px;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .brag-book-gallery-case-card--v3 .brag-book-gallery-case-card-overlay-doctor-avatar {
+    width: 40px;
+    height: 40px;
+  }
+}
+@media (hover: hover) and (pointer: fine) {
+  .brag-book-gallery-case-card--v3 .brag-book-gallery-case-card-overlay-doctor-avatar--placeholder {
+    background-color: var(--wp--custom--brag-book-gallery--color--light-grey, #e5e7eb);
+    color: var(--wp--custom--brag-book-gallery--color--grey, #9ca3af);
+  }
+}
+@media (hover: hover) and (pointer: fine) {
+  .brag-book-gallery-case-card--v3 .brag-book-gallery-case-card-overlay-doctor-avatar--placeholder svg {
+    width: 20px;
+    height: 20px;
+  }
+}
+
 .brag-book-gallery-cases-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -1644,12 +1736,10 @@ details[open] .brag-book-gallery-gallery-selector__panel {
   display: flex;
   flex-direction: column;
   padding: var(--wp--custom--brag-book-gallery--spacer--md) 0;
-  gap: var(--wp--custom--brag-book-gallery--spacer--md);
 }
 @media (max-width: 768px) {
   .brag-book-gallery-brag-book-gallery-case-header-section {
     flex-wrap: wrap;
-    gap: var(--wp--custom--brag-book-gallery--spacer--sm);
     padding: var(--wp--custom--brag-book-gallery--spacer--sm) 0;
     margin-bottom: var(--wp--custom--brag-book-gallery--spacer--md);
   }
@@ -1686,7 +1776,6 @@ details[open] .brag-book-gallery-gallery-selector__panel {
   text-align: center;
   align-items: flex-start;
   gap: var(--wp--custom--brag-book-gallery--spacer--sm);
-  border-bottom: 1px solid var(--wp--custom--brag-book-gallery--color--light-grey);
 }
 @media screen and (min-width: 768px) {
   .brag-book-gallery-brag-book-gallery-case-header {
@@ -1711,6 +1800,57 @@ details[open] .brag-book-gallery-gallery-selector__panel {
 .brag-book-gallery-brag-book-gallery-case-header .brag-book-gallery-content-title .case-id {
   opacity: 0.7;
   font-weight: var(--font-normal);
+}
+
+.brag-book-gallery-doctor-profile {
+  display: flex;
+  align-items: center;
+  gap: var(--wp--custom--brag-book-gallery--spacer--sm, 12px);
+}
+@media (max-width: 768px) {
+  .brag-book-gallery-doctor-profile {
+    justify-content: center;
+  }
+}
+
+.brag-book-gallery-doctor-photo {
+  flex-shrink: 0;
+}
+
+.brag-book-gallery-doctor-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--wp--custom--brag-book-gallery--color--light-grey, #e5e7eb);
+}
+.brag-book-gallery-doctor-avatar--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--wp--custom--brag-book-gallery--color--light-grey, #e5e7eb);
+  color: var(--wp--custom--brag-book-gallery--color--grey, #9ca3af);
+}
+
+.brag-book-gallery-doctor-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.brag-book-gallery-doctor-name {
+  font-size: var(--text-base, 1rem);
+  font-weight: var(--font-medium, 500);
+  color: var(--color-text-primary, #1f2937);
+  text-decoration: none;
+}
+
+a.brag-book-gallery-doctor-name {
+  color: var(--color-text-primary, #1f2937);
+  text-decoration: none;
+}
+a.brag-book-gallery-doctor-name:hover {
+  text-decoration: none;
 }
 
 .brag-book-gallery-case-card-procedures-list {

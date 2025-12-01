@@ -539,7 +539,7 @@ final class HTML_Renderer {
 	 */
 	public static function render_nudity_warning(): string {
 		return sprintf(
-			'<div class="brag-book-gallery-nudity-warning" data-nudity-warning="true"><div class="brag-book-gallery-nudity-warning-content"><h4 class="brag-book-gallery-nudity-warning-title">%s</h4><p class="brag-book-gallery-nudity-warning-caption">%s</p><button class="brag-book-gallery-nudity-warning-button" type="button">%s</button></div></div>',
+			'<div class="brag-book-gallery-nudity-warning" data-nudity-warning="true"><div class="brag-book-gallery-nudity-warning-content"><p class="brag-book-gallery-nudity-warning-title">%s</p><p class="brag-book-gallery-nudity-warning-caption">%s</p><button class="brag-book-gallery-nudity-warning-button" type="button">%s</button></div></div>',
 			esc_html__( 'Contains Nudity', 'brag-book-gallery' ),
 			esc_html__( 'Click to proceed if you wish to view', 'brag-book-gallery' ),
 			esc_html__( 'Proceed', 'brag-book-gallery' )

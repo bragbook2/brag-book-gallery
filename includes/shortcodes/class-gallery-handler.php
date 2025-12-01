@@ -967,7 +967,7 @@ final class Gallery_Handler {
 							<!-- Results will be populated here --></div>
 					</div>
 
-					<aside class="brag-book-gallery-nav" role="group"
+					<aside class="brag-book-gallery-nav"
 						   aria-label="Procedure filters">
 						<?php
 						// Generate sidebar content using shortcode
