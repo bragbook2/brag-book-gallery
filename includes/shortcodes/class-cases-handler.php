@@ -731,9 +731,10 @@ final class Cases_Handler {
 		}
 
 		$html .= sprintf(
-			'<article class="brag-book-gallery-case-card" %s data-case-id="%s" data-procedure-ids="%s" data-current-procedure-id="%s" data-current-term-id="%s">',
+			'<article class="brag-book-gallery-case-card" %s data-case-id="%s" data-procedure-case-id="%s" data-procedure-ids="%s" data-current-procedure-id="%s" data-current-term-id="%s">',
 			$data_attrs,
 			esc_attr( $case_info['case_id'] ),
+			esc_attr( $case['id'] ?? $case_info['case_id'] ), // The small ID from API for view tracking
 			esc_attr( $procedure_ids ),
 			esc_attr( $current_procedure_id ),
 			esc_attr( $current_term_id )
@@ -1029,6 +1030,12 @@ final class Cases_Handler {
 		// Get procedure IDs from post meta.
 		$procedure_ids = get_post_meta( $post->ID, 'brag_book_gallery_procedure_ids', true );
 
+		// Get procedure case ID (small API ID) for view tracking
+		$procedure_case_id = get_post_meta( $post->ID, 'brag_book_gallery_procedure_case_id', true );
+		if ( empty( $procedure_case_id ) ) {
+			$procedure_case_id = get_post_meta( $post->ID, 'brag_book_gallery_original_case_id', true );
+		}
+
 		// Get SEO suffix URL from post meta.
 		$seo_suffix_url = get_post_meta( $post->ID, 'brag_book_gallery_seo_suffix_url', true );
 
@@ -1037,9 +1044,10 @@ final class Cases_Handler {
 		}
 
 		$html .= sprintf(
-			'<article class="brag-book-gallery-case-card" %s data-case-id="%s" data-procedure-ids="%s">',
+			'<article class="brag-book-gallery-case-card" %s data-case-id="%s" data-procedure-case-id="%s" data-procedure-ids="%s">',
 			$data_attrs,
 			esc_attr( $case_id ),
+			esc_attr( $procedure_case_id ), // The small API ID for view tracking
 			esc_attr( $procedure_ids )
 		);
 

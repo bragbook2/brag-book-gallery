@@ -561,6 +561,81 @@ class BRAGbookGalleryApp {
 		window.storeProcedureReferrer(procedureSlug, procedureName, procedureUrl, procedureId, termId, caseId, caseWpId);
 	}
 
+	/**
+	 * Track case view by sending to /views API endpoint
+	 * @param {string} procedureCaseId - The procedure case ID (small API ID like 35, 36)
+	 */
+	trackCaseView(procedureCaseId) {
+		if (!procedureCaseId) {
+			console.warn('BRAGBook: No procedureCaseId provided for view tracking');
+			return;
+		}
+
+		const config = window.bragBookGalleryConfig;
+		if (!config || !config.api_token) {
+			console.warn('BRAGBook: API configuration not available for view tracking');
+			return;
+		}
+
+		const apiEndpoint = config.api_endpoint || 'https://app.bragbookgallery.com';
+		const trackingUrl = `${apiEndpoint}/api/plugin/views?apiToken=${encodeURIComponent(config.api_token)}`;
+
+		// Send tracking request asynchronously
+		fetch(trackingUrl, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({
+				caseProcedureId: procedureCaseId
+			}),
+			// Use keepalive to ensure request completes even if page navigates
+			keepalive: true
+		})
+			.then(response => {
+				if (response.ok) {
+					console.log(`BRAGBook: View tracked for caseProcedureId ${procedureCaseId}`);
+				} else {
+					console.warn(`BRAGBook: View tracking failed with status ${response.status}`);
+				}
+			})
+			.catch(error => {
+				console.warn('BRAGBook: View tracking error:', error);
+			});
+	}
+
+	/**
+	 * Track case view from a case card element
+	 * @param {HTMLElement} caseCard - The case card element
+	 */
+	trackCaseViewFromCard(caseCard) {
+		if (!caseCard) return;
+
+		// Get the procedure case ID (small API ID) from data attribute
+		const procedureCaseId = caseCard.dataset.procedureCaseId || caseCard.dataset.caseId;
+
+		if (procedureCaseId) {
+			console.log(`BRAGBook: Tracking view from card for procedureCaseId ${procedureCaseId}`);
+			this.trackCaseView(procedureCaseId);
+		}
+	}
+
+	/**
+	 * Track case view from a carousel item element
+	 * @param {HTMLElement} carouselItem - The carousel item element
+	 */
+	trackCaseViewFromCarousel(carouselItem) {
+		if (!carouselItem) return;
+
+		// Get the procedure case ID (small API ID) from data attribute
+		const procedureCaseId = carouselItem.dataset.procedureCaseId || carouselItem.dataset.caseId;
+
+		if (procedureCaseId) {
+			console.log(`BRAGBook: Tracking view from carousel for procedureCaseId ${procedureCaseId}`);
+			this.trackCaseView(procedureCaseId);
+		}
+	}
+
 	initializeCaseLinks() {
 		// Handle clicks on case links - allow normal navigation instead of AJAX loading
 		document.addEventListener('click', (e) => {
@@ -569,6 +644,8 @@ class BRAGbookGalleryApp {
 			if (carouselLink) {
 				const carouselItem = carouselLink.closest('.brag-book-gallery-carousel-item');
 				this.storeProcedureReferrerFromCarousel(carouselItem);
+				// Track the view when clicking on carousel item
+				this.trackCaseViewFromCarousel(carouselItem);
 
 				return;
 			}
@@ -578,6 +655,8 @@ class BRAGbookGalleryApp {
 			if (caseLink) {
 				const caseCard = caseLink.closest('.brag-book-gallery-case-card');
 				this.storeProcedureReferrerFromCard(caseCard);
+				// Track the view when clicking on case card link
+				this.trackCaseViewFromCard(caseCard);
 
 				return;
 			}
@@ -588,6 +667,8 @@ class BRAGbookGalleryApp {
 				const caseLinkInCard = caseCard.querySelector('.brag-book-gallery-case-card-link, .brag-book-gallery-case-permalink');
 				if (caseLinkInCard && caseLinkInCard.href) {
 					this.storeProcedureReferrerFromCard(caseCard);
+					// Track the view when clicking on case card
+					this.trackCaseViewFromCard(caseCard);
 					window.location.href = caseLinkInCard.href;
 				}
 			}
@@ -1939,7 +2020,7 @@ class BRAGbookGalleryApp {
 				'Content-Type': 'application/x-www-form-urlencoded',
 			},
 			body: new URLSearchParams({
-				action: 'brag_book_get_favorites_list',
+				action: 'brag_book_lookup_favorites',
 				email: userInfo.email,
 				nonce: nonce
 			})
@@ -1953,8 +2034,10 @@ class BRAGbookGalleryApp {
 
 			if (data.success && data.data) {
 				// Update user info from API response if it includes name and phone
-				if (data.data.user_info || (data.data.name && data.data.phone)) {
-					const apiUserInfo = data.data.user_info || {
+				// The API returns 'user' not 'user_info'
+				const apiUser = data.data.user || data.data.user_info;
+				if (apiUser || (data.data.name && data.data.phone)) {
+					const apiUserInfo = apiUser || {
 						email: userInfo.email,
 						name: data.data.name || '',
 						phone: data.data.phone || ''
@@ -1975,7 +2058,14 @@ class BRAGbookGalleryApp {
 				}
 
 				// Handle favorites - NEVER delete localStorage, only add to it
-				if (data.data.cases && Array.isArray(data.data.cases)) {
+				// The API returns 'favorites.case_ids' and 'favorites.cases_data'
+				const favoritesData = data.data.favorites || {};
+				const caseIds = favoritesData.case_ids || [];
+				const casesData = favoritesData.cases_data || {};
+
+				// Use case_ids array directly, or fall back to cases array
+				const casesArray = data.data.cases || Object.values(casesData);
+				if (caseIds.length > 0 || casesArray.length > 0) {
 					// Check if brag-book-favorites exists in localStorage
 					let existingFavorites = [];
 					const storedFavorites = localStorage.getItem('brag-book-favorites');
@@ -1994,12 +2084,19 @@ class BRAGbookGalleryApp {
 					const favoritesSet = new Set(existingFavorites);
 
 					// Add case IDs from API response to the Set
-					data.data.cases.forEach(caseItem => {
-						const caseId = caseItem.id || caseItem.caseId || '';
-						if (caseId) {
-							favoritesSet.add(String(caseId));
-						}
-					});
+					// Use caseIds array first, then fall back to iterating casesArray
+					if (caseIds.length > 0) {
+						caseIds.forEach(id => {
+							if (id) favoritesSet.add(String(id));
+						});
+					} else {
+						casesArray.forEach(caseItem => {
+							const caseId = caseItem.id || caseItem.caseId || '';
+							if (caseId) {
+								favoritesSet.add(String(caseId));
+							}
+						});
+					}
 
 					// Convert back to array and save to localStorage
 					const updatedFavorites = Array.from(favoritesSet);
@@ -3391,8 +3488,28 @@ class BRAGbookGalleryApp {
 		const hasCompleteUserInfo = userInfo && userInfo.email && userInfo.name && userInfo.phone;
 		const hasFavorites = existingFavorites && existingFavorites.length > 0;
 
-		// No user info at all - show email capture form
-		if (!hasCompleteUserInfo) {
+		console.log('initializeDedicatedFavoritesPage:', {
+			hasCompleteUserInfo,
+			hasFavorites,
+			favoritesCount: existingFavorites?.length || 0,
+			userInfo: userInfo ? { email: userInfo.email, name: userInfo.name, phone: userInfo.phone } : null
+		});
+
+		// If user has favorites in localStorage but no complete user info,
+		// we can still display them using WordPress post data
+		if (hasFavorites && !hasCompleteUserInfo) {
+			console.log('Has favorites but no complete user info - loading from WordPress');
+			if (emailCapture) emailCapture.style.display = 'none';
+			if (loadingEl) loadingEl.style.display = 'block';
+			if (gridContainer) gridContainer.style.display = 'none';
+
+			// Load favorites from WordPress using post IDs
+			this.loadFavoritesFromWordPress(existingFavorites, gridContainer, loadingEl);
+			return;
+		}
+
+		// No user info and no favorites - show email capture form
+		if (!hasCompleteUserInfo && !hasFavorites) {
 			if (emailCapture) emailCapture.style.display = 'block';
 			if (loadingEl) loadingEl.style.display = 'none';
 			if (gridContainer) gridContainer.style.display = 'none';
@@ -3582,15 +3699,20 @@ class BRAGbookGalleryApp {
 		const gallerySlug = window.bragBookGalleryConfig?.gallerySlug || 'gallery';
 		const caseUrl = `/${gallerySlug}/${procedureSlug}/${seoSuffix}/`;
 
+		// Get procedure ID from various possible fields
+		const procedureId = caseData.procedureId || caseData.procedure_id || '';
+
 		// Build data attributes
 		const dataAttrs = [
 			`data-case-id="${this.escapeHtml(caseId)}"`,
 			`data-post-id="${postId}"`,
+			`data-procedure-id="${procedureId}"`,
 			`data-age="${caseData.age || ''}"`,
 			`data-gender="${caseData.gender || ''}"`,
 			`data-ethnicity="${caseData.ethnicity || ''}"`,
-			`data-procedure-ids="${caseData.procedure_id || ''}"`,
-			`data-card="true"`
+			`data-procedure-ids="${procedureId}"`,
+			`data-card="true"`,
+			`data-favorited="true"`
 		].join(' ');
 
 		// Start building HTML (matching filter-system.js structure exactly)
@@ -3604,8 +3726,10 @@ class BRAGbookGalleryApp {
 		html += '<div class="brag-book-gallery-skeleton-loader" style="display: none;"></div>';
 
 		// Favorites button (matching PHP structure)
+		// Use WordPress post ID if available, otherwise use case ID
+		const favoriteItemId = postId || caseId;
 		html += '<div class="brag-book-gallery-item-actions">';
-		html += `<button class="brag-book-gallery-favorite-button" data-favorited="true" data-item-id="case-${this.escapeHtml(caseId)}" aria-label="Remove from favorites">`;
+		html += `<button class="brag-book-gallery-favorite-button favorited" data-favorited="true" data-item-id="${this.escapeHtml(favoriteItemId)}" aria-label="Remove from favorites">`;
 		html += '<svg fill="rgba(255, 255, 255, 0.5)" stroke="white" stroke-width="2" viewBox="0 0 24 24">';
 		html += '<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>';
 		html += '</svg>';
@@ -3680,6 +3804,79 @@ class BRAGbookGalleryApp {
 			.replace(/>/g, "&gt;")
 			.replace(/"/g, "&quot;")
 			.replace(/'/g, "&#039;");
+	}
+
+	/**
+	 * Load favorites from WordPress using post IDs (when user has favorites in localStorage but no user info)
+	 */
+	async loadFavoritesFromWordPress(favoritePostIds, gridContainer, loadingEl) {
+		console.log('loadFavoritesFromWordPress called with:', favoritePostIds);
+
+		try {
+			// Make AJAX call to load favorites grid
+			const formData = new FormData();
+			formData.append('action', 'brag_book_load_favorites_grid');
+			formData.append('nonce', window.bragBookGalleryConfig?.nonce || '');
+			formData.append('post_ids', JSON.stringify(favoritePostIds));
+
+			const response = await fetch(window.bragBookGalleryConfig?.ajaxUrl || '/wp-admin/admin-ajax.php', {
+				method: 'POST',
+				body: formData
+			});
+
+			if (!response.ok) {
+				throw new Error(`HTTP error! status: ${response.status}`);
+			}
+
+			const result = await response.json();
+			console.log('loadFavoritesFromWordPress response:', result);
+
+			if (loadingEl) loadingEl.style.display = 'none';
+
+			if (result.success && result.data && result.data.html) {
+				// We have HTML content to display
+				if (gridContainer) {
+					gridContainer.style.display = 'block';
+
+					// Find the favorites grid
+					const grid = gridContainer.querySelector('.brag-book-gallery-favorites-grid') ||
+						gridContainer.querySelector('#favoritesGrid');
+
+					if (grid) {
+						// Add title if not present
+						const existingTitle = gridContainer.querySelector('.brag-book-gallery-content-title');
+						if (!existingTitle) {
+							const titleHtml = `
+								<h1 class="brag-book-gallery-content-title">
+									<strong>My</strong><span>Favorites</span>
+								</h1>
+							`;
+							grid.insertAdjacentHTML('beforebegin', titleHtml);
+						}
+
+						// Set the grid content
+						grid.innerHTML = result.data.html;
+						grid.style.display = 'grid';
+
+						// Hide empty state
+						const emptyState = gridContainer.querySelector('.brag-book-gallery-favorites-empty');
+						if (emptyState) {
+							emptyState.style.display = 'none';
+						}
+
+						// Update UI for favorited state
+						this.updateFavoritesUI();
+					}
+				}
+			} else {
+				// No content, show empty state
+				this.showEmptyFavoritesState(gridContainer, loadingEl);
+			}
+		} catch (error) {
+			console.error('Error loading favorites from WordPress:', error);
+			if (loadingEl) loadingEl.style.display = 'none';
+			this.showEmptyFavoritesState(gridContainer, loadingEl);
+		}
 	}
 
 	/**

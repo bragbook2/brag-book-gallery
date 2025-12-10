@@ -83,6 +83,88 @@ final class Gallery_Handler {
 		add_shortcode( 'brag_book_gallery_procedures', [ self::class, 'handle_procedures_shortcode' ] );
 	}
 
+	/**
+	 * Track a case view via the API
+	 *
+	 * Sends a view tracking request to the BRAGBook API when a case is viewed.
+	 * This is a non-blocking operation that shouldn't affect page load time.
+	 *
+	 * @since 3.3.2
+	 * @param string $case_id The API case ID to track.
+	 * @return void
+	 */
+	private static function track_case_view( string $case_id ): void {
+		if ( empty( $case_id ) ) {
+			return;
+		}
+
+		// Don't track views from bots or admin users
+		if ( is_admin() || wp_doing_ajax() || wp_doing_cron() ) {
+			return;
+		}
+
+		// Check if this is a bot/crawler
+		$user_agent = sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ?? '' ) );
+		if ( empty( $user_agent ) || preg_match( '/bot|crawl|spider|slurp|googlebot|bingbot|yandex/i', $user_agent ) ) {
+			return;
+		}
+
+		// Use a transient to prevent duplicate tracking within 5 minutes for same session
+		$tracking_key = 'brag_book_view_' . md5( $case_id . ( $_SERVER['REMOTE_ADDR'] ?? '' ) . $user_agent );
+		if ( get_transient( $tracking_key ) ) {
+			return;
+		}
+
+		// Set transient to prevent duplicate tracking (5 minute window)
+		set_transient( $tracking_key, true, 5 * MINUTE_IN_SECONDS );
+
+		// Get API configuration
+		$api_tokens = get_option( 'brag_book_gallery_api_token', [] );
+		$website_property_ids = get_option( 'brag_book_gallery_website_property_id', [] );
+
+		if ( empty( $api_tokens ) || empty( $website_property_ids ) ) {
+			return;
+		}
+
+		// Ensure arrays
+		$api_tokens = is_array( $api_tokens ) ? $api_tokens : [ $api_tokens ];
+		$website_property_ids = is_array( $website_property_ids ) ? $website_property_ids : [ $website_property_ids ];
+
+		$api_token = $api_tokens[0];
+		$website_property_id = $website_property_ids[0];
+
+		// Get base API URL
+		$api_endpoint = get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' );
+
+		// Build the tracking URL for /api/plugin/views endpoint
+		$tracking_url = rtrim( $api_endpoint, '/' ) . '/api/plugin/views';
+
+		// Prepare tracking data
+		$tracking_data = [
+			'apiTokens'          => [ $api_token ],
+			'websitePropertyIds' => [ (int) $website_property_id ],
+			'caseId'             => $case_id,
+		];
+
+		// Make non-blocking request using wp_remote_post with short timeout
+		wp_remote_post(
+			$tracking_url,
+			[
+				'body'      => wp_json_encode( $tracking_data ),
+				'headers'   => [
+					'Content-Type' => 'application/json',
+				],
+				'timeout'   => 1, // Short timeout - we don't need to wait for response
+				'blocking'  => false, // Non-blocking request
+				'sslverify' => true,
+			]
+		);
+
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( "BRAGBook Gallery: Tracked view for case {$case_id}" );
+		}
+	}
+
 	public static function handle( array $atts ): string {
 		// Ensure attributes are in array format with type validation
 		$atts = is_array( $atts ) ? $atts : [];
@@ -304,6 +386,11 @@ final class Gallery_Handler {
 				echo do_shortcode( $landing_page_text );
 				?>
 			</div>
+
+			<?php
+			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Output is escaped in render_dialog_html
+			echo self::render_dialog_html();
+			?>
 		</div>
 		<?php
 		return ob_get_clean();
@@ -360,8 +447,8 @@ final class Gallery_Handler {
 
 			<div class="brag-book-gallery-tiles-view" data-view="case-alternative">
 				<div class="brag-book-gallery-tiles-container" style="max-width: 1440px; margin: 0 auto; padding: 0 20px;">
-					<!-- Horizontal Filter Bar -->
-					<?php echo self::render_tiles_filter_bar(); ?>
+					<!-- Horizontal Filter Bar (filters hidden in case view - no case cards to filter) -->
+					<?php echo self::render_tiles_filter_bar( false ); ?>
 
 					<!-- Case Content -->
 					<div class="brag-book-gallery-case-content">
@@ -370,109 +457,10 @@ final class Gallery_Handler {
 				</div>
 			</div>
 
-			<!-- Consultation Dialog -->
-			<?php if ( \BRAGBookGallery\Includes\Core\Settings_Helper::is_consultation_enabled() ) : ?>
-				<dialog class="brag-book-gallery-dialog" id="consultationDialog">
-					<div class="brag-book-gallery-dialog-content">
-						<div class="brag-book-gallery-dialog-header">
-							<svg class="brag-book-gallery-dialog-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 180">
-								<path fill="#ff595c" d="M85.5,124.6l40-84.7h16.2v104.9h-12.8V60.7l-39.8,84.1h-7.2L42.2,59.7v85.1h-12.8V39.9h16.8l39.3,84.7Z"></path>
-								<path fill="#ff595c" d="M186.2,131.1l25-62.4h12.9l-32.6,80.1c-2.6,6.3-5.2,11.4-7.9,15.3-2.7,3.8-5.7,6.6-9.1,8.3-3.3,1.7-7.4,2.6-12.2,2.6s-3.4,0-4.9-.4c-1.5-.2-2.9-.6-4.2-.9v-10.6c1.3.2,2.7.4,4.2.6,1.4.2,2.9.3,4.5.3,3.9,0,7.2-1.3,9.8-3.9,2.6-2.6,5.3-7.2,8.1-13.9l-32.4-77.3h13.4l25.4,62.4v-.2Z"></path>
-								<path fill="#121827" d="M303.1,39.9v11.2h-60.4v35.6h55.2v11.2h-55.2v46.9h-12.8V39.9h73.2,0Z"></path>
-								<path fill="#121827" d="M344.1,67.2c11.6,0,20.2,2.9,25.9,8.7,5.7,5.8,8.5,14.9,8.5,27.4v41.5h-7.9l-2.4-23.7c-2.7,7.8-7.2,13.9-13.7,18.4-6.4,4.5-14,6.8-22.8,6.8s-9.2-.9-12.8-2.8c-3.6-1.9-6.5-4.4-8.5-7.5s-3-6.5-3-10,1.3-8.7,3.9-12.5,6.7-7.1,12.4-9.9c5.7-2.8,13-4.7,22.1-5.8l20-2.5c-.8-6.2-2.9-10.7-6.4-13.4s-8.6-4-15.2-4-12.3,1.4-15.7,4.3c-3.3,2.9-5.6,6.8-6.8,11.8h-12.6c1.1-7.8,4.5-14.2,10.2-19.3,5.8-5.1,14-7.6,24.9-7.6h-.1ZM335,135.5c5.8,0,11.1-1.4,15.8-4.2,4.7-2.8,8.4-6.5,11.2-11.2,2.8-4.7,4.2-9.9,4.2-15.7l-15.4,1.9c-7.9,1-14,2.3-18.5,4.2-4.5,1.8-7.7,3.9-9.6,6.3-1.9,2.3-2.8,4.8-2.9,7.4,0,3.2,1.1,5.9,3.7,8.1s6.4,3.3,11.6,3.3h-.1Z"></path>
-								<path fill="#121827" d="M419.7,127l25-58.4h13.1l-33.4,76.2h-9.8l-33.2-76.2h13.2l25,58.4h.1Z"></path>
-								<path fill="#121827" d="M495.7,146.3c-7.9,0-14.7-1.6-20.4-4.7-5.8-3.1-10.2-7.5-13.3-13.3s-4.7-12.5-4.7-20.3v-2.6c0-7.8,1.6-14.6,4.7-20.3,3.1-5.7,7.6-10.1,13.3-13.2,5.8-3.1,12.6-4.7,20.4-4.7s14.6,1.6,20.4,4.7c5.8,3.1,10.2,7.5,13.3,13.2s4.7,12.5,4.7,20.3v2.6c0,7.8-1.6,14.5-4.7,20.3-3.1,5.8-7.5,10.2-13.3,13.3s-12.6,4.7-20.4,4.7ZM495.7,135.5c8.3,0,14.8-2.4,19.3-7.1,4.5-4.8,6.8-12,6.8-21.6s-2.3-16.9-6.8-21.6c-4.5-4.8-10.9-7.1-19.3-7.1s-14.8,2.4-19.3,7.1c-4.5,4.7-6.8,11.9-6.8,21.6s2.3,16.9,6.8,21.6,10.9,7.1,19.3,7.1Z"></path>
-								<path fill="#121827" d="M579.5,67.2c2.2,0,4,0,5.5.4,1.5.2,2.7.5,3.7.8v12.1c-1.4-.2-2.9-.3-4.5-.4-1.6,0-3.4,0-5.5,0-7.2,0-12.8,2.6-16.8,7.8s-6,13.9-6,26.1v31h-12.2v-76.2h7.9l2.3,22.1c2.1-8.3,5.4-14.4,10-18,4.6-3.7,9.8-5.5,15.6-5.5h0Z"></path>
-								<path fill="#121827" d="M607.6,144.8h-12.2v-76.2h12.2v76.2Z"></path>
-								<path fill="#121827" d="M670,68.7v10.8h-27.2v40.5c0,5.5,1.1,9.4,3.4,11.9,2.3,2.4,5.8,3.7,10.5,3.7s5.1,0,7.2-.4c2.1-.3,4.2-.6,6.2-1v10.6c-1.6.4-3.5.7-5.5,1-2.1.3-4.7.4-7.8.4-17.4,0-26.2-8.4-26.2-25.3v-41.5h-15.7v-10.8h16l4-22.6h7.9v22.6h27.2,0Z"></path>
-								<path fill="#121827" d="M749.7,102.9c0,2.8-.2,5.3-.6,7.5h-62.2c.7,8.5,3.2,14.9,7.6,19,4.4,4.1,10.5,6.2,18.3,6.2s8.8-.7,11.9-2.1c3-1.4,5.4-3.3,7.1-5.5,1.7-2.3,3.1-4.8,4-7.5h12.5c-.9,4.5-2.7,8.7-5.5,12.7s-6.6,7.2-11.6,9.6c-4.9,2.4-11.2,3.6-18.8,3.6s-14.5-1.6-20.2-4.7c-5.7-3.1-10.1-7.5-13.2-13.3-3.1-5.8-4.7-12.5-4.7-20.3v-2.6c0-7.8,1.6-14.6,4.7-20.3,3.1-5.7,7.6-10.1,13.4-13.2,5.8-3.1,12.6-4.7,20.5-4.7s14.1,1.5,19.5,4.5c5.5,3,9.7,7.1,12.7,12.4,3,5.3,4.5,11.6,4.5,18.8h0ZM712.9,78c-7.6,0-13.6,1.9-18,5.6-4.4,3.7-7,9.4-7.9,17h50.3c-.6-7.5-3-13.1-7.1-16.9-4.2-3.8-9.9-5.7-17.3-5.7h0Z"></path>
-								<path fill="#121827" d="M753.3,119.4h12.5c1.1,5,3.4,8.9,7,11.8,3.7,2.9,9.8,4.3,18.4,4.3s10.1-.5,13.4-1.6c3.3-1.1,5.7-2.5,7.1-4.3,1.4-1.7,2.2-3.5,2.2-5.3s-.6-4.2-1.7-5.8c-1.2-1.6-3.5-2.9-7-4s-8.9-2-16-2.8c-9-1.1-16-2.5-20.9-4.5-4.9-1.9-8.3-4.3-10.1-7.2s-2.8-6.2-2.8-9.9,1.2-7.8,3.7-11.2c2.4-3.4,6.1-6.2,11.1-8.4,4.9-2.2,11.2-3.3,18.8-3.3s14.3,1.2,19.3,3.5,8.9,5.5,11.6,9.6c2.7,4,4.3,8.6,4.8,13.8h-12.5c-.9-5.1-3-9-6.3-11.9s-9-4.3-16.8-4.3-13.4,1.2-16.5,3.5c-3.2,2.3-4.7,5-4.7,7.8s.6,3.9,1.8,5.5c1.2,1.5,3.6,2.9,7.3,4,3.7,1.2,9.2,2.2,16.7,3,8.8,1,15.6,2.4,20.3,4.5,4.8,2,8,4.5,9.9,7.3,1.8,2.9,2.7,6.1,2.7,9.8s-1.3,7.7-3.8,11.2-6.3,6.4-11.5,8.5c-5.2,2.2-11.8,3.2-19.8,3.2s-15.5-1.1-20.9-3.4c-5.4-2.3-9.4-5.5-12.1-9.5-2.7-4-4.4-8.7-5-13.9h-.2Z"></path>
-								<path fill="#121827" d="M849.8,22.7v2.4h-6.1v20.1h-2.9v-20.1h-6.1v-2.4h15.2-.1Z"></path>
-								<path fill="#121827" d="M876.2,22.8v22.3h-2.9v-16.6l-7.4,16.6h-2.1l-7.4-16.7v16.7h-2.9v-22.3h3.2l8.3,18.4,8.3-18.4h3.1-.2Z"></path>
-								<path fill="#ff595c" d="M614.2,19c-2.4-.6-4.8-.3-6.9.9-2.2,1.2-4.1,3.1-5.6,5.2-.2.3-.4.6-.5.9-2.3-3.9-6.6-7.6-11.3-7.2-4.4.4-8.2,3.6-9.1,7.9-1.1,5,2.1,9.6,5.1,13.3,2.8,3.3,5.9,6.3,9,9.3,1.9,1.8,3.9,3.6,5.9,5.3h0c0,0,.2.1.3.1s.2,0,.3-.1c1.7-1.4,3.3-2.9,4.9-4.3,3.2-2.9,6.3-5.9,9.1-9.1,3.1-3.5,6.6-7.9,6.3-12.9-.3-4.3-3.4-8.1-7.6-9.2h0Z"></path>
-							</svg>
-							<button class="brag-book-gallery-dialog-close" data-action="close-consultation-dialog" aria-label="Close dialog">
-								<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor">
-									<path d="M256-213.85 213.85-256l224-224-224-224L256-746.15l224 224 224-224L746.15-704l-224 224 224 224L704-213.85l-224-224-224 224Z"/>
-								</svg>
-							</button>
-						</div>
-						<h2 class="brag-book-gallery-dialog-title">Request a Consultation</h2>
-						<p class="brag-book-gallery-dialog-subtitle">Fill out the form below to get started.</p>
-						<form class="brag-book-gallery-consultation-form" data-form="consultation">
-							<div class="brag-book-gallery-form-notification" style="display: none;"></div>
-							<div class="brag-book-gallery-form-group">
-								<label class="brag-book-gallery-form-label" for="consultation-name">Full Name *</label>
-								<input type="text" class="brag-book-gallery-form-input" id="consultation-name" placeholder="Enter full name" name="consultation-name" required>
-							</div>
-							<div class="brag-book-gallery-form-group">
-								<label class="brag-book-gallery-form-label" for="consultation-email">Email Address *</label>
-								<input type="email" class="brag-book-gallery-form-input" id="consultation-email" placeholder="Enter email address" name="consultation-email" required>
-							</div>
-							<div class="brag-book-gallery-form-group">
-								<label class="brag-book-gallery-form-label" for="consultation-phone">Phone *</label>
-								<input type="tel" class="brag-book-gallery-form-input" id="consultation-phone" placeholder="(123) 456-7890" name="consultation-phone" required pattern="\([0-9]{3}\) [0-9]{3}-[0-9]{4}" maxlength="14" data-phone-format="true">
-							</div>
-							<div class="brag-book-gallery-form-group">
-								<label class="brag-book-gallery-form-label" for="consultation-procedure">Procedure of Interest</label>
-								<input type="text" class="brag-book-gallery-form-input" id="consultation-procedure" placeholder="Enter procedure name" name="consultation-procedure">
-							</div>
-							<input type="hidden" name="consultation-case-id" value="">
-							<button type="submit" class="brag-book-gallery-button brag-book-gallery-button--full" data-action="form-submit">Submit Request</button>
-						</form>
-					</div>
-				</dialog>
-			<?php endif; ?>
-
-			<!-- Favorites Dialog -->
-			<?php if ( \BRAGBookGallery\Includes\Core\Settings_Helper::is_favorites_enabled() ) : ?>
-				<dialog class="brag-book-gallery-dialog" id="favoritesDialog">
-					<div class="brag-book-gallery-dialog-content">
-						<div class="brag-book-gallery-dialog-header">
-							<svg class="brag-book-gallery-dialog-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 180">
-								<path fill="#ff595c" d="M85.5,124.6l40-84.7h16.2v104.9h-12.8V60.7l-39.8,84.1h-7.2L42.2,59.7v85.1h-12.8V39.9h16.8l39.3,84.7Z"></path>
-								<path fill="#ff595c" d="M186.2,131.1l25-62.4h12.9l-32.6,80.1c-2.6,6.3-5.2,11.4-7.9,15.3-2.7,3.8-5.7,6.6-9.1,8.3-3.3,1.7-7.4,2.6-12.2,2.6s-3.4,0-4.9-.4c-1.5-.2-2.9-.6-4.2-.9v-10.6c1.3.2,2.7.4,4.2.6,1.4.2,2.9.3,4.5.3,3.9,0,7.2-1.3,9.8-3.9,2.6-2.6,5.3-7.2,8.1-13.9l-32.4-77.3h13.4l25.4,62.4v-.2Z"></path>
-								<path fill="#121827" d="M303.1,39.9v11.2h-60.4v35.6h55.2v11.2h-55.2v46.9h-12.8V39.9h73.2,0Z"></path>
-								<path fill="#121827" d="M344.1,67.2c11.6,0,20.2,2.9,25.9,8.7,5.7,5.8,8.5,14.9,8.5,27.4v41.5h-7.9l-2.4-23.7c-2.7,7.8-7.2,13.9-13.7,18.4-6.4,4.5-14,6.8-22.8,6.8s-9.2-.9-12.8-2.8c-3.6-1.9-6.5-4.4-8.5-7.5s-3-6.5-3-10,1.3-8.7,3.9-12.5,6.7-7.1,12.4-9.9c5.7-2.8,13-4.7,22.1-5.8l20-2.5c-.8-6.2-2.9-10.7-6.4-13.4s-8.6-4-15.2-4-12.3,1.4-15.7,4.3c-3.3,2.9-5.6,6.8-6.8,11.8h-12.6c1.1-7.8,4.5-14.2,10.2-19.3,5.8-5.1,14-7.6,24.9-7.6h-.1ZM335,135.5c5.8,0,11.1-1.4,15.8-4.2,4.7-2.8,8.4-6.5,11.2-11.2,2.8-4.7,4.2-9.9,4.2-15.7l-15.4,1.9c-7.9,1-14,2.3-18.5,4.2-4.5,1.8-7.7,3.9-9.6,6.3-1.9,2.3-2.8,4.8-2.9,7.4,0,3.2,1.1,5.9,3.7,8.1s6.4,3.3,11.6,3.3h-.1Z"></path>
-								<path fill="#121827" d="M419.7,127l25-58.4h13.1l-33.4,76.2h-9.8l-33.2-76.2h13.2l25,58.4h.1Z"></path>
-								<path fill="#121827" d="M495.7,146.3c-7.9,0-14.7-1.6-20.4-4.7-5.8-3.1-10.2-7.5-13.3-13.3s-4.7-12.5-4.7-20.3v-2.6c0-7.8,1.6-14.6,4.7-20.3,3.1-5.7,7.6-10.1,13.3-13.2,5.8-3.1,12.6-4.7,20.4-4.7s14.6,1.6,20.4,4.7c5.8,3.1,10.2,7.5,13.3,13.2s4.7,12.5,4.7,20.3v2.6c0,7.8-1.6,14.5-4.7,20.3-3.1,5.8-7.5,10.2-13.3,13.3s-12.6,4.7-20.4,4.7ZM495.7,135.5c8.3,0,14.8-2.4,19.3-7.1,4.5-4.8,6.8-12,6.8-21.6s-2.3-16.9-6.8-21.6c-4.5-4.8-10.9-7.1-19.3-7.1s-14.8,2.4-19.3,7.1c-4.5,4.7-6.8,11.9-6.8,21.6s2.3,16.9,6.8,21.6,10.9,7.1,19.3,7.1Z"></path>
-								<path fill="#121827" d="M579.5,67.2c2.2,0,4,0,5.5.4,1.5.2,2.7.5,3.7.8v12.1c-1.4-.2-2.9-.3-4.5-.4-1.6,0-3.4,0-5.5,0-7.2,0-12.8,2.6-16.8,7.8s-6,13.9-6,26.1v31h-12.2v-76.2h7.9l2.3,22.1c2.1-8.3,5.4-14.4,10-18,4.6-3.7,9.8-5.5,15.6-5.5h0Z"></path>
-								<path fill="#121827" d="M607.6,144.8h-12.2v-76.2h12.2v76.2Z"></path>
-								<path fill="#121827" d="M670,68.7v10.8h-27.2v40.5c0,5.5,1.1,9.4,3.4,11.9,2.3,2.4,5.8,3.7,10.5,3.7s5.1,0,7.2-.4c2.1-.3,4.2-.6,6.2-1v10.6c-1.6.4-3.5.7-5.5,1-2.1.3-4.7.4-7.8.4-17.4,0-26.2-8.4-26.2-25.3v-41.5h-15.7v-10.8h16l4-22.6h7.9v22.6h27.2,0Z"></path>
-								<path fill="#121827" d="M749.7,102.9c0,2.8-.2,5.3-.6,7.5h-62.2c.7,8.5,3.2,14.9,7.6,19,4.4,4.1,10.5,6.2,18.3,6.2s8.8-.7,11.9-2.1c3-1.4,5.4-3.3,7.1-5.5,1.7-2.3,3.1-4.8,4-7.5h12.5c-.9,4.5-2.7,8.7-5.5,12.7s-6.6,7.2-11.6,9.6c-4.9,2.4-11.2,3.6-18.8,3.6s-14.5-1.6-20.2-4.7c-5.7-3.1-10.1-7.5-13.2-13.3-3.1-5.8-4.7-12.5-4.7-20.3v-2.6c0-7.8,1.6-14.6,4.7-20.3,3.1-5.7,7.6-10.1,13.4-13.2,5.8-3.1,12.6-4.7,20.5-4.7s14.1,1.5,19.5,4.5c5.5,3,9.7,7.1,12.7,12.4,3,5.3,4.5,11.6,4.5,18.8h0ZM712.9,78c-7.6,0-13.6,1.9-18,5.6-4.4,3.7-7,9.4-7.9,17h50.3c-.6-7.5-3-13.1-7.1-16.9-4.2-3.8-9.9-5.7-17.3-5.7h0Z"></path>
-								<path fill="#121827" d="M753.3,119.4h12.5c1.1,5,3.4,8.9,7,11.8,3.7,2.9,9.8,4.3,18.4,4.3s10.1-.5,13.4-1.6c3.3-1.1,5.7-2.5,7.1-4.3,1.4-1.7,2.2-3.5,2.2-5.3s-.6-4.2-1.7-5.8c-1.2-1.6-3.5-2.9-7-4s-8.9-2-16-2.8c-9-1.1-16-2.5-20.9-4.5-4.9-1.9-8.3-4.3-10.1-7.2s-2.8-6.2-2.8-9.9,1.2-7.8,3.7-11.2c2.4-3.4,6.1-6.2,11.1-8.4,4.9-2.2,11.2-3.3,18.8-3.3s14.3,1.2,19.3,3.5,8.9,5.5,11.6,9.6c2.7,4,4.3,8.6,4.8,13.8h-12.5c-.9-5.1-3-9-6.3-11.9s-9-4.3-16.8-4.3-13.4,1.2-16.5,3.5c-3.2,2.3-4.7,5-4.7,7.8s.6,3.9,1.8,5.5c1.2,1.5,3.6,2.9,7.3,4,3.7,1.2,9.2,2.2,16.7,3,8.8,1,15.6,2.4,20.3,4.5,4.8,2,8,4.5,9.9,7.3,1.8,2.9,2.7,6.1,2.7,9.8s-1.3,7.7-3.8,11.2-6.3,6.4-11.5,8.5c-5.2,2.2-11.8,3.2-19.8,3.2s-15.5-1.1-20.9-3.4c-5.4-2.3-9.4-5.5-12.1-9.5-2.7-4-4.4-8.7-5-13.9h-.2Z"></path>
-								<path fill="#121827" d="M849.8,22.7v2.4h-6.1v20.1h-2.9v-20.1h-6.1v-2.4h15.2-.1Z"></path>
-								<path fill="#121827" d="M876.2,22.8v22.3h-2.9v-16.6l-7.4,16.6h-2.1l-7.4-16.7v16.7h-2.9v-22.3h3.2l8.3,18.4,8.3-18.4h3.1-.2Z"></path>
-								<path fill="#ff595c" d="M614.2,19c-2.4-.6-4.8-.3-6.9.9-2.2,1.2-4.1,3.1-5.6,5.2-.2.3-.4.6-.5.9-2.3-3.9-6.6-7.6-11.3-7.2-4.4.4-8.2,3.6-9.1,7.9-1.1,5,2.1,9.6,5.1,13.3,2.8,3.3,5.9,6.3,9,9.3,1.9,1.8,3.9,3.6,5.9,5.3h0c0,0,.2.1.3.1s.2,0,.3-.1c1.7-1.4,3.3-2.9,4.9-4.3,3.2-2.9,6.3-5.9,9.1-9.1,3.1-3.5,6.6-7.9,6.3-12.9-.3-4.3-3.4-8.1-7.6-9.2h0Z"></path>
-							</svg>
-							<button class="brag-book-gallery-dialog-close" data-action="close-favorites-dialog" aria-label="Close dialog">
-								<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor">
-									<path d="M256-213.85 213.85-256l224-224-224-224L256-746.15l224 224 224-224L746.15-704l-224 224 224 224L704-213.85l-224-224-224 224Z"/>
-								</svg>
-							</button>
-						</div>
-						<h2 class="brag-book-gallery-dialog-title">Send My Favorites</h2>
-						<p class="brag-book-gallery-dialog-subtitle">Fill out the form below and we'll send your favorited images.</p>
-						<form class="brag-book-gallery-favorites-form" data-form="favorites">
-							<div class="brag-book-gallery-form-notification" style="display: none;"></div>
-							<div class="brag-book-gallery-form-group">
-								<label class="brag-book-gallery-form-label" for="fav-name">Full Name *</label>
-								<input type="text" class="brag-book-gallery-form-input" id="fav-name" placeholder="Enter full name" name="fav-name" required>
-							</div>
-							<div class="brag-book-gallery-form-group">
-								<label class="brag-book-gallery-form-label" for="fav-email">Email Address *</label>
-								<input type="email" class="brag-book-gallery-form-input" id="fav-email" placeholder="Enter email address" name="fav-email" required>
-							</div>
-							<div class="brag-book-gallery-form-group">
-								<label class="brag-book-gallery-form-label" for="fav-phone">Phone *</label>
-								<input type="tel" class="brag-book-gallery-form-input" id="fav-phone" placeholder="(123) 456-7890" name="fav-phone" required pattern="\([0-9]{3}\) [0-9]{3}-[0-9]{4}" maxlength="14" data-phone-format="true">
-							</div>
-							<input type="hidden" name="fav-case-id" value="">
-							<button type="submit" class="brag-book-gallery-button brag-book-gallery-button--full" data-action="form-submit">Send Favorites</button>
-						</form>
-					</div>
-				</dialog>
-			<?php endif; ?>
+			<?php
+			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Output is escaped in render_dialog_html
+			echo self::render_dialog_html();
+			?>
 		</div>
 		<?php
 		return ob_get_clean();
@@ -517,6 +505,16 @@ final class Gallery_Handler {
 
 				$validated_atts['case_id']      = $context['case_id'];
 				$validated_atts['is_case_view'] = true;
+
+				// Track the case view via API
+				// Get the API case ID from post meta for tracking
+				$post_id = get_the_ID();
+				if ( $post_id ) {
+					$api_case_id = get_post_meta( $post_id, 'brag_book_gallery_case_id', true );
+					if ( ! empty( $api_case_id ) ) {
+						self::track_case_view( (string) $api_case_id );
+					}
+				}
 
 				// Use alternative view if setting is 'alternative'
 				if ( 'alternative' === $cases_view ) {
@@ -840,7 +838,7 @@ final class Gallery_Handler {
 		return $config;
 	}
 
-	private static function render_gallery_html( array $all_cases_data = [], string $initial_procedure = '', string $initial_case_id = '', bool $is_favorites_page = false, \WP_Term $current_taxonomy = null, bool $is_case_view = false, string $case_id = '' ): string {
+	private static function render_gallery_html( array $all_cases_data = [], string $initial_procedure = '', string $initial_case_id = '', bool $is_favorites_page = false, ?\WP_Term $current_taxonomy = null, bool $is_case_view = false, string $case_id = '' ): string {
 		// Initialize output buffering for complete HTML capture
 		ob_start();
 
@@ -1987,6 +1985,9 @@ final class Gallery_Handler {
 		// Enqueue gallery assets
 		Asset_Manager::enqueue_gallery_assets();
 
+		// Ensure consultation form configuration is available
+		Asset_Manager::ensure_consultation_form_config();
+
 		// Start output buffering
 		ob_start();
 		?>
@@ -2079,6 +2080,7 @@ final class Gallery_Handler {
 				}
 				?>
 			</div>
+			<?php echo self::render_dialog_html(); ?>
 		</div>
 
 		<!-- Cases loaded directly from WordPress, no JavaScript initialization needed -->
@@ -2226,7 +2228,7 @@ final class Gallery_Handler {
 	 * @return string Rendered filter bar HTML.
 	 * @since 3.3.2
 	 */
-	public static function render_tiles_filter_bar(): string {
+	public static function render_tiles_filter_bar( bool $show_filters = true ): string {
 		ob_start();
 
 		// Get favorites URL
@@ -2284,6 +2286,7 @@ final class Gallery_Handler {
 					</div>
 				</details>
 
+				<?php if ( $show_filters ) : ?>
 				<!-- Procedure Filters -->
 				<details class="brag-book-gallery-filter-dropdown" id="procedure-filters-details" data-initialized="true">
 					<summary class="brag-book-gallery-filter-dropdown__toggle">
@@ -2308,6 +2311,7 @@ final class Gallery_Handler {
 						</div>
 					</div>
 				</details>
+				<?php endif; ?>
 			</div>
 
 			<div class="brag-book-gallery-tiles-filter-bar__right">
@@ -2711,7 +2715,7 @@ final class Gallery_Handler {
 	 * Tracks case views when users visit case pages directly (not via AJAX).
 	 * This ensures all case views are tracked regardless of how they're accessed.
 	 *
-	 * @param string $case_id The case ID to track
+	 * @param string $case_id The case ID (WordPress post ID) from the URL
 	 *
 	 * @return void
 	 * @since 3.0.0
@@ -2727,13 +2731,40 @@ final class Gallery_Handler {
 			return;
 		}
 
+		// Convert WordPress post ID to caseProcedureId (the small API ID)
+		$case_procedure_id = '';
+
+		if ( is_numeric( $case_id ) ) {
+			$post_id = absint( $case_id );
+			$post = get_post( $post_id );
+
+			if ( $post && $post->post_type === 'brag_book_cases' ) {
+				// Get the case procedure ID - this is the 'id' field from the API
+				// It's typically a small number like 35, 36, etc. (not the large caseId)
+				$case_procedure_id = get_post_meta( $post_id, 'brag_book_gallery_procedure_case_id', true );
+
+				// Fallback to original_case_id if procedure_case_id is empty
+				if ( empty( $case_procedure_id ) ) {
+					$case_procedure_id = get_post_meta( $post_id, 'brag_book_gallery_original_case_id', true );
+				}
+			}
+		}
+
+		// Skip if we couldn't resolve the case procedure ID
+		if ( empty( $case_procedure_id ) ) {
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( "BRAGBook Gallery: Could not resolve caseProcedureId for post {$case_id}" );
+			}
+			return;
+		}
+
 		// Defer the tracking to avoid blocking page load
 		// Use WordPress background processing or schedule for better performance
 		if ( function_exists( 'wp_schedule_single_event' ) ) {
-			wp_schedule_single_event( time(), 'brag_book_gallery_track_view', array( $case_id ) );
+			wp_schedule_single_event( time(), 'brag_book_gallery_track_view', array( $case_procedure_id ) );
 		} else {
 			// Fallback: track immediately but asynchronously if possible
-			self::track_view_async( $case_id );
+			self::track_view_async( $case_procedure_id );
 		}
 	}
 
@@ -2773,12 +2804,12 @@ final class Gallery_Handler {
 	 *
 	 * Makes the tracking API call in a non-blocking way.
 	 *
-	 * @param string $case_id The case ID to track
+	 * @param string $case_procedure_id The case procedure ID to track (small API ID like 35, 36)
 	 *
 	 * @return void
 	 * @since 3.0.0
 	 */
-	private static function track_view_async( string $case_id ): void {
+	private static function track_view_async( string $case_procedure_id ): void {
 		try {
 			// Get API configuration
 			$api_tokens           = get_option( 'brag_book_gallery_api_token', array() );
@@ -2799,21 +2830,16 @@ final class Gallery_Handler {
 			// Get base API URL
 			$api_endpoint = get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' );
 
-			// Build the tracking URL
+			// Build the tracking URL using /views endpoint
 			$tracking_url = sprintf(
-				'%s/api/plugin/tracker?apiToken=%s&websitepropertyId=%s',
+				'%s/api/plugin/views?apiToken=%s',
 				$api_endpoint,
-				urlencode( $api_token ),
-				urlencode( $website_property_id )
+				urlencode( $api_token )
 			);
 
-			// Prepare tracking data
+			// Prepare tracking data with caseProcedureId (the small API ID)
 			$tracking_data = array(
-				'case_id'    => $case_id,
-				'action'     => 'view',
-				'source'     => 'wordpress_plugin_server',
-				'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? '',
-				'ip'         => $_SERVER['REMOTE_ADDR'] ?? '',
+				'caseProcedureId' => $case_procedure_id,
 			);
 
 			// Make the API request asynchronously
@@ -2827,7 +2853,7 @@ final class Gallery_Handler {
 			) );
 
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( "BRAGBook Gallery: Initiated async view tracking for case {$case_id}" );
+				error_log( "BRAGBook Gallery: Initiated async view tracking for caseProcedureId {$case_procedure_id}" );
 			}
 
 		} catch ( \Exception $e ) {
@@ -2835,5 +2861,108 @@ final class Gallery_Handler {
 				error_log( 'BRAGBook Gallery: Server-side view tracking exception - ' . $e->getMessage() );
 			}
 		}
+	}
+
+	/**
+	 * Render the consultation and favorites dialog HTML
+	 *
+	 * Outputs the dialog elements needed for consultation requests and favorites
+	 * functionality. This method is called from various view handlers to ensure
+	 * the dialogs are available on the page.
+	 *
+	 * @return string Dialog HTML.
+	 * @since 4.0.1
+	 */
+	private static function render_dialog_html(): string {
+		ob_start();
+		?>
+		<?php if ( \BRAGBookGallery\Includes\Core\Settings_Helper::is_consultation_enabled() ) : ?>
+			<dialog class="brag-book-gallery-dialog" id="consultationDialog">
+				<div class="brag-book-gallery-dialog-content">
+					<div class="brag-book-gallery-dialog-header">
+						<h2 class="brag-book-gallery-dialog-title">Consultation Request</h2>
+						<button class="brag-book-gallery-dialog-close" data-action="close-dialog" aria-label="Close dialog">
+							<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor">
+								<path d="M256-213.85 213.85-256l224-224-224-224L256-746.15l224 224 224-224L746.15-704l-224 224 224 224L704-213.85l-224-224-224 224Z"/>
+							</svg>
+						</button>
+					</div>
+					<!-- Message container for success/error messages -->
+					<div class="brag-book-gallery-form-message hidden" id="consultationMessage">
+						<div class="brag-book-gallery-form-message-content"></div>
+					</div>
+					<form class="brag-book-gallery-consultation-form" data-form="consultation">
+						<div class="brag-book-gallery-form-group">
+							<label class="brag-book-gallery-form-label" for="name">Name *</label>
+							<input type="text" class="brag-book-gallery-form-input" id="name" placeholder="Enter name" name="name" required>
+						</div>
+						<div class="brag-book-gallery-form-group">
+							<label class="brag-book-gallery-form-label" for="email">Email *</label>
+							<input type="email" class="brag-book-gallery-form-input" id="email" placeholder="Enter email address" name="email" required>
+						</div>
+						<div class="brag-book-gallery-form-group">
+							<label class="brag-book-gallery-form-label" for="phone">Phone</label>
+							<input type="tel" class="brag-book-gallery-form-input" id="phone" placeholder="(123) 456-7890" name="phone" pattern="\([0-9]{3}\) [0-9]{3}-[0-9]{4}" maxlength="14" data-phone-format="true">
+						</div>
+						<div class="brag-book-gallery-form-group">
+							<label class="brag-book-gallery-form-label" for="message">Message *</label>
+							<textarea class="brag-book-gallery-form-textarea" id="message" name="message" required placeholder="Tell us about your goals and how we can help..."></textarea>
+						</div>
+						<button type="submit" class="brag-book-gallery-button brag-book-gallery-button--full" data-action="form-submit">Submit Request</button>
+					</form>
+				</div>
+			</dialog>
+		<?php endif; ?>
+
+		<?php if ( \BRAGBookGallery\Includes\Core\Settings_Helper::is_favorites_enabled() ) : ?>
+			<dialog class="brag-book-gallery-dialog" id="favoritesDialog">
+				<div class="brag-book-gallery-dialog-content">
+					<div class="brag-book-gallery-dialog-header">
+						<svg class="brag-book-gallery-dialog-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 180">
+							<path fill="#ff595c" d="M85.5,124.6l40-84.7h16.2v104.9h-12.8V60.7l-39.8,84.1h-7.2L42.2,59.7v85.1h-12.8V39.9h16.8l39.3,84.7Z"></path>
+							<path fill="#ff595c" d="M186.2,131.1l25-62.4h12.9l-32.6,80.1c-2.6,6.3-5.2,11.4-7.9,15.3-2.7,3.8-5.7,6.6-9.1,8.3-3.3,1.7-7.4,2.6-12.2,2.6s-3.4,0-4.9-.4c-1.5-.2-2.9-.6-4.2-.9v-10.6c1.3.2,2.7.4,4.2.6,1.4.2,2.9.3,4.5.3,3.9,0,7.2-1.3,9.8-3.9,2.6-2.6,5.3-7.2,8.1-13.9l-32.4-77.3h13.4l25.4,62.4v-.2Z"></path>
+							<path fill="#121827" d="M303.1,39.9v11.2h-60.4v35.6h55.2v11.2h-55.2v46.9h-12.8V39.9h73.2,0Z"></path>
+							<path fill="#121827" d="M344.1,67.2c11.6,0,20.2,2.9,25.9,8.7,5.7,5.8,8.5,14.9,8.5,27.4v41.5h-7.9l-2.4-23.7c-2.7,7.8-7.2,13.9-13.7,18.4-6.4,4.5-14,6.8-22.8,6.8s-9.2-.9-12.8-2.8c-3.6-1.9-6.5-4.4-8.5-7.5s-3-6.5-3-10,1.3-8.7,3.9-12.5,6.7-7.1,12.4-9.9c5.7-2.8,13-4.7,22.1-5.8l20-2.5c-.8-6.2-2.9-10.7-6.4-13.4s-8.6-4-15.2-4-12.3,1.4-15.7,4.3c-3.3,2.9-5.6,6.8-6.8,11.8h-12.6c1.1-7.8,4.5-14.2,10.2-19.3,5.8-5.1,14-7.6,24.9-7.6h-.1ZM335,135.5c5.8,0,11.1-1.4,15.8-4.2,4.7-2.8,8.4-6.5,11.2-11.2,2.8-4.7,4.2-9.9,4.2-15.7l-15.4,1.9c-7.9,1-14,2.3-18.5,4.2-4.5,1.8-7.7,3.9-9.6,6.3-1.9,2.3-2.8,4.8-2.9,7.4,0,3.2,1.1,5.9,3.7,8.1s6.4,3.3,11.6,3.3h-.1Z"></path>
+							<path fill="#121827" d="M419.7,127l25-58.4h13.1l-33.4,76.2h-9.8l-33.2-76.2h13.2l25,58.4h.1Z"></path>
+							<path fill="#121827" d="M495.7,146.3c-7.9,0-14.7-1.6-20.4-4.7-5.8-3.1-10.2-7.5-13.3-13.3s-4.7-12.5-4.7-20.3v-2.6c0-7.8,1.6-14.6,4.7-20.3,3.1-5.7,7.6-10.1,13.3-13.2,5.8-3.1,12.6-4.7,20.4-4.7s14.6,1.6,20.4,4.7c5.8,3.1,10.2,7.5,13.3,13.2s4.7,12.5,4.7,20.3v2.6c0,7.8-1.6,14.5-4.7,20.3-3.1,5.8-7.5,10.2-13.3,13.3s-12.6,4.7-20.4,4.7ZM495.7,135.5c8.3,0,14.8-2.4,19.3-7.1,4.5-4.8,6.8-12,6.8-21.6s-2.3-16.9-6.8-21.6c-4.5-4.8-10.9-7.1-19.3-7.1s-14.8,2.4-19.3,7.1c-4.5,4.7-6.8,11.9-6.8,21.6s2.3,16.9,6.8,21.6,10.9,7.1,19.3,7.1Z"></path>
+							<path fill="#121827" d="M579.5,67.2c2.2,0,4,0,5.5.4,1.5.2,2.7.5,3.7.8v12.1c-1.4-.2-2.9-.3-4.5-.4-1.6,0-3.4,0-5.5,0-7.2,0-12.8,2.6-16.8,7.8s-6,13.9-6,26.1v31h-12.2v-76.2h7.9l2.3,22.1c2.1-8.3,5.4-14.4,10-18,4.6-3.7,9.8-5.5,15.6-5.5h0Z"></path>
+							<path fill="#121827" d="M607.6,144.8h-12.2v-76.2h12.2v76.2Z"></path>
+							<path fill="#121827" d="M670,68.7v10.8h-27.2v40.5c0,5.5,1.1,9.4,3.4,11.9,2.3,2.4,5.8,3.7,10.5,3.7s5.1,0,7.2-.4c2.1-.3,4.2-.6,6.2-1v10.6c-1.6.4-3.5.7-5.5,1-2.1.3-4.7.4-7.8.4-17.4,0-26.2-8.4-26.2-25.3v-41.5h-15.7v-10.8h16l4-22.6h7.9v22.6h27.2,0Z"></path>
+							<path fill="#121827" d="M749.7,102.9c0,2.8-.2,5.3-.6,7.5h-62.2c.7,8.5,3.2,14.9,7.6,19,4.4,4.1,10.5,6.2,18.3,6.2s8.8-.7,11.9-2.1c3-1.4,5.4-3.3,7.1-5.5,1.7-2.3,3.1-4.8,4-7.5h12.5c-.9,4.5-2.7,8.7-5.5,12.7s-6.6,7.2-11.6,9.6c-4.9,2.4-11.2,3.6-18.8,3.6s-14.5-1.6-20.2-4.7c-5.7-3.1-10.1-7.5-13.2-13.3-3.1-5.8-4.7-12.5-4.7-20.3v-2.6c0-7.8,1.6-14.6,4.7-20.3,3.1-5.7,7.6-10.1,13.4-13.2,5.8-3.1,12.6-4.7,20.5-4.7s14.1,1.5,19.5,4.5c5.5,3,9.7,7.1,12.7,12.4,3,5.3,4.5,11.6,4.5,18.8h0ZM712.9,78c-7.6,0-13.6,1.9-18,5.6-4.4,3.7-7,9.4-7.9,17h50.3c-.6-7.5-3-13.1-7.1-16.9-4.2-3.8-9.9-5.7-17.3-5.7h0Z"></path>
+							<path fill="#121827" d="M753.3,119.4h12.5c1.1,5,3.4,8.9,7,11.8,3.7,2.9,9.8,4.3,18.4,4.3s10.1-.5,13.4-1.6c3.3-1.1,5.7-2.5,7.1-4.3,1.4-1.7,2.2-3.5,2.2-5.3s-.6-4.2-1.7-5.8c-1.2-1.6-3.5-2.9-7-4s-8.9-2-16-2.8c-9-1.1-16-2.5-20.9-4.5-4.9-1.9-8.3-4.3-10.1-7.2s-2.8-6.2-2.8-9.9,1.2-7.8,3.7-11.2c2.4-3.4,6.1-6.2,11.1-8.4,4.9-2.2,11.2-3.3,18.8-3.3s14.3,1.2,19.3,3.5,8.9,5.5,11.6,9.6c2.7,4,4.3,8.6,4.8,13.8h-12.5c-.9-5.1-3-9-6.3-11.9s-9-4.3-16.8-4.3-13.4,1.2-16.5,3.5c-3.2,2.3-4.7,5-4.7,7.8s.6,3.9,1.8,5.5c1.2,1.5,3.6,2.9,7.3,4,3.7,1.2,9.2,2.2,16.7,3,8.8,1,15.6,2.4,20.3,4.5,4.8,2,8,4.5,9.9,7.3,1.8,2.9,2.7,6.1,2.7,9.8s-1.3,7.7-3.8,11.2-6.3,6.4-11.5,8.5c-5.2,2.2-11.8,3.2-19.8,3.2s-15.5-1.1-20.9-3.4c-5.4-2.3-9.4-5.5-12.1-9.5-2.7-4-4.4-8.7-5-13.9h-.2Z"></path>
+							<path fill="#121827" d="M849.8,22.7v2.4h-6.1v20.1h-2.9v-20.1h-6.1v-2.4h15.2-.1Z"></path>
+							<path fill="#121827" d="M876.2,22.8v22.3h-2.9v-16.6l-7.4,16.6h-2.1l-7.4-16.7v16.7h-2.9v-22.3h3.2l8.3,18.4,8.3-18.4h3.1-.2Z"></path>
+							<path fill="#ff595c" d="M614.2,19c-2.4-.6-4.8-.3-6.9.9-2.2,1.2-4.1,3.1-5.6,5.2-.2.3-.4.6-.5.9-2.3-3.9-6.6-7.6-11.3-7.2-4.4.4-8.2,3.6-9.1,7.9-1.1,5,2.1,9.6,5.1,13.3,2.8,3.3,5.9,6.3,9,9.3,1.9,1.8,3.9,3.6,5.9,5.3h0c0,0,.2.1.3.1s.2,0,.3-.1c1.7-1.4,3.3-2.9,4.9-4.3,3.2-2.9,6.3-5.9,9.1-9.1,3.1-3.5,6.6-7.9,6.3-12.9-.3-4.3-3.4-8.1-7.6-9.2h0Z"></path>
+						</svg>
+						<button class="brag-book-gallery-dialog-close" data-action="close-favorites-dialog" aria-label="Close dialog">
+							<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor">
+								<path d="M256-213.85 213.85-256l224-224-224-224L256-746.15l224 224 224-224L746.15-704l-224 224 224 224L704-213.85l-224-224-224 224Z"/>
+							</svg>
+						</button>
+					</div>
+					<h2 class="brag-book-gallery-dialog-title">Send My Favorites</h2>
+					<p class="brag-book-gallery-dialog-subtitle">Fill out the form below and we'll send your favorited images.</p>
+					<form class="brag-book-gallery-favorites-form" data-form="favorites">
+						<div class="brag-book-gallery-form-notification" style="display: none;"></div>
+						<div class="brag-book-gallery-form-group">
+							<label class="brag-book-gallery-form-label" for="fav-name">Full Name *</label>
+							<input type="text" class="brag-book-gallery-form-input" id="fav-name" placeholder="Enter full name" name="fav-name" required>
+						</div>
+						<div class="brag-book-gallery-form-group">
+							<label class="brag-book-gallery-form-label" for="fav-email">Email Address *</label>
+							<input type="email" class="brag-book-gallery-form-input" id="fav-email" placeholder="Enter email address" name="fav-email" required>
+						</div>
+						<div class="brag-book-gallery-form-group">
+							<label class="brag-book-gallery-form-label" for="fav-phone">Phone *</label>
+							<input type="tel" class="brag-book-gallery-form-input" id="fav-phone" placeholder="(123) 456-7890" name="fav-phone" required pattern="\([0-9]{3}\) [0-9]{3}-[0-9]{4}" maxlength="14" data-phone-format="true">
+						</div>
+						<input type="hidden" name="fav-case-id" value="">
+						<button type="submit" class="brag-book-gallery-button brag-book-gallery-button--full" data-action="form-submit">Send Favorites</button>
+					</form>
+				</div>
+			</dialog>
+		<?php endif; ?>
+		<?php
+		return ob_get_clean();
 	}
 }

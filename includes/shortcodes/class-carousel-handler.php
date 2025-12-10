@@ -1234,11 +1234,12 @@ final class Carousel_Handler {
 
 		// Add case debugging data attributes
 		if ( ! empty( $case_data ) ) {
-			// API case ID.
+			// API case ID (procedure case ID - the small number for view tracking)
 			if ( ! empty( $case_data['id'] ) ) {
 				$data_attributes .= sprintf(
-					' data-case-id="%s"',
-					esc_attr( $case_data['id'] )
+					' data-case-id="%s" data-procedure-case-id="%s"',
+					esc_attr( $case_data['id'] ),
+					esc_attr( $case_data['id'] ) // Same value, explicit for view tracking
 				);
 			}
 

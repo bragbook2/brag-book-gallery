@@ -1178,30 +1178,31 @@ class Endpoints {
 	 *
 	 * Records a view event for a specific case for analytics purposes.
 	 * This endpoint is typically called when a user views a case detail page.
-	 * Uses POST method with JSON body containing caseId and apiToken.
+	 * Uses POST method with JSON body containing caseProcedureId and apiToken.
 	 *
 	 * @since 3.0.0
 	 *
-	 * @param string $api_token API authentication token
-	 * @param int    $case_id   Case ID to track (required)
-	 * @param array  $metadata  Optional additional metadata for tracking
+	 * @param string $api_token         API authentication token
+	 * @param int    $case_procedure_id Case procedure ID to track (the small ID from API, required)
+	 * @param array  $metadata          Optional additional metadata for tracking
 	 *
 	 * @return string|null Response body on success, null on failure
 	 */
 	public function track_case_view(
 		string $api_token,
-		int $case_id,
+		int $case_procedure_id,
 		array $metadata = array()
 	): ?string {
 		// Validate required parameters
-		if ( empty( $api_token ) || $case_id <= 0 ) {
-			$this->log_error( 'Invalid parameters for case view tracking: API token and case ID are required' );
+		if ( empty( $api_token ) || $case_procedure_id <= 0 ) {
+			$this->log_error( 'Invalid parameters for case view tracking: API token and case procedure ID are required' );
 			return null;
 		}
 
 		// Build request body with required format
+		// The API expects caseProcedureId (the small ID like 35, 36, etc.)
 		$body = array(
-			'caseId' => $case_id,
+			'caseProcedureId' => $case_procedure_id,
 		);
 
 		// Add any additional metadata

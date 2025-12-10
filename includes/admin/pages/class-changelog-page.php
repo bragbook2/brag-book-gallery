@@ -93,6 +93,32 @@ class Changelog_Page extends Settings_Base {
 				</div>
 			</div>
 
+			<!-- Version 4.0.1 -->
+			<div class="brag-book-gallery-section">
+				<div class="brag-book-gallery-changelog-version">
+					<h3>
+						<span class="version-badge version-patch">v4.0.1</span>
+						<?php esc_html_e( 'December 10, 2025', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Patch Release', 'brag-book-gallery' ); ?>
+					</h3>
+					<div class="brag-book-gallery-card">
+						<p><?php esc_html_e( 'This patch release fixes favorites functionality and implements proper case view tracking with the correct API parameters.', 'brag-book-gallery' ); ?></p>
+						<h4><?php esc_html_e( '🐛 Bug Fixes', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Favorites API: Fixed add/remove favorites using correct caseProcedureId parameter for v2 API endpoints', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Favorites Remove: Fixed ajax_remove_favorite to properly look up caseProcedureId from post meta', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Views Tracking: Fixed /views endpoint to send caseProcedureId instead of caseId', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Server-side View Tracking: Fixed scheduled view tracking to use correct caseProcedureId', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '✨ Enhancements', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Client-side View Tracking: Added JavaScript tracking when clicking case cards and carousel items', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Data Attributes: Added data-procedure-case-id attribute to case cards, case detail views, and carousel items', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Console Logging: Added console.log messages for view tracking confirmation', 'brag-book-gallery' ); ?></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
 			<!-- Version 4.0.0 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">

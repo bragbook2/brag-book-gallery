@@ -1636,11 +1636,11 @@ final class Setup {
 	 * blocking page load. This method is called by WordPress cron system.
 	 *
 	 * @since 3.0.0
-	 * @param string $case_id The case ID to track
+	 * @param string $case_procedure_id The case procedure ID to track (small API ID like 35, 36)
 	 * @return void
 	 */
-	public function handle_scheduled_view_tracking( string $case_id ): void {
-		if ( empty( $case_id ) ) {
+	public function handle_scheduled_view_tracking( string $case_procedure_id ): void {
+		if ( empty( $case_procedure_id ) ) {
 			return;
 		}
 
@@ -1663,19 +1663,16 @@ final class Setup {
 			// Get base API URL
 			$api_endpoint = get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' );
 
-			// Build the tracking URL
+			// Build the tracking URL using /views endpoint
 			$tracking_url = sprintf(
-				'%s/api/plugin/tracker?apiToken=%s&websitepropertyId=%s',
+				'%s/api/plugin/views?apiToken=%s',
 				$api_endpoint,
-				urlencode( $api_token ),
-				urlencode( $website_property_id )
+				urlencode( $api_token )
 			);
 
-			// Prepare tracking data
+			// Prepare tracking data with caseProcedureId
 			$tracking_data = array(
-				'case_id' => $case_id,
-				'action'  => 'view',
-				'source'  => 'wordpress_plugin_scheduled',
+				'caseProcedureId' => $case_procedure_id,
 			);
 
 			// Make the API request
@@ -1711,11 +1708,11 @@ final class Setup {
 			// Log success or failure
 			if ( isset( $response_data['success'] ) && $response_data['success'] ) {
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-					error_log( "BRAGBook Gallery: Successfully tracked scheduled view for case {$case_id}" );
+					error_log( "BRAGBook Gallery: Successfully tracked scheduled view for caseProcedureId {$case_procedure_id}" );
 				}
 			} else {
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-					error_log( "BRAGBook Gallery: Scheduled view tracking failed for case {$case_id} - " . wp_json_encode( $response_data ) );
+					error_log( "BRAGBook Gallery: Scheduled view tracking failed for caseProcedureId {$case_procedure_id} - " . wp_json_encode( $response_data ) );
 				}
 			}
 

@@ -77,10 +77,13 @@ class FavoritesManager {
 		let procedureId = '';
 		const isFavorited = button.dataset.favorited === 'true';
 
-		// Prioritize WordPress post ID from the case card data-post-id attribute
+		// Prioritize WordPress post ID from case card or case detail view data-post-id attribute
 		const caseCard = button.closest('.brag-book-gallery-case-card');
-		if (caseCard && caseCard.dataset.postId) {
-			itemId = caseCard.dataset.postId;
+		const caseDetailView = button.closest('.brag-book-gallery-case-detail-view');
+		const caseContainer = caseCard || caseDetailView;
+
+		if (caseContainer && caseContainer.dataset.postId) {
+			itemId = caseContainer.dataset.postId;
 		} else {
 			// Fallback to button's own data attributes
 			itemId = button.dataset.itemId || button.dataset.caseId || '';
@@ -94,11 +97,12 @@ class FavoritesManager {
 			}
 		}
 
-		// Get procedure ID from case card or active nav link
-		if (caseCard) {
-			// Try current procedure ID first, then fall back to procedure IDs list
-			procedureId = caseCard.dataset.currentProcedureId ||
-				(caseCard.dataset.procedureIds ? caseCard.dataset.procedureIds.split(',')[0] : '');
+		// Get procedure ID from case container or active nav link
+		if (caseContainer) {
+			// Try various procedure ID attributes
+			procedureId = caseContainer.dataset.procedureId ||  // Single procedure ID (favorites cards)
+				caseContainer.dataset.currentProcedureId ||      // Current procedure ID (case detail view)
+				(caseContainer.dataset.procedureIds ? caseContainer.dataset.procedureIds.split(',')[0] : '');  // First from list
 		}
 		// Fallback to active nav link procedure ID
 		if (!procedureId) {

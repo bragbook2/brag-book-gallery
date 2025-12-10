@@ -539,7 +539,7 @@ final class Favorites_Handler {
 			$procedure_id = absint( $_POST['procedure_id'] ?? 0 );
 
 			// Handle both WordPress post IDs and BRAGBook API case IDs
-			$api_case_id = '';
+			$case_procedure_id = '';
 			$wp_post_id = 0;
 
 			// First, try to treat it as a WordPress post ID
@@ -550,17 +550,37 @@ final class Favorites_Handler {
 				// If it's a valid WordPress post of type brag_book_cases
 				if ( $test_post && $test_post->post_type === 'brag_book_cases' ) {
 					$wp_post_id = $test_post_id;
-					$api_case_id = get_post_meta( $wp_post_id, 'brag_book_gallery_case_id', true );
+
+					// Get the case procedure ID - this is the 'id' field from the API
+					// It's typically a small number like 35, 36, etc. (not the large caseId)
+					$case_procedure_id = get_post_meta( $wp_post_id, 'brag_book_gallery_procedure_case_id', true );
+
+					// Fallback to original_case_id if procedure_case_id is empty
+					if ( empty( $case_procedure_id ) ) {
+						$case_procedure_id = get_post_meta( $wp_post_id, 'brag_book_gallery_original_case_id', true );
+					}
+
 					// Try to get procedure ID from post meta if not provided
 					if ( empty( $procedure_id ) ) {
-						$procedure_id = absint( get_post_meta( $wp_post_id, 'brag_book_gallery_procedure_id', true ) );
+						$procedure_id = absint( get_post_meta( $wp_post_id, '_procedure_id', true ) );
 					}
 				}
 			}
 
-			// If we didn't find a WordPress post, treat it as a BRAGBook API case ID
-			if ( empty( $api_case_id ) && ! empty( $received_case_id ) ) {
-				$api_case_id = $received_case_id; // Use it directly as API case ID (caseProcedureId)
+			// If we didn't find a WordPress post, treat it as a BRAGBook API caseProcedureId
+			if ( empty( $case_procedure_id ) && ! empty( $received_case_id ) ) {
+				$case_procedure_id = $received_case_id; // Use it directly as caseProcedureId
+			}
+
+			// Debug logging for favorites troubleshooting
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( sprintf(
+					'BRAGBook Favorites Debug - Add: received_case_id=%s, wp_post_id=%d, case_procedure_id=%s, procedure_id=%d',
+					$received_case_id,
+					$wp_post_id,
+					$case_procedure_id,
+					$procedure_id
+				) );
 			}
 
 			if ( empty( $name ) || empty( $email ) || empty( $phone ) ) {
@@ -581,25 +601,25 @@ final class Favorites_Handler {
 				] );
 			}
 
-			if ( empty( $api_case_id ) ) {
+			if ( empty( $case_procedure_id ) ) {
 				wp_send_json_error( [
 					'message' => __( 'This case is not available for favoriting. The case may not be properly configured.', 'brag-book-gallery' ),
 				] );
 			}
 
 			// Submit favorite to BRAGBook API using the v2 endpoint
-			$result = self::add_favorite_to_api( $name, $email, $phone, $api_case_id, $procedure_id );
+			$result = self::add_favorite_to_api( $name, $email, $phone, $case_procedure_id, $procedure_id );
 
 			if ( $result ) {
 				wp_send_json_success( [
 					'message' => __( 'Favorite added successfully!', 'brag-book-gallery' ),
 					'data'    => [
-						'name'            => $name,
-						'email'           => $email,
-						'phone'           => $phone,
-						'wp_post_id'      => $wp_post_id,
-						'api_case_id'     => $api_case_id,
-						'procedure_id'    => $procedure_id,
+						'name'               => $name,
+						'email'              => $email,
+						'phone'              => $phone,
+						'wp_post_id'         => $wp_post_id,
+						'case_procedure_id'  => $case_procedure_id,
+						'procedure_id'       => $procedure_id,
 					],
 				] );
 			} else {
@@ -607,11 +627,11 @@ final class Favorites_Handler {
 					'message' => __( 'Failed to save favorite. Please try again.', 'brag-book-gallery' ),
 				] );
 			}
-		} catch ( Exception $e ) {
+		} catch ( \Exception $e ) {
 			wp_send_json_error( [
 				'message' => $e->getMessage(),
 			] );
-		} catch ( Throwable $e ) {
+		} catch ( \Throwable $e ) {
 			wp_send_json_error( [
 				'message' => __( 'A system error occurred. Please try again.', 'brag-book-gallery' ),
 			] );
@@ -631,21 +651,30 @@ final class Favorites_Handler {
 	 * @since 3.3.2 Updated to use v2 API endpoint with Bearer authentication.
 	 */
 	private static function add_favorite_to_api( string $name, string $email, string $phone, string $case_procedure_id, int $procedure_id = 0 ): bool {
-		// Get API credentials from arrays (stored as numeric arrays, not mode-based)
+		// Get API credentials from arrays
 		$api_tokens_option = get_option( 'brag_book_gallery_api_token', [] );
 		$website_property_ids_option = get_option( 'brag_book_gallery_website_property_id', [] );
 
-		// Extract values from numeric arrays
+		// Extract values - try both numeric array and mode-based array formats
 		$api_token = '';
 		$website_property_id = 0;
 
-		// Check if stored as numeric array (current format)
+		// Try numeric array format first (legacy)
 		if ( is_array( $api_tokens_option ) && ! empty( $api_tokens_option[0] ) ) {
 			$api_token = $api_tokens_option[0];
 		}
+		// Fall back to mode-based array format ('default' key)
+		if ( empty( $api_token ) && is_array( $api_tokens_option ) && ! empty( $api_tokens_option['default'] ) ) {
+			$api_token = $api_tokens_option['default'];
+		}
 
+		// Try numeric array format first (legacy)
 		if ( is_array( $website_property_ids_option ) && ! empty( $website_property_ids_option[0] ) ) {
 			$website_property_id = intval( $website_property_ids_option[0] );
+		}
+		// Fall back to mode-based array format ('default' key)
+		if ( empty( $website_property_id ) && is_array( $website_property_ids_option ) && ! empty( $website_property_ids_option['default'] ) ) {
+			$website_property_id = intval( $website_property_ids_option['default'] );
 		}
 
 		// Validate API credentials
@@ -661,14 +690,35 @@ final class Favorites_Handler {
 		$api_base_url = get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' );
 
 		// Build query parameters for v2 API
+		// caseProcedureId should be an integer - ensure it's numeric before casting
+		$case_procedure_id_int = is_numeric( $case_procedure_id ) ? (int) $case_procedure_id : 0;
+
+		if ( $case_procedure_id_int === 0 ) {
+			throw new \Exception( sprintf(
+				'Invalid case procedure ID: "%s" is not a valid numeric ID.',
+				$case_procedure_id
+			) );
+		}
+
 		$query_params = [
 			'websitePropertyId' => $website_property_id,
-			'caseProcedureId'   => (int) $case_procedure_id,
+			'caseProcedureId'   => $case_procedure_id_int,
 			'procedureId'       => $procedure_id,
 			'email'             => $email,
 			'phone'             => $phone,
 			'name'              => $name,
 		];
+
+		// Debug logging for API request
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( sprintf(
+				'BRAGBook Favorites API - Add Request: websitePropertyId=%d, caseProcedureId=%d, procedureId=%d, email=%s',
+				$website_property_id,
+				$case_procedure_id_int,
+				$procedure_id,
+				$email
+			) );
+		}
 
 		// Build full API URL with query parameters
 		$api_url = rtrim( $api_base_url, '/' ) . '/api/plugin/v2/leads/favorites/add?' . http_build_query( $query_params );
@@ -771,8 +821,60 @@ final class Favorites_Handler {
 				] );
 			}
 
+			// Handle both WordPress post IDs and BRAGBook API case IDs
+			$case_procedure_id = '';
+			$wp_post_id = 0;
+
+			// First, try to treat it as a WordPress post ID
+			if ( is_numeric( $received_case_id ) ) {
+				$test_post_id = absint( $received_case_id );
+				$test_post = get_post( $test_post_id );
+
+				// If it's a valid WordPress post of type brag_book_cases
+				if ( $test_post && $test_post->post_type === 'brag_book_cases' ) {
+					$wp_post_id = $test_post_id;
+
+					// Get the case procedure ID - this is the 'id' field from the API
+					// It's typically a small number like 35, 36, etc. (not the large caseId)
+					$case_procedure_id = get_post_meta( $wp_post_id, 'brag_book_gallery_procedure_case_id', true );
+
+					// Fallback to original_case_id if procedure_case_id is empty
+					if ( empty( $case_procedure_id ) ) {
+						$case_procedure_id = get_post_meta( $wp_post_id, 'brag_book_gallery_original_case_id', true );
+					}
+
+					// Try to get procedure ID from post meta if not provided
+					if ( empty( $procedure_id ) ) {
+						$procedure_id = absint( get_post_meta( $wp_post_id, '_procedure_id', true ) );
+					}
+				}
+			}
+
+			// If we didn't find a WordPress post, treat it as a BRAGBook API caseProcedureId
+			if ( empty( $case_procedure_id ) && ! empty( $received_case_id ) ) {
+				$case_procedure_id = $received_case_id; // Use it directly as caseProcedureId
+			}
+
+			// Debug logging for favorites troubleshooting
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( sprintf(
+					'BRAGBook Favorites Debug - Remove: received_case_id=%s, wp_post_id=%d, case_procedure_id=%s, procedure_id=%d, email=%s',
+					$received_case_id,
+					$wp_post_id,
+					$case_procedure_id,
+					$procedure_id,
+					$email
+				) );
+			}
+
+			if ( empty( $case_procedure_id ) ) {
+				wp_send_json_error( [
+					'message' => __( 'This case is not available for unfavoriting. The case may not be properly configured.', 'brag-book-gallery' ),
+				] );
+			}
+
 			// Remove favorite from BRAGBook API using the v2 endpoint
-			$result = self::remove_favorite_from_api( $email, $received_case_id, $procedure_id );
+			$result = self::remove_favorite_from_api( $email, $case_procedure_id, $procedure_id );
 
 			if ( $result ) {
 				wp_send_json_success( [
@@ -804,21 +906,30 @@ final class Favorites_Handler {
 	 * @since 3.3.2
 	 */
 	private static function remove_favorite_from_api( string $email, string $case_procedure_id, int $procedure_id = 0 ): bool {
-		// Get API credentials from arrays (stored as numeric arrays, not mode-based)
+		// Get API credentials from arrays
 		$api_tokens_option = get_option( 'brag_book_gallery_api_token', [] );
 		$website_property_ids_option = get_option( 'brag_book_gallery_website_property_id', [] );
 
-		// Extract values from numeric arrays
+		// Extract values - try both numeric array and mode-based array formats
 		$api_token = '';
 		$website_property_id = 0;
 
-		// Check if stored as numeric array (current format)
+		// Try numeric array format first (legacy)
 		if ( is_array( $api_tokens_option ) && ! empty( $api_tokens_option[0] ) ) {
 			$api_token = $api_tokens_option[0];
 		}
+		// Fall back to mode-based array format ('default' key)
+		if ( empty( $api_token ) && is_array( $api_tokens_option ) && ! empty( $api_tokens_option['default'] ) ) {
+			$api_token = $api_tokens_option['default'];
+		}
 
+		// Try numeric array format first (legacy)
 		if ( is_array( $website_property_ids_option ) && ! empty( $website_property_ids_option[0] ) ) {
 			$website_property_id = intval( $website_property_ids_option[0] );
+		}
+		// Fall back to mode-based array format ('default' key)
+		if ( empty( $website_property_id ) && is_array( $website_property_ids_option ) && ! empty( $website_property_ids_option['default'] ) ) {
+			$website_property_id = intval( $website_property_ids_option['default'] );
 		}
 
 		// Validate API credentials
@@ -834,12 +945,33 @@ final class Favorites_Handler {
 		$api_base_url = get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' );
 
 		// Build query parameters for v2 API
+		// caseProcedureId should be an integer - ensure it's numeric before casting
+		$case_procedure_id_int = is_numeric( $case_procedure_id ) ? (int) $case_procedure_id : 0;
+
+		if ( $case_procedure_id_int === 0 ) {
+			throw new \Exception( sprintf(
+				'Invalid case procedure ID: "%s" is not a valid numeric ID.',
+				$case_procedure_id
+			) );
+		}
+
 		$query_params = [
 			'websitePropertyId' => $website_property_id,
-			'caseProcedureId'   => (int) $case_procedure_id,
+			'caseProcedureId'   => $case_procedure_id_int,
 			'procedureId'       => $procedure_id,
 			'email'             => $email,
 		];
+
+		// Debug logging for API request
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( sprintf(
+				'BRAGBook Favorites API - Remove Request: websitePropertyId=%d, caseProcedureId=%d, procedureId=%d, email=%s',
+				$website_property_id,
+				$case_procedure_id_int,
+				$procedure_id,
+				$email
+			) );
+		}
 
 		// Build full API URL with query parameters
 		$api_url = rtrim( $api_base_url, '/' ) . '/api/plugin/v2/leads/favorites/remove?' . http_build_query( $query_params );
@@ -953,7 +1085,7 @@ final class Favorites_Handler {
 					'email' => $email,
 				] );
 			}
-		} catch ( Exception $e ) {
+		} catch ( \Exception $e ) {
 			// API call failed
 			wp_send_json_error( [
 				'message' => __( 'Unable to verify email address at this time. Please try again later.', 'brag-book-gallery' ),
@@ -979,10 +1111,16 @@ final class Favorites_Handler {
 			] );
 		}
 
-		// Get favorites data from request
+		// Get favorites data from request - can be either full case objects or just post IDs
 		$favorites_data = $_POST['favorites'] ?? [];
 		if ( ! is_array( $favorites_data ) ) {
 			$favorites_data = json_decode( stripslashes( $favorites_data ), true ) ?: [];
+		}
+
+		// Check for post_ids parameter (WordPress post IDs from localStorage)
+		$post_ids = $_POST['post_ids'] ?? [];
+		if ( ! is_array( $post_ids ) ) {
+			$post_ids = json_decode( stripslashes( $post_ids ), true ) ?: [];
 		}
 
 		// Get user info from request
@@ -994,6 +1132,11 @@ final class Favorites_Handler {
 		// Get grid configuration
 		$default_columns = absint( get_option( 'brag_book_gallery_columns', 2 ) );
 		$columns = max( 1, min( 6, absint( $_POST['columns'] ?? $default_columns ) ) );
+
+		// If we have post IDs but no favorites data, fetch from WordPress
+		if ( ! empty( $post_ids ) && empty( $favorites_data ) ) {
+			$favorites_data = self::get_favorites_data_from_post_ids( $post_ids );
+		}
 
 		if ( empty( $favorites_data ) ) {
 			// Return empty state HTML
@@ -1014,12 +1157,77 @@ final class Favorites_Handler {
 				'count' => count( $favorites_data ),
 			] );
 
-		} catch ( Exception $e ) {
+		} catch ( \Exception $e ) {
 			wp_send_json_error( [
 				'message' => __( 'Unable to load favorites. Please try again.', 'brag-book-gallery' ),
 				'error' => $e->getMessage(),
 			] );
 		}
+	}
+
+	/**
+	 * Get favorites data from WordPress post IDs
+	 *
+	 * @param array $post_ids Array of WordPress post IDs.
+	 * @return array Array of case data for rendering.
+	 * @since 3.3.2
+	 */
+	private static function get_favorites_data_from_post_ids( array $post_ids ): array {
+		$favorites_data = [];
+
+		foreach ( $post_ids as $post_id ) {
+			$post_id = absint( $post_id );
+			if ( ! $post_id ) {
+				continue;
+			}
+
+			$post = get_post( $post_id );
+			if ( ! $post || $post->post_type !== 'brag_book_cases' ) {
+				continue;
+			}
+
+			// Get post meta
+			$case_id = get_post_meta( $post_id, 'brag_book_gallery_case_id', true );
+			$procedure_case_id = get_post_meta( $post_id, 'brag_book_gallery_procedure_case_id', true );
+			$procedure_id = get_post_meta( $post_id, '_procedure_id', true );
+
+			// Get procedure info from taxonomy
+			$procedure_terms = wp_get_object_terms( $post_id, \BRAGBookGallery\Includes\Extend\Taxonomies::TAXONOMY_PROCEDURES );
+			$procedure_name = '';
+			$procedure_slug = '';
+			if ( ! empty( $procedure_terms ) && ! is_wp_error( $procedure_terms ) ) {
+				$procedure_name = $procedure_terms[0]->name;
+				$procedure_slug = $procedure_terms[0]->slug;
+			}
+
+			// Get featured image
+			$thumbnail_id = get_post_thumbnail_id( $post_id );
+			$image_url = '';
+			if ( $thumbnail_id ) {
+				$image_data = wp_get_attachment_image_src( $thumbnail_id, 'medium_large' );
+				$image_url = $image_data ? $image_data[0] : '';
+			}
+
+			// Get SEO suffix for URL
+			$seo_suffix = get_post_meta( $post_id, '_case_seo_suffix_url', true );
+			if ( empty( $seo_suffix ) ) {
+				$seo_suffix = $case_id ?: $post_id;
+			}
+
+			// Build case data object
+			$favorites_data[] = [
+				'id'              => $case_id ?: $procedure_case_id,
+				'post_id'         => $post_id,
+				'procedure_id'    => $procedure_id,
+				'procedure_name'  => $procedure_name,
+				'procedure_slug'  => $procedure_slug,
+				'seo_suffix'      => $seo_suffix,
+				'image_url'       => $image_url,
+				'title'           => $post->post_title,
+			];
+		}
+
+		return $favorites_data;
 	}
 
 	/**
@@ -1055,14 +1263,22 @@ final class Favorites_Handler {
 	 */
 	private static function render_favorites_case_card( array $case_data ): string {
 		$case_id = $case_data['id'] ?? '';
+		$post_id = $case_data['post_id'] ?? '';
+		$procedure_id = $case_data['procedure_id'] ?? $case_data['procedureId'] ?? '';
 		$images = $case_data['images'] ?? [];
 		$procedures = $case_data['procedures'] ?? [];
 		$age = $case_data['age'] ?? $case_data['patientAge'] ?? '';
 		$gender = $case_data['gender'] ?? $case_data['patientGender'] ?? '';
 
-		// Get primary image
+		// Get primary image - check multiple sources
 		$primary_image = '';
-		if ( ! empty( $images ) && is_array( $images ) ) {
+
+		// First check direct image_url (from WordPress data)
+		if ( ! empty( $case_data['image_url'] ) ) {
+			$primary_image = $case_data['image_url'];
+		}
+		// Then check images array (from API data)
+		elseif ( ! empty( $images ) && is_array( $images ) ) {
 			// Look for the first image with a URL
 			foreach ( $images as $image ) {
 				if ( ! empty( $image['url'] ) ) {
@@ -1072,20 +1288,43 @@ final class Favorites_Handler {
 			}
 		}
 
-		// Get primary procedure name
+		// Get primary procedure name - check multiple sources
 		$primary_procedure = 'Case';
-		if ( ! empty( $procedures ) && is_array( $procedures ) ) {
+
+		// First check procedure_name (from WordPress data)
+		if ( ! empty( $case_data['procedure_name'] ) ) {
+			$primary_procedure = $case_data['procedure_name'];
+		}
+		// Then check procedures array (from API data)
+		elseif ( ! empty( $procedures ) && is_array( $procedures ) ) {
 			$primary_procedure = is_array( $procedures[0] ) ? $procedures[0]['name'] ?? 'Case' : $procedures[0];
 		}
 
+		// Get procedure slug for URL
+		$procedure_slug = $case_data['procedure_slug'] ?? '';
+
+		// Get SEO suffix for URL
+		$seo_suffix = $case_data['seo_suffix'] ?? $case_id;
+
 		// Generate case URL
 		$gallery_slug = self::get_gallery_page_slug();
-		$case_url = '/' . ltrim( $gallery_slug, '/' ) . '/' . $case_id . '/';
+
+		// Build URL with procedure slug if available
+		if ( ! empty( $procedure_slug ) && ! empty( $seo_suffix ) ) {
+			$case_url = '/' . ltrim( $gallery_slug, '/' ) . '/' . $procedure_slug . '/' . $seo_suffix . '/';
+		} else {
+			$case_url = '/' . ltrim( $gallery_slug, '/' ) . '/' . $case_id . '/';
+		}
+
+		// Determine the item ID for the favorite button (prefer WordPress post ID)
+		$favorite_item_id = ! empty( $post_id ) ? $post_id : $case_id;
 
 		// Build data attributes for filtering
 		$data_attrs = [
 			'data-card="true"',
 			'data-case-id="' . esc_attr( $case_id ) . '"',
+			'data-post-id="' . esc_attr( $post_id ) . '"',
+			'data-procedure-id="' . esc_attr( $procedure_id ) . '"',
 			'data-favorited="true"', // Always favorited in favorites view
 		];
 
@@ -1105,7 +1344,7 @@ final class Favorites_Handler {
 						<div class="brag-book-gallery-item-actions">
 							<button class="brag-book-gallery-favorite-button favorited"
 									data-favorited="true"
-									data-item-id="case-<?php echo esc_attr( $case_id ); ?>"
+									data-item-id="<?php echo esc_attr( $favorite_item_id ); ?>"
 									aria-label="Remove from favorites">
 								<svg fill="#ff595c" stroke="#ff595c" stroke-width="2" viewBox="0 0 24 24">
 									<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
@@ -1237,22 +1476,26 @@ final class Favorites_Handler {
 		$api_tokens = get_option( 'brag_book_gallery_api_token', [] );
 		$website_property_ids = get_option( 'brag_book_gallery_website_property_id', [] );
 
-		// Extract first API token
+		// Extract API token - try multiple formats
 		$api_token = '';
 		if ( is_string( $api_tokens ) && ! empty( $api_tokens ) ) {
 			$api_token = $api_tokens;
 		} elseif ( is_array( $api_tokens ) && ! empty( $api_tokens[0] ) ) {
 			$api_token = $api_tokens[0];
+		} elseif ( is_array( $api_tokens ) && ! empty( $api_tokens['default'] ) ) {
+			$api_token = $api_tokens['default'];
 		} else {
 			throw new \Exception( 'No API token configured. Please configure API settings first.' );
 		}
 
-		// Extract first website property ID
+		// Extract website property ID - try multiple formats
 		$website_property_id = 0;
 		if ( is_string( $website_property_ids ) && ! empty( $website_property_ids ) ) {
 			$website_property_id = (int) $website_property_ids;
 		} elseif ( is_array( $website_property_ids ) && ! empty( $website_property_ids[0] ) ) {
 			$website_property_id = (int) $website_property_ids[0];
+		} elseif ( is_array( $website_property_ids ) && ! empty( $website_property_ids['default'] ) ) {
+			$website_property_id = (int) $website_property_ids['default'];
 		} else {
 			throw new \Exception( 'No website property ID configured. Please configure API settings first.' );
 		}
@@ -1268,6 +1511,16 @@ final class Favorites_Handler {
 
 		// Build full API URL with query parameters
 		$api_url = rtrim( $api_base_url, '/' ) . '/api/plugin/v2/leads/favorites/list?' . http_build_query( $query_params );
+
+		// Debug logging
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( sprintf(
+				'BRAGBook Favorites API - List Request: URL=%s, websitePropertyId=%d, email=%s',
+				$api_url,
+				$website_property_id,
+				$email
+			) );
+		}
 
 		// Make direct API request with Bearer authentication
 		$response = wp_remote_post( $api_url, [
@@ -1301,12 +1554,26 @@ final class Favorites_Handler {
 			throw new \Exception( 'Invalid JSON response: ' . json_last_error_msg() );
 		}
 
+		// The API returns data in { success: true, data: { favorites: [...] } } format
+		// Extract the favorites array from the nested structure
+		$favorites_array = $data['data']['favorites'] ?? $data['favorites'] ?? [];
+
+		// Debug logging for response
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( sprintf(
+				'BRAGBook Favorites API - List Response: success=%s, has_favorites=%s, raw_response=%s',
+				isset( $data['success'] ) ? ( $data['success'] ? 'true' : 'false' ) : 'not set',
+				! empty( $favorites_array ) ? 'yes (' . count( $favorites_array ) . ')' : 'no',
+				substr( $response_body, 0, 500 )
+			) );
+		}
+
 		// Check if favorites were found
-		if ( ! isset( $data['success'] ) || ! $data['success'] || empty( $data['favorites'] ) ) {
+		if ( ! isset( $data['success'] ) || ! $data['success'] || empty( $favorites_array ) ) {
 			return false;
 		}
 
-		$favorites_data = $data['favorites'];
+		$favorites_data = $favorites_array;
 
 		// Extract user info from first favorite entry (they should all be the same user)
 		$first_favorite = reset( $favorites_data );
@@ -1344,8 +1611,23 @@ final class Favorites_Handler {
 			]
 		];
 
+		// Debug logging for extracted user info
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( sprintf(
+				'BRAGBook Favorites API - Extracted user info: email=%s, name=%s, phone=%s, favorites_count=%d',
+				$user_info['email'] ?? 'empty',
+				$user_info['name'] ?? 'empty',
+				$user_info['phone'] ?? 'empty',
+				$user_info['favorites']['total_count'] ?? 0
+			) );
+		}
+
 		// Ensure we have essential user info
 		if ( empty( $user_info['email'] ) || empty( $user_info['name'] ) || empty( $user_info['phone'] ) ) {
+			// Log the reason for failure
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'BRAGBook Favorites API - User info incomplete, returning false' );
+			}
 			return false;
 		}
 

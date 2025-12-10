@@ -476,7 +476,7 @@ class Case_Handler {
 
 		// Build the main content wrapper matching the desired structure
 		$html = '<div class="brag-book-gallery-main-content" role="region" aria-label="Gallery content" id="gallery-content">';
-		$html .= '<div class="brag-book-gallery-case-detail-view" data-case-id="' . $case_id . '" data-procedure-ids="' . esc_attr( $procedure_ids ) . '" data-procedure="' . esc_attr( $procedure_slug ) . '">';
+		$html .= '<div class="brag-book-gallery-case-detail-view" data-post-id="' . esc_attr( $case_post->ID ) . '" data-case-id="' . $case_id . '" data-procedure-ids="' . esc_attr( $procedure_ids ) . '" data-procedure="' . esc_attr( $procedure_slug ) . '">';
 
 		// Generate the detailed case view
 		$html .= $this->render_case_detail_view( $case_data, $case_post );
@@ -595,6 +595,7 @@ class Case_Handler {
 		}
 
 		$case_id = esc_attr( $case_data['id'] );
+		$wp_post_id = get_the_ID(); // WordPress post ID for favorites functionality
 		$procedure_name = ! empty( $case_data['procedures'] ) ? $case_data['procedures'][0]['name'] : 'Case';
 
 		// Generate schema markup for the image gallery
@@ -619,7 +620,7 @@ class Case_Handler {
 		if ( ! empty( $images[0] ) ) {
 			$html .= '<img src="' . esc_url( $images[0] ) . '" alt="' . esc_attr( $procedure_name . ' - Case ' . $case_id ) . '" loading="eager" itemprop="image">';
 			$html .= '<div class="brag-book-gallery-item-actions">';
-			$html .= '<button class="brag-book-gallery-favorite-button" data-favorited="false" data-item-id="case_' . $case_id . '_main" aria-label="Add to favorites">';
+			$html .= '<button class="brag-book-gallery-favorite-button" data-favorited="false" data-item-id="' . $wp_post_id . '" aria-label="Add to favorites">';
 			$html .= '<svg fill="rgba(255, 255, 255, 0.5)" stroke="white" stroke-width="2" viewBox="0 0 24 24">';
 			$html .= '<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>';
 			$html .= '</svg>';
@@ -1119,11 +1120,21 @@ class Case_Handler {
 		// Get procedure details data attributes
 		$procedure_details_attrs = $this->get_procedure_details_attributes( $case_post->ID );
 
+		// Get procedure case ID for view tracking (small API ID)
+		$procedure_case_id = $case_data['id'] ?? '';
+		if ( empty( $procedure_case_id ) ) {
+			$procedure_case_id = get_post_meta( $case_post->ID, 'brag_book_gallery_procedure_case_id', true );
+		}
+		if ( empty( $procedure_case_id ) ) {
+			$procedure_case_id = get_post_meta( $case_post->ID, 'brag_book_gallery_original_case_id', true );
+		}
+
 		// Build the complete case card HTML
 		$html = sprintf(
-			'<article class="brag-book-gallery-case-card" data-test="testing" data-post-id="%s" data-case-id="%s" data-age="%s" data-gender="%s" data-ethnicity="%s" data-procedure-ids="%s" data-current-procedure-id="%s" data-current-term-id="%s"%s>',
+			'<article class="brag-book-gallery-case-card" data-test="testing" data-post-id="%s" data-case-id="%s" data-procedure-case-id="%s" data-age="%s" data-gender="%s" data-ethnicity="%s" data-procedure-ids="%s" data-current-procedure-id="%s" data-current-term-id="%s"%s>',
 			$id,
 			$case_id,
+			esc_attr( $procedure_case_id ), // The small API ID for view tracking
 			$patient_age,
 			$patient_gender,
 			$patient_ethnicity,
