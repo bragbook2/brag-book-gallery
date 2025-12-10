@@ -4,7 +4,66 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.3.2-beta14] - 2025-11-13 (Current Beta)
+## [4.0.0] - 2025-12-09 (Stable Release)
+
+This major release consolidates all features and improvements from the 3.3.2 beta series into a stable production release.
+
+### Added
+- **Doctors Taxonomy**: New `brag_book_doctors` taxonomy for managing doctor profiles
+  - Term meta fields: First Name, Last Name, Suffix, Profile URL, Profile Photo, and Member ID
+  - Doctors submenu in BRAG Book admin menu (when property ID 111 is enabled)
+  - Automatic doctor term creation during Stage 3 data sync from case creator information
+- **Doctor Profile URL Field**: `brag_book_gallery_doctor_profile_url` meta field for case post types
+- **Doctor Suffix Field**: `brag_book_gallery_doctor_suffix` meta field for case post types
+- **Doctor Details Display**: "Show Doctor Details" toggle in Display Settings
+- **Doctor Name Field**: Doctor Name field in case post meta (Basic Information tab)
+- **Member ID Field**: Member ID number field in case post meta
+- **Minified Assets**: Intelligent asset minification system
+  - Production mode loads `.min.js` and `.min.css` files (50-54% smaller JS, 10-13% smaller CSS)
+  - Development mode (`SCRIPT_DEBUG` enabled) loads non-minified versions
+- **Procedure Links**: Clickable links to procedures in case card details with hover animations
+
+### Enhanced
+- **Case View Doctor Profile**: Doctor profile photo and name displayed below case title (property ID 111)
+- **Cases Grid Doctor Display**: Case cards display doctor photo and name instead of procedure when enabled
+- **V3 Card Doctor Display**: V3 cards show doctor name in overlay when "Show Doctor Details" is enabled
+- **Search Input Accessibility**: Improved ARIA attributes for better screen reader support
+- **HTML Semantics**: Improved semantic HTML structure throughout the plugin
+
+### Fixed
+- **Sitemap Generation**: Fixed critical `TypeError` in Sitemap class
+- **Stage 3 Sync Title Assignment**: Fixed case post titles being overwritten with incorrect procedure names
+- **V3 Card Image Clickability**: Images in v3 cards are now fully clickable
+- **Landing Page Text Editor**: Replaced TinyMCE with Trumbowyg WYSIWYG editor
+- **Gallery Landing Page Error**: Fixed null reference error in procedure referrer tracking
+- **Generate Favorites Page Button**: Fixed button functionality and status checking
+- **Case Navigation URLs**: Fixed navigation buttons to use full absolute URLs
+
+### Styling
+- New CSS styles for doctor profile section in case view header
+- New CSS styles for doctor avatar and name in case card overlays
+- Updated consultation chart colors for consistency
+
+---
+
+## [3.3.2-beta15] - 2025-12-01 (Previous Beta)
+
+### Added
+- **Doctors Taxonomy**: New `brag_book_doctors` taxonomy for managing doctor profiles
+- Term meta fields: First Name, Last Name, Suffix, Profile URL, Profile Photo, Member ID
+- Doctors submenu in BRAG Book admin menu (when property ID 111 is enabled)
+- Automatic doctor term creation during Stage 3 data sync
+
+### Enhanced
+- **Case View Doctor Profile**: Doctor profile photo and name displayed below case title
+- **Cases Grid Doctor Display**: Case cards display doctor photo and name when enabled
+- Updated v2 and v3 card overlays to support doctor display mode
+
+### Styling
+- New CSS styles for doctor profile section in case view header
+- New CSS styles for doctor avatar and name in case card overlays
+
+## [3.3.2-beta14] - 2025-11-13
 
 ### Enhanced
 - **Search Input Accessibility**: Improved search input ARIA attributes for better screen reader support

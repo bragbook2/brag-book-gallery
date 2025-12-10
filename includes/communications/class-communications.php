@@ -1145,12 +1145,13 @@ class Communications {
 	}
 
 	/**
-	 * Send data to API endpoint
+	 * Send data to API endpoint using v2 API
 	 *
 	 * Makes HTTP POST request to external API using wp_remote_post
-	 * following VIP standards for external requests.
+	 * following VIP standards for external requests with Bearer authentication.
 	 *
 	 * @since 3.0.0
+	 * @since 3.3.2 Updated to use v2 API endpoint with Bearer authentication.
 	 *
 	 * @param array  $data                Data to send (email, phone, name, details).
 	 * @param string $api_token           API token for authentication.
@@ -1163,43 +1164,36 @@ class Communications {
 		// Get base API URL.
 		$base_url = self::get_api_url();
 
-		// Build the URL with query parameters.
-		$url = sprintf(
-			'%s/api/plugin/consultations?apiToken=%s&websitepropertyId=%s',
-			$base_url,
-			urlencode( $api_token ),
-			urlencode( $website_property_id )
-		);
-
-		// Prepare the body with the form data.
-		$body_data = [
-			'email'   => $data['email'],
-			'phone'   => $data['phone'],
-			'name'    => $data['name'],
-			'details' => $data['details'],
+		// Build query parameters for v2 API.
+		$query_params = [
+			'websitePropertyId' => (int) $website_property_id,
+			'email'             => $data['email'],
+			'phone'             => $data['phone'],
+			'name'              => $data['name'],
+			'details'           => $data['details'],
 		];
 
-		// Encode as JSON.
-		$json_data = wp_json_encode( $body_data );
-
-		if ( false === $json_data ) {
-			throw new \Exception( 'Failed to encode form data.' );
-		}
+		// Build the URL with query parameters for v2 endpoint.
+		$url = sprintf(
+			'%s/api/plugin/v2/leads/consultations?%s',
+			$base_url,
+			http_build_query( $query_params )
+		);
 
 		// Log the API request for debugging (only in debug mode).
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			do_action( 'qm/debug', 'Sending communications to API', [ 'url' => $url ] );
-			do_action( 'qm/debug', 'Request body', $body_data );
+			do_action( 'qm/debug', 'Sending communications to v2 API', [ 'url' => $url ] );
+			do_action( 'qm/debug', 'Request params', $query_params );
 		}
 
-		// Make API request using wp_remote_post (VIP approved).
+		// Make API request using wp_remote_post with Bearer authentication (VIP approved).
 		$response = wp_remote_post(
 			$url,
 			[
-				'body'    => $json_data,
 				'headers' => [
-					'Content-Type'   => 'application/json',
-					'Content-Length' => (string) strlen( $json_data ),
+					'Authorization' => 'Bearer ' . $api_token,
+					'Accept'        => 'application/json',
+					'User-Agent'    => 'BRAGBookGallery/' . ( defined( 'BRAG_BOOK_GALLERY_VERSION' ) ? BRAG_BOOK_GALLERY_VERSION : '3.0.0' ),
 				],
 				'timeout' => 30,
 			]

@@ -93,12 +93,63 @@ class Changelog_Page extends Settings_Base {
 				</div>
 			</div>
 
+			<!-- Version 4.0.0 -->
+			<div class="brag-book-gallery-section">
+				<div class="brag-book-gallery-changelog-version">
+					<h3>
+						<span class="version-badge version-major">v4.0.0</span>
+						<?php esc_html_e( 'December 9, 2025', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Stable Release', 'brag-book-gallery' ); ?>
+					</h3>
+					<div class="brag-book-gallery-card">
+						<p><?php esc_html_e( 'This major release consolidates all features and improvements from the 3.3.2 beta series into a stable production release.', 'brag-book-gallery' ); ?></p>
+						<h4><?php esc_html_e( '🎉 New Features', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Doctors Taxonomy: New brag_book_doctors taxonomy for managing doctor profiles', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Term meta fields: First Name, Last Name, Suffix, Profile URL, Profile Photo, and Member ID', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Doctors submenu in BRAG Book admin menu (when property ID 111 is enabled)', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Automatic doctor term creation during Stage 3 data sync from case creator information', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Doctor Profile URL Field: brag_book_gallery_doctor_profile_url meta field for case post types', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Doctor Suffix Field: brag_book_gallery_doctor_suffix meta field for case post types', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Doctor Details Display: "Show Doctor Details" toggle in Display Settings', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Doctor Name Field: Doctor Name field in case post meta (Basic Information tab)', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Member ID Field: Member ID number field in case post meta', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Minified Assets: Intelligent asset minification system (50-54% smaller JS, 10-13% smaller CSS)', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Procedure Links: Clickable links to procedures in case card details with hover animations', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '✨ Enhancements', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Case View Doctor Profile: Doctor profile photo and name displayed below case title (property ID 111)', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Cases Grid Doctor Display: Case cards display doctor photo and name instead of procedure when enabled', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'V3 Card Doctor Display: V3 cards show doctor name in overlay when "Show Doctor Details" is enabled', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Search Input Accessibility: Improved ARIA attributes for better screen reader support', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'HTML Semantics: Improved semantic HTML structure throughout the plugin', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '🐛 Bug Fixes', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Sitemap Generation: Fixed critical TypeError in Sitemap class', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Stage 3 Sync Title Assignment: Fixed case post titles being overwritten with incorrect procedure names', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'V3 Card Image Clickability: Images in v3 cards are now fully clickable', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Landing Page Text Editor: Replaced TinyMCE with Trumbowyg WYSIWYG editor', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Gallery Landing Page Error: Fixed null reference error in procedure referrer tracking', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Generate Favorites Page Button: Fixed button functionality and status checking', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Case Navigation URLs: Fixed navigation buttons to use full absolute URLs', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '🎨 Styling', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'New CSS styles for doctor profile section in case view header', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'New CSS styles for doctor avatar and name in case card overlays', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Updated consultation chart colors for consistency', 'brag-book-gallery' ); ?></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
 			<!-- Version 3.3.2-beta15 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">
 					<h3>
 						<span class="version-badge version-beta">v3.3.2-beta15</span>
-						<?php esc_html_e( 'December 1, 2025', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Current Beta', 'brag-book-gallery' ); ?>
+						<?php esc_html_e( 'December 1, 2025', 'brag-book-gallery' ); ?>
 					</h3>
 					<div class="brag-book-gallery-card">
 						<h4><?php esc_html_e( '🎉 New Features', 'brag-book-gallery' ); ?></h4>

@@ -126,20 +126,24 @@ class Endpoints {
 	 * @var array<string, string>
 	 */
 	private const API_ENDPOINTS = array(
-		'carousel'         => '/api/plugin/carousel',
-		'optimize_image'   => '/api/plugin/optimize-image',
-		'favorites_add'    => '/api/plugin/combine/favorites/add',
-		'favorites_list'   => '/api/plugin/combine/favorites/list',
-		'sidebar'          => '/api/plugin/combine/sidebar',
-		'cases'            => '/api/plugin/combine/cases',
-		'case_detail'      => '/api/plugin/combine/cases/%s',
-		'sitemap'          => '/api/plugin/sitemap',
-		'consultations'    => '/api/plugin/consultations',
-		'tracker'          => '/api/plugin/tracker',
-		'views'            => '/api/plugin/views',
-		'validate_token'   => '/api/plugin/v2/validation/token',
-		'cases_v2'         => '/api/plugin/v2/cases',
-		'case_detail_v2'   => '/api/plugin/v2/cases/%s',
+		'carousel'            => '/api/plugin/carousel',
+		'optimize_image'      => '/api/plugin/optimize-image',
+		'favorites_add'       => '/api/plugin/combine/favorites/add',
+		'favorites_list'      => '/api/plugin/combine/favorites/list',
+		'sidebar'             => '/api/plugin/combine/sidebar',
+		'cases'               => '/api/plugin/combine/cases',
+		'case_detail'         => '/api/plugin/combine/cases/%s',
+		'sitemap'             => '/api/plugin/sitemap',
+		'consultations'       => '/api/plugin/consultations',
+		'tracker'             => '/api/plugin/tracker',
+		'views'               => '/api/plugin/views',
+		'validate_token'      => '/api/plugin/v2/validation/token',
+		'cases_v2'            => '/api/plugin/v2/cases',
+		'case_detail_v2'      => '/api/plugin/v2/cases/%s',
+		'favorites_add_v2'    => '/api/plugin/v2/leads/favorites/add',
+		'favorites_remove_v2' => '/api/plugin/v2/leads/favorites/remove',
+		'favorites_list_v2'   => '/api/plugin/v2/leads/favorites/list',
+		'consultations_v2'    => '/api/plugin/v2/leads/consultations',
 	);
 
 	/**
@@ -1799,6 +1803,350 @@ class Endpoints {
 
 		if ( json_last_error() !== JSON_ERROR_NONE ) {
 			$this->log_error( 'Invalid JSON response from v2 case detail API: ' . json_last_error_msg() );
+			return null;
+		}
+
+		return $data;
+	}
+
+	/**
+	 * Add case to user favorites using v2 API
+	 *
+	 * Adds a case to the user's favorites list using Bearer authentication
+	 * and query parameters instead of JSON body.
+	 *
+	 * @since 3.3.2
+	 *
+	 * @param string $api_token           API token for authentication
+	 * @param int    $website_property_id Website property ID
+	 * @param int    $case_procedure_id   The case procedure order ID
+	 * @param int    $procedure_id        The procedure ID
+	 * @param string $email               User's email address
+	 * @param string $phone               User's phone number
+	 * @param string $name                User's name
+	 *
+	 * @return array|null Response data on success, null on failure
+	 */
+	public function add_favorite_v2(
+		string $api_token,
+		int $website_property_id,
+		int $case_procedure_id,
+		int $procedure_id,
+		string $email,
+		string $phone,
+		string $name
+	): ?array {
+		// Validate inputs
+		if ( empty( $api_token ) || $website_property_id <= 0 || $case_procedure_id <= 0 || $procedure_id <= 0 ) {
+			$this->log_error( 'API token, website property ID, case procedure ID, and procedure ID are required for v2 favorites add' );
+			return null;
+		}
+
+		// Validate email
+		if ( ! is_email( $email ) ) {
+			$this->log_error( 'Valid email address is required for v2 favorites add' );
+			return null;
+		}
+
+		// Sanitize inputs
+		$email = sanitize_email( $email );
+		$phone = $this->sanitize_phone( $phone );
+		$name = sanitize_text_field( $name );
+
+		// Build query parameters
+		$params = [
+			'websitePropertyId' => $website_property_id,
+			'caseProcedureId'   => $case_procedure_id,
+			'procedureId'       => $procedure_id,
+			'email'             => $email,
+			'phone'             => $phone,
+			'name'              => $name,
+		];
+
+		// Build URL with query parameters
+		$url = self::API_ENDPOINTS['favorites_add_v2'] . '?' . http_build_query( $params );
+		$full_url = Setup::get_api_url() . $url;
+
+		// Make POST request with Bearer token authentication
+		$response = wp_remote_post( $full_url, [
+			'timeout' => self::API_TIMEOUT,
+			'headers' => [
+				'Authorization' => 'Bearer ' . $api_token,
+				'Accept'        => 'application/json',
+				'User-Agent'    => 'BRAG book Gallery Plugin/3.3.2',
+			],
+		] );
+
+		if ( is_wp_error( $response ) ) {
+			$this->log_error( 'v2 favorites add API request failed: ' . $response->get_error_message() );
+			return null;
+		}
+
+		$response_code = wp_remote_retrieve_response_code( $response );
+		$response_body = wp_remote_retrieve_body( $response );
+
+		if ( $response_code !== 200 && $response_code !== 201 ) {
+			$this->log_error( sprintf( 'v2 favorites add API returned status %d: %s', $response_code, $response_body ) );
+			return null;
+		}
+
+		// Decode JSON response
+		$data = json_decode( $response_body, true );
+
+		if ( json_last_error() !== JSON_ERROR_NONE ) {
+			$this->log_error( 'Invalid JSON response from v2 favorites add API: ' . json_last_error_msg() );
+			return null;
+		}
+
+		return $data;
+	}
+
+	/**
+	 * Remove case from user favorites using v2 API
+	 *
+	 * Removes a case from the user's favorites list using Bearer authentication
+	 * and query parameters.
+	 *
+	 * @since 3.3.2
+	 *
+	 * @param string $api_token           API token for authentication
+	 * @param int    $website_property_id Website property ID
+	 * @param int    $case_procedure_id   The case procedure order ID
+	 * @param int    $procedure_id        The procedure ID
+	 * @param string $email               User's email address
+	 *
+	 * @return array|null Response data on success, null on failure
+	 */
+	public function remove_favorite_v2(
+		string $api_token,
+		int $website_property_id,
+		int $case_procedure_id,
+		int $procedure_id,
+		string $email
+	): ?array {
+		// Validate inputs
+		if ( empty( $api_token ) || $website_property_id <= 0 || $case_procedure_id <= 0 || $procedure_id <= 0 ) {
+			$this->log_error( 'API token, website property ID, case procedure ID, and procedure ID are required for v2 favorites remove' );
+			return null;
+		}
+
+		// Validate email
+		if ( ! is_email( $email ) ) {
+			$this->log_error( 'Valid email address is required for v2 favorites remove' );
+			return null;
+		}
+
+		// Sanitize email
+		$email = sanitize_email( $email );
+
+		// Build query parameters
+		$params = [
+			'websitePropertyId' => $website_property_id,
+			'caseProcedureId'   => $case_procedure_id,
+			'procedureId'       => $procedure_id,
+			'email'             => $email,
+		];
+
+		// Build URL with query parameters
+		$url = self::API_ENDPOINTS['favorites_remove_v2'] . '?' . http_build_query( $params );
+		$full_url = Setup::get_api_url() . $url;
+
+		// Make POST request with Bearer token authentication
+		$response = wp_remote_post( $full_url, [
+			'timeout' => self::API_TIMEOUT,
+			'headers' => [
+				'Authorization' => 'Bearer ' . $api_token,
+				'Accept'        => 'application/json',
+				'User-Agent'    => 'BRAG book Gallery Plugin/3.3.2',
+			],
+		] );
+
+		if ( is_wp_error( $response ) ) {
+			$this->log_error( 'v2 favorites remove API request failed: ' . $response->get_error_message() );
+			return null;
+		}
+
+		$response_code = wp_remote_retrieve_response_code( $response );
+		$response_body = wp_remote_retrieve_body( $response );
+
+		if ( $response_code !== 200 ) {
+			$this->log_error( sprintf( 'v2 favorites remove API returned status %d: %s', $response_code, $response_body ) );
+			return null;
+		}
+
+		// Decode JSON response
+		$data = json_decode( $response_body, true );
+
+		if ( json_last_error() !== JSON_ERROR_NONE ) {
+			$this->log_error( 'Invalid JSON response from v2 favorites remove API: ' . json_last_error_msg() );
+			return null;
+		}
+
+		return $data;
+	}
+
+	/**
+	 * Get user's favorites list using v2 API
+	 *
+	 * Retrieves all cases that a user has added to their favorites
+	 * using Bearer authentication and query parameters.
+	 *
+	 * @since 3.3.2
+	 *
+	 * @param string $api_token           API token for authentication
+	 * @param int    $website_property_id Website property ID
+	 * @param string $email               User's email address
+	 *
+	 * @return array|null Response data on success, null on failure
+	 */
+	public function get_favorites_list_v2(
+		string $api_token,
+		int $website_property_id,
+		string $email
+	): ?array {
+		// Validate inputs
+		if ( empty( $api_token ) || $website_property_id <= 0 ) {
+			$this->log_error( 'API token and website property ID are required for v2 favorites list' );
+			return null;
+		}
+
+		// Validate email
+		if ( ! is_email( $email ) ) {
+			$this->log_error( 'Valid email address is required for v2 favorites list' );
+			return null;
+		}
+
+		// Sanitize email
+		$email = sanitize_email( $email );
+
+		// Build query parameters
+		$params = [
+			'websitePropertyId' => $website_property_id,
+			'email'             => $email,
+		];
+
+		// Build URL with query parameters
+		$url = self::API_ENDPOINTS['favorites_list_v2'] . '?' . http_build_query( $params );
+		$full_url = Setup::get_api_url() . $url;
+
+		// Make POST request with Bearer token authentication
+		$response = wp_remote_post( $full_url, [
+			'timeout' => self::API_TIMEOUT,
+			'headers' => [
+				'Authorization' => 'Bearer ' . $api_token,
+				'Accept'        => 'application/json',
+				'User-Agent'    => 'BRAG book Gallery Plugin/3.3.2',
+			],
+		] );
+
+		if ( is_wp_error( $response ) ) {
+			$this->log_error( 'v2 favorites list API request failed: ' . $response->get_error_message() );
+			return null;
+		}
+
+		$response_code = wp_remote_retrieve_response_code( $response );
+		$response_body = wp_remote_retrieve_body( $response );
+
+		if ( $response_code !== 200 ) {
+			$this->log_error( sprintf( 'v2 favorites list API returned status %d: %s', $response_code, $response_body ) );
+			return null;
+		}
+
+		// Decode JSON response
+		$data = json_decode( $response_body, true );
+
+		if ( json_last_error() !== JSON_ERROR_NONE ) {
+			$this->log_error( 'Invalid JSON response from v2 favorites list API: ' . json_last_error_msg() );
+			return null;
+		}
+
+		return $data;
+	}
+
+	/**
+	 * Submit consultation request using v2 API
+	 *
+	 * Submits a consultation request using Bearer authentication
+	 * and query parameters.
+	 *
+	 * @since 3.3.2
+	 *
+	 * @param string $api_token           API token for authentication
+	 * @param int    $website_property_id Website property ID
+	 * @param string $email               User's email address
+	 * @param string $phone               User's phone number
+	 * @param string $name                User's name
+	 * @param string $details             Consultation details
+	 *
+	 * @return array|null Response data on success, null on failure
+	 */
+	public function submit_consultation_v2(
+		string $api_token,
+		int $website_property_id,
+		string $email,
+		string $phone,
+		string $name,
+		string $details = ''
+	): ?array {
+		// Validate inputs
+		if ( empty( $api_token ) || $website_property_id <= 0 ) {
+			$this->log_error( 'API token and website property ID are required for v2 consultations' );
+			return null;
+		}
+
+		// Validate email
+		if ( ! is_email( $email ) ) {
+			$this->log_error( 'Valid email address is required for v2 consultations' );
+			return null;
+		}
+
+		// Sanitize inputs
+		$email = sanitize_email( $email );
+		$phone = $this->sanitize_phone( $phone );
+		$name = sanitize_text_field( $name );
+		$details = sanitize_textarea_field( $details );
+
+		// Build query parameters
+		$params = [
+			'websitePropertyId' => $website_property_id,
+			'email'             => $email,
+			'phone'             => $phone,
+			'name'              => $name,
+			'details'           => $details,
+		];
+
+		// Build URL with query parameters
+		$url = self::API_ENDPOINTS['consultations_v2'] . '?' . http_build_query( $params );
+		$full_url = Setup::get_api_url() . $url;
+
+		// Make POST request with Bearer token authentication
+		$response = wp_remote_post( $full_url, [
+			'timeout' => self::API_TIMEOUT,
+			'headers' => [
+				'Authorization' => 'Bearer ' . $api_token,
+				'Accept'        => 'application/json',
+				'User-Agent'    => 'BRAG book Gallery Plugin/3.3.2',
+			],
+		] );
+
+		if ( is_wp_error( $response ) ) {
+			$this->log_error( 'v2 consultations API request failed: ' . $response->get_error_message() );
+			return null;
+		}
+
+		$response_code = wp_remote_retrieve_response_code( $response );
+		$response_body = wp_remote_retrieve_body( $response );
+
+		if ( $response_code !== 200 && $response_code !== 201 ) {
+			$this->log_error( sprintf( 'v2 consultations API returned status %d: %s', $response_code, $response_body ) );
+			return null;
+		}
+
+		// Decode JSON response
+		$data = json_decode( $response_body, true );
+
+		if ( json_last_error() !== JSON_ERROR_NONE ) {
+			$this->log_error( 'Invalid JSON response from v2 consultations API: ' . json_last_error_msg() );
 			return null;
 		}
 

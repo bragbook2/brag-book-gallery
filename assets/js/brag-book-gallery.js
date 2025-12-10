@@ -373,8 +373,20 @@ class Carousel {
     const totalSlides = object.items.length;
     object.wrapper.setAttribute('aria-label', `Carousel with ${totalSlides} slides`);
     Array.from(object.items).forEach((slide, index) => {
+      const isHidden = index !== currentIndex;
       slide.setAttribute('aria-label', `Slide ${index + 1} of ${totalSlides}`);
-      slide.setAttribute('aria-hidden', (index !== currentIndex).toString());
+      slide.setAttribute('aria-hidden', isHidden.toString());
+
+      // Manage focusable elements within hidden slides to prevent
+      // aria-hidden elements from containing focusable descendants
+      const focusableElements = slide.querySelectorAll('a, button, input, select, textarea, [tabindex]:not([tabindex="-1"])');
+      focusableElements.forEach(el => {
+        if (isHidden) {
+          el.setAttribute('tabindex', '-1');
+        } else {
+          el.removeAttribute('tabindex');
+        }
+      });
     });
   };
   handleNext = object => {
@@ -802,6 +814,7 @@ class FavoritesManager {
   }
   toggleFavorite(button) {
     let itemId = '';
+    let procedureId = '';
     const isFavorited = button.dataset.favorited === 'true';
 
     // Prioritize WordPress post ID from the case card data-post-id attribute
@@ -821,12 +834,25 @@ class FavoritesManager {
       }
     }
 
+    // Get procedure ID from case card or active nav link
+    if (caseCard) {
+      // Try current procedure ID first, then fall back to procedure IDs list
+      procedureId = caseCard.dataset.currentProcedureId || (caseCard.dataset.procedureIds ? caseCard.dataset.procedureIds.split(',')[0] : '');
+    }
+    // Fallback to active nav link procedure ID
+    if (!procedureId) {
+      const activeNavLink = document.querySelector('.brag-book-gallery-nav-link.brag-book-gallery-active');
+      procedureId = activeNavLink?.dataset.procedureId || '';
+    }
+
     // Update hidden case ID field if it exists
     this.updateHiddenCaseIdField(itemId);
+    // Update hidden procedure ID field if it exists
+    this.updateHiddenProcedureIdField(procedureId);
 
     // If removing favorite, just remove it
     if (isFavorited) {
-      this.removeFavorite(itemId, button);
+      this.removeFavorite(itemId, button, procedureId);
       return;
     }
 
@@ -846,10 +872,11 @@ class FavoritesManager {
       // Add to local favorites first
       this.addFavorite(itemId, button);
       // Submit to API
-      this.submitFavoriteToAPI(itemId);
+      this.submitFavoriteToAPI(itemId, procedureId);
     } else {
       // No user info - show dialog to collect it
       this.lastAddedFavorite = itemId;
+      this.lastAddedProcedureId = procedureId;
       this.lastAddedButton = button;
       // Add the favorite first so it shows in the dialog
       this.addFavorite(itemId, button);
@@ -866,6 +893,17 @@ class FavoritesManager {
     const hiddenField = document.querySelector('input[name="fav-case-id"]');
     if (hiddenField && caseId) {
       hiddenField.value = caseId;
+    }
+  }
+
+  /**
+   * Update the hidden procedure ID field in the favorites form
+   * @param {string} procedureId - The procedure ID to set
+   */
+  updateHiddenProcedureIdField(procedureId) {
+    const hiddenField = document.querySelector('input[name="fav-procedure-id"]');
+    if (hiddenField && procedureId) {
+      hiddenField.value = procedureId;
     }
   }
   addFavorite(itemId, button) {
@@ -904,8 +942,9 @@ class FavoritesManager {
    * Remove an item from favorites and update UI
    * @param {string} itemId - The ID of the item to unfavorite
    * @param {HTMLElement} button - The button that was clicked (optional)
+   * @param {string} procedureId - The procedure ID (optional)
    */
-  removeFavorite(itemId, button) {
+  removeFavorite(itemId, button, procedureId = '') {
     // Update button states - find all relevant buttons if none provided
     if (!button) {
       const buttons = document.querySelectorAll(`[data-item-id="${itemId}"][data-favorited="true"], [data-case-id="${itemId}"][data-favorited="true"]`);
@@ -941,18 +980,63 @@ class FavoritesManager {
         favorites: this.favorites
       }
     }));
+
+    // If user is logged in, also remove from API
+    if (this.userInfo && this.userInfo.email) {
+      this.removeFavoriteFromAPI(itemId, procedureId);
+    }
+  }
+
+  /**
+   * Remove a favorite from the BRAGBook API
+   * @param {string} caseId - The case procedure ID to remove from favorites
+   * @param {string} procedureId - The procedure ID
+   */
+  removeFavoriteFromAPI(caseId, procedureId = '') {
+    // Use WordPress AJAX for secure API communication
+    const formData = new FormData();
+    formData.append('action', 'brag_book_remove_favorite');
+    formData.append('nonce', window.bragBookGalleryConfig?.nonce || '');
+    formData.append('case_id', caseId);
+    formData.append('procedure_id', procedureId);
+    formData.append('email', this.userInfo.email || '');
+
+    // Submit via WordPress AJAX (API tokens handled securely on server)
+    fetch(window.bragBookGalleryConfig?.ajaxUrl || '/wp-admin/admin-ajax.php', {
+      method: 'POST',
+      body: formData
+    }).then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json();
+    }).then(response => {
+      if (response.success) {
+        // Show success notification
+        this.showSuccessNotification('Removed from favorites!');
+      } else {
+        // Show error notification
+        console.error('Failed to remove favorite:', response.data?.message);
+        this.showErrorNotification('Failed to remove favorite. Please try again.');
+      }
+    }).catch(error => {
+      console.error('Error removing favorite:', error);
+      this.showErrorNotification('Error removing favorite. Please try again.');
+    });
   }
 
   /**
    * Submit a favorite directly to the BRAGBook API (for users with existing info)
-   * @param {string} caseId - The case ID to add to favorites
+   * @param {string} caseId - The case procedure ID to add to favorites
+   * @param {string} procedureId - The procedure ID
    */
-  submitFavoriteToAPI(caseId) {
+  submitFavoriteToAPI(caseId, procedureId = '') {
     // Use WordPress AJAX for secure API communication
     const formData = new FormData();
     formData.append('action', 'brag_book_add_favorite');
     formData.append('nonce', window.bragBookGalleryConfig?.nonce || '');
     formData.append('case_id', caseId);
+    formData.append('procedure_id', procedureId);
     formData.append('email', this.userInfo.email || '');
     formData.append('phone', this.userInfo.phone || '');
     formData.append('name', this.userInfo.name || '');
@@ -993,13 +1077,25 @@ class FavoritesManager {
 
     // Get case ID from hidden field first, then fallback to other methods
     let caseId = formData.get('fav-case-id') || this.lastAddedFavorite;
+    // Get procedure ID from hidden field first, then fallback to stored value
+    let procedureId = formData.get('fav-procedure-id') || this.lastAddedProcedureId || '';
     if (!caseId) {
       // Try to find the case ID from the current page context
       // Prioritize WordPress post ID over API case ID
       const articleElement = document.querySelector('.brag-book-gallery-case-card');
       if (articleElement) {
         caseId = articleElement.dataset.postId || articleElement.dataset.caseId;
+        // Also try to get procedure ID if not already set
+        if (!procedureId) {
+          procedureId = articleElement.dataset.currentProcedureId || (articleElement.dataset.procedureIds ? articleElement.dataset.procedureIds.split(',')[0] : '');
+        }
       }
+    }
+
+    // Fallback to active nav link for procedure ID
+    if (!procedureId) {
+      const activeNavLink = document.querySelector('.brag-book-gallery-nav-link.brag-book-gallery-active');
+      procedureId = activeNavLink?.dataset.procedureId || '';
     }
     if (!caseId) {
       // If still no case ID, show error
@@ -1048,6 +1144,7 @@ class FavoritesManager {
     formData.append('action', 'brag_book_add_favorite');
     formData.append('nonce', window.bragBookGalleryConfig?.nonce || '');
     formData.append('case_id', caseId);
+    formData.append('procedure_id', procedureId);
     formData.append('email', email);
     formData.append('phone', phone);
     formData.append('name', name);

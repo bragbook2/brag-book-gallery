@@ -1404,16 +1404,49 @@ class Debug_Page extends Settings_Base {
 					</td>
 				</tr>
 
-				<!-- Favorites List -->
+				<!-- Favorites List (v2) -->
 				<tr>
-					<td><code>/api/plugin/combine/favorites/list</code></td>
+					<td><code>/api/plugin/v2/leads/favorites/list</code></td>
 					<td><span class="method-badge method-post">POST</span></td>
-					<td><?php esc_html_e( 'Get user\'s favorite cases', 'brag-book-gallery' ); ?></td>
+					<td><?php esc_html_e( 'Get user\'s favorite cases (v2 - Bearer auth)', 'brag-book-gallery' ); ?></td>
 					<td>
 						<button class="button button-secondary test-endpoint-btn"
-						        data-endpoint="favorites-list"
+						        data-endpoint="favorites-list-v2"
 						        data-method="POST"
-						        data-url="/api/plugin/combine/favorites/list">
+						        data-url="/api/plugin/v2/leads/favorites/list"
+						        data-v2-bearer="true">
+							<?php esc_html_e( 'Test', 'brag-book-gallery' ); ?>
+						</button>
+					</td>
+				</tr>
+
+				<!-- Favorites Add (v2) -->
+				<tr>
+					<td><code>/api/plugin/v2/leads/favorites/add</code></td>
+					<td><span class="method-badge method-post">POST</span></td>
+					<td><?php esc_html_e( 'Add case to favorites (v2 - Bearer auth)', 'brag-book-gallery' ); ?></td>
+					<td>
+						<button class="button button-secondary test-endpoint-btn"
+						        data-endpoint="favorites-add-v2"
+						        data-method="POST"
+						        data-url="/api/plugin/v2/leads/favorites/add"
+						        data-v2-bearer="true">
+							<?php esc_html_e( 'Test', 'brag-book-gallery' ); ?>
+						</button>
+					</td>
+				</tr>
+
+				<!-- Favorites Remove (v2) -->
+				<tr>
+					<td><code>/api/plugin/v2/leads/favorites/remove</code></td>
+					<td><span class="method-badge method-post">POST</span></td>
+					<td><?php esc_html_e( 'Remove case from favorites (v2 - Bearer auth)', 'brag-book-gallery' ); ?></td>
+					<td>
+						<button class="button button-secondary test-endpoint-btn"
+						        data-endpoint="favorites-remove-v2"
+						        data-method="POST"
+						        data-url="/api/plugin/v2/leads/favorites/remove"
+						        data-v2-bearer="true">
 							<?php esc_html_e( 'Test', 'brag-book-gallery' ); ?>
 						</button>
 					</td>
@@ -1453,19 +1486,20 @@ class Debug_Page extends Settings_Base {
 					</td>
 				</tr>
 
-				<!-- Consultations -->
+				<!-- Consultations (v2) -->
 				<tr>
-					<td><code>/api/plugin/consultations</code></td>
+					<td><code>/api/plugin/v2/leads/consultations</code></td>
 					<td><span class="method-badge method-post">POST</span></td>
 					<td>
-						<?php esc_html_e( 'Submit consultation request (Test with sample data)', 'brag-book-gallery' ); ?>
+						<?php esc_html_e( 'Submit consultation request (v2 - Bearer auth)', 'brag-book-gallery' ); ?>
 					</td>
 					<td>
 						<button class="button button-secondary test-endpoint-btn"
-						        data-endpoint="consultations"
+						        data-endpoint="consultations-v2"
 						        data-method="POST"
-						        data-url="/api/plugin/consultations"
-						        data-test-consultation="true">
+						        data-url="/api/plugin/v2/leads/consultations"
+						        data-test-consultation="true"
+						        data-v2-bearer="true">
 							<?php esc_html_e( 'Test', 'brag-book-gallery' ); ?>
 						</button>
 					</td>

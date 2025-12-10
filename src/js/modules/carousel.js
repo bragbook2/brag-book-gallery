@@ -438,8 +438,22 @@ class Carousel {
 		);
 
 		Array.from(object.items).forEach((slide, index) => {
+			const isHidden = index !== currentIndex;
 			slide.setAttribute('aria-label', `Slide ${index + 1} of ${totalSlides}`);
-			slide.setAttribute('aria-hidden', (index !== currentIndex).toString());
+			slide.setAttribute('aria-hidden', isHidden.toString());
+
+			// Manage focusable elements within hidden slides to prevent
+			// aria-hidden elements from containing focusable descendants
+			const focusableElements = slide.querySelectorAll(
+				'a, button, input, select, textarea, [tabindex]:not([tabindex="-1"])'
+			);
+			focusableElements.forEach((el) => {
+				if (isHidden) {
+					el.setAttribute('tabindex', '-1');
+				} else {
+					el.removeAttribute('tabindex');
+				}
+			});
 		});
 	};
 

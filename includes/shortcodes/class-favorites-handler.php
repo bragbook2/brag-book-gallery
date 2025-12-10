@@ -78,6 +78,10 @@ final class Favorites_Handler {
 		add_action( 'wp_ajax_brag_book_add_favorite', [ self::class, 'ajax_add_favorite' ] );
 		add_action( 'wp_ajax_nopriv_brag_book_add_favorite', [ self::class, 'ajax_add_favorite' ] );
 
+		// Register AJAX handlers for removing favorites
+		add_action( 'wp_ajax_brag_book_remove_favorite', [ self::class, 'ajax_remove_favorite' ] );
+		add_action( 'wp_ajax_nopriv_brag_book_remove_favorite', [ self::class, 'ajax_remove_favorite' ] );
+
 		// Register AJAX handlers for favorites email lookup
 		add_action( 'wp_ajax_brag_book_lookup_favorites', [ self::class, 'ajax_lookup_favorites' ] );
 		add_action( 'wp_ajax_nopriv_brag_book_lookup_favorites', [ self::class, 'ajax_lookup_favorites' ] );
@@ -532,6 +536,7 @@ final class Favorites_Handler {
 			$email   = sanitize_email( $_POST['email'] ?? '' );
 			$phone   = sanitize_text_field( $_POST['phone'] ?? '' );
 			$received_case_id = sanitize_text_field( $_POST['case_id'] ?? '' );
+			$procedure_id = absint( $_POST['procedure_id'] ?? 0 );
 
 			// Handle both WordPress post IDs and BRAGBook API case IDs
 			$api_case_id = '';
@@ -546,12 +551,16 @@ final class Favorites_Handler {
 				if ( $test_post && $test_post->post_type === 'brag_book_cases' ) {
 					$wp_post_id = $test_post_id;
 					$api_case_id = get_post_meta( $wp_post_id, 'brag_book_gallery_case_id', true );
+					// Try to get procedure ID from post meta if not provided
+					if ( empty( $procedure_id ) ) {
+						$procedure_id = absint( get_post_meta( $wp_post_id, 'brag_book_gallery_procedure_id', true ) );
+					}
 				}
 			}
 
 			// If we didn't find a WordPress post, treat it as a BRAGBook API case ID
 			if ( empty( $api_case_id ) && ! empty( $received_case_id ) ) {
-				$api_case_id = $received_case_id; // Use it directly as API case ID
+				$api_case_id = $received_case_id; // Use it directly as API case ID (caseProcedureId)
 			}
 
 			if ( empty( $name ) || empty( $email ) || empty( $phone ) ) {
@@ -578,18 +587,19 @@ final class Favorites_Handler {
 				] );
 			}
 
-			// Submit favorite to BRAGBook API using the API case ID
-			$result = self::add_favorite_to_api( $name, $email, $phone, $api_case_id );
+			// Submit favorite to BRAGBook API using the v2 endpoint
+			$result = self::add_favorite_to_api( $name, $email, $phone, $api_case_id, $procedure_id );
 
 			if ( $result ) {
 				wp_send_json_success( [
 					'message' => __( 'Favorite added successfully!', 'brag-book-gallery' ),
 					'data'    => [
-						'name'         => $name,
-						'email'        => $email,
-						'phone'        => $phone,
-						'wp_post_id'   => $wp_post_id,
-						'api_case_id'  => $api_case_id,
+						'name'            => $name,
+						'email'           => $email,
+						'phone'           => $phone,
+						'wp_post_id'      => $wp_post_id,
+						'api_case_id'     => $api_case_id,
+						'procedure_id'    => $procedure_id,
 					],
 				] );
 			} else {
@@ -609,24 +619,25 @@ final class Favorites_Handler {
 	}
 
 	/**
-	 * Add a favorite to the BRAGBook API using direct HTTP call
+	 * Add a favorite to the BRAGBook API using v2 endpoint
 	 *
 	 * @param string $name User's name.
 	 * @param string $email User's email.
 	 * @param string $phone User's phone.
-	 * @param string $case_id Case ID to favorite.
+	 * @param string $case_procedure_id Case procedure ID to favorite (caseProcedureId).
+	 * @param int    $procedure_id Procedure ID.
 	 * @return bool Success status.
 	 * @since 3.0.0
+	 * @since 3.3.2 Updated to use v2 API endpoint with Bearer authentication.
 	 */
-	private static function add_favorite_to_api( string $name, string $email, string $phone, string $case_id ): bool {
+	private static function add_favorite_to_api( string $name, string $email, string $phone, string $case_procedure_id, int $procedure_id = 0 ): bool {
 		// Get API credentials from arrays (stored as numeric arrays, not mode-based)
 		$api_tokens_option = get_option( 'brag_book_gallery_api_token', [] );
 		$website_property_ids_option = get_option( 'brag_book_gallery_website_property_id', [] );
 
-
 		// Extract values from numeric arrays
 		$api_token = '';
-		$website_property_id = '';
+		$website_property_id = 0;
 
 		// Check if stored as numeric array (current format)
 		if ( is_array( $api_tokens_option ) && ! empty( $api_tokens_option[0] ) ) {
@@ -634,9 +645,8 @@ final class Favorites_Handler {
 		}
 
 		if ( is_array( $website_property_ids_option ) && ! empty( $website_property_ids_option[0] ) ) {
-			$website_property_id = $website_property_ids_option[0];
+			$website_property_id = intval( $website_property_ids_option[0] );
 		}
-
 
 		// Validate API credentials
 		if ( empty( $api_token ) ) {
@@ -647,39 +657,31 @@ final class Favorites_Handler {
 			throw new \Exception( 'No website property ID configured. Please configure API settings first.' );
 		}
 
-		// Convert to arrays for API format
-		$api_tokens_array = [ $api_token ];
-		$website_property_ids_array = [ intval( $website_property_id ) ];
-
 		// Get API base URL
 		$api_base_url = get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' );
 
-		// Build full API URL
-		$api_url = rtrim( $api_base_url, '/' ) . '/api/plugin/combine/favorites/add';
-
-		// Prepare request body in exact format expected by BRAGBook API
-		$body = [
-			'apiTokens' => $api_tokens_array,
-			'websitePropertyIds' => $website_property_ids_array,
-			'email' => $email,
-			'phone' => $phone,
-			'name' => $name,
-			'caseId' => (int) $case_id,
+		// Build query parameters for v2 API
+		$query_params = [
+			'websitePropertyId' => $website_property_id,
+			'caseProcedureId'   => (int) $case_procedure_id,
+			'procedureId'       => $procedure_id,
+			'email'             => $email,
+			'phone'             => $phone,
+			'name'              => $name,
 		];
 
-		// Convert to JSON
-		$json_body = wp_json_encode( $body );
+		// Build full API URL with query parameters
+		$api_url = rtrim( $api_base_url, '/' ) . '/api/plugin/v2/leads/favorites/add?' . http_build_query( $query_params );
 
-		// Make direct API request with error handling
+		// Make direct API request with Bearer authentication
 		try {
 			$response = wp_remote_post( $api_url, [
 				'timeout' => 30,
 				'headers' => [
-					'Content-Type' => 'application/json',
-					'Accept' => 'application/json',
-					'User-Agent' => 'BRAGBookGallery/' . ( defined( 'BRAG_BOOK_GALLERY_VERSION' ) ? BRAG_BOOK_GALLERY_VERSION : '3.0.0' ),
+					'Authorization' => 'Bearer ' . $api_token,
+					'Accept'        => 'application/json',
+					'User-Agent'    => 'BRAGBookGallery/' . ( defined( 'BRAG_BOOK_GALLERY_VERSION' ) ? BRAG_BOOK_GALLERY_VERSION : '3.0.0' ),
 				],
-				'body' => $json_body,
 				'sslverify' => true,
 			] );
 		} catch ( \Exception $e ) {
@@ -704,8 +706,8 @@ final class Favorites_Handler {
 			throw new \Exception( 'Invalid JSON response: ' . json_last_error_msg() );
 		}
 
-		// Check if successful (either 200 status or success=true in response)
-		if ( $response_code === 200 ) {
+		// Check if successful (either 200/201 status or success=true in response)
+		if ( $response_code === 200 || $response_code === 201 ) {
 			return isset( $data['success'] ) ? $data['success'] : true;
 		}
 
@@ -726,6 +728,166 @@ final class Favorites_Handler {
 						$api_message
 					) );
 			}
+		}
+
+		// Generic error for non-200 status without a message
+		throw new \Exception( sprintf(
+			__( 'API request failed with status %d. Please try again.', 'brag-book-gallery' ),
+			$response_code
+		) );
+	}
+
+	/**
+	 * Handle AJAX request for removing favorites
+	 *
+	 * Processes the request to remove a case from user's favorites.
+	 *
+	 * @return void
+	 * @since 3.3.2
+	 */
+	public static function ajax_remove_favorite(): void {
+		try {
+			// Verify nonce for security
+			if ( ! wp_verify_nonce( $_POST['nonce'] ?? '', 'brag_book_gallery_nonce' ) ) {
+				wp_send_json_error( [
+					'message' => __( 'Security verification failed. Please try again.', 'brag-book-gallery' ),
+				] );
+			}
+
+			// Validate required fields
+			$email   = sanitize_email( $_POST['email'] ?? '' );
+			$received_case_id = sanitize_text_field( $_POST['case_id'] ?? '' );
+			$procedure_id = absint( $_POST['procedure_id'] ?? 0 );
+
+			if ( empty( $email ) || ! is_email( $email ) ) {
+				wp_send_json_error( [
+					'message' => __( 'Please provide a valid email address.', 'brag-book-gallery' ),
+				] );
+			}
+
+			if ( empty( $received_case_id ) ) {
+				wp_send_json_error( [
+					'message' => __( 'Invalid case information. Please try again.', 'brag-book-gallery' ),
+				] );
+			}
+
+			// Remove favorite from BRAGBook API using the v2 endpoint
+			$result = self::remove_favorite_from_api( $email, $received_case_id, $procedure_id );
+
+			if ( $result ) {
+				wp_send_json_success( [
+					'message' => __( 'Favorite removed successfully!', 'brag-book-gallery' ),
+				] );
+			} else {
+				wp_send_json_error( [
+					'message' => __( 'Failed to remove favorite. Please try again.', 'brag-book-gallery' ),
+				] );
+			}
+		} catch ( \Exception $e ) {
+			wp_send_json_error( [
+				'message' => $e->getMessage(),
+			] );
+		} catch ( \Throwable $e ) {
+			wp_send_json_error( [
+				'message' => __( 'A system error occurred. Please try again.', 'brag-book-gallery' ),
+			] );
+		}
+	}
+
+	/**
+	 * Remove a favorite from the BRAGBook API using v2 endpoint
+	 *
+	 * @param string $email User's email.
+	 * @param string $case_procedure_id Case procedure ID to remove (caseProcedureId).
+	 * @param int    $procedure_id Procedure ID.
+	 * @return bool Success status.
+	 * @since 3.3.2
+	 */
+	private static function remove_favorite_from_api( string $email, string $case_procedure_id, int $procedure_id = 0 ): bool {
+		// Get API credentials from arrays (stored as numeric arrays, not mode-based)
+		$api_tokens_option = get_option( 'brag_book_gallery_api_token', [] );
+		$website_property_ids_option = get_option( 'brag_book_gallery_website_property_id', [] );
+
+		// Extract values from numeric arrays
+		$api_token = '';
+		$website_property_id = 0;
+
+		// Check if stored as numeric array (current format)
+		if ( is_array( $api_tokens_option ) && ! empty( $api_tokens_option[0] ) ) {
+			$api_token = $api_tokens_option[0];
+		}
+
+		if ( is_array( $website_property_ids_option ) && ! empty( $website_property_ids_option[0] ) ) {
+			$website_property_id = intval( $website_property_ids_option[0] );
+		}
+
+		// Validate API credentials
+		if ( empty( $api_token ) ) {
+			throw new \Exception( 'No API token configured. Please configure API settings first.' );
+		}
+
+		if ( empty( $website_property_id ) ) {
+			throw new \Exception( 'No website property ID configured. Please configure API settings first.' );
+		}
+
+		// Get API base URL
+		$api_base_url = get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' );
+
+		// Build query parameters for v2 API
+		$query_params = [
+			'websitePropertyId' => $website_property_id,
+			'caseProcedureId'   => (int) $case_procedure_id,
+			'procedureId'       => $procedure_id,
+			'email'             => $email,
+		];
+
+		// Build full API URL with query parameters
+		$api_url = rtrim( $api_base_url, '/' ) . '/api/plugin/v2/leads/favorites/remove?' . http_build_query( $query_params );
+
+		// Make direct API request with Bearer authentication
+		try {
+			$response = wp_remote_post( $api_url, [
+				'timeout' => 30,
+				'headers' => [
+					'Authorization' => 'Bearer ' . $api_token,
+					'Accept'        => 'application/json',
+					'User-Agent'    => 'BRAGBookGallery/' . ( defined( 'BRAG_BOOK_GALLERY_VERSION' ) ? BRAG_BOOK_GALLERY_VERSION : '3.0.0' ),
+				],
+				'sslverify' => true,
+			] );
+		} catch ( \Exception $e ) {
+			throw $e;
+		} catch ( \Throwable $e ) {
+			throw new \Exception( "HTTP request failed: " . $e->getMessage() );
+		}
+
+		// Handle WordPress HTTP errors
+		if ( is_wp_error( $response ) ) {
+			throw new \Exception( 'HTTP request failed: ' . $response->get_error_message() );
+		}
+
+		// Get response details
+		$response_code = wp_remote_retrieve_response_code( $response );
+		$response_body = wp_remote_retrieve_body( $response );
+
+		// Parse JSON response
+		$data = json_decode( $response_body, true );
+
+		if ( json_last_error() !== JSON_ERROR_NONE ) {
+			throw new \Exception( 'Invalid JSON response: ' . json_last_error_msg() );
+		}
+
+		// Check if successful
+		if ( $response_code === 200 ) {
+			return isset( $data['success'] ) ? $data['success'] : true;
+		}
+
+		// Handle specific API errors with user-friendly messages
+		if ( isset( $data['message'] ) ) {
+			throw new \Exception( sprintf(
+				__( 'Unable to remove favorite: %s', 'brag-book-gallery' ),
+				$data['message']
+			) );
 		}
 
 		// Generic error for non-200 status without a message
@@ -1059,11 +1221,12 @@ final class Favorites_Handler {
 	}
 
 	/**
-	 * Lookup user favorites by email address via BRAGBook API using direct HTTP call
+	 * Lookup user favorites by email address via BRAGBook API v2 endpoint
 	 *
 	 * @param string $email Email address to lookup.
 	 * @return array|false User data with favorites array or false if not found.
 	 * @since 3.0.0
+	 * @since 3.3.2 Updated to use v2 API endpoint with Bearer authentication.
 	 */
 	public static function lookup_user_by_email( string $email ): array|false {
 		if ( empty( $email ) || ! is_email( $email ) ) {
@@ -1074,19 +1237,22 @@ final class Favorites_Handler {
 		$api_tokens = get_option( 'brag_book_gallery_api_token', [] );
 		$website_property_ids = get_option( 'brag_book_gallery_website_property_id', [] );
 
-		// Ensure we have arrays for the API call
+		// Extract first API token
+		$api_token = '';
 		if ( is_string( $api_tokens ) && ! empty( $api_tokens ) ) {
-			$api_tokens_array = [ $api_tokens ];
-		} elseif ( is_array( $api_tokens ) && ! empty( $api_tokens ) ) {
-			$api_tokens_array = array_filter( $api_tokens ); // Remove empty values
+			$api_token = $api_tokens;
+		} elseif ( is_array( $api_tokens ) && ! empty( $api_tokens[0] ) ) {
+			$api_token = $api_tokens[0];
 		} else {
 			throw new \Exception( 'No API token configured. Please configure API settings first.' );
 		}
 
+		// Extract first website property ID
+		$website_property_id = 0;
 		if ( is_string( $website_property_ids ) && ! empty( $website_property_ids ) ) {
-			$website_property_ids_array = [ (int) $website_property_ids ];
-		} elseif ( is_array( $website_property_ids ) && ! empty( $website_property_ids ) ) {
-			$website_property_ids_array = array_map( 'intval', array_filter( $website_property_ids ) );
+			$website_property_id = (int) $website_property_ids;
+		} elseif ( is_array( $website_property_ids ) && ! empty( $website_property_ids[0] ) ) {
+			$website_property_id = (int) $website_property_ids[0];
 		} else {
 			throw new \Exception( 'No website property ID configured. Please configure API settings first.' );
 		}
@@ -1094,28 +1260,23 @@ final class Favorites_Handler {
 		// Get API base URL
 		$api_base_url = get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' );
 
-		// Build full API URL
-		$api_url = rtrim( $api_base_url, '/' ) . '/api/plugin/combine/favorites/list';
-
-		// Prepare request body in exact format expected by BRAGBook API
-		$body = [
-			'apiTokens' => $api_tokens_array,
-			'websitePropertyIds' => $website_property_ids_array,
-			'email' => $email,
+		// Build query parameters for v2 API
+		$query_params = [
+			'websitePropertyId' => $website_property_id,
+			'email'             => $email,
 		];
 
-		// Convert to JSON
-		$json_body = wp_json_encode( $body );
+		// Build full API URL with query parameters
+		$api_url = rtrim( $api_base_url, '/' ) . '/api/plugin/v2/leads/favorites/list?' . http_build_query( $query_params );
 
-		// Make direct API request
+		// Make direct API request with Bearer authentication
 		$response = wp_remote_post( $api_url, [
 			'timeout' => 30,
 			'headers' => [
-				'Content-Type' => 'application/json',
-				'Accept' => 'application/json',
-				'User-Agent' => 'BRAGBookGallery/' . ( defined( 'BRAG_BOOK_GALLERY_VERSION' ) ? BRAG_BOOK_GALLERY_VERSION : '3.0.0' ),
+				'Authorization' => 'Bearer ' . $api_token,
+				'Accept'        => 'application/json',
+				'User-Agent'    => 'BRAGBookGallery/' . ( defined( 'BRAG_BOOK_GALLERY_VERSION' ) ? BRAG_BOOK_GALLERY_VERSION : '3.0.0' ),
 			],
-			'body' => $json_body,
 			'sslverify' => true,
 		] );
 
