@@ -7,7 +7,6 @@
  * - Sync history management
  * - AJAX communication for sync operations
  * - Time display updates
- * - Cron test functionality
  *
  * @package BRAGBook
  * @since   3.0.0
@@ -18,7 +17,6 @@
 
 // Import sync modules
 import { initSyncTimeDisplay } from './modules/sync-time-display.js';
-import { initSyncCronTest } from './modules/sync-cron-test.js';
 
 /**
  * BRAG book Sync Admin Controller Class
@@ -37,7 +35,6 @@ if (typeof window.BRAGbookSyncAdmin === 'undefined') {
 			this.nonces = {
 				sync: this.config.sync_nonce || '',
 				general: this.config.nonce || '',
-				testAuto: this.config.test_auto_nonce || '',
 				clearLog: this.config.clear_log_nonce || '',
 				delete: this.config.delete_nonce || ''
 			};
@@ -69,6 +66,9 @@ if (typeof window.BRAGbookSyncAdmin === 'undefined') {
 
 			// Check for existing sync on page load
 			this.checkExistingSync();
+
+			// Initialize BragBook status refresh
+			this.initBragBookStatusRefresh();
 		}
 
 		/**
@@ -951,6 +951,200 @@ if (typeof window.BRAGbookSyncAdmin === 'undefined') {
 				childList: true,
 				subtree: true
 			});
+		}
+
+		/**
+		 * Initialize BragBook status refresh
+		 * Sets up periodic refresh of the status card during sync operations
+		 */
+		initBragBookStatusRefresh() {
+			// Store reference to status card
+			this.bragBookStatusCard = document.getElementById('bragbook-sync-status-card');
+
+			// Refresh status when sync starts
+			document.addEventListener('bragbook-sync-started', () => {
+				this.refreshBragBookStatus();
+				this.startBragBookStatusPolling();
+			});
+
+			// Stop polling when sync ends
+			document.addEventListener('bragbook-sync-completed', () => {
+				this.stopBragBookStatusPolling();
+				this.refreshBragBookStatus();
+			});
+		}
+
+		/**
+		 * Start polling for BragBook status updates
+		 */
+		startBragBookStatusPolling() {
+			if (this.bragBookStatusInterval) {
+				return; // Already polling
+			}
+
+			this.bragBookStatusInterval = setInterval(() => {
+				this.refreshBragBookStatus();
+			}, 5000); // Refresh every 5 seconds
+		}
+
+		/**
+		 * Stop polling for BragBook status updates
+		 */
+		stopBragBookStatusPolling() {
+			if (this.bragBookStatusInterval) {
+				clearInterval(this.bragBookStatusInterval);
+				this.bragBookStatusInterval = null;
+			}
+		}
+
+		/**
+		 * Refresh BragBook status via AJAX
+		 */
+		refreshBragBookStatus() {
+			if (!this.bragBookStatusCard) {
+				return;
+			}
+
+			const formData = new FormData();
+			formData.append('action', 'brag_book_get_bragbook_sync_status');
+			formData.append('nonce', this.nonces.sync);
+
+			fetch(this.ajaxUrl, {
+				method: 'POST',
+				body: formData,
+				credentials: 'same-origin'
+			})
+				.then(response => response.json())
+				.then(result => {
+					if (result.success && result.data) {
+						this.updateBragBookStatusCard(result.data);
+					}
+				})
+				.catch(error => {
+					console.error('Failed to refresh BragBook status:', error);
+				});
+		}
+
+		/**
+		 * Update the BragBook status card with new data
+		 * @param {Object} data - Status data from AJAX response
+		 */
+		updateBragBookStatusCard(data) {
+			const statusIcon = this.bragBookStatusCard?.querySelector('.status-icon');
+			const statusText = this.bragBookStatusCard?.querySelector('.status-text');
+
+			if (!statusIcon || !statusText) {
+				return;
+			}
+
+			// Determine status class based on job state
+			let statusClass = 'status-idle';
+			let statusLabel = 'Connected';
+
+			if (data.has_active_job && data.current_job) {
+				const jobStatus = data.current_job.status;
+				if (jobStatus === 'IN_PROGRESS') {
+					statusClass = 'status-syncing';
+					statusLabel = 'Syncing...';
+				} else if (jobStatus === 'PENDING') {
+					statusClass = 'status-syncing';
+					statusLabel = 'Pending';
+				}
+			} else if (data.last_report) {
+				const reportStatus = data.last_report.status;
+				switch (reportStatus) {
+					case 'SUCCESS':
+						statusClass = 'status-success';
+						statusLabel = 'Connected';
+						break;
+					case 'PARTIAL':
+						statusClass = 'status-warning';
+						statusLabel = 'Partial Sync';
+						break;
+					case 'FAILED':
+					case 'TIMEOUT':
+						statusClass = 'status-error';
+						statusLabel = 'Last Sync Failed';
+						break;
+					default:
+						statusClass = 'status-idle';
+						statusLabel = 'Connected';
+				}
+			}
+
+			// Update status icon classes
+			statusIcon.className = `status-icon ${statusClass}`;
+
+			// Update status text
+			statusText.className = `status-text ${statusClass}`;
+			statusText.textContent = statusLabel;
+
+			// Update details if available
+			this.updateBragBookStatusDetails(data);
+		}
+
+		/**
+		 * Update status card details section
+		 * @param {Object} data - Status data
+		 */
+		updateBragBookStatusDetails(data) {
+			const detailsContainer = this.bragBookStatusCard?.querySelector('.status-card-details');
+			if (!detailsContainer) {
+				return;
+			}
+
+			// Clear existing details
+			detailsContainer.innerHTML = '';
+
+			// Add job ID if active
+			if (data.current_job && data.current_job.job_id) {
+				detailsContainer.innerHTML += `
+					<div class="status-detail">
+						<span class="detail-label">Job ID:</span>
+						<span class="detail-value">${data.current_job.job_id}</span>
+					</div>
+				`;
+			}
+
+			// Add last report info
+			if (data.last_report) {
+				if (data.last_report.reported_at) {
+					const reportedTime = new Date(data.last_report.reported_at);
+					const now = new Date();
+					const diffMs = now - reportedTime;
+					const diffMins = Math.floor(diffMs / 60000);
+					const timeAgo = diffMins < 1 ? 'just now' :
+						diffMins < 60 ? `${diffMins} min ago` :
+							`${Math.floor(diffMins / 60)} hours ago`;
+
+					detailsContainer.innerHTML += `
+						<div class="status-detail">
+							<span class="detail-label">Last Reported:</span>
+							<span class="detail-value">${timeAgo}</span>
+						</div>
+					`;
+				}
+
+				if (data.last_report.cases_synced > 0) {
+					detailsContainer.innerHTML += `
+						<div class="status-detail">
+							<span class="detail-label">Cases Synced:</span>
+							<span class="detail-value">${data.last_report.cases_synced.toLocaleString()}</span>
+						</div>
+					`;
+				}
+
+				if (data.last_report.next_sync && data.last_report.next_sync.scheduledAt) {
+					const nextSync = new Date(data.last_report.next_sync.scheduledAt);
+					const options = { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' };
+					detailsContainer.innerHTML += `
+						<div class="status-detail">
+							<span class="detail-label">Next Sync:</span>
+							<span class="detail-value">${nextSync.toLocaleDateString('en-US', options)}</span>
+						</div>
+					`;
+				}
+			}
 		}
 	};
 

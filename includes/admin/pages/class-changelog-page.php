@@ -93,6 +93,30 @@ class Changelog_Page extends Settings_Base {
 				</div>
 			</div>
 
+			<!-- Version 4.1.0 -->
+			<div class="brag-book-gallery-section">
+				<div class="brag-book-gallery-changelog-version">
+					<h3>
+						<span class="version-badge version-minor">v4.1.0</span>
+						<?php esc_html_e( 'December 24, 2025', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Minor Release', 'brag-book-gallery' ); ?>
+					</h3>
+					<div class="brag-book-gallery-card">
+						<p><?php esc_html_e( 'This release improves case view tracking reliability with enhanced DOM data attributes and fixes duplicate view tracking issues.', 'brag-book-gallery' ); ?></p>
+						<h4><?php esc_html_e( '✨ Enhancements', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Case View Tracking: JavaScript now reads case ID directly from DOM data attributes instead of parsing URLs', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Data Attributes: Added data-procedure-case-id attribute to case detail view wrappers for reliable tracking', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Enhanced Logging: Added detailed API response body logging for view tracking success/failure states', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '🐛 Bug Fixes', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Duplicate View Tracking: Fixed issue where case views could be tracked twice when navigating to case detail pages', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'View Detection: Improved reliability of case/procedure view detection across different URL formats', 'brag-book-gallery' ); ?></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
 			<!-- Version 4.0.1 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">

@@ -4,6 +4,29 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.1.0] - 2025-12-24 (Stable Release)
+
+### Enhanced
+- **Case View Tracking**: Improved view tracking reliability for case detail pages
+  - Added `data-procedure-case-id` attribute to case detail view wrappers
+  - JavaScript now reads case ID directly from DOM data attributes instead of parsing URLs
+  - More reliable tracking across different URL formats and page contexts
+  - Updated in `includes/shortcodes/class-case-handler.php`
+
+### Fixed
+- **Duplicate View Tracking**: Fixed issue where case views could be tracked twice
+  - Removed redundant tracking call from `handleDirectCaseUrl()` function
+  - Views are now tracked once via `trackPageView()` when case detail view is detected
+  - Updated in `src/js/modules/main-app.js`
+
+### Developer
+- **Enhanced Logging**: Improved view tracking API response logging for debugging
+  - Added detailed response body logging on successful API calls
+  - Better visibility into view tracking success/failure states
+  - Updated in `includes/shortcodes/class-gallery-handler.php`
+
+---
+
 ## [4.0.0] - 2025-12-09 (Stable Release)
 
 This major release consolidates all features and improvements from the 3.3.2 beta series into a stable production release.

@@ -370,6 +370,11 @@ final class Setup {
 		$this->services['cases_handler'] = new \BRAGBookGallery\Includes\Shortcodes\Cases_Handler();
 		$this->services['favorites_handler'] = new \BRAGBookGallery\Includes\Shortcodes\Favorites_Handler();
 
+		// Register view tracking AJAX handlers (ensure they're always available)
+		add_action( 'wp_ajax_brag_book_track_view', [ \BRAGBookGallery\Includes\Shortcodes\Gallery_Handler::class, 'ajax_track_view' ] );
+		add_action( 'wp_ajax_nopriv_brag_book_track_view', [ \BRAGBookGallery\Includes\Shortcodes\Gallery_Handler::class, 'ajax_track_view' ] );
+		error_log( 'BRAGBook Gallery: View tracking AJAX handlers registered' );
+
 		// Initialize carousel shortcodes
 		add_shortcode( 'brag_book_carousel', [ \BRAGBookGallery\Includes\Shortcodes\Carousel_Handler::class, 'handle' ] );
 		add_shortcode( 'bragbook_carousel_shortcode', [ \BRAGBookGallery\Includes\Shortcodes\Carousel_Handler::class, 'handle_legacy' ] );
@@ -1634,8 +1639,10 @@ final class Setup {
 	 *
 	 * Processes scheduled view tracking events that were deferred to avoid
 	 * blocking page load. This method is called by WordPress cron system.
+	 * Uses the v2 API endpoint with Bearer token authentication.
 	 *
 	 * @since 3.0.0
+	 * @since 4.0.2 Updated to use v2 endpoint with Bearer token auth
 	 * @param string $case_procedure_id The case procedure ID to track (small API ID like 35, 36)
 	 * @return void
 	 */
@@ -1647,39 +1654,32 @@ final class Setup {
 		try {
 			// Get API configuration
 			$api_tokens = get_option( 'brag_book_gallery_api_token', array() );
-			$website_property_ids = get_option( 'brag_book_gallery_website_property_id', array() );
 
-			if ( empty( $api_tokens ) || empty( $website_property_ids ) ) {
+			if ( empty( $api_tokens ) ) {
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 					error_log( 'BRAGBook Gallery: API configuration missing for scheduled view tracking' );
 				}
 				return;
 			}
 
-			// Use the first configured API token and property ID
+			// Use the first configured API token
 			$api_token = is_array( $api_tokens ) ? $api_tokens[0] : $api_tokens;
-			$website_property_id = is_array( $website_property_ids ) ? $website_property_ids[0] : $website_property_ids;
 
 			// Get base API URL
 			$api_endpoint = get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' );
 
-			// Build the tracking URL using /views endpoint
+			// Build the tracking URL using v2 views endpoint with caseProcedureId as query param
 			$tracking_url = sprintf(
-				'%s/api/plugin/views?apiToken=%s',
+				'%s/api/plugin/v2/views?caseProcedureId=%s',
 				$api_endpoint,
-				urlencode( $api_token )
+				urlencode( $case_procedure_id )
 			);
 
-			// Prepare tracking data with caseProcedureId
-			$tracking_data = array(
-				'caseProcedureId' => $case_procedure_id,
-			);
-
-			// Make the API request
+			// Make the API request with Bearer token auth
 			$response = wp_remote_post( $tracking_url, array(
-				'body'    => wp_json_encode( $tracking_data ),
 				'headers' => array(
-					'Content-Type' => 'application/json',
+					'Authorization' => 'Bearer ' . $api_token,
+					'Content-Type'  => 'application/json',
 				),
 				'timeout' => 30,
 			) );
@@ -1696,24 +1696,14 @@ final class Setup {
 			$response_code = wp_remote_retrieve_response_code( $response );
 			if ( $response_code < 200 || $response_code >= 300 ) {
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-					error_log( "BRAGBook Gallery: Scheduled view tracking API returned status {$response_code}" );
+					$response_body = wp_remote_retrieve_body( $response );
+					error_log( "BRAGBook Gallery: Scheduled view tracking API returned status {$response_code}: {$response_body}" );
 				}
 				return;
 			}
 
-			// Parse response
-			$response_body = wp_remote_retrieve_body( $response );
-			$response_data = json_decode( $response_body, true );
-
-			// Log success or failure
-			if ( isset( $response_data['success'] ) && $response_data['success'] ) {
-				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-					error_log( "BRAGBook Gallery: Successfully tracked scheduled view for caseProcedureId {$case_procedure_id}" );
-				}
-			} else {
-				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-					error_log( "BRAGBook Gallery: Scheduled view tracking failed for caseProcedureId {$case_procedure_id} - " . wp_json_encode( $response_data ) );
-				}
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( "BRAGBook Gallery: Successfully tracked scheduled view for caseProcedureId {$case_procedure_id}" );
 			}
 
 		} catch ( \Exception $e ) {

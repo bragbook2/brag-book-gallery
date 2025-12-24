@@ -5905,6 +5905,9 @@ class BRAGbookGalleryApp {
    * Initialize all gallery components in sequence
    */
   async init() {
+    // Track page view on load (case or procedure)
+    this.trackPageView();
+
     // Check if this is a direct case URL first and handle it
     if (await this.handleDirectCaseUrl()) {
       // If we're loading a case directly, skip normal gallery initialization
@@ -6398,7 +6401,135 @@ class BRAGbookGalleryApp {
   }
 
   /**
-   * Track case view by sending to /views API endpoint
+   * Get API token from config
+   * Handles multiple possible locations for the token
+   */
+  getApiToken() {
+    const config = window.bragBookGalleryConfig;
+    if (!config) {
+      console.log('BRAGBook: bragBookGalleryConfig not available');
+      return null;
+    }
+
+    // Try different locations where the token might be stored
+    const token = config.api_token || config.apiToken || config.api_config && config.api_config.default_token || null;
+    if (token) {
+      console.log('BRAGBook: API token found');
+    } else {
+      console.log('BRAGBook: API token not found in config. Available keys:', Object.keys(config));
+      if (config.api_config) {
+        console.log('BRAGBook: api_config keys:', Object.keys(config.api_config));
+      }
+    }
+    return token;
+  }
+
+  /**
+   * Get API endpoint from config
+   */
+  getApiEndpoint() {
+    const config = window.bragBookGalleryConfig;
+    if (!config) return 'https://app.bragbookgallery.com';
+    return config.api_endpoint || config.apiEndpoint || config.apiBaseUrl || config.api_config && config.api_config.endpoint || 'https://app.bragbookgallery.com';
+  }
+
+  /**
+   * Track page view on load - detects if this is a case or procedure page
+   * and sends the appropriate view tracking request
+   *
+   * Priority:
+   * 1. Case detail view (single case page) - track case view
+   * 2. Procedure view (procedure listing page) - track procedure view
+   * 3. Don't track case cards on procedure pages (those are just thumbnails)
+   */
+  trackPageView() {
+    console.log('BRAGBook: trackPageView() called');
+
+    // Look for specific page type indicators
+    const caseDetailView = document.querySelector('.brag-book-gallery-case-detail-view');
+    const procedureView = document.querySelector('[data-view="procedure"], [data-view="tiles"], .brag-book-gallery-procedure-template');
+    console.log('BRAGBook: Found elements:', {
+      caseDetailView: caseDetailView ? caseDetailView.tagName : null,
+      procedureView: procedureView ? procedureView.tagName : null
+    });
+
+    // 1. Check for case detail view (single case page)
+    if (caseDetailView) {
+      const caseProcedureId = caseDetailView.dataset.procedureCaseId || caseDetailView.dataset.caseId;
+      console.log('BRAGBook: Case detail view dataset:', caseDetailView.dataset);
+      if (caseProcedureId) {
+        console.log(`BRAGBook: Detected CASE page, tracking view for caseProcedureId: ${caseProcedureId}`);
+        this.trackCaseView(caseProcedureId);
+        return;
+      }
+    }
+
+    // 2. Check for procedure view (procedure listing page with case cards)
+    // This takes priority over individual case cards which are just thumbnails
+    if (procedureView) {
+      const procedureId = procedureView.dataset.procedureId || procedureView.dataset.apiProcedureId;
+      console.log('BRAGBook: Procedure view dataset:', procedureView.dataset);
+      if (procedureId) {
+        console.log(`BRAGBook: Detected PROCEDURE page, tracking view for procedureId: ${procedureId}`);
+        this.trackProcedureView(procedureId);
+        return;
+      }
+
+      // Try to get procedure ID from config as fallback
+      const config = window.bragBookGalleryConfig;
+      if (config && config.procedure_id) {
+        console.log(`BRAGBook: Detected PROCEDURE page (from config), tracking view for procedureId: ${config.procedure_id}`);
+        this.trackProcedureView(config.procedure_id);
+        return;
+      }
+
+      // Procedure view exists but no procedure ID available
+      console.log('BRAGBook: Procedure page detected but no procedureId available - skipping view tracking');
+      return;
+    }
+
+    // No trackable view detected
+    console.log('BRAGBook: No case or procedure view detected on this page');
+  }
+
+  /**
+   * Track procedure view via WordPress AJAX (avoids CORS issues)
+   * @param {string|number} procedureId - The procedure ID from BragBook API
+   */
+  trackProcedureView(procedureId) {
+    if (!procedureId) {
+      console.warn('BRAGBook: No procedureId provided for procedure view tracking');
+      return;
+    }
+    const config = window.bragBookGalleryConfig;
+    if (!config || !config.ajaxUrl) {
+      console.warn('BRAGBook: AJAX configuration not available for view tracking');
+      return;
+    }
+    console.log(`BRAGBook: Sending procedure view tracking request for procedureId: ${procedureId}`);
+
+    // Use WordPress AJAX to proxy the request (avoids CORS)
+    const formData = new FormData();
+    formData.append('action', 'brag_book_track_view');
+    formData.append('nonce', config.nonce || '');
+    formData.append('procedureId', procedureId);
+    fetch(config.ajaxUrl, {
+      method: 'POST',
+      body: formData,
+      keepalive: true
+    }).then(response => response.json()).then(data => {
+      if (data.success) {
+        console.log(`BRAGBook: ✓ Procedure view registered successfully for procedureId ${procedureId}`);
+      } else {
+        console.warn(`BRAGBook: ✗ Procedure view tracking failed:`, data.data?.message || 'Unknown error');
+      }
+    }).catch(error => {
+      console.warn('BRAGBook: ✗ Procedure view tracking error:', error);
+    });
+  }
+
+  /**
+   * Track case view via WordPress AJAX (avoids CORS issues)
    * @param {string} procedureCaseId - The procedure case ID (small API ID like 35, 36)
    */
   trackCaseView(procedureCaseId) {
@@ -6407,32 +6538,29 @@ class BRAGbookGalleryApp {
       return;
     }
     const config = window.bragBookGalleryConfig;
-    if (!config || !config.api_token) {
-      console.warn('BRAGBook: API configuration not available for view tracking');
+    if (!config || !config.ajaxUrl) {
+      console.warn('BRAGBook: AJAX configuration not available for view tracking');
       return;
     }
-    const apiEndpoint = config.api_endpoint || 'https://app.bragbookgallery.com';
-    const trackingUrl = `${apiEndpoint}/api/plugin/views?apiToken=${encodeURIComponent(config.api_token)}`;
+    console.log(`BRAGBook: Sending case view tracking request for caseProcedureId: ${procedureCaseId}`);
 
-    // Send tracking request asynchronously
-    fetch(trackingUrl, {
+    // Use WordPress AJAX to proxy the request (avoids CORS)
+    const formData = new FormData();
+    formData.append('action', 'brag_book_track_view');
+    formData.append('nonce', config.nonce || '');
+    formData.append('caseProcedureId', procedureCaseId);
+    fetch(config.ajaxUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        caseProcedureId: procedureCaseId
-      }),
-      // Use keepalive to ensure request completes even if page navigates
+      body: formData,
       keepalive: true
-    }).then(response => {
-      if (response.ok) {
-        console.log(`BRAGBook: View tracked for caseProcedureId ${procedureCaseId}`);
+    }).then(response => response.json()).then(data => {
+      if (data.success) {
+        console.log(`BRAGBook: ✓ Case view registered successfully for caseProcedureId ${procedureCaseId}`);
       } else {
-        console.warn(`BRAGBook: View tracking failed with status ${response.status}`);
+        console.warn(`BRAGBook: ✗ Case view tracking failed:`, data.data?.message || 'Unknown error');
       }
     }).catch(error => {
-      console.warn('BRAGBook: View tracking error:', error);
+      console.warn('BRAGBook: ✗ Case view tracking error:', error);
     });
   }
 
@@ -6527,6 +6655,7 @@ class BRAGbookGalleryApp {
   async handleDirectCaseUrl() {
     const currentPath = window.location.pathname;
     const pathSegments = currentPath.split('/').filter(s => s);
+    console.log('BRAGBook: handleDirectCaseUrl checking path:', currentPath, 'segments:', pathSegments);
 
     // Check if this looks like a case URL: /gallery/procedure-slug/case-id
     // We need at least 3 segments and the last should be numeric
@@ -6536,11 +6665,25 @@ class BRAGbookGalleryApp {
       // Check if the last segment is a numeric case ID
       if (/^\d+$/.test(lastSegment)) {
         const galleryContent = document.getElementById('gallery-content');
+        const caseId = lastSegment;
+        console.log('BRAGBook: Detected case URL, caseId:', caseId);
 
         // Check if case is already server-rendered (has case detail view)
         const existingCaseView = galleryContent?.querySelector('.brag-book-gallery-case-detail-view');
         if (existingCaseView) {
-          // Case is already rendered on server, just initialize essential components
+          console.log('BRAGBook: Case already server-rendered, tracking view');
+          // Track view for server-rendered case
+          const caseProcedureId = existingCaseView.dataset.procedureCaseId || existingCaseView.dataset.caseId;
+          if (caseProcedureId) {
+            this.trackCaseView(caseProcedureId);
+          }
+          return true;
+        }
+
+        // Case not rendered yet - load via AJAX
+        if (galleryContent) {
+          console.log('BRAGBook: Loading case via AJAX');
+          await this.loadCaseDetailsViaAjax(caseId, window.location.href, null);
           return true;
         }
         return false;
@@ -6744,11 +6887,22 @@ class BRAGbookGalleryApp {
           }
         }
 
-        // Log view tracking information to console
+        // Track case view via JavaScript after content loads
+        // Get the procedure case ID from the newly loaded content
+        const loadedCaseDetail = galleryContent.querySelector('.brag-book-gallery-case-detail-view, [data-case-id]');
+        if (loadedCaseDetail) {
+          const caseProcedureId = loadedCaseDetail.dataset.procedureCaseId || loadedCaseDetail.dataset.caseId;
+          if (caseProcedureId) {
+            console.log(`BRAGBook: Case loaded via AJAX, tracking view for caseProcedureId: ${caseProcedureId}`);
+            this.trackCaseView(caseProcedureId);
+          }
+        }
+
+        // Log view tracking information from server (if available)
         if (data.data.view_tracked) {
-          console.log(`Case view tracked successfully for Case ID: ${data.data.case_id}`);
+          console.log(`BRAGBook: Server-side view tracked for Case ID: ${data.data.case_id}`);
         } else if (data.data.view_tracked === false) {
-          console.warn(`Case view tracking failed for Case ID: ${data.data.case_id}`);
+          console.warn(`BRAGBook: Server-side view tracking failed for Case ID: ${data.data.case_id}`);
 
           // Show additional debug info if available
           if (data.data.debug) {

@@ -74,6 +74,7 @@ final class Gallery_Handler {
 	 * Initialize the gallery handler
 	 *
 	 * Sets up shortcode registration.
+	 * Note: AJAX handlers for view tracking are registered in Setup::init_services()
 	 *
 	 * @return void
 	 * @since 3.0.0
@@ -136,23 +137,16 @@ final class Gallery_Handler {
 		// Get base API URL
 		$api_endpoint = get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' );
 
-		// Build the tracking URL for /api/plugin/views endpoint
-		$tracking_url = rtrim( $api_endpoint, '/' ) . '/api/plugin/views';
+		// Build the tracking URL for v2 /api/plugin/v2/views endpoint
+		$tracking_url = rtrim( $api_endpoint, '/' ) . '/api/plugin/v2/views?caseProcedureId=' . urlencode( $case_id );
 
-		// Prepare tracking data
-		$tracking_data = [
-			'apiTokens'          => [ $api_token ],
-			'websitePropertyIds' => [ (int) $website_property_id ],
-			'caseId'             => $case_id,
-		];
-
-		// Make non-blocking request using wp_remote_post with short timeout
+		// Make non-blocking request using wp_remote_post with Bearer token
 		wp_remote_post(
 			$tracking_url,
 			[
-				'body'      => wp_json_encode( $tracking_data ),
 				'headers'   => [
-					'Content-Type' => 'application/json',
+					'Content-Type'  => 'application/json',
+					'Authorization' => 'Bearer ' . $api_token,
 				],
 				'timeout'   => 1, // Short timeout - we don't need to wait for response
 				'blocking'  => false, // Non-blocking request
@@ -162,6 +156,125 @@ final class Gallery_Handler {
 
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 			error_log( "BRAGBook Gallery: Tracked view for case {$case_id}" );
+		}
+	}
+
+	/**
+	 * AJAX handler for view tracking
+	 *
+	 * Proxies view tracking requests through WordPress to avoid CORS issues.
+	 * Accepts either caseProcedureId or procedureId parameter.
+	 *
+	 * @since 4.0.1
+	 * @return void
+	 */
+	public static function ajax_track_view(): void {
+		error_log( 'BRAGBook Gallery: ajax_track_view called' );
+
+		// Verify nonce
+		$nonce = isset( $_POST['nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['nonce'] ) ) : '';
+		error_log( 'BRAGBook Gallery: ajax_track_view nonce received: ' . ( $nonce ? 'yes' : 'no' ) );
+
+		if ( empty( $nonce ) || ! wp_verify_nonce( $nonce, 'brag_book_gallery_nonce' ) ) {
+			error_log( 'BRAGBook Gallery: ajax_track_view nonce verification failed' );
+			wp_send_json_error( [ 'message' => 'Invalid nonce' ], 403 );
+			return;
+		}
+
+		error_log( 'BRAGBook Gallery: ajax_track_view nonce passed' );
+
+		// Get tracking parameters
+		$case_procedure_id = isset( $_POST['caseProcedureId'] ) ? absint( $_POST['caseProcedureId'] ) : 0;
+		$procedure_id      = isset( $_POST['procedureId'] ) ? absint( $_POST['procedureId'] ) : 0;
+
+		error_log( "BRAGBook Gallery: ajax_track_view params - caseProcedureId: {$case_procedure_id}, procedureId: {$procedure_id}" );
+
+		if ( empty( $case_procedure_id ) && empty( $procedure_id ) ) {
+			error_log( 'BRAGBook Gallery: ajax_track_view no IDs provided' );
+			wp_send_json_error( [ 'message' => 'No caseProcedureId or procedureId provided' ], 400 );
+			return;
+		}
+
+		// Get API configuration
+		$api_tokens = get_option( 'brag_book_gallery_api_token', [] );
+		error_log( 'BRAGBook Gallery: ajax_track_view api_tokens type: ' . gettype( $api_tokens ) );
+
+		if ( empty( $api_tokens ) ) {
+			error_log( 'BRAGBook Gallery: ajax_track_view no API tokens configured' );
+			wp_send_json_error( [ 'message' => 'API token not configured' ], 500 );
+			return;
+		}
+
+		// Get first available token
+		$api_token = '';
+		if ( is_array( $api_tokens ) ) {
+			$api_token = $api_tokens['default'] ?? $api_tokens[0] ?? '';
+		} else {
+			$api_token = $api_tokens;
+		}
+
+		if ( empty( $api_token ) ) {
+			error_log( 'BRAGBook Gallery: ajax_track_view API token empty after extraction' );
+			wp_send_json_error( [ 'message' => 'API token not available' ], 500 );
+			return;
+		}
+
+		error_log( 'BRAGBook Gallery: ajax_track_view API token found, length: ' . strlen( $api_token ) );
+
+		// Build API URL
+		$api_endpoint = get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' );
+		$query_params = [];
+
+		if ( ! empty( $case_procedure_id ) ) {
+			$query_params['caseProcedureId'] = $case_procedure_id;
+		}
+		if ( ! empty( $procedure_id ) ) {
+			$query_params['procedureId'] = $procedure_id;
+		}
+
+		$tracking_url = rtrim( $api_endpoint, '/' ) . '/api/plugin/v2/views?' . http_build_query( $query_params );
+		error_log( 'BRAGBook Gallery: ajax_track_view tracking URL: ' . $tracking_url );
+
+		// Make the API request server-side (no CORS issues)
+		$response = wp_remote_post(
+			$tracking_url,
+			[
+				'headers'   => [
+					'Content-Type'  => 'application/json',
+					'Authorization' => 'Bearer ' . $api_token,
+				],
+				'timeout'   => 10,
+				'sslverify' => true,
+			]
+		);
+
+		if ( is_wp_error( $response ) ) {
+			error_log( 'BRAGBook Gallery: ajax_track_view WP error: ' . $response->get_error_message() );
+			wp_send_json_error( [
+				'message' => 'API request failed: ' . $response->get_error_message(),
+			], 500 );
+			return;
+		}
+
+		$status_code = wp_remote_retrieve_response_code( $response );
+		$body        = wp_remote_retrieve_body( $response );
+
+		error_log( "BRAGBook Gallery: ajax_track_view API response - status: {$status_code}, body: {$body}" );
+
+		if ( $status_code >= 200 && $status_code < 300 ) {
+			error_log( 'BRAGBook Gallery: ajax_track_view SUCCESS - API response: ' . $body );
+			wp_send_json_success( [
+				'message'          => 'View tracked successfully',
+				'caseProcedureId'  => $case_procedure_id,
+				'procedureId'      => $procedure_id,
+			] );
+		} else {
+			error_log( "BRAGBook Gallery: ajax_track_view API error - status: {$status_code}, body: {$body}" );
+			wp_send_json_error( [
+				'message'    => 'API returned error',
+				'statusCode' => $status_code,
+				'response'   => $body,
+			], $status_code );
 		}
 	}
 
@@ -1979,8 +2092,12 @@ final class Gallery_Handler {
 			);
 		}
 
+		// Note: Procedure view tracking now handled by JavaScript for console feedback
+		// self::track_procedure_page_view( $procedure_term );
+
 		$procedure_name        = $procedure_term->name;
 		$procedure_description = get_term_meta( $procedure_term->term_id, 'description', true );
+		$procedure_api_id      = get_term_meta( $procedure_term->term_id, 'procedure_id', true );
 
 		// Enqueue gallery assets
 		Asset_Manager::enqueue_gallery_assets();
@@ -1994,7 +2111,8 @@ final class Gallery_Handler {
 		<!-- Procedure Template View -->
 		<div class="brag-book-gallery-procedure-template"
 			 data-view="procedure"
-			 data-procedure-slug="<?php echo esc_attr( $procedure_slug ); ?>">
+			 data-procedure-slug="<?php echo esc_attr( $procedure_slug ); ?>"
+			 data-procedure-id="<?php echo esc_attr( $procedure_api_id ); ?>">
 
 			<?php if ( ! empty( $procedure_name ) ) : ?>
 				<header class="brag-book-gallery-procedure-header">
@@ -2373,6 +2491,12 @@ final class Gallery_Handler {
 			);
 		}
 
+		// Note: Procedure view tracking now handled by JavaScript for console feedback
+		// self::track_procedure_page_view( $procedure_term );
+
+		// Get procedure API ID for JS tracking
+		$procedure_api_id = get_term_meta( $procedure_term->term_id, 'procedure_id', true );
+
 		// Enqueue gallery assets
 		Asset_Manager::enqueue_gallery_assets();
 
@@ -2399,7 +2523,8 @@ final class Gallery_Handler {
 
 			<div class="brag-book-gallery-tiles-view"
 				 data-view="tiles"
-				 data-procedure-slug="<?php echo esc_attr( $procedure_term->slug ); ?>">
+				 data-procedure-slug="<?php echo esc_attr( $procedure_term->slug ); ?>"
+				 data-procedure-id="<?php echo esc_attr( $procedure_api_id ); ?>">
 
 				<div class="brag-book-gallery-tiles-container" style="max-width: 1440px; margin: 0 auto; padding: 0 20px;">
 					<!-- Horizontal Filter Bar -->
@@ -2800,22 +2925,110 @@ final class Gallery_Handler {
 	}
 
 	/**
+	 * Track procedure page view
+	 *
+	 * Records a view event when a user views a procedure listing page (taxonomy archive).
+	 * This is different from case views - it tracks views of the procedure itself.
+	 *
+	 * @param \WP_Term $procedure_term The procedure term being viewed
+	 *
+	 * @return void
+	 * @since 4.0.2
+	 */
+	private static function track_procedure_page_view( \WP_Term $procedure_term ): void {
+		// Skip if bot request or admin
+		if ( self::is_bot_request() || is_admin() ) {
+			return;
+		}
+
+		// Get the procedure ID from term meta (this is the BragBook API ID)
+		$procedure_id = get_term_meta( $procedure_term->term_id, 'procedure_id', true );
+
+		if ( empty( $procedure_id ) ) {
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( "BRAGBook Gallery: Could not get procedure_id for term {$procedure_term->term_id} ({$procedure_term->slug})" );
+			}
+			return;
+		}
+
+		// Track the view asynchronously
+		self::track_procedure_view_async( (int) $procedure_id );
+	}
+
+	/**
+	 * Track procedure view asynchronously
+	 *
+	 * Makes the tracking API call for procedure views in a non-blocking way.
+	 *
+	 * @param int $procedure_id The procedure ID from BragBook API
+	 *
+	 * @return void
+	 * @since 4.0.2
+	 */
+	private static function track_procedure_view_async( int $procedure_id ): void {
+		try {
+			// Get API configuration
+			$api_tokens = get_option( 'brag_book_gallery_api_token', array() );
+
+			if ( empty( $api_tokens ) ) {
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+					error_log( 'BRAGBook Gallery: API configuration missing for procedure view tracking' );
+				}
+				return;
+			}
+
+			// Use the first configured API token
+			$api_token = is_array( $api_tokens ) ? $api_tokens[0] : $api_tokens;
+
+			// Get base API URL
+			$api_endpoint = get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' );
+
+			// Build the tracking URL using v2 views endpoint with procedureId
+			$tracking_url = sprintf(
+				'%s/api/plugin/v2/views?procedureId=%d',
+				$api_endpoint,
+				$procedure_id
+			);
+
+			// Make the API request asynchronously with Bearer token auth
+			wp_remote_post( $tracking_url, array(
+				'headers'  => array(
+					'Authorization' => 'Bearer ' . $api_token,
+					'Content-Type'  => 'application/json',
+				),
+				'timeout'  => 5, // Short timeout for non-blocking
+				'blocking' => false, // Non-blocking request
+			) );
+
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( "BRAGBook Gallery: Initiated async procedure view tracking for procedureId {$procedure_id}" );
+			}
+
+		} catch ( \Exception $e ) {
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'BRAGBook Gallery: Procedure view tracking exception - ' . $e->getMessage() );
+			}
+		}
+	}
+
+	/**
 	 * Track view asynchronously
 	 *
-	 * Makes the tracking API call in a non-blocking way.
+	 * Makes the tracking API call in a non-blocking way using the v2 endpoint.
 	 *
-	 * @param string $case_procedure_id The case procedure ID to track (small API ID like 35, 36)
+	 * @param string   $case_procedure_id The case procedure ID to track (small API ID like 35, 36)
+	 * @param int|null $procedure_id      Optional procedure ID for procedure view tracking
 	 *
 	 * @return void
 	 * @since 3.0.0
+	 * @since 4.0.2 Updated to use v2 endpoint with Bearer token auth
 	 */
-	private static function track_view_async( string $case_procedure_id ): void {
+	private static function track_view_async( string $case_procedure_id, ?int $procedure_id = null ): void {
 		try {
 			// Get API configuration
-			$api_tokens           = get_option( 'brag_book_gallery_api_token', array() );
-			$website_property_ids = get_option( 'brag_book_gallery_website_property_id', array() );
+			$api_tokens = get_option( 'brag_book_gallery_api_token', array() );
 
-			if ( empty( $api_tokens ) || empty( $website_property_ids ) ) {
+			if ( empty( $api_tokens ) ) {
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 					error_log( 'BRAGBook Gallery: API configuration missing for server-side view tracking' );
 				}
@@ -2823,37 +3036,41 @@ final class Gallery_Handler {
 				return;
 			}
 
-			// Use the first configured API token and property ID
-			$api_token           = is_array( $api_tokens ) ? $api_tokens[0] : $api_tokens;
-			$website_property_id = is_array( $website_property_ids ) ? $website_property_ids[0] : $website_property_ids;
+			// Use the first configured API token
+			$api_token = is_array( $api_tokens ) ? $api_tokens[0] : $api_tokens;
 
 			// Get base API URL
 			$api_endpoint = get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' );
 
-			// Build the tracking URL using /views endpoint
+			// Build query parameters - only include the ID that was provided
+			$query_params = array();
+			if ( ! empty( $case_procedure_id ) ) {
+				$query_params['caseProcedureId'] = $case_procedure_id;
+			}
+			if ( ! empty( $procedure_id ) && $procedure_id > 0 ) {
+				$query_params['procedureId'] = $procedure_id;
+			}
+
+			// Build the tracking URL using v2 views endpoint
 			$tracking_url = sprintf(
-				'%s/api/plugin/views?apiToken=%s',
+				'%s/api/plugin/v2/views?%s',
 				$api_endpoint,
-				urlencode( $api_token )
+				http_build_query( $query_params )
 			);
 
-			// Prepare tracking data with caseProcedureId (the small API ID)
-			$tracking_data = array(
-				'caseProcedureId' => $case_procedure_id,
-			);
-
-			// Make the API request asynchronously
+			// Make the API request asynchronously with Bearer token auth
 			wp_remote_post( $tracking_url, array(
-				'body'     => wp_json_encode( $tracking_data ),
 				'headers'  => array(
-					'Content-Type' => 'application/json',
+					'Authorization' => 'Bearer ' . $api_token,
+					'Content-Type'  => 'application/json',
 				),
 				'timeout'  => 5, // Short timeout for non-blocking
 				'blocking' => false, // Non-blocking request
 			) );
 
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( "BRAGBook Gallery: Initiated async view tracking for caseProcedureId {$case_procedure_id}" );
+				$id_info = ! empty( $case_procedure_id ) ? "caseProcedureId {$case_procedure_id}" : "procedureId {$procedure_id}";
+				error_log( "BRAGBook Gallery: Initiated async view tracking for {$id_info}" );
 			}
 
 		} catch ( \Exception $e ) {

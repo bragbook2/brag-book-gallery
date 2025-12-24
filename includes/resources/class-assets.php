@@ -462,13 +462,18 @@ class Assets {
 			}
 		}
 
+		// Get API endpoint
+		$api_endpoint = get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' );
+
 		$localized_data = array(
 			'ajaxurl'       => admin_url( path: 'admin-ajax.php' ),
 			'nonce'         => wp_create_nonce( action: 'brag_book_gallery_frontend' ),
+			'api_endpoint'  => esc_url_raw( $api_endpoint ),
 			'api_config'    => array(
 				'default_token'         => $default_api_token,
 				'default_property_id'   => $default_website_property_id,
 				'default_procedure_ids' => $default_procedure_ids,
+				'endpoint'              => esc_url_raw( $api_endpoint ),
 			),
 			'assets'        => array(
 				'leftArrow'     => $icon_left_arrow,

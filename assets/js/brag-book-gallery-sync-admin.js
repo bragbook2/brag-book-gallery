@@ -2,265 +2,6 @@
 /******/ 	"use strict";
 /******/ 	var __webpack_modules__ = ({
 
-/***/ "./src/js/modules/sync-cron-test.js":
-/*!******************************************!*\
-  !*** ./src/js/modules/sync-cron-test.js ***!
-  \******************************************/
-/***/ (function(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
-
-__webpack_require__.r(__webpack_exports__);
-/* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   SyncCronTest: function() { return /* binding */ SyncCronTest; },
-/* harmony export */   initSyncCronTest: function() { return /* binding */ initSyncCronTest; }
-/* harmony export */ });
-/**
- * Sync Cron Test Module
- *
- * Handles manual triggering of the automatic sync cron job for testing purposes.
- * Provides AJAX interface for testing cron functionality without waiting for
- * the scheduled time.
- *
- * @package    BRAGBookGallery
- * @subpackage Admin\Sync
- * @since      3.3.0
- */
-
-/**
- * Sync Cron Test Class
- *
- * Manages the cron test button and displays results including:
- * - Manual cron job triggering
- * - Success/error notifications
- * - Auto-dismissing notices
- *
- * @since 3.3.0
- */
-class SyncCronTest {
-  /**
-   * Constructor
-   *
-   * @since 3.3.0
-   *
-   * @param {Object} config - Configuration object
-   * @param {string} config.ajaxUrl - WordPress AJAX URL
-   * @param {string} config.nonce - Security nonce for AJAX requests
-   * @param {Object} config.messages - Localized messages
-   */
-  constructor(config = {}) {
-    this.ajaxUrl = config.ajaxUrl || window.ajaxurl || '/wp-admin/admin-ajax.php';
-    this.nonce = config.nonce || '';
-    this.messages = config.messages || {
-      running: 'Running...',
-      triggering: 'Triggering cron job...',
-      testFailed: 'Test failed',
-      ajaxError: 'AJAX request failed',
-      testCronNow: 'Test Cron Now'
-    };
-    this.elements = {
-      button: null,
-      resultContainer: null
-    };
-    this.autoDismissTimeout = 5000; // 5 seconds
-  }
-
-  /**
-   * Initialize cron test
-   *
-   * Finds DOM elements and binds event listeners.
-   *
-   * @since 3.3.0
-   *
-   * @return {void}
-   */
-  init() {
-    this.elements.button = document.getElementById('test-cron-sync');
-    this.elements.resultContainer = document.getElementById('test-cron-result');
-    if (!this.elements.button) {
-      return;
-    }
-    this.bindEvents();
-  }
-
-  /**
-   * Bind event listeners
-   *
-   * Attaches click handler to the test cron button.
-   *
-   * @since 3.3.0
-   *
-   * @return {void}
-   */
-  bindEvents() {
-    this.elements.button.addEventListener('click', e => {
-      e.preventDefault();
-      this.handleTestCron();
-    });
-  }
-
-  /**
-   * Handle test cron button click
-   *
-   * Initiates the AJAX request to trigger the cron job.
-   *
-   * @since 3.3.0
-   *
-   * @return {Promise<void>}
-   */
-  async handleTestCron() {
-    const button = this.elements.button;
-
-    // Disable button and show loading state
-    button.disabled = true;
-    button.textContent = this.messages.running;
-
-    // Show initial notice
-    this.showNotice(this.messages.triggering, 'info');
-    try {
-      // Prepare form data
-      const formData = new FormData();
-      formData.append('action', 'brag_book_gallery_test_cron');
-      formData.append('nonce', this.nonce);
-
-      // Send AJAX request
-      const response = await fetch(this.ajaxUrl, {
-        method: 'POST',
-        body: formData
-      });
-      const result = await response.json();
-
-      // Re-enable button
-      button.disabled = false;
-      button.textContent = this.messages.testCronNow;
-
-      // Handle response
-      if (result.success) {
-        this.showNotice(result.data.message, 'success');
-      } else {
-        this.showNotice(result.data || this.messages.testFailed, 'error');
-      }
-    } catch (error) {
-      // Handle error
-      console.error('BRAG book Sync: Cron test error:', error);
-      button.disabled = false;
-      button.textContent = this.messages.testCronNow;
-      this.showNotice(this.messages.ajaxError, 'error');
-    }
-  }
-
-  /**
-   * Show notice message
-   *
-   * Displays a WordPress-style notice with auto-dismiss functionality.
-   *
-   * @since 3.3.0
-   *
-   * @param {string} message - Message to display
-   * @param {string} type - Notice type (success, error, warning, info)
-   *
-   * @return {void}
-   */
-  showNotice(message, type = 'info') {
-    if (!this.elements.resultContainer) {
-      return;
-    }
-    const notice = document.createElement('div');
-    notice.className = `notice notice-${type} is-dismissible`;
-    notice.innerHTML = `<p>${this.escapeHtml(message)}</p>`;
-
-    // Clear previous notices
-    this.elements.resultContainer.innerHTML = '';
-
-    // Add new notice
-    this.elements.resultContainer.appendChild(notice);
-
-    // Auto-dismiss after timeout
-    this.autoDismissNotice(notice);
-  }
-
-  /**
-   * Auto-dismiss notice
-   *
-   * Fades out and removes a notice after the configured timeout.
-   *
-   * @since 3.3.0
-   *
-   * @param {HTMLElement} notice - Notice element to dismiss
-   *
-   * @return {void}
-   */
-  autoDismissNotice(notice) {
-    setTimeout(() => {
-      // Fade out animation
-      notice.style.transition = 'opacity 300ms';
-      notice.style.opacity = '0';
-
-      // Remove from DOM after fade
-      setTimeout(() => {
-        notice.remove();
-      }, 300);
-    }, this.autoDismissTimeout);
-  }
-
-  /**
-   * Escape HTML for safe display
-   *
-   * Prevents XSS by escaping HTML special characters.
-   *
-   * @since 3.3.0
-   *
-   * @param {string} text - Text to escape
-   *
-   * @return {string} Escaped text
-   */
-  escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-  }
-}
-
-/**
- * Initialize cron test on DOM ready
- *
- * Looks for the cron test button and initializes the functionality
- * if configuration is available.
- *
- * @since 3.3.0
- *
- * @return {void}
- */
-function initSyncCronTest() {
-  // Check if we're on the sync page
-  const button = document.getElementById('test-cron-sync');
-  if (!button) {
-    return;
-  }
-
-  // Get configuration from localized data
-  const config = {};
-  if (typeof bragBookSync !== 'undefined') {
-    config.ajaxUrl = bragBookSync.ajax_url;
-    config.nonce = bragBookSync.sync_nonce;
-    config.messages = bragBookSync.messages || {};
-  }
-
-  // Initialize cron test
-  const cronTest = new SyncCronTest(config);
-  cronTest.init();
-
-  // Store instance for potential access
-  window.bragBookSyncCronTest = cronTest;
-}
-
-// Auto-initialize if DOM is ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initSyncCronTest);
-} else {
-  initSyncCronTest();
-}
-
-/***/ }),
-
 /***/ "./src/js/modules/sync-time-display.js":
 /*!*********************************************!*\
   !*** ./src/js/modules/sync-time-display.js ***!
@@ -527,7 +268,6 @@ var __webpack_exports__ = {};
   \******************************/
 __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _modules_sync_time_display_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./modules/sync-time-display.js */ "./src/js/modules/sync-time-display.js");
-/* harmony import */ var _modules_sync_cron_test_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./modules/sync-cron-test.js */ "./src/js/modules/sync-cron-test.js");
 /**
  * BRAG book Sync Admin JavaScript
  *
@@ -537,7 +277,6 @@ __webpack_require__.r(__webpack_exports__);
  * - Sync history management
  * - AJAX communication for sync operations
  * - Time display updates
- * - Cron test functionality
  *
  * @package BRAGBook
  * @since   3.0.0
@@ -547,7 +286,6 @@ __webpack_require__.r(__webpack_exports__);
 
 
 // Import sync modules
-
 
 
 /**
@@ -566,7 +304,6 @@ if (typeof window.BRAGbookSyncAdmin === 'undefined') {
       this.nonces = {
         sync: this.config.sync_nonce || '',
         general: this.config.nonce || '',
-        testAuto: this.config.test_auto_nonce || '',
         clearLog: this.config.clear_log_nonce || '',
         delete: this.config.delete_nonce || ''
       };
@@ -598,6 +335,9 @@ if (typeof window.BRAGbookSyncAdmin === 'undefined') {
 
       // Check for existing sync on page load
       this.checkExistingSync();
+
+      // Initialize BragBook status refresh
+      this.initBragBookStatusRefresh();
     }
 
     /**
@@ -1410,6 +1150,193 @@ if (typeof window.BRAGbookSyncAdmin === 'undefined') {
         childList: true,
         subtree: true
       });
+    }
+
+    /**
+     * Initialize BragBook status refresh
+     * Sets up periodic refresh of the status card during sync operations
+     */
+    initBragBookStatusRefresh() {
+      // Store reference to status card
+      this.bragBookStatusCard = document.getElementById('bragbook-sync-status-card');
+
+      // Refresh status when sync starts
+      document.addEventListener('bragbook-sync-started', () => {
+        this.refreshBragBookStatus();
+        this.startBragBookStatusPolling();
+      });
+
+      // Stop polling when sync ends
+      document.addEventListener('bragbook-sync-completed', () => {
+        this.stopBragBookStatusPolling();
+        this.refreshBragBookStatus();
+      });
+    }
+
+    /**
+     * Start polling for BragBook status updates
+     */
+    startBragBookStatusPolling() {
+      if (this.bragBookStatusInterval) {
+        return; // Already polling
+      }
+      this.bragBookStatusInterval = setInterval(() => {
+        this.refreshBragBookStatus();
+      }, 5000); // Refresh every 5 seconds
+    }
+
+    /**
+     * Stop polling for BragBook status updates
+     */
+    stopBragBookStatusPolling() {
+      if (this.bragBookStatusInterval) {
+        clearInterval(this.bragBookStatusInterval);
+        this.bragBookStatusInterval = null;
+      }
+    }
+
+    /**
+     * Refresh BragBook status via AJAX
+     */
+    refreshBragBookStatus() {
+      if (!this.bragBookStatusCard) {
+        return;
+      }
+      const formData = new FormData();
+      formData.append('action', 'brag_book_get_bragbook_sync_status');
+      formData.append('nonce', this.nonces.sync);
+      fetch(this.ajaxUrl, {
+        method: 'POST',
+        body: formData,
+        credentials: 'same-origin'
+      }).then(response => response.json()).then(result => {
+        if (result.success && result.data) {
+          this.updateBragBookStatusCard(result.data);
+        }
+      }).catch(error => {
+        console.error('Failed to refresh BragBook status:', error);
+      });
+    }
+
+    /**
+     * Update the BragBook status card with new data
+     * @param {Object} data - Status data from AJAX response
+     */
+    updateBragBookStatusCard(data) {
+      const statusIcon = this.bragBookStatusCard?.querySelector('.status-icon');
+      const statusText = this.bragBookStatusCard?.querySelector('.status-text');
+      if (!statusIcon || !statusText) {
+        return;
+      }
+
+      // Determine status class based on job state
+      let statusClass = 'status-idle';
+      let statusLabel = 'Connected';
+      if (data.has_active_job && data.current_job) {
+        const jobStatus = data.current_job.status;
+        if (jobStatus === 'IN_PROGRESS') {
+          statusClass = 'status-syncing';
+          statusLabel = 'Syncing...';
+        } else if (jobStatus === 'PENDING') {
+          statusClass = 'status-syncing';
+          statusLabel = 'Pending';
+        }
+      } else if (data.last_report) {
+        const reportStatus = data.last_report.status;
+        switch (reportStatus) {
+          case 'SUCCESS':
+            statusClass = 'status-success';
+            statusLabel = 'Connected';
+            break;
+          case 'PARTIAL':
+            statusClass = 'status-warning';
+            statusLabel = 'Partial Sync';
+            break;
+          case 'FAILED':
+          case 'TIMEOUT':
+            statusClass = 'status-error';
+            statusLabel = 'Last Sync Failed';
+            break;
+          default:
+            statusClass = 'status-idle';
+            statusLabel = 'Connected';
+        }
+      }
+
+      // Update status icon classes
+      statusIcon.className = `status-icon ${statusClass}`;
+
+      // Update status text
+      statusText.className = `status-text ${statusClass}`;
+      statusText.textContent = statusLabel;
+
+      // Update details if available
+      this.updateBragBookStatusDetails(data);
+    }
+
+    /**
+     * Update status card details section
+     * @param {Object} data - Status data
+     */
+    updateBragBookStatusDetails(data) {
+      const detailsContainer = this.bragBookStatusCard?.querySelector('.status-card-details');
+      if (!detailsContainer) {
+        return;
+      }
+
+      // Clear existing details
+      detailsContainer.innerHTML = '';
+
+      // Add job ID if active
+      if (data.current_job && data.current_job.job_id) {
+        detailsContainer.innerHTML += `
+					<div class="status-detail">
+						<span class="detail-label">Job ID:</span>
+						<span class="detail-value">${data.current_job.job_id}</span>
+					</div>
+				`;
+      }
+
+      // Add last report info
+      if (data.last_report) {
+        if (data.last_report.reported_at) {
+          const reportedTime = new Date(data.last_report.reported_at);
+          const now = new Date();
+          const diffMs = now - reportedTime;
+          const diffMins = Math.floor(diffMs / 60000);
+          const timeAgo = diffMins < 1 ? 'just now' : diffMins < 60 ? `${diffMins} min ago` : `${Math.floor(diffMins / 60)} hours ago`;
+          detailsContainer.innerHTML += `
+						<div class="status-detail">
+							<span class="detail-label">Last Reported:</span>
+							<span class="detail-value">${timeAgo}</span>
+						</div>
+					`;
+        }
+        if (data.last_report.cases_synced > 0) {
+          detailsContainer.innerHTML += `
+						<div class="status-detail">
+							<span class="detail-label">Cases Synced:</span>
+							<span class="detail-value">${data.last_report.cases_synced.toLocaleString()}</span>
+						</div>
+					`;
+        }
+        if (data.last_report.next_sync && data.last_report.next_sync.scheduledAt) {
+          const nextSync = new Date(data.last_report.next_sync.scheduledAt);
+          const options = {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit'
+          };
+          detailsContainer.innerHTML += `
+						<div class="status-detail">
+							<span class="detail-label">Next Sync:</span>
+							<span class="detail-value">${nextSync.toLocaleDateString('en-US', options)}</span>
+						</div>
+					`;
+        }
+      }
     }
   };
 

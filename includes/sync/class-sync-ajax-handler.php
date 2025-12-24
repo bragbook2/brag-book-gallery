@@ -323,6 +323,25 @@ class Sync_Ajax_Handler {
 			wp_send_json_error( 'Invalid nonce' );
 		}
 
+		// Register sync with BragBook API
+		$sync_api = new Sync_Api();
+		$registration_result = $sync_api->register_sync( Sync_Api::SYNC_TYPE_MANUAL );
+
+		if ( ! is_wp_error( $registration_result ) && isset( $registration_result['job_id'] ) ) {
+			error_log( 'AJAX: Stage 1 - Registered with BragBook API - Job ID: ' . $registration_result['job_id'] );
+
+			// Report IN_PROGRESS status
+			$sync_api->report_sync(
+				Sync_Api::STATUS_IN_PROGRESS,
+				0,
+				'Starting staged sync - Stage 1: Fetching procedures'
+			);
+		} else {
+			$error_msg = is_wp_error( $registration_result ) ? $registration_result->get_error_message() : 'Unknown error';
+			error_log( 'AJAX: Stage 1 - Failed to register with BragBook API: ' . $error_msg );
+			// Continue anyway - graceful degradation
+		}
+
 		// Get database instance for logging
 		$setup = \BRAGBookGallery\Includes\Core\Setup::get_instance();
 		$database = $setup->get_service( 'database' );
@@ -524,6 +543,27 @@ class Sync_Ajax_Handler {
 				update_option( 'brag_book_gallery_last_sync_time', current_time( 'mysql' ) );
 				update_option( 'brag_book_gallery_last_sync_status', 'success' );
 
+				// Report to BragBook API when sync is complete (not continuing)
+				$needs_continue = $result['needs_continue'] ?? false;
+				if ( ! $needs_continue ) {
+					$sync_api = new Sync_Api();
+					$cases_synced = ( $result['processed_cases'] ?? 0 );
+					$failed_cases = ( $result['failed_cases'] ?? 0 );
+
+					// Determine status based on results
+					$status = ( $failed_cases > 0 ) ? Sync_Api::STATUS_PARTIAL : Sync_Api::STATUS_SUCCESS;
+					$message = sprintf(
+						'Staged sync completed: %d cases processed (%d created, %d updated, %d failed)',
+						$cases_synced,
+						$result['created_posts'] ?? 0,
+						$result['updated_posts'] ?? 0,
+						$failed_cases
+					);
+
+					$sync_api->report_sync( $status, $cases_synced, $message );
+					error_log( 'AJAX: Stage 3 - Reported ' . $status . ' to BragBook API' );
+				}
+
 				wp_send_json_success( $result );
 			} else {
 				// Update log entry
@@ -532,6 +572,15 @@ class Sync_Ajax_Handler {
 				}
 
 				update_option( 'brag_book_gallery_last_sync_status', 'error' );
+
+				// Report failure to BragBook API
+				$sync_api = new Sync_Api();
+				$sync_api->report_sync(
+					Sync_Api::STATUS_FAILED,
+					0,
+					'Stage 3 failed: ' . ( $result['message'] ?? 'Unknown error' )
+				);
+				error_log( 'AJAX: Stage 3 - Reported FAILED to BragBook API' );
 
 				wp_send_json_error( $result );
 			}
@@ -547,6 +596,15 @@ class Sync_Ajax_Handler {
 
 			update_option( 'brag_book_gallery_last_sync_status', 'error' );
 
+			// Report failure to BragBook API
+			$sync_api = new Sync_Api();
+			$sync_api->report_sync(
+				Sync_Api::STATUS_FAILED,
+				0,
+				'Stage 3 exception: ' . $e->getMessage(),
+				$e->getTraceAsString()
+			);
+
 			wp_send_json_error( [
 				'message' => $e->getMessage(),
 				'stage'   => 3,
@@ -561,6 +619,15 @@ class Sync_Ajax_Handler {
 			}
 
 			update_option( 'brag_book_gallery_last_sync_status', 'error' );
+
+			// Report failure to BragBook API
+			$sync_api = new Sync_Api();
+			$sync_api->report_sync(
+				Sync_Api::STATUS_FAILED,
+				0,
+				'Stage 3 fatal error: ' . $e->getMessage(),
+				$e->getTraceAsString()
+			);
 
 			wp_send_json_error( [
 				'message' => 'Fatal error: ' . $e->getMessage(),

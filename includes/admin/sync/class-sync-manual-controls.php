@@ -19,6 +19,8 @@ declare( strict_types=1 );
 
 namespace BRAGBookGallery\Includes\Admin\Sync;
 
+use BRAGBookGallery\Includes\Sync\Sync_Api;
+
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -79,6 +81,9 @@ final class Sync_Manual_Controls {
 									<h3><?php esc_html_e( 'Data Synchronization', 'brag-book-gallery' ); ?></h3>
 								</div>
 							</div>
+
+							<!-- BragBook Sync Status -->
+							<?php $this->render_bragbook_sync_status(); ?>
 
 							<!-- Stage-Based Sync Controls -->
 							<div class="stage-sync-section">
@@ -260,6 +265,119 @@ final class Sync_Manual_Controls {
 				<span class="dashicons dashicons-no"></span>
 				<?php esc_html_e( 'Stop', 'brag-book-gallery' ); ?>
 			</button>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Render BragBook sync status card
+	 *
+	 * Displays the current sync job status and last report from BragBook API.
+	 *
+	 * @since 4.0.2
+	 *
+	 * @return void Outputs HTML directly
+	 */
+	private function render_bragbook_sync_status(): void {
+		// Get current job and last report data
+		$sync_api    = new Sync_Api();
+		$current_job = $sync_api->get_current_job();
+		$last_report = $sync_api->get_last_report();
+
+		// Determine connection status
+		$is_connected = ! empty( get_option( 'brag_book_gallery_api_token', [] ) ) &&
+		                ! empty( get_option( 'brag_book_gallery_website_property_id', [] ) );
+
+		// Determine status class and text
+		$status_class = 'status-inactive';
+		$status_text  = __( 'Not Connected', 'brag-book-gallery' );
+
+		if ( $is_connected ) {
+			if ( $current_job && in_array( $current_job['status'] ?? '', [ 'PENDING', 'IN_PROGRESS' ], true ) ) {
+				$status_class = 'status-syncing';
+				$status_text  = $current_job['status'] === 'IN_PROGRESS'
+					? __( 'Syncing...', 'brag-book-gallery' )
+					: __( 'Pending', 'brag-book-gallery' );
+			} elseif ( $last_report ) {
+				$last_status = $last_report['status'] ?? '';
+				switch ( $last_status ) {
+					case 'SUCCESS':
+						$status_class = 'status-success';
+						$status_text  = __( 'Connected', 'brag-book-gallery' );
+						break;
+					case 'PARTIAL':
+						$status_class = 'status-warning';
+						$status_text  = __( 'Partial Sync', 'brag-book-gallery' );
+						break;
+					case 'FAILED':
+					case 'TIMEOUT':
+						$status_class = 'status-error';
+						$status_text  = __( 'Last Sync Failed', 'brag-book-gallery' );
+						break;
+					default:
+						$status_class = 'status-idle';
+						$status_text  = __( 'Connected', 'brag-book-gallery' );
+				}
+			} else {
+				$status_class = 'status-idle';
+				$status_text  = __( 'Connected', 'brag-book-gallery' );
+			}
+		}
+		?>
+		<div class="bragbook-sync-status-card" id="bragbook-sync-status-card">
+			<div class="status-card-header">
+				<span class="status-icon <?php echo esc_attr( $status_class ); ?>"></span>
+				<span class="status-label"><?php esc_html_e( 'BragBook Status:', 'brag-book-gallery' ); ?></span>
+				<span class="status-text <?php echo esc_attr( $status_class ); ?>"><?php echo esc_html( $status_text ); ?></span>
+			</div>
+
+			<?php if ( $is_connected ) : ?>
+				<div class="status-card-details">
+					<?php if ( $current_job && ! empty( $current_job['job_id'] ) ) : ?>
+						<div class="status-detail">
+							<span class="detail-label"><?php esc_html_e( 'Job ID:', 'brag-book-gallery' ); ?></span>
+							<span class="detail-value"><?php echo esc_html( $current_job['job_id'] ); ?></span>
+						</div>
+					<?php endif; ?>
+
+					<?php if ( $last_report ) : ?>
+						<?php if ( ! empty( $last_report['reported_at'] ) ) : ?>
+							<div class="status-detail">
+								<span class="detail-label"><?php esc_html_e( 'Last Reported:', 'brag-book-gallery' ); ?></span>
+								<span class="detail-value">
+									<?php
+									$reported_time = strtotime( $last_report['reported_at'] );
+									echo esc_html( human_time_diff( $reported_time, time() ) . ' ' . __( 'ago', 'brag-book-gallery' ) );
+									?>
+								</span>
+							</div>
+						<?php endif; ?>
+
+						<?php if ( ! empty( $last_report['cases_synced'] ) ) : ?>
+							<div class="status-detail">
+								<span class="detail-label"><?php esc_html_e( 'Cases Synced:', 'brag-book-gallery' ); ?></span>
+								<span class="detail-value"><?php echo esc_html( number_format( $last_report['cases_synced'] ) ); ?></span>
+							</div>
+						<?php endif; ?>
+
+						<?php if ( ! empty( $last_report['next_sync']['scheduledAt'] ) ) : ?>
+							<div class="status-detail">
+								<span class="detail-label"><?php esc_html_e( 'Next Sync:', 'brag-book-gallery' ); ?></span>
+								<span class="detail-value">
+									<?php
+									$next_time = strtotime( $last_report['next_sync']['scheduledAt'] );
+									echo esc_html( wp_date( 'M j, Y g:i A', $next_time ) );
+									?>
+								</span>
+							</div>
+						<?php endif; ?>
+					<?php endif; ?>
+				</div>
+			<?php else : ?>
+				<div class="status-card-message">
+					<p><?php esc_html_e( 'Configure API credentials in the API Settings to enable sync registration.', 'brag-book-gallery' ); ?></p>
+				</div>
+			<?php endif; ?>
 		</div>
 		<?php
 	}

@@ -253,19 +253,30 @@ final class Asset_Manager {
 		$api_tokens_option = get_option( 'brag_book_gallery_api_token', [] );
 		$website_property_ids_option = get_option( 'brag_book_gallery_website_property_id', [] );
 
-		// Mode manager removed - default to 'default' mode
-		$mode = 'default';
-
-		// Extract values for the current mode
+		// Extract API token - check multiple formats
 		$api_token = '';
 		$website_property_id = '';
 
-		if ( is_array( $api_tokens_option ) && isset( $api_tokens_option[ $mode ] ) ) {
-			$api_token = sanitize_text_field( $api_tokens_option[ $mode ] );
+		if ( is_array( $api_tokens_option ) ) {
+			// Try 'default' key first, then index 0
+			if ( isset( $api_tokens_option['default'] ) ) {
+				$api_token = sanitize_text_field( $api_tokens_option['default'] );
+			} elseif ( isset( $api_tokens_option[0] ) ) {
+				$api_token = sanitize_text_field( $api_tokens_option[0] );
+			}
+		} elseif ( ! empty( $api_tokens_option ) ) {
+			// Single string value
+			$api_token = sanitize_text_field( $api_tokens_option );
 		}
 
-		if ( is_array( $website_property_ids_option ) && isset( $website_property_ids_option[ $mode ] ) ) {
-			$website_property_id = sanitize_text_field( $website_property_ids_option[ $mode ] );
+		if ( is_array( $website_property_ids_option ) ) {
+			if ( isset( $website_property_ids_option['default'] ) ) {
+				$website_property_id = sanitize_text_field( $website_property_ids_option['default'] );
+			} elseif ( isset( $website_property_ids_option[0] ) ) {
+				$website_property_id = sanitize_text_field( $website_property_ids_option[0] );
+			}
+		} elseif ( ! empty( $website_property_ids_option ) ) {
+			$website_property_id = sanitize_text_field( $website_property_ids_option );
 		}
 
 		// If no tokens found, fallback to legacy single values from config
@@ -276,14 +287,16 @@ final class Asset_Manager {
 			$website_property_id = sanitize_text_field( $config['website_property_id'] );
 		}
 
-		// Note: API tokens should NOT be passed to frontend for security reasons
-		// They will be handled securely via WordPress AJAX endpoints
-
 		// Sanitize and prepare configuration data.
 		$localized_data = array(
-			// Remove API credentials from frontend for security
 			'apiEndpoint'         => esc_url_raw( get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' ) ),
 			'apiBaseUrl'          => esc_url_raw( get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' ) ),
+			'api_endpoint'        => esc_url_raw( get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' ) ),
+			'api_token'           => $api_token,
+			'api_config'          => array(
+				'default_token'   => $api_token,
+				'endpoint'        => esc_url_raw( get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' ) ),
+			),
 			'ajaxUrl'             => esc_url_raw( admin_url( 'admin-ajax.php' ) ),
 			'nonce'               => wp_create_nonce( 'brag_book_gallery_nonce' ),
 			'consultation_nonce'  => wp_create_nonce( 'consultation_form_nonce' ),

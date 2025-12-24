@@ -137,6 +137,7 @@ class Endpoints {
 		'consultations'       => '/api/plugin/consultations',
 		'tracker'             => '/api/plugin/tracker',
 		'views'               => '/api/plugin/views',
+		'views_v2'            => '/api/plugin/v2/views',
 		'validate_token'      => '/api/plugin/v2/validation/token',
 		'cases_v2'            => '/api/plugin/v2/cases',
 		'case_detail_v2'      => '/api/plugin/v2/cases/%s',
@@ -1174,61 +1175,66 @@ class Endpoints {
 	}
 
 	/**
-	 * Track case view
+	 * Track view (case or procedure)
 	 *
-	 * Records a view event for a specific case for analytics purposes.
-	 * This endpoint is typically called when a user views a case detail page.
-	 * Uses POST method with JSON body containing caseProcedureId and apiToken.
+	 * Records a view event for analytics purposes using the v2 API.
+	 * - For case views: pass caseProcedureId (when viewing a specific case)
+	 * - For procedure views: pass procedureId (when viewing a procedure listing page)
+	 * Only one of caseProcedureId or procedureId should be provided per request.
 	 *
 	 * @since 3.0.0
+	 * @since 4.0.2 Updated to use v2 endpoint with Bearer token auth
 	 *
-	 * @param string $api_token         API authentication token
-	 * @param int    $case_procedure_id Case procedure ID to track (the small ID from API, required)
-	 * @param array  $metadata          Optional additional metadata for tracking
+	 * @param string   $api_token         API authentication token (Bearer token)
+	 * @param int|null $case_procedure_id Case procedure ID to track (for case views)
+	 * @param int|null $procedure_id      Procedure ID to track (for procedure listing views)
 	 *
 	 * @return string|null Response body on success, null on failure
 	 */
-	public function track_case_view(
+	public function track_view(
 		string $api_token,
-		int $case_procedure_id,
-		array $metadata = array()
+		?int $case_procedure_id = null,
+		?int $procedure_id = null
 	): ?string {
-		// Validate required parameters
-		if ( empty( $api_token ) || $case_procedure_id <= 0 ) {
-			$this->log_error( 'Invalid parameters for case view tracking: API token and case procedure ID are required' );
+		// Validate required parameters - at least one ID must be provided
+		if ( empty( $api_token ) ) {
+			$this->log_error( 'Invalid parameters for view tracking: API token is required' );
 			return null;
 		}
 
-		// Build request body with required format
-		// The API expects caseProcedureId (the small ID like 35, 36, etc.)
-		$body = array(
-			'caseProcedureId' => $case_procedure_id,
-		);
-
-		// Add any additional metadata
-		if ( ! empty( $metadata ) ) {
-			$body = array_merge( $body, $metadata );
+		if ( empty( $case_procedure_id ) && empty( $procedure_id ) ) {
+			$this->log_error( 'Invalid parameters for view tracking: Either caseProcedureId or procedureId is required' );
+			return null;
 		}
 
-		// Add API token to URL as query parameter (authentication)
-		$url = self::API_ENDPOINTS['views'] . '?' . http_build_query( array( 'apiToken' => $api_token ) );
+		// Build query parameters - only include the ID that was provided
+		$query_params = array();
+		if ( ! empty( $case_procedure_id ) && $case_procedure_id > 0 ) {
+			$query_params['caseProcedureId'] = $case_procedure_id;
+		}
+		if ( ! empty( $procedure_id ) && $procedure_id > 0 ) {
+			$query_params['procedureId'] = $procedure_id;
+		}
 
-		// Make POST request to track the view
+		// Build the URL with query parameters
+		$url = self::API_ENDPOINTS['views_v2'] . '?' . http_build_query( $query_params );
+
+		// Make POST request to track the view with Bearer token auth
 		$response = wp_remote_post(
 			$this->get_api_base_url() . $url,
 			array(
 				'timeout' => self::API_TIMEOUT,
 				'headers' => array(
-					'Content-Type' => 'application/json',
+					'Authorization' => 'Bearer ' . $api_token,
+					'Content-Type'  => 'application/json',
 				),
-				'body' => wp_json_encode( $body ),
 			)
 		);
 
 		// Check for errors
 		if ( is_wp_error( $response ) ) {
 			$this->log_api_error(
-				self::API_ENDPOINTS['views'],
+				self::API_ENDPOINTS['views_v2'],
 				$response->get_error_message()
 			);
 			return null;
@@ -1240,7 +1246,7 @@ class Endpoints {
 		// Check response code
 		if ( ! in_array( $response_code, [ 200, 201 ], true ) ) {
 			$this->log_api_error(
-				self::API_ENDPOINTS['views'],
+				self::API_ENDPOINTS['views_v2'],
 				sprintf(
 					'HTTP %d: %s',
 					$response_code,
@@ -1251,6 +1257,44 @@ class Endpoints {
 		}
 
 		return $response_body;
+	}
+
+	/**
+	 * Track case view (legacy wrapper)
+	 *
+	 * @deprecated 4.0.2 Use track_view() instead
+	 *
+	 * @param string $api_token         API authentication token
+	 * @param int    $case_procedure_id Case procedure ID to track
+	 * @param array  $metadata          Optional additional metadata (unused in v2)
+	 *
+	 * @return string|null Response body on success, null on failure
+	 */
+	public function track_case_view(
+		string $api_token,
+		int $case_procedure_id,
+		array $metadata = array()
+	): ?string {
+		return $this->track_view( $api_token, $case_procedure_id, null );
+	}
+
+	/**
+	 * Track procedure view
+	 *
+	 * Records a view event for a procedure listing page.
+	 *
+	 * @since 4.0.2
+	 *
+	 * @param string $api_token    API authentication token
+	 * @param int    $procedure_id Procedure ID to track (from BragBook API)
+	 *
+	 * @return string|null Response body on success, null on failure
+	 */
+	public function track_procedure_view(
+		string $api_token,
+		int $procedure_id
+	): ?string {
+		return $this->track_view( $api_token, null, $procedure_id );
 	}
 
 	/**

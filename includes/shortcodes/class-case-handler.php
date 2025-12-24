@@ -127,8 +127,27 @@ class Case_Handler {
 			'procedures' => $procedures,
 		];
 
-		// Return only the case detail view content
-		return $this->render_case_detail_view( $case_array, $case_post );
+		// Build the wrapper with data attributes for JS tracking
+		$api_case_id    = esc_attr( $case_data['case_id'] );
+		$procedure_ids  = implode( ',', wp_list_pluck( $procedures, 'procedure_id' ) );
+		$procedure_slug = ! empty( $procedures ) ? $procedures[0]['slug'] : '';
+
+		// Get procedure case ID for view tracking (the small API ID)
+		$procedure_case_id = get_post_meta( $case_post->ID, 'brag_book_gallery_procedure_case_id', true );
+		if ( empty( $procedure_case_id ) ) {
+			$procedure_case_id = get_post_meta( $case_post->ID, 'brag_book_gallery_original_case_id', true );
+		}
+
+		$html  = '<div class="brag-book-gallery-case-detail-view"';
+		$html .= ' data-post-id="' . esc_attr( $case_post->ID ) . '"';
+		$html .= ' data-case-id="' . $api_case_id . '"';
+		$html .= ' data-procedure-case-id="' . esc_attr( $procedure_case_id ) . '"';
+		$html .= ' data-procedure-ids="' . esc_attr( $procedure_ids ) . '"';
+		$html .= ' data-procedure="' . esc_attr( $procedure_slug ) . '">';
+		$html .= $this->render_case_detail_view( $case_array, $case_post );
+		$html .= '</div>';
+
+		return $html;
 	}
 
 	/**
@@ -474,9 +493,15 @@ class Case_Handler {
 		$procedure_ids = implode( ',', $case_data['procedureIds'] );
 		$procedure_slug = ! empty( $case_data['procedures'] ) ? $case_data['procedures'][0]['slug'] : '';
 
+		// Get procedure case ID for view tracking (the small API ID)
+		$procedure_case_id = get_post_meta( $case_post->ID, 'brag_book_gallery_procedure_case_id', true );
+		if ( empty( $procedure_case_id ) ) {
+			$procedure_case_id = get_post_meta( $case_post->ID, 'brag_book_gallery_original_case_id', true );
+		}
+
 		// Build the main content wrapper matching the desired structure
 		$html = '<div class="brag-book-gallery-main-content" role="region" aria-label="Gallery content" id="gallery-content">';
-		$html .= '<div class="brag-book-gallery-case-detail-view" data-post-id="' . esc_attr( $case_post->ID ) . '" data-case-id="' . $case_id . '" data-procedure-ids="' . esc_attr( $procedure_ids ) . '" data-procedure="' . esc_attr( $procedure_slug ) . '">';
+		$html .= '<div class="brag-book-gallery-case-detail-view" data-post-id="' . esc_attr( $case_post->ID ) . '" data-case-id="' . $case_id . '" data-procedure-case-id="' . esc_attr( $procedure_case_id ) . '" data-procedure-ids="' . esc_attr( $procedure_ids ) . '" data-procedure="' . esc_attr( $procedure_slug ) . '">';
 
 		// Generate the detailed case view
 		$html .= $this->render_case_detail_view( $case_data, $case_post );

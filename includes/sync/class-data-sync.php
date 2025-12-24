@@ -95,6 +95,30 @@ class Data_Sync {
 	private string $sync_state_option = 'brag_book_gallery_sync_state';
 
 	/**
+	 * Sync API instance for registration and reporting
+	 *
+	 * @since 4.0.2
+	 * @var Sync_Api|null
+	 */
+	private ?Sync_Api $sync_api = null;
+
+	/**
+	 * Whether to register/report syncs to BragBook API
+	 *
+	 * @since 4.0.2
+	 * @var bool
+	 */
+	private bool $enable_sync_reporting = true;
+
+	/**
+	 * Sync type for registration (AUTO or MANUAL)
+	 *
+	 * @since 4.0.2
+	 * @var string
+	 */
+	private string $sync_type = 'MANUAL';
+
+	/**
 	 * Constructor
 	 *
 	 * @since 3.0.0
@@ -106,6 +130,7 @@ class Data_Sync {
 			$this->sync_session_id = uniqid( 'sync_', true );
 			$this->init_sync_status_file();
 			$this->maybe_create_sync_table();
+			$this->init_sync_api();
 		} catch ( Exception $e ) {
 			error_log( 'BRAG book Gallery Sync: Constructor failed with exception: ' . $e->getMessage() );
 			error_log( 'BRAG book Gallery Sync: Exception trace: ' . $e->getTraceAsString() );
@@ -164,6 +189,19 @@ class Data_Sync {
 
 		$this->log_sync_start();
 
+		// Register sync with BragBook API
+		$registration_result = $this->register_sync_with_api();
+		if ( $registration_result ) {
+			error_log( 'BRAG book Gallery Sync: Registered with BragBook API - Job ID: ' . ( $registration_result['job_id'] ?? 'unknown' ) );
+		}
+
+		// Report sync as IN_PROGRESS
+		$this->report_sync_status(
+			Sync_Api::STATUS_IN_PROGRESS,
+			0,
+			'Starting two-stage sync'
+		);
+
 		// Get current limits (we can't change them on WP Engine)
 		$original_time_limit   = ini_get( 'max_execution_time' );
 		$original_memory_limit = ini_get( 'memory_limit' );
@@ -182,6 +220,14 @@ class Data_Sync {
 			if ( ! $stage1_result['success'] ) {
 				error_log( 'BRAG book Gallery Sync: Stage 1 failed, aborting sync' );
 				$this->log_sync_error( 'Stage 1 (procedures) failed: ' . implode( ', ', $stage1_result['errors'] ) );
+
+				// Report failure to BragBook API
+				$this->report_sync_status(
+					Sync_Api::STATUS_FAILED,
+					0,
+					'Stage 1 (procedures) sync failed',
+					implode( "\n", $stage1_result['errors'] )
+				);
 
 				return $stage1_result;
 			}
@@ -279,6 +325,26 @@ class Data_Sync {
 
 			error_log( 'BRAG book Gallery Sync: ===== SYNC COMPLETE =====' );
 
+			// Report sync status to BragBook API
+			$cases_synced  = ( $total_result['cases_created'] ?? 0 ) + ( $total_result['cases_updated'] ?? 0 );
+			$sync_status   = empty( $total_result['errors'] ) ? Sync_Api::STATUS_SUCCESS : Sync_Api::STATUS_PARTIAL;
+			$status_message = sprintf(
+				'Synced %d procedures (%d created, %d updated) and %d cases (%d created, %d updated)',
+				( $total_result['created'] ?? 0 ) + ( $total_result['updated'] ?? 0 ),
+				$total_result['created'] ?? 0,
+				$total_result['updated'] ?? 0,
+				$cases_synced,
+				$total_result['cases_created'] ?? 0,
+				$total_result['cases_updated'] ?? 0
+			);
+
+			$this->report_sync_status(
+				$sync_status,
+				$cases_synced,
+				$status_message,
+				! empty( $total_result['errors'] ) ? implode( "\n", $total_result['errors'] ) : ''
+			);
+
 			$this->log_sync_complete( $total_result );
 
 			// Clear sync start time transient
@@ -290,6 +356,14 @@ class Data_Sync {
 			error_log( 'BRAG book Gallery Sync: Sync failed with exception: ' . $e->getMessage() );
 			error_log( 'BRAG book Gallery Sync: Exception stack trace: ' . $e->getTraceAsString() );
 			$this->log_sync_error( $e->getMessage() );
+
+			// Report failure to BragBook API
+			$this->report_sync_status(
+				Sync_Api::STATUS_FAILED,
+				0,
+				'Sync failed with exception',
+				$e->getMessage() . "\n" . $e->getTraceAsString()
+			);
 
 			// Clean up any sync data files on error
 			if ( ! empty( $stage1_result['sidebar_data_file'] ) && file_exists( $stage1_result['sidebar_data_file'] ) ) {
@@ -4305,6 +4379,108 @@ class Data_Sync {
 
 		$this->sync_status_file = $sync_dir . '/sync-status.json';
 		error_log( 'BRAG book Gallery Sync: Sync status file path: ' . $this->sync_status_file );
+	}
+
+	/**
+	 * Initialize the Sync API for registration and reporting
+	 *
+	 * @since 4.0.2
+	 *
+	 * @return void
+	 */
+	private function init_sync_api(): void {
+		try {
+			$this->sync_api = new Sync_Api();
+			error_log( 'BRAG book Gallery Sync: Sync API initialized' );
+		} catch ( \Exception $e ) {
+			error_log( 'BRAG book Gallery Sync: Failed to initialize Sync API: ' . $e->getMessage() );
+			$this->sync_api = null;
+			$this->enable_sync_reporting = false;
+		}
+	}
+
+	/**
+	 * Set the sync type for registration
+	 *
+	 * @since 4.0.2
+	 *
+	 * @param string $sync_type Sync type: 'AUTO' or 'MANUAL'.
+	 *
+	 * @return void
+	 */
+	public function set_sync_type( string $sync_type ): void {
+		$this->sync_type = in_array( $sync_type, [ Sync_Api::SYNC_TYPE_AUTO, Sync_Api::SYNC_TYPE_MANUAL ], true )
+			? $sync_type
+			: Sync_Api::SYNC_TYPE_MANUAL;
+	}
+
+	/**
+	 * Enable or disable sync reporting to BragBook API
+	 *
+	 * @since 4.0.2
+	 *
+	 * @param bool $enable Whether to enable reporting.
+	 *
+	 * @return void
+	 */
+	public function set_sync_reporting_enabled( bool $enable ): void {
+		$this->enable_sync_reporting = $enable;
+	}
+
+	/**
+	 * Register sync with BragBook API
+	 *
+	 * @since 4.0.2
+	 *
+	 * @return array|null Registration result or null on failure.
+	 */
+	private function register_sync_with_api(): ?array {
+		error_log( 'BRAG book Gallery Sync: register_sync_with_api() called' );
+		error_log( 'BRAG book Gallery Sync: enable_sync_reporting = ' . ( $this->enable_sync_reporting ? 'true' : 'false' ) );
+		error_log( 'BRAG book Gallery Sync: sync_api = ' . ( $this->sync_api ? 'initialized' : 'null' ) );
+
+		if ( ! $this->enable_sync_reporting || ! $this->sync_api ) {
+			error_log( 'BRAG book Gallery Sync: Skipping registration - sync reporting disabled or API not initialized' );
+			return null;
+		}
+
+		error_log( 'BRAG book Gallery Sync: Calling sync_api->register_sync() with type: ' . $this->sync_type );
+		$result = $this->sync_api->register_sync( $this->sync_type );
+
+		if ( is_wp_error( $result ) ) {
+			error_log( 'BRAG book Gallery Sync: Failed to register sync: ' . $result->get_error_message() );
+			return null;
+		}
+
+		error_log( 'BRAG book Gallery Sync: Registration successful: ' . wp_json_encode( $result ) );
+		return $result;
+	}
+
+	/**
+	 * Report sync status to BragBook API
+	 *
+	 * @since 4.0.2
+	 *
+	 * @param string $status       Status to report.
+	 * @param int    $cases_synced Number of cases synced.
+	 * @param string $message      Status message.
+	 * @param string $error_log    Error details.
+	 *
+	 * @return array|null Report result or null on failure.
+	 */
+	private function report_sync_status( string $status, int $cases_synced = 0, string $message = '', string $error_log = '' ): ?array {
+		if ( ! $this->enable_sync_reporting || ! $this->sync_api ) {
+			return null;
+		}
+
+		$result = $this->sync_api->report_sync( $status, $cases_synced, $message, $error_log );
+
+		if ( is_wp_error( $result ) ) {
+			error_log( 'BRAG book Gallery Sync: Failed to report sync status: ' . $result->get_error_message() );
+			return null;
+		}
+
+		return $result;
 	}
 
 	/**
