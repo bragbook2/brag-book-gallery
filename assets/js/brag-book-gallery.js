@@ -2504,7 +2504,7 @@ class FilterSystem {
 
     // Main title (matching PHP structure)
     const displayName = this.formatProcedureDisplayName(procedureName);
-    html += `<h1 class="brag-book-gallery-content-title"><strong>${this.escapeHtml(displayName)}</strong> Before &amp; After Gallery</h1>`;
+    html += `<h2 class="brag-book-gallery-content-title"><strong>${this.escapeHtml(displayName)}</strong> Before &amp; After Gallery</h2>`;
 
     // Complete controls section matching PHP structure
     html += '<div class="brag-book-gallery-controls">';
@@ -9646,9 +9646,9 @@ class BRAGbookGalleryApp {
             const existingTitle = gridContainer.querySelector('.brag-book-gallery-content-title');
             if (!existingTitle) {
               const titleHtml = `
-								<h1 class="brag-book-gallery-content-title">
+								<h2 class="brag-book-gallery-content-title">
 									<strong>My</strong><span>Favorites</span>
-								</h1>
+								</h2>
 							`;
               grid.insertAdjacentHTML('beforebegin', titleHtml);
             }
@@ -10991,7 +10991,7 @@ class PhoneFormatter {
 /************************************************************************/
 /******/ 	// The module cache
 /******/ 	var __webpack_module_cache__ = {};
-/******/ 	
+/******/
 /******/ 	// The require function
 /******/ 	function __webpack_require__(moduleId) {
 /******/ 		// Check if module is in cache
@@ -11005,14 +11005,14 @@ class PhoneFormatter {
 /******/ 			// no module.loaded needed
 /******/ 			exports: {}
 /******/ 		};
-/******/ 	
+/******/
 /******/ 		// Execute the module function
 /******/ 		__webpack_modules__[moduleId](module, module.exports, __webpack_require__);
-/******/ 	
+/******/
 /******/ 		// Return the exports of the module
 /******/ 		return module.exports;
 /******/ 	}
-/******/ 	
+/******/
 /************************************************************************/
 /******/ 	/* webpack/runtime/define property getters */
 /******/ 	!function() {
@@ -11025,12 +11025,12 @@ class PhoneFormatter {
 /******/ 			}
 /******/ 		};
 /******/ 	}();
-/******/ 	
+/******/
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */
 /******/ 	!function() {
 /******/ 		__webpack_require__.o = function(obj, prop) { return Object.prototype.hasOwnProperty.call(obj, prop); }
 /******/ 	}();
-/******/ 	
+/******/
 /******/ 	/* webpack/runtime/make namespace object */
 /******/ 	!function() {
 /******/ 		// define __esModule on exports
@@ -11041,7 +11041,7 @@ class PhoneFormatter {
 /******/ 			Object.defineProperty(exports, '__esModule', { value: true });
 /******/ 		};
 /******/ 	}();
-/******/ 	
+/******/
 /************************************************************************/
 var __webpack_exports__ = {};
 // This entry needs to be wrapped in an IIFE because it needs to be isolated against other modules in the chunk.

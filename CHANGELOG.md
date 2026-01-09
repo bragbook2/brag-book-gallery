@@ -4,6 +4,29 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.2.0] - 2025-01-09 (Stable Release)
+
+### Enhanced
+- **SEO Plugin Detection**: Plugin now detects Yoast SEO, Rank Math, and All in One SEO
+  - When a major SEO plugin is active, the custom sitemap is not created separately
+  - Gallery URLs are added to the SEO plugin's sitemap index instead
+  - Prevents duplicate sitemap functionality and conflicts
+  - Updated in `includes/seo/class-sitemap.php`
+
+- **Column View Layout**: Improved procedure category grid layout
+  - Columns now cap at 4 maximum regardless of category count
+  - Additional categories wrap to the next row automatically
+  - Better visual presentation for sites with many procedure categories
+  - Updated in `includes/shortcodes/class-gallery-handler.php`
+
+### Fixed
+- **Carousel Image Fallback**: Added fallback for case carousel images
+  - When high-res URLs are not available, post-processed URLs are used instead
+  - Ensures carousel functionality works even without high-res images
+  - Updated in `includes/shortcodes/class-cases-handler.php`
+
+---
+
 ## [4.1.0] - 2025-12-24 (Stable Release)
 
 ### Enhanced

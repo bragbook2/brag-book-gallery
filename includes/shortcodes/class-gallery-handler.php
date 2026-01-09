@@ -1147,10 +1147,10 @@ final class Gallery_Handler {
 					} elseif ( $current_taxonomy ) {
 						// Show procedure-specific content
 						?>
-						<h1 class="brag-book-gallery-content-title">
+						<h2 class="brag-book-gallery-content-title">
 							<strong><?php echo esc_html( $current_taxonomy->name ); ?></strong>
 							Before &amp; After Gallery
-						</h1>
+						</h2>
 
 						<!-- Filter controls will be added here by JavaScript -->
 						<div class="brag-book-gallery-controls">
@@ -2059,10 +2059,9 @@ final class Gallery_Handler {
 			return 'columns-2';
 		} elseif ( $count === 3 ) {
 			return 'columns-3';
-		} elseif ( $count === 4 ) {
+		} elseif ( $count >= 4 ) {
+			// Cap at 4 columns - additional items wrap to next row
 			return 'columns-4';
-		} elseif ( $count >= 5 ) {
-			return 'columns-5';
 		}
 
 		return 'columns-2'; // Default fallback
@@ -2531,10 +2530,10 @@ final class Gallery_Handler {
 					<?php echo self::render_tiles_filter_bar(); ?>
 
 					<!-- Content Title -->
-					<h1 class="brag-book-gallery-content-title">
+					<h2 class="brag-book-gallery-content-title">
 						<strong><?php echo esc_html( $procedure_term->name ); ?></strong>
 						Before &amp; After Gallery
-					</h1>
+					</h2>
 
 					<!-- Case Grid - 2x2 tiles layout -->
 					<div class="brag-book-gallery-case-grid brag-book-gallery-case-grid--tiles grid-initialized"

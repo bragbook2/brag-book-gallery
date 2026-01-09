@@ -2295,6 +2295,11 @@ final class Cases_Handler {
 
 			$high_res_urls = get_post_meta( $post_id, 'brag_book_gallery_case_high_res_url', true );
 
+			// Fallback to post-processed URLs if high-res URLs are not available
+			if ( empty( $high_res_urls ) ) {
+				$high_res_urls = get_post_meta( $post_id, 'brag_book_gallery_case_post_processed_url', true );
+			}
+
 			if ( ! empty( $high_res_urls ) ) {
 				// Split by newlines and semicolons to get individual URLs
 				$urls = preg_split( '/[\r\n;]+/', $high_res_urls, -1, PREG_SPLIT_NO_EMPTY );

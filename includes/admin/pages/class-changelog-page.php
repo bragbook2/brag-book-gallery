@@ -93,6 +93,29 @@ class Changelog_Page extends Settings_Base {
 				</div>
 			</div>
 
+			<!-- Version 4.2.0 -->
+			<div class="brag-book-gallery-section">
+				<div class="brag-book-gallery-changelog-version">
+					<h3>
+						<span class="version-badge version-minor">v4.2.0</span>
+						<?php esc_html_e( 'January 9, 2026', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Minor Release', 'brag-book-gallery' ); ?>
+					</h3>
+					<div class="brag-book-gallery-card">
+						<p><?php esc_html_e( 'This release adds SEO plugin compatibility, improves column view layouts, and adds image fallback support for carousels.', 'brag-book-gallery' ); ?></p>
+						<h4><?php esc_html_e( '✨ Enhancements', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'SEO Plugin Detection: Plugin now detects Yoast SEO, Rank Math, and All in One SEO and defers sitemap generation to them', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Sitemap Integration: When SEO plugins are active, gallery URLs are added to their sitemap index instead of creating a separate sitemap', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Column View Layout: Procedure categories now cap at 4 columns maximum with automatic row wrapping', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '🐛 Bug Fixes', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Carousel Image Fallback: Case carousels now use post-processed URLs when high-res URLs are not available', 'brag-book-gallery' ); ?></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
 			<!-- Version 4.1.0 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">

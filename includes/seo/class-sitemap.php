@@ -101,6 +101,30 @@ final class Sitemap {
 	 */
 	private function init_hooks(): void {
 
+		// If a major SEO plugin is active, only add our sitemap to their index
+		// Don't create our own standalone sitemap
+		if ( $this->has_seo_plugin_active() ) {
+			// Hook into popular SEO plugins to add our sitemap to their index
+			add_filter(
+				'wpseo_sitemap_index',
+				array( $this, 'add_to_yoast_sitemap' )
+			);
+
+			add_filter(
+				'aioseo_sitemap_indexes',
+				array( $this, 'add_to_aioseo_sitemap' )
+			);
+
+			add_filter(
+				'rank_math/sitemap/index',
+				array( $this, 'add_to_rankmath_sitemap' )
+			);
+
+			return;
+		}
+
+		// No SEO plugin active - create our own standalone sitemap
+
 		// Check for sitemap request very early - before any output
 		add_action(
 			'init',
@@ -141,22 +165,35 @@ final class Sitemap {
 				'brag_book_gallery_generate_sitemap'
 			);
 		}
+	}
 
-		// Hook into popular SEO plugins.
-		add_filter(
-			'wpseo_sitemap_index',
-			array( $this, 'add_to_yoast_sitemap' )
-		);
+	/**
+	 * Check if a major SEO plugin with sitemap functionality is active
+	 *
+	 * Detects Yoast SEO, Rank Math, or All in One SEO plugins.
+	 * When these plugins are active, we defer sitemap generation to them
+	 * and only add our gallery URLs to their sitemap index.
+	 *
+	 * @since 4.2.0
+	 * @return bool True if a major SEO plugin is active, false otherwise.
+	 */
+	private function has_seo_plugin_active(): bool {
+		// Check for Yoast SEO
+		if ( defined( 'WPSEO_VERSION' ) || class_exists( 'WPSEO_Options' ) ) {
+			return true;
+		}
 
-		add_filter(
-			'aioseo_sitemap_indexes',
-			array( $this, 'add_to_aioseo_sitemap' )
-		);
+		// Check for Rank Math
+		if ( class_exists( 'RankMath' ) || function_exists( 'rank_math' ) ) {
+			return true;
+		}
 
-		add_filter(
-			'rank_math/sitemap/index',
-			array( $this, 'add_to_rankmath_sitemap' )
-		);
+		// Check for All in One SEO
+		if ( defined( 'AIOSEO_VERSION' ) || function_exists( 'aioseo' ) ) {
+			return true;
+		}
+
+		return false;
 	}
 
 	/**
