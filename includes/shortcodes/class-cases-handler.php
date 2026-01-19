@@ -2354,15 +2354,27 @@ final class Cases_Handler {
 										</picture>
 									<?php endforeach; ?>
 								</div>
-								<?php if ( count( $carousel_images ) > 1 ) : ?>
-									<div class="brag-book-gallery-case-carousel-pagination">
-										<?php foreach ( $carousel_images as $index => $carousel_url ) : ?>
-											<a href="#case-<?php echo esc_attr( $case_id ); ?>-img-<?php echo $index; ?>"
-											   class="brag-book-gallery-case-carousel-dot"
-											   aria-label="Go to image <?php echo $index + 1; ?>"></a>
-										<?php endforeach; ?>
-									</div>
+								<?php if ( 'v3' === $case_card_type ) : ?>
+									</a>
 								<?php endif; ?>
+								<?php if ( count( $carousel_images ) > 1 ) : ?>
+									<nav class="brag-book-gallery-case-carousel-pagination" role="tablist" aria-label="<?php esc_attr_e( 'Carousel image navigation', 'brag-book-gallery' ); ?>">
+										<?php foreach ( $carousel_images as $index => $carousel_url ) : ?>
+											<button type="button"
+													class="brag-book-gallery-case-carousel-dot<?php echo 0 === $index ? ' is-active' : ''; ?>"
+													role="tab"
+													aria-selected="<?php echo 0 === $index ? 'true' : 'false'; ?>"
+													aria-controls="case-<?php echo esc_attr( $case_id ); ?>-img-<?php echo $index; ?>"
+													aria-label="<?php echo esc_attr( sprintf( __( 'Show image %d of %d', 'brag-book-gallery' ), $index + 1, count( $carousel_images ) ) ); ?>"
+													data-slide-index="<?php echo $index; ?>"></button>
+										<?php endforeach; ?>
+									</nav>
+								<?php endif; ?>
+								<?php
+								// For v3, we already closed the anchor above before pagination
+								// Set flag to skip closing it again later
+								$v3_anchor_closed = true;
+								?>
 							<?php elseif ( ! empty( $image_url ) ) : ?>
 								<!-- Single image fallback -->
 								<picture class="brag-book-gallery-picture">
@@ -2377,7 +2389,7 @@ final class Cases_Handler {
 							<?php else : ?>
 								<!-- DEBUG: No image URL found for case <?php echo esc_attr( $case_id ); ?> -->
 							<?php endif; ?>
-							<?php if ( 'v3' === $case_card_type ) : ?>
+							<?php if ( 'v3' === $case_card_type && empty( $v3_anchor_closed ) ) : ?>
 								</a>
 							<?php endif; ?>
 						<?php else : ?>

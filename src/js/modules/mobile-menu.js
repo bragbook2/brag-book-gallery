@@ -10,7 +10,7 @@ class MobileMenu {
 		this.closeButton = document.querySelector('[data-action="close-menu"]');
 
 		this.options = {
-			breakpoint: options.breakpoint || 1024,
+			breakpoint: options.breakpoint || 1279,
 			swipeToClose: options.swipeToClose !== false,
 			...options
 		};

@@ -279,16 +279,94 @@ class FavoritesManager {
 			if (response.success) {
 				// Show success notification
 				this.showSuccessNotification('Removed from favorites!');
+
+				// Remove the card from the favorites grid on the favorites page
+				this.removeCardFromFavoritesGrid(caseId);
 			} else {
 				// Show error notification
 				console.error('Failed to remove favorite:', response.data?.message);
-				this.showErrorNotification('Failed to remove favorite. Please try again.');
+				this.showErrorNotification(response.data?.message || 'Failed to remove favorite. Please try again.');
+
+				// Restore the favorite state since API call failed
+				this.restoreFavoriteState(caseId);
 			}
 		})
 		.catch(error => {
 			console.error('Error removing favorite:', error);
 			this.showErrorNotification('Error removing favorite. Please try again.');
+
+			// Restore the favorite state since API call failed
+			this.restoreFavoriteState(caseId);
 		});
+	}
+
+	/**
+	 * Remove a card from the favorites grid on the favorites page
+	 * @param {string} caseId - The case ID to remove
+	 */
+	removeCardFromFavoritesGrid(caseId) {
+		// Find the card element by various possible selectors
+		const card = document.querySelector(
+			`.brag-book-gallery-case-card[data-post-id="${caseId}"], ` +
+			`.brag-book-gallery-case-card[data-case-id="${caseId}"], ` +
+			`.brag-book-gallery-favorites-card[data-post-id="${caseId}"], ` +
+			`.brag-book-gallery-favorites-card[data-case-id="${caseId}"]`
+		);
+
+		if (card) {
+			// Add fade-out animation
+			card.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+			card.style.opacity = '0';
+			card.style.transform = 'scale(0.9)';
+
+			// Remove from DOM after animation
+			setTimeout(() => {
+				card.remove();
+
+				// Check if favorites grid is now empty
+				const favoritesGrid = document.querySelector('.brag-book-gallery-favorites-grid, .brag-book-gallery-case-grid');
+				if (favoritesGrid && favoritesGrid.children.length === 0) {
+					// Show empty state
+					const emptyState = document.getElementById('favoritesEmpty');
+					const gridContainer = document.getElementById('favoritesGridContainer');
+					if (emptyState) {
+						emptyState.style.display = 'block';
+					}
+					if (favoritesGrid) {
+						favoritesGrid.style.display = 'none';
+					}
+				}
+			}, 300);
+		}
+	}
+
+	/**
+	 * Restore favorite state when API call fails
+	 * @param {string} caseId - The case ID to restore
+	 */
+	restoreFavoriteState(caseId) {
+		// Re-add to internal favorites
+		this.favorites.add(caseId);
+
+		// Save to storage
+		if (this.options.persistToStorage) {
+			this.saveToStorage();
+		}
+
+		// Update all buttons back to favorited state
+		const buttons = document.querySelectorAll(
+			`[data-item-id="${caseId}"], [data-case-id="${caseId}"], ` +
+			`.brag-book-gallery-case-card[data-post-id="${caseId}"] [data-favorited], ` +
+			`.brag-book-gallery-case-card[data-case-id="${caseId}"] [data-favorited]`
+		);
+		buttons.forEach(btn => {
+			if (btn.dataset.favorited !== undefined) {
+				btn.dataset.favorited = 'true';
+			}
+		});
+
+		// Update UI
+		this.updateUI();
 	}
 
 	/**

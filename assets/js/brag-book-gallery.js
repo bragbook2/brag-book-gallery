@@ -1020,15 +1020,83 @@ class FavoritesManager {
       if (response.success) {
         // Show success notification
         this.showSuccessNotification('Removed from favorites!');
+
+        // Remove the card from the favorites grid on the favorites page
+        this.removeCardFromFavoritesGrid(caseId);
       } else {
         // Show error notification
         console.error('Failed to remove favorite:', response.data?.message);
-        this.showErrorNotification('Failed to remove favorite. Please try again.');
+        this.showErrorNotification(response.data?.message || 'Failed to remove favorite. Please try again.');
+
+        // Restore the favorite state since API call failed
+        this.restoreFavoriteState(caseId);
       }
     }).catch(error => {
       console.error('Error removing favorite:', error);
       this.showErrorNotification('Error removing favorite. Please try again.');
+
+      // Restore the favorite state since API call failed
+      this.restoreFavoriteState(caseId);
     });
+  }
+
+  /**
+   * Remove a card from the favorites grid on the favorites page
+   * @param {string} caseId - The case ID to remove
+   */
+  removeCardFromFavoritesGrid(caseId) {
+    // Find the card element by various possible selectors
+    const card = document.querySelector(`.brag-book-gallery-case-card[data-post-id="${caseId}"], ` + `.brag-book-gallery-case-card[data-case-id="${caseId}"], ` + `.brag-book-gallery-favorites-card[data-post-id="${caseId}"], ` + `.brag-book-gallery-favorites-card[data-case-id="${caseId}"]`);
+    if (card) {
+      // Add fade-out animation
+      card.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+      card.style.opacity = '0';
+      card.style.transform = 'scale(0.9)';
+
+      // Remove from DOM after animation
+      setTimeout(() => {
+        card.remove();
+
+        // Check if favorites grid is now empty
+        const favoritesGrid = document.querySelector('.brag-book-gallery-favorites-grid, .brag-book-gallery-case-grid');
+        if (favoritesGrid && favoritesGrid.children.length === 0) {
+          // Show empty state
+          const emptyState = document.getElementById('favoritesEmpty');
+          const gridContainer = document.getElementById('favoritesGridContainer');
+          if (emptyState) {
+            emptyState.style.display = 'block';
+          }
+          if (favoritesGrid) {
+            favoritesGrid.style.display = 'none';
+          }
+        }
+      }, 300);
+    }
+  }
+
+  /**
+   * Restore favorite state when API call fails
+   * @param {string} caseId - The case ID to restore
+   */
+  restoreFavoriteState(caseId) {
+    // Re-add to internal favorites
+    this.favorites.add(caseId);
+
+    // Save to storage
+    if (this.options.persistToStorage) {
+      this.saveToStorage();
+    }
+
+    // Update all buttons back to favorited state
+    const buttons = document.querySelectorAll(`[data-item-id="${caseId}"], [data-case-id="${caseId}"], ` + `.brag-book-gallery-case-card[data-post-id="${caseId}"] [data-favorited], ` + `.brag-book-gallery-case-card[data-case-id="${caseId}"] [data-favorited]`);
+    buttons.forEach(btn => {
+      if (btn.dataset.favorited !== undefined) {
+        btn.dataset.favorited = 'true';
+      }
+    });
+
+    // Update UI
+    this.updateUI();
   }
 
   /**
@@ -5919,6 +5987,7 @@ class BRAGbookGalleryApp {
       this.initializeShareManager();
       this.initializeFavorites();
       this.initializeCasePreloading();
+      this.initializeCaseCarouselPagination();
       return;
     }
 
@@ -5934,6 +6003,7 @@ class BRAGbookGalleryApp {
     this.initializeCaseLinks();
     this.initializeNudityWarning();
     this.initializeCasePreloading();
+    this.initializeCaseCarouselPagination();
 
     // Auto-activate favorites view if on favorites page
     const galleryContent = document.getElementById('gallery-content');
@@ -6671,12 +6741,8 @@ class BRAGbookGalleryApp {
         // Check if case is already server-rendered (has case detail view)
         const existingCaseView = galleryContent?.querySelector('.brag-book-gallery-case-detail-view');
         if (existingCaseView) {
-          console.log('BRAGBook: Case already server-rendered, tracking view');
-          // Track view for server-rendered case
-          const caseProcedureId = existingCaseView.dataset.procedureCaseId || existingCaseView.dataset.caseId;
-          if (caseProcedureId) {
-            this.trackCaseView(caseProcedureId);
-          }
+          // Case already rendered and trackPageView() already tracked it
+          console.log('BRAGBook: Case already server-rendered, view already tracked by trackPageView()');
           return true;
         }
 
@@ -8321,6 +8387,97 @@ class BRAGbookGalleryApp {
   }
 
   /**
+   * Initialize case carousel pagination (image dots within case cards)
+   * Handles button clicks to navigate between images in a case carousel
+   */
+  initializeCaseCarouselPagination() {
+    // Use event delegation for case carousel pagination
+    document.addEventListener('click', e => {
+      const dot = e.target.closest('.brag-book-gallery-case-carousel-dot');
+      if (!dot) return;
+      e.preventDefault();
+      const slideIndex = parseInt(dot.dataset.slideIndex, 10);
+      if (isNaN(slideIndex)) return;
+
+      // Find the carousel container (parent of pagination)
+      const pagination = dot.closest('.brag-book-gallery-case-carousel-pagination');
+      if (!pagination) return;
+      const imageContainer = pagination.closest('.brag-book-gallery-image-container');
+      if (!imageContainer) return;
+      const carousel = imageContainer.querySelector('.brag-book-gallery-case-carousel');
+      if (!carousel) return;
+
+      // Get the target image/picture element
+      const pictures = carousel.querySelectorAll('picture');
+      const targetPicture = pictures[slideIndex];
+      if (!targetPicture) return;
+
+      // Scroll the carousel to show the target image
+      targetPicture.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'start'
+      });
+
+      // Update active states
+      const allDots = pagination.querySelectorAll('.brag-book-gallery-case-carousel-dot');
+      allDots.forEach((d, i) => {
+        const isActive = i === slideIndex;
+        d.classList.toggle('is-active', isActive);
+        d.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      });
+    });
+
+    // Also handle scroll events to update active dot
+    this.setupCaseCarouselScrollObserver();
+  }
+
+  /**
+   * Set up intersection observer to update active carousel dot on scroll
+   */
+  setupCaseCarouselScrollObserver() {
+    // Create observer to track which image is currently visible
+    const observerOptions = {
+      root: null,
+      rootMargin: '0px',
+      threshold: 0.6 // Image must be at least 60% visible
+    };
+    const carouselObserver = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) return;
+        const picture = entry.target;
+        const carousel = picture.closest('.brag-book-gallery-case-carousel');
+        if (!carousel) return;
+        const imageContainer = carousel.closest('.brag-book-gallery-image-container');
+        if (!imageContainer) return;
+        const pagination = imageContainer.querySelector('.brag-book-gallery-case-carousel-pagination');
+        if (!pagination) return;
+
+        // Find the index of this picture
+        const pictures = Array.from(carousel.querySelectorAll('picture'));
+        const index = pictures.indexOf(picture);
+        if (index === -1) return;
+
+        // Update active dot
+        const dots = pagination.querySelectorAll('.brag-book-gallery-case-carousel-dot');
+        dots.forEach((dot, i) => {
+          const isActive = i === index;
+          dot.classList.toggle('is-active', isActive);
+          dot.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        });
+      });
+    }, observerOptions);
+
+    // Observe all carousel images
+    document.querySelectorAll('.brag-book-gallery-case-carousel picture').forEach(picture => {
+      carouselObserver.observe(picture);
+    });
+
+    // Store reference for cleanup if needed
+    this.caseCarouselObserver = carouselObserver;
+  }
+
+  /**
    * Optimize image loading for better performance
    */
   optimizeImageLoading() {
@@ -9440,9 +9597,9 @@ class BRAGbookGalleryApp {
       const existingTitle = gridContainer.querySelector('.brag-book-gallery-content-title');
       if (!existingTitle) {
         const titleHtml = `
-					<h1 class="brag-book-gallery-content-title">
+					<h2 class="brag-book-gallery-content-title">
 						<strong>My</strong><span>Favorites</span>
-					</h1>
+					</h2>
 				`;
         grid.insertAdjacentHTML('beforebegin', titleHtml);
       }
@@ -9524,8 +9681,18 @@ class BRAGbookGalleryApp {
     const gallerySlug = window.bragBookGalleryConfig?.gallerySlug || 'gallery';
     const caseUrl = `/${gallerySlug}/${procedureSlug}/${seoSuffix}/`;
 
-    // Get procedure ID from various possible fields
-    const procedureId = caseData.procedureId || caseData.procedure_id || '';
+    // Get procedure ID - prefer WordPress data, fallback to API data
+    let procedureId = '';
+    if (wpPostData && wpPostData.procedure_id) {
+      procedureId = wpPostData.procedure_id;
+    } else if (wpPostData && wpPostData.post_meta) {
+      // Try post meta fallbacks
+      procedureId = wpPostData.post_meta._procedure_id || (wpPostData.post_meta.brag_book_gallery_procedure_ids ? wpPostData.post_meta.brag_book_gallery_procedure_ids.split(',')[0] : '') || '';
+    }
+    // Fallback to API data
+    if (!procedureId) {
+      procedureId = caseData.procedureId || caseData.procedure_id || '';
+    }
 
     // Build data attributes
     const dataAttrs = [`data-case-id="${this.escapeHtml(caseId)}"`, `data-post-id="${postId}"`, `data-procedure-id="${procedureId}"`, `data-age="${caseData.age || ''}"`, `data-gender="${caseData.gender || ''}"`, `data-ethnicity="${caseData.ethnicity || ''}"`, `data-procedure-ids="${procedureId}"`, `data-card="true"`, `data-favorited="true"`].join(' ');
@@ -9987,7 +10154,7 @@ class MobileMenu {
     this.menuToggle = document.querySelector('.brag-book-gallery-mobile-menu-toggle');
     this.closeButton = document.querySelector('[data-action="close-menu"]');
     this.options = {
-      breakpoint: options.breakpoint || 1024,
+      breakpoint: options.breakpoint || 1279,
       swipeToClose: options.swipeToClose !== false,
       ...options
     };
@@ -10991,7 +11158,7 @@ class PhoneFormatter {
 /************************************************************************/
 /******/ 	// The module cache
 /******/ 	var __webpack_module_cache__ = {};
-/******/
+/******/ 	
 /******/ 	// The require function
 /******/ 	function __webpack_require__(moduleId) {
 /******/ 		// Check if module is in cache
@@ -11005,14 +11172,14 @@ class PhoneFormatter {
 /******/ 			// no module.loaded needed
 /******/ 			exports: {}
 /******/ 		};
-/******/
+/******/ 	
 /******/ 		// Execute the module function
 /******/ 		__webpack_modules__[moduleId](module, module.exports, __webpack_require__);
-/******/
+/******/ 	
 /******/ 		// Return the exports of the module
 /******/ 		return module.exports;
 /******/ 	}
-/******/
+/******/ 	
 /************************************************************************/
 /******/ 	/* webpack/runtime/define property getters */
 /******/ 	!function() {
@@ -11025,12 +11192,12 @@ class PhoneFormatter {
 /******/ 			}
 /******/ 		};
 /******/ 	}();
-/******/
+/******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */
 /******/ 	!function() {
 /******/ 		__webpack_require__.o = function(obj, prop) { return Object.prototype.hasOwnProperty.call(obj, prop); }
 /******/ 	}();
-/******/
+/******/ 	
 /******/ 	/* webpack/runtime/make namespace object */
 /******/ 	!function() {
 /******/ 		// define __esModule on exports
@@ -11041,7 +11208,7 @@ class PhoneFormatter {
 /******/ 			Object.defineProperty(exports, '__esModule', { value: true });
 /******/ 		};
 /******/ 	}();
-/******/
+/******/ 	
 /************************************************************************/
 var __webpack_exports__ = {};
 // This entry needs to be wrapped in an IIFE because it needs to be isolated against other modules in the chunk.

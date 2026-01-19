@@ -43,6 +43,7 @@ class BRAGbookGalleryApp {
 			this.initializeShareManager();
 			this.initializeFavorites();
 			this.initializeCasePreloading();
+			this.initializeCaseCarouselPagination();
 			return;
 		}
 
@@ -58,6 +59,7 @@ class BRAGbookGalleryApp {
 		this.initializeCaseLinks();
 		this.initializeNudityWarning();
 		this.initializeCasePreloading();
+		this.initializeCaseCarouselPagination();
 
 		// Auto-activate favorites view if on favorites page
 		const galleryContent = document.getElementById('gallery-content');
@@ -2592,6 +2594,105 @@ class BRAGbookGalleryApp {
 	}
 
 	/**
+	 * Initialize case carousel pagination (image dots within case cards)
+	 * Handles button clicks to navigate between images in a case carousel
+	 */
+	initializeCaseCarouselPagination() {
+		// Use event delegation for case carousel pagination
+		document.addEventListener('click', (e) => {
+			const dot = e.target.closest('.brag-book-gallery-case-carousel-dot');
+			if (!dot) return;
+
+			e.preventDefault();
+
+			const slideIndex = parseInt(dot.dataset.slideIndex, 10);
+			if (isNaN(slideIndex)) return;
+
+			// Find the carousel container (parent of pagination)
+			const pagination = dot.closest('.brag-book-gallery-case-carousel-pagination');
+			if (!pagination) return;
+
+			const imageContainer = pagination.closest('.brag-book-gallery-image-container');
+			if (!imageContainer) return;
+
+			const carousel = imageContainer.querySelector('.brag-book-gallery-case-carousel');
+			if (!carousel) return;
+
+			// Get the target image/picture element
+			const pictures = carousel.querySelectorAll('picture');
+			const targetPicture = pictures[slideIndex];
+			if (!targetPicture) return;
+
+			// Scroll the carousel to show the target image
+			targetPicture.scrollIntoView({
+				behavior: 'smooth',
+				block: 'nearest',
+				inline: 'start'
+			});
+
+			// Update active states
+			const allDots = pagination.querySelectorAll('.brag-book-gallery-case-carousel-dot');
+			allDots.forEach((d, i) => {
+				const isActive = i === slideIndex;
+				d.classList.toggle('is-active', isActive);
+				d.setAttribute('aria-selected', isActive ? 'true' : 'false');
+			});
+		});
+
+		// Also handle scroll events to update active dot
+		this.setupCaseCarouselScrollObserver();
+	}
+
+	/**
+	 * Set up intersection observer to update active carousel dot on scroll
+	 */
+	setupCaseCarouselScrollObserver() {
+		// Create observer to track which image is currently visible
+		const observerOptions = {
+			root: null,
+			rootMargin: '0px',
+			threshold: 0.6 // Image must be at least 60% visible
+		};
+
+		const carouselObserver = new IntersectionObserver((entries) => {
+			entries.forEach(entry => {
+				if (!entry.isIntersecting) return;
+
+				const picture = entry.target;
+				const carousel = picture.closest('.brag-book-gallery-case-carousel');
+				if (!carousel) return;
+
+				const imageContainer = carousel.closest('.brag-book-gallery-image-container');
+				if (!imageContainer) return;
+
+				const pagination = imageContainer.querySelector('.brag-book-gallery-case-carousel-pagination');
+				if (!pagination) return;
+
+				// Find the index of this picture
+				const pictures = Array.from(carousel.querySelectorAll('picture'));
+				const index = pictures.indexOf(picture);
+				if (index === -1) return;
+
+				// Update active dot
+				const dots = pagination.querySelectorAll('.brag-book-gallery-case-carousel-dot');
+				dots.forEach((dot, i) => {
+					const isActive = i === index;
+					dot.classList.toggle('is-active', isActive);
+					dot.setAttribute('aria-selected', isActive ? 'true' : 'false');
+				});
+			});
+		}, observerOptions);
+
+		// Observe all carousel images
+		document.querySelectorAll('.brag-book-gallery-case-carousel picture').forEach(picture => {
+			carouselObserver.observe(picture);
+		});
+
+		// Store reference for cleanup if needed
+		this.caseCarouselObserver = carouselObserver;
+	}
+
+	/**
 	 * Optimize image loading for better performance
 	 */
 	optimizeImageLoading() {
@@ -3870,8 +3971,21 @@ class BRAGbookGalleryApp {
 		const gallerySlug = window.bragBookGalleryConfig?.gallerySlug || 'gallery';
 		const caseUrl = `/${gallerySlug}/${procedureSlug}/${seoSuffix}/`;
 
-		// Get procedure ID from various possible fields
-		const procedureId = caseData.procedureId || caseData.procedure_id || '';
+		// Get procedure ID - prefer WordPress data, fallback to API data
+		let procedureId = '';
+		if (wpPostData && wpPostData.procedure_id) {
+			procedureId = wpPostData.procedure_id;
+		} else if (wpPostData && wpPostData.post_meta) {
+			// Try post meta fallbacks
+			procedureId = wpPostData.post_meta._procedure_id ||
+				(wpPostData.post_meta.brag_book_gallery_procedure_ids ?
+					wpPostData.post_meta.brag_book_gallery_procedure_ids.split(',')[0] : '') ||
+				'';
+		}
+		// Fallback to API data
+		if (!procedureId) {
+			procedureId = caseData.procedureId || caseData.procedure_id || '';
+		}
 
 		// Build data attributes
 		const dataAttrs = [

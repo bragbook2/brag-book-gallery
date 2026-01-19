@@ -107,47 +107,224 @@ final class Sync_Automatic_Settings {
 	/**
 	 * Render cron status display
 	 *
-	 * Shows the current cron schedule status and BragBook sync status.
+	 * Shows the current sync status from BragBook API.
+	 * Note: WordPress cron is not used for automatic sync scheduling.
+	 * The BRAGBook application handles sync triggering via REST API.
 	 *
 	 * @since 3.3.0
 	 * @since 4.0.2 Added BragBook sync status display
+	 * @since 4.3.0 Added active sync status display, removed WordPress cron display
 	 *
 	 * @return void Outputs HTML directly
 	 */
 	public function render_cron_status(): void {
-		// Render BragBook sync status first
+		// Render active sync status if there's one in progress
+		$this->render_active_sync_status();
+
+		// Render BragBook sync status (this shows next scheduled sync from API)
 		$this->render_bragbook_sync_status();
+	}
 
-		// Then show local WordPress cron status
-		$next_run = wp_next_scheduled( 'brag_book_gallery_automatic_sync' );
+	/**
+	 * Render active sync status
+	 *
+	 * Displays information about any currently active or recently completed sync,
+	 * including whether it was triggered via REST API (automatic).
+	 *
+	 * @since 4.3.0
+	 *
+	 * @return void Outputs HTML directly
+	 */
+	private function render_active_sync_status(): void {
+		$active_sync = get_option( 'brag_book_gallery_active_sync', null );
 
-		if ( $next_run ) {
-			$human_time = human_time_diff( time(), $next_run );
-			$exact_time = wp_date( 'Y-m-d H:i:s', $next_run );
-			?>
-			<div class="notice notice-info inline" style="margin-top: 10px;">
-				<p>
-					<strong><?php esc_html_e( 'WordPress Cron:', 'brag-book-gallery' ); ?></strong>
+		if ( ! $active_sync || ! is_array( $active_sync ) ) {
+			return;
+		}
+
+		// Determine if this is a recent sync (within last 24 hours)
+		$completed_at = $active_sync['completed_at'] ?? null;
+		if ( $completed_at ) {
+			$completed_time = strtotime( $completed_at );
+			if ( $completed_time && ( time() - $completed_time ) > DAY_IN_SECONDS ) {
+				// Sync completed more than 24 hours ago, don't show
+				return;
+			}
+		}
+
+		$status       = $active_sync['status'] ?? 'unknown';
+		$source       = $active_sync['source'] ?? 'unknown';
+		$message      = $active_sync['message'] ?? '';
+		$started_at   = $active_sync['started_at'] ?? null;
+		$triggered_by = $active_sync['triggered_by'] ?? $source;
+
+		// Determine status class and icon
+		$status_class = 'status-idle';
+		$status_icon  = '⏳';
+		switch ( $status ) {
+			case 'in_progress':
+				$status_class = 'status-active';
+				$status_icon  = '🔄';
+				break;
+			case 'completed':
+				$status_class = 'status-success';
+				$status_icon  = '✅';
+				break;
+			case 'partial':
+				$status_class = 'status-warning';
+				$status_icon  = '⚠️';
+				break;
+			case 'failed':
+				$status_class = 'status-error';
+				$status_icon  = '❌';
+				break;
+		}
+
+		// Format the source label
+		$source_label = __( 'Manual', 'brag-book-gallery' );
+		if ( $source === 'automatic' || $triggered_by === 'rest_api' ) {
+			$source_label = __( 'Automatic (REST API)', 'brag-book-gallery' );
+		} elseif ( $source === 'cron' ) {
+			$source_label = __( 'Automatic (Cron)', 'brag-book-gallery' );
+		}
+		?>
+		<div class="bragbook-active-sync-status <?php echo esc_attr( $status_class ); ?>" id="bragbook-active-sync-status">
+			<div class="status-header">
+				<span class="status-icon"><?php echo esc_html( $status_icon ); ?></span>
+				<span class="status-title">
 					<?php
-					if ( time() > $next_run ) {
-						printf(
-							/* translators: %s: exact date and time */
-							esc_html__( 'Overdue (was scheduled for %s)', 'brag-book-gallery' ),
-							esc_html( $exact_time )
-						);
+					if ( $status === 'in_progress' ) {
+						esc_html_e( 'Sync In Progress', 'brag-book-gallery' );
 					} else {
-						printf(
-							/* translators: 1: human readable time, 2: exact date and time */
-							esc_html__( 'Next run in %1$s (%2$s)', 'brag-book-gallery' ),
-							esc_html( $human_time ),
-							esc_html( $exact_time )
-						);
+						esc_html_e( 'Recent Sync', 'brag-book-gallery' );
 					}
 					?>
-				</p>
+				</span>
+				<span class="status-badge"><?php echo esc_html( ucfirst( $status ) ); ?></span>
 			</div>
-			<?php
-		}
+
+			<div class="status-content">
+				<div class="status-grid">
+					<div class="status-item">
+						<span class="item-label"><?php esc_html_e( 'Source', 'brag-book-gallery' ); ?></span>
+						<span class="item-value"><?php echo esc_html( $source_label ); ?></span>
+					</div>
+
+					<?php if ( $started_at ) : ?>
+						<div class="status-item">
+							<span class="item-label"><?php esc_html_e( 'Started', 'brag-book-gallery' ); ?></span>
+							<span class="item-value">
+								<?php
+								$started_time = strtotime( $started_at );
+								echo esc_html( wp_date( 'M j, Y g:i A', $started_time ) );
+								if ( $status === 'in_progress' ) {
+									echo ' <span class="time-ago">(' . esc_html( human_time_diff( $started_time, time() ) ) . ' ' . esc_html__( 'ago', 'brag-book-gallery' ) . ')</span>';
+								}
+								?>
+							</span>
+						</div>
+					<?php endif; ?>
+
+					<?php if ( $completed_at ) : ?>
+						<div class="status-item">
+							<span class="item-label"><?php esc_html_e( 'Completed', 'brag-book-gallery' ); ?></span>
+							<span class="item-value">
+								<?php
+								$completed_time = strtotime( $completed_at );
+								echo esc_html( wp_date( 'M j, Y g:i A', $completed_time ) );
+								echo ' <span class="time-ago">(' . esc_html( human_time_diff( $completed_time, time() ) ) . ' ' . esc_html__( 'ago', 'brag-book-gallery' ) . ')</span>';
+								?>
+							</span>
+						</div>
+					<?php endif; ?>
+
+					<?php if ( ! empty( $active_sync['cases_synced'] ) ) : ?>
+						<div class="status-item">
+							<span class="item-label"><?php esc_html_e( 'Cases Synced', 'brag-book-gallery' ); ?></span>
+							<span class="item-value"><?php echo esc_html( number_format( $active_sync['cases_synced'] ) ); ?></span>
+						</div>
+					<?php endif; ?>
+
+					<?php if ( $message ) : ?>
+						<div class="status-item status-message-item">
+							<span class="item-label"><?php esc_html_e( 'Message', 'brag-book-gallery' ); ?></span>
+							<span class="item-value"><?php echo esc_html( $message ); ?></span>
+						</div>
+					<?php endif; ?>
+				</div>
+			</div>
+		</div>
+		<style>
+			.bragbook-active-sync-status {
+				background: #f0f6fc;
+				border: 1px solid #c5d9ed;
+				border-radius: 4px;
+				padding: 15px;
+				margin: 10px 0;
+			}
+			.bragbook-active-sync-status.status-active {
+				background: #fff3cd;
+				border-color: #ffc107;
+			}
+			.bragbook-active-sync-status.status-success {
+				background: #d1e7dd;
+				border-color: #198754;
+			}
+			.bragbook-active-sync-status.status-warning {
+				background: #fff3cd;
+				border-color: #ffc107;
+			}
+			.bragbook-active-sync-status.status-error {
+				background: #f8d7da;
+				border-color: #dc3545;
+			}
+			.bragbook-active-sync-status .status-header {
+				display: flex;
+				align-items: center;
+				gap: 10px;
+				margin-bottom: 10px;
+			}
+			.bragbook-active-sync-status .status-icon {
+				font-size: 20px;
+			}
+			.bragbook-active-sync-status .status-title {
+				font-weight: 600;
+				flex-grow: 1;
+			}
+			.bragbook-active-sync-status .status-badge {
+				background: rgba(0,0,0,0.1);
+				padding: 2px 8px;
+				border-radius: 3px;
+				font-size: 12px;
+				text-transform: uppercase;
+			}
+			.bragbook-active-sync-status .status-grid {
+				display: grid;
+				grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+				gap: 10px;
+			}
+			.bragbook-active-sync-status .status-item {
+				display: flex;
+				flex-direction: column;
+				gap: 2px;
+			}
+			.bragbook-active-sync-status .item-label {
+				font-size: 11px;
+				color: #666;
+				text-transform: uppercase;
+			}
+			.bragbook-active-sync-status .item-value {
+				font-size: 13px;
+			}
+			.bragbook-active-sync-status .time-ago {
+				color: #666;
+				font-size: 12px;
+			}
+			.bragbook-active-sync-status .status-message-item {
+				grid-column: 1 / -1;
+			}
+		</style>
+		<?php
 	}
 
 	/**

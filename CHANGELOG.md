@@ -4,6 +4,30 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.3.0] - 2025-01-19 (Stable Release)
+
+### Fixed
+- **Favorites Removal API**: Fixed 400 error when removing favorites from "My Favorites" page
+  - Added proper `caseProcedureId` and `procedureId` fallbacks from multiple meta sources
+  - Fixed `ajax_get_case_by_api_id` to search all possible meta keys (`brag_book_gallery_procedure_case_id`, `brag_book_gallery_original_case_id`, `brag_book_gallery_case_id`)
+  - Card is now removed from the view with animation when successfully unfavoriting
+  - Added state restoration when API call fails
+  - Updated in `includes/shortcodes/class-favorites-handler.php` and `src/js/modules/favorites-manager.js`
+
+- **Case Carousel Pagination**: Improved accessibility and fixed invalid HTML
+  - Changed pagination dots from anchor tags to semantic button elements
+  - Added ARIA attributes (`role="tablist"`, `role="tab"`, `aria-selected`, `aria-controls`, `aria-label`)
+  - Fixed invalid nested anchor HTML in v3 card type by moving pagination outside anchor wrapper
+  - Added IntersectionObserver to update active dot on scroll
+  - Updated in `includes/shortcodes/class-cases-handler.php` and `src/js/modules/main-app.js`
+
+- **Mobile Header Visibility**: Fixed mobile header disappearing between 1024px and 1280px
+  - JavaScript breakpoint now matches CSS media query (1279px)
+  - Mobile header visible from 0-1279px, sidebar visible from 1280px+
+  - Updated in `src/js/modules/mobile-menu.js`
+
+---
+
 ## [4.2.0] - 2025-01-09 (Stable Release)
 
 ### Enhanced

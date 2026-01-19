@@ -567,8 +567,9 @@ final class Favorites_Handler {
 				}
 			}
 
-			// If we didn't find a WordPress post, treat it as a BRAGBook API caseProcedureId
-			if ( empty( $case_procedure_id ) && ! empty( $received_case_id ) ) {
+			// If we didn't find a WordPress post, treat received_case_id as a BRAGBook API caseProcedureId
+			// Only do this if we did NOT find a valid WordPress post (wp_post_id is 0)
+			if ( empty( $case_procedure_id ) && ! empty( $received_case_id ) && 0 === $wp_post_id ) {
 				$case_procedure_id = $received_case_id; // Use it directly as caseProcedureId
 			}
 
@@ -847,11 +848,33 @@ final class Favorites_Handler {
 					if ( empty( $procedure_id ) ) {
 						$procedure_id = absint( get_post_meta( $wp_post_id, '_procedure_id', true ) );
 					}
+
+					// Fallback: try brag_book_gallery_procedure_ids (comma-separated list, get first)
+					if ( empty( $procedure_id ) ) {
+						$procedure_ids_meta = get_post_meta( $wp_post_id, 'brag_book_gallery_procedure_ids', true );
+						if ( ! empty( $procedure_ids_meta ) ) {
+							$procedure_ids_array = explode( ',', $procedure_ids_meta );
+							$procedure_id = absint( trim( $procedure_ids_array[0] ) );
+						}
+					}
+
+					// Fallback: try getting procedure ID from taxonomy term meta
+					if ( empty( $procedure_id ) ) {
+						$procedure_terms = wp_get_object_terms( $wp_post_id, 'brag_book_procedures', [ 'fields' => 'ids' ] );
+						if ( ! empty( $procedure_terms ) && ! is_wp_error( $procedure_terms ) ) {
+							// Get the API procedure ID from term meta
+							$term_procedure_id = get_term_meta( $procedure_terms[0], 'brag_book_gallery_procedure_id', true );
+							if ( ! empty( $term_procedure_id ) ) {
+								$procedure_id = absint( $term_procedure_id );
+							}
+						}
+					}
 				}
 			}
 
-			// If we didn't find a WordPress post, treat it as a BRAGBook API caseProcedureId
-			if ( empty( $case_procedure_id ) && ! empty( $received_case_id ) ) {
+			// If we didn't find a WordPress post, treat received_case_id as a BRAGBook API caseProcedureId
+			// Only do this if we did NOT find a valid WordPress post (wp_post_id is 0)
+			if ( empty( $case_procedure_id ) && ! empty( $received_case_id ) && 0 === $wp_post_id ) {
 				$case_procedure_id = $received_case_id; // Use it directly as caseProcedureId
 			}
 
@@ -867,9 +890,16 @@ final class Favorites_Handler {
 				) );
 			}
 
+			// Validate required parameters
 			if ( empty( $case_procedure_id ) ) {
 				wp_send_json_error( [
 					'message' => __( 'This case is not available for unfavoriting. The case may not be properly configured.', 'brag-book-gallery' ),
+				] );
+			}
+
+			if ( empty( $procedure_id ) ) {
+				wp_send_json_error( [
+					'message' => __( 'Unable to determine the procedure for this case. The case may need to be re-synced.', 'brag-book-gallery' ),
 				] );
 			}
 
@@ -1002,6 +1032,15 @@ final class Favorites_Handler {
 		$response_code = wp_remote_retrieve_response_code( $response );
 		$response_body = wp_remote_retrieve_body( $response );
 
+		// Debug logging for API response
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( sprintf(
+				'BRAGBook Favorites API - Remove Response: status=%d, body=%s',
+				$response_code,
+				substr( $response_body, 0, 500 )
+			) );
+		}
+
 		// Parse JSON response
 		$data = json_decode( $response_body, true );
 
@@ -1022,10 +1061,19 @@ final class Favorites_Handler {
 			) );
 		}
 
-		// Generic error for non-200 status without a message
+		// Check for error field in response
+		if ( isset( $data['error'] ) ) {
+			throw new \Exception( sprintf(
+				__( 'Unable to remove favorite: %s', 'brag-book-gallery' ),
+				is_string( $data['error'] ) ? $data['error'] : wp_json_encode( $data['error'] )
+			) );
+		}
+
+		// Generic error for non-200 status without a message - include response body for debugging
 		throw new \Exception( sprintf(
-			__( 'API request failed with status %d. Please try again.', 'brag-book-gallery' ),
-			$response_code
+			__( 'API request failed with status %d: %s', 'brag-book-gallery' ),
+			$response_code,
+			substr( $response_body, 0, 200 )
 		) );
 	}
 
@@ -1189,7 +1237,16 @@ final class Favorites_Handler {
 			// Get post meta
 			$case_id = get_post_meta( $post_id, 'brag_book_gallery_case_id', true );
 			$procedure_case_id = get_post_meta( $post_id, 'brag_book_gallery_procedure_case_id', true );
-			$procedure_id = get_post_meta( $post_id, '_procedure_id', true );
+			$procedure_id = absint( get_post_meta( $post_id, '_procedure_id', true ) );
+
+			// Fallback: try brag_book_gallery_procedure_ids (comma-separated list, get first)
+			if ( empty( $procedure_id ) ) {
+				$procedure_ids_meta = get_post_meta( $post_id, 'brag_book_gallery_procedure_ids', true );
+				if ( ! empty( $procedure_ids_meta ) ) {
+					$procedure_ids_array = explode( ',', $procedure_ids_meta );
+					$procedure_id = absint( trim( $procedure_ids_array[0] ) );
+				}
+			}
 
 			// Get procedure info from taxonomy
 			$procedure_terms = wp_get_object_terms( $post_id, \BRAGBookGallery\Includes\Extend\Taxonomies::TAXONOMY_PROCEDURES );
@@ -1198,6 +1255,14 @@ final class Favorites_Handler {
 			if ( ! empty( $procedure_terms ) && ! is_wp_error( $procedure_terms ) ) {
 				$procedure_name = $procedure_terms[0]->name;
 				$procedure_slug = $procedure_terms[0]->slug;
+
+				// Fallback: try getting procedure ID from term meta if still empty
+				if ( empty( $procedure_id ) ) {
+					$term_procedure_id = get_term_meta( $procedure_terms[0]->term_id, 'brag_book_gallery_procedure_id', true );
+					if ( ! empty( $term_procedure_id ) ) {
+						$procedure_id = absint( $term_procedure_id );
+					}
+				}
 			}
 
 			// Get featured image
@@ -1657,12 +1722,18 @@ final class Favorites_Handler {
 		}
 
 		// Query for WordPress post with matching API case ID
+		// The API's 'id' field is the caseProcedureId, stored in brag_book_gallery_procedure_case_id
 		$posts = get_posts( [
 			'post_type' => 'brag_book_cases',
 			'meta_query' => [
 				'relation' => 'OR',
 				[
-					'key' => 'brag_book_gallery_case_id',
+					'key' => 'brag_book_gallery_procedure_case_id',
+					'value' => $api_case_id,
+					'compare' => '='
+				],
+				[
+					'key' => 'brag_book_gallery_original_case_id',
 					'value' => $api_case_id,
 					'compare' => '='
 				],
@@ -1707,10 +1778,30 @@ final class Favorites_Handler {
 		$procedure_name = 'Unknown Procedure';
 		$procedure_slug = 'procedure';
 
+		// Get procedure ID with fallbacks
+		$procedure_id = absint( get_post_meta( $post->ID, '_procedure_id', true ) );
+
+		// Fallback: try brag_book_gallery_procedure_ids
+		if ( empty( $procedure_id ) ) {
+			$procedure_ids_meta = get_post_meta( $post->ID, 'brag_book_gallery_procedure_ids', true );
+			if ( ! empty( $procedure_ids_meta ) ) {
+				$procedure_ids_array = explode( ',', $procedure_ids_meta );
+				$procedure_id = absint( trim( $procedure_ids_array[0] ) );
+			}
+		}
+
 		if ( $procedure_terms && ! is_wp_error( $procedure_terms ) ) {
 			$procedure_term = $procedure_terms[0];
 			$procedure_name = $procedure_term->name;
 			$procedure_slug = $procedure_term->slug;
+
+			// Fallback: try getting procedure ID from term meta
+			if ( empty( $procedure_id ) ) {
+				$term_procedure_id = get_term_meta( $procedure_term->term_id, 'brag_book_gallery_procedure_id', true );
+				if ( ! empty( $term_procedure_id ) ) {
+					$procedure_id = absint( $term_procedure_id );
+				}
+			}
 		}
 
 		// Prepare response data
@@ -1722,6 +1813,7 @@ final class Favorites_Handler {
 			'featured_image_url' => $featured_image_url,
 			'procedure_name' => $procedure_name,
 			'procedure_slug' => $procedure_slug,
+			'procedure_id' => $procedure_id,
 			'post_meta' => array_map( function( $meta_array ) {
 				return count( $meta_array ) === 1 ? $meta_array[0] : $meta_array;
 			}, $post_meta )

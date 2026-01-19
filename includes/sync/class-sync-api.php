@@ -393,28 +393,42 @@ class Sync_Api {
 
 		error_log( 'BRAG Book Gallery Sync API: ========== SYNC API RESPONSE ==========' );
 		error_log( 'BRAG Book Gallery Sync API: Response code: ' . $response_code );
-		error_log( 'BRAG Book Gallery Sync API: Response body: ' . substr( $response_body, 0, 1000 ) );
+		error_log( 'BRAG Book Gallery Sync API: Response body: ' . $response_body );
 
 		// Handle error responses
 		if ( $response_code < 200 || $response_code >= 300 ) {
 			$error_data = json_decode( $response_body, true );
-			$error_message = $error_data['error'] ?? sprintf(
-				/* translators: %d: HTTP status code */
-				__( 'API request failed with status %d', 'brag-book-gallery' ),
-				$response_code
-			);
+
+			// Try to extract error message from various possible response formats
+			$error_message = null;
+			if ( isset( $error_data['error'] ) ) {
+				$error_message = $error_data['error'];
+			} elseif ( isset( $error_data['message'] ) ) {
+				$error_message = $error_data['message'];
+			} elseif ( isset( $error_data['errors'] ) && is_array( $error_data['errors'] ) ) {
+				$error_message = implode( ', ', $error_data['errors'] );
+			}
+
+			if ( empty( $error_message ) ) {
+				$error_message = sprintf(
+					/* translators: %d: HTTP status code */
+					__( 'API request failed with status %d', 'brag-book-gallery' ),
+					$response_code
+				);
+			}
 
 			// Handle array of errors
 			if ( is_array( $error_message ) ) {
 				$error_message = implode( ', ', $error_message );
 			}
 
-			$this->log_api_error( $endpoint, $error_message, [ 'status' => $response_code ] );
+			error_log( 'BRAG Book Gallery Sync API: Error message: ' . $error_message );
+			$this->log_api_error( $endpoint, $error_message, [ 'status' => $response_code, 'body' => $response_body ] );
 
 			return new WP_Error(
 				'api_error',
 				$error_message,
-				[ 'status' => $response_code ]
+				[ 'status' => $response_code, 'response' => $error_data ]
 			);
 		}
 

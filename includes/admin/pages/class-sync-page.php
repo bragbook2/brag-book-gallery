@@ -104,6 +104,7 @@ class Sync_Page extends Settings_Base {
 		add_action( 'rest_api_init', [ $this, 'register_rest_endpoints' ] );
 
 		// Register cron hook for REST-triggered sync execution (one-time events only)
+		// This allows the REST API to return immediately while sync runs asynchronously
 		add_action( 'brag_book_gallery_rest_sync', [ $this, 'handle_rest_sync_execution' ] );
 
 	}
@@ -173,10 +174,421 @@ class Sync_Page extends Settings_Base {
 
 				<?php $this->manual_controls->render(); ?>
 			</div>
+
+			<?php $this->render_automatic_sync_section(); ?>
 		</form>
 
 		<?php
 		$this->render_footer();
+	}
+
+	/**
+	 * Render automatic sync scheduling section
+	 *
+	 * Displays options for scheduling weekly automatic syncs.
+	 * Only shown after a successful full sync has been completed.
+	 *
+	 * @since 4.3.0
+	 * @return void
+	 */
+	private function render_automatic_sync_section(): void {
+		// Check if a full sync has been completed
+		$last_sync_time   = get_option( 'brag_book_gallery_last_sync_time', '' );
+		$last_sync_status = get_option( 'brag_book_gallery_last_sync_status', '' );
+
+		// Only show if a sync has been completed successfully
+		$has_completed_sync = ! empty( $last_sync_time ) && in_array( $last_sync_status, [ 'success', 'partial' ], true );
+
+		if ( ! $has_completed_sync ) {
+			return;
+		}
+
+		$sync_settings       = get_option( 'brag_book_gallery_sync_settings', [] );
+		$auto_enabled        = ! empty( $sync_settings['auto_sync_enabled'] );
+		$sync_day            = $sync_settings['sync_day'] ?? '0';
+		$sync_time           = $sync_settings['sync_time'] ?? '02:00';
+		$next_scheduled_opt  = get_option( 'brag_book_gallery_next_scheduled_sync', [] );
+		$next_scheduled      = $next_scheduled_opt['timestamp'] ?? null;
+		$last_sync_source    = get_option( 'brag_book_gallery_last_sync_source', '' );
+
+		$days_of_week = [
+			'0' => __( 'Sunday', 'brag-book-gallery' ),
+			'1' => __( 'Monday', 'brag-book-gallery' ),
+			'2' => __( 'Tuesday', 'brag-book-gallery' ),
+			'3' => __( 'Wednesday', 'brag-book-gallery' ),
+			'4' => __( 'Thursday', 'brag-book-gallery' ),
+			'5' => __( 'Friday', 'brag-book-gallery' ),
+			'6' => __( 'Saturday', 'brag-book-gallery' ),
+		];
+		?>
+
+		<!-- Automatic Sync Section -->
+		<div class="brag-book-gallery-section" id="automatic-sync-section">
+			<h2><?php esc_html_e( 'Automatic Weekly Sync', 'brag-book-gallery' ); ?></h2>
+			<p class="description">
+				<?php esc_html_e( 'Configure automatic weekly synchronization. After enabling, syncs will run automatically on your chosen day and time.', 'brag-book-gallery' ); ?>
+			</p>
+
+			<div class="brag-book-gallery-card" style="margin-top: 15px;">
+				<!-- Active Sync Status -->
+				<?php
+				$automatic_settings = new Sync_Automatic_Settings();
+				$automatic_settings->render_cron_status();
+				?>
+
+				<table class="form-table" role="presentation">
+					<tbody>
+						<!-- Enable Auto Sync -->
+						<tr>
+							<th scope="row">
+								<label for="auto_sync_enabled"><?php esc_html_e( 'Enable Automatic Sync', 'brag-book-gallery' ); ?></label>
+							</th>
+							<td>
+								<div class="brag-book-gallery-toggle-wrapper">
+									<label class="brag-book-gallery-toggle">
+										<input type="hidden" name="brag_book_gallery_sync_settings[auto_sync_enabled]" value="0" />
+										<input type="checkbox"
+											   name="brag_book_gallery_sync_settings[auto_sync_enabled]"
+											   id="auto_sync_enabled"
+											   value="1"
+											   <?php checked( $auto_enabled ); ?> />
+										<span class="brag-book-gallery-toggle-slider"></span>
+									</label>
+									<span class="brag-book-gallery-toggle-label">
+										<?php esc_html_e( 'Schedule weekly automatic synchronization', 'brag-book-gallery' ); ?>
+									</span>
+								</div>
+							</td>
+						</tr>
+
+						<!-- Schedule Settings (shown when enabled) -->
+						<tr class="auto-sync-schedule-row" <?php echo ! $auto_enabled ? 'style="display: none;"' : ''; ?>>
+							<th scope="row">
+								<label><?php esc_html_e( 'Schedule', 'brag-book-gallery' ); ?></label>
+							</th>
+							<td>
+								<div class="sync-schedule-fields">
+									<div class="sync-schedule-field">
+										<label for="sync_day"><?php esc_html_e( 'Day of Week', 'brag-book-gallery' ); ?></label>
+										<select name="brag_book_gallery_sync_settings[sync_day]" id="sync_day" class="sync-day-select">
+											<?php foreach ( $days_of_week as $day_value => $day_label ) : ?>
+												<option value="<?php echo esc_attr( $day_value ); ?>" <?php selected( $sync_day, $day_value ); ?>>
+													<?php echo esc_html( $day_label ); ?>
+												</option>
+											<?php endforeach; ?>
+										</select>
+									</div>
+									<div class="sync-schedule-field">
+										<label for="sync_time"><?php esc_html_e( 'Time', 'brag-book-gallery' ); ?></label>
+										<input type="time"
+											   name="brag_book_gallery_sync_settings[sync_time]"
+											   id="sync_time"
+											   value="<?php echo esc_attr( $sync_time ); ?>"
+											   class="sync-time-input" />
+									</div>
+								</div>
+								<p class="description" style="margin-top: 10px;">
+									<?php esc_html_e( 'Syncs will run weekly on the selected day and time. Times are in your WordPress timezone.', 'brag-book-gallery' ); ?>
+									<br>
+									<strong><?php esc_html_e( 'Current timezone:', 'brag-book-gallery' ); ?></strong> <?php echo esc_html( wp_timezone_string() ); ?>
+								</p>
+							</td>
+						</tr>
+
+						<!-- Next Scheduled Sync -->
+						<?php if ( $next_scheduled ) : ?>
+						<tr class="auto-sync-schedule-row" <?php echo ! $auto_enabled ? 'style="display: none;"' : ''; ?>>
+							<th scope="row">
+								<?php esc_html_e( 'Next Scheduled Sync', 'brag-book-gallery' ); ?>
+							</th>
+							<td>
+								<div class="next-sync-info">
+									<?php
+									$human_time = human_time_diff( time(), $next_scheduled );
+									$exact_time = wp_date( 'l, F j, Y \a\t g:i A', $next_scheduled );
+
+									if ( time() > $next_scheduled ) {
+										printf(
+											'<span class="sync-overdue">%s <strong>%s</strong></span>',
+											esc_html__( 'Overdue - was scheduled for', 'brag-book-gallery' ),
+											esc_html( $exact_time )
+										);
+									} else {
+										printf(
+											'<span class="sync-scheduled"><strong>%s</strong> <span class="time-until">(%s)</span></span>',
+											esc_html( $exact_time ),
+											/* translators: %s: human readable time difference */
+											sprintf( esc_html__( 'in %s', 'brag-book-gallery' ), esc_html( $human_time ) )
+										);
+									}
+									?>
+								</div>
+							</td>
+						</tr>
+						<?php endif; ?>
+
+						<!-- Last Sync Info -->
+						<tr>
+							<th scope="row">
+								<?php esc_html_e( 'Last Sync', 'brag-book-gallery' ); ?>
+							</th>
+							<td>
+								<div class="last-sync-info">
+									<?php
+									$last_time = strtotime( $last_sync_time );
+									echo '<strong>' . esc_html( wp_date( 'F j, Y \a\t g:i A', $last_time ) ) . '</strong>';
+									echo ' <span class="time-ago">(' . esc_html( human_time_diff( $last_time, time() ) ) . ' ' . esc_html__( 'ago', 'brag-book-gallery' ) . ')</span>';
+
+									if ( $last_sync_source ) {
+										$source_label = $last_sync_source === 'automatic' ? __( 'Automatic', 'brag-book-gallery' ) : __( 'Manual', 'brag-book-gallery' );
+										echo ' &mdash; <em>' . esc_html( $source_label ) . '</em>';
+									}
+									?>
+								</div>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+
+				<p class="submit" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #ddd;">
+					<?php submit_button( __( 'Save Schedule Settings', 'brag-book-gallery' ), 'primary', 'save_auto_sync_settings', false ); ?>
+				</p>
+			</div>
+		</div>
+
+		<style>
+			#automatic-sync-section .brag-book-gallery-card {
+				background: #fff;
+				border: 1px solid #c3c4c7;
+				border-radius: 4px;
+				padding: 20px;
+			}
+			.sync-schedule-fields {
+				display: flex;
+				gap: 20px;
+				align-items: flex-start;
+			}
+			.sync-schedule-field {
+				display: flex;
+				flex-direction: column;
+				gap: 5px;
+			}
+			.sync-schedule-field label {
+				font-weight: 600;
+				font-size: 13px;
+			}
+			.sync-day-select {
+				min-width: 150px;
+				height: 32px;
+			}
+			.sync-time-input {
+				min-width: 120px;
+				height: 32px;
+				padding: 0 8px;
+			}
+			.next-sync-info {
+				padding: 10px 15px;
+				background: #f0f6fc;
+				border-left: 4px solid #2271b1;
+				border-radius: 0 4px 4px 0;
+			}
+			.next-sync-info .time-until {
+				color: #666;
+			}
+			.sync-overdue {
+				color: #d63638;
+			}
+			.last-sync-info .time-ago {
+				color: #666;
+			}
+			.brag-book-gallery-toggle-wrapper {
+				display: flex;
+				align-items: center;
+				gap: 12px;
+			}
+			.brag-book-gallery-toggle {
+				position: relative;
+				display: inline-block;
+				width: 48px;
+				height: 24px;
+			}
+			.brag-book-gallery-toggle input {
+				opacity: 0;
+				width: 0;
+				height: 0;
+			}
+			.brag-book-gallery-toggle-slider {
+				position: absolute;
+				cursor: pointer;
+				top: 0;
+				left: 0;
+				right: 0;
+				bottom: 0;
+				background-color: #ccc;
+				transition: .3s;
+				border-radius: 24px;
+			}
+			.brag-book-gallery-toggle-slider:before {
+				position: absolute;
+				content: "";
+				height: 18px;
+				width: 18px;
+				left: 3px;
+				bottom: 3px;
+				background-color: white;
+				transition: .3s;
+				border-radius: 50%;
+			}
+			.brag-book-gallery-toggle input:checked + .brag-book-gallery-toggle-slider {
+				background-color: #2271b1;
+			}
+			.brag-book-gallery-toggle input:checked + .brag-book-gallery-toggle-slider:before {
+				transform: translateX(24px);
+			}
+		</style>
+
+		<script>
+		jQuery(document).ready(function($) {
+			// Toggle schedule fields visibility
+			$('#auto_sync_enabled').on('change', function() {
+				if ($(this).is(':checked')) {
+					$('.auto-sync-schedule-row').slideDown();
+				} else {
+					$('.auto-sync-schedule-row').slideUp();
+				}
+			});
+		});
+		</script>
+		<?php
+	}
+
+	/**
+	 * Render custom notices for the sync page
+	 *
+	 * Overrides parent to display settings errors/notices that were
+	 * added via add_notice() method.
+	 *
+	 * @since 4.3.0
+	 * @return void
+	 */
+	protected function render_custom_notices(): void {
+		// Display any settings errors/notices
+		settings_errors( $this->page_slug );
+
+		// Call parent for additional notices (factory reset, etc.)
+		parent::render_custom_notices();
+	}
+
+	/**
+	 * Save automatic sync settings from form submission
+	 *
+	 * Handles the form submission for automatic sync scheduling settings.
+	 * Validates input, saves settings, and schedules/unschedules the sync accordingly.
+	 *
+	 * @since 4.3.0
+	 * @return void
+	 */
+	private function save_settings_form(): void {
+		// Check if this is the auto sync settings form
+		if ( ! isset( $_POST['save_auto_sync_settings'] ) ) {
+			return;
+		}
+
+		// Verify nonce
+		if ( ! $this->save_settings( 'brag_book_gallery_sync_settings', 'brag_book_gallery_sync_nonce' ) ) {
+			$this->add_notice( __( 'Security check failed. Please try again.', 'brag-book-gallery' ), 'error' );
+			return;
+		}
+
+		// Get current settings
+		$settings = get_option( 'brag_book_gallery_sync_settings', [] );
+
+		// Get form data
+		$form_data = isset( $_POST['brag_book_gallery_sync_settings'] ) ? $_POST['brag_book_gallery_sync_settings'] : [];
+
+		// Sanitize and save auto sync enabled
+		$auto_enabled = ! empty( $form_data['auto_sync_enabled'] ) && '1' === $form_data['auto_sync_enabled'];
+		$settings['auto_sync_enabled'] = $auto_enabled;
+
+		// Sanitize and save sync day (0-6)
+		if ( isset( $form_data['sync_day'] ) ) {
+			$sync_day = absint( $form_data['sync_day'] );
+			if ( $sync_day >= 0 && $sync_day <= 6 ) {
+				$settings['sync_day'] = (string) $sync_day;
+			}
+		}
+
+		// Sanitize and save sync time (HH:MM format)
+		if ( isset( $form_data['sync_time'] ) ) {
+			$sync_time = sanitize_text_field( $form_data['sync_time'] );
+			if ( preg_match( '/^([01]?[0-9]|2[0-3]):([0-5][0-9])$/', $sync_time ) ) {
+				$settings['sync_time'] = $sync_time;
+			}
+		}
+
+		// Save settings
+		update_option( 'brag_book_gallery_sync_settings', $settings );
+
+		// Handle scheduling based on enabled state
+		if ( $auto_enabled ) {
+			// Calculate the next scheduled sync time and register with BRAGBook API
+			$schedule_result = $this->calculate_next_sync_time();
+			if ( $schedule_result ) {
+				$next_sync_datetime = wp_date( 'l, F j, Y \a\t g:i A', $schedule_result['timestamp'] );
+
+				// Register the scheduled sync with BRAGBook API (only if no active job)
+				$sync_api = new Sync_Api();
+				if ( ! $sync_api->has_active_job() ) {
+					$registration_result = $sync_api->register_sync(
+						Sync_Api::SYNC_TYPE_AUTO,
+						$schedule_result['iso_datetime']
+					);
+
+					if ( is_wp_error( $registration_result ) ) {
+						error_log( 'BRAG Book Gallery: Failed to register scheduled sync with API: ' . $registration_result->get_error_message() );
+						$this->add_notice(
+							__( 'Automatic sync settings saved, but failed to register with BRAGBook API.', 'brag-book-gallery' ),
+							'warning'
+						);
+					} else {
+						error_log( 'BRAG Book Gallery: Scheduled sync registered with API for ' . $schedule_result['iso_datetime'] );
+						$this->add_notice(
+							sprintf(
+								/* translators: %s: formatted date/time of next scheduled sync */
+								__( 'Automatic sync enabled. Next sync scheduled for %s.', 'brag-book-gallery' ),
+								$next_sync_datetime
+							),
+							'success'
+						);
+					}
+				} else {
+					error_log( 'BRAG Book Gallery: Skipped API registration - active job exists. Will register when current job completes.' );
+					$this->add_notice(
+						sprintf(
+							/* translators: %s: formatted date/time of next scheduled sync */
+							__( 'Automatic sync settings saved. Next sync will be scheduled for %s after current sync completes.', 'brag-book-gallery' ),
+							$next_sync_datetime
+						),
+						'success'
+					);
+				}
+
+				// Store the scheduled time for UI display
+				update_option( 'brag_book_gallery_next_scheduled_sync', [
+					'timestamp'    => $schedule_result['timestamp'],
+					'datetime'     => wp_date( 'Y-m-d H:i:s', $schedule_result['timestamp'] ),
+					'iso_datetime' => $schedule_result['iso_datetime'],
+					'sync_day'     => $settings['sync_day'] ?? '0',
+					'sync_time'    => $settings['sync_time'] ?? '02:00',
+					'scheduled_at' => current_time( 'mysql' ),
+				] );
+			} else {
+				$this->add_notice( __( 'Failed to calculate automatic sync schedule. Please try again.', 'brag-book-gallery' ), 'error' );
+			}
+		} else {
+			delete_option( 'brag_book_gallery_next_scheduled_sync' );
+			$this->add_notice( __( 'Automatic sync disabled.', 'brag-book-gallery' ), 'success' );
+		}
 	}
 
 	/**
@@ -729,43 +1141,92 @@ class Sync_Page extends Settings_Base {
 	 * Handle sync execution triggered by REST API
 	 *
 	 * This method executes the sync process when triggered externally via REST API.
-	 * Syncs are no longer scheduled automatically within WordPress - they are only
-	 * triggered by the external BragBook application via the REST endpoint.
+	 * Registers as AUTO sync type and schedules the next weekly sync after completion.
 	 *
 	 * @since 3.3.0
+	 * @since 4.3.0 Refactored to use shared execute_full_sync method and schedule weekly sync
 	 * @return void
 	 */
 	public function handle_rest_sync_execution(): void {
-		error_log( 'BRAG Book Gallery: Sync execution triggered via REST API' );
+		error_log( 'BRAG Book Gallery: ========== REST API SYNC EXECUTION STARTED ==========' );
+		error_log( 'BRAG Book Gallery: Sync triggered via REST API' );
 
+		$sync_source = 'rest_api';
+
+		// Store active sync information for UI display
+		update_option( 'brag_book_gallery_active_sync', [
+			'source'     => $sync_source,
+			'started_at' => current_time( 'mysql' ),
+			'status'     => 'in_progress',
+			'message'    => 'Sync triggered via REST API',
+			'triggered_by' => 'rest_api',
+		] );
+
+		// Initialize Sync API for reporting
+		// Note: The sync job was already registered in handle_rest_trigger_sync()
+		$sync_api = new Sync_Api();
+
+		// Report sync as IN_PROGRESS (updates the existing job registered by handle_rest_trigger_sync)
+		$sync_api->report_sync(
+			Sync_Api::STATUS_IN_PROGRESS,
+			0,
+			'Starting sync via REST API'
+		);
+
+		// Execute the sync using shared method
+		$this->execute_full_sync( $sync_source, $sync_api );
+
+		// After sync completes, register the NEXT scheduled sync if auto sync is enabled
+		$settings = get_option( 'brag_book_gallery_sync_settings', [] );
+		if ( ! empty( $settings['auto_sync_enabled'] ) ) {
+			$next_sync = $this->calculate_next_sync_time();
+			if ( $next_sync ) {
+				error_log( 'BRAG Book Gallery: Next automatic sync calculated for ' . wp_date( 'Y-m-d H:i:s', $next_sync['timestamp'] ) );
+
+				// Register the NEXT scheduled sync with BRAGBook API using scheduledTime
+				$registration_result = $sync_api->register_sync(
+					Sync_Api::SYNC_TYPE_AUTO,
+					$next_sync['iso_datetime']
+				);
+
+				if ( is_wp_error( $registration_result ) ) {
+					error_log( 'BRAG Book Gallery: Failed to register next scheduled sync with API: ' . $registration_result->get_error_message() );
+				} else {
+					error_log( 'BRAG Book Gallery: Next scheduled sync registered with API for ' . $next_sync['iso_datetime'] );
+
+					// Update the stored schedule info
+					update_option( 'brag_book_gallery_next_scheduled_sync', [
+						'timestamp'    => $next_sync['timestamp'],
+						'datetime'     => wp_date( 'Y-m-d H:i:s', $next_sync['timestamp'] ),
+						'iso_datetime' => $next_sync['iso_datetime'],
+						'sync_day'     => $settings['sync_day'] ?? '0',
+						'sync_time'    => $settings['sync_time'] ?? '02:00',
+						'scheduled_at' => current_time( 'mysql' ),
+					] );
+				}
+			}
+		}
+
+		error_log( 'BRAG Book Gallery: ========== REST API SYNC EXECUTION COMPLETED ==========' );
+	}
+
+	/**
+	 * Legacy sync execution handler (kept for backwards compatibility)
+	 *
+	 * This method contains the original sync execution logic. It is kept for reference
+	 * but the actual execution now uses execute_full_sync().
+	 *
+	 * @since 3.3.0
+	 * @deprecated 4.3.0 Use execute_full_sync() instead
+	 * @return void
+	 */
+	private function handle_rest_sync_execution_legacy(): void {
 		$settings = $this->get_settings();
 		$sync_success = false;
 		$sync_source = 'rest_api';
 
 		// Initialize Sync API for registration and reporting
 		$sync_api = new Sync_Api();
-
-		// Check if there's already an active job (from REST trigger)
-		// If not, register as MANUAL sync (externally triggered)
-		if ( ! $sync_api->has_active_job() ) {
-			$registration_result = $sync_api->register_sync( Sync_Api::SYNC_TYPE_MANUAL );
-
-			if ( ! is_wp_error( $registration_result ) && isset( $registration_result['job_id'] ) ) {
-				error_log( 'BRAG Book Gallery: Sync registered with BragBook API - Job ID: ' . $registration_result['job_id'] );
-			} else {
-				$error_message = is_wp_error( $registration_result ) ? $registration_result->get_error_message() : 'Unknown error';
-				error_log( 'BRAG Book Gallery: Failed to register sync: ' . $error_message );
-			}
-		} else {
-			error_log( 'BRAG Book Gallery: Using existing registered sync job' );
-		}
-
-		// Report sync as IN_PROGRESS
-		$sync_api->report_sync(
-			Sync_Api::STATUS_IN_PROGRESS,
-			0,
-			'Starting automatic sync via ' . $sync_source
-		);
 
 		// Get database instance for logging
 		$setup = \BRAGBookGallery\Includes\Core\Setup::get_instance();
@@ -780,7 +1241,6 @@ class Sync_Page extends Settings_Base {
 
 		try {
 			error_log( 'BRAG Book Gallery: Starting REST-triggered sync using Stage-Based Sync' );
-			error_log( 'BRAG Book Gallery: 🕒 Sync started via ' . $sync_source );
 
 			// Use the new stage-based sync
 			$sync = new \BRAGBookGallery\Includes\Sync\Chunked_Data_Sync();
@@ -1130,8 +1590,10 @@ class Sync_Page extends Settings_Base {
 	 * Handle REST API get update request
 	 *
 	 * Returns website URL, plugin details, and last sync information.
+	 * Also accepts sync_day (0-6) and sync_time (HH:MM) parameters to configure weekly sync schedule.
 	 *
 	 * @since 3.3.0
+	 * @since 4.3.0 Added sync_day and sync_time parameters for weekly scheduling
 	 * @param \WP_REST_Request $request The REST request object
 	 * @return \WP_REST_Response|\WP_Error Response object or error
 	 */
@@ -1145,8 +1607,80 @@ class Sync_Page extends Settings_Base {
 		$plugin_data = get_plugin_data( $plugin_file );
 
 		// Get last sync time and status from options
-		$last_sync_time = get_option( 'brag_book_gallery_last_sync_time', null );
+		$last_sync_time   = get_option( 'brag_book_gallery_last_sync_time', null );
 		$last_sync_status = get_option( 'brag_book_gallery_last_sync_status', 'unknown' );
+
+		// Check for sync schedule configuration parameters
+		$sync_day  = $request->get_param( 'sync_day' );
+		$sync_time = $request->get_param( 'sync_time' );
+
+		$schedule_updated = false;
+		$next_sync_time   = null;
+
+		// Update sync schedule if parameters provided
+		if ( null !== $sync_day || null !== $sync_time ) {
+			$settings = get_option( 'brag_book_gallery_sync_settings', [] );
+
+			// Update sync day (0-6, Sunday to Saturday)
+			if ( null !== $sync_day ) {
+				$sync_day = absint( $sync_day );
+				if ( $sync_day >= 0 && $sync_day <= 6 ) {
+					$settings['sync_day'] = (string) $sync_day;
+					error_log( 'BRAG Book Gallery: Updated sync_day to ' . $sync_day . ' via REST API' );
+				}
+			}
+
+			// Update sync time (HH:MM format)
+			if ( null !== $sync_time ) {
+				$sync_time = sanitize_text_field( $sync_time );
+				if ( preg_match( '/^([01]?[0-9]|2[0-3]):([0-5][0-9])$/', $sync_time ) ) {
+					$settings['sync_time'] = $sync_time;
+					error_log( 'BRAG Book Gallery: Updated sync_time to ' . $sync_time . ' via REST API' );
+				}
+			}
+
+			// Enable auto sync if not already enabled
+			$settings['auto_sync_enabled'] = true;
+
+			update_option( 'brag_book_gallery_sync_settings', $settings );
+			$schedule_updated = true;
+
+			// Calculate the next sync time
+			$next_sync_result = $this->calculate_next_sync_time();
+
+			// Register the scheduled sync with BRAGBook API using scheduledTime (only if no active job)
+			if ( $next_sync_result ) {
+				$sync_api = new Sync_Api();
+				if ( ! $sync_api->has_active_job() ) {
+					$registration_result = $sync_api->register_sync(
+						Sync_Api::SYNC_TYPE_AUTO,
+						$next_sync_result['iso_datetime']
+					);
+
+					if ( is_wp_error( $registration_result ) ) {
+						error_log( 'BRAG Book Gallery: Failed to register scheduled sync via REST API: ' . $registration_result->get_error_message() );
+					} else {
+						error_log( 'BRAG Book Gallery: Scheduled sync registered with API for ' . $next_sync_result['iso_datetime'] . ' via REST API' );
+					}
+				} else {
+					error_log( 'BRAG Book Gallery: Skipped API registration - active job exists. Schedule will be registered after current sync completes.' );
+				}
+
+				// Store the scheduled time for UI display
+				update_option( 'brag_book_gallery_next_scheduled_sync', [
+					'timestamp'    => $next_sync_result['timestamp'],
+					'datetime'     => wp_date( 'Y-m-d H:i:s', $next_sync_result['timestamp'] ),
+					'iso_datetime' => $next_sync_result['iso_datetime'],
+					'sync_day'     => $settings['sync_day'] ?? '0',
+					'sync_time'    => $settings['sync_time'] ?? '02:00',
+					'scheduled_at' => current_time( 'mysql' ),
+				] );
+			}
+		}
+
+		// Get current schedule information
+		$settings           = get_option( 'brag_book_gallery_sync_settings', [] );
+		$next_scheduled_opt = get_option( 'brag_book_gallery_next_scheduled_sync', [] );
 
 		// Build response
 		$response = [
@@ -1161,7 +1695,20 @@ class Sync_Page extends Settings_Base {
 				'time'   => $last_sync_time,
 				'status' => $last_sync_status,
 			],
+			'schedule'    => [
+				'enabled'        => ! empty( $settings['auto_sync_enabled'] ),
+				'sync_day'       => $settings['sync_day'] ?? '0',
+				'sync_time'      => $settings['sync_time'] ?? '02:00',
+				'next_scheduled' => $next_scheduled_opt['iso_datetime'] ?? null,
+			],
 		];
+
+		if ( $schedule_updated ) {
+			$response['schedule_updated'] = true;
+			if ( isset( $next_sync_result ) && $next_sync_result ) {
+				$response['schedule']['next_scheduled'] = $next_sync_result['iso_datetime'];
+			}
+		}
 
 		return rest_ensure_response( $response );
 	}
@@ -2923,5 +3470,390 @@ class Sync_Page extends Settings_Base {
 		});
 		</script>
 		<?php
+	}
+
+	/**
+	 * Calculate the next sync time based on settings
+	 *
+	 * Calculates the next occurrence of the configured day/time (7 days from now minimum).
+	 * This is used to communicate the schedule to the BRAGBook API, which handles the actual triggering.
+	 *
+	 * @since 4.3.0
+	 *
+	 * @return array{timestamp: int, iso_datetime: string}|false Array with timestamp and ISO 8601 datetime, or false on failure
+	 */
+	public function calculate_next_sync_time() {
+		$settings = get_option( 'brag_book_gallery_sync_settings', [] );
+
+		// Get configured day and time (defaults: Sunday at 2:00 AM)
+		$sync_day  = isset( $settings['sync_day'] ) ? absint( $settings['sync_day'] ) : 0;
+		$sync_time = $settings['sync_time'] ?? '02:00';
+
+		// Parse the time
+		$time_parts = explode( ':', $sync_time );
+		$sync_hour  = isset( $time_parts[0] ) ? absint( $time_parts[0] ) : 2;
+		$sync_min   = isset( $time_parts[1] ) ? absint( $time_parts[1] ) : 0;
+
+		// Get the WordPress timezone
+		$timezone = wp_timezone();
+
+		// Calculate the next occurrence of the specified day/time
+		$now = new \DateTime( 'now', $timezone );
+
+		// Find the next occurrence of the specified day
+		$next_sync = new \DateTime( 'now', $timezone );
+		$next_sync->setTime( $sync_hour, $sync_min, 0 );
+
+		// Calculate days until next occurrence of sync_day
+		$current_day = (int) $now->format( 'w' ); // 0 = Sunday, 6 = Saturday
+		$days_until  = ( $sync_day - $current_day + 7 ) % 7;
+
+		// If it's the same day (days_until = 0), check if the time has passed
+		if ( $days_until === 0 ) {
+			if ( $now >= $next_sync ) {
+				// Time has passed today, schedule for next week
+				$days_until = 7;
+			}
+			// else: time is later today, schedule for today (days_until stays 0)
+		}
+
+		$next_sync->modify( "+{$days_until} days" );
+
+		$timestamp = $next_sync->getTimestamp();
+
+		// Convert to UTC for API - use ISO 8601 format with Z suffix
+		$utc_datetime = new \DateTime( '@' . $timestamp, new \DateTimeZone( 'UTC' ) );
+		$iso_datetime = $utc_datetime->format( 'Y-m-d\TH:i:s\Z' ); // ISO 8601 UTC format
+
+		error_log( 'BRAG Book Gallery: Calculated next sync time: ' . wp_date( 'Y-m-d H:i:s', $timestamp ) . ' (in ' . $days_until . ' days)' );
+		error_log( 'BRAG Book Gallery: ISO 8601 datetime for API (UTC): ' . $iso_datetime );
+
+		return [
+			'timestamp'    => $timestamp,
+			'iso_datetime' => $iso_datetime,
+		];
+	}
+
+	/**
+	 * Schedule the next weekly sync (legacy wrapper)
+	 *
+	 * This method is kept for backward compatibility but now delegates to calculate_next_sync_time().
+	 * The BRAGBook API handles the actual sync triggering.
+	 *
+	 * @since 4.3.0
+	 * @deprecated 4.3.0 Use calculate_next_sync_time() instead
+	 *
+	 * @return array{timestamp: int, iso_datetime: string}|false Array with timestamp and ISO 8601 datetime, or false on failure
+	 */
+	public function schedule_next_weekly_sync() {
+		$settings = get_option( 'brag_book_gallery_sync_settings', [] );
+
+		// Check if auto sync is enabled
+		if ( empty( $settings['auto_sync_enabled'] ) ) {
+			error_log( 'BRAG Book Gallery: Auto sync not enabled, skipping sync scheduling' );
+			return false;
+		}
+
+		return $this->calculate_next_sync_time();
+	}
+
+	/**
+	 * Handle automatic sync execution
+	 *
+	 * This method executes the sync process when triggered by the weekly cron schedule.
+	 * Registers as AUTO sync type and communicates that it was an automatic sync.
+	 *
+	 * @since 4.3.0
+	 * @return void
+	 */
+	public function handle_automatic_sync_execution(): void {
+		error_log( 'BRAG Book Gallery: ========== AUTOMATIC SYNC EXECUTION STARTED ==========' );
+		error_log( 'BRAG Book Gallery: Sync triggered by weekly cron schedule' );
+
+		$sync_source = 'automatic';
+
+		// Store active sync information for UI display
+		update_option( 'brag_book_gallery_active_sync', [
+			'source'     => $sync_source,
+			'started_at' => current_time( 'mysql' ),
+			'status'     => 'in_progress',
+			'message'    => 'Automatic weekly sync in progress',
+		] );
+
+		// Initialize Sync API for registration and reporting
+		$sync_api = new Sync_Api();
+
+		// Check if there's already an active job (registered when scheduled)
+		// If so, just report IN_PROGRESS. If not, register a new job.
+		if ( ! $sync_api->has_active_job() ) {
+			// No existing job - register a new one
+			$registration_result = $sync_api->register_sync( Sync_Api::SYNC_TYPE_AUTO );
+
+			if ( ! is_wp_error( $registration_result ) && isset( $registration_result['job_id'] ) ) {
+				error_log( 'BRAG Book Gallery: Auto sync registered with BragBook API - Job ID: ' . $registration_result['job_id'] );
+			} else {
+				$error_message = is_wp_error( $registration_result ) ? $registration_result->get_error_message() : 'Unknown error';
+				error_log( 'BRAG Book Gallery: Failed to register auto sync: ' . $error_message );
+			}
+		} else {
+			error_log( 'BRAG Book Gallery: Using existing registered sync job (was scheduled in advance)' );
+		}
+
+		// Report sync as IN_PROGRESS (updates existing job status)
+		$sync_api->report_sync(
+			Sync_Api::STATUS_IN_PROGRESS,
+			0,
+			'Starting automatic weekly sync'
+		);
+
+		// Execute the sync
+		$this->execute_full_sync( $sync_source, $sync_api );
+
+		// Schedule the next weekly sync after completion
+		// Note: The job registration for the NEXT sync happens after execute_full_sync
+		// reports SUCCESS/PARTIAL, which clears the current job
+		$next_sync = $this->schedule_next_weekly_sync();
+		if ( $next_sync ) {
+			error_log( 'BRAG Book Gallery: Next automatic sync scheduled for ' . wp_date( 'Y-m-d H:i:s', $next_sync['timestamp'] ) );
+
+			// Register the NEXT scheduled sync with BRAGBook API using scheduledTime
+			// This works because execute_full_sync already reported completion and cleared the job
+			$registration_result = $sync_api->register_sync(
+				Sync_Api::SYNC_TYPE_AUTO,
+				$next_sync['iso_datetime']
+			);
+
+			if ( is_wp_error( $registration_result ) ) {
+				error_log( 'BRAG Book Gallery: Failed to register next scheduled sync with API: ' . $registration_result->get_error_message() );
+			} else {
+				error_log( 'BRAG Book Gallery: Next scheduled sync registered with API for ' . $next_sync['iso_datetime'] );
+			}
+		}
+
+		error_log( 'BRAG Book Gallery: ========== AUTOMATIC SYNC EXECUTION COMPLETED ==========' );
+	}
+
+	/**
+	 * Execute full sync operation
+	 *
+	 * Shared sync execution logic used by both REST API and automatic triggers.
+	 *
+	 * @since 4.3.0
+	 *
+	 * @param string   $sync_source Source of the sync (automatic, rest_api, manual)
+	 * @param Sync_Api $sync_api    Sync API instance for reporting
+	 * @return void
+	 */
+	private function execute_full_sync( string $sync_source, Sync_Api $sync_api ): void {
+		$settings     = $this->get_settings();
+		$sync_success = false;
+
+		// Get database instance for logging
+		$setup    = \BRAGBookGallery\Includes\Core\Setup::get_instance();
+		$database = $setup->get_service( 'database' );
+		$log_id   = null;
+
+		// Create initial log entry
+		if ( $database ) {
+			$log_id = $database->log_sync_operation( 'full', 'started', 0, 0, '', $sync_source );
+			error_log( 'BRAG Book Gallery: Sync log created with ID: ' . $log_id . ' (source: ' . $sync_source . ')' );
+		}
+
+		try {
+			error_log( 'BRAG Book Gallery: Starting sync via ' . $sync_source );
+
+			// Use the stage-based sync
+			$sync = new \BRAGBookGallery\Includes\Sync\Chunked_Data_Sync();
+
+			// Run Stage 1: Fetch procedures
+			error_log( 'BRAG Book Gallery: Running Stage 1 - Fetching procedures' );
+			$stage1_result = $sync->execute_stage_1();
+
+			if ( ! $stage1_result['success'] ) {
+				$this->handle_sync_stage_failure( $stage1_result, 'Stage 1', $database, $log_id, $settings, $sync_api, $sync_source );
+				return;
+			}
+
+			error_log( 'BRAG Book Gallery: Stage 1 completed' );
+
+			// Run Stage 2: Build manifest
+			error_log( 'BRAG Book Gallery: Running Stage 2 - Building manifest' );
+			$stage2_result = $sync->execute_stage_2();
+
+			if ( ! $stage2_result['success'] ) {
+				$this->handle_sync_stage_failure( $stage2_result, 'Stage 2', $database, $log_id, $settings, $sync_api, $sync_source );
+				return;
+			}
+
+			error_log( 'BRAG Book Gallery: Stage 2 completed' );
+
+			// Run Stage 3: Process cases in batches
+			error_log( 'BRAG Book Gallery: Running Stage 3 - Processing cases' );
+
+			$total_created   = 0;
+			$total_updated   = 0;
+			$total_failed    = 0;
+			$total_processed = 0;
+			$total_cases     = 0;
+			$needs_continue  = true;
+			$batch_count     = 0;
+			$max_batches     = 1000;
+
+			while ( $needs_continue && $batch_count < $max_batches ) {
+				$batch_count++;
+				$stage3_result = $sync->execute_stage_3();
+
+				if ( ! $stage3_result['success'] ) {
+					if ( $database && $log_id ) {
+						$database->update_sync_log( $log_id, 'failed', $total_processed, $total_failed, $stage3_result['message'] ?? 'Stage 3 failed' );
+					}
+					break;
+				}
+
+				$total_created   = $stage3_result['created_posts'] ?? 0;
+				$total_updated   = $stage3_result['updated_posts'] ?? 0;
+				$total_failed    = $stage3_result['failed_cases'] ?? 0;
+				$total_processed = $stage3_result['processed_cases'] ?? 0;
+				$total_cases     = $stage3_result['total_cases'] ?? 0;
+				$needs_continue  = $stage3_result['needs_continue'] ?? false;
+
+				if ( ! $needs_continue ) {
+					$sync_success = true;
+					break;
+				}
+
+				usleep( 500000 ); // 0.5 second pause
+			}
+
+			error_log( 'BRAG Book Gallery: Stage 3 final - ' . $total_created . ' created, ' . $total_updated . ' updated, ' . $total_failed . ' failed' );
+
+			// Update sync log with completion
+			if ( $database && $log_id ) {
+				$status = $sync_success ? 'completed' : 'partial';
+				$database->update_sync_log( $log_id, $status, $total_processed, $total_failed );
+			}
+
+			// Update sync settings
+			$settings['last_sync_time'] = current_time( 'mysql' );
+			$settings['sync_status']    = $sync_success ? 'success' : 'partial';
+			$this->update_settings( $settings );
+
+			update_option( 'brag_book_gallery_last_sync_time', $settings['last_sync_time'] );
+			update_option( 'brag_book_gallery_last_sync_status', $settings['sync_status'] );
+			update_option( 'brag_book_gallery_last_sync_source', $sync_source );
+
+			// Update active sync status
+			update_option( 'brag_book_gallery_active_sync', [
+				'source'       => $sync_source,
+				'started_at'   => get_option( 'brag_book_gallery_active_sync' )['started_at'] ?? current_time( 'mysql' ),
+				'completed_at' => current_time( 'mysql' ),
+				'status'       => $sync_success ? 'completed' : 'partial',
+				'message'      => $sync_source === 'automatic'
+					? 'Automatic weekly sync completed successfully'
+					: 'Sync completed via ' . $sync_source,
+				'cases_synced' => $total_created + $total_updated,
+			] );
+
+			// Report sync completion to BragBook API
+			$cases_synced   = $total_created + $total_updated;
+			$report_status  = $sync_success ? Sync_Api::STATUS_SUCCESS : Sync_Api::STATUS_PARTIAL;
+			$status_message = sprintf(
+				'%s sync completed: %d cases processed (%d created, %d updated, %d failed)',
+				ucfirst( $sync_source ),
+				$total_processed,
+				$total_created,
+				$total_updated,
+				$total_failed
+			);
+
+			$sync_api->report_sync(
+				$report_status,
+				$cases_synced,
+				$status_message,
+				$total_failed > 0 ? "Failed cases: {$total_failed}" : ''
+			);
+
+			error_log( 'BRAG Book Gallery: ' . ucfirst( $sync_source ) . ' sync completed successfully' );
+
+		} catch ( \Exception $e ) {
+			$error_message = 'Sync failed: ' . $e->getMessage();
+			error_log( 'BRAG Book Gallery: ' . $error_message );
+
+			$sync_api->report_sync(
+				Sync_Api::STATUS_FAILED,
+				0,
+				ucfirst( $sync_source ) . ' sync failed with exception',
+				$e->getMessage()
+			);
+
+			if ( $database && $log_id ) {
+				$database->update_sync_log( $log_id, 'failed', 0, 0, $error_message );
+			}
+
+			$settings['last_sync_time'] = current_time( 'mysql' );
+			$settings['sync_status']    = 'error';
+			$this->update_settings( $settings );
+
+			update_option( 'brag_book_gallery_last_sync_time', $settings['last_sync_time'] );
+			update_option( 'brag_book_gallery_last_sync_status', 'error' );
+			update_option( 'brag_book_gallery_last_sync_source', $sync_source );
+
+			// Update active sync with error
+			update_option( 'brag_book_gallery_active_sync', [
+				'source'       => $sync_source,
+				'completed_at' => current_time( 'mysql' ),
+				'status'       => 'failed',
+				'message'      => $error_message,
+			] );
+		}
+	}
+
+	/**
+	 * Handle sync stage failure
+	 *
+	 * Updates logs and options when a sync stage fails.
+	 *
+	 * @since 4.3.0
+	 *
+	 * @param array    $result      Stage result array
+	 * @param string   $stage_name  Name of the failed stage
+	 * @param mixed    $database    Database service instance
+	 * @param int|null $log_id      Sync log ID
+	 * @param array    $settings    Current settings
+	 * @param Sync_Api $sync_api    Sync API instance
+	 * @param string   $sync_source Source of the sync
+	 * @return void
+	 */
+	private function handle_sync_stage_failure( array $result, string $stage_name, $database, ?int $log_id, array $settings, Sync_Api $sync_api, string $sync_source ): void {
+		$error_message = $result['message'] ?? $stage_name . ' failed';
+		error_log( 'BRAG Book Gallery: ' . $stage_name . ' failed: ' . $error_message );
+
+		if ( $database && $log_id ) {
+			$database->update_sync_log( $log_id, 'failed', 0, 0, $error_message );
+		}
+
+		$settings['last_sync_time'] = current_time( 'mysql' );
+		$settings['sync_status']    = 'error';
+		$this->update_settings( $settings );
+
+		update_option( 'brag_book_gallery_last_sync_time', $settings['last_sync_time'] );
+		update_option( 'brag_book_gallery_last_sync_status', 'error' );
+		update_option( 'brag_book_gallery_last_sync_source', $sync_source );
+
+		// Report failure to BragBook API
+		$sync_api->report_sync(
+			Sync_Api::STATUS_FAILED,
+			0,
+			ucfirst( $sync_source ) . ' sync failed at ' . $stage_name,
+			$error_message
+		);
+
+		// Update active sync with error
+		update_option( 'brag_book_gallery_active_sync', [
+			'source'       => $sync_source,
+			'completed_at' => current_time( 'mysql' ),
+			'status'       => 'failed',
+			'message'      => $error_message,
+		] );
 	}
 }

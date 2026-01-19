@@ -93,6 +93,51 @@ class Changelog_Page extends Settings_Base {
 				</div>
 			</div>
 
+			<!-- Version 4.3.1 -->
+			<div class="brag-book-gallery-section">
+				<div class="brag-book-gallery-changelog-version">
+					<h3>
+						<span class="version-badge version-patch">v4.3.1</span>
+						<?php esc_html_e( 'January 19, 2026', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Patch Release', 'brag-book-gallery' ); ?>
+					</h3>
+					<div class="brag-book-gallery-card">
+						<p><?php esc_html_e( 'This release fixes automatic sync scheduling calculations, adds form feedback messages, and removes misleading cron status display.', 'brag-book-gallery' ); ?></p>
+						<h4><?php esc_html_e( '🐛 Bug Fixes', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Automatic Sync Scheduling: Fixed schedule calculation showing 2 weeks instead of 1 week by removing unnecessary minimum requirement', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Sync Settings Form: Fixed settings save not showing success/error messages - form now properly displays confirmation feedback', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Sync Status Display: Removed misleading WordPress Cron status - only BRAGBook API sync status is now displayed', 'brag-book-gallery' ); ?></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
+			<!-- Version 4.3.0 -->
+			<div class="brag-book-gallery-section">
+				<div class="brag-book-gallery-changelog-version">
+					<h3>
+						<span class="version-badge version-minor">v4.3.0</span>
+						<?php esc_html_e( 'January 19, 2026', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Minor Release', 'brag-book-gallery' ); ?>
+					</h3>
+					<div class="brag-book-gallery-card">
+						<p><?php esc_html_e( 'This release fixes favorites removal functionality, improves carousel pagination accessibility, and fixes mobile header visibility.', 'brag-book-gallery' ); ?></p>
+						<h4><?php esc_html_e( '🐛 Bug Fixes', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Favorites Removal API: Fixed 400 error when removing favorites from "My Favorites" page with proper caseProcedureId and procedureId fallbacks', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Favorites Card Removal: Cards are now removed from view with animation when successfully unfavoriting', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Case Carousel Pagination: Changed from anchor tags to semantic buttons with proper ARIA attributes for accessibility', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'V3 Card HTML: Fixed invalid nested anchor HTML in v3 card type by moving pagination outside anchor wrapper', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Mobile Header Visibility: Fixed mobile header disappearing between 1024px and 1280px - now visible until 1280px', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '✨ Enhancements', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Carousel Scroll Observer: Added IntersectionObserver to update active pagination dot on scroll', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'API Error Handling: Added state restoration when favorites API call fails', 'brag-book-gallery' ); ?></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
 			<!-- Version 4.2.0 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">
