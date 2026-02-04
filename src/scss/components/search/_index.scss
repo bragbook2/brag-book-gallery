@@ -8,10 +8,6 @@
 	position: relative;
 	width: 100%;
 	flex: 1;
-
-	@media (min-width: 1024px) {
-		margin-block-end: calc( 8 * var(--wp--custom--brag-book-gallery--spacer,4px) );
-	}
 }
 
 .brag-book-gallery-search-input,

@@ -4820,11 +4820,6 @@ body.brag-book-gallery-hide-filter-counts .brag-book-gallery-nav-count {
   width: 100%;
   flex: 1;
 }
-@media (min-width: 1024px) {
-  .brag-book-gallery-search-wrapper {
-    margin-block-end: calc(8 * var(--wp--custom--brag-book-gallery--spacer, 4px));
-  }
-}
 
 .brag-book-gallery-search-input,
 .brag-book-gallery-mobile-search-input {
