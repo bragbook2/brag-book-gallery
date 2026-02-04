@@ -323,12 +323,12 @@ class Sync_Ajax_Handler {
 			wp_send_json_error( 'Invalid nonce' );
 		}
 
-		// Register sync with BragBook API
+		// Register sync with BRAG Book API
 		$sync_api = new Sync_Api();
 		$registration_result = $sync_api->register_sync( Sync_Api::SYNC_TYPE_MANUAL );
 
 		if ( ! is_wp_error( $registration_result ) && isset( $registration_result['job_id'] ) ) {
-			error_log( 'AJAX: Stage 1 - Registered with BragBook API - Job ID: ' . $registration_result['job_id'] );
+			error_log( 'AJAX: Stage 1 - Registered with BRAG Book API - Job ID: ' . $registration_result['job_id'] );
 
 			// Report IN_PROGRESS status
 			$sync_api->report_sync(
@@ -338,7 +338,7 @@ class Sync_Ajax_Handler {
 			);
 		} else {
 			$error_msg = is_wp_error( $registration_result ) ? $registration_result->get_error_message() : 'Unknown error';
-			error_log( 'AJAX: Stage 1 - Failed to register with BragBook API: ' . $error_msg );
+			error_log( 'AJAX: Stage 1 - Failed to register with BRAG Book API: ' . $error_msg );
 			// Continue anyway - graceful degradation
 		}
 
@@ -543,7 +543,7 @@ class Sync_Ajax_Handler {
 				update_option( 'brag_book_gallery_last_sync_time', current_time( 'mysql' ) );
 				update_option( 'brag_book_gallery_last_sync_status', 'success' );
 
-				// Report to BragBook API when sync is complete (not continuing)
+				// Report to BRAG Book API when sync is complete (not continuing)
 				$needs_continue = $result['needs_continue'] ?? false;
 				if ( ! $needs_continue ) {
 					$sync_api = new Sync_Api();
@@ -561,7 +561,7 @@ class Sync_Ajax_Handler {
 					);
 
 					$sync_api->report_sync( $status, $cases_synced, $message );
-					error_log( 'AJAX: Stage 3 - Reported ' . $status . ' to BragBook API' );
+					error_log( 'AJAX: Stage 3 - Reported ' . $status . ' to BRAG Book API' );
 				}
 
 				wp_send_json_success( $result );
@@ -573,14 +573,14 @@ class Sync_Ajax_Handler {
 
 				update_option( 'brag_book_gallery_last_sync_status', 'error' );
 
-				// Report failure to BragBook API
+				// Report failure to BRAG Book API
 				$sync_api = new Sync_Api();
 				$sync_api->report_sync(
 					Sync_Api::STATUS_FAILED,
 					0,
 					'Stage 3 failed: ' . ( $result['message'] ?? 'Unknown error' )
 				);
-				error_log( 'AJAX: Stage 3 - Reported FAILED to BragBook API' );
+				error_log( 'AJAX: Stage 3 - Reported FAILED to BRAG Book API' );
 
 				wp_send_json_error( $result );
 			}
@@ -596,7 +596,7 @@ class Sync_Ajax_Handler {
 
 			update_option( 'brag_book_gallery_last_sync_status', 'error' );
 
-			// Report failure to BragBook API
+			// Report failure to BRAG Book API
 			$sync_api = new Sync_Api();
 			$sync_api->report_sync(
 				Sync_Api::STATUS_FAILED,
@@ -620,7 +620,7 @@ class Sync_Ajax_Handler {
 
 			update_option( 'brag_book_gallery_last_sync_status', 'error' );
 
-			// Report failure to BragBook API
+			// Report failure to BRAG Book API
 			$sync_api = new Sync_Api();
 			$sync_api->report_sync(
 				Sync_Api::STATUS_FAILED,

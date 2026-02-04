@@ -623,6 +623,14 @@ class Case_Handler {
 		$wp_post_id = get_the_ID(); // WordPress post ID for favorites functionality
 		$procedure_name = ! empty( $case_data['procedures'] ) ? $case_data['procedures'][0]['name'] : 'Case';
 
+		// Get procedure ID for favorites - prioritize first procedure ID from case data
+		$favorite_procedure_id = '';
+		if ( ! empty( $case_data['procedures'] ) && ! empty( $case_data['procedures'][0]['procedure_id'] ) ) {
+			$favorite_procedure_id = $case_data['procedures'][0]['procedure_id'];
+		} elseif ( ! empty( $case_data['procedureIds'] ) ) {
+			$favorite_procedure_id = $case_data['procedureIds'][0];
+		}
+
 		// Generate schema markup for the image gallery
 		$schema_markup = $this->generate_gallery_schema( $images, $case_data );
 
@@ -645,7 +653,9 @@ class Case_Handler {
 		if ( ! empty( $images[0] ) ) {
 			$html .= '<img src="' . esc_url( $images[0] ) . '" alt="' . esc_attr( $procedure_name . ' - Case ' . $case_id ) . '" loading="eager" itemprop="image">';
 			$html .= '<div class="brag-book-gallery-item-actions">';
-			$html .= '<button class="brag-book-gallery-favorite-button" data-favorited="false" data-item-id="' . $wp_post_id . '" aria-label="Add to favorites">';
+			// Use procedure ID for favorites - fallback to post ID if no procedure ID available
+			$favorite_item_id = ! empty( $favorite_procedure_id ) ? $favorite_procedure_id : $wp_post_id;
+			$html .= '<button class="brag-book-gallery-favorite-button" data-favorited="false" data-item-id="' . esc_attr( $favorite_item_id ) . '" aria-label="Add to favorites">';
 			$html .= '<svg fill="rgba(255, 255, 255, 0.5)" stroke="white" stroke-width="2" viewBox="0 0 24 24">';
 			$html .= '<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>';
 			$html .= '</svg>';

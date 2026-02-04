@@ -5962,7 +5962,6 @@ body.wp-admin #wpfooter {
 }
 .bragbook-auto-sync-status.status-active::before {
   background: linear-gradient(90deg, #3b82f6, #60a5fa);
-  animation: shimmer 2s infinite;
 }
 .bragbook-auto-sync-status.status-warning::before {
   background: linear-gradient(90deg, #f59e0b, #fbbf24);

@@ -1381,8 +1381,8 @@ final class Favorites_Handler {
 			$case_url = '/' . ltrim( $gallery_slug, '/' ) . '/' . $case_id . '/';
 		}
 
-		// Determine the item ID for the favorite button (prefer WordPress post ID)
-		$favorite_item_id = ! empty( $post_id ) ? $post_id : $case_id;
+		// Determine the item ID for the favorite button (prefer procedure ID for consistency)
+		$favorite_item_id = ! empty( $procedure_id ) ? $procedure_id : ( ! empty( $post_id ) ? $post_id : $case_id );
 
 		// Build data attributes for filtering
 		$data_attrs = [

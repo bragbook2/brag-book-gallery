@@ -16,7 +16,7 @@
  * - WordPress VIP compliant architecture
  * - Modern PHP 8.2+ features and type safety
  *
- * @package    BragBookGallery
+ * @package    BRAG BookGallery
  * @subpackage Admin\Debug_Tools
  * @since      3.0.0
  * @author     BRAGBook Development Team

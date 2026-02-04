@@ -296,6 +296,7 @@ final class Gallery_Handler {
 	 *
 	 * @param array $atts Shortcode attributes. Supports:
 	 *                    - member_id: Filter cases by member ID.
+	 *                    - limit: Maximum number of cases to display. Default 20.
 	 *
 	 * @return string Rendered cases grid HTML.
 	 * @since 3.3.2
@@ -306,6 +307,7 @@ final class Gallery_Handler {
 		$atts = shortcode_atts(
 			array(
 				'member_id' => '',
+				'limit'     => 20,
 			),
 			$atts,
 			'brag_book_gallery_procedures'
@@ -313,6 +315,7 @@ final class Gallery_Handler {
 
 		// Sanitize member_id
 		$member_id = ! empty( $atts['member_id'] ) ? sanitize_text_field( $atts['member_id'] ) : '';
+		$limit     = (int) $atts['limit'];
 
 		// Enqueue gallery assets
 		Asset_Manager::enqueue_gallery_assets();
@@ -334,7 +337,7 @@ final class Gallery_Handler {
 		$query_args = array(
 			'post_type'      => \BRAGBookGallery\Includes\Extend\Post_Types::POST_TYPE_CASES,
 			'post_status'    => 'publish',
-			'posts_per_page' => -1,
+			'posts_per_page' => $limit > 0 ? $limit : -1,
 			'orderby'        => 'date',
 			'order'          => 'DESC',
 		);
@@ -2940,7 +2943,7 @@ final class Gallery_Handler {
 			return;
 		}
 
-		// Get the procedure ID from term meta (this is the BragBook API ID)
+		// Get the procedure ID from term meta (this is the BRAG Book API ID)
 		$procedure_id = get_term_meta( $procedure_term->term_id, 'procedure_id', true );
 
 		if ( empty( $procedure_id ) ) {
@@ -2959,7 +2962,7 @@ final class Gallery_Handler {
 	 *
 	 * Makes the tracking API call for procedure views in a non-blocking way.
 	 *
-	 * @param int $procedure_id The procedure ID from BragBook API
+	 * @param int $procedure_id The procedure ID from BRAG Book API
 	 *
 	 * @return void
 	 * @since 4.0.2

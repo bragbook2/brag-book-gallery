@@ -103,7 +103,7 @@ class Data_Sync {
 	private ?Sync_Api $sync_api = null;
 
 	/**
-	 * Whether to register/report syncs to BragBook API
+	 * Whether to register/report syncs to BRAG Book API
 	 *
 	 * @since 4.0.2
 	 * @var bool
@@ -189,10 +189,10 @@ class Data_Sync {
 
 		$this->log_sync_start();
 
-		// Register sync with BragBook API
+		// Register sync with BRAG Book API
 		$registration_result = $this->register_sync_with_api();
 		if ( $registration_result ) {
-			error_log( 'BRAG book Gallery Sync: Registered with BragBook API - Job ID: ' . ( $registration_result['job_id'] ?? 'unknown' ) );
+			error_log( 'BRAG book Gallery Sync: Registered with BRAG Book API - Job ID: ' . ( $registration_result['job_id'] ?? 'unknown' ) );
 		}
 
 		// Report sync as IN_PROGRESS
@@ -221,7 +221,7 @@ class Data_Sync {
 				error_log( 'BRAG book Gallery Sync: Stage 1 failed, aborting sync' );
 				$this->log_sync_error( 'Stage 1 (procedures) failed: ' . implode( ', ', $stage1_result['errors'] ) );
 
-				// Report failure to BragBook API
+				// Report failure to BRAG Book API
 				$this->report_sync_status(
 					Sync_Api::STATUS_FAILED,
 					0,
@@ -325,7 +325,7 @@ class Data_Sync {
 
 			error_log( 'BRAG book Gallery Sync: ===== SYNC COMPLETE =====' );
 
-			// Report sync status to BragBook API
+			// Report sync status to BRAG Book API
 			$cases_synced  = ( $total_result['cases_created'] ?? 0 ) + ( $total_result['cases_updated'] ?? 0 );
 			$sync_status   = empty( $total_result['errors'] ) ? Sync_Api::STATUS_SUCCESS : Sync_Api::STATUS_PARTIAL;
 			$status_message = sprintf(
@@ -357,7 +357,7 @@ class Data_Sync {
 			error_log( 'BRAG book Gallery Sync: Exception stack trace: ' . $e->getTraceAsString() );
 			$this->log_sync_error( $e->getMessage() );
 
-			// Report failure to BragBook API
+			// Report failure to BRAG Book API
 			$this->report_sync_status(
 				Sync_Api::STATUS_FAILED,
 				0,
@@ -4415,7 +4415,7 @@ class Data_Sync {
 	}
 
 	/**
-	 * Enable or disable sync reporting to BragBook API
+	 * Enable or disable sync reporting to BRAG Book API
 	 *
 	 * @since 4.0.2
 	 *
@@ -4428,7 +4428,7 @@ class Data_Sync {
 	}
 
 	/**
-	 * Register sync with BragBook API
+	 * Register sync with BRAG Book API
 	 *
 	 * @since 4.0.2
 	 *
@@ -4457,7 +4457,7 @@ class Data_Sync {
 	}
 
 	/**
-	 * Report sync status to BragBook API
+	 * Report sync status to BRAG Book API
 	 *
 	 * @since 4.0.2
 	 *

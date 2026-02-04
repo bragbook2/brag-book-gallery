@@ -77,18 +77,40 @@ class FavoritesManager {
 		let procedureId = '';
 		const isFavorited = button.dataset.favorited === 'true';
 
-		// Prioritize WordPress post ID from case card or case detail view data-post-id attribute
+		// Get case container (card or detail view)
 		const caseCard = button.closest('.brag-book-gallery-case-card');
 		const caseDetailView = button.closest('.brag-book-gallery-case-detail-view');
-		const caseContainer = caseCard || caseDetailView;
+		const carouselItem = button.closest('.brag-book-gallery-carousel-item');
+		const caseContainer = caseCard || caseDetailView || carouselItem;
 
-		if (caseContainer && caseContainer.dataset.postId) {
-			itemId = caseContainer.dataset.postId;
+		// Prioritize case procedure ID (currentProcedureId) for favorites
+		// This is the unique identifier for a case-procedure combination
+		if (caseContainer) {
+			// Try various procedure ID attributes in priority order
+			procedureId = caseContainer.dataset.currentProcedureId ||  // Current procedure ID (taxonomy pages)
+				caseContainer.dataset.procedureId ||                   // Single procedure ID (favorites cards)
+				(caseContainer.dataset.procedureIds ? caseContainer.dataset.procedureIds.split(',')[0] : '');  // First from list
+
+			// Use procedure ID as the item ID for favorites
+			if (procedureId) {
+				itemId = procedureId;
+			} else {
+				// Fallback to button's own data attributes only if no procedure ID
+				itemId = button.dataset.itemId || '';
+
+				// Extract numeric ID from values like "case-12345" or "case_12345_main"
+				if (itemId) {
+					const matches = itemId.match(/(\d+)/);
+					if (matches) {
+						itemId = matches[1];
+					}
+				}
+			}
 		} else {
-			// Fallback to button's own data attributes
-			itemId = button.dataset.itemId || button.dataset.caseId || '';
+			// No container found, use button's own data attributes
+			itemId = button.dataset.itemId || '';
 
-			// Extract numeric ID from values like "case-12345" or "case_12345_main"
+			// Extract numeric ID from values like "case-12345"
 			if (itemId) {
 				const matches = itemId.match(/(\d+)/);
 				if (matches) {
@@ -97,17 +119,14 @@ class FavoritesManager {
 			}
 		}
 
-		// Get procedure ID from case container or active nav link
-		if (caseContainer) {
-			// Try various procedure ID attributes
-			procedureId = caseContainer.dataset.procedureId ||  // Single procedure ID (favorites cards)
-				caseContainer.dataset.currentProcedureId ||      // Current procedure ID (case detail view)
-				(caseContainer.dataset.procedureIds ? caseContainer.dataset.procedureIds.split(',')[0] : '');  // First from list
-		}
-		// Fallback to active nav link procedure ID
+		// Fallback to active nav link procedure ID if still no procedure ID
 		if (!procedureId) {
 			const activeNavLink = document.querySelector('.brag-book-gallery-nav-link.brag-book-gallery-active');
 			procedureId = activeNavLink?.dataset.procedureId || '';
+			// If we got a procedure ID from nav link, use it as item ID too
+			if (procedureId && !itemId) {
+				itemId = procedureId;
+			}
 		}
 
 		// Update hidden case ID field if it exists
@@ -1057,16 +1076,21 @@ class FavoritesManager {
 		const allButtons = document.querySelectorAll('[data-favorited]');
 
 		allButtons.forEach(button => {
-			// Extract item ID from the button
+			// Extract item ID from the button - prioritize procedure ID
 			let itemId = '';
 
-			// Check for WordPress post ID in parent case card
+			// Check for procedure ID in parent container (card or carousel item)
 			const caseCard = button.closest('.brag-book-gallery-case-card, .brag-book-gallery-carousel-item');
-			if (caseCard && caseCard.dataset.postId) {
-				itemId = caseCard.dataset.postId;
-			} else {
-				// Fallback to button's own data attributes
-				itemId = button.dataset.itemId || button.dataset.caseId || '';
+			if (caseCard) {
+				// Prioritize procedure ID for favorites matching
+				itemId = caseCard.dataset.currentProcedureId ||
+					caseCard.dataset.procedureId ||
+					(caseCard.dataset.procedureIds ? caseCard.dataset.procedureIds.split(',')[0] : '');
+			}
+
+			// Fallback to button's own data attributes
+			if (!itemId) {
+				itemId = button.dataset.itemId || '';
 
 				// Extract numeric ID from values like "case-12345"
 				if (itemId) {

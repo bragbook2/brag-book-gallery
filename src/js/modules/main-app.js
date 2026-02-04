@@ -2518,14 +2518,33 @@ class BRAGbookGalleryApp {
 			imageUrl = caseData.photoSets[0].postProcessedImageLocation || '';
 		}
 
-		const isFavorited = this.components.favoritesManager.getFavorites().has(`case-${caseId}`);
+		// Get procedure ID from active nav link for favorites
+		const activeProcedureLink = document.querySelector('.brag-book-gallery-nav-link.brag-book-gallery-active');
+		const currentProcedureId = activeProcedureLink?.dataset.procedureId || '';
+
+		// Get procedure IDs from case data
+		const procedureIds = caseData.procedureIds || [];
+		const procedureIdsStr = procedureIds.join(',');
+
+		// Use current procedure ID for favorites, fallback to first procedure ID, then case ID
+		const favoriteItemId = currentProcedureId || (procedureIds.length > 0 ? procedureIds[0] : caseId);
+		const isFavorited = this.components.favoritesManager.getFavorites().has(String(favoriteItemId));
+
+		// Build data attributes
+		let dataAttrs = `data-case-id="${caseId}"`;
+		if (currentProcedureId) {
+			dataAttrs += ` data-current-procedure-id="${currentProcedureId}"`;
+		}
+		if (procedureIdsStr) {
+			dataAttrs += ` data-procedure-ids="${procedureIdsStr}"`;
+		}
 
 		return `
-			<article class="brag-book-gallery-case-card" data-case-id="${caseId}">
+			<article class="brag-book-gallery-case-card" ${dataAttrs}>
 				<div class="brag-book-gallery-image-container">
 					<div class="brag-book-gallery-skeleton-loader" style="display:none;"></div>
 					<div class="brag-book-gallery-item-actions">
-						<button class="brag-book-gallery-favorite-button" data-favorited="${isFavorited}" data-item-id="case-${caseId}" aria-label="${isFavorited ? 'Remove from' : 'Add to'} favorites">
+						<button class="brag-book-gallery-favorite-button" data-favorited="${isFavorited}" data-item-id="${favoriteItemId}" aria-label="${isFavorited ? 'Remove from' : 'Add to'} favorites">
 							<svg fill="${isFavorited ? 'red' : 'rgba(255, 255, 255, 0.5)'}" stroke="white" stroke-width="2" viewBox="0 0 24 24">
 								<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
 							</svg>
@@ -2644,52 +2663,41 @@ class BRAGbookGalleryApp {
 	}
 
 	/**
-	 * Set up intersection observer to update active carousel dot on scroll
+	 * Set up scroll listeners to update active carousel dot on scroll/swipe
 	 */
 	setupCaseCarouselScrollObserver() {
-		// Create observer to track which image is currently visible
-		const observerOptions = {
-			root: null,
-			rootMargin: '0px',
-			threshold: 0.6 // Image must be at least 60% visible
-		};
+		this.caseCarouselScrollHandlers = [];
 
-		const carouselObserver = new IntersectionObserver((entries) => {
-			entries.forEach(entry => {
-				if (!entry.isIntersecting) return;
+		document.querySelectorAll('.brag-book-gallery-case-carousel').forEach(carousel => {
+			const imageContainer = carousel.closest('.brag-book-gallery-image-container');
+			if (!imageContainer) return;
 
-				const picture = entry.target;
-				const carousel = picture.closest('.brag-book-gallery-case-carousel');
-				if (!carousel) return;
+			const pagination = imageContainer.querySelector('.brag-book-gallery-case-carousel-pagination');
+			if (!pagination) return;
 
-				const imageContainer = carousel.closest('.brag-book-gallery-image-container');
-				if (!imageContainer) return;
+			const pictures = carousel.querySelectorAll('picture');
+			if (pictures.length < 2) return;
 
-				const pagination = imageContainer.querySelector('.brag-book-gallery-case-carousel-pagination');
-				if (!pagination) return;
+			const updateActiveDot = () => {
+				const scrollLeft = carousel.scrollLeft;
+				const containerWidth = carousel.clientWidth;
 
-				// Find the index of this picture
-				const pictures = Array.from(carousel.querySelectorAll('picture'));
-				const index = pictures.indexOf(picture);
-				if (index === -1) return;
+				// Calculate the active index from scroll position
+				const activeIndex = containerWidth > 0
+					? Math.round(scrollLeft / containerWidth)
+					: 0;
 
-				// Update active dot
 				const dots = pagination.querySelectorAll('.brag-book-gallery-case-carousel-dot');
 				dots.forEach((dot, i) => {
-					const isActive = i === index;
+					const isActive = i === activeIndex;
 					dot.classList.toggle('is-active', isActive);
 					dot.setAttribute('aria-selected', isActive ? 'true' : 'false');
 				});
-			});
-		}, observerOptions);
+			};
 
-		// Observe all carousel images
-		document.querySelectorAll('.brag-book-gallery-case-carousel picture').forEach(picture => {
-			carouselObserver.observe(picture);
+			carousel.addEventListener('scroll', updateActiveDot, { passive: true });
+			this.caseCarouselScrollHandlers.push({ carousel, handler: updateActiveDot });
 		});
-
-		// Store reference for cleanup if needed
-		this.caseCarouselObserver = carouselObserver;
 	}
 
 	/**
@@ -4011,8 +4019,8 @@ class BRAGbookGalleryApp {
 		html += '<div class="brag-book-gallery-skeleton-loader" style="display: none;"></div>';
 
 		// Favorites button (matching PHP structure)
-		// Use WordPress post ID if available, otherwise use case ID
-		const favoriteItemId = postId || caseId;
+		// Use procedure ID for favorites consistency, fallback to case ID
+		const favoriteItemId = procedureId || caseId;
 		html += '<div class="brag-book-gallery-item-actions">';
 		html += `<button class="brag-book-gallery-favorite-button favorited" data-favorited="true" data-item-id="${this.escapeHtml(favoriteItemId)}" aria-label="Remove from favorites">`;
 		html += '<svg fill="rgba(255, 255, 255, 0.5)" stroke="white" stroke-width="2" viewBox="0 0 24 24">';

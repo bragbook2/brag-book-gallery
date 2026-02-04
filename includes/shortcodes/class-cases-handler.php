@@ -2165,6 +2165,9 @@ final class Cases_Handler {
 		$age       = get_post_meta( $post_id, 'brag_book_gallery_age', true );
 		$ethnicity = get_post_meta( $post_id, 'brag_book_gallery_ethnicity', true );
 
+		// Initialize current API procedure ID (will be set on taxonomy pages)
+		$current_api_procedure_id = '';
+
 		if ( ! empty( $case_id ) ) {
 			$data_attrs[] = 'data-case-id="' . $case_id . '"';
 		}
@@ -2319,9 +2322,20 @@ final class Cases_Handler {
 				<div class="brag-book-gallery-image-container">
 						<div class="brag-book-gallery-skeleton-loader" style="display: none;"></div>
 						<div class="brag-book-gallery-item-actions">
+							<?php
+							// Determine the favorite item ID - prioritize current procedure ID, then first procedure ID
+							$favorite_item_id = '';
+							if ( ! empty( $current_api_procedure_id ) ) {
+								$favorite_item_id = $current_api_procedure_id;
+							} elseif ( ! empty( $procedure_ids ) && is_array( $procedure_ids ) ) {
+								$favorite_item_id = $procedure_ids[0];
+							} else {
+								$favorite_item_id = $case_id; // Fallback to case ID
+							}
+							?>
 							<button class="brag-book-gallery-favorite-button"
 									data-favorited="false"
-									data-item-id="case-<?php echo esc_attr( $case_id ); ?>"
+									data-item-id="<?php echo esc_attr( $favorite_item_id ); ?>"
 									aria-label="Add to favorites">
 								<svg fill="rgba(255, 255, 255, 0.5)" stroke="white" stroke-width="2"
 									 viewBox="0 0 24 24">

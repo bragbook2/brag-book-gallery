@@ -82,7 +82,7 @@ final class Sync_Manual_Controls {
 								</div>
 							</div>
 
-							<!-- BragBook Sync Status -->
+							<!-- BRAG Book Sync Status -->
 							<?php $this->render_bragbook_sync_status(); ?>
 
 							<!-- Stage-Based Sync Controls -->
@@ -270,9 +270,9 @@ final class Sync_Manual_Controls {
 	}
 
 	/**
-	 * Render BragBook sync status card
+	 * Render BRAG Book sync status card
 	 *
-	 * Displays the current sync job status and last report from BragBook API.
+	 * Displays the current sync job status and last report from BRAG Book API.
 	 *
 	 * @since 4.0.2
 	 *
@@ -327,7 +327,7 @@ final class Sync_Manual_Controls {
 		<div class="bragbook-sync-status-card" id="bragbook-sync-status-card">
 			<div class="status-card-header">
 				<span class="status-icon <?php echo esc_attr( $status_class ); ?>"></span>
-				<span class="status-label"><?php esc_html_e( 'BragBook Status:', 'brag-book-gallery' ); ?></span>
+				<span class="status-label"><?php esc_html_e( 'BRAG Book Status:', 'brag-book-gallery' ); ?></span>
 				<span class="status-text <?php echo esc_attr( $status_class ); ?>"><?php echo esc_html( $status_text ); ?></span>
 			</div>
 

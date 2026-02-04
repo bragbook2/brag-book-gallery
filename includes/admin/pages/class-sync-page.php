@@ -1391,7 +1391,7 @@ class Sync_Page extends Settings_Base {
 				error_log( 'BRAG Book Gallery: Successfully updated sync settings - Status: ' . $settings['sync_status'] . ', Time: ' . $settings['last_sync_time'] );
 			}
 
-			// Report sync completion to BragBook API
+			// Report sync completion to BRAG Book API
 			$cases_synced = $total_created + $total_updated;
 			$report_status = $sync_success ? Sync_Api::STATUS_SUCCESS : Sync_Api::STATUS_PARTIAL;
 			$status_message = sprintf(
@@ -1413,7 +1413,7 @@ class Sync_Page extends Settings_Base {
 			$error_message = 'Sync failed: ' . $e->getMessage();
 			error_log( 'BRAG Book Gallery: ❌ ' . $error_message );
 
-			// Report failure to BragBook API
+			// Report failure to BRAG Book API
 			$sync_api->report_sync(
 				Sync_Api::STATUS_FAILED,
 				0,
@@ -1556,17 +1556,17 @@ class Sync_Page extends Settings_Base {
 	public function handle_rest_trigger_sync( \WP_REST_Request $request ) {
 		error_log( 'BRAG Book Gallery: Sync triggered via REST API' );
 
-		// Register sync with BragBook API before scheduling
+		// Register sync with BRAG Book API before scheduling
 		$sync_api = new Sync_Api();
 		$registration_result = $sync_api->register_sync( Sync_Api::SYNC_TYPE_MANUAL );
 
 		$job_id = null;
 		if ( ! is_wp_error( $registration_result ) && isset( $registration_result['job_id'] ) ) {
 			$job_id = $registration_result['job_id'];
-			error_log( 'BRAG Book Gallery: Sync registered with BragBook API - Job ID: ' . $job_id );
+			error_log( 'BRAG Book Gallery: Sync registered with BRAG Book API - Job ID: ' . $job_id );
 		} else {
 			$error_message = is_wp_error( $registration_result ) ? $registration_result->get_error_message() : 'Unknown error';
-			error_log( 'BRAG Book Gallery: Failed to register sync with BragBook API: ' . $error_message );
+			error_log( 'BRAG Book Gallery: Failed to register sync with BRAG Book API: ' . $error_message );
 			// Continue anyway - graceful degradation
 		}
 
@@ -1714,9 +1714,9 @@ class Sync_Page extends Settings_Base {
 	}
 
 	/**
-	 * Handle AJAX request to get BragBook sync status
+	 * Handle AJAX request to get BRAG Book sync status
 	 *
-	 * Returns the current sync job status and last report data from BragBook API.
+	 * Returns the current sync job status and last report data from BRAG Book API.
 	 *
 	 * @since 4.0.2
 	 * @return void
@@ -3590,7 +3590,7 @@ class Sync_Page extends Settings_Base {
 			$registration_result = $sync_api->register_sync( Sync_Api::SYNC_TYPE_AUTO );
 
 			if ( ! is_wp_error( $registration_result ) && isset( $registration_result['job_id'] ) ) {
-				error_log( 'BRAG Book Gallery: Auto sync registered with BragBook API - Job ID: ' . $registration_result['job_id'] );
+				error_log( 'BRAG Book Gallery: Auto sync registered with BRAG Book API - Job ID: ' . $registration_result['job_id'] );
 			} else {
 				$error_message = is_wp_error( $registration_result ) ? $registration_result->get_error_message() : 'Unknown error';
 				error_log( 'BRAG Book Gallery: Failed to register auto sync: ' . $error_message );
@@ -3754,7 +3754,7 @@ class Sync_Page extends Settings_Base {
 				'cases_synced' => $total_created + $total_updated,
 			] );
 
-			// Report sync completion to BragBook API
+			// Report sync completion to BRAG Book API
 			$cases_synced   = $total_created + $total_updated;
 			$report_status  = $sync_success ? Sync_Api::STATUS_SUCCESS : Sync_Api::STATUS_PARTIAL;
 			$status_message = sprintf(
@@ -3840,7 +3840,7 @@ class Sync_Page extends Settings_Base {
 		update_option( 'brag_book_gallery_last_sync_status', 'error' );
 		update_option( 'brag_book_gallery_last_sync_source', $sync_source );
 
-		// Report failure to BragBook API
+		// Report failure to BRAG Book API
 		$sync_api->report_sync(
 			Sync_Api::STATUS_FAILED,
 			0,

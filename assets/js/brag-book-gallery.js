@@ -817,17 +817,42 @@ class FavoritesManager {
     let procedureId = '';
     const isFavorited = button.dataset.favorited === 'true';
 
-    // Prioritize WordPress post ID from case card or case detail view data-post-id attribute
+    // Get case container (card or detail view)
     const caseCard = button.closest('.brag-book-gallery-case-card');
     const caseDetailView = button.closest('.brag-book-gallery-case-detail-view');
-    const caseContainer = caseCard || caseDetailView;
-    if (caseContainer && caseContainer.dataset.postId) {
-      itemId = caseContainer.dataset.postId;
-    } else {
-      // Fallback to button's own data attributes
-      itemId = button.dataset.itemId || button.dataset.caseId || '';
+    const carouselItem = button.closest('.brag-book-gallery-carousel-item');
+    const caseContainer = caseCard || caseDetailView || carouselItem;
 
-      // Extract numeric ID from values like "case-12345" or "case_12345_main"
+    // Prioritize case procedure ID (currentProcedureId) for favorites
+    // This is the unique identifier for a case-procedure combination
+    if (caseContainer) {
+      // Try various procedure ID attributes in priority order
+      procedureId = caseContainer.dataset.currentProcedureId ||
+      // Current procedure ID (taxonomy pages)
+      caseContainer.dataset.procedureId || (
+      // Single procedure ID (favorites cards)
+      caseContainer.dataset.procedureIds ? caseContainer.dataset.procedureIds.split(',')[0] : ''); // First from list
+
+      // Use procedure ID as the item ID for favorites
+      if (procedureId) {
+        itemId = procedureId;
+      } else {
+        // Fallback to button's own data attributes only if no procedure ID
+        itemId = button.dataset.itemId || '';
+
+        // Extract numeric ID from values like "case-12345" or "case_12345_main"
+        if (itemId) {
+          const matches = itemId.match(/(\d+)/);
+          if (matches) {
+            itemId = matches[1];
+          }
+        }
+      }
+    } else {
+      // No container found, use button's own data attributes
+      itemId = button.dataset.itemId || '';
+
+      // Extract numeric ID from values like "case-12345"
       if (itemId) {
         const matches = itemId.match(/(\d+)/);
         if (matches) {
@@ -836,19 +861,14 @@ class FavoritesManager {
       }
     }
 
-    // Get procedure ID from case container or active nav link
-    if (caseContainer) {
-      // Try various procedure ID attributes
-      procedureId = caseContainer.dataset.procedureId ||
-      // Single procedure ID (favorites cards)
-      caseContainer.dataset.currentProcedureId || (
-      // Current procedure ID (case detail view)
-      caseContainer.dataset.procedureIds ? caseContainer.dataset.procedureIds.split(',')[0] : ''); // First from list
-    }
-    // Fallback to active nav link procedure ID
+    // Fallback to active nav link procedure ID if still no procedure ID
     if (!procedureId) {
       const activeNavLink = document.querySelector('.brag-book-gallery-nav-link.brag-book-gallery-active');
       procedureId = activeNavLink?.dataset.procedureId || '';
+      // If we got a procedure ID from nav link, use it as item ID too
+      if (procedureId && !itemId) {
+        itemId = procedureId;
+      }
     }
 
     // Update hidden case ID field if it exists
@@ -1722,16 +1742,19 @@ class FavoritesManager {
     // Get all favorite buttons on the page
     const allButtons = document.querySelectorAll('[data-favorited]');
     allButtons.forEach(button => {
-      // Extract item ID from the button
+      // Extract item ID from the button - prioritize procedure ID
       let itemId = '';
 
-      // Check for WordPress post ID in parent case card
+      // Check for procedure ID in parent container (card or carousel item)
       const caseCard = button.closest('.brag-book-gallery-case-card, .brag-book-gallery-carousel-item');
-      if (caseCard && caseCard.dataset.postId) {
-        itemId = caseCard.dataset.postId;
-      } else {
-        // Fallback to button's own data attributes
-        itemId = button.dataset.itemId || button.dataset.caseId || '';
+      if (caseCard) {
+        // Prioritize procedure ID for favorites matching
+        itemId = caseCard.dataset.currentProcedureId || caseCard.dataset.procedureId || (caseCard.dataset.procedureIds ? caseCard.dataset.procedureIds.split(',')[0] : '');
+      }
+
+      // Fallback to button's own data attributes
+      if (!itemId) {
+        itemId = button.dataset.itemId || '';
 
         // Extract numeric ID from values like "case-12345"
         if (itemId) {
@@ -2790,8 +2813,10 @@ class FilterSystem {
     html += '<div class="brag-book-gallery-skeleton-loader" style="display: none;"></div>';
 
     // Favorites button (matching PHP structure)
+    // Use current procedure ID for favorites, fallback to first procedure ID, then case ID
+    const favoriteItemId = currentProcedureId || procedureIds.split(',')[0] || caseId;
     html += '<div class="brag-book-gallery-item-actions">';
-    html += `<button class="brag-book-gallery-favorite-button" data-favorited="false" data-item-id="case-${this.escapeHtml(caseId)}" aria-label="Add to favorites">`;
+    html += `<button class="brag-book-gallery-favorite-button" data-favorited="false" data-item-id="${this.escapeHtml(favoriteItemId)}" aria-label="Add to favorites">`;
     html += '<svg fill="rgba(255, 255, 255, 0.5)" stroke="white" stroke-width="2" viewBox="0 0 24 24">';
     html += '<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>';
     html += '</svg>';
@@ -8313,13 +8338,33 @@ class BRAGbookGalleryApp {
     if (caseData.photoSets && caseData.photoSets.length > 0) {
       imageUrl = caseData.photoSets[0].postProcessedImageLocation || '';
     }
-    const isFavorited = this.components.favoritesManager.getFavorites().has(`case-${caseId}`);
+
+    // Get procedure ID from active nav link for favorites
+    const activeProcedureLink = document.querySelector('.brag-book-gallery-nav-link.brag-book-gallery-active');
+    const currentProcedureId = activeProcedureLink?.dataset.procedureId || '';
+
+    // Get procedure IDs from case data
+    const procedureIds = caseData.procedureIds || [];
+    const procedureIdsStr = procedureIds.join(',');
+
+    // Use current procedure ID for favorites, fallback to first procedure ID, then case ID
+    const favoriteItemId = currentProcedureId || (procedureIds.length > 0 ? procedureIds[0] : caseId);
+    const isFavorited = this.components.favoritesManager.getFavorites().has(String(favoriteItemId));
+
+    // Build data attributes
+    let dataAttrs = `data-case-id="${caseId}"`;
+    if (currentProcedureId) {
+      dataAttrs += ` data-current-procedure-id="${currentProcedureId}"`;
+    }
+    if (procedureIdsStr) {
+      dataAttrs += ` data-procedure-ids="${procedureIdsStr}"`;
+    }
     return `
-			<article class="brag-book-gallery-case-card" data-case-id="${caseId}">
+			<article class="brag-book-gallery-case-card" ${dataAttrs}>
 				<div class="brag-book-gallery-image-container">
 					<div class="brag-book-gallery-skeleton-loader" style="display:none;"></div>
 					<div class="brag-book-gallery-item-actions">
-						<button class="brag-book-gallery-favorite-button" data-favorited="${isFavorited}" data-item-id="case-${caseId}" aria-label="${isFavorited ? 'Remove from' : 'Add to'} favorites">
+						<button class="brag-book-gallery-favorite-button" data-favorited="${isFavorited}" data-item-id="${favoriteItemId}" aria-label="${isFavorited ? 'Remove from' : 'Add to'} favorites">
 							<svg fill="${isFavorited ? 'red' : 'rgba(255, 255, 255, 0.5)'}" stroke="white" stroke-width="2" viewBox="0 0 24 24">
 								<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
 							</svg>
@@ -8433,48 +8478,38 @@ class BRAGbookGalleryApp {
   }
 
   /**
-   * Set up intersection observer to update active carousel dot on scroll
+   * Set up scroll listeners to update active carousel dot on scroll/swipe
    */
   setupCaseCarouselScrollObserver() {
-    // Create observer to track which image is currently visible
-    const observerOptions = {
-      root: null,
-      rootMargin: '0px',
-      threshold: 0.6 // Image must be at least 60% visible
-    };
-    const carouselObserver = new IntersectionObserver(entries => {
-      entries.forEach(entry => {
-        if (!entry.isIntersecting) return;
-        const picture = entry.target;
-        const carousel = picture.closest('.brag-book-gallery-case-carousel');
-        if (!carousel) return;
-        const imageContainer = carousel.closest('.brag-book-gallery-image-container');
-        if (!imageContainer) return;
-        const pagination = imageContainer.querySelector('.brag-book-gallery-case-carousel-pagination');
-        if (!pagination) return;
+    this.caseCarouselScrollHandlers = [];
+    document.querySelectorAll('.brag-book-gallery-case-carousel').forEach(carousel => {
+      const imageContainer = carousel.closest('.brag-book-gallery-image-container');
+      if (!imageContainer) return;
+      const pagination = imageContainer.querySelector('.brag-book-gallery-case-carousel-pagination');
+      if (!pagination) return;
+      const pictures = carousel.querySelectorAll('picture');
+      if (pictures.length < 2) return;
+      const updateActiveDot = () => {
+        const scrollLeft = carousel.scrollLeft;
+        const containerWidth = carousel.clientWidth;
 
-        // Find the index of this picture
-        const pictures = Array.from(carousel.querySelectorAll('picture'));
-        const index = pictures.indexOf(picture);
-        if (index === -1) return;
-
-        // Update active dot
+        // Calculate the active index from scroll position
+        const activeIndex = containerWidth > 0 ? Math.round(scrollLeft / containerWidth) : 0;
         const dots = pagination.querySelectorAll('.brag-book-gallery-case-carousel-dot');
         dots.forEach((dot, i) => {
-          const isActive = i === index;
+          const isActive = i === activeIndex;
           dot.classList.toggle('is-active', isActive);
           dot.setAttribute('aria-selected', isActive ? 'true' : 'false');
         });
+      };
+      carousel.addEventListener('scroll', updateActiveDot, {
+        passive: true
       });
-    }, observerOptions);
-
-    // Observe all carousel images
-    document.querySelectorAll('.brag-book-gallery-case-carousel picture').forEach(picture => {
-      carouselObserver.observe(picture);
+      this.caseCarouselScrollHandlers.push({
+        carousel,
+        handler: updateActiveDot
+      });
     });
-
-    // Store reference for cleanup if needed
-    this.caseCarouselObserver = carouselObserver;
   }
 
   /**
@@ -9708,8 +9743,8 @@ class BRAGbookGalleryApp {
     html += '<div class="brag-book-gallery-skeleton-loader" style="display: none;"></div>';
 
     // Favorites button (matching PHP structure)
-    // Use WordPress post ID if available, otherwise use case ID
-    const favoriteItemId = postId || caseId;
+    // Use procedure ID for favorites consistency, fallback to case ID
+    const favoriteItemId = procedureId || caseId;
     html += '<div class="brag-book-gallery-item-actions">';
     html += `<button class="brag-book-gallery-favorite-button favorited" data-favorited="true" data-item-id="${this.escapeHtml(favoriteItemId)}" aria-label="Remove from favorites">`;
     html += '<svg fill="rgba(255, 255, 255, 0.5)" stroke="white" stroke-width="2" viewBox="0 0 24 24">';

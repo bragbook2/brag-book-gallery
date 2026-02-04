@@ -1286,7 +1286,7 @@ class Endpoints {
 	 * @since 4.0.2
 	 *
 	 * @param string $api_token    API authentication token
-	 * @param int    $procedure_id Procedure ID to track (from BragBook API)
+	 * @param int    $procedure_id Procedure ID to track (from BRAG Book API)
 	 *
 	 * @return string|null Response body on success, null on failure
 	 */

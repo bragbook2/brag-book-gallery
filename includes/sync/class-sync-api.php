@@ -2,7 +2,7 @@
 /**
  * Sync API Class
  *
- * Handles communication with the BragBook Sync API for registering syncs
+ * Handles communication with the BRAG Book Sync API for registering syncs
  * and reporting their status. Implements the two-step sync process:
  * 1. Register - Creates a SyncJob with PENDING status
  * 2. Report - Updates the job status after sync completes
@@ -30,7 +30,7 @@ if ( ! defined( 'WPINC' ) ) {
 /**
  * Sync API Class
  *
- * Manages sync registration and status reporting with the BragBook API.
+ * Manages sync registration and status reporting with the BRAG Book API.
  *
  * @since 4.0.2
  */
@@ -89,7 +89,7 @@ class Sync_Api {
 	private const REPORT_ENDPOINT = '/api/plugin/v2/sync/report';
 
 	/**
-	 * Register a sync with the BragBook API
+	 * Register a sync with the BRAG Book API
 	 *
 	 * Creates a SyncSite (if new) and a SyncJob with PENDING status.
 	 * Only one active (PENDING or IN_PROGRESS) job is allowed per site.
@@ -186,7 +186,7 @@ class Sync_Api {
 	}
 
 	/**
-	 * Report sync status to the BragBook API
+	 * Report sync status to the BRAG Book API
 	 *
 	 * Updates the job status after WordPress completes (or fails) the sync.
 	 *
