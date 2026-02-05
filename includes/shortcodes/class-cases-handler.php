@@ -2345,48 +2345,42 @@ final class Cases_Handler {
 							</button>
 						</div>
 						<?php if ( 'v2' === $case_card_type || 'v3' === $case_card_type ) : ?>
-							<!-- V2: Image NOT wrapped in anchor (only arrow is clickable) -->
-							<!-- V3: Image wrapped in anchor for clickability -->
-							<?php if ( 'v3' === $case_card_type ) : ?>
-								<a href="<?php echo esc_url( $case_url ); ?>"
-								   class="brag-book-gallery-case-permalink"
-								   data-case-id="<?php echo esc_attr( $case_id ); ?>"
-								   data-procedure-ids="<?php echo esc_attr( implode( ',', $procedure_ids ) ); ?>">
-							<?php endif; ?>
+							<!-- V2/V3: Each image wrapped in anchor individually -->
 							<?php if ( ! empty( $carousel_images ) ) : ?>
 								<!-- Gallery Carousel with multiple images -->
 								<div class="brag-book-gallery-case-carousel">
 									<?php foreach ( $carousel_images as $index => $carousel_url ) : ?>
-										<picture class="brag-book-gallery-picture" id="case-<?php echo esc_attr( $case_id ); ?>-img-<?php echo $index; ?>">
-											<img src="<?php echo esc_url( $carousel_url ); ?>"
-												 alt="<?php echo esc_attr( $image_alt ?: 'Case Image' ); ?> - Image <?php echo $index + 1; ?>"
-												 loading="<?php echo 0 === $index ? 'eager' : 'lazy'; ?>"
-												 data-image-type="carousel"
-												 data-image-url="<?php echo esc_url( $carousel_url ); ?>"
-												 onload="if(<?php echo $index; ?>===0){this.closest('.brag-book-gallery-image-container').querySelector('.brag-book-gallery-skeleton-loader').style.display='none';}"
-												 fetchpriority="<?php echo 0 === $index ? 'high' : 'low'; ?>">
-										</picture>
+										<a href="<?php echo esc_url( $case_url ); ?>"
+										   class="brag-book-gallery-case-permalink brag-book-gallery-carousel-slide"
+										   data-case-id="<?php echo esc_attr( $case_id ); ?>"
+										   data-procedure-ids="<?php echo esc_attr( implode( ',', $procedure_ids ) ); ?>">
+											<picture class="brag-book-gallery-picture" id="case-<?php echo esc_attr( $case_id ); ?>-img-<?php echo $index; ?>">
+												<img src="<?php echo esc_url( $carousel_url ); ?>"
+													 alt="<?php echo esc_attr( $image_alt ?: 'Case Image' ); ?> - Image <?php echo $index + 1; ?>"
+													 loading="<?php echo 0 === $index ? 'eager' : 'lazy'; ?>"
+													 data-image-type="carousel"
+													 data-image-url="<?php echo esc_url( $carousel_url ); ?>"
+													 onload="if(<?php echo $index; ?>===0){this.closest('.brag-book-gallery-image-container').querySelector('.brag-book-gallery-skeleton-loader').style.display='none';}"
+													 fetchpriority="<?php echo 0 === $index ? 'high' : 'low'; ?>">
+											</picture>
+										</a>
 									<?php endforeach; ?>
+									<?php if ( count( $carousel_images ) > 1 ) : ?>
+										<nav class="brag-book-gallery-case-carousel-pagination" role="tablist" aria-label="<?php esc_attr_e( 'Carousel image navigation', 'brag-book-gallery' ); ?>">
+											<?php foreach ( $carousel_images as $index => $carousel_url ) : ?>
+												<button type="button"
+														class="brag-book-gallery-case-carousel-dot<?php echo 0 === $index ? ' is-active' : ''; ?>"
+														role="tab"
+														aria-selected="<?php echo 0 === $index ? 'true' : 'false'; ?>"
+														aria-controls="case-<?php echo esc_attr( $case_id ); ?>-img-<?php echo $index; ?>"
+														aria-label="<?php echo esc_attr( sprintf( __( 'Show image %d of %d', 'brag-book-gallery' ), $index + 1, count( $carousel_images ) ) ); ?>"
+														data-slide-index="<?php echo $index; ?>"></button>
+											<?php endforeach; ?>
+										</nav>
+									<?php endif; ?>
 								</div>
-								<?php if ( 'v3' === $case_card_type ) : ?>
-									</a>
-								<?php endif; ?>
-								<?php if ( count( $carousel_images ) > 1 ) : ?>
-									<nav class="brag-book-gallery-case-carousel-pagination" role="tablist" aria-label="<?php esc_attr_e( 'Carousel image navigation', 'brag-book-gallery' ); ?>">
-										<?php foreach ( $carousel_images as $index => $carousel_url ) : ?>
-											<button type="button"
-													class="brag-book-gallery-case-carousel-dot<?php echo 0 === $index ? ' is-active' : ''; ?>"
-													role="tab"
-													aria-selected="<?php echo 0 === $index ? 'true' : 'false'; ?>"
-													aria-controls="case-<?php echo esc_attr( $case_id ); ?>-img-<?php echo $index; ?>"
-													aria-label="<?php echo esc_attr( sprintf( __( 'Show image %d of %d', 'brag-book-gallery' ), $index + 1, count( $carousel_images ) ) ); ?>"
-													data-slide-index="<?php echo $index; ?>"></button>
-										<?php endforeach; ?>
-									</nav>
-								<?php endif; ?>
 								<?php
-								// For v3, we already closed the anchor above before pagination
-								// Set flag to skip closing it again later
+								// Set flag to skip closing anchor later since each image has its own
 								$v3_anchor_closed = true;
 								?>
 							<?php elseif ( ! empty( $image_url ) ) : ?>

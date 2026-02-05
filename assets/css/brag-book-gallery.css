@@ -4060,6 +4060,7 @@ details[open] .brag-book-gallery-filter-dropdown__panel .brag-book-gallery-filte
   position: relative;
 }
 .brag-book-gallery-image-container .brag-book-gallery-case-carousel {
+  position: relative;
   display: flex;
   overflow-x: auto;
   overflow-y: hidden;
@@ -4072,6 +4073,14 @@ details[open] .brag-book-gallery-filter-dropdown__panel .brag-book-gallery-filte
 .brag-book-gallery-image-container .brag-book-gallery-case-carousel::-webkit-scrollbar {
   display: none;
 }
+.brag-book-gallery-image-container .brag-book-gallery-case-carousel .brag-book-gallery-carousel-slide {
+  flex: 0 0 100%;
+  width: 100%;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  display: block;
+  text-decoration: none;
+}
 .brag-book-gallery-image-container .brag-book-gallery-case-carousel .brag-book-gallery-picture {
   flex: 0 0 100%;
   width: 100%;
@@ -4083,7 +4092,7 @@ details[open] .brag-book-gallery-filter-dropdown__panel .brag-book-gallery-filte
   height: auto;
   display: block;
 }
-.brag-book-gallery-image-container .brag-book-gallery-case-carousel-pagination {
+.brag-book-gallery-image-container .brag-book-gallery-case-carousel .brag-book-gallery-case-carousel-pagination {
   position: absolute;
   bottom: var(--wp--custom--brag-book-gallery--spacer--sm, 8px);
   left: 50%;
