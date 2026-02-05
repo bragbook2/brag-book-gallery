@@ -244,25 +244,16 @@
 	}
 
 	.brag-book-gallery-case-carousel-pagination {
-		position: relative;
+		position: absolute;
+		bottom: var(--wp--custom--brag-book-gallery--spacer--sm, 8px);
+		left: 50%;
+		transform: translateX(-50%);
 		display: flex;
 		justify-content: center;
 		gap: var(--wp--custom--brag-book-gallery--spacer--sm, 8px);
-		padding: var(--wp--custom--brag-book-gallery--spacer--sm, 8px) 0;
+		padding: 0;
 		z-index: 10;
-		background: white;
-
-		// V2 Desktop: overlay on images
-		.brag-book-gallery-case-card--v2 & {
-			@media (hover: hover) and (pointer: fine) {
-				position: absolute;
-				bottom: var(--wp--custom--brag-book-gallery--spacer--sm, 8px);
-				left: 50%;
-				transform: translateX(-50%);
-				padding: 0;
-				background: transparent;
-			}
-		}
+		background: transparent;
 	}
 }
 
@@ -301,7 +292,8 @@
 	}
 
 	&:target,
-	&:focus {
+	&:focus,
+	&.is-active {
 		background: var(--wp--custom--brag-book-gallery--color--black);
 		width: calc(8 * var(--wp--custom--brag-book-gallery--spacer, 4px));
 		border-radius: 10em;

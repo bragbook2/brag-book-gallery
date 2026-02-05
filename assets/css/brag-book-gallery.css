@@ -4081,23 +4081,16 @@ details[open] .brag-book-gallery-filter-dropdown__panel .brag-book-gallery-filte
   display: block;
 }
 .brag-book-gallery-image-container .brag-book-gallery-case-carousel-pagination {
-  position: relative;
+  position: absolute;
+  bottom: var(--wp--custom--brag-book-gallery--spacer--sm, 8px);
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   justify-content: center;
   gap: var(--wp--custom--brag-book-gallery--spacer--sm, 8px);
-  padding: var(--wp--custom--brag-book-gallery--spacer--sm, 8px) 0;
+  padding: 0;
   z-index: 10;
-  background: white;
-}
-@media (hover: hover) and (pointer: fine) {
-  .brag-book-gallery-case-card--v2 .brag-book-gallery-image-container .brag-book-gallery-case-carousel-pagination {
-    position: absolute;
-    bottom: var(--wp--custom--brag-book-gallery--spacer--sm, 8px);
-    left: 50%;
-    transform: translateX(-50%);
-    padding: 0;
-    background: transparent;
-  }
+  background: transparent;
 }
 
 .brag-book-gallery-case-carousel-dot {
@@ -4131,7 +4124,7 @@ details[open] .brag-book-gallery-filter-dropdown__panel .brag-book-gallery-filte
   background: var(--wp--custom--brag-book-gallery--color--grey);
   transform: scale(1.2);
 }
-.brag-book-gallery-case-carousel-dot:target, .brag-book-gallery-case-carousel-dot:focus {
+.brag-book-gallery-case-carousel-dot:target, .brag-book-gallery-case-carousel-dot:focus, .brag-book-gallery-case-carousel-dot.is-active {
   background: var(--wp--custom--brag-book-gallery--color--black);
   width: calc(8 * var(--wp--custom--brag-book-gallery--spacer, 4px));
   border-radius: 10em;
