@@ -12,7 +12,7 @@
  * @since      3.3.0
  * @version    3.3.0
  *
- * @author     BRAGBook Team
+ * @author     BRAG Book Team
  * @license    GPL-2.0-or-later
  *
  * @see \BRAGBookGallery\Includes\Admin\Debug\System_Info For detailed system information

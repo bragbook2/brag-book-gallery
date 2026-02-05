@@ -394,7 +394,7 @@ class Debug_Page extends Settings_Base {
 		<div id="api-test" class="brag-book-gallery-tab-panel">
 			<h2><?php esc_html_e( 'API Test', 'brag-book-gallery' ); ?></h2>
 			<p class="description">
-				<?php esc_html_e( 'Test your BRAGBook API connection and endpoints to ensure proper gallery functionality.', 'brag-book-gallery' ); ?>
+				<?php esc_html_e( 'Test your BRAG Book API connection and endpoints to ensure proper gallery functionality.', 'brag-book-gallery' ); ?>
 			</p>
 			<?php $this->api_test->render(); ?>
 			<?php

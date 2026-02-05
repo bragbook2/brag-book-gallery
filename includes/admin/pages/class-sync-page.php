@@ -531,12 +531,12 @@ class Sync_Page extends Settings_Base {
 
 		// Handle scheduling based on enabled state
 		if ( $auto_enabled ) {
-			// Calculate the next scheduled sync time and register with BRAGBook API
+			// Calculate the next scheduled sync time and register with BRAG Book API
 			$schedule_result = $this->calculate_next_sync_time();
 			if ( $schedule_result ) {
 				$next_sync_datetime = wp_date( 'l, F j, Y \a\t g:i A', $schedule_result['timestamp'] );
 
-				// Register the scheduled sync with BRAGBook API (only if no active job)
+				// Register the scheduled sync with BRAG Book API (only if no active job)
 				$sync_api = new Sync_Api();
 				if ( ! $sync_api->has_active_job() ) {
 					$registration_result = $sync_api->register_sync(
@@ -547,7 +547,7 @@ class Sync_Page extends Settings_Base {
 					if ( is_wp_error( $registration_result ) ) {
 						error_log( 'BRAG Book Gallery: Failed to register scheduled sync with API: ' . $registration_result->get_error_message() );
 						$this->add_notice(
-							__( 'Automatic sync settings saved, but failed to register with BRAGBook API.', 'brag-book-gallery' ),
+							__( 'Automatic sync settings saved, but failed to register with BRAG Book API.', 'brag-book-gallery' ),
 							'warning'
 						);
 					} else {
@@ -1183,7 +1183,7 @@ class Sync_Page extends Settings_Base {
 			if ( $next_sync ) {
 				error_log( 'BRAG Book Gallery: Next automatic sync calculated for ' . wp_date( 'Y-m-d H:i:s', $next_sync['timestamp'] ) );
 
-				// Register the NEXT scheduled sync with BRAGBook API using scheduledTime
+				// Register the NEXT scheduled sync with BRAG Book API using scheduledTime
 				$registration_result = $sync_api->register_sync(
 					Sync_Api::SYNC_TYPE_AUTO,
 					$next_sync['iso_datetime']
@@ -1648,7 +1648,7 @@ class Sync_Page extends Settings_Base {
 			// Calculate the next sync time
 			$next_sync_result = $this->calculate_next_sync_time();
 
-			// Register the scheduled sync with BRAGBook API using scheduledTime (only if no active job)
+			// Register the scheduled sync with BRAG Book API using scheduledTime (only if no active job)
 			if ( $next_sync_result ) {
 				$sync_api = new Sync_Api();
 				if ( ! $sync_api->has_active_job() ) {
@@ -1688,7 +1688,7 @@ class Sync_Page extends Settings_Base {
 			'website_url' => home_url(),
 			'plugin'      => [
 				'version'      => $plugin_data['Version'] ?? null,
-				'name'         => $plugin_data['Name'] ?? 'BRAGBook Gallery',
+				'name'         => $plugin_data['Name'] ?? 'BRAG Book Gallery',
 				'last_updated' => $plugin_data['Version'] ? filemtime( $plugin_file ) : null,
 			],
 			'last_sync'   => [

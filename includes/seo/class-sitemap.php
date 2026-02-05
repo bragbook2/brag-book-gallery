@@ -2,7 +2,7 @@
 /**
  * Sitemap Generator Class - Enterprise-grade XML sitemap generation system
  *
- * Comprehensive sitemap generation system for BRAGBook Gallery plugin.
+ * Comprehensive sitemap generation system for BRAG Book Gallery plugin.
  * Provides advanced XML sitemap creation with multi-plugin integration,
  * intelligent caching, and SEO optimization features.
  *
@@ -399,7 +399,7 @@ final class Sitemap {
 	/**
 	 * Get sitemap data from API
 	 *
-	 * Retrieves sitemap data from the BRAGBook API with proper authentication.
+	 * Retrieves sitemap data from the BRAG Book API with proper authentication.
 	 * Handles multiple API tokens and website property IDs.
 	 *
 	 * @since 3.0.0
@@ -932,7 +932,7 @@ final class Sitemap {
 
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 			error_log( sprintf(
-				'BRAGBook Sitemap Error [%s]: %s - Context: %s',
+				'BRAG Book Sitemap Error [%s]: %s - Context: %s',
 				$error_id,
 				$message,
 				wp_json_encode( $context )
@@ -953,7 +953,7 @@ final class Sitemap {
 	private function log_warning( string $message, array $context = [] ): void {
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 			error_log( sprintf(
-				'BRAGBook Sitemap Warning: %s - Context: %s',
+				'BRAG Book Sitemap Warning: %s - Context: %s',
 				$message,
 				wp_json_encode( $context )
 			) );

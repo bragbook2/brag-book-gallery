@@ -11,7 +11,7 @@
  * @since      3.0.0
  * @version    3.0.0
  *
- * @author     BRAGBook Team
+ * @author     BRAG Book Team
  * @license    GPL-2.0-or-later
  *
  * @see \BRAGBookGallery\Admin\Debug_Tools\Gallery_Checker For gallery diagnostics
@@ -381,7 +381,7 @@ final class System_Info {
 
 		try {
 			// Header
-			$info[] = '=== BRAGBook Gallery System Information ===';
+			$info[] = '=== BRAG Book Gallery System Information ===';
 			$info[] = 'Generated: ' . current_time( 'Y-m-d H:i:s' );
 			$info[] = 'Report Version: 3.0.0';
 			$info[] = '';
@@ -493,7 +493,7 @@ final class System_Info {
 			$mode = 'default';
 
 			$info = [];
-			$info[] = 'Plugin Name: ' . ( $plugin_data['Name'] ?? 'BRAGBook Gallery' );
+			$info[] = 'Plugin Name: ' . ( $plugin_data['Name'] ?? 'BRAG Book Gallery' );
 			$info[] = 'Plugin Version: ' . ( $plugin_data['Version'] ?? '3.0.0' );
 			$info[] = 'Plugin URI: ' . ( $plugin_data['PluginURI'] ?? 'N/A' );
 			$info[] = 'Author: ' . ( $plugin_data['Author'] ?? 'N/A' );
@@ -1111,7 +1111,7 @@ final class System_Info {
 	private function handle_error( Exception $e, string $context ): void {
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 			error_log( sprintf(
-				'BRAGBook Gallery System Info Error in %s: %s',
+				'BRAG Book Gallery System Info Error in %s: %s',
 				$context,
 				$e->getMessage()
 			) );
@@ -1130,7 +1130,7 @@ final class System_Info {
 			$total_time = array_sum( $this->metrics );
 			if ( $total_time > 1.0 ) { // Log if operations take more than 1 second
 				error_log( sprintf(
-					'BRAGBook Gallery System Info Performance: %s',
+					'BRAG Book Gallery System Info Performance: %s',
 					wp_json_encode( $this->metrics )
 				) );
 			}

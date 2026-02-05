@@ -2,7 +2,7 @@
 /**
  * Chunked Data Sync Class
  *
- * Handles stage-based synchronization of data from the BRAGBook API.
+ * Handles stage-based synchronization of data from the BRAG Book API.
  * Stage 1: Fetch sidebar data and process procedures
  * Stage 2: Build case ID manifest
  * Stage 3: Process cases (future)
@@ -1764,7 +1764,7 @@ class Chunked_Data_Sync {
 	 * Store case ordering for a procedure
 	 *
 	 * Stores the case WordPress IDs and API IDs in their API response order as term meta.
-	 * This allows maintaining the same case order as displayed in the BRAGBook system.
+	 * This allows maintaining the same case order as displayed in the BRAG Book system.
 	 *
 	 * @param int $term_id WordPress term ID for the procedure
 	 * @param array $case_order Array of case data with 'wp_id' and 'api_id' keys

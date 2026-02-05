@@ -2,7 +2,7 @@
 /**
  * REST API Endpoints Class
  *
- * Enterprise-grade REST API management system for BRAGBook Gallery plugin.
+ * Enterprise-grade REST API management system for BRAG Book Gallery plugin.
  * Provides comprehensive external API communication with advanced error handling,
  * intelligent caching, retry mechanisms, and VIP-compliant architecture.
  *
@@ -349,9 +349,9 @@ class Endpoints {
 
 			if ( empty( $api_tokens[0] ) || empty( $website_property_ids[0] ) ) {
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-					error_log( 'BRAGBook Gallery: get_case_details - Missing API configuration' );
-					error_log( 'BRAGBook Gallery: API tokens empty: ' . ( empty( $api_tokens[0] ) ? 'YES' : 'NO' ) );
-					error_log( 'BRAGBook Gallery: Website property IDs empty: ' . ( empty( $website_property_ids[0] ) ? 'YES' : 'NO' ) );
+					error_log( 'BRAG Book Gallery: get_case_details - Missing API configuration' );
+					error_log( 'BRAG Book Gallery: API tokens empty: ' . ( empty( $api_tokens[0] ) ? 'YES' : 'NO' ) );
+					error_log( 'BRAG Book Gallery: Website property IDs empty: ' . ( empty( $website_property_ids[0] ) ? 'YES' : 'NO' ) );
 				}
 				return null;
 			}
@@ -676,7 +676,7 @@ class Endpoints {
 
 		// Log the request details for debugging
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			do_action( 'qm/debug', 'BRAGBook Gallery: Case API Request Details:' );
+			do_action( 'qm/debug', 'BRAG Book Gallery: Case API Request Details:' );
 			do_action( 'qm/debug', '  Endpoint: ' . $endpoint );
 			do_action( 'qm/debug', '  Full URL: ' . Setup::get_api_url() . $endpoint );
 			do_action( 'qm/debug', '  Token: ' . substr( $api_token, 0, 10 ) . '...' );
@@ -736,7 +736,7 @@ class Endpoints {
 
 		// Log the response for debugging
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			do_action( 'qm/debug', 'BRAGBook Gallery: Case API Response status: ' . ( ! empty( $data ) ? 'Has data' : 'Empty' ) );
+			do_action( 'qm/debug', 'BRAG Book Gallery: Case API Response status: ' . ( ! empty( $data ) ? 'Has data' : 'Empty' ) );
 			if ( ! empty( $data ) ) {
 				do_action( 'qm/debug', '  Response keys: ' . implode( ', ', array_keys( $data ) ) );
 				if ( isset( $data['success'] ) ) {
@@ -1606,7 +1606,7 @@ class Endpoints {
 	/**
 	 * Validate API token
 	 *
-	 * Validates an API token with the BRAGBook service using Bearer authentication.
+	 * Validates an API token with the BRAG Book service using Bearer authentication.
 	 *
 	 * @since 3.3.0
 	 *

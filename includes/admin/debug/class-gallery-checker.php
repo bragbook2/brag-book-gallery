@@ -2,7 +2,7 @@
 /**
  * Gallery Page Checker Tool - Enterprise-grade gallery configuration validator
  *
- * Comprehensive gallery page validation and management system for BRAGBook Gallery.
+ * Comprehensive gallery page validation and management system for BRAG Book Gallery.
  * Provides advanced diagnostics, automatic fixes, and configuration optimization
  * with performance tracking and security hardening.
  *
@@ -19,7 +19,7 @@
  * @package    BRAG BookGallery
  * @subpackage Admin\Debug_Tools
  * @since      3.0.0
- * @author     BRAGBook Development Team
+ * @author     BRAG Book Development Team
  */
 
 declare(strict_types=1);

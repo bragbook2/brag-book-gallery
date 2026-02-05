@@ -15,7 +15,7 @@
  * @since      3.3.0
  * @version    3.3.0
  *
- * @author     BRAGBook Team
+ * @author     BRAG Book Team
  * @license    GPL-2.0-or-later
  *
  * @todo       Migrate full API test implementation from Debug_Page
@@ -97,7 +97,7 @@ final class Debug_API_Test {
 				</div>
 			<?php else : ?>
 				<p class="description">
-					<?php esc_html_e( 'Test various BRAGBook API endpoints to verify connectivity and data retrieval.', 'brag-book-gallery' ); ?>
+					<?php esc_html_e( 'Test various BRAG Book API endpoints to verify connectivity and data retrieval.', 'brag-book-gallery' ); ?>
 				</p>
 				<?php
 				/**

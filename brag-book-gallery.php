@@ -17,7 +17,7 @@
  * Plugin Name:       BRAG book Gallery
  * Plugin URI:        https://www.bragbookgallery.com/
  * Description:       BRAG book before and after gallery.
- * Version:           4.3.2-beta1
+ * Version:           4.3.2-beta2
  * Requires at Least: 6.8
  * Requires PHP:      8.2
  * Author:            Candace Crowe Design <bragbook@candacecrowe.com>

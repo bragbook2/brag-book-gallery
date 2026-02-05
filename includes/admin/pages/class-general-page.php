@@ -1313,7 +1313,7 @@ class General_Page extends Settings_Base {
 					<?php echo esc_html( $seo_info['name'] ); ?> <?php esc_html_e( 'detected and active', 'brag-book-gallery' ); ?>
 				</p>
 				<p class="description">
-					<?php esc_html_e( 'BRAGBook Gallery is integrated with your SEO plugin for optimized meta tags and structured data.', 'brag-book-gallery' ); ?>
+					<?php esc_html_e( 'BRAG Book Gallery is integrated with your SEO plugin for optimized meta tags and structured data.', 'brag-book-gallery' ); ?>
 				</p>
 			</div>
 			<?php

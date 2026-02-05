@@ -1424,7 +1424,7 @@ class Post_Types {
 	/**
 	 * Save API response data to post meta
 	 *
-	 * Processes and saves comprehensive case data from the BRAGBook API including:
+	 * Processes and saves comprehensive case data from the BRAG Book API including:
 	 * - Basic case information
 	 * - Patient demographics
 	 * - Procedure details
