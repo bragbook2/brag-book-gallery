@@ -254,8 +254,9 @@
 		.brag-book-gallery-case-carousel-pagination {
 			position: absolute;
 			bottom: var(--wp--custom--brag-book-gallery--spacer--sm, 8px);
-			left: 50%;
-			transform: translateX(-50%);
+			left: 0;
+			right: 0;
+			width: 100%;
 			display: flex;
 			justify-content: center;
 			gap: var(--wp--custom--brag-book-gallery--spacer--sm, 8px);
