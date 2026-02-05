@@ -215,6 +215,8 @@
 
 // Case card carousel (V2/V3 cards)
 .brag-book-gallery-image-container {
+	position: relative;
+
 	.brag-book-gallery-case-carousel {
 		display: flex;
 		overflow-x: auto;

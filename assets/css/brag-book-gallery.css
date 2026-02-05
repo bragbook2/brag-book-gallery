@@ -4056,6 +4056,9 @@ details[open] .brag-book-gallery-filter-dropdown__panel .brag-book-gallery-filte
   z-index: 3;
 }
 
+.brag-book-gallery-image-container {
+  position: relative;
+}
 .brag-book-gallery-image-container .brag-book-gallery-case-carousel {
   display: flex;
   overflow-x: auto;
