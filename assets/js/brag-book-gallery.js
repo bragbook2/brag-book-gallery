@@ -8484,15 +8484,17 @@ class BRAGbookGalleryApp {
   setupCaseCarouselScrollObserver() {
     this.caseCarouselScrollHandlers = [];
     document.querySelectorAll('.brag-book-gallery-case-carousel').forEach(carousel => {
-      const imageContainer = carousel.closest('.brag-book-gallery-image-container');
-      if (!imageContainer) return;
-      const pagination = imageContainer.querySelector('.brag-book-gallery-case-carousel-pagination');
+      const pagination = carousel.querySelector('.brag-book-gallery-case-carousel-pagination');
       if (!pagination) return;
-      const pictures = carousel.querySelectorAll('picture');
+
+      // The scrollable element is the anchor containing all slides
+      const slidesContainer = carousel.querySelector('.brag-book-gallery-carousel-slides');
+      if (!slidesContainer) return;
+      const pictures = slidesContainer.querySelectorAll('picture');
       if (pictures.length < 2) return;
       const updateActiveDot = () => {
-        const scrollLeft = carousel.scrollLeft;
-        const containerWidth = carousel.clientWidth;
+        const scrollLeft = slidesContainer.scrollLeft;
+        const containerWidth = slidesContainer.clientWidth;
 
         // Calculate the active index from scroll position
         const activeIndex = containerWidth > 0 ? Math.round(scrollLeft / containerWidth) : 0;
@@ -8503,11 +8505,11 @@ class BRAGbookGalleryApp {
           dot.setAttribute('aria-selected', isActive ? 'true' : 'false');
         });
       };
-      carousel.addEventListener('scroll', updateActiveDot, {
+      slidesContainer.addEventListener('scroll', updateActiveDot, {
         passive: true
       });
       this.caseCarouselScrollHandlers.push({
-        carousel,
+        carousel: slidesContainer,
         handler: updateActiveDot
       });
     });

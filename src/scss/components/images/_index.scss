@@ -219,27 +219,22 @@
 
 	.brag-book-gallery-case-carousel {
 		position: relative;
-		display: flex;
-		overflow-x: auto;
-		overflow-y: hidden;
-		scroll-snap-type: x mandatory;
-		scroll-behavior: smooth;
-		scrollbar-width: none; // Firefox
-		-ms-overflow-style: none; // IE/Edge
-		gap: 0;
 
-		&::-webkit-scrollbar {
-			display: none; // Chrome/Safari
-		}
-
-		// Anchor wrapper for each slide
-		.brag-book-gallery-carousel-slide {
-			flex: 0 0 100%;
-			width: 100%;
-			scroll-snap-align: start;
-			scroll-snap-stop: always;
-			display: block;
+		// Scrollable anchor containing all slides
+		.brag-book-gallery-carousel-slides {
+			display: flex;
+			overflow-x: auto;
+			overflow-y: hidden;
+			scroll-snap-type: x mandatory;
+			scroll-behavior: smooth;
+			scrollbar-width: none; // Firefox
+			-ms-overflow-style: none; // IE/Edge
+			gap: 0;
 			text-decoration: none;
+
+			&::-webkit-scrollbar {
+				display: none; // Chrome/Safari
+			}
 		}
 
 		.brag-book-gallery-picture {
@@ -255,7 +250,7 @@
 			}
 		}
 
-		// Pagination inside carousel
+		// Pagination outside scrollable area, fixed at bottom
 		.brag-book-gallery-case-carousel-pagination {
 			position: absolute;
 			bottom: var(--wp--custom--brag-book-gallery--spacer--sm, 8px);
