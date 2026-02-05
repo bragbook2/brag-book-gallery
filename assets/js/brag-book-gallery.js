@@ -6029,6 +6029,7 @@ class BRAGbookGalleryApp {
     this.initializeNudityWarning();
     this.initializeCasePreloading();
     this.initializeCaseCarouselPagination();
+    this.initializeProceduresLoadMore();
 
     // Auto-activate favorites view if on favorites page
     const galleryContent = document.getElementById('gallery-content');
@@ -8509,6 +8510,76 @@ class BRAGbookGalleryApp {
         carousel,
         handler: updateActiveDot
       });
+    });
+  }
+
+  /**
+   * Initialize lazy loading for procedures shortcode
+   * Handles "Load More" button click to fetch additional cases via AJAX
+   */
+  initializeProceduresLoadMore() {
+    const wrapper = document.querySelector('.brag-book-gallery-procedures-wrapper');
+    if (!wrapper) return;
+    const loadMoreBtn = wrapper.querySelector('.brag-book-gallery-procedures-load-more-btn');
+    if (!loadMoreBtn) return;
+    loadMoreBtn.addEventListener('click', async () => {
+      if (loadMoreBtn.dataset.loading === 'true') return;
+
+      // Get current state from wrapper data attributes
+      const currentPage = parseInt(wrapper.dataset.page, 10) || 1;
+      const limit = parseInt(wrapper.dataset.limit, 10) || 20;
+      const memberId = wrapper.dataset.memberId || '';
+      const total = parseInt(wrapper.dataset.total, 10) || 0;
+
+      // Set loading state
+      loadMoreBtn.dataset.loading = 'true';
+      loadMoreBtn.textContent = 'Loading...';
+      loadMoreBtn.disabled = true;
+      try {
+        const ajaxUrl = window.bragBookGalleryConfig?.ajaxUrl || '/wp-admin/admin-ajax.php';
+        const nonce = window.bragBookGalleryConfig?.nonce || '';
+        const formData = new FormData();
+        formData.append('action', 'brag_book_load_more_procedures');
+        formData.append('nonce', nonce);
+        formData.append('page', currentPage + 1);
+        formData.append('limit', limit);
+        formData.append('member_id', memberId);
+        const response = await fetch(ajaxUrl, {
+          method: 'POST',
+          body: formData
+        });
+        const data = await response.json();
+        if (data.success && data.data.html) {
+          // Append new cards to grid
+          const grid = wrapper.querySelector('.brag-book-gallery-procedures-grid');
+          if (grid) {
+            grid.insertAdjacentHTML('beforeend', data.data.html);
+
+            // Re-initialize case carousel scroll observers for new cards
+            if (this.setupCaseCarouselScrollObserver) {
+              this.setupCaseCarouselScrollObserver();
+            }
+          }
+
+          // Update page counter
+          wrapper.dataset.page = currentPage + 1;
+
+          // Hide button if no more cases
+          if (!data.data.hasMore) {
+            const loadMoreContainer = wrapper.querySelector('.brag-book-gallery-procedures-load-more');
+            if (loadMoreContainer) {
+              loadMoreContainer.style.display = 'none';
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error loading more procedures:', error);
+      } finally {
+        // Reset loading state
+        loadMoreBtn.dataset.loading = 'false';
+        loadMoreBtn.textContent = 'Load More';
+        loadMoreBtn.disabled = false;
+      }
     });
   }
 

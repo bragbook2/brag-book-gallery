@@ -291,12 +291,12 @@ final class Gallery_Handler {
 	/**
 	 * Handle procedures shortcode
 	 *
-	 * Displays cases in a tiles grid layout using WP_Query.
-	 * Shows all cases, with optional filtering by member_id.
+	 * Displays cases in a tiles grid layout using WP_Query with lazy loading.
+	 * Shows cases with optional filtering by member_id, loading more via AJAX.
 	 *
 	 * @param array $atts Shortcode attributes. Supports:
 	 *                    - member_id: Filter cases by member ID.
-	 *                    - limit: Maximum number of cases to display. Default 20.
+	 *                    - limit: Number of cases to load per page. Default 20.
 	 *
 	 * @return string Rendered cases grid HTML.
 	 * @since 3.3.2
@@ -316,6 +316,7 @@ final class Gallery_Handler {
 		// Sanitize member_id
 		$member_id = ! empty( $atts['member_id'] ) ? sanitize_text_field( $atts['member_id'] ) : '';
 		$limit     = (int) $atts['limit'];
+		$limit     = $limit > 0 ? $limit : 20;
 
 		// Enqueue gallery assets
 		Asset_Manager::enqueue_gallery_assets();
@@ -333,11 +334,33 @@ final class Gallery_Handler {
 		// Generate wrapper classes
 		$wrapper_class = self::generate_wrapper_classes();
 
-		// Build query arguments
+		// First, get total count of cases
+		$count_args = array(
+			'post_type'      => \BRAGBookGallery\Includes\Extend\Post_Types::POST_TYPE_CASES,
+			'post_status'    => 'publish',
+			'posts_per_page' => -1,
+			'fields'         => 'ids',
+		);
+
+		if ( ! empty( $member_id ) ) {
+			$count_args['meta_query'] = array(
+				array(
+					'key'     => 'brag_book_gallery_member_id',
+					'value'   => $member_id,
+					'compare' => '=',
+				),
+			);
+		}
+
+		$count_query = new \WP_Query( $count_args );
+		$total_cases = $count_query->found_posts;
+		wp_reset_postdata();
+
+		// Build query arguments for initial load
 		$query_args = array(
 			'post_type'      => \BRAGBookGallery\Includes\Extend\Post_Types::POST_TYPE_CASES,
 			'post_status'    => 'publish',
-			'posts_per_page' => $limit > 0 ? $limit : -1,
+			'posts_per_page' => $limit,
 			'orderby'        => 'date',
 			'order'          => 'DESC',
 		);
@@ -358,19 +381,25 @@ final class Gallery_Handler {
 		if ( ! $cases_query->have_posts() ) {
 			$debug_info = '';
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				$debug_info = '<br><small>Query args: post_type=' . \BRAGBookGallery\Includes\Extend\Post_Types::POST_TYPE_CASES . ', status=publish, posts_per_page=20</small>';
+				$debug_info = '<br><small>Query args: post_type=' . \BRAGBookGallery\Includes\Extend\Post_Types::POST_TYPE_CASES . ', status=publish, posts_per_page=' . $limit . '</small>';
 			}
 			return '<p class="brag-book-gallery-error">' . esc_html__( 'No cases available.', 'brag-book-gallery' ) . $debug_info . '</p>';
 		}
 
+		$has_more = $total_cases > $limit;
+
 		ob_start();
 		?>
 		<!-- Cases Grid View -->
-		<div class="<?php echo esc_attr( $wrapper_class ); ?>"
+		<div class="<?php echo esc_attr( $wrapper_class ); ?> brag-book-gallery-procedures-wrapper"
 			 role="application"
-			 aria-label="Cases Grid">
+			 aria-label="Cases Grid"
+			 data-member-id="<?php echo esc_attr( $member_id ); ?>"
+			 data-limit="<?php echo esc_attr( $limit ); ?>"
+			 data-page="1"
+			 data-total="<?php echo esc_attr( $total_cases ); ?>">
 
-			<div class="brag-book-gallery-case-grid brag-book-gallery-case-grid--tiles grid-initialized"
+			<div class="brag-book-gallery-case-grid brag-book-gallery-case-grid--tiles brag-book-gallery-procedures-grid grid-initialized"
 				 data-columns="2">
 				<?php
 				// Get image display mode from settings
@@ -443,9 +472,144 @@ final class Gallery_Handler {
 				wp_reset_postdata();
 				?>
 			</div>
+
+			<?php if ( $has_more ) : ?>
+				<div class="brag-book-gallery-load-more-container brag-book-gallery-procedures-load-more">
+					<button type="button"
+							class="brag-book-gallery-button brag-book-gallery-button--load-more brag-book-gallery-procedures-load-more-btn"
+							data-loading="false">
+						<?php esc_html_e( 'Load More', 'brag-book-gallery' ); ?>
+					</button>
+				</div>
+			<?php endif; ?>
 		</div>
 		<?php
 		return ob_get_clean();
+	}
+
+	/**
+	 * AJAX handler for loading more cases in procedures shortcode
+	 *
+	 * @return void
+	 * @since 4.3.2
+	 */
+	public static function ajax_load_more_procedures(): void {
+		// Verify nonce
+		if ( ! wp_verify_nonce( $_POST['nonce'] ?? '', 'brag_book_gallery_nonce' ) ) {
+			wp_send_json_error( [ 'message' => 'Invalid nonce' ] );
+			return;
+		}
+
+		$page      = absint( $_POST['page'] ?? 1 );
+		$limit     = absint( $_POST['limit'] ?? 20 );
+		$member_id = sanitize_text_field( $_POST['member_id'] ?? '' );
+
+		$offset = ( $page - 1 ) * $limit;
+
+		// Build query
+		$query_args = array(
+			'post_type'      => \BRAGBookGallery\Includes\Extend\Post_Types::POST_TYPE_CASES,
+			'post_status'    => 'publish',
+			'posts_per_page' => $limit,
+			'offset'         => $offset,
+			'orderby'        => 'date',
+			'order'          => 'DESC',
+		);
+
+		if ( ! empty( $member_id ) ) {
+			$query_args['meta_query'] = array(
+				array(
+					'key'     => 'brag_book_gallery_member_id',
+					'value'   => $member_id,
+					'compare' => '=',
+				),
+			);
+		}
+
+		$cases_query = new \WP_Query( $query_args );
+
+		if ( ! $cases_query->have_posts() ) {
+			wp_send_json_success( [
+				'html'    => '',
+				'hasMore' => false,
+			] );
+			return;
+		}
+
+		$html = '';
+		$image_display_mode = get_option( 'brag_book_gallery_image_display_mode', 'single' );
+		$displayed_case_ids = array();
+
+		while ( $cases_query->have_posts() ) {
+			$cases_query->the_post();
+			$post = get_post();
+
+			$case_id = get_post_meta( $post->ID, 'brag_book_gallery_case_id', true );
+
+			// Skip duplicates
+			if ( ! empty( $case_id ) && in_array( $case_id, $displayed_case_ids, true ) ) {
+				continue;
+			}
+
+			if ( ! empty( $case_id ) ) {
+				$displayed_case_ids[] = $case_id;
+			}
+
+			// Get taxonomy for this case.
+			$procedure_terms    = wp_get_post_terms( $post->ID, Taxonomies::TAXONOMY_PROCEDURES );
+			$procedure_taxonomy = ! empty( $procedure_terms ) && ! is_wp_error( $procedure_terms ) ? $procedure_terms[0] : null;
+
+			// Check for nudity.
+			$procedure_nudity = false;
+			if ( $procedure_taxonomy ) {
+				$nudity_meta      = get_term_meta( $procedure_taxonomy->term_id, 'nudity', true );
+				$procedure_nudity = 'true' === $nudity_meta;
+			}
+
+			// Convert post to case data format
+			$case_data = [
+				'id'         => get_post_meta( $post->ID, 'case_id', true ) ?: $post->ID,
+				'post_id'    => $post->ID,
+				'images'     => get_post_meta( $post->ID, 'images', true ) ?: [],
+				'age'        => get_post_meta( $post->ID, 'age', true ) ?: '',
+				'gender'     => get_post_meta( $post->ID, 'gender', true ) ?: '',
+				'ethnicity'  => get_post_meta( $post->ID, 'ethnicity', true ) ?: '',
+				'height'     => get_post_meta( $post->ID, 'height', true ) ?: '',
+				'weight'     => get_post_meta( $post->ID, 'weight', true ) ?: '',
+				'notes'      => get_post_meta( $post->ID, 'notes', true ) ?: '',
+				'procedures' => array_map( function ( $term ) {
+					return is_object( $term ) ? $term->name : $term;
+				}, $procedure_terms ),
+			];
+
+			if ( ! is_array( $case_data['images'] ) ) {
+				$case_data['images'] = [];
+			}
+
+			$html .= Cases_Handler::render_wordpress_case_card(
+				$case_data,
+				$image_display_mode,
+				$procedure_nudity,
+				$procedure_taxonomy ? $procedure_taxonomy->name : '',
+				'',
+				$procedure_taxonomy ? (string) $procedure_taxonomy->term_id : ''
+			);
+		}
+
+		wp_reset_postdata();
+
+		// Check if there are more
+		$total_cases   = $cases_query->found_posts;
+		$loaded_so_far = $offset + $cases_query->post_count;
+		$has_more      = $loaded_so_far < $total_cases;
+
+		wp_send_json_success( [
+			'html'    => $html,
+			'hasMore' => $has_more,
+			'page'    => $page,
+			'loaded'  => $loaded_so_far,
+			'total'   => $total_cases,
+		] );
 	}
 
 	/**

@@ -181,7 +181,7 @@ final class Setup {
 			// Mark as initialized
 			$this->initialized = true;
 
-			do_action( 'qm/debug', 'BRAGBook Gallery Setup initialized successfully' );
+			do_action( 'qm/debug', 'BRAG Book Gallery Setup initialized successfully' );
 		} catch ( \Exception $e ) {
 			do_action( 'qm/debug', sprintf( 'Setup initialization failed: %s', $e->getMessage() ) );
 			throw new \RuntimeException( 'Plugin initialization failed', 0, $e );
@@ -373,7 +373,11 @@ final class Setup {
 		// Register view tracking AJAX handlers (ensure they're always available)
 		add_action( 'wp_ajax_brag_book_track_view', [ \BRAGBookGallery\Includes\Shortcodes\Gallery_Handler::class, 'ajax_track_view' ] );
 		add_action( 'wp_ajax_nopriv_brag_book_track_view', [ \BRAGBookGallery\Includes\Shortcodes\Gallery_Handler::class, 'ajax_track_view' ] );
-		error_log( 'BRAGBook Gallery: View tracking AJAX handlers registered' );
+		error_log( 'BRAG Book Gallery: View tracking AJAX handlers registered' );
+
+		// Register procedures shortcode load more AJAX handler
+		add_action( 'wp_ajax_brag_book_load_more_procedures', [ \BRAGBookGallery\Includes\Shortcodes\Gallery_Handler::class, 'ajax_load_more_procedures' ] );
+		add_action( 'wp_ajax_nopriv_brag_book_load_more_procedures', [ \BRAGBookGallery\Includes\Shortcodes\Gallery_Handler::class, 'ajax_load_more_procedures' ] );
 
 		// Initialize carousel shortcodes
 		add_shortcode( 'brag_book_carousel', [ \BRAGBookGallery\Includes\Shortcodes\Carousel_Handler::class, 'handle' ] );
@@ -1580,11 +1584,11 @@ final class Setup {
 
 			// Log for debugging
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( 'BRAGBook Gallery: Delayed rewrite rules flush completed' );
+				error_log( 'BRAG Book Gallery: Delayed rewrite rules flush completed' );
 			}
 		} catch ( Exception $e ) {
 			// Log error but don't break site
-			error_log( 'BRAGBook Gallery: Failed to flush rewrite rules - ' . $e->getMessage() );
+			error_log( 'BRAG Book Gallery: Failed to flush rewrite rules - ' . $e->getMessage() );
 		}
 	}
 
@@ -1610,7 +1614,7 @@ final class Setup {
 		if ( is_array( $current_slug ) ) {
 			$string_slug = ! empty( $current_slug ) ? $current_slug[0] : 'gallery';
 			update_option( 'brag_book_gallery_page_slug', $string_slug );
-			error_log( "BRAGBook Gallery: Migrated page slug from array to string: '{$string_slug}'" );
+			error_log( "BRAG Book Gallery: Migrated page slug from array to string: '{$string_slug}'" );
 		}
 
 		// Mark migration as complete
@@ -1657,7 +1661,7 @@ final class Setup {
 
 			if ( empty( $api_tokens ) ) {
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-					error_log( 'BRAGBook Gallery: API configuration missing for scheduled view tracking' );
+					error_log( 'BRAG Book Gallery: API configuration missing for scheduled view tracking' );
 				}
 				return;
 			}
@@ -1687,7 +1691,7 @@ final class Setup {
 			// Check for errors
 			if ( is_wp_error( $response ) ) {
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-					error_log( 'BRAGBook Gallery: Scheduled view tracking API error - ' . $response->get_error_message() );
+					error_log( 'BRAG Book Gallery: Scheduled view tracking API error - ' . $response->get_error_message() );
 				}
 				return;
 			}
@@ -1697,18 +1701,18 @@ final class Setup {
 			if ( $response_code < 200 || $response_code >= 300 ) {
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 					$response_body = wp_remote_retrieve_body( $response );
-					error_log( "BRAGBook Gallery: Scheduled view tracking API returned status {$response_code}: {$response_body}" );
+					error_log( "BRAG Book Gallery: Scheduled view tracking API returned status {$response_code}: {$response_body}" );
 				}
 				return;
 			}
 
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( "BRAGBook Gallery: Successfully tracked scheduled view for caseProcedureId {$case_procedure_id}" );
+				error_log( "BRAG Book Gallery: Successfully tracked scheduled view for caseProcedureId {$case_procedure_id}" );
 			}
 
 		} catch ( \Exception $e ) {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( 'BRAGBook Gallery: Scheduled view tracking exception - ' . $e->getMessage() );
+				error_log( 'BRAG Book Gallery: Scheduled view tracking exception - ' . $e->getMessage() );
 			}
 		}
 	}
