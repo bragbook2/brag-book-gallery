@@ -42,6 +42,43 @@ class Template_Manager {
 
 		// Add filter to make block templates discoverable
 		add_filter( 'get_block_file_template', [ $this, 'get_block_file_template' ], 10, 3 );
+
+		// Remove duplicate h1.page-title on procedure taxonomy pages
+		add_action( 'template_redirect', [ $this, 'buffer_procedure_output' ] );
+	}
+
+	/**
+	 * Start output buffering on procedure taxonomy pages to remove duplicate h1
+	 *
+	 * Themes often render their own <h1 class="page-title"> on taxonomy archives,
+	 * causing a duplicate heading alongside the plugin's own procedure title.
+	 * This buffers the output and strips the theme's h1.page-title via regex.
+	 *
+	 * @since 4.3.3
+	 * @return void
+	 */
+	public function buffer_procedure_output(): void {
+		if ( ! is_tax( Taxonomies::TAXONOMY_PROCEDURES ) ) {
+			return;
+		}
+
+		ob_start( [ $this, 'remove_duplicate_page_title' ] );
+	}
+
+	/**
+	 * Remove the h1.page-title element from buffered output
+	 *
+	 * @since 4.3.3
+	 * @param string $html The buffered HTML output.
+	 * @return string Modified HTML with the duplicate h1 removed.
+	 */
+	public function remove_duplicate_page_title( string $html ): string {
+		return preg_replace(
+			'/<h1\b[^>]*\bclass="[^"]*\bpage-title\b[^"]*"[^>]*>.*?<\/h1>/is',
+			'',
+			$html,
+			1
+		);
 	}
 
 	/**

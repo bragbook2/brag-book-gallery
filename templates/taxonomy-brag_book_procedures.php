@@ -23,7 +23,7 @@ if ( $term && ! is_wp_error( $term ) ) {
 	?>
 	<div class="brag-book-procedures-archive">
 		<header class="page-header">
-			<h2 class="page-title"><?php echo esc_html( $term->name ); ?></h2>
+			<h1 class="page-title"><?php echo esc_html( $term->name ); ?></h1>
 			<?php if ( ! empty( $term->description ) ) : ?>
 				<div class="taxonomy-description">
 					<?php
@@ -39,7 +39,7 @@ if ( $term && ! is_wp_error( $term ) ) {
 	?>
 	<section class="no-results not-found">
 		<header class="page-header">
-			<h2 class="page-title"><?php esc_html_e( 'Nothing Found', 'brag-book-gallery' ); ?></h2>
+			<h1 class="page-title"><?php esc_html_e( 'Nothing Found', 'brag-book-gallery' ); ?></h1>
 		</header><!-- .page-header -->
 		<div class="page-content">
 			<p><?php esc_html_e( 'No cases were found for this procedure.', 'brag-book-gallery' ); ?></p>
