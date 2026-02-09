@@ -1314,10 +1314,10 @@ final class Gallery_Handler {
 					} elseif ( $current_taxonomy ) {
 						// Show procedure-specific content
 						?>
-						<h2 class="brag-book-gallery-content-title">
+						<h1 class="brag-book-gallery-content-title">
 							<strong><?php echo esc_html( $current_taxonomy->name ); ?></strong>
 							Before &amp; After Gallery
-						</h2>
+						</h1>
 
 						<!-- Filter controls will be added here by JavaScript -->
 						<div class="brag-book-gallery-controls">
@@ -2697,10 +2697,10 @@ final class Gallery_Handler {
 					<?php echo self::render_tiles_filter_bar(); ?>
 
 					<!-- Content Title -->
-					<h2 class="brag-book-gallery-content-title">
+					<h1 class="brag-book-gallery-content-title">
 						<strong><?php echo esc_html( $procedure_term->name ); ?></strong>
 						Before &amp; After Gallery
-					</h2>
+					</h1>
 
 					<!-- Case Grid - 2x2 tiles layout -->
 					<div class="brag-book-gallery-case-grid brag-book-gallery-case-grid--tiles grid-initialized"

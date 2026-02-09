@@ -60,11 +60,31 @@ class StageSyncManager {
 		// Stored orphan data for deletion
 		this.detectedOrphans = [];
 
-		this.isRunning = false;
+		this._isRunning = false;
 		this.shouldStop = false;
 		this.currentProgressInterval = null;
 
+		// Create sync warning banner
+		this.syncWarningBanner = this.createSyncWarningBanner();
+
+		// Beforeunload handler to prevent leaving during sync
+		window.addEventListener('beforeunload', (e) => {
+			if (this._isRunning) {
+				e.preventDefault();
+				e.returnValue = '';
+			}
+		});
+
 		this.init();
+	}
+
+	get isRunning() {
+		return this._isRunning;
+	}
+
+	set isRunning(value) {
+		this._isRunning = value;
+		this.setSyncWarningVisible(value);
 	}
 
 	/**
@@ -1260,6 +1280,32 @@ class StageSyncManager {
 	/**
 	 * Show progress
 	 */
+	/**
+	 * Create the sync warning banner element
+	 */
+	createSyncWarningBanner() {
+		const banner = document.createElement('div');
+		banner.id = 'sync-warning-banner';
+		banner.style.cssText = 'display:none; background:#d63638; color:#fff; padding:12px 20px; font-size:14px; font-weight:600; text-align:center; border-radius:5px; margin-bottom:10px;';
+		banner.textContent = '\u26A0\uFE0F Danger Will Robinson, Do Not Leave This Page Until Sync is Complete \u26A0\uFE0F';
+
+		const syncSection = document.querySelector('.stage-sync-section');
+		if (syncSection) {
+			syncSection.parentNode.insertBefore(banner, syncSection);
+		}
+
+		return banner;
+	}
+
+	/**
+	 * Show or hide the sync warning banner
+	 */
+	setSyncWarningVisible(visible) {
+		if (this.syncWarningBanner) {
+			this.syncWarningBanner.style.display = visible ? 'block' : 'none';
+		}
+	}
+
 	showProgress(message, percentage = 0) {
 		if (this.stageProgress) {
 			this.stageProgress.style.display = 'block';

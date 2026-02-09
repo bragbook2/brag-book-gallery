@@ -791,7 +791,7 @@ class On_Page {
 
 		// Fetch from API with performance tracking
 		$start_time = microtime( true );
-		$sidebar_data = $this->api_handler->get_api_sidebar( $api_tokens );
+		$sidebar_data = $this->api_handler->get_api_terms( $api_tokens[0] ?? '' );
 		$fetch_duration = microtime( true ) - $start_time;
 
 		// Enhanced error handling for sidebar data
@@ -1477,7 +1477,7 @@ class On_Page {
 	 */
 	private function get_cache_duration_for_data_type( string $data_type ): int {
 		return match ( $data_type ) {
-			'sidebar'    => self::CACHE_TTL_LONG,     // Sidebar data changes infrequently
+			'terms'      => self::CACHE_TTL_LONG,     // Terms data changes infrequently
 			'case_data'  => self::CACHE_TTL_MEDIUM,  // Case data moderately stable
 			'seo_config' => self::CACHE_TTL_SHORT,   // Config may change more frequently
 			default      => self::CACHE_DURATION     // Fallback to default

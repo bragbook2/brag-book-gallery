@@ -350,6 +350,11 @@ class Sync_Ajax_Handler {
 		$setup = \BRAGBookGallery\Includes\Core\Setup::get_instance();
 		$database = $setup->get_service( 'database' );
 
+		// Ensure log tables exist before writing
+		if ( $database ) {
+			$database->check_database_version();
+		}
+
 		// Create initial log entry
 		$log_id = null;
 		if ( $database ) {

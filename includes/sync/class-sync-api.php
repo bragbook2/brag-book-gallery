@@ -19,6 +19,7 @@ declare( strict_types=1 );
 
 namespace BRAGBookGallery\Includes\Sync;
 
+use BRAGBookGallery\Includes\Core\Setup;
 use BRAGBookGallery\Includes\Core\Trait_Api;
 use WP_Error;
 
@@ -240,10 +241,16 @@ class Sync_Api {
 		// Build endpoint with query parameter
 		$endpoint = self::REPORT_ENDPOINT . '?websitePropertyId=' . urlencode( (string) $website_property_id );
 
+		// Get plugin version from plugin header
+		$plugin_data    = get_file_data( Setup::get_plugin_path() . 'brag-book-gallery.php', [ 'Version' => 'Version' ] );
+		$plugin_version = $plugin_data['Version'] ?? 'unknown';
+
 		// Build request body - use URL for job lookup (recommended approach)
 		$body = [
-			'url'    => home_url(),
-			'status' => $status,
+			'url'           => home_url(),
+			'status'        => $status,
+			'gallerySlug'   => get_option( 'brag_book_gallery_page_slug', '' ),
+			'pluginVersion' => $plugin_version,
 		];
 
 		// Add optional fields

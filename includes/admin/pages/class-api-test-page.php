@@ -83,8 +83,8 @@ class API_Test_Page extends Settings_Base {
 
 			// Route to appropriate Endpoints method based on endpoint type
 			switch ( $endpoint ) {
-				case 'sidebar':
-					$response_body = $endpoints->get_api_sidebar( $api_tokens );
+				case 'terms':
+					$response_body = $endpoints->get_api_terms( $api_tokens[0] ?? '' );
 					break;
 
 				case 'cases':
@@ -343,16 +343,16 @@ class API_Test_Page extends Settings_Base {
 							</tr>
 						</thead>
 						<tbody>
-							<!-- Sidebar Endpoint -->
+							<!-- Terms Endpoint -->
 							<tr>
-								<td><code>/api/plugin/combine/sidebar</code></td>
-								<td><span class="method-badge method-post">POST</span></td>
+								<td><code>/api/plugin/v2/terms</code></td>
+								<td><span class="method-badge method-get">GET</span></td>
 								<td><?php esc_html_e( 'Get categories and procedures with case counts', 'brag-book-gallery' ); ?></td>
 								<td>
 									<button class="button button-secondary test-endpoint-btn"
-									        data-endpoint="sidebar"
-									        data-method="POST"
-									        data-url="/api/plugin/combine/sidebar">
+									        data-endpoint="terms"
+									        data-method="GET"
+									        data-url="/api/plugin/v2/terms">
 										<?php esc_html_e( 'Test', 'brag-book-gallery' ); ?>
 									</button>
 								</td>
@@ -882,24 +882,6 @@ class API_Test_Page extends Settings_Base {
 
 						// Add endpoint-specific parameters
 						switch(endpoint) {
-							case 'sidebar':
-								// Sidebar only needs apiTokens
-								const validTokens = apiTokens.filter(token => token && token.length > 0);
-								console.log('Sidebar endpoint - Valid tokens:', validTokens);
-
-								if (validTokens.length === 0) {
-									console.error('No valid API tokens available for sidebar endpoint');
-									alert('No valid API tokens found. Please check your API settings.');
-									button.disabled = false;
-									button.textContent = originalText;
-									return;
-								}
-
-								requestBody = {
-									apiTokens: validTokens
-								};
-								break;
-
 							case 'cases':
 								// Cases needs count for pagination
 								requestBody.count = 1;
@@ -1006,15 +988,14 @@ class API_Test_Page extends Settings_Base {
 						console.log('POST Request Body:', requestBody);
 						console.log('POST Request JSON:', JSON.stringify(requestBody));
 
-						// For sidebar, verify the exact format
-						if (endpoint === 'sidebar') {
-							console.log('Sidebar request verification:');
-							console.log('Expected format: {"apiTokens":["your-token-here"]}');
-							console.log('Actual format:', JSON.stringify(requestBody));
-						}
 					} else {
 						// For GET requests, handle different endpoint types
-						if (endpoint === 'validate-token') {
+						if (endpoint === 'terms') {
+							// Terms endpoint uses Bearer auth, no query params
+							requestHeaders['Authorization'] = 'Bearer ' + apiTokens[0];
+							console.log('Terms GET Request URL:', url);
+							console.log('Terms will use Bearer auth with token:', apiTokens[0].substring(0, 10) + '...');
+						} else if (endpoint === 'validate-token') {
 							// Token validation uses Bearer auth and websitePropertyId query param
 							const params = new URLSearchParams({
 								websitePropertyId: websitePropertyIds[0].toString()

@@ -130,7 +130,7 @@ class Endpoints {
 		'optimize_image'      => '/api/plugin/optimize-image',
 		'favorites_add'       => '/api/plugin/combine/favorites/add',
 		'favorites_list'      => '/api/plugin/combine/favorites/list',
-		'sidebar'             => '/api/plugin/combine/sidebar',
+		'terms'               => '/api/plugin/v2/terms',
 		'cases'               => '/api/plugin/combine/cases',
 		'case_detail'         => '/api/plugin/combine/cases/%s',
 		'sitemap'             => '/api/plugin/sitemap',
@@ -785,41 +785,47 @@ class Endpoints {
 	}
 
 	/**
-	 * Get sidebar navigation data
+	 * Get terms navigation data
 	 *
 	 * Retrieves hierarchical navigation data for displaying
-	 * procedure categories and subcategories in the sidebar.
+	 * procedure categories and subcategories.
 	 *
 	 * @since 3.0.0
 	 *
-	 * @param string|array $api_token API token(s)
+	 * @param string $api_token API token
 	 *
 	 * @return string|null JSON response on success, null on failure
 	 */
-	public function get_api_sidebar( string|array $api_token ): ?string {
+	public function get_api_terms( string $api_token ): ?string {
 
-		// Normalize API token to array.
-		$tokens = $this->normalize_to_array( $api_token );
-
-		if ( empty( $tokens ) ) {
-			$this->log_error(
-				'No valid API tokens provided for sidebar request'
-			);
+		if ( empty( $api_token ) ) {
+			$this->log_error( 'No API token provided for terms request' );
 			return null;
 		}
 
-		// Prepare request body.
-		$body = array(
-			'apiTokens' => $tokens,
-		);
+		$full_url = Setup::get_api_url() . self::API_ENDPOINTS['terms'];
 
-		// Make direct API request without caching (sidebar data is cached elsewhere)
-		return $this->make_api_request(
-			self::API_ENDPOINTS['sidebar'],
-			$body,
-			'POST',
-			false
-		);
+		$response = wp_remote_get( $full_url, [
+			'timeout' => intval( get_option( 'brag_book_gallery_api_timeout', self::API_TIMEOUT ) ),
+			'headers' => [
+				'Authorization' => 'Bearer ' . $api_token,
+				'Accept'        => 'application/json',
+				'User-Agent'    => 'BRAGBookGallery/' . ( defined( 'BRAG_BOOK_GALLERY_VERSION' ) ? BRAG_BOOK_GALLERY_VERSION : '4.0.0' ),
+			],
+		] );
+
+		if ( is_wp_error( $response ) ) {
+			$this->log_error( 'Terms API request failed: ' . $response->get_error_message() );
+			return null;
+		}
+
+		$code = wp_remote_retrieve_response_code( $response );
+		if ( $code !== 200 ) {
+			$this->log_error( 'Terms API returned status ' . $code );
+			return null;
+		}
+
+		return wp_remote_retrieve_body( $response );
 	}
 
 	/**
@@ -2344,7 +2350,7 @@ class Endpoints {
 	 */
 	private function get_cache_duration_for_endpoint( string $endpoint_type ): int {
 		return match ( $endpoint_type ) {
-			'sidebar', 'sitemap' => self::CACHE_TTL_LONG,
+			'terms', 'sitemap' => self::CACHE_TTL_LONG,
 			'carousel', 'case' => self::CACHE_TTL_MEDIUM,
 			'pagination', 'cases' => self::CACHE_TTL_SHORT,
 			default => self::CACHE_DURATION
@@ -2514,13 +2520,13 @@ class Endpoints {
 		$results = [];
 
 		if ( empty( $endpoints ) ) {
-			$endpoints = [ 'sidebar', 'carousel' ]; // Default critical endpoints
+			$endpoints = [ 'terms', 'carousel' ]; // Default critical endpoints
 		}
 
 		foreach ( $endpoints as $endpoint ) {
 			try {
 				$success = match ( $endpoint ) {
-					'sidebar' => $this->warm_sidebar_cache(),
+					'terms' => $this->warm_terms_cache(),
 					'carousel' => $this->warm_carousel_cache(),
 					default => false
 				};
@@ -2535,12 +2541,12 @@ class Endpoints {
 	}
 
 	/**
-	 * Warm sidebar cache
+	 * Warm terms cache
 	 *
 	 * @since 3.0.0
 	 * @return bool Success status
 	 */
-	private function warm_sidebar_cache(): bool {
+	private function warm_terms_cache(): bool {
 		// Mode manager removed - default to 'default' mode
 		$mode = 'default';
 		$api_tokens = get_option( 'brag_book_gallery_api_token', [] );
@@ -2550,7 +2556,7 @@ class Endpoints {
 			return false;
 		}
 
-		$response = $this->get_api_sidebar( $token );
+		$response = $this->get_api_terms( $token );
 		return ! empty( $response );
 	}
 

@@ -3971,9 +3971,9 @@ class BRAGbookGalleryApp {
 			const existingTitle = gridContainer.querySelector('.brag-book-gallery-content-title');
 			if (!existingTitle) {
 				const titleHtml = `
-					<h2 class="brag-book-gallery-content-title">
+					<h1 class="brag-book-gallery-content-title">
 						<strong>My</strong><span>Favorites</span>
-					</h2>
+					</h1>
 				`;
 				grid.insertAdjacentHTML('beforebegin', titleHtml);
 			}
@@ -4219,9 +4219,9 @@ class BRAGbookGalleryApp {
 						const existingTitle = gridContainer.querySelector('.brag-book-gallery-content-title');
 						if (!existingTitle) {
 							const titleHtml = `
-								<h2 class="brag-book-gallery-content-title">
+								<h1 class="brag-book-gallery-content-title">
 									<strong>My</strong><span>Favorites</span>
-								</h2>
+								</h1>
 							`;
 							grid.insertAdjacentHTML('beforebegin', titleHtml);
 						}

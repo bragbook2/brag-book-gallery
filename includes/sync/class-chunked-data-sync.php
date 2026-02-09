@@ -290,23 +290,18 @@ class Chunked_Data_Sync {
 
 		// Build API request
 		$api_base_url = $this->get_api_base_url();
-		$endpoint     = '/api/plugin/combine/sidebar';
+		$endpoint     = '/api/plugin/v2/terms';
 		$full_url     = $api_base_url . $endpoint;
 
-		$request_body = array(
-			'apiTokens' => array_values( $valid_tokens ),
-		);
-
-		// Make API request
-		$response = wp_remote_post(
+		// Make GET request with Bearer token authentication
+		$response = wp_remote_get(
 			$full_url,
 			array(
 				'timeout'   => 30,
 				'headers'   => array(
-					'Content-Type' => 'application/json',
-					'Accept'       => 'application/json',
+					'Authorization' => 'Bearer ' . $valid_tokens[0],
+					'Accept'        => 'application/json',
 				),
-				'body'      => wp_json_encode( $request_body ),
 				'sslverify' => true,
 			)
 		);
@@ -328,8 +323,8 @@ class Chunked_Data_Sync {
 			throw new Exception( 'Invalid JSON response: ' . json_last_error_msg() );
 		}
 
-		if ( ! isset( $data['success'] ) || ! $data['success'] ) {
-			throw new Exception( 'API returned unsuccessful response' );
+		if ( ! isset( $data['data']['terms'] ) || ! is_array( $data['data']['terms'] ) ) {
+			throw new Exception( 'API returned unexpected response structure (missing data.terms key)' );
 		}
 
 		// Save to file
@@ -381,7 +376,8 @@ class Chunked_Data_Sync {
 		$updated_count = 0;
 		$total_count   = 0;
 
-		if ( empty( $sidebar_data['data'] ) ) {
+		$terms = $sidebar_data['data']['terms'] ?? [];
+		if ( empty( $terms ) ) {
 			return [
 				'created' => 0,
 				'updated' => 0,
@@ -396,7 +392,7 @@ class Chunked_Data_Sync {
 			$taxonomies->register_procedures_taxonomy();
 		}
 
-		foreach ( $sidebar_data['data'] as $category ) {
+		foreach ( $terms as $category ) {
 
 			// Process parent category.
 			$parent_result = $this->create_or_update_procedure( $category, null );
@@ -440,7 +436,7 @@ class Chunked_Data_Sync {
 	 * @return array Operation result
 	 */
 	private function create_or_update_procedure( array $data, ?int $parent_id = null ): array {
-		$slug = $data['slugName'] ?? sanitize_title( $data['name'] );
+		$slug = $data['slug'] ?? sanitize_title( $data['name'] );
 		$name = $data['name'];
 
 		// Set term description to shortcode for procedure view
@@ -475,8 +471,8 @@ class Chunked_Data_Sync {
 		}
 
 		// Update term meta
-		if ( ! empty( $data['ids'] ) && is_array( $data['ids'] ) ) {
-			update_term_meta( $term_id, 'procedure_id', $data['ids'][0] );
+		if ( ! empty( $data['id'] ) ) {
+			update_term_meta( $term_id, 'procedure_id', $data['id'] );
 		}
 
 		$nudity = isset( $data['nudity'] ) && $data['nudity'] ? 'true' : 'false';
@@ -486,15 +482,17 @@ class Chunked_Data_Sync {
 			update_term_meta( $term_id, 'brag_book_gallery_details', wp_kses_post( $data['description'] ) );
 		}
 
-		if ( isset( $data['totalCase'] ) ) {
-			update_term_meta( $term_id, 'total_cases', absint( $data['totalCase'] ) );
+		// Handle both category totalCases and procedure caseCount
+		$case_count = $data['totalCases'] ?? $data['caseCount'] ?? null;
+		if ( $case_count !== null ) {
+			update_term_meta( $term_id, 'total_cases', absint( $case_count ) );
 		}
 
 		// Register in sync registry
-		if ( $this->database && ! empty( $data['ids'] ) && is_array( $data['ids'] ) ) {
+		if ( $this->database && ! empty( $data['id'] ) ) {
 			$this->database->upsert_registry_item(
 				'procedure',
-				(int) $data['ids'][0],
+				(int) $data['id'],
 				$term_id,
 				'term',
 				$this->get_api_token(),
@@ -591,8 +589,8 @@ class Chunked_Data_Sync {
 	private function build_case_manifest( array $sidebar_data ): array {
 		$manifest = [];
 
-		if ( empty( $sidebar_data['data'] ) ) {
-			error_log( 'Chunked Sync: No data found in sidebar_data' );
+		if ( empty( $sidebar_data['data']['terms'] ) ) {
+			error_log( 'Chunked Sync: No terms found in sidebar_data' );
 
 			return $manifest;
 		}
@@ -610,7 +608,7 @@ class Chunked_Data_Sync {
 		$total_cases_found = 0;
 
 		foreach ( $procedures as $procedure ) {
-			if ( empty( $procedure['ids'] ) || $procedure['caseCount'] <= 0 ) {
+			if ( empty( $procedure['ids'] ) || ( $procedure['caseCount'] ?? 0 ) <= 0 ) {
 				$processed ++;
 				continue;
 			}
@@ -677,29 +675,19 @@ class Chunked_Data_Sync {
 	 */
 	private function extract_procedures_from_sidebar( array $sidebar_data ): array {
 		$procedures = [];
+		$terms      = $sidebar_data['data']['terms'] ?? [];
 
-		foreach ( $sidebar_data['data'] as $category ) {
+		foreach ( $terms as $category ) {
 			if ( ! empty( $category['procedures'] ) ) {
 				foreach ( $category['procedures'] as $procedure ) {
-					if ( ! empty( $procedure['ids'] ) && ! empty( $procedure['totalCase'] ) ) {
-						// Filter out invalid IDs (0, null, empty) from the IDs array
-						$valid_ids = array_filter( $procedure['ids'], function ( $id ) {
-							return ! empty( $id ) && $id !== 0 && $id !== '0';
-						} );
+					if ( ! empty( $procedure['id'] ) && ! empty( $procedure['caseCount'] ) ) {
+						$procedures[] = [
+							'name'      => $procedure['name'] ?? 'Unknown',
+							'ids'       => [ (int) $procedure['id'] ],
+							'caseCount' => $procedure['caseCount'],
+						];
 
-						// Only add procedures that have at least one valid ID
-						if ( ! empty( $valid_ids ) ) {
-							$procedures[] = [
-								'name'      => $procedure['name'] ?? 'Unknown',
-								'ids'       => array_values( $valid_ids ), // Re-index array after filtering
-								'caseCount' => $procedure['totalCase'],
-							];
-
-							// Log the IDs for debugging
-							error_log( "Chunked Sync: Procedure '{$procedure['name']}' has valid IDs: " . implode( ', ', $valid_ids ) );
-						} else {
-							error_log( "Chunked Sync: Skipping procedure '{$procedure['name']}' - no valid IDs found. Original IDs: " . wp_json_encode( $procedure['ids'] ) );
-						}
+						error_log( "Chunked Sync: Procedure '{$procedure['name']}' has ID: {$procedure['id']}" );
 					}
 				}
 			}

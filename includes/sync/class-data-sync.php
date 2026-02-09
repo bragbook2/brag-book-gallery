@@ -559,8 +559,8 @@ class Data_Sync {
 			// Clean up old sync files
 			$this->cleanup_old_sync_files();
 
-			// Keep only the data array in memory for processing, clear everything else
-			$categories_data = $api_data['data'];
+			// Keep only the terms array in memory for processing, clear everything else
+			$categories_data = $api_data['data']['terms'];
 			unset( $api_data );
 			gc_collect_cycles();
 
@@ -709,7 +709,7 @@ class Data_Sync {
 			size_format( $initial_memory )
 		) );
 
-		$endpoint = '/api/plugin/combine/sidebar';
+		$endpoint = '/api/plugin/v2/terms';
 
 		error_log( 'BRAG book Gallery Sync: Preparing API request to: ' . $endpoint );
 
@@ -742,30 +742,23 @@ class Data_Sync {
 		error_log( 'BRAG book Gallery Sync: ✓ Found ' . count( $valid_tokens ) . ' valid API token(s)' );
 		error_log( 'BRAG book Gallery Sync: Using primary token: ' . substr( $valid_tokens[0], 0, 10 ) . '...' );
 
-		// Build full URL for POST request
+		// Build full URL for GET request
 		$api_base_url = $this->get_api_base_url();
 		$full_url     = $api_base_url . $endpoint;
 
-		// Prepare request body with API tokens (only apiTokens needed for sidebar endpoint)
-		$request_body = [
-			'apiTokens' => array_values( $valid_tokens ),
-		];
-
 		error_log( 'BRAG book Gallery Sync: Connecting to: ' . $full_url );
-		error_log( 'BRAG book Gallery Sync: Request payload: ' . wp_json_encode( $request_body ) );
 
-		// Make POST request with authentication in body
-		error_log( 'BRAG book Gallery Sync: Sending POST request to BRAGBook API...' );
+		// Make GET request with Bearer token authentication
+		error_log( 'BRAG book Gallery Sync: Sending GET request to BRAGBook API...' );
 		$start_time = microtime( true );
 
-		$response = wp_remote_post( $full_url, [
+		$response = wp_remote_get( $full_url, [
 			'timeout'   => 30,
 			'headers'   => [
-				'Content-Type' => 'application/json',
-				'Accept'       => 'application/json',
-				'User-Agent'   => 'BRAGBookGallery/' . ( defined( 'BRAG_BOOK_GALLERY_VERSION' ) ? BRAG_BOOK_GALLERY_VERSION : '3.0.0' ),
+				'Authorization' => 'Bearer ' . $valid_tokens[0],
+				'Accept'        => 'application/json',
+				'User-Agent'    => 'BRAGBookGallery/' . ( defined( 'BRAG_BOOK_GALLERY_VERSION' ) ? BRAG_BOOK_GALLERY_VERSION : '3.0.0' ),
 			],
-			'body'      => wp_json_encode( $request_body ),
 			'sslverify' => true,
 		] );
 
@@ -776,7 +769,6 @@ class Data_Sync {
 			$error_code    = $response->get_error_code();
 			error_log( "BRAG book Gallery Sync: ✗ API request failed after {$request_time}ms (code: {$error_code}): {$error_message}" );
 			error_log( 'BRAG book Gallery Sync: Failed request URL: ' . $full_url );
-			error_log( 'BRAG book Gallery Sync: Failed request body: ' . wp_json_encode( $request_body ) );
 			throw new Exception( sprintf(
 				__( 'API request failed [%s]: %s', 'brag-book-gallery' ),
 				$error_code,
@@ -842,9 +834,9 @@ class Data_Sync {
 
 		error_log( 'BRAG book Gallery Sync: API response data keys: ' . wp_json_encode( array_keys( $data ) ) );
 
-		if ( ! isset( $data['success'] ) || ! $data['success'] ) {
-			error_log( 'BRAG book Gallery Sync: API returned unsuccessful response. Data: ' . wp_json_encode( $data ) );
-			throw new Exception( __( 'API returned unsuccessful response', 'brag-book-gallery' ) );
+		if ( ! isset( $data['data']['terms'] ) || ! is_array( $data['data']['terms'] ) ) {
+			error_log( 'BRAG book Gallery Sync: API returned unexpected response structure. Keys: ' . wp_json_encode( array_keys( $data ) ) );
+			throw new Exception( __( 'API returned unexpected response structure (missing data.terms key)', 'brag-book-gallery' ) );
 		}
 
 		// Final memory report for API call
@@ -926,7 +918,7 @@ class Data_Sync {
 	 * @since 3.0.0
 	 */
 	private function create_or_update_procedure( array $data, ?int $parent_id = null ): array {
-		$slug                 = $data['slugName'] ?? sanitize_title( $data['name'] );
+		$slug                 = $data['slug'] ?? sanitize_title( $data['name'] );
 		$name                 = $data['name'];
 		$original_description = $data['description'] ?? '';
 
@@ -981,10 +973,10 @@ class Data_Sync {
 		$this->log_procedure_operation( $term_id, $data, $created, $parent_id );
 
 		// Register in sync registry
-		if ( $this->database && ! empty( $data['ids'] ) && is_array( $data['ids'] ) ) {
+		if ( $this->database && ! empty( $data['id'] ) ) {
 			$this->database->upsert_registry_item(
 				'procedure',
-				(int) $data['ids'][0],
+				(int) $data['id'],
 				$term_id,
 				'term',
 				$this->get_registry_api_token(),
@@ -1013,9 +1005,9 @@ class Data_Sync {
 	 * @since 3.0.0
 	 */
 	private function update_procedure_meta( int $term_id, array $data ): void {
-		// Update procedure ID (from API ids array or generate from slug)
-		if ( ! empty( $data['ids'] ) && is_array( $data['ids'] ) ) {
-			update_term_meta( $term_id, 'procedure_id', $data['ids'][0] );
+		// Update procedure ID (from API id field)
+		if ( ! empty( $data['id'] ) ) {
+			update_term_meta( $term_id, 'procedure_id', $data['id'] );
 		}
 
 		// Update member ID (not available in this API response, but preserve field)
@@ -1039,17 +1031,18 @@ class Data_Sync {
 
 		// HIPAA COMPLIANCE: Do NOT store full API data as it may contain PHI
 		// Only store essential non-PHI operational data
+		$case_count    = $data['totalCases'] ?? $data['caseCount'] ?? 0;
 		$safe_api_data = [
-			'api_id'      => $data['ids'][0] ?? null,
-			'slug'        => $data['slugName'] ?? '',
-			'total_cases' => $data['totalCase'] ?? 0,
+			'api_id'      => $data['id'] ?? null,
+			'slug'        => $data['slug'] ?? '',
+			'total_cases' => $case_count,
 			'sync_date'   => current_time( 'mysql' ),
 		];
 		update_term_meta( $term_id, 'api_data', $safe_api_data );
 
 		// Store total case count
-		if ( isset( $data['totalCase'] ) ) {
-			update_term_meta( $term_id, 'total_cases', absint( $data['totalCase'] ) );
+		if ( $case_count > 0 ) {
+			update_term_meta( $term_id, 'total_cases', absint( $case_count ) );
 		}
 	}
 
@@ -1078,8 +1071,8 @@ class Data_Sync {
 			ucfirst( $operation_type ),
 			$item_type,
 			$term_id,
-			$data['ids'][0] ?? 0,
-			$data['slugName'] ?? sanitize_title( $data['name'] )
+			$data['id'] ?? 0,
+			$data['slug'] ?? sanitize_title( $data['name'] )
 		);
 
 		$wpdb->insert(
@@ -1090,8 +1083,8 @@ class Data_Sync {
 				'operation'       => $operation_type,
 				'item_type'       => $item_type,
 				'wordpress_id'    => $term_id,
-				'api_id'          => $data['ids'][0] ?? null,
-				'slug'            => $data['slugName'] ?? sanitize_title( $data['name'] ),
+				'api_id'          => $data['id'] ?? null,
+				'slug'            => $data['slug'] ?? sanitize_title( $data['name'] ),
 				'parent_id'       => $parent_id,
 				'status'          => 'success',
 				'details'         => $safe_details,
@@ -2049,15 +2042,16 @@ class Data_Sync {
 
 		error_log( 'BRAG book Gallery Sync: Sidebar data keys: ' . wp_json_encode( array_keys( $sidebar_data ) ) );
 
-		if ( ! isset( $sidebar_data['data'] ) || ! is_array( $sidebar_data['data'] ) ) {
-			error_log( 'BRAG book Gallery Sync: No data array found in sidebar data' );
+		$terms = $sidebar_data['data']['terms'] ?? [];
+		if ( empty( $terms ) || ! is_array( $terms ) ) {
+			error_log( 'BRAG book Gallery Sync: No terms array found in sidebar data' );
 
 			return $procedures;
 		}
 
-		error_log( 'BRAG book Gallery Sync: Found ' . count( $sidebar_data['data'] ) . ' categories in sidebar data' );
+		error_log( 'BRAG book Gallery Sync: Found ' . count( $terms ) . ' categories in terms data' );
 
-		foreach ( $sidebar_data['data'] as $category_index => $category ) {
+		foreach ( $terms as $category_index => $category ) {
 			error_log( "BRAG book Gallery Sync: Processing category {$category_index}: " . wp_json_encode( array_keys( $category ) ) );
 
 			if ( isset( $category['procedures'] ) && is_array( $category['procedures'] ) ) {
@@ -2067,23 +2061,21 @@ class Data_Sync {
 					error_log( "BRAG book Gallery Sync: Processing procedure {$procedure_index}: " . wp_json_encode( array_keys( $procedure ) ) );
 					error_log( "BRAG book Gallery Sync: Procedure data: " . wp_json_encode( $procedure ) );
 
-					// Only include procedures that have IDs and case count
-					if ( isset( $procedure['ids'] ) && is_array( $procedure['ids'] ) && ! empty( $procedure['ids'] ) ) {
+					// Only include procedures that have an ID and case count
+					if ( ! empty( $procedure['id'] ) ) {
 						$procedure_data = [
 							'name'        => $procedure['name'] ?? 'Unknown',
-							'ids'         => array_map( 'intval', $procedure['ids'] ),
-							'caseCount'   => (int) ( $procedure['totalCase'] ?? 0 ),
-							// Fix: Use 'totalCase' not 'caseCount'
+							'ids'         => [ (int) $procedure['id'] ],
+							'caseCount'   => (int) ( $procedure['caseCount'] ?? 0 ),
 							'slug'        => $procedure['slug'] ?? '',
 							'nudity'      => $procedure['nudity'] ?? false,
 							'description' => $procedure['description'] ?? '',
-							// Add description from API
 						];
 
 						error_log( "BRAG book Gallery Sync: Added procedure: " . wp_json_encode( $procedure_data ) );
 						$procedures[] = $procedure_data;
 					} else {
-						error_log( "BRAG book Gallery Sync: Skipped procedure - missing IDs or case count: " . wp_json_encode( $procedure ) );
+						error_log( "BRAG book Gallery Sync: Skipped procedure - missing ID: " . wp_json_encode( $procedure ) );
 					}
 				}
 			} else {
@@ -2344,17 +2336,16 @@ class Data_Sync {
 	private function extract_procedure_ids_from_sidebar( array $sidebar_data ): array {
 		$procedure_ids = [];
 
-		if ( ! isset( $sidebar_data['data'] ) || ! is_array( $sidebar_data['data'] ) ) {
+		$terms = $sidebar_data['data']['terms'] ?? $sidebar_data['data'] ?? [];
+		if ( empty( $terms ) || ! is_array( $terms ) ) {
 			return $procedure_ids;
 		}
 
-		foreach ( $sidebar_data['data'] as $category ) {
+		foreach ( $terms as $category ) {
 			if ( isset( $category['procedures'] ) && is_array( $category['procedures'] ) ) {
 				foreach ( $category['procedures'] as $procedure ) {
-					if ( isset( $procedure['ids'] ) && is_array( $procedure['ids'] ) ) {
-						foreach ( $procedure['ids'] as $id ) {
-							$procedure_ids[] = (int) $id;
-						}
+					if ( ! empty( $procedure['id'] ) ) {
+						$procedure_ids[] = (int) $procedure['id'];
 					}
 				}
 			}

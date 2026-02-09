@@ -214,10 +214,27 @@ class Database {
 
 				$this->create_tables();
 				$this->invalidate_all_caches();
+			} elseif ( ! $this->tables_exist() ) {
+				// Tables missing despite version being current — recreate them
+				$this->create_tables();
 			}
 		} catch ( \Exception $e ) {
 			do_action( 'qm/debug', sprintf( 'Database version check failed: %s', $e->getMessage() ) );
 		}
+	}
+
+	/**
+	 * Check if required database tables exist.
+	 *
+	 * @since 4.3.3
+	 * @return bool True if all tables exist.
+	 */
+	private function tables_exist(): bool {
+		$sync_log  = $this->table_prefix . 'sync_log';
+		$registry  = $this->get_sync_registry_table();
+
+		return $this->wpdb->get_var( $this->wpdb->prepare( 'SHOW TABLES LIKE %s', $sync_log ) ) === $sync_log
+			&& $this->wpdb->get_var( $this->wpdb->prepare( 'SHOW TABLES LIKE %s', $registry ) ) === $registry;
 	}
 
 	/**

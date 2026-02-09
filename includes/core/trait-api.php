@@ -199,11 +199,8 @@ trait Trait_Api {
 				$args['body']['apiTokens'] = array_values( $api_tokens );
 			}
 
-			// Only add websitePropertyIds if not already set and not the sidebar endpoint
-			// The sidebar endpoint only needs apiTokens
 			if ( ! isset( $args['body']['websitePropertyIds'] ) &&
-			     ! empty( $website_property_ids ) &&
-			     ! str_contains( $endpoint, 'sidebar' ) ) {
+			     ! empty( $website_property_ids ) ) {
 				$args['body']['websitePropertyIds'] = array_values( $website_property_ids );
 			}
 

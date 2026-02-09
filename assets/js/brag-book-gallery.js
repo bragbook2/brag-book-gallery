@@ -2595,7 +2595,7 @@ class FilterSystem {
 
     // Main title (matching PHP structure)
     const displayName = this.formatProcedureDisplayName(procedureName);
-    html += `<h2 class="brag-book-gallery-content-title"><strong>${this.escapeHtml(displayName)}</strong> Before &amp; After Gallery</h2>`;
+    html += `<h1 class="brag-book-gallery-content-title"><strong>${this.escapeHtml(displayName)}</strong> Before &amp; After Gallery</h1>`;
 
     // Complete controls section matching PHP structure
     html += '<div class="brag-book-gallery-controls">';
@@ -9705,9 +9705,9 @@ class BRAGbookGalleryApp {
       const existingTitle = gridContainer.querySelector('.brag-book-gallery-content-title');
       if (!existingTitle) {
         const titleHtml = `
-					<h2 class="brag-book-gallery-content-title">
+					<h1 class="brag-book-gallery-content-title">
 						<strong>My</strong><span>Favorites</span>
-					</h2>
+					</h1>
 				`;
         grid.insertAdjacentHTML('beforebegin', titleHtml);
       }
@@ -9921,9 +9921,9 @@ class BRAGbookGalleryApp {
             const existingTitle = gridContainer.querySelector('.brag-book-gallery-content-title');
             if (!existingTitle) {
               const titleHtml = `
-								<h2 class="brag-book-gallery-content-title">
+								<h1 class="brag-book-gallery-content-title">
 									<strong>My</strong><span>Favorites</span>
-								</h2>
+								</h1>
 							`;
               grid.insertAdjacentHTML('beforebegin', titleHtml);
             }
