@@ -3107,7 +3107,7 @@ final class Gallery_Handler {
 			return;
 		}
 
-		// Get the procedure ID from term meta (this is the BRAG Book API ID)
+		// Get the procedure ID from term meta (this is the BRAG book API ID)
 		$procedure_id = get_term_meta( $procedure_term->term_id, 'procedure_id', true );
 
 		if ( empty( $procedure_id ) ) {
@@ -3126,7 +3126,7 @@ final class Gallery_Handler {
 	 *
 	 * Makes the tracking API call for procedure views in a non-blocking way.
 	 *
-	 * @param int $procedure_id The procedure ID from BRAG Book API
+	 * @param int $procedure_id The procedure ID from BRAG book API
 	 *
 	 * @return void
 	 * @since 4.0.2

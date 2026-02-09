@@ -11,7 +11,7 @@ require_once('/Users/karladams/Local Sites/bragbook/app/public/wp-config.php');
 
 global $wpdb;
 
-echo "=== BRAG Book Gallery Case Report ===\n\n";
+echo "=== BRAG book Gallery Case Report ===\n\n";
 
 // Get actual case count from database
 $case_count_query = $wpdb->prepare("

@@ -2,7 +2,7 @@
 /**
  * REST API Endpoints Class
  *
- * Enterprise-grade REST API management system for BRAG Book Gallery plugin.
+ * Enterprise-grade REST API management system for BRAG book Gallery plugin.
  * Provides comprehensive external API communication with advanced error handling,
  * intelligent caching, retry mechanisms, and VIP-compliant architecture.
  *
@@ -349,9 +349,9 @@ class Endpoints {
 
 			if ( empty( $api_tokens[0] ) || empty( $website_property_ids[0] ) ) {
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-					error_log( 'BRAG Book Gallery: get_case_details - Missing API configuration' );
-					error_log( 'BRAG Book Gallery: API tokens empty: ' . ( empty( $api_tokens[0] ) ? 'YES' : 'NO' ) );
-					error_log( 'BRAG Book Gallery: Website property IDs empty: ' . ( empty( $website_property_ids[0] ) ? 'YES' : 'NO' ) );
+					error_log( 'BRAG book Gallery: get_case_details - Missing API configuration' );
+					error_log( 'BRAG book Gallery: API tokens empty: ' . ( empty( $api_tokens[0] ) ? 'YES' : 'NO' ) );
+					error_log( 'BRAG book Gallery: Website property IDs empty: ' . ( empty( $website_property_ids[0] ) ? 'YES' : 'NO' ) );
 				}
 				return null;
 			}
@@ -384,9 +384,9 @@ class Endpoints {
 		);
 
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			do_action( 'qm/debug', 'BRAG Book Gallery: Fetching case ' . $case_id . ' from: ' . $api_url );
-			do_action( 'qm/debug', 'BRAG Book Gallery: API Token length: ' . strlen( $api_token ) );
-			do_action( 'qm/debug', 'BRAG Book Gallery: Website Property ID: ' . $website_property_id );
+			do_action( 'qm/debug', 'BRAG book Gallery: Fetching case ' . $case_id . ' from: ' . $api_url );
+			do_action( 'qm/debug', 'BRAG book Gallery: API Token length: ' . strlen( $api_token ) );
+			do_action( 'qm/debug', 'BRAG book Gallery: Website Property ID: ' . $website_property_id );
 		}
 
 		// Make API request
@@ -402,7 +402,7 @@ class Endpoints {
 
 		if ( is_wp_error( $response ) ) {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				do_action( 'qm/debug', 'BRAG Book Gallery: API error for case ' . $case_id . ': ' . $response->get_error_message() );
+				do_action( 'qm/debug', 'BRAG book Gallery: API error for case ' . $case_id . ': ' . $response->get_error_message() );
 			}
 			return null;
 		}
@@ -410,7 +410,7 @@ class Endpoints {
 		$response_code = wp_remote_retrieve_response_code( $response );
 		if ( $response_code !== 200 ) {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				do_action( 'qm/debug', 'BRAG Book Gallery: API returned status ' . $response_code . ' for case ' . $case_id );
+				do_action( 'qm/debug', 'BRAG book Gallery: API returned status ' . $response_code . ' for case ' . $case_id );
 				do_action( 'qm/debug', 'Response body: ' . wp_remote_retrieve_body( $response ) );
 			}
 			return null;
@@ -676,7 +676,7 @@ class Endpoints {
 
 		// Log the request details for debugging
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			do_action( 'qm/debug', 'BRAG Book Gallery: Case API Request Details:' );
+			do_action( 'qm/debug', 'BRAG book Gallery: Case API Request Details:' );
 			do_action( 'qm/debug', '  Endpoint: ' . $endpoint );
 			do_action( 'qm/debug', '  Full URL: ' . Setup::get_api_url() . $endpoint );
 			do_action( 'qm/debug', '  Token: ' . substr( $api_token, 0, 10 ) . '...' );
@@ -736,7 +736,7 @@ class Endpoints {
 
 		// Log the response for debugging
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			do_action( 'qm/debug', 'BRAG Book Gallery: Case API Response status: ' . ( ! empty( $data ) ? 'Has data' : 'Empty' ) );
+			do_action( 'qm/debug', 'BRAG book Gallery: Case API Response status: ' . ( ! empty( $data ) ? 'Has data' : 'Empty' ) );
 			if ( ! empty( $data ) ) {
 				do_action( 'qm/debug', '  Response keys: ' . implode( ', ', array_keys( $data ) ) );
 				if ( isset( $data['success'] ) ) {
@@ -1286,7 +1286,7 @@ class Endpoints {
 	 * @since 4.0.2
 	 *
 	 * @param string $api_token    API authentication token
-	 * @param int    $procedure_id Procedure ID to track (from BRAG Book API)
+	 * @param int    $procedure_id Procedure ID to track (from BRAG book API)
 	 *
 	 * @return string|null Response body on success, null on failure
 	 */
@@ -1606,7 +1606,7 @@ class Endpoints {
 	/**
 	 * Validate API token
 	 *
-	 * Validates an API token with the BRAG Book service using Bearer authentication.
+	 * Validates an API token with the BRAG book service using Bearer authentication.
 	 *
 	 * @since 3.3.0
 	 *

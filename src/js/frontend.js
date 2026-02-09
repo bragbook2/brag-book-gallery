@@ -1,7 +1,7 @@
 /**
- * BRAG Book Gallery - Main Entry Point
+ * BRAG book Gallery - Main Entry Point
  *
- * This file serves as the main entry point for the BRAG Book Gallery application.
+ * This file serves as the main entry point for the BRAG book Gallery application.
  * It imports and initializes all components in the correct order.
  */
 

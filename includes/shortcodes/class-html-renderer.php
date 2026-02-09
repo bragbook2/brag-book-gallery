@@ -483,7 +483,7 @@ final class HTML_Renderer {
 	private static function log_debug( string $message ): void {
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( sprintf( 'BRAG Book Gallery: %s', $message ) );
+			error_log( sprintf( 'BRAG book Gallery: %s', $message ) );
 		}
 	}
 

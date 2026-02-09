@@ -17,7 +17,9 @@ declare( strict_types=1 );
 
 namespace BRAGBookGallery\Includes\Sync;
 
+use BRAGBookGallery\Includes\Core\Setup;
 use BRAGBookGallery\Includes\Core\Trait_Api;
+use BRAGBookGallery\Includes\Data\Database;
 use BRAGBookGallery\Includes\Extend\Taxonomies;
 use Exception;
 use Error;
@@ -103,7 +105,15 @@ class Data_Sync {
 	private ?Sync_Api $sync_api = null;
 
 	/**
-	 * Whether to register/report syncs to BRAG Book API
+	 * Database instance for sync registry
+	 *
+	 * @since 4.3.3
+	 * @var Database|null
+	 */
+	private ?Database $database = null;
+
+	/**
+	 * Whether to register/report syncs to BRAG book API
 	 *
 	 * @since 4.0.2
 	 * @var bool
@@ -131,6 +141,17 @@ class Data_Sync {
 			$this->init_sync_status_file();
 			$this->maybe_create_sync_table();
 			$this->init_sync_api();
+
+			// Initialize database for registry
+			try {
+				$setup = Setup::get_instance();
+				$db    = $setup->get_service( 'database' );
+				if ( $db instanceof Database ) {
+					$this->database = $db;
+				}
+			} catch ( \Exception $e ) {
+				error_log( 'BRAG book Gallery Sync: Could not initialize database for registry: ' . $e->getMessage() );
+			}
 		} catch ( Exception $e ) {
 			error_log( 'BRAG book Gallery Sync: Constructor failed with exception: ' . $e->getMessage() );
 			error_log( 'BRAG book Gallery Sync: Exception trace: ' . $e->getTraceAsString() );
@@ -140,6 +161,38 @@ class Data_Sync {
 			error_log( 'BRAG book Gallery Sync: Error trace: ' . $e->getTraceAsString() );
 			throw $e;
 		}
+	}
+
+	/**
+	 * Get API token for registry operations
+	 *
+	 * @since 4.3.3
+	 * @return string
+	 */
+	private function get_registry_api_token(): string {
+		$tokens = get_option( 'brag_book_gallery_api_token', [] );
+		return is_array( $tokens ) ? ( $tokens[0] ?? '' ) : (string) $tokens;
+	}
+
+	/**
+	 * Get website property ID for registry operations
+	 *
+	 * @since 4.3.3
+	 * @return int
+	 */
+	private function get_registry_property_id(): int {
+		$ids = get_option( 'brag_book_gallery_website_property_id', [] );
+		return is_array( $ids ) ? absint( $ids[0] ?? 0 ) : absint( $ids );
+	}
+
+	/**
+	 * Get the current sync session ID
+	 *
+	 * @since 4.3.3
+	 * @return string
+	 */
+	public function get_sync_session_id(): string {
+		return $this->sync_session_id;
 	}
 
 	/**
@@ -189,10 +242,10 @@ class Data_Sync {
 
 		$this->log_sync_start();
 
-		// Register sync with BRAG Book API
+		// Register sync with BRAG book API
 		$registration_result = $this->register_sync_with_api();
 		if ( $registration_result ) {
-			error_log( 'BRAG book Gallery Sync: Registered with BRAG Book API - Job ID: ' . ( $registration_result['job_id'] ?? 'unknown' ) );
+			error_log( 'BRAG book Gallery Sync: Registered with BRAG book API - Job ID: ' . ( $registration_result['job_id'] ?? 'unknown' ) );
 		}
 
 		// Report sync as IN_PROGRESS
@@ -221,7 +274,7 @@ class Data_Sync {
 				error_log( 'BRAG book Gallery Sync: Stage 1 failed, aborting sync' );
 				$this->log_sync_error( 'Stage 1 (procedures) failed: ' . implode( ', ', $stage1_result['errors'] ) );
 
-				// Report failure to BRAG Book API
+				// Report failure to BRAG book API
 				$this->report_sync_status(
 					Sync_Api::STATUS_FAILED,
 					0,
@@ -325,7 +378,7 @@ class Data_Sync {
 
 			error_log( 'BRAG book Gallery Sync: ===== SYNC COMPLETE =====' );
 
-			// Report sync status to BRAG Book API
+			// Report sync status to BRAG book API
 			$cases_synced  = ( $total_result['cases_created'] ?? 0 ) + ( $total_result['cases_updated'] ?? 0 );
 			$sync_status   = empty( $total_result['errors'] ) ? Sync_Api::STATUS_SUCCESS : Sync_Api::STATUS_PARTIAL;
 			$status_message = sprintf(
@@ -347,6 +400,24 @@ class Data_Sync {
 
 			$this->log_sync_complete( $total_result );
 
+			// Auto-detect and delete orphaned items
+			if ( $this->database ) {
+				try {
+					$orphan_manager = new Orphan_Manager( $this->database );
+					$orphans = $orphan_manager->detect_orphans( $this->sync_session_id, $this->get_registry_api_token() );
+					if ( ! empty( $orphans ) ) {
+						$orphan_result = $orphan_manager->delete_orphaned_items( $orphans, $this->sync_session_id );
+						error_log( sprintf(
+							'BRAG book Gallery Sync: Auto-deleted %d orphaned items (%d errors)',
+							$orphan_result['deleted'],
+							count( $orphan_result['errors'] )
+						) );
+					}
+				} catch ( \Exception $e ) {
+					error_log( 'BRAG book Gallery Sync: Orphan cleanup failed: ' . $e->getMessage() );
+				}
+			}
+
 			// Clear sync start time transient
 			delete_transient( 'brag_book_gallery_sync_start_time' );
 
@@ -357,7 +428,7 @@ class Data_Sync {
 			error_log( 'BRAG book Gallery Sync: Exception stack trace: ' . $e->getTraceAsString() );
 			$this->log_sync_error( $e->getMessage() );
 
-			// Report failure to BRAG Book API
+			// Report failure to BRAG book API
 			$this->report_sync_status(
 				Sync_Api::STATUS_FAILED,
 				0,
@@ -908,6 +979,19 @@ class Data_Sync {
 
 		// Log the operation
 		$this->log_procedure_operation( $term_id, $data, $created, $parent_id );
+
+		// Register in sync registry
+		if ( $this->database && ! empty( $data['ids'] ) && is_array( $data['ids'] ) ) {
+			$this->database->upsert_registry_item(
+				'procedure',
+				(int) $data['ids'][0],
+				$term_id,
+				'term',
+				$this->get_registry_api_token(),
+				$this->get_registry_property_id(),
+				$this->sync_session_id
+			);
+		}
 
 		return [
 			'term_id'   => $term_id,
@@ -3342,6 +3426,19 @@ class Data_Sync {
 			) );
 		}
 
+		// Register case in sync registry
+		if ( $this->database ) {
+			$this->database->upsert_registry_item(
+				'case',
+				(int) ( $case_data['caseId'] ?? 0 ),
+				$post_id,
+				'post',
+				$this->get_registry_api_token(),
+				$this->get_registry_property_id(),
+				$this->sync_session_id
+			);
+		}
+
 		return $post_id;
 	}
 
@@ -3398,6 +3495,19 @@ class Data_Sync {
 
 		// Update sync timestamp
 		update_post_meta( $post_id, 'brag_book_gallery_synced_at', current_time( 'mysql' ) );
+
+		// Register case in sync registry
+		if ( $this->database ) {
+			$this->database->upsert_registry_item(
+				'case',
+				(int) ( $case_data['caseId'] ?? 0 ),
+				$post_id,
+				'post',
+				$this->get_registry_api_token(),
+				$this->get_registry_property_id(),
+				$this->sync_session_id
+			);
+		}
 
 		return $post_id;
 	}
@@ -4415,7 +4525,7 @@ class Data_Sync {
 	}
 
 	/**
-	 * Enable or disable sync reporting to BRAG Book API
+	 * Enable or disable sync reporting to BRAG book API
 	 *
 	 * @since 4.0.2
 	 *
@@ -4428,7 +4538,7 @@ class Data_Sync {
 	}
 
 	/**
-	 * Register sync with BRAG Book API
+	 * Register sync with BRAG book API
 	 *
 	 * @since 4.0.2
 	 *
@@ -4457,7 +4567,7 @@ class Data_Sync {
 	}
 
 	/**
-	 * Report sync status to BRAG Book API
+	 * Report sync status to BRAG book API
 	 *
 	 * @since 4.0.2
 	 *
@@ -4927,6 +5037,8 @@ class Data_Sync {
 			// Update term meta
 			$this->update_doctor_term_meta( $term->term_id, $first_name, $last_name, $suffix, $member_id, $profile_url );
 
+			$this->register_doctor_in_registry( $member_id, $term->term_id );
+
 			return get_term( $term->term_id, Taxonomies::TAXONOMY_DOCTORS );
 		}
 
@@ -4955,6 +5067,8 @@ class Data_Sync {
 					$this->update_doctor_term_meta( $term->term_id, $first_name, $last_name, $suffix, $member_id, $profile_url );
 					error_log( "BRAG book Gallery Sync: Using existing doctor term '{$doctor_name}' (term ID: {$term->term_id})" );
 
+					$this->register_doctor_in_registry( $member_id, $term->term_id );
+
 					return $term;
 				}
 			}
@@ -4971,7 +5085,31 @@ class Data_Sync {
 
 		error_log( "BRAG book Gallery Sync: ✓ Created new doctor term '{$doctor_name}' (term ID: {$term_id})" );
 
+		$this->register_doctor_in_registry( $member_id, $term_id );
+
 		return get_term( $term_id, Taxonomies::TAXONOMY_DOCTORS );
+	}
+
+	/**
+	 * Register a doctor in the sync registry
+	 *
+	 * @since 4.3.3
+	 * @param int $member_id API member ID.
+	 * @param int $term_id   WordPress term ID.
+	 * @return void
+	 */
+	private function register_doctor_in_registry( int $member_id, int $term_id ): void {
+		if ( $this->database && $member_id > 0 && $term_id > 0 ) {
+			$this->database->upsert_registry_item(
+				'doctor',
+				$member_id,
+				$term_id,
+				'term',
+				$this->get_registry_api_token(),
+				$this->get_registry_property_id(),
+				$this->sync_session_id
+			);
+		}
 	}
 
 	/**

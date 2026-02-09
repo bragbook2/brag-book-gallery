@@ -4,6 +4,21 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.3.3-beta1] - 2026-02-09 (Beta Release)
+
+### Added
+- **HIPAA-Compliant Sync Registry**: New unified `wp_brag_sync_registry` table replaces the old `wp_brag_case_map` table, tracking all synced items (cases, procedures, doctors) with API-to-WordPress ID mapping
+- **Orphan Detection & Cleanup**: Detects WordPress items (posts and terms) that no longer exist in the BRAGBook API after a sync completes
+- **Orphan Manager** (`class-orphan-manager.php`): New class for orphan detection, deletion, and HIPAA-compliant audit logging (no PHI in logs)
+- **Manual Orphan Review**: Admin UI panel after Stage 3 sync shows orphaned items grouped by type with names, allowing preview before deletion
+- **Automatic Orphan Cleanup**: REST/automatic syncs auto-detect and remove orphans after successful completion
+- **AJAX Endpoints**: New `brag_book_sync_detect_orphans` and `brag_book_sync_delete_orphans` endpoints for admin orphan management
+- **Database Migration**: Automatic migration from `wp_brag_case_map` to `wp_brag_sync_registry` with data preservation (DB version 1.3.0)
+- **Multi-tenant Isolation**: Registry entries include `api_token` and `property_id` for tenant isolation
+- **Session-based Tracking**: Sync session IDs persist across batched Stage 3 HTTP requests for accurate orphan detection
+
+---
+
 ## [4.3.0] - 2025-01-19 (Stable Release)
 
 ### Fixed
@@ -81,7 +96,7 @@ This major release consolidates all features and improvements from the 3.3.2 bet
 ### Added
 - **Doctors Taxonomy**: New `brag_book_doctors` taxonomy for managing doctor profiles
   - Term meta fields: First Name, Last Name, Suffix, Profile URL, Profile Photo, and Member ID
-  - Doctors submenu in BRAG Book admin menu (when property ID 111 is enabled)
+  - Doctors submenu in BRAG book admin menu (when property ID 111 is enabled)
   - Automatic doctor term creation during Stage 3 data sync from case creator information
 - **Doctor Profile URL Field**: `brag_book_gallery_doctor_profile_url` meta field for case post types
 - **Doctor Suffix Field**: `brag_book_gallery_doctor_suffix` meta field for case post types
@@ -121,7 +136,7 @@ This major release consolidates all features and improvements from the 3.3.2 bet
 ### Added
 - **Doctors Taxonomy**: New `brag_book_doctors` taxonomy for managing doctor profiles
 - Term meta fields: First Name, Last Name, Suffix, Profile URL, Profile Photo, Member ID
-- Doctors submenu in BRAG Book admin menu (when property ID 111 is enabled)
+- Doctors submenu in BRAG book admin menu (when property ID 111 is enabled)
 - Automatic doctor term creation during Stage 3 data sync
 
 ### Enhanced
@@ -506,7 +521,7 @@ This major release consolidates all features and improvements from the 3.3.2 bet
   - Centralized favorites setting management with Settings_Helper class and static caching for performance
 - **Test Coverage**: Enhanced comprehensive test coverage for gallery functionality:
   - Gallery Cases View Tests: 7 tests covering grid display, images, interactions, load more, procedures, empty states, and responsive design
-  - Carousel Functionality Tests: 8 tests covering navigation, dots, autoplay, case information, mobile responsiveness, and touch gestures  
+  - Carousel Functionality Tests: 8 tests covering navigation, dots, autoplay, case information, mobile responsiveness, and touch gestures
   - Case Detail View Tests: 8 tests covering modal display, comprehensive information, high-quality images, demographics, case notes, action buttons, responsiveness, and error states
   - Favorites Functionality Tests: 8 tests covering favorite buttons, toggle states, localStorage persistence, favorites page display, empty states, management actions, user sync, and mobile responsiveness
 - **Documentation**:
@@ -519,7 +534,7 @@ This major release consolidates all features and improvements from the 3.3.2 bet
 
 ### Added
 - Enhanced debug tools styling
-- API endpoints improvements  
+- API endpoints improvements
 - Admin interface enhancements
 - Gallery Checker with card-based configuration display
 - Rewrite Debug with modern table styling
@@ -578,7 +593,7 @@ This major release consolidates all features and improvements from the 3.3.2 bet
 
 **Legend:**
 - 🆕 **Added**: New features
-- 🔧 **Changed**: Changes in existing functionality  
+- 🔧 **Changed**: Changes in existing functionality
 - 🚀 **Enhanced**: Improvements to existing features
 - 🐛 **Fixed**: Bug fixes
 - 🔒 **Security**: Security improvements

@@ -1424,7 +1424,7 @@ class Post_Types {
 	/**
 	 * Save API response data to post meta
 	 *
-	 * Processes and saves comprehensive case data from the BRAG Book API including:
+	 * Processes and saves comprehensive case data from the BRAG book API including:
 	 * - Basic case information
 	 * - Patient demographics
 	 * - Procedure details
@@ -1938,7 +1938,7 @@ class Post_Types {
 	}
 
 	/**
-	 * Add BRAG Book marker to attachment
+	 * Add BRAG book marker to attachment
 	 *
 	 * Placeholder for adding custom metadata to media library attachments.
 	 *

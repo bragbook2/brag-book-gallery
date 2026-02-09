@@ -2,7 +2,7 @@
 /**
  * Gallery Page Checker Tool - Enterprise-grade gallery configuration validator
  *
- * Comprehensive gallery page validation and management system for BRAG Book Gallery.
+ * Comprehensive gallery page validation and management system for BRAG book Gallery.
  * Provides advanced diagnostics, automatic fixes, and configuration optimization
  * with performance tracking and security hardening.
  *
@@ -16,10 +16,10 @@
  * - WordPress VIP compliant architecture
  * - Modern PHP 8.2+ features and type safety
  *
- * @package    BRAG BookGallery
+ * @package    BRAG bookGallery
  * @subpackage Admin\Debug_Tools
  * @since      3.0.0
- * @author     BRAG Book Development Team
+ * @author     BRAG book Development Team
  */
 
 declare(strict_types=1);

@@ -1,9 +1,9 @@
 <?php
 /**
- * Favorites Shortcode Handler for BRAG Book Gallery Plugin
+ * Favorites Shortcode Handler for BRAG book Gallery Plugin
  *
  * Comprehensive favorites management handler for displaying user's favorited cases,
- * managing email capture forms, and synchronizing with the BRAG Book API for persistent
+ * managing email capture forms, and synchronizing with the BRAG book API for persistent
  * favorites storage. Implements WordPress VIP standards with PHP 8.2+ optimizations.
  *
  * Key Features:
@@ -31,9 +31,9 @@
  * @package    BRAGBookGallery
  * @subpackage Includes\Shortcodes
  * @since      3.0.0
- * @author     BRAG Book Team
+ * @author     BRAG book Team
  * @version    3.0.0
- * @copyright  Copyright (c) 2025, BRAG Book Team
+ * @copyright  Copyright (c) 2025, BRAG book Team
  * @license    GPL-2.0-or-later
  */
 
@@ -538,7 +538,7 @@ final class Favorites_Handler {
 			$received_case_id = sanitize_text_field( $_POST['case_id'] ?? '' );
 			$procedure_id = absint( $_POST['procedure_id'] ?? 0 );
 
-			// Handle both WordPress post IDs and BRAG Book API case IDs
+			// Handle both WordPress post IDs and BRAG book API case IDs
 			$case_procedure_id = '';
 			$wp_post_id = 0;
 
@@ -567,7 +567,7 @@ final class Favorites_Handler {
 				}
 			}
 
-			// If we didn't find a WordPress post, treat received_case_id as a BRAG Book API caseProcedureId
+			// If we didn't find a WordPress post, treat received_case_id as a BRAG book API caseProcedureId
 			// Only do this if we did NOT find a valid WordPress post (wp_post_id is 0)
 			if ( empty( $case_procedure_id ) && ! empty( $received_case_id ) && 0 === $wp_post_id ) {
 				$case_procedure_id = $received_case_id; // Use it directly as caseProcedureId
@@ -576,7 +576,7 @@ final class Favorites_Handler {
 			// Debug logging for favorites troubleshooting
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 				error_log( sprintf(
-					'BRAG Book Favorites Debug - Add: received_case_id=%s, wp_post_id=%d, case_procedure_id=%s, procedure_id=%d',
+					'BRAG book Favorites Debug - Add: received_case_id=%s, wp_post_id=%d, case_procedure_id=%s, procedure_id=%d',
 					$received_case_id,
 					$wp_post_id,
 					$case_procedure_id,
@@ -608,7 +608,7 @@ final class Favorites_Handler {
 				] );
 			}
 
-			// Submit favorite to BRAG Book API using the v2 endpoint
+			// Submit favorite to BRAG book API using the v2 endpoint
 			$result = self::add_favorite_to_api( $name, $email, $phone, $case_procedure_id, $procedure_id );
 
 			if ( $result ) {
@@ -640,7 +640,7 @@ final class Favorites_Handler {
 	}
 
 	/**
-	 * Add a favorite to the BRAG Book API using v2 endpoint
+	 * Add a favorite to the BRAG book API using v2 endpoint
 	 *
 	 * @param string $name User's name.
 	 * @param string $email User's email.
@@ -713,7 +713,7 @@ final class Favorites_Handler {
 		// Debug logging for API request
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 			error_log( sprintf(
-				'BRAG Book Favorites API - Add Request: websitePropertyId=%d, caseProcedureId=%d, procedureId=%d, email=%s',
+				'BRAG book Favorites API - Add Request: websitePropertyId=%d, caseProcedureId=%d, procedureId=%d, email=%s',
 				$website_property_id,
 				$case_procedure_id_int,
 				$procedure_id,
@@ -822,7 +822,7 @@ final class Favorites_Handler {
 				] );
 			}
 
-			// Handle both WordPress post IDs and BRAG Book API case IDs
+			// Handle both WordPress post IDs and BRAG book API case IDs
 			$case_procedure_id = '';
 			$wp_post_id = 0;
 
@@ -872,7 +872,7 @@ final class Favorites_Handler {
 				}
 			}
 
-			// If we didn't find a WordPress post, treat received_case_id as a BRAG Book API caseProcedureId
+			// If we didn't find a WordPress post, treat received_case_id as a BRAG book API caseProcedureId
 			// Only do this if we did NOT find a valid WordPress post (wp_post_id is 0)
 			if ( empty( $case_procedure_id ) && ! empty( $received_case_id ) && 0 === $wp_post_id ) {
 				$case_procedure_id = $received_case_id; // Use it directly as caseProcedureId

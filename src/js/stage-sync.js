@@ -49,6 +49,17 @@ class StageSyncManager {
 		this.stage3Status = document.getElementById('stage3-status');
 		this.stage3StatusContent = document.getElementById('stage3-status-content');
 
+		// Orphan detection elements
+		this.orphanPanel = document.getElementById('orphan-detection-panel');
+		this.orphanContent = document.getElementById('orphan-detection-content');
+		this.orphanActions = document.getElementById('orphan-actions');
+		this.deleteOrphansBtn = document.getElementById('delete-orphans-btn');
+		this.skipOrphansBtn = document.getElementById('skip-orphans-btn');
+		this.orphanResult = document.getElementById('orphan-result');
+
+		// Stored orphan data for deletion
+		this.detectedOrphans = [];
+
 		this.isRunning = false;
 		this.shouldStop = false;
 		this.currentProgressInterval = null;
@@ -87,6 +98,12 @@ class StageSyncManager {
 		}
 		if (this.clearStage3StatusBtn) {
 			this.clearStage3StatusBtn.addEventListener('click', () => this.clearStage3Status());
+		}
+		if (this.deleteOrphansBtn) {
+			this.deleteOrphansBtn.addEventListener('click', () => this.deleteOrphans());
+		}
+		if (this.skipOrphansBtn) {
+			this.skipOrphansBtn.addEventListener('click', () => this.hideOrphanPanel());
 		}
 
 		// Auto-refresh file status every 30 seconds
@@ -534,6 +551,9 @@ class StageSyncManager {
 		// Refresh file status to show Stage 3 status
 		await this.checkFileStatus();
 
+		// Auto-detect orphans after Stage 3 completes
+		await this.detectOrphans();
+
 		// Hide progress after 2 seconds
 		setTimeout(() => {
 			this.fadeOut(this.stageProgress);
@@ -711,6 +731,9 @@ class StageSyncManager {
 
 			// Refresh file status to show final state
 			await this.checkFileStatus();
+
+			// Auto-detect orphans after full sync completes
+			await this.detectOrphans();
 
 			// Hide progress after 3 seconds
 			setTimeout(() => {
@@ -1010,6 +1033,228 @@ class StageSyncManager {
 		} catch (error) {
 			this.showNotice('error', `Error clearing Stage 3 status: ${error.message}`);
 		}
+	}
+
+	/**
+	 * Detect orphaned items after sync completion
+	 */
+	async detectOrphans() {
+		if (!this.orphanPanel) return;
+
+		// Show the panel with loading state
+		this.orphanPanel.style.display = 'block';
+		if (this.orphanContent) {
+			this.orphanContent.textContent = '';
+			const loadingP = document.createElement('p');
+			loadingP.className = 'description';
+			loadingP.textContent = 'Scanning for orphaned items...';
+			this.orphanContent.appendChild(loadingP);
+		}
+		if (this.orphanActions) this.orphanActions.style.display = 'none';
+		if (this.orphanResult) this.orphanResult.style.display = 'none';
+
+		try {
+			const response = await this.makeAjaxRequest('brag_book_sync_detect_orphans');
+
+			if (!response.success) {
+				this.setOrphanContentText(response.data?.message || 'Detection failed', '#d63638');
+				return;
+			}
+
+			const data = response.data;
+			const report = data.report;
+
+			if (!report || report.total === 0) {
+				this.showNoOrphans();
+				return;
+			}
+
+			this.detectedOrphans = data.orphans;
+			this.showOrphanPreview(report);
+
+		} catch (error) {
+			console.error('Orphan detection error:', error);
+			this.setOrphanContentText('Error detecting orphans: ' + error.message, '#d63638');
+		}
+	}
+
+	/**
+	 * Helper to set orphan content with plain text
+	 */
+	setOrphanContentText(text, color = '') {
+		if (!this.orphanContent) return;
+		this.orphanContent.textContent = '';
+		const p = document.createElement('p');
+		p.className = 'description';
+		if (color) p.style.color = color;
+		p.textContent = text;
+		this.orphanContent.appendChild(p);
+	}
+
+	/**
+	 * Show orphan preview grouped by type using safe DOM methods
+	 */
+	showOrphanPreview(report) {
+		if (!this.orphanContent) return;
+		this.orphanContent.textContent = '';
+
+		const heading = document.createElement('p');
+		const strong = document.createElement('strong');
+		strong.textContent = `Found ${report.total} orphaned item${report.total !== 1 ? 's' : ''}:`;
+		heading.appendChild(strong);
+		this.orphanContent.appendChild(heading);
+
+		const list = document.createElement('ul');
+		list.style.cssText = 'margin: 8px 0; padding-left: 20px;';
+
+		for (const [type, data] of Object.entries(report.by_type)) {
+			if (data.count > 0) {
+				const typeLabel = type.charAt(0).toUpperCase() + type.slice(1) + 's';
+				const li = document.createElement('li');
+				const liStrong = document.createElement('strong');
+				liStrong.textContent = `${data.count} ${typeLabel}`;
+				li.appendChild(liStrong);
+
+				if (data.items && data.items.length > 0) {
+					const subList = document.createElement('ul');
+					subList.style.cssText = 'margin: 4px 0; padding-left: 16px; font-size: 12px; color: #646970;';
+					const displayItems = data.items.slice(0, 5);
+					for (const item of displayItems) {
+						const subLi = document.createElement('li');
+						subLi.textContent = `${item.name} (API: ${item.api_id}, WP: ${item.wordpress_id})`;
+						subList.appendChild(subLi);
+					}
+					if (data.items.length > 5) {
+						const moreLi = document.createElement('li');
+						moreLi.textContent = `... and ${data.items.length - 5} more`;
+						subList.appendChild(moreLi);
+					}
+					li.appendChild(subList);
+				}
+
+				list.appendChild(li);
+			}
+		}
+
+		this.orphanContent.appendChild(list);
+
+		const warning = document.createElement('p');
+		warning.className = 'description';
+		warning.style.color = '#d63638';
+		warning.textContent = 'These items no longer exist in the API and should be removed for HIPAA compliance.';
+		this.orphanContent.appendChild(warning);
+
+		if (this.orphanActions) this.orphanActions.style.display = 'block';
+	}
+
+	/**
+	 * Show "no orphans found" message
+	 */
+	showNoOrphans() {
+		this.setOrphanContentText('No orphaned items found. All synced items are up to date.', '#00a32a');
+		if (this.orphanActions) this.orphanActions.style.display = 'none';
+
+		// Auto-hide after 5 seconds
+		setTimeout(() => {
+			this.hideOrphanPanel();
+		}, 5000);
+	}
+
+	/**
+	 * Delete detected orphans after user confirmation
+	 */
+	async deleteOrphans() {
+		if (!this.detectedOrphans || this.detectedOrphans.length === 0) {
+			this.showNotice('warning', 'No orphans to delete');
+			return;
+		}
+
+		const count = this.detectedOrphans.length;
+		const confirmed = confirm(`Are you sure you want to delete ${count} orphaned item${count !== 1 ? 's' : ''}? This action cannot be undone.`);
+		if (!confirmed) return;
+
+		if (this.deleteOrphansBtn) this.deleteOrphansBtn.disabled = true;
+		this.setOrphanContentText('Deleting orphaned items...');
+		if (this.orphanActions) this.orphanActions.style.display = 'none';
+
+		try {
+			const response = await this.makeAjaxRequest('brag_book_sync_delete_orphans', {
+				orphans: JSON.stringify(this.detectedOrphans)
+			});
+
+			if (response.success) {
+				this.showOrphanDeletionResult(response.data);
+			} else {
+				this.setOrphanContentText('Deletion failed: ' + (response.data?.message || 'Unknown error'), '#d63638');
+			}
+		} catch (error) {
+			console.error('Orphan deletion error:', error);
+			this.setOrphanContentText('Error: ' + error.message, '#d63638');
+		} finally {
+			if (this.deleteOrphansBtn) this.deleteOrphansBtn.disabled = false;
+			this.detectedOrphans = [];
+		}
+	}
+
+	/**
+	 * Show orphan deletion result using safe DOM methods
+	 */
+	showOrphanDeletionResult(data) {
+		if (!this.orphanContent) return;
+		this.orphanContent.textContent = '';
+
+		const msgP = document.createElement('p');
+		msgP.style.color = '#00a32a';
+		const msgStrong = document.createElement('strong');
+		msgStrong.textContent = data.message;
+		msgP.appendChild(msgStrong);
+		this.orphanContent.appendChild(msgP);
+
+		if (data.items && data.items.length > 0) {
+			const list = document.createElement('ul');
+			list.style.cssText = 'margin: 8px 0; padding-left: 20px; font-size: 12px;';
+			for (const item of data.items) {
+				const li = document.createElement('li');
+				li.textContent = `${item.item_type}: ${item.name} (WP ID: ${item.wordpress_id}) - deleted`;
+				list.appendChild(li);
+			}
+			this.orphanContent.appendChild(list);
+		}
+
+		if (data.errors && data.errors.length > 0) {
+			const errHeading = document.createElement('p');
+			errHeading.style.cssText = 'color: #d63638; margin-top: 8px;';
+			const errStrong = document.createElement('strong');
+			errStrong.textContent = 'Errors:';
+			errHeading.appendChild(errStrong);
+			this.orphanContent.appendChild(errHeading);
+
+			const errList = document.createElement('ul');
+			errList.style.cssText = 'padding-left: 20px; font-size: 12px; color: #d63638;';
+			for (const err of data.errors) {
+				const li = document.createElement('li');
+				li.textContent = err;
+				errList.appendChild(li);
+			}
+			this.orphanContent.appendChild(errList);
+		}
+
+		if (this.orphanActions) this.orphanActions.style.display = 'none';
+
+		// Auto-hide after 10 seconds
+		setTimeout(() => {
+			this.hideOrphanPanel();
+		}, 10000);
+	}
+
+	/**
+	 * Hide the orphan detection panel
+	 */
+	hideOrphanPanel() {
+		if (this.orphanPanel) {
+			this.fadeOut(this.orphanPanel);
+		}
+		this.detectedOrphans = [];
 	}
 
 	/**

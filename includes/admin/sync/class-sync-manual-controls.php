@@ -82,7 +82,7 @@ final class Sync_Manual_Controls {
 								</div>
 							</div>
 
-							<!-- BRAG Book Sync Status -->
+							<!-- BRAG book Sync Status -->
 							<?php $this->render_bragbook_sync_status(); ?>
 
 							<!-- Stage-Based Sync Controls -->
@@ -243,6 +243,24 @@ final class Sync_Manual_Controls {
 			<h5><?php esc_html_e( 'Stage 3 Status', 'brag-book-gallery' ); ?></h5>
 			<div id="stage3-status-content" class="stage-status-content"></div>
 		</div>
+
+		<!-- Orphan Detection Panel -->
+		<div id="orphan-detection-panel" class="stage-status-panel" style="display: none;">
+			<h5><?php esc_html_e( 'Orphan Detection', 'brag-book-gallery' ); ?></h5>
+			<div id="orphan-detection-content" class="stage-status-content">
+				<p class="description"><?php esc_html_e( 'Scanning for orphaned items...', 'brag-book-gallery' ); ?></p>
+			</div>
+			<div id="orphan-actions" style="display: none; margin-top: 10px;">
+				<button type="button" id="delete-orphans-btn" class="button button-link-delete">
+					<svg xmlns="http://www.w3.org/2000/svg" height="16px" viewBox="0 -960 960 960" width="16px" fill="currentColor" style="vertical-align: middle; margin-right: 4px;"><path d="m376-313.85 104-104 104 104L626.15-356l-104-104 104-104L584-606.15l-104 104-104-104L333.85-564l104 104-104 104L376-313.85ZM292.31-140Q262-140 241-161q-21-21-21-51.31V-720h-40v-60h180v-35.38h240V-780h180v60h-40v507.69Q740-182 719-161q-21 21-51.31 21H292.31Z"/></svg>
+					<?php esc_html_e( 'Delete Orphaned Items', 'brag-book-gallery' ); ?>
+				</button>
+				<button type="button" id="skip-orphans-btn" class="button">
+					<?php esc_html_e( 'Skip', 'brag-book-gallery' ); ?>
+				</button>
+			</div>
+			<div id="orphan-result" style="display: none; margin-top: 10px;"></div>
+		</div>
 		<?php
 	}
 
@@ -270,9 +288,9 @@ final class Sync_Manual_Controls {
 	}
 
 	/**
-	 * Render BRAG Book sync status card
+	 * Render BRAG book sync status card
 	 *
-	 * Displays the current sync job status and last report from BRAG Book API.
+	 * Displays the current sync job status and last report from BRAG book API.
 	 *
 	 * @since 4.0.2
 	 *
@@ -327,7 +345,7 @@ final class Sync_Manual_Controls {
 		<div class="bragbook-sync-status-card" id="bragbook-sync-status-card">
 			<div class="status-card-header">
 				<span class="status-icon <?php echo esc_attr( $status_class ); ?>"></span>
-				<span class="status-label"><?php esc_html_e( 'BRAG Book Status:', 'brag-book-gallery' ); ?></span>
+				<span class="status-label"><?php esc_html_e( 'BRAG book Status:', 'brag-book-gallery' ); ?></span>
 				<span class="status-text <?php echo esc_attr( $status_class ); ?>"><?php echo esc_html( $status_text ); ?></span>
 			</div>
 

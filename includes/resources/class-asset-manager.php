@@ -1,6 +1,6 @@
 <?php
 /**
- * Asset Manager Class for BRAG Book Gallery Plugin
+ * Asset Manager Class for BRAG book Gallery Plugin
  *
  * Centralizes all asset management operations including styles, scripts,
  * and custom CSS injection. Implements WordPress VIP-compliant practices
@@ -35,7 +35,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Asset Manager Class
  *
- * Provides comprehensive asset management for the BRAG Book Gallery plugin.
+ * Provides comprehensive asset management for the BRAG book Gallery plugin.
  * Implements modern WordPress asset handling patterns with performance
  * optimizations and security best practices.
  *
@@ -324,7 +324,7 @@ final class Asset_Manager {
 
 		// Debug logging in development mode (excluding sensitive data)
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
-			error_log( 'BRAG Book Debug: JavaScript configuration localized (API tokens secured server-side)' );
+			error_log( 'BRAG book Debug: JavaScript configuration localized (API tokens secured server-side)' );
 		}
 	}
 
@@ -488,7 +488,7 @@ final class Asset_Manager {
 				} catch(e) {
 					// Silently fail if localStorage is not available
 					if (typeof console !== "undefined" && console.warn) {
-						console.warn("BRAG Book Gallery: localStorage not available");
+						console.warn("BRAG book Gallery: localStorage not available");
 					}
 				}
 			})();

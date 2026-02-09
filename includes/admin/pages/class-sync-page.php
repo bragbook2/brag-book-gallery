@@ -531,12 +531,12 @@ class Sync_Page extends Settings_Base {
 
 		// Handle scheduling based on enabled state
 		if ( $auto_enabled ) {
-			// Calculate the next scheduled sync time and register with BRAG Book API
+			// Calculate the next scheduled sync time and register with BRAG book API
 			$schedule_result = $this->calculate_next_sync_time();
 			if ( $schedule_result ) {
 				$next_sync_datetime = wp_date( 'l, F j, Y \a\t g:i A', $schedule_result['timestamp'] );
 
-				// Register the scheduled sync with BRAG Book API (only if no active job)
+				// Register the scheduled sync with BRAG book API (only if no active job)
 				$sync_api = new Sync_Api();
 				if ( ! $sync_api->has_active_job() ) {
 					$registration_result = $sync_api->register_sync(
@@ -545,13 +545,13 @@ class Sync_Page extends Settings_Base {
 					);
 
 					if ( is_wp_error( $registration_result ) ) {
-						error_log( 'BRAG Book Gallery: Failed to register scheduled sync with API: ' . $registration_result->get_error_message() );
+						error_log( 'BRAG book Gallery: Failed to register scheduled sync with API: ' . $registration_result->get_error_message() );
 						$this->add_notice(
-							__( 'Automatic sync settings saved, but failed to register with BRAG Book API.', 'brag-book-gallery' ),
+							__( 'Automatic sync settings saved, but failed to register with BRAG book API.', 'brag-book-gallery' ),
 							'warning'
 						);
 					} else {
-						error_log( 'BRAG Book Gallery: Scheduled sync registered with API for ' . $schedule_result['iso_datetime'] );
+						error_log( 'BRAG book Gallery: Scheduled sync registered with API for ' . $schedule_result['iso_datetime'] );
 						$this->add_notice(
 							sprintf(
 								/* translators: %s: formatted date/time of next scheduled sync */
@@ -562,7 +562,7 @@ class Sync_Page extends Settings_Base {
 						);
 					}
 				} else {
-					error_log( 'BRAG Book Gallery: Skipped API registration - active job exists. Will register when current job completes.' );
+					error_log( 'BRAG book Gallery: Skipped API registration - active job exists. Will register when current job completes.' );
 					$this->add_notice(
 						sprintf(
 							/* translators: %s: formatted date/time of next scheduled sync */
@@ -1148,8 +1148,8 @@ class Sync_Page extends Settings_Base {
 	 * @return void
 	 */
 	public function handle_rest_sync_execution(): void {
-		error_log( 'BRAG Book Gallery: ========== REST API SYNC EXECUTION STARTED ==========' );
-		error_log( 'BRAG Book Gallery: Sync triggered via REST API' );
+		error_log( 'BRAG book Gallery: ========== REST API SYNC EXECUTION STARTED ==========' );
+		error_log( 'BRAG book Gallery: Sync triggered via REST API' );
 
 		$sync_source = 'rest_api';
 
@@ -1181,18 +1181,18 @@ class Sync_Page extends Settings_Base {
 		if ( ! empty( $settings['auto_sync_enabled'] ) ) {
 			$next_sync = $this->calculate_next_sync_time();
 			if ( $next_sync ) {
-				error_log( 'BRAG Book Gallery: Next automatic sync calculated for ' . wp_date( 'Y-m-d H:i:s', $next_sync['timestamp'] ) );
+				error_log( 'BRAG book Gallery: Next automatic sync calculated for ' . wp_date( 'Y-m-d H:i:s', $next_sync['timestamp'] ) );
 
-				// Register the NEXT scheduled sync with BRAG Book API using scheduledTime
+				// Register the NEXT scheduled sync with BRAG book API using scheduledTime
 				$registration_result = $sync_api->register_sync(
 					Sync_Api::SYNC_TYPE_AUTO,
 					$next_sync['iso_datetime']
 				);
 
 				if ( is_wp_error( $registration_result ) ) {
-					error_log( 'BRAG Book Gallery: Failed to register next scheduled sync with API: ' . $registration_result->get_error_message() );
+					error_log( 'BRAG book Gallery: Failed to register next scheduled sync with API: ' . $registration_result->get_error_message() );
 				} else {
-					error_log( 'BRAG Book Gallery: Next scheduled sync registered with API for ' . $next_sync['iso_datetime'] );
+					error_log( 'BRAG book Gallery: Next scheduled sync registered with API for ' . $next_sync['iso_datetime'] );
 
 					// Update the stored schedule info
 					update_option( 'brag_book_gallery_next_scheduled_sync', [
@@ -1207,7 +1207,7 @@ class Sync_Page extends Settings_Base {
 			}
 		}
 
-		error_log( 'BRAG Book Gallery: ========== REST API SYNC EXECUTION COMPLETED ==========' );
+		error_log( 'BRAG book Gallery: ========== REST API SYNC EXECUTION COMPLETED ==========' );
 	}
 
 	/**
@@ -1236,21 +1236,21 @@ class Sync_Page extends Settings_Base {
 		// Create initial log entry
 		if ( $database ) {
 			$log_id = $database->log_sync_operation( 'full', 'started', 0, 0, '', $sync_source );
-			error_log( 'BRAG Book Gallery: Sync log created with ID: ' . $log_id );
+			error_log( 'BRAG book Gallery: Sync log created with ID: ' . $log_id );
 		}
 
 		try {
-			error_log( 'BRAG Book Gallery: Starting REST-triggered sync using Stage-Based Sync' );
+			error_log( 'BRAG book Gallery: Starting REST-triggered sync using Stage-Based Sync' );
 
 			// Use the new stage-based sync
 			$sync = new \BRAGBookGallery\Includes\Sync\Chunked_Data_Sync();
 
 			// Run Stage 1: Fetch procedures
-			error_log( 'BRAG Book Gallery: Running Stage 1 - Fetching procedures' );
+			error_log( 'BRAG book Gallery: Running Stage 1 - Fetching procedures' );
 			$stage1_result = $sync->execute_stage_1();
 
 			if ( ! $stage1_result['success'] ) {
-				error_log( 'BRAG Book Gallery: Stage 1 failed: ' . ($stage1_result['message'] ?? 'Unknown error') );
+				error_log( 'BRAG book Gallery: Stage 1 failed: ' . ($stage1_result['message'] ?? 'Unknown error') );
 
 				// Update sync log with failure
 				if ( $database && $log_id ) {
@@ -1269,16 +1269,16 @@ class Sync_Page extends Settings_Base {
 				return;
 			}
 
-			error_log( 'BRAG Book Gallery: Stage 1 completed - ' .
+			error_log( 'BRAG book Gallery: Stage 1 completed - ' .
 				($stage1_result['procedures_created'] ?? 0) . ' created, ' .
 				($stage1_result['procedures_updated'] ?? 0) . ' updated' );
 
 			// Run Stage 2: Build manifest
-			error_log( 'BRAG Book Gallery: Running Stage 2 - Building manifest' );
+			error_log( 'BRAG book Gallery: Running Stage 2 - Building manifest' );
 			$stage2_result = $sync->execute_stage_2();
 
 			if ( ! $stage2_result['success'] ) {
-				error_log( 'BRAG Book Gallery: Stage 2 failed: ' . ($stage2_result['message'] ?? 'Unknown error') );
+				error_log( 'BRAG book Gallery: Stage 2 failed: ' . ($stage2_result['message'] ?? 'Unknown error') );
 
 				// Update sync log with failure
 				if ( $database && $log_id ) {
@@ -1297,12 +1297,12 @@ class Sync_Page extends Settings_Base {
 				return;
 			}
 
-			error_log( 'BRAG Book Gallery: Stage 2 completed - ' .
+			error_log( 'BRAG book Gallery: Stage 2 completed - ' .
 				($stage2_result['procedure_count'] ?? 0) . ' procedures, ' .
 				($stage2_result['case_count'] ?? 0) . ' cases in manifest' );
 
 			// Run Stage 3: Process cases in batches
-			error_log( 'BRAG Book Gallery: Running Stage 3 - Processing cases in batches' );
+			error_log( 'BRAG book Gallery: Running Stage 3 - Processing cases in batches' );
 
 			$total_created = 0;
 			$total_updated = 0;
@@ -1315,12 +1315,12 @@ class Sync_Page extends Settings_Base {
 
 			while ( $needs_continue && $batch_count < $max_batches ) {
 				$batch_count++;
-				error_log( "BRAG Book Gallery: Stage 3 - Processing batch {$batch_count}" );
+				error_log( "BRAG book Gallery: Stage 3 - Processing batch {$batch_count}" );
 
 				$stage3_result = $sync->execute_stage_3();
 
 				if ( ! $stage3_result['success'] ) {
-					error_log( 'BRAG Book Gallery: Stage 3 failed: ' . ($stage3_result['message'] ?? 'Unknown error') );
+					error_log( 'BRAG book Gallery: Stage 3 failed: ' . ($stage3_result['message'] ?? 'Unknown error') );
 
 					// Update sync log with failure
 					if ( $database && $log_id ) {
@@ -1347,11 +1347,11 @@ class Sync_Page extends Settings_Base {
 				$total_cases     = $stage3_result['total_cases'] ?? 0;
 				$needs_continue  = $stage3_result['needs_continue'] ?? false;
 
-				error_log( "BRAG Book Gallery: Stage 3 batch {$batch_count} - Progress: {$total_processed}/{$total_cases} cases ({$total_created} created, {$total_updated} updated, {$total_failed} failed)" );
+				error_log( "BRAG book Gallery: Stage 3 batch {$batch_count} - Progress: {$total_processed}/{$total_cases} cases ({$total_created} created, {$total_updated} updated, {$total_failed} failed)" );
 
 				// Check if we need to continue
 				if ( ! $needs_continue ) {
-					error_log( 'BRAG Book Gallery: Stage 3 completed - All cases processed' );
+					error_log( 'BRAG book Gallery: Stage 3 completed - All cases processed' );
 					$sync_success = true;
 					break;
 				}
@@ -1361,19 +1361,19 @@ class Sync_Page extends Settings_Base {
 			}
 
 			if ( $batch_count >= $max_batches ) {
-				error_log( "BRAG Book Gallery: Stage 3 stopped - Reached maximum batch limit ({$max_batches})" );
+				error_log( "BRAG book Gallery: Stage 3 stopped - Reached maximum batch limit ({$max_batches})" );
 			}
 
-			error_log( 'BRAG Book Gallery: Stage 3 final totals - ' .
+			error_log( 'BRAG book Gallery: Stage 3 final totals - ' .
 				"{$total_created} created, {$total_updated} updated, {$total_failed} failed ({$total_processed}/{$total_cases} cases)" );
 
-			error_log( 'BRAG Book Gallery: 🎉 Sync completed successfully' );
+			error_log( 'BRAG book Gallery: 🎉 Sync completed successfully' );
 
 			// Update sync log with completion
 			if ( $database && $log_id ) {
 				$status = $sync_success ? 'completed' : 'partial';
 				$database->update_sync_log( $log_id, $status, $total_processed, $total_failed );
-				error_log( 'BRAG Book Gallery: Sync log updated - Status: ' . $status . ', Processed: ' . $total_processed . ', Failed: ' . $total_failed );
+				error_log( 'BRAG book Gallery: Sync log updated - Status: ' . $status . ', Processed: ' . $total_processed . ', Failed: ' . $total_failed );
 			}
 
 			// Update sync settings with success status
@@ -1386,12 +1386,12 @@ class Sync_Page extends Settings_Base {
 			update_option( 'brag_book_gallery_last_sync_status', $settings['sync_status'] );
 
 			if ( ! $update_result ) {
-				error_log( 'BRAG Book Gallery: Failed to update sync settings after REST sync' );
+				error_log( 'BRAG book Gallery: Failed to update sync settings after REST sync' );
 			} else {
-				error_log( 'BRAG Book Gallery: Successfully updated sync settings - Status: ' . $settings['sync_status'] . ', Time: ' . $settings['last_sync_time'] );
+				error_log( 'BRAG book Gallery: Successfully updated sync settings - Status: ' . $settings['sync_status'] . ', Time: ' . $settings['last_sync_time'] );
 			}
 
-			// Report sync completion to BRAG Book API
+			// Report sync completion to BRAG book API
 			$cases_synced = $total_created + $total_updated;
 			$report_status = $sync_success ? Sync_Api::STATUS_SUCCESS : Sync_Api::STATUS_PARTIAL;
 			$status_message = sprintf(
@@ -1411,9 +1411,9 @@ class Sync_Page extends Settings_Base {
 
 		} catch ( \Exception $e ) {
 			$error_message = 'Sync failed: ' . $e->getMessage();
-			error_log( 'BRAG Book Gallery: ❌ ' . $error_message );
+			error_log( 'BRAG book Gallery: ❌ ' . $error_message );
 
-			// Report failure to BRAG Book API
+			// Report failure to BRAG book API
 			$sync_api->report_sync(
 				Sync_Api::STATUS_FAILED,
 				0,
@@ -1517,7 +1517,7 @@ class Sync_Page extends Settings_Base {
 		$api_tokens = array_filter( $api_tokens );
 
 		if ( empty( $api_tokens ) ) {
-			error_log( 'BRAG Book Gallery: BRAGbook API token not configured' );
+			error_log( 'BRAG book Gallery: BRAGbook API token not configured' );
 			return new \WP_Error(
 				'token_not_configured',
 				__( 'BRAGbook API token is not configured. Please configure it in the API Settings page.', 'brag-book-gallery' ),
@@ -1535,7 +1535,7 @@ class Sync_Page extends Settings_Base {
 		}
 
 		if ( ! $token_valid ) {
-			error_log( 'BRAG Book Gallery: Invalid BRAGbook API token provided to REST API' );
+			error_log( 'BRAG book Gallery: Invalid BRAGbook API token provided to REST API' );
 			return new \WP_Error(
 				'invalid_token',
 				__( 'Invalid authentication token.', 'brag-book-gallery' ),
@@ -1554,19 +1554,19 @@ class Sync_Page extends Settings_Base {
 	 * @return \WP_REST_Response|\WP_Error Response object or error
 	 */
 	public function handle_rest_trigger_sync( \WP_REST_Request $request ) {
-		error_log( 'BRAG Book Gallery: Sync triggered via REST API' );
+		error_log( 'BRAG book Gallery: Sync triggered via REST API' );
 
-		// Register sync with BRAG Book API before scheduling
+		// Register sync with BRAG book API before scheduling
 		$sync_api = new Sync_Api();
 		$registration_result = $sync_api->register_sync( Sync_Api::SYNC_TYPE_MANUAL );
 
 		$job_id = null;
 		if ( ! is_wp_error( $registration_result ) && isset( $registration_result['job_id'] ) ) {
 			$job_id = $registration_result['job_id'];
-			error_log( 'BRAG Book Gallery: Sync registered with BRAG Book API - Job ID: ' . $job_id );
+			error_log( 'BRAG book Gallery: Sync registered with BRAG book API - Job ID: ' . $job_id );
 		} else {
 			$error_message = is_wp_error( $registration_result ) ? $registration_result->get_error_message() : 'Unknown error';
-			error_log( 'BRAG Book Gallery: Failed to register sync with BRAG Book API: ' . $error_message );
+			error_log( 'BRAG book Gallery: Failed to register sync with BRAG book API: ' . $error_message );
 			// Continue anyway - graceful degradation
 		}
 
@@ -1626,7 +1626,7 @@ class Sync_Page extends Settings_Base {
 				$sync_day = absint( $sync_day );
 				if ( $sync_day >= 0 && $sync_day <= 6 ) {
 					$settings['sync_day'] = (string) $sync_day;
-					error_log( 'BRAG Book Gallery: Updated sync_day to ' . $sync_day . ' via REST API' );
+					error_log( 'BRAG book Gallery: Updated sync_day to ' . $sync_day . ' via REST API' );
 				}
 			}
 
@@ -1635,7 +1635,7 @@ class Sync_Page extends Settings_Base {
 				$sync_time = sanitize_text_field( $sync_time );
 				if ( preg_match( '/^([01]?[0-9]|2[0-3]):([0-5][0-9])$/', $sync_time ) ) {
 					$settings['sync_time'] = $sync_time;
-					error_log( 'BRAG Book Gallery: Updated sync_time to ' . $sync_time . ' via REST API' );
+					error_log( 'BRAG book Gallery: Updated sync_time to ' . $sync_time . ' via REST API' );
 				}
 			}
 
@@ -1648,7 +1648,7 @@ class Sync_Page extends Settings_Base {
 			// Calculate the next sync time
 			$next_sync_result = $this->calculate_next_sync_time();
 
-			// Register the scheduled sync with BRAG Book API using scheduledTime (only if no active job)
+			// Register the scheduled sync with BRAG book API using scheduledTime (only if no active job)
 			if ( $next_sync_result ) {
 				$sync_api = new Sync_Api();
 				if ( ! $sync_api->has_active_job() ) {
@@ -1658,12 +1658,12 @@ class Sync_Page extends Settings_Base {
 					);
 
 					if ( is_wp_error( $registration_result ) ) {
-						error_log( 'BRAG Book Gallery: Failed to register scheduled sync via REST API: ' . $registration_result->get_error_message() );
+						error_log( 'BRAG book Gallery: Failed to register scheduled sync via REST API: ' . $registration_result->get_error_message() );
 					} else {
-						error_log( 'BRAG Book Gallery: Scheduled sync registered with API for ' . $next_sync_result['iso_datetime'] . ' via REST API' );
+						error_log( 'BRAG book Gallery: Scheduled sync registered with API for ' . $next_sync_result['iso_datetime'] . ' via REST API' );
 					}
 				} else {
-					error_log( 'BRAG Book Gallery: Skipped API registration - active job exists. Schedule will be registered after current sync completes.' );
+					error_log( 'BRAG book Gallery: Skipped API registration - active job exists. Schedule will be registered after current sync completes.' );
 				}
 
 				// Store the scheduled time for UI display
@@ -1688,7 +1688,7 @@ class Sync_Page extends Settings_Base {
 			'website_url' => home_url(),
 			'plugin'      => [
 				'version'      => $plugin_data['Version'] ?? null,
-				'name'         => $plugin_data['Name'] ?? 'BRAG Book Gallery',
+				'name'         => $plugin_data['Name'] ?? 'BRAG book Gallery',
 				'last_updated' => $plugin_data['Version'] ? filemtime( $plugin_file ) : null,
 			],
 			'last_sync'   => [
@@ -1714,9 +1714,9 @@ class Sync_Page extends Settings_Base {
 	}
 
 	/**
-	 * Handle AJAX request to get BRAG Book sync status
+	 * Handle AJAX request to get BRAG book sync status
 	 *
-	 * Returns the current sync job status and last report data from BRAG Book API.
+	 * Returns the current sync job status and last report data from BRAG book API.
 	 *
 	 * @since 4.0.2
 	 * @return void
@@ -1852,7 +1852,7 @@ class Sync_Page extends Settings_Base {
 			" );
 		} else {
 			$deleted = 0;
-			error_log( 'BRAG Book Gallery: Could not clean up log records - column names not found' );
+			error_log( 'BRAG book Gallery: Could not clean up log records - column names not found' );
 		}
 
 		if ( $deleted !== false ) {
@@ -3525,8 +3525,8 @@ class Sync_Page extends Settings_Base {
 		$utc_datetime = new \DateTime( '@' . $timestamp, new \DateTimeZone( 'UTC' ) );
 		$iso_datetime = $utc_datetime->format( 'Y-m-d\TH:i:s\Z' ); // ISO 8601 UTC format
 
-		error_log( 'BRAG Book Gallery: Calculated next sync time: ' . wp_date( 'Y-m-d H:i:s', $timestamp ) . ' (in ' . $days_until . ' days)' );
-		error_log( 'BRAG Book Gallery: ISO 8601 datetime for API (UTC): ' . $iso_datetime );
+		error_log( 'BRAG book Gallery: Calculated next sync time: ' . wp_date( 'Y-m-d H:i:s', $timestamp ) . ' (in ' . $days_until . ' days)' );
+		error_log( 'BRAG book Gallery: ISO 8601 datetime for API (UTC): ' . $iso_datetime );
 
 		return [
 			'timestamp'    => $timestamp,
@@ -3550,7 +3550,7 @@ class Sync_Page extends Settings_Base {
 
 		// Check if auto sync is enabled
 		if ( empty( $settings['auto_sync_enabled'] ) ) {
-			error_log( 'BRAG Book Gallery: Auto sync not enabled, skipping sync scheduling' );
+			error_log( 'BRAG book Gallery: Auto sync not enabled, skipping sync scheduling' );
 			return false;
 		}
 
@@ -3567,8 +3567,8 @@ class Sync_Page extends Settings_Base {
 	 * @return void
 	 */
 	public function handle_automatic_sync_execution(): void {
-		error_log( 'BRAG Book Gallery: ========== AUTOMATIC SYNC EXECUTION STARTED ==========' );
-		error_log( 'BRAG Book Gallery: Sync triggered by weekly cron schedule' );
+		error_log( 'BRAG book Gallery: ========== AUTOMATIC SYNC EXECUTION STARTED ==========' );
+		error_log( 'BRAG book Gallery: Sync triggered by weekly cron schedule' );
 
 		$sync_source = 'automatic';
 
@@ -3590,13 +3590,13 @@ class Sync_Page extends Settings_Base {
 			$registration_result = $sync_api->register_sync( Sync_Api::SYNC_TYPE_AUTO );
 
 			if ( ! is_wp_error( $registration_result ) && isset( $registration_result['job_id'] ) ) {
-				error_log( 'BRAG Book Gallery: Auto sync registered with BRAG Book API - Job ID: ' . $registration_result['job_id'] );
+				error_log( 'BRAG book Gallery: Auto sync registered with BRAG book API - Job ID: ' . $registration_result['job_id'] );
 			} else {
 				$error_message = is_wp_error( $registration_result ) ? $registration_result->get_error_message() : 'Unknown error';
-				error_log( 'BRAG Book Gallery: Failed to register auto sync: ' . $error_message );
+				error_log( 'BRAG book Gallery: Failed to register auto sync: ' . $error_message );
 			}
 		} else {
-			error_log( 'BRAG Book Gallery: Using existing registered sync job (was scheduled in advance)' );
+			error_log( 'BRAG book Gallery: Using existing registered sync job (was scheduled in advance)' );
 		}
 
 		// Report sync as IN_PROGRESS (updates existing job status)
@@ -3614,7 +3614,7 @@ class Sync_Page extends Settings_Base {
 		// reports SUCCESS/PARTIAL, which clears the current job
 		$next_sync = $this->schedule_next_weekly_sync();
 		if ( $next_sync ) {
-			error_log( 'BRAG Book Gallery: Next automatic sync scheduled for ' . wp_date( 'Y-m-d H:i:s', $next_sync['timestamp'] ) );
+			error_log( 'BRAG book Gallery: Next automatic sync scheduled for ' . wp_date( 'Y-m-d H:i:s', $next_sync['timestamp'] ) );
 
 			// Register the NEXT scheduled sync with BRAGBook API using scheduledTime
 			// This works because execute_full_sync already reported completion and cleared the job
@@ -3624,13 +3624,13 @@ class Sync_Page extends Settings_Base {
 			);
 
 			if ( is_wp_error( $registration_result ) ) {
-				error_log( 'BRAG Book Gallery: Failed to register next scheduled sync with API: ' . $registration_result->get_error_message() );
+				error_log( 'BRAG book Gallery: Failed to register next scheduled sync with API: ' . $registration_result->get_error_message() );
 			} else {
-				error_log( 'BRAG Book Gallery: Next scheduled sync registered with API for ' . $next_sync['iso_datetime'] );
+				error_log( 'BRAG book Gallery: Next scheduled sync registered with API for ' . $next_sync['iso_datetime'] );
 			}
 		}
 
-		error_log( 'BRAG Book Gallery: ========== AUTOMATIC SYNC EXECUTION COMPLETED ==========' );
+		error_log( 'BRAG book Gallery: ========== AUTOMATIC SYNC EXECUTION COMPLETED ==========' );
 	}
 
 	/**
@@ -3656,17 +3656,17 @@ class Sync_Page extends Settings_Base {
 		// Create initial log entry
 		if ( $database ) {
 			$log_id = $database->log_sync_operation( 'full', 'started', 0, 0, '', $sync_source );
-			error_log( 'BRAG Book Gallery: Sync log created with ID: ' . $log_id . ' (source: ' . $sync_source . ')' );
+			error_log( 'BRAG book Gallery: Sync log created with ID: ' . $log_id . ' (source: ' . $sync_source . ')' );
 		}
 
 		try {
-			error_log( 'BRAG Book Gallery: Starting sync via ' . $sync_source );
+			error_log( 'BRAG book Gallery: Starting sync via ' . $sync_source );
 
 			// Use the stage-based sync
 			$sync = new \BRAGBookGallery\Includes\Sync\Chunked_Data_Sync();
 
 			// Run Stage 1: Fetch procedures
-			error_log( 'BRAG Book Gallery: Running Stage 1 - Fetching procedures' );
+			error_log( 'BRAG book Gallery: Running Stage 1 - Fetching procedures' );
 			$stage1_result = $sync->execute_stage_1();
 
 			if ( ! $stage1_result['success'] ) {
@@ -3674,10 +3674,10 @@ class Sync_Page extends Settings_Base {
 				return;
 			}
 
-			error_log( 'BRAG Book Gallery: Stage 1 completed' );
+			error_log( 'BRAG book Gallery: Stage 1 completed' );
 
 			// Run Stage 2: Build manifest
-			error_log( 'BRAG Book Gallery: Running Stage 2 - Building manifest' );
+			error_log( 'BRAG book Gallery: Running Stage 2 - Building manifest' );
 			$stage2_result = $sync->execute_stage_2();
 
 			if ( ! $stage2_result['success'] ) {
@@ -3685,10 +3685,10 @@ class Sync_Page extends Settings_Base {
 				return;
 			}
 
-			error_log( 'BRAG Book Gallery: Stage 2 completed' );
+			error_log( 'BRAG book Gallery: Stage 2 completed' );
 
 			// Run Stage 3: Process cases in batches
-			error_log( 'BRAG Book Gallery: Running Stage 3 - Processing cases' );
+			error_log( 'BRAG book Gallery: Running Stage 3 - Processing cases' );
 
 			$total_created   = 0;
 			$total_updated   = 0;
@@ -3725,7 +3725,7 @@ class Sync_Page extends Settings_Base {
 				usleep( 500000 ); // 0.5 second pause
 			}
 
-			error_log( 'BRAG Book Gallery: Stage 3 final - ' . $total_created . ' created, ' . $total_updated . ' updated, ' . $total_failed . ' failed' );
+			error_log( 'BRAG book Gallery: Stage 3 final - ' . $total_created . ' created, ' . $total_updated . ' updated, ' . $total_failed . ' failed' );
 
 			// Update sync log with completion
 			if ( $database && $log_id ) {
@@ -3754,7 +3754,7 @@ class Sync_Page extends Settings_Base {
 				'cases_synced' => $total_created + $total_updated,
 			] );
 
-			// Report sync completion to BRAG Book API
+			// Report sync completion to BRAG book API
 			$cases_synced   = $total_created + $total_updated;
 			$report_status  = $sync_success ? Sync_Api::STATUS_SUCCESS : Sync_Api::STATUS_PARTIAL;
 			$status_message = sprintf(
@@ -3773,11 +3773,11 @@ class Sync_Page extends Settings_Base {
 				$total_failed > 0 ? "Failed cases: {$total_failed}" : ''
 			);
 
-			error_log( 'BRAG Book Gallery: ' . ucfirst( $sync_source ) . ' sync completed successfully' );
+			error_log( 'BRAG book Gallery: ' . ucfirst( $sync_source ) . ' sync completed successfully' );
 
 		} catch ( \Exception $e ) {
 			$error_message = 'Sync failed: ' . $e->getMessage();
-			error_log( 'BRAG Book Gallery: ' . $error_message );
+			error_log( 'BRAG book Gallery: ' . $error_message );
 
 			$sync_api->report_sync(
 				Sync_Api::STATUS_FAILED,
@@ -3826,7 +3826,7 @@ class Sync_Page extends Settings_Base {
 	 */
 	private function handle_sync_stage_failure( array $result, string $stage_name, $database, ?int $log_id, array $settings, Sync_Api $sync_api, string $sync_source ): void {
 		$error_message = $result['message'] ?? $stage_name . ' failed';
-		error_log( 'BRAG Book Gallery: ' . $stage_name . ' failed: ' . $error_message );
+		error_log( 'BRAG book Gallery: ' . $stage_name . ' failed: ' . $error_message );
 
 		if ( $database && $log_id ) {
 			$database->update_sync_log( $log_id, 'failed', 0, 0, $error_message );
@@ -3840,7 +3840,7 @@ class Sync_Page extends Settings_Base {
 		update_option( 'brag_book_gallery_last_sync_status', 'error' );
 		update_option( 'brag_book_gallery_last_sync_source', $sync_source );
 
-		// Report failure to BRAG Book API
+		// Report failure to BRAG book API
 		$sync_api->report_sync(
 			Sync_Api::STATUS_FAILED,
 			0,

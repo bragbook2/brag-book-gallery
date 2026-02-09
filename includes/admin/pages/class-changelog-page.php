@@ -93,6 +93,34 @@ class Changelog_Page extends Settings_Base {
 				</div>
 			</div>
 
+			<!-- Version 4.3.3-beta1 -->
+			<div class="brag-book-gallery-section">
+				<div class="brag-book-gallery-changelog-version">
+					<h3>
+						<span class="version-badge version-patch">v4.3.3-beta1</span>
+						<?php esc_html_e( 'February 9, 2026', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Beta Release', 'brag-book-gallery' ); ?>
+					</h3>
+					<div class="brag-book-gallery-card">
+						<p><?php esc_html_e( 'This release adds a HIPAA-compliant sync registry for tracking all synced items and orphan detection/cleanup to remove WordPress items no longer present in the BRAGBook API.', 'brag-book-gallery' ); ?></p>
+						<h4><?php esc_html_e( '✨ New Features', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Sync Registry: New unified wp_brag_sync_registry table tracks all synced cases, procedures, and doctors with API-to-WordPress ID mapping', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Orphan Detection: Automatically detects WordPress items that no longer exist in the BRAGBook API after sync', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Orphan Cleanup UI: Admin panel shows orphaned items grouped by type with preview before deletion', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Automatic Orphan Removal: REST/automatic syncs auto-detect and remove orphans after successful completion', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'HIPAA Audit Logging: All orphan deletions are logged with no PHI - only item types, IDs, and session info', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '🔧 Technical Changes', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Database Migration: Automatic migration from wp_brag_case_map to wp_brag_sync_registry with data preservation (DB version 1.3.0)', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'New Orphan Manager class for detection, deletion, and reporting', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'New AJAX endpoints for orphan management (detect and delete)', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Session-based tracking persists across batched Stage 3 HTTP requests', 'brag-book-gallery' ); ?></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
 			<!-- Version 4.3.1 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">
@@ -224,7 +252,7 @@ class Changelog_Page extends Settings_Base {
 						<ul>
 							<li><?php esc_html_e( 'Doctors Taxonomy: New brag_book_doctors taxonomy for managing doctor profiles', 'brag-book-gallery' ); ?></li>
 							<li><?php esc_html_e( 'Term meta fields: First Name, Last Name, Suffix, Profile URL, Profile Photo, and Member ID', 'brag-book-gallery' ); ?></li>
-							<li><?php esc_html_e( 'Doctors submenu in BRAG Book admin menu (when property ID 111 is enabled)', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Doctors submenu in BRAG book admin menu (when property ID 111 is enabled)', 'brag-book-gallery' ); ?></li>
 							<li><?php esc_html_e( 'Automatic doctor term creation during Stage 3 data sync from case creator information', 'brag-book-gallery' ); ?></li>
 							<li><?php esc_html_e( 'Doctor Profile URL Field: brag_book_gallery_doctor_profile_url meta field for case post types', 'brag-book-gallery' ); ?></li>
 							<li><?php esc_html_e( 'Doctor Suffix Field: brag_book_gallery_doctor_suffix meta field for case post types', 'brag-book-gallery' ); ?></li>
@@ -274,7 +302,7 @@ class Changelog_Page extends Settings_Base {
 						<ul>
 							<li><?php esc_html_e( 'Doctors Taxonomy: New brag_book_doctors taxonomy for managing doctor profiles (visible when website property ID 111 is active)', 'brag-book-gallery' ); ?></li>
 							<li><?php esc_html_e( 'Term meta fields include: First Name, Last Name, Suffix, Profile URL, Profile Photo (media upload), and Member ID', 'brag-book-gallery' ); ?></li>
-							<li><?php esc_html_e( 'Doctors submenu added to BRAG Book admin menu when property ID 111 is enabled', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Doctors submenu added to BRAG book admin menu when property ID 111 is enabled', 'brag-book-gallery' ); ?></li>
 							<li><?php esc_html_e( 'Automatic doctor term creation during Stage 3 data sync from case creator information', 'brag-book-gallery' ); ?></li>
 						</ul>
 						<h4><?php esc_html_e( '✨ Enhancements', 'brag-book-gallery' ); ?></h4>

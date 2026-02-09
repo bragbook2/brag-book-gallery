@@ -23,7 +23,7 @@ if ( ! defined( 'WPINC' ) ) {
 /**
  * General Settings Class
  *
- * Manages the main configuration options for BRAG Book Gallery plugin.
+ * Manages the main configuration options for BRAG book Gallery plugin.
  * This class provides a comprehensive settings interface for controlling
  * gallery display, image handling, performance optimization, and advanced
  * plugin features.
@@ -1313,7 +1313,7 @@ class General_Page extends Settings_Base {
 					<?php echo esc_html( $seo_info['name'] ); ?> <?php esc_html_e( 'detected and active', 'brag-book-gallery' ); ?>
 				</p>
 				<p class="description">
-					<?php esc_html_e( 'BRAG Book Gallery is integrated with your SEO plugin for optimized meta tags and structured data.', 'brag-book-gallery' ); ?>
+					<?php esc_html_e( 'BRAG book Gallery is integrated with your SEO plugin for optimized meta tags and structured data.', 'brag-book-gallery' ); ?>
 				</p>
 			</div>
 			<?php

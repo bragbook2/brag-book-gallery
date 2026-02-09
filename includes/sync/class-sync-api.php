@@ -2,7 +2,7 @@
 /**
  * Sync API Class
  *
- * Handles communication with the BRAG Book Sync API for registering syncs
+ * Handles communication with the BRAG book Sync API for registering syncs
  * and reporting their status. Implements the two-step sync process:
  * 1. Register - Creates a SyncJob with PENDING status
  * 2. Report - Updates the job status after sync completes
@@ -30,7 +30,7 @@ if ( ! defined( 'WPINC' ) ) {
 /**
  * Sync API Class
  *
- * Manages sync registration and status reporting with the BRAG Book API.
+ * Manages sync registration and status reporting with the BRAG book API.
  *
  * @since 4.0.2
  */
@@ -89,7 +89,7 @@ class Sync_Api {
 	private const REPORT_ENDPOINT = '/api/plugin/v2/sync/report';
 
 	/**
-	 * Register a sync with the BRAG Book API
+	 * Register a sync with the BRAG book API
 	 *
 	 * Creates a SyncSite (if new) and a SyncJob with PENDING status.
 	 * Only one active (PENDING or IN_PROGRESS) job is allowed per site.
@@ -102,15 +102,15 @@ class Sync_Api {
 	 * @return array{success: bool, job_id?: int, sync_site_id?: int, status?: string, message: string, error?: string}|WP_Error
 	 */
 	public function register_sync( string $sync_type = self::SYNC_TYPE_MANUAL, ?string $scheduled_time = null ): array|WP_Error {
-		error_log( 'BRAG Book Gallery Sync API: ========== REGISTER SYNC CALLED ==========' );
-		error_log( 'BRAG Book Gallery Sync API: Sync type: ' . $sync_type );
-		error_log( 'BRAG Book Gallery Sync API: WordPress home_url(): ' . home_url() );
-		error_log( 'BRAG Book Gallery Sync API: WordPress site_url(): ' . site_url() );
+		error_log( 'BRAG book Gallery Sync API: ========== REGISTER SYNC CALLED ==========' );
+		error_log( 'BRAG book Gallery Sync API: Sync type: ' . $sync_type );
+		error_log( 'BRAG book Gallery Sync API: WordPress home_url(): ' . home_url() );
+		error_log( 'BRAG book Gallery Sync API: WordPress site_url(): ' . site_url() );
 
 		// Get website property ID for query parameter
 		$website_property_id = $this->get_website_property_id();
 		if ( empty( $website_property_id ) ) {
-			error_log( 'BRAG Book Gallery Sync API: No website property ID configured' );
+			error_log( 'BRAG book Gallery Sync API: No website property ID configured' );
 			return new WP_Error(
 				'missing_property_id',
 				__( 'Website property ID is not configured.', 'brag-book-gallery' )
@@ -135,13 +135,13 @@ class Sync_Api {
 		$response = $this->make_sync_api_request( $endpoint, $body );
 
 		if ( is_wp_error( $response ) ) {
-			error_log( 'BRAG Book Gallery Sync API: Registration failed - ' . $response->get_error_message() );
+			error_log( 'BRAG book Gallery Sync API: Registration failed - ' . $response->get_error_message() );
 			return $response;
 		}
 
 		// Check response structure
 		if ( ! isset( $response['data'] ) ) {
-			error_log( 'BRAG Book Gallery Sync API: Invalid response structure' );
+			error_log( 'BRAG book Gallery Sync API: Invalid response structure' );
 			return new WP_Error(
 				'invalid_response',
 				__( 'Invalid response from sync registration API.', 'brag-book-gallery' )
@@ -153,7 +153,7 @@ class Sync_Api {
 		// Extract sync job data
 		$sync_job = $data['syncJob'] ?? null;
 		if ( ! $sync_job ) {
-			error_log( 'BRAG Book Gallery Sync API: No syncJob in response' );
+			error_log( 'BRAG book Gallery Sync API: No syncJob in response' );
 			return new WP_Error(
 				'missing_sync_job',
 				__( 'No sync job returned from registration.', 'brag-book-gallery' )
@@ -174,7 +174,7 @@ class Sync_Api {
 
 		$this->store_current_job( $job_data );
 
-		error_log( 'BRAG Book Gallery Sync API: Registration successful - Job ID: ' . $job_data['job_id'] );
+		error_log( 'BRAG book Gallery Sync API: Registration successful - Job ID: ' . $job_data['job_id'] );
 
 		return [
 			'success'      => true,
@@ -186,7 +186,7 @@ class Sync_Api {
 	}
 
 	/**
-	 * Report sync status to the BRAG Book API
+	 * Report sync status to the BRAG book API
 	 *
 	 * Updates the job status after WordPress completes (or fails) the sync.
 	 *
@@ -205,7 +205,7 @@ class Sync_Api {
 		string $message = '',
 		string $error_log = ''
 	): array|WP_Error {
-		error_log( 'BRAG Book Gallery Sync API: Reporting sync status - ' . $status );
+		error_log( 'BRAG book Gallery Sync API: Reporting sync status - ' . $status );
 
 		// Validate status
 		$valid_statuses = [
@@ -230,7 +230,7 @@ class Sync_Api {
 		// Get website property ID for query parameter
 		$website_property_id = $this->get_website_property_id();
 		if ( empty( $website_property_id ) ) {
-			error_log( 'BRAG Book Gallery Sync API: No website property ID configured' );
+			error_log( 'BRAG book Gallery Sync API: No website property ID configured' );
 			return new WP_Error(
 				'missing_property_id',
 				__( 'Website property ID is not configured.', 'brag-book-gallery' )
@@ -263,13 +263,13 @@ class Sync_Api {
 		$response = $this->make_sync_api_request( $endpoint, $body );
 
 		if ( is_wp_error( $response ) ) {
-			error_log( 'BRAG Book Gallery Sync API: Report failed - ' . $response->get_error_message() );
+			error_log( 'BRAG book Gallery Sync API: Report failed - ' . $response->get_error_message() );
 			return $response;
 		}
 
 		// Check response structure
 		if ( ! isset( $response['data'] ) ) {
-			error_log( 'BRAG Book Gallery Sync API: Invalid response structure' );
+			error_log( 'BRAG book Gallery Sync API: Invalid response structure' );
 			return new WP_Error(
 				'invalid_response',
 				__( 'Invalid response from sync report API.', 'brag-book-gallery' )
@@ -304,7 +304,7 @@ class Sync_Api {
 		];
 		update_option( self::LAST_REPORT_OPTION_NAME, $report_data );
 
-		error_log( 'BRAG Book Gallery Sync API: Report successful - Status: ' . $status );
+		error_log( 'BRAG book Gallery Sync API: Report successful - Status: ' . $status );
 
 		// Clear job data on completion statuses
 		if ( in_array( $status, [ self::STATUS_SUCCESS, self::STATUS_FAILED, self::STATUS_PARTIAL, self::STATUS_TIMEOUT ], true ) ) {
@@ -334,7 +334,7 @@ class Sync_Api {
 	private function make_sync_api_request( string $endpoint, array $body ): array|WP_Error {
 		// Get API token for Bearer authentication
 		$api_tokens = get_option( 'brag_book_gallery_api_token', [] );
-		error_log( 'BRAG Book Gallery Sync API: Raw api_tokens option: ' . wp_json_encode( $api_tokens ) );
+		error_log( 'BRAG book Gallery Sync API: Raw api_tokens option: ' . wp_json_encode( $api_tokens ) );
 
 		if ( ! is_array( $api_tokens ) ) {
 			$api_tokens = [ $api_tokens ];
@@ -342,7 +342,7 @@ class Sync_Api {
 		$api_tokens = array_filter( $api_tokens );
 
 		if ( empty( $api_tokens ) ) {
-			error_log( 'BRAG Book Gallery Sync API: ERROR - No API tokens configured' );
+			error_log( 'BRAG book Gallery Sync API: ERROR - No API tokens configured' );
 			return new WP_Error(
 				'missing_api_token',
 				__( 'API token is not configured.', 'brag-book-gallery' )
@@ -351,10 +351,10 @@ class Sync_Api {
 
 		// Use the first token for Bearer auth
 		$api_token = reset( $api_tokens );
-		error_log( 'BRAG Book Gallery Sync API: Using token: ' . substr( $api_token, 0, 8 ) . '...' );
+		error_log( 'BRAG book Gallery Sync API: Using token: ' . substr( $api_token, 0, 8 ) . '...' );
 
 		$url = $this->get_api_base_url() . $endpoint;
-		error_log( 'BRAG Book Gallery Sync API: Base URL: ' . $this->get_api_base_url() );
+		error_log( 'BRAG book Gallery Sync API: Base URL: ' . $this->get_api_base_url() );
 
 		// Get timeout from settings
 		$timeout = intval( get_option( 'brag_book_gallery_api_timeout', 30 ) );
@@ -375,15 +375,15 @@ class Sync_Api {
 			'sslverify'   => true,
 		];
 
-		error_log( 'BRAG Book Gallery Sync API: ========== SYNC API REQUEST ==========' );
-		error_log( 'BRAG Book Gallery Sync API: Full URL: ' . $url );
-		error_log( 'BRAG Book Gallery Sync API: Request body: ' . wp_json_encode( $body ) );
-		error_log( 'BRAG Book Gallery Sync API: Authorization: Bearer ' . substr( $api_token, 0, 8 ) . '...' );
+		error_log( 'BRAG book Gallery Sync API: ========== SYNC API REQUEST ==========' );
+		error_log( 'BRAG book Gallery Sync API: Full URL: ' . $url );
+		error_log( 'BRAG book Gallery Sync API: Request body: ' . wp_json_encode( $body ) );
+		error_log( 'BRAG book Gallery Sync API: Authorization: Bearer ' . substr( $api_token, 0, 8 ) . '...' );
 
 		$response = wp_remote_request( $url, $args );
 
 		if ( is_wp_error( $response ) ) {
-			error_log( 'BRAG Book Gallery Sync API: WP_Error: ' . $response->get_error_message() );
+			error_log( 'BRAG book Gallery Sync API: WP_Error: ' . $response->get_error_message() );
 			$this->log_api_error( $endpoint, $response->get_error_message() );
 			return $response;
 		}
@@ -391,9 +391,9 @@ class Sync_Api {
 		$response_code = wp_remote_retrieve_response_code( $response );
 		$response_body = wp_remote_retrieve_body( $response );
 
-		error_log( 'BRAG Book Gallery Sync API: ========== SYNC API RESPONSE ==========' );
-		error_log( 'BRAG Book Gallery Sync API: Response code: ' . $response_code );
-		error_log( 'BRAG Book Gallery Sync API: Response body: ' . $response_body );
+		error_log( 'BRAG book Gallery Sync API: ========== SYNC API RESPONSE ==========' );
+		error_log( 'BRAG book Gallery Sync API: Response code: ' . $response_code );
+		error_log( 'BRAG book Gallery Sync API: Response body: ' . $response_body );
 
 		// Handle error responses
 		if ( $response_code < 200 || $response_code >= 300 ) {
@@ -422,7 +422,7 @@ class Sync_Api {
 				$error_message = implode( ', ', $error_message );
 			}
 
-			error_log( 'BRAG Book Gallery Sync API: Error message: ' . $error_message );
+			error_log( 'BRAG book Gallery Sync API: Error message: ' . $error_message );
 			$this->log_api_error( $endpoint, $error_message, [ 'status' => $response_code, 'body' => $response_body ] );
 
 			return new WP_Error(
@@ -457,16 +457,16 @@ class Sync_Api {
 	 */
 	private function get_website_property_id(): int|string|null {
 		$property_ids = get_option( 'brag_book_gallery_website_property_id', [] );
-		error_log( 'BRAG Book Gallery Sync API: Raw property_ids option: ' . wp_json_encode( $property_ids ) );
+		error_log( 'BRAG book Gallery Sync API: Raw property_ids option: ' . wp_json_encode( $property_ids ) );
 
 		if ( ! is_array( $property_ids ) ) {
-			error_log( 'BRAG Book Gallery Sync API: property_ids is not array, returning: ' . ( $property_ids ?: 'null' ) );
+			error_log( 'BRAG book Gallery Sync API: property_ids is not array, returning: ' . ( $property_ids ?: 'null' ) );
 			return $property_ids ?: null;
 		}
 
 		$property_ids = array_filter( $property_ids );
 		$result       = ! empty( $property_ids ) ? reset( $property_ids ) : null;
-		error_log( 'BRAG Book Gallery Sync API: Resolved property ID: ' . ( $result ?? 'null' ) );
+		error_log( 'BRAG book Gallery Sync API: Resolved property ID: ' . ( $result ?? 'null' ) );
 
 		return $result;
 	}

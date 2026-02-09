@@ -2676,7 +2676,7 @@ final class Cases_Handler {
 			}
 
 		} catch ( \Exception $e ) {
-			error_log( 'BRAG Book Gallery Load More Error: ' . $e->getMessage() );
+			error_log( 'BRAG book Gallery Load More Error: ' . $e->getMessage() );
 			wp_send_json_error( [ 'message' => 'Failed to load more cases' ] );
 		}
 	}

@@ -1,8 +1,8 @@
-# BRAG Book Gallery Plugin - Settings Documentation
+# BRAG book Gallery Plugin - Settings Documentation
 
 ## Overview
 
-This document provides a comprehensive guide to all settings and configuration options available in the BRAG Book Gallery WordPress plugin (v3.0.0+). The plugin uses a modular settings architecture with clear separation of concerns across multiple admin pages.
+This document provides a comprehensive guide to all settings and configuration options available in the BRAG book Gallery WordPress plugin (v3.0.0+). The plugin uses a modular settings architecture with clear separation of concerns across multiple admin pages.
 
 ## Table of Contents
 
@@ -20,7 +20,7 @@ This document provides a comprehensive guide to all settings and configuration o
 ## Settings Architecture
 
 ### Admin Menu Structure
-The plugin creates a dedicated "BRAG Book Gallery" menu with the following tabs:
+The plugin creates a dedicated "BRAG book Gallery" menu with the following tabs:
 - **Dashboard**: Overview and quick access to key settings
 - **General**: Display, gallery, and customization options
 - **API**: API connection and authentication settings
@@ -46,7 +46,7 @@ The `Settings_Helper` class (`includes/core/class-settings-helper.php`) provides
 ## General Settings
 
 ### Location
-**Admin Path**: BRAG Book Gallery → General
+**Admin Path**: BRAG book Gallery → General
 **File**: `includes/admin/class-settings-general.php`
 **Class**: `BRAGBookGallery\Includes\Admin\Settings_General`
 
@@ -152,7 +152,7 @@ The `Settings_Helper` class (`includes/core/class-settings-helper.php`) provides
 ## API Settings
 
 ### Location
-**Admin Path**: BRAG Book Gallery → API
+**Admin Path**: BRAG book Gallery → API
 **File**: `includes/admin/class-settings-api.php`
 **Class**: `BRAGBookGallery\Includes\Admin\Settings_Api`
 
@@ -201,7 +201,7 @@ The `Settings_Helper` class (`includes/core/class-settings-helper.php`) provides
 
 ### API Validation
 The settings page includes real-time API validation that:
-- Tests connection to BRAG Book API endpoints
+- Tests connection to BRAG book API endpoints
 - Validates token/property ID pairs
 - Provides detailed error messages
 - Shows connection status indicators
@@ -210,7 +210,7 @@ The settings page includes real-time API validation that:
 ## Mode Settings
 
 ### Location
-**Admin Path**: BRAG Book Gallery → Mode
+**Admin Path**: BRAG book Gallery → Mode
 **File**: `includes/admin/class-settings-mode.php`
 **Class**: `BRAGBookGallery\Includes\Admin\Settings_Mode`
 
@@ -224,7 +224,7 @@ The settings page includes real-time API validation that:
 - **Description**: Current operating mode of the plugin
 
 #### Default Mode (Active)
-- **API-Driven**: Content loaded dynamically from BRAG Book API
+- **API-Driven**: Content loaded dynamically from BRAG book API
 - **Virtual URLs**: Gallery pages use custom URL routing
 - **Real-Time**: Updates reflect immediately from API changes
 - **Minimal Storage**: Low database footprint
@@ -245,7 +245,7 @@ The settings page includes real-time API validation that:
 ## Debug & Diagnostic Settings
 
 ### Location
-**Admin Path**: BRAG Book Gallery → Debug
+**Admin Path**: BRAG book Gallery → Debug
 **File**: `includes/admin/class-settings-debug.php`
 **Class**: `BRAGBookGallery\Includes\Admin\Settings_Debug`
 
@@ -291,7 +291,7 @@ The settings page includes real-time API validation that:
 ## Help & Documentation
 
 ### Location
-**Admin Path**: BRAG Book Gallery → Help
+**Admin Path**: BRAG book Gallery → Help
 **File**: `includes/admin/class-settings-help.php`
 **Class**: `BRAGBookGallery\Includes\Admin\Settings_Help`
 
@@ -528,4 +528,4 @@ Enable debug logging to troubleshoot:
 
 ---
 
-This documentation covers all available settings and configuration options in the BRAG Book Gallery plugin. For additional support, use the built-in help system or contact the plugin developers.
+This documentation covers all available settings and configuration options in the BRAG book Gallery plugin. For additional support, use the built-in help system or contact the plugin developers.

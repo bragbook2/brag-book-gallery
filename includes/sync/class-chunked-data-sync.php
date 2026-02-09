@@ -2,7 +2,7 @@
 /**
  * Chunked Data Sync Class
  *
- * Handles stage-based synchronization of data from the BRAG Book API.
+ * Handles stage-based synchronization of data from the BRAG book API.
  * Stage 1: Fetch sidebar data and process procedures
  * Stage 2: Build case ID manifest
  * Stage 3: Process cases (future)
@@ -16,7 +16,9 @@ declare( strict_types=1 );
 
 namespace BRAGBookGallery\Includes\Sync;
 
+use BRAGBookGallery\Includes\Core\Setup;
 use BRAGBookGallery\Includes\Core\Trait_Api;
+use BRAGBookGallery\Includes\Data\Database;
 use BRAGBookGallery\Includes\Extend\Post_Types;
 use BRAGBookGallery\Includes\Extend\Taxonomies;
 use Exception;
@@ -42,6 +44,14 @@ class Chunked_Data_Sync {
 	private string $sync_session_id;
 
 	/**
+	 * Database instance for sync registry operations
+	 *
+	 * @since 4.3.3
+	 * @var Database|null
+	 */
+	private ?Database $database = null;
+
+	/**
 	 * Sync data directory path
 	 *
 	 * @var string
@@ -59,9 +69,59 @@ class Chunked_Data_Sync {
 	 * Constructor
 	 */
 	public function __construct() {
-		$this->sync_session_id = uniqid( 'chunked_sync_', true );
-		$this->date_string     = date( 'Y-m-d' );
+		// Check for existing session in Stage 3 state (batched persistence)
+		$state = get_option( 'brag_book_stage3_state', null );
+		if ( $state && ! empty( $state['sync_session_id'] ) ) {
+			$this->sync_session_id = $state['sync_session_id'];
+		} else {
+			$this->sync_session_id = uniqid( 'chunked_sync_', true );
+		}
+
+		$this->date_string = date( 'Y-m-d' );
 		$this->init_sync_directory();
+
+		// Initialize database dependency
+		try {
+			$setup = Setup::get_instance();
+			$db    = $setup->get_service( 'database' );
+			if ( $db instanceof Database ) {
+				$this->database = $db;
+			}
+		} catch ( \Exception $e ) {
+			error_log( 'Chunked Sync: Could not initialize database for registry: ' . $e->getMessage() );
+		}
+	}
+
+	/**
+	 * Get the current sync session ID
+	 *
+	 * @since 4.3.3
+	 * @return string
+	 */
+	public function get_sync_session_id(): string {
+		return $this->sync_session_id;
+	}
+
+	/**
+	 * Get API token for registry operations
+	 *
+	 * @since 4.3.3
+	 * @return string
+	 */
+	private function get_api_token(): string {
+		$tokens = get_option( 'brag_book_gallery_api_token', [] );
+		return is_array( $tokens ) ? ( $tokens[0] ?? '' ) : (string) $tokens;
+	}
+
+	/**
+	 * Get website property ID for registry operations
+	 *
+	 * @since 4.3.3
+	 * @return int
+	 */
+	private function get_property_id(): int {
+		$ids = get_option( 'brag_book_gallery_website_property_id', [] );
+		return is_array( $ids ) ? absint( $ids[0] ?? 0 ) : absint( $ids );
 	}
 
 	/**
@@ -428,6 +488,19 @@ class Chunked_Data_Sync {
 
 		if ( isset( $data['totalCase'] ) ) {
 			update_term_meta( $term_id, 'total_cases', absint( $data['totalCase'] ) );
+		}
+
+		// Register in sync registry
+		if ( $this->database && ! empty( $data['ids'] ) && is_array( $data['ids'] ) ) {
+			$this->database->upsert_registry_item(
+				'procedure',
+				(int) $data['ids'][0],
+				$term_id,
+				'term',
+				$this->get_api_token(),
+				$this->get_property_id(),
+				$this->sync_session_id
+			);
 		}
 
 		return [
@@ -1035,6 +1108,7 @@ class Chunked_Data_Sync {
 			'errors'          => [],
 			'procedure_index' => 0,
 			'case_index'      => 0,
+			'sync_session_id' => $this->sync_session_id,
 		];
 
 		return $this->process_batch_from_state( $state, $manifest, $batch_size );
@@ -1654,6 +1728,20 @@ class Chunked_Data_Sync {
 		// Assign doctor taxonomy if enabled (website property ID 111)
 		$this->maybe_assign_doctor_taxonomy( $post_id, $case_details );
 
+		// Register case in sync registry
+		if ( $this->database ) {
+			$this->database->upsert_registry_item(
+				'case',
+				(int) ( $case_details['caseId'] ?? 0 ),
+				$post_id,
+				'post',
+				$this->get_api_token(),
+				$this->get_property_id(),
+				$this->sync_session_id,
+				(int) $procedure_case_id
+			);
+		}
+
 		return [
 			'post_id' => $post_id,
 			'created' => $created,
@@ -1764,7 +1852,7 @@ class Chunked_Data_Sync {
 	 * Store case ordering for a procedure
 	 *
 	 * Stores the case WordPress IDs and API IDs in their API response order as term meta.
-	 * This allows maintaining the same case order as displayed in the BRAG Book system.
+	 * This allows maintaining the same case order as displayed in the BRAG book system.
 	 *
 	 * @param int $term_id WordPress term ID for the procedure
 	 * @param array $case_order Array of case data with 'wp_id' and 'api_id' keys
@@ -2035,6 +2123,9 @@ class Chunked_Data_Sync {
 			// Update term meta
 			$this->update_doctor_term_meta( $term->term_id, $first_name, $last_name, $suffix, $member_id, $profile_url );
 
+			// Register doctor in sync registry
+			$this->register_doctor_in_registry( $member_id, $term->term_id );
+
 			return get_term( $term->term_id, Taxonomies::TAXONOMY_DOCTORS );
 		}
 
@@ -2063,6 +2154,9 @@ class Chunked_Data_Sync {
 					$this->update_doctor_term_meta( $term->term_id, $first_name, $last_name, $suffix, $member_id, $profile_url );
 					error_log( "Chunked Sync: Using existing doctor term '{$doctor_name}' (term ID: {$term->term_id})" );
 
+					// Register doctor in sync registry
+					$this->register_doctor_in_registry( $member_id, $term->term_id );
+
 					return $term;
 				}
 			}
@@ -2077,9 +2171,36 @@ class Chunked_Data_Sync {
 		// Save term meta
 		$this->update_doctor_term_meta( $term_id, $first_name, $last_name, $suffix, $member_id, $profile_url );
 
+		// Register doctor in sync registry
+		$this->register_doctor_in_registry( $member_id, $term_id );
+
 		error_log( "Chunked Sync: ✓ Created new doctor term '{$doctor_name}' (term ID: {$term_id})" );
 
 		return get_term( $term_id, Taxonomies::TAXONOMY_DOCTORS );
+	}
+
+	/**
+	 * Register a doctor in the sync registry
+	 *
+	 * @since 4.3.3
+	 *
+	 * @param int $member_id API member ID.
+	 * @param int $term_id   WordPress term ID.
+	 *
+	 * @return void
+	 */
+	private function register_doctor_in_registry( int $member_id, int $term_id ): void {
+		if ( $this->database && $member_id > 0 && $term_id > 0 ) {
+			$this->database->upsert_registry_item(
+				'doctor',
+				$member_id,
+				$term_id,
+				'term',
+				$this->get_api_token(),
+				$this->get_property_id(),
+				$this->sync_session_id
+			);
+		}
 	}
 
 	/**

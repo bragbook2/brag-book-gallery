@@ -970,7 +970,7 @@ if (typeof window.BRAGbookAdmin === 'undefined') {
 									<span class="dashicons dashicons-dismiss"></span>
 								</div>
 								<div class="brag-book-gallery-dialog-message">
-									<p>You are about to <strong>completely reset</strong> the BRAG Book Gallery plugin.</p>
+									<p>You are about to <strong>completely reset</strong> the BRAG book Gallery plugin.</p>
 									<p>Please confirm one more time that you want to proceed with the factory reset.</p>
 								</div>
 							</div>

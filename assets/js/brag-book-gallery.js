@@ -11348,9 +11348,9 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _modules_utilities_js__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ./modules/utilities.js */ "./src/js/modules/utilities.js");
 /* harmony import */ var _modules_global_utilities_js__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ./modules/global-utilities.js */ "./src/js/modules/global-utilities.js");
 /**
- * BRAG Book Gallery - Main Entry Point
+ * BRAG book Gallery - Main Entry Point
  *
- * This file serves as the main entry point for the BRAG Book Gallery application.
+ * This file serves as the main entry point for the BRAG book Gallery application.
  * It imports and initializes all components in the correct order.
  */
 

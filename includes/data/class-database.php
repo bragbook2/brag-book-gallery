@@ -4,7 +4,7 @@ declare( strict_types=1 );
 /**
  * Database Manager
  *
- * Enterprise-grade database management for the BRAG Book Gallery plugin.
+ * Enterprise-grade database management for the BRAG book Gallery plugin.
  * Implements secure schema management, sync operations tracking, and
  * comprehensive caching strategies following WordPress VIP standards.
  *
@@ -55,7 +55,7 @@ class Database {
 	 * @since 3.0.0
 	 * @var string Semantic version string.
 	 */
-	private const CURRENT_DB_VERSION = '1.2.0';
+	private const CURRENT_DB_VERSION = '1.3.0';
 
 	/**
 	 * Cache group identifier for database operations.
@@ -208,6 +208,10 @@ class Database {
 					$this->migrate_to_1_2_0();
 				}
 
+				if ( version_compare( $installed_version, '1.3.0', '<' ) ) {
+					$this->migrate_to_1_3_0();
+				}
+
 				$this->create_tables();
 				$this->invalidate_all_caches();
 			}
@@ -228,7 +232,7 @@ class Database {
 	public function create_tables(): void {
 		// Create individual tables.
 		$this->create_sync_log_table();
-		$this->create_case_map_table();
+		$this->create_sync_registry_table();
 
 		// Update database version.
 		update_option( self::DB_VERSION_OPTION, self::CURRENT_DB_VERSION );
@@ -280,6 +284,61 @@ class Database {
 	}
 
 	/**
+	 * Migration to version 1.3.0
+	 *
+	 * Replaces wp_brag_case_map table with wp_brag_sync_registry
+	 * for unified sync tracking across procedures, cases, and doctors.
+	 *
+	 * @since 4.3.3
+	 * @return void
+	 */
+	private function migrate_to_1_3_0(): void {
+		$old_table = $this->table_prefix . 'case_map';
+		$new_table = $this->get_sync_registry_table();
+
+		// Create the new sync registry table first
+		$this->create_sync_registry_table();
+
+		// Migrate existing case_map rows into sync_registry
+		if ( $this->table_exists( $old_table ) ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$existing_rows = $this->wpdb->get_results(
+				"SELECT * FROM {$old_table}" // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			);
+
+			if ( ! empty( $existing_rows ) ) {
+				foreach ( $existing_rows as $row ) {
+					// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+					$this->wpdb->insert(
+						$new_table,
+						[
+							'item_type'         => 'case',
+							'api_id'            => absint( $row->api_case_id ),
+							'wordpress_id'      => absint( $row->post_id ),
+							'wordpress_type'    => 'post',
+							'api_token'         => $row->api_token,
+							'property_id'       => absint( $row->property_id ),
+							'procedure_api_id'  => 0,
+							'sync_hash'         => $row->sync_hash ?? '',
+							'last_synced'       => $row->last_synced,
+							'last_sync_session' => 'migrated_from_case_map',
+						],
+						[ '%s', '%d', '%d', '%s', '%s', '%d', '%d', '%s', '%s', '%s' ]
+					);
+				}
+				do_action( 'qm/debug', sprintf( 'Migration 1.3.0: Migrated %d rows from case_map to sync_registry', count( $existing_rows ) ) );
+			}
+
+			// Drop old table
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange
+			$this->wpdb->query( "DROP TABLE IF EXISTS `{$old_table}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			do_action( 'qm/debug', 'Migration 1.3.0: Dropped old case_map table' );
+		}
+
+		do_action( 'qm/debug', 'Database migrated to version 1.3.0: Unified sync registry created' );
+	}
+
+	/**
 	 * Create sync log table
 	 *
 	 * Creates table for tracking API sync operations and their status.
@@ -322,41 +381,43 @@ class Database {
 	}
 
 	/**
-	 * Create case mapping table
+	 * Create sync registry table
 	 *
-	 * Creates table for mapping API cases to WordPress posts.
-	 * Includes indexes for optimal query performance.
+	 * Creates unified table for tracking API-to-WordPress item mappings
+	 * across procedures, cases, and doctors.
 	 *
-	 * @since 3.0.0
+	 * @since 4.3.3
 	 * @return void
 	 */
-	private function create_case_map_table(): void {
-		$table_name = $this->table_prefix . 'case_map';
+	private function create_sync_registry_table(): void {
+		$table_name      = $this->get_sync_registry_table();
 		$charset_collate = $this->wpdb->get_charset_collate();
 
-		// Define table schema with proper indexes.
 		$sql = "CREATE TABLE {$table_name} (
 			id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-			api_case_id BIGINT UNSIGNED NOT NULL,
-			post_id BIGINT UNSIGNED NOT NULL,
+			item_type VARCHAR(20) NOT NULL,
+			api_id BIGINT UNSIGNED NOT NULL,
+			wordpress_id BIGINT UNSIGNED NOT NULL,
+			wordpress_type VARCHAR(20) NOT NULL,
 			api_token VARCHAR(255) NOT NULL,
 			property_id BIGINT UNSIGNED NOT NULL,
+			procedure_api_id BIGINT UNSIGNED DEFAULT 0,
+			sync_hash VARCHAR(32) DEFAULT '',
 			last_synced DATETIME NOT NULL,
-			sync_hash VARCHAR(32),
-			UNIQUE KEY idx_api_case (api_case_id, api_token),
-			INDEX idx_post_id (post_id),
-			INDEX idx_api_token (api_token),
-			INDEX idx_property_id (property_id)
+			last_sync_session VARCHAR(64) NOT NULL,
+			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			UNIQUE KEY idx_item_unique (item_type, api_id, api_token, procedure_api_id),
+			KEY idx_wordpress (wordpress_id, wordpress_type),
+			KEY idx_sync_session (last_sync_session),
+			KEY idx_item_type (item_type)
 		) {$charset_collate};";
 
-		// Use dbDelta for safe table creation.
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 		dbDelta( $sql );
 
-		// Log any database errors using VIP-compliant debugging
 		if ( ! empty( $this->wpdb->last_error ) ) {
 			do_action( 'qm/debug', sprintf(
-				'Error creating case_map table: %s',
+				'Error creating sync_registry table: %s',
 				$this->wpdb->last_error
 			) );
 		}
@@ -381,11 +442,22 @@ class Database {
 	 * Returns the full table name including WordPress prefix.
 	 * Uses caching to avoid repeated string concatenation.
 	 *
-	 * @since 3.0.0
+	 * @since      3.0.0
+	 * @deprecated 4.3.3 Use get_sync_registry_table() instead.
 	 * @return string Full table name.
 	 */
 	public function get_case_map_table(): string {
 		return $this->table_prefix . 'case_map';
+	}
+
+	/**
+	 * Get sync registry table name
+	 *
+	 * @since 4.3.3
+	 * @return string Full table name.
+	 */
+	public function get_sync_registry_table(): string {
+		return $this->table_prefix . 'sync_registry';
 	}
 
 	/**
@@ -594,7 +666,8 @@ class Database {
 	 * Creates or updates a mapping between an API case and a WordPress post.
 	 * Uses upsert pattern for efficiency.
 	 *
-	 * @since 3.0.0
+	 * @since      3.0.0
+	 * @deprecated 4.3.3 Use upsert_registry_item() instead.
 	 *
 	 * @param int    $api_case_id API case ID from external system.
 	 * @param int    $post_id     WordPress post ID.
@@ -611,58 +684,17 @@ class Database {
 		int $property_id,
 		string $sync_hash = ''
 	): bool {
-		$table_name = $this->get_case_map_table();
-
-		// Validate inputs.
-		if ( empty( $api_token ) || $api_case_id <= 0 || $post_id <= 0 ) {
-			return false;
-		}
-
-		// Prepare data for insertion/update.
-		$data = array(
-			'api_case_id' => absint( $api_case_id ),
-			'post_id'     => absint( $post_id ),
-			'api_token'   => sanitize_text_field( $api_token ),
-			'property_id' => absint( $property_id ),
-			'last_synced' => current_time( 'mysql' ),
-			'sync_hash'   => substr( sanitize_text_field( $sync_hash ), 0, 32 ),
+		return $this->upsert_registry_item(
+			'case',
+			$api_case_id,
+			$post_id,
+			'post',
+			$api_token,
+			$property_id,
+			'legacy_map',
+			null,
+			$sync_hash
 		);
-
-		// Check if mapping already exists.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table query
-		$existing_id = $this->wpdb->get_var(
-			$this->wpdb->prepare(
-				"SELECT id FROM {$table_name} WHERE api_case_id = %d AND api_token = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				$api_case_id,
-				$api_token
-			)
-		);
-
-		if ( $existing_id ) {
-			// Update existing mapping.
-			$result = $this->wpdb->update(
-				$table_name,
-				$data,
-				array(
-					'api_case_id' => $api_case_id,
-					'api_token'   => $api_token,
-				),
-				array( '%d', '%d', '%s', '%d', '%s', '%s' ),
-				array( '%d', '%s' )
-			);
-		} else {
-			// Insert new mapping.
-			$result = $this->wpdb->insert(
-				$table_name,
-				$data,
-				array( '%d', '%d', '%s', '%d', '%s', '%s' )
-			);
-		}
-
-		// Clear related caches.
-		$this->clear_case_cache( $api_case_id, $api_token );
-
-		return false !== $result;
 	}
 
 	/**
@@ -670,7 +702,8 @@ class Database {
 	 *
 	 * Retrieves the WordPress post ID for a given API case with caching.
 	 *
-	 * @since 3.0.0
+	 * @since      3.0.0
+	 * @deprecated 4.3.3 Use get_registry_item() instead.
 	 *
 	 * @param int    $api_case_id API case ID to look up.
 	 * @param string $api_token   API token for authentication.
@@ -685,13 +718,13 @@ class Database {
 
 		// Caching disabled
 
-		$table_name = $this->get_case_map_table();
+		$table_name = $this->get_sync_registry_table();
 
 		// Query for post ID.
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table query
 		$post_id = $this->wpdb->get_var(
 			$this->wpdb->prepare(
-				"SELECT post_id FROM {$table_name} WHERE api_case_id = %d AND api_token = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"SELECT wordpress_id FROM {$table_name} WHERE item_type = 'case' AND api_id = %d AND api_token = %s LIMIT 1", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				$api_case_id,
 				$api_token
 			)
@@ -710,7 +743,8 @@ class Database {
 	 *
 	 * Retrieves the sync hash for change detection with caching.
 	 *
-	 * @since 3.0.0
+	 * @since      3.0.0
+	 * @deprecated 4.3.3 Use get_registry_item() instead.
 	 *
 	 * @param int    $api_case_id API case ID to look up.
 	 * @param string $api_token   API token for authentication.
@@ -725,13 +759,13 @@ class Database {
 
 		// Caching disabled
 
-		$table_name = $this->get_case_map_table();
+		$table_name = $this->get_sync_registry_table();
 
 		// Query for sync hash.
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table query
 		$sync_hash = $this->wpdb->get_var(
 			$this->wpdb->prepare(
-				"SELECT sync_hash FROM {$table_name} WHERE api_case_id = %d AND api_token = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"SELECT sync_hash FROM {$table_name} WHERE item_type = 'case' AND api_id = %d AND api_token = %s LIMIT 1", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				$api_case_id,
 				$api_token
 			)
@@ -746,11 +780,247 @@ class Database {
 	}
 
 	/**
+	 * Upsert a sync registry item
+	 *
+	 * Creates or updates a mapping in the sync registry using
+	 * INSERT ... ON DUPLICATE KEY UPDATE for atomic operation.
+	 *
+	 * @since 4.3.3
+	 *
+	 * @param string   $item_type        Item type: 'case', 'procedure', or 'doctor'.
+	 * @param int      $api_id           API-side ID.
+	 * @param int      $wordpress_id     WordPress post ID or term ID.
+	 * @param string   $wordpress_type   'post' or 'term'.
+	 * @param string   $api_token        API token for multi-tenant isolation.
+	 * @param int      $property_id      Website property ID.
+	 * @param string   $sync_session_id  Current sync session identifier.
+	 * @param int|null $procedure_api_id For cases: procedure-specific API ID.
+	 * @param string   $sync_hash        MD5 hash for change detection.
+	 *
+	 * @return bool True on success, false on failure.
+	 */
+	public function upsert_registry_item(
+		string $item_type,
+		int $api_id,
+		int $wordpress_id,
+		string $wordpress_type,
+		string $api_token,
+		int $property_id,
+		string $sync_session_id,
+		?int $procedure_api_id = null,
+		string $sync_hash = ''
+	): bool {
+		$table_name = $this->get_sync_registry_table();
+
+		if ( empty( $api_token ) || $api_id <= 0 || $wordpress_id <= 0 ) {
+			return false;
+		}
+
+		$procedure_id_val = $procedure_api_id ?? 0;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$result = $this->wpdb->query(
+			$this->wpdb->prepare(
+				"INSERT INTO {$table_name} (item_type, api_id, wordpress_id, wordpress_type, api_token, property_id, procedure_api_id, sync_hash, last_synced, last_sync_session)
+				VALUES (%s, %d, %d, %s, %s, %d, %d, %s, %s, %s)
+				ON DUPLICATE KEY UPDATE
+					wordpress_id = VALUES(wordpress_id),
+					wordpress_type = VALUES(wordpress_type),
+					property_id = VALUES(property_id),
+					sync_hash = VALUES(sync_hash),
+					last_synced = VALUES(last_synced),
+					last_sync_session = VALUES(last_sync_session)", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$item_type,
+				$api_id,
+				$wordpress_id,
+				$wordpress_type,
+				$api_token,
+				$property_id,
+				$procedure_id_val,
+				substr( $sync_hash, 0, 32 ),
+				current_time( 'mysql' ),
+				$sync_session_id
+			)
+		);
+
+		return false !== $result;
+	}
+
+	/**
+	 * Find orphaned items by sync session
+	 *
+	 * Returns registry rows where the last_sync_session does not match
+	 * the current session, indicating items no longer present in the API.
+	 *
+	 * @since 4.3.3
+	 *
+	 * @param string      $current_session Current sync session ID.
+	 * @param string      $api_token       API token for tenant isolation.
+	 * @param string|null $item_type       Optional: filter by item type.
+	 *
+	 * @return array Array of orphaned registry row objects.
+	 */
+	public function find_orphans_by_session( string $current_session, string $api_token, ?string $item_type = null ): array {
+		$table_name = $this->get_sync_registry_table();
+
+		if ( empty( $current_session ) || empty( $api_token ) ) {
+			return [];
+		}
+
+		$sql = "SELECT * FROM {$table_name} WHERE last_sync_session != %s AND api_token = %s"; // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$params = [ $current_session, $api_token ];
+
+		if ( $item_type ) {
+			$sql .= ' AND item_type = %s';
+			$params[] = $item_type;
+		}
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$results = $this->wpdb->get_results(
+			$this->wpdb->prepare( $sql, ...$params ) // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		);
+
+		return is_array( $results ) ? $results : [];
+	}
+
+	/**
+	 * Delete registry items by ID
+	 *
+	 * Bulk deletes registry rows by their primary key IDs.
+	 *
+	 * @since 4.3.3
+	 *
+	 * @param array $registry_ids Array of registry row IDs to delete.
+	 *
+	 * @return int Number of rows deleted.
+	 */
+	public function delete_registry_items( array $registry_ids ): int {
+		if ( empty( $registry_ids ) ) {
+			return 0;
+		}
+
+		$table_name = $this->get_sync_registry_table();
+		$ids        = array_map( 'absint', $registry_ids );
+		$ids        = array_filter( $ids );
+
+		if ( empty( $ids ) ) {
+			return 0;
+		}
+
+		$placeholders = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$deleted = $this->wpdb->query(
+			$this->wpdb->prepare(
+				"DELETE FROM {$table_name} WHERE id IN ({$placeholders})", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				...$ids
+			)
+		);
+
+		return absint( $deleted );
+	}
+
+	/**
+	 * Remove registry entry by WordPress ID
+	 *
+	 * Cleanup method for when a WordPress item is manually deleted.
+	 *
+	 * @since 4.3.3
+	 *
+	 * @param int    $wordpress_id   WordPress post or term ID.
+	 * @param string $wordpress_type 'post' or 'term'.
+	 *
+	 * @return bool True on success, false on failure.
+	 */
+	public function remove_registry_by_wordpress_id( int $wordpress_id, string $wordpress_type ): bool {
+		if ( $wordpress_id <= 0 || empty( $wordpress_type ) ) {
+			return false;
+		}
+
+		$table_name = $this->get_sync_registry_table();
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$result = $this->wpdb->delete(
+			$table_name,
+			[
+				'wordpress_id'   => $wordpress_id,
+				'wordpress_type' => $wordpress_type,
+			],
+			[ '%d', '%s' ]
+		);
+
+		return false !== $result;
+	}
+
+	/**
+	 * Get a single registry item
+	 *
+	 * @since 4.3.3
+	 *
+	 * @param string   $item_type        Item type.
+	 * @param int      $api_id           API-side ID.
+	 * @param string   $api_token        API token.
+	 * @param int|null $procedure_api_id Optional procedure API ID.
+	 *
+	 * @return object|null Registry row or null if not found.
+	 */
+	public function get_registry_item( string $item_type, int $api_id, string $api_token, ?int $procedure_api_id = null ): ?object {
+		$table_name       = $this->get_sync_registry_table();
+		$procedure_id_val = $procedure_api_id ?? 0;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$result = $this->wpdb->get_row(
+			$this->wpdb->prepare(
+				"SELECT * FROM {$table_name} WHERE item_type = %s AND api_id = %d AND api_token = %s AND procedure_api_id = %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$item_type,
+				$api_id,
+				$api_token,
+				$procedure_id_val
+			)
+		);
+
+		return $result ?: null;
+	}
+
+	/**
+	 * Get registry statistics grouped by item type
+	 *
+	 * @since 4.3.3
+	 *
+	 * @return array Counts keyed by item_type.
+	 */
+	public function get_registry_stats(): array {
+		$table_name = $this->get_sync_registry_table();
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$results = $this->wpdb->get_results(
+			"SELECT item_type, COUNT(*) as count FROM {$table_name} GROUP BY item_type" // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		);
+
+		$stats = [
+			'case'      => 0,
+			'procedure' => 0,
+			'doctor'    => 0,
+			'total'     => 0,
+		];
+
+		if ( is_array( $results ) ) {
+			foreach ( $results as $row ) {
+				$stats[ $row->item_type ] = absint( $row->count );
+				$stats['total']          += absint( $row->count );
+			}
+		}
+
+		return $stats;
+	}
+
+	/**
 	 * Remove case mapping
 	 *
 	 * Deletes a case-to-post mapping from the database.
 	 *
-	 * @since 3.0.0
+	 * @since      3.0.0
+	 * @deprecated 4.3.3 Use delete_registry_items() or remove_registry_by_wordpress_id() instead.
 	 *
 	 * @param int    $api_case_id API case ID to remove.
 	 * @param string $api_token   API token for authentication.
@@ -763,16 +1033,16 @@ class Database {
 			return false;
 		}
 
-		$table_name = $this->get_case_map_table();
+		$table_name = $this->get_sync_registry_table();
 
-		// Delete the mapping.
-		$result = $this->wpdb->delete(
-			$table_name,
-			array(
-				'api_case_id' => absint( $api_case_id ),
-				'api_token'   => sanitize_text_field( $api_token ),
-			),
-			array( '%d', '%s' )
+		// Delete the mapping from the sync registry.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$result = $this->wpdb->query(
+			$this->wpdb->prepare(
+				"DELETE FROM {$table_name} WHERE item_type = 'case' AND api_id = %d AND api_token = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$api_case_id,
+				$api_token
+			)
 		);
 
 		// Clear related caches.
@@ -793,8 +1063,8 @@ class Database {
 	public function get_sync_stats(): array {
 		// Caching disabled
 
-		$sync_log_table = $this->get_sync_log_table();
-		$case_map_table = $this->get_case_map_table();
+		$sync_log_table      = $this->get_sync_log_table();
+		$sync_registry_table = $this->get_sync_registry_table();
 
 		// Default stats structure.
 		$default_stats = array(
@@ -832,7 +1102,7 @@ class Database {
 		// Get total mapped cases.
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Aggregation query
 		$total_mapped_cases = $this->wpdb->get_var(
-			"SELECT COUNT(*) FROM {$case_map_table}" // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			"SELECT COUNT(*) FROM {$sync_registry_table} WHERE item_type = 'case'" // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		);
 
 		// Get last sync time.
@@ -929,8 +1199,9 @@ class Database {
 			return;
 		}
 
-		$sync_log_table = $this->get_sync_log_table();
-		$case_map_table = $this->get_case_map_table();
+		$sync_log_table      = $this->get_sync_log_table();
+		$case_map_table      = $this->get_case_map_table();
+		$sync_registry_table = $this->get_sync_registry_table();
 
 		// Drop tables using proper escaping.
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- Uninstall routine
@@ -938,6 +1209,9 @@ class Database {
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- Uninstall routine
 		$this->wpdb->query( "DROP TABLE IF EXISTS `{$case_map_table}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- Uninstall routine
+		$this->wpdb->query( "DROP TABLE IF EXISTS `{$sync_registry_table}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 
 		// Remove database version option.
 		delete_option( self::DB_VERSION_OPTION );

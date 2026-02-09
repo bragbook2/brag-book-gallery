@@ -52,6 +52,10 @@ class Sync_Ajax_Handler {
 		add_action( 'wp_ajax_brag_book_sync_delete_file', [ self::class, 'handle_delete_file' ] );
 		add_action( 'wp_ajax_brag_book_sync_clear_stage3_status', [ self::class, 'handle_clear_stage3_status' ] );
 
+		// Orphan detection and deletion endpoints
+		add_action( 'wp_ajax_brag_book_sync_detect_orphans', [ self::class, 'handle_detect_orphans' ] );
+		add_action( 'wp_ajax_brag_book_sync_delete_orphans', [ self::class, 'handle_delete_orphans' ] );
+
 		// Legacy endpoints for backward compatibility
 		add_action( 'wp_ajax_brag_book_sync_data', [ self::class, 'handle_sync_start' ] );
 	}
@@ -323,12 +327,12 @@ class Sync_Ajax_Handler {
 			wp_send_json_error( 'Invalid nonce' );
 		}
 
-		// Register sync with BRAG Book API
+		// Register sync with BRAG book API
 		$sync_api = new Sync_Api();
 		$registration_result = $sync_api->register_sync( Sync_Api::SYNC_TYPE_MANUAL );
 
 		if ( ! is_wp_error( $registration_result ) && isset( $registration_result['job_id'] ) ) {
-			error_log( 'AJAX: Stage 1 - Registered with BRAG Book API - Job ID: ' . $registration_result['job_id'] );
+			error_log( 'AJAX: Stage 1 - Registered with BRAG book API - Job ID: ' . $registration_result['job_id'] );
 
 			// Report IN_PROGRESS status
 			$sync_api->report_sync(
@@ -338,7 +342,7 @@ class Sync_Ajax_Handler {
 			);
 		} else {
 			$error_msg = is_wp_error( $registration_result ) ? $registration_result->get_error_message() : 'Unknown error';
-			error_log( 'AJAX: Stage 1 - Failed to register with BRAG Book API: ' . $error_msg );
+			error_log( 'AJAX: Stage 1 - Failed to register with BRAG book API: ' . $error_msg );
 			// Continue anyway - graceful degradation
 		}
 
@@ -543,9 +547,12 @@ class Sync_Ajax_Handler {
 				update_option( 'brag_book_gallery_last_sync_time', current_time( 'mysql' ) );
 				update_option( 'brag_book_gallery_last_sync_status', 'success' );
 
-				// Report to BRAG Book API when sync is complete (not continuing)
+				// Report to BRAG book API when sync is complete (not continuing)
 				$needs_continue = $result['needs_continue'] ?? false;
 				if ( ! $needs_continue ) {
+					// Save sync session ID for orphan detection
+					update_option( 'brag_book_last_sync_session', $sync->get_sync_session_id(), false );
+
 					$sync_api = new Sync_Api();
 					$cases_synced = ( $result['processed_cases'] ?? 0 );
 					$failed_cases = ( $result['failed_cases'] ?? 0 );
@@ -561,7 +568,7 @@ class Sync_Ajax_Handler {
 					);
 
 					$sync_api->report_sync( $status, $cases_synced, $message );
-					error_log( 'AJAX: Stage 3 - Reported ' . $status . ' to BRAG Book API' );
+					error_log( 'AJAX: Stage 3 - Reported ' . $status . ' to BRAG book API' );
 				}
 
 				wp_send_json_success( $result );
@@ -573,14 +580,14 @@ class Sync_Ajax_Handler {
 
 				update_option( 'brag_book_gallery_last_sync_status', 'error' );
 
-				// Report failure to BRAG Book API
+				// Report failure to BRAG book API
 				$sync_api = new Sync_Api();
 				$sync_api->report_sync(
 					Sync_Api::STATUS_FAILED,
 					0,
 					'Stage 3 failed: ' . ( $result['message'] ?? 'Unknown error' )
 				);
-				error_log( 'AJAX: Stage 3 - Reported FAILED to BRAG Book API' );
+				error_log( 'AJAX: Stage 3 - Reported FAILED to BRAG book API' );
 
 				wp_send_json_error( $result );
 			}
@@ -596,7 +603,7 @@ class Sync_Ajax_Handler {
 
 			update_option( 'brag_book_gallery_last_sync_status', 'error' );
 
-			// Report failure to BRAG Book API
+			// Report failure to BRAG book API
 			$sync_api = new Sync_Api();
 			$sync_api->report_sync(
 				Sync_Api::STATUS_FAILED,
@@ -620,7 +627,7 @@ class Sync_Ajax_Handler {
 
 			update_option( 'brag_book_gallery_last_sync_status', 'error' );
 
-			// Report failure to BRAG Book API
+			// Report failure to BRAG book API
 			$sync_api = new Sync_Api();
 			$sync_api->report_sync(
 				Sync_Api::STATUS_FAILED,
@@ -942,6 +949,130 @@ class Sync_Ajax_Handler {
 		} catch ( \Exception $e ) {
 			error_log( 'Clear Stage 3 status error: ' . $e->getMessage() );
 			wp_send_json_error( 'Error clearing Stage 3 status: ' . $e->getMessage() );
+		}
+	}
+
+	/**
+	 * Handle orphan detection request
+	 *
+	 * Detects orphaned WordPress items that are no longer present in the API
+	 * based on the last completed sync session.
+	 *
+	 * @since 4.3.3
+	 * @return void
+	 */
+	public static function handle_detect_orphans(): void {
+		// Check permissions
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( 'Insufficient permissions' );
+		}
+
+		// Verify nonce
+		if ( ! check_ajax_referer( 'brag_book_gallery_sync', 'nonce', false ) ) {
+			wp_send_json_error( 'Invalid nonce' );
+		}
+
+		try {
+			$sync_session_id = get_option( 'brag_book_last_sync_session', '' );
+
+			if ( empty( $sync_session_id ) ) {
+				wp_send_json_success( [
+					'orphans' => [],
+					'report'  => [ 'total' => 0, 'by_type' => [] ],
+					'message' => 'No sync session found. Run a full sync first.',
+				] );
+				return;
+			}
+
+			$setup    = \BRAGBookGallery\Includes\Core\Setup::get_instance();
+			$database = $setup->get_service( 'database' );
+
+			if ( ! $database ) {
+				wp_send_json_error( 'Database service not available' );
+				return;
+			}
+
+			$api_tokens = get_option( 'brag_book_gallery_api_token', [] );
+			$api_token  = is_array( $api_tokens ) ? ( $api_tokens[0] ?? '' ) : (string) $api_tokens;
+
+			if ( empty( $api_token ) ) {
+				wp_send_json_error( 'No API token configured' );
+				return;
+			}
+
+			$orphan_manager = new Orphan_Manager( $database );
+			$orphans        = $orphan_manager->detect_orphans( $sync_session_id, $api_token );
+			$report         = $orphan_manager->generate_orphan_report( $orphans );
+
+			wp_send_json_success( [
+				'orphans' => $orphans,
+				'report'  => $report,
+				'message' => $report['total'] > 0
+					? sprintf( 'Found %d orphaned items', $report['total'] )
+					: 'No orphaned items found',
+			] );
+
+		} catch ( \Exception $e ) {
+			error_log( 'Orphan detection error: ' . $e->getMessage() );
+			wp_send_json_error( 'Error detecting orphans: ' . $e->getMessage() );
+		}
+	}
+
+	/**
+	 * Handle orphan deletion request
+	 *
+	 * Deletes orphaned WordPress items and their sync registry entries.
+	 *
+	 * @since 4.3.3
+	 * @return void
+	 */
+	public static function handle_delete_orphans(): void {
+		// Check permissions
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( 'Insufficient permissions' );
+		}
+
+		// Verify nonce
+		if ( ! check_ajax_referer( 'brag_book_gallery_sync', 'nonce', false ) ) {
+			wp_send_json_error( 'Invalid nonce' );
+		}
+
+		try {
+			// Get orphan data from POST - expects JSON array of orphan objects
+			$orphans_json = sanitize_text_field( wp_unslash( $_POST['orphans'] ?? '[]' ) );
+			$orphans      = json_decode( $orphans_json, true );
+
+			if ( ! is_array( $orphans ) || empty( $orphans ) ) {
+				wp_send_json_error( 'No orphans provided for deletion' );
+				return;
+			}
+
+			$setup    = \BRAGBookGallery\Includes\Core\Setup::get_instance();
+			$database = $setup->get_service( 'database' );
+
+			if ( ! $database ) {
+				wp_send_json_error( 'Database service not available' );
+				return;
+			}
+
+			$sync_session_id = get_option( 'brag_book_last_sync_session', 'manual_delete' );
+			$orphan_manager  = new Orphan_Manager( $database );
+			$result          = $orphan_manager->delete_orphaned_items( $orphans, $sync_session_id );
+
+			wp_send_json_success( [
+				'deleted' => $result['deleted'],
+				'errors'  => $result['errors'],
+				'items'   => $result['items'],
+				'message' => sprintf(
+					'Deleted %d orphaned items%s',
+					$result['deleted'],
+					! empty( $result['errors'] ) ? sprintf( ' (%d errors)', count( $result['errors'] ) ) : ''
+				),
+			] );
+
+		} catch ( \Exception $e ) {
+			error_log( 'Orphan deletion error: ' . $e->getMessage() );
+			wp_send_json_error( 'Error deleting orphans: ' . $e->getMessage() );
 		}
 	}
 }

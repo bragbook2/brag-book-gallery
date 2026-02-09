@@ -107,12 +107,12 @@ final class Sync_Automatic_Settings {
 	/**
 	 * Render cron status display
 	 *
-	 * Shows the current sync status from BRAG Book API.
+	 * Shows the current sync status from BRAG book API.
 	 * Note: WordPress cron is not used for automatic sync scheduling.
 	 * The BRAGBook application handles sync triggering via REST API.
 	 *
 	 * @since 3.3.0
-	 * @since 4.0.2 Added BRAG Book sync status display
+	 * @since 4.0.2 Added BRAG book sync status display
 	 * @since 4.3.0 Added active sync status display, removed WordPress cron display
 	 *
 	 * @return void Outputs HTML directly
@@ -121,7 +121,7 @@ final class Sync_Automatic_Settings {
 		// Render active sync status if there's one in progress
 		$this->render_active_sync_status();
 
-		// Render BRAG Book sync status (this shows next scheduled sync from API)
+		// Render BRAG book sync status (this shows next scheduled sync from API)
 		$this->render_bragbook_sync_status();
 	}
 
@@ -328,9 +328,9 @@ final class Sync_Automatic_Settings {
 	}
 
 	/**
-	 * Render BRAG Book sync status
+	 * Render BRAG book sync status
 	 *
-	 * Displays the current sync registration status with BRAG Book including
+	 * Displays the current sync registration status with BRAG book including
 	 * last sync, next scheduled sync, and current job status.
 	 *
 	 * @since 4.0.2
@@ -352,11 +352,11 @@ final class Sync_Automatic_Settings {
 			<div class="bragbook-auto-sync-status status-not-configured">
 				<div class="status-header">
 					<span class="status-icon"></span>
-					<span class="status-title"><?php esc_html_e( 'BRAG Book Sync Status', 'brag-book-gallery' ); ?></span>
+					<span class="status-title"><?php esc_html_e( 'BRAG book Sync Status', 'brag-book-gallery' ); ?></span>
 				</div>
 				<div class="status-content">
 					<p class="status-message">
-						<?php esc_html_e( 'API credentials not configured. Configure your API token and Website Property ID in the API Settings to enable sync registration with BRAG Book.', 'brag-book-gallery' ); ?>
+						<?php esc_html_e( 'API credentials not configured. Configure your API token and Website Property ID in the API Settings to enable sync registration with BRAG book.', 'brag-book-gallery' ); ?>
 					</p>
 				</div>
 			</div>
@@ -394,7 +394,7 @@ final class Sync_Automatic_Settings {
 		<div class="bragbook-auto-sync-status <?php echo esc_attr( $status_class ); ?>" id="bragbook-auto-sync-status">
 			<div class="status-header">
 				<span class="status-icon"></span>
-				<span class="status-title"><?php esc_html_e( 'BRAG Book Sync Status', 'brag-book-gallery' ); ?></span>
+				<span class="status-title"><?php esc_html_e( 'BRAG book Sync Status', 'brag-book-gallery' ); ?></span>
 				<span class="status-badge"><?php echo esc_html( $status_label ); ?></span>
 			</div>
 
@@ -425,10 +425,10 @@ final class Sync_Automatic_Settings {
 							</div>
 						<?php endif; ?>
 
-						<!-- Next Scheduled Sync from BRAG Book -->
+						<!-- Next Scheduled Sync from BRAG book -->
 						<?php if ( ! empty( $last_report['next_sync']['scheduledAt'] ) ) : ?>
 							<div class="status-item next-sync">
-								<span class="item-label"><?php esc_html_e( 'Next BRAG Book Sync', 'brag-book-gallery' ); ?></span>
+								<span class="item-label"><?php esc_html_e( 'Next BRAG book Sync', 'brag-book-gallery' ); ?></span>
 								<span class="item-value">
 									<?php
 									$next_time = strtotime( $last_report['next_sync']['scheduledAt'] );
@@ -459,7 +459,7 @@ final class Sync_Automatic_Settings {
 					<?php else : ?>
 						<div class="status-item">
 							<span class="item-label"><?php esc_html_e( 'Status', 'brag-book-gallery' ); ?></span>
-							<span class="item-value"><?php esc_html_e( 'No sync has been reported to BRAG Book yet. Run a sync to register with the BRAG Book application.', 'brag-book-gallery' ); ?></span>
+							<span class="item-value"><?php esc_html_e( 'No sync has been reported to BRAG book yet. Run a sync to register with the BRAG book application.', 'brag-book-gallery' ); ?></span>
 						</div>
 					<?php endif; ?>
 
