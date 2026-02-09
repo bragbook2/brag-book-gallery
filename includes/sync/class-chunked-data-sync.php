@@ -344,7 +344,7 @@ class Chunked_Data_Sync {
 	 * @return array Sync data
 	 * @throws Exception If file cannot be read
 	 */
-	private function load_sync_data(): array {
+	public function load_sync_data(): array {
 		$file_path = $this->get_sync_data_file();
 
 		if ( ! file_exists( $file_path ) ) {
@@ -818,7 +818,7 @@ class Chunked_Data_Sync {
 	 * @return array Manifest data
 	 * @throws Exception If file cannot be read
 	 */
-	private function load_manifest(): array {
+	public function load_manifest(): array {
 		$file_path = $this->get_manifest_file();
 
 		if ( ! file_exists( $file_path ) ) {

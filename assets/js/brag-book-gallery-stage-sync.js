@@ -728,8 +728,16 @@ class StageSyncManager {
     return this._isRunning;
   }
   set isRunning(value) {
+    const wasRunning = this._isRunning;
     this._isRunning = value;
     this.setSyncWarningVisible(value);
+
+    // Notify sync-admin status card to refresh when sync finishes
+    if (wasRunning && !value) {
+      document.dispatchEvent(new CustomEvent('bragbook-sync-completed'));
+    } else if (!wasRunning && value) {
+      document.dispatchEvent(new CustomEvent('bragbook-sync-started'));
+    }
   }
 
   /**
@@ -957,7 +965,11 @@ class StageSyncManager {
   async executeStage1Confirmed() {
     this.isRunning = true;
     if (this.stage1Btn) this.stage1Btn.disabled = true;
-    this.showProgress('Stage 1: Fetching sidebar data...');
+    this.showProgress('Stage 1: Cleaning previous sync data...');
+
+    // Clean previous sync artifacts since new data invalidates them
+    await this.cleanPreviousSyncData();
+    this.showProgress('Stage 1: Fetching terms data...');
     try {
       const response = await this.makeAjaxRequest('brag_book_sync_stage_1');
       if (response.success) {
@@ -1215,6 +1227,10 @@ class StageSyncManager {
     this.setAllButtonsDisabled(true);
     this.showStopButton(true);
     try {
+      // Clean previous sync artifacts before starting fresh
+      this.showProgress('Full Sync - Cleaning previous sync data...', 0);
+      await this.cleanPreviousSyncData();
+
       // Stage 1
       this.showProgress('Full Sync - Stage 1: Fetching procedures...', 0);
       const stage1Response = await this.makeAjaxRequest('brag_book_sync_stage_1');
@@ -1378,6 +1394,25 @@ class StageSyncManager {
       // Refresh button states
       await this.checkFileStatus();
     }
+  }
+
+  /**
+   * Clean previous sync data, manifest, and status displays
+   */
+  async cleanPreviousSyncData() {
+    // Hide status displays immediately
+    if (this.stage1Status) this.stage1Status.style.display = 'none';
+    if (this.stage3Status) this.stage3Status.style.display = 'none';
+    if (this.manifestPreview) this.manifestPreview.style.display = 'none';
+    if (this.orphanPanel) this.orphanPanel.style.display = 'none';
+
+    // Delete sync data file, manifest file, and stage 3 status in parallel
+    const requests = [this.makeAjaxRequest('brag_book_sync_delete_file', {
+      file: 'sync_data'
+    }).catch(() => {}), this.makeAjaxRequest('brag_book_sync_delete_file', {
+      file: 'manifest'
+    }).catch(() => {}), this.makeAjaxRequest('brag_book_sync_clear_stage3_status').catch(() => {})];
+    await Promise.all(requests);
   }
 
   /**
@@ -1643,13 +1678,14 @@ class StageSyncManager {
         return;
       }
       const data = response.data;
-      const report = data.report;
-      if (!report || report.total === 0) {
+      const deleted = data.deleted || 0;
+      if (deleted === 0 && (!data.report || data.report.total === 0)) {
         this.showNoOrphans();
         return;
       }
-      this.detectedOrphans = data.orphans;
-      this.showOrphanPreview(report);
+
+      // Orphans were auto-deleted — show what was removed and why
+      this.showOrphanDeletionSummary(data);
     } catch (error) {
       console.error('Orphan detection error:', error);
       this.setOrphanContentText('Error detecting orphans: ' + error.message, '#d63638');
@@ -1728,6 +1764,58 @@ class StageSyncManager {
     setTimeout(() => {
       this.hideOrphanPanel();
     }, 5000);
+  }
+
+  /**
+   * Show summary of auto-deleted orphans
+   */
+  showOrphanDeletionSummary(data) {
+    if (!this.orphanContent) return;
+    this.orphanContent.textContent = '';
+
+    // Success heading
+    const heading = document.createElement('p');
+    heading.style.color = '#00a32a';
+    const headingStrong = document.createElement('strong');
+    headingStrong.textContent = data.message || `${data.deleted} orphaned item${data.deleted !== 1 ? 's' : ''} removed`;
+    heading.appendChild(headingStrong);
+    this.orphanContent.appendChild(heading);
+
+    // Deletion reasons list
+    if (data.reasons && data.reasons.length > 0) {
+      const list = document.createElement('ul');
+      list.style.cssText = 'margin: 8px 0; padding-left: 20px; font-size: 12px; color: #646970;';
+      for (const reason of data.reasons) {
+        const li = document.createElement('li');
+        li.textContent = reason;
+        list.appendChild(li);
+      }
+      this.orphanContent.appendChild(list);
+    }
+
+    // Errors
+    if (data.errors && data.errors.length > 0) {
+      const errHeading = document.createElement('p');
+      errHeading.style.cssText = 'color: #d63638; margin-top: 8px;';
+      const errStrong = document.createElement('strong');
+      errStrong.textContent = 'Errors:';
+      errHeading.appendChild(errStrong);
+      this.orphanContent.appendChild(errHeading);
+      const errList = document.createElement('ul');
+      errList.style.cssText = 'padding-left: 20px; font-size: 12px; color: #d63638;';
+      for (const err of data.errors) {
+        const li = document.createElement('li');
+        li.textContent = err;
+        errList.appendChild(li);
+      }
+      this.orphanContent.appendChild(errList);
+    }
+    if (this.orphanActions) this.orphanActions.style.display = 'none';
+
+    // Auto-hide after 15 seconds
+    setTimeout(() => {
+      this.hideOrphanPanel();
+    }, 15000);
   }
 
   /**

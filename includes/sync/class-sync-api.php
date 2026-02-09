@@ -269,14 +269,28 @@ class Sync_Api {
 		// Make the API request
 		$response = $this->make_sync_api_request( $endpoint, $body );
 
+		$terminal_statuses = [ self::STATUS_SUCCESS, self::STATUS_FAILED, self::STATUS_PARTIAL, self::STATUS_TIMEOUT ];
+
 		if ( is_wp_error( $response ) ) {
 			error_log( 'BRAG book Gallery Sync API: Report failed - ' . $response->get_error_message() );
+
+			// Still update local job status so the UI doesn't stay stuck on "Syncing..."
+			if ( in_array( $status, $terminal_statuses, true ) ) {
+				$this->update_local_job_status( $status );
+			}
+
 			return $response;
 		}
 
 		// Check response structure
 		if ( ! isset( $response['data'] ) ) {
 			error_log( 'BRAG book Gallery Sync API: Invalid response structure' );
+
+			// Still update local job status so the UI doesn't stay stuck on "Syncing..."
+			if ( in_array( $status, $terminal_statuses, true ) ) {
+				$this->update_local_job_status( $status );
+			}
+
 			return new WP_Error(
 				'invalid_response',
 				__( 'Invalid response from sync report API.', 'brag-book-gallery' )
@@ -512,6 +526,38 @@ class Sync_Api {
 	 */
 	public function clear_current_job(): bool {
 		return delete_option( self::JOB_OPTION_NAME );
+	}
+
+	/**
+	 * Update local job status and clear if terminal
+	 *
+	 * Used when the API report fails but we still need to update
+	 * the local job state so the UI doesn't stay stuck on "Syncing...".
+	 *
+	 * @since 4.3.3
+	 *
+	 * @param string $status The status to set.
+	 *
+	 * @return void
+	 */
+	private function update_local_job_status( string $status ): void {
+		$current_job = $this->get_current_job();
+		if ( $current_job ) {
+			$current_job['status']       = $status;
+			$current_job['completed_at'] = current_time( 'c' );
+			$this->store_current_job( $current_job );
+		}
+
+		// Store a local-only last report so the status card shows the correct state
+		$report_data = [
+			'reported_at'  => current_time( 'c' ),
+			'status'       => $status,
+			'cases_synced' => 0,
+		];
+		update_option( self::LAST_REPORT_OPTION_NAME, $report_data );
+
+		// Clear the job so has_active_job() returns false
+		$this->clear_current_job();
 	}
 
 	/**

@@ -327,8 +327,11 @@ class Sync_Ajax_Handler {
 			wp_send_json_error( 'Invalid nonce' );
 		}
 
-		// Register sync with BRAG book API
+		// Clear any stale job from a previous sync before registering
 		$sync_api = new Sync_Api();
+		$sync_api->clear_current_job();
+
+		// Register sync with BRAG book API
 		$registration_result = $sync_api->register_sync( Sync_Api::SYNC_TYPE_MANUAL );
 
 		if ( ! is_wp_error( $registration_result ) && isset( $registration_result['job_id'] ) ) {
@@ -978,15 +981,25 @@ class Sync_Ajax_Handler {
 		}
 
 		try {
-			$sync_session_id = get_option( 'brag_book_last_sync_session', '' );
+			// Load sync data to get current API procedure IDs
+			$sync = new Chunked_Data_Sync();
 
-			if ( empty( $sync_session_id ) ) {
+			if ( ! $sync->sync_data_exists() ) {
 				wp_send_json_success( [
 					'orphans' => [],
 					'report'  => [ 'total' => 0, 'by_type' => [] ],
-					'message' => 'No sync session found. Run a full sync first.',
+					'message' => 'No sync data found. Run a full sync first.',
 				] );
 				return;
+			}
+
+			$sync_data           = $sync->load_sync_data();
+			$valid_procedure_ids = Orphan_Manager::extract_procedure_ids_from_sync_data( $sync_data );
+
+			// Load manifest for case IDs (if exists)
+			$valid_case_map = [];
+			if ( $sync->manifest_exists() ) {
+				$valid_case_map = $sync->load_manifest();
 			}
 
 			$setup    = \BRAGBookGallery\Includes\Core\Setup::get_instance();
@@ -997,24 +1010,46 @@ class Sync_Ajax_Handler {
 				return;
 			}
 
-			$api_tokens = get_option( 'brag_book_gallery_api_token', [] );
-			$api_token  = is_array( $api_tokens ) ? ( $api_tokens[0] ?? '' ) : (string) $api_tokens;
+			$orphan_manager = new Orphan_Manager( $database );
+			$orphans        = $orphan_manager->detect_orphans( $valid_procedure_ids, $valid_case_map );
 
-			if ( empty( $api_token ) ) {
-				wp_send_json_error( 'No API token configured' );
+			if ( empty( $orphans ) ) {
+				wp_send_json_success( [
+					'orphans' => [],
+					'deleted' => 0,
+					'report'  => [ 'total' => 0, 'by_type' => [] ],
+					'message' => 'No orphaned items found',
+				] );
 				return;
 			}
 
-			$orphan_manager = new Orphan_Manager( $database );
-			$orphans        = $orphan_manager->detect_orphans( $sync_session_id, $api_token );
-			$report         = $orphan_manager->generate_orphan_report( $orphans );
+			// Auto-delete orphans immediately
+			$delete_result = $orphan_manager->delete_orphaned_items( $orphans );
+			$report        = $orphan_manager->generate_orphan_report( $orphans );
+
+			// Build deletion reasons for display
+			$reasons = [];
+			foreach ( $delete_result['items'] as $item ) {
+				$reasons[] = sprintf(
+					'Deleted %s "%s" (API ID: %d, WP ID: %d) — no longer exists in the API',
+					$item['item_type'],
+					$item['name'],
+					$item['api_id'],
+					$item['wordpress_id']
+				);
+			}
 
 			wp_send_json_success( [
 				'orphans' => $orphans,
+				'deleted' => $delete_result['deleted'],
+				'errors'  => $delete_result['errors'],
+				'reasons' => $reasons,
 				'report'  => $report,
-				'message' => $report['total'] > 0
-					? sprintf( 'Found %d orphaned items', $report['total'] )
-					: 'No orphaned items found',
+				'message' => sprintf(
+					'Removed %d orphaned items that no longer exist in the API%s',
+					$delete_result['deleted'],
+					! empty( $delete_result['errors'] ) ? sprintf( ' (%d errors)', count( $delete_result['errors'] ) ) : ''
+				),
 			] );
 
 		} catch ( \Exception $e ) {
@@ -1060,9 +1095,8 @@ class Sync_Ajax_Handler {
 				return;
 			}
 
-			$sync_session_id = get_option( 'brag_book_last_sync_session', 'manual_delete' );
-			$orphan_manager  = new Orphan_Manager( $database );
-			$result          = $orphan_manager->delete_orphaned_items( $orphans, $sync_session_id );
+			$orphan_manager = new Orphan_Manager( $database );
+			$result         = $orphan_manager->delete_orphaned_items( $orphans );
 
 			wp_send_json_success( [
 				'deleted' => $result['deleted'],
