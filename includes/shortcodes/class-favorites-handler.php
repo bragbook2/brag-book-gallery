@@ -537,40 +537,44 @@ final class Favorites_Handler {
 			$phone   = sanitize_text_field( $_POST['phone'] ?? '' );
 			$received_case_id = sanitize_text_field( $_POST['case_id'] ?? '' );
 			$procedure_id = absint( $_POST['procedure_id'] ?? 0 );
+			$id_type = sanitize_text_field( $_POST['id_type'] ?? '' );
 
 			// Handle both WordPress post IDs and BRAG book API case IDs
 			$case_procedure_id = '';
 			$wp_post_id = 0;
 
-			// First, try to treat it as a WordPress post ID
-			if ( is_numeric( $received_case_id ) ) {
-				$test_post_id = absint( $received_case_id );
-				$test_post = get_post( $test_post_id );
+			// If JS tells us this is already a caseProcedureId (junction ID), use it directly
+			if ( 'caseProcedureId' === $id_type && ! empty( $received_case_id ) ) {
+				$case_procedure_id = $received_case_id;
+			} else {
+				// Legacy path: try to treat it as a WordPress post ID
+				if ( is_numeric( $received_case_id ) ) {
+					$test_post_id = absint( $received_case_id );
+					$test_post = get_post( $test_post_id );
 
-				// If it's a valid WordPress post of type brag_book_cases
-				if ( $test_post && $test_post->post_type === 'brag_book_cases' ) {
-					$wp_post_id = $test_post_id;
+					// If it's a valid WordPress post of type brag_book_cases
+					if ( $test_post && $test_post->post_type === 'brag_book_cases' ) {
+						$wp_post_id = $test_post_id;
 
-					// Get the case procedure ID - this is the 'id' field from the API
-					// It's typically a small number like 35, 36, etc. (not the large caseId)
-					$case_procedure_id = get_post_meta( $wp_post_id, 'brag_book_gallery_procedure_case_id', true );
+						// Get the case procedure ID from post meta
+						$case_procedure_id = get_post_meta( $wp_post_id, 'brag_book_gallery_procedure_case_id', true );
 
-					// Fallback to original_case_id if procedure_case_id is empty
-					if ( empty( $case_procedure_id ) ) {
-						$case_procedure_id = get_post_meta( $wp_post_id, 'brag_book_gallery_original_case_id', true );
-					}
+						// Fallback to original_case_id if procedure_case_id is empty
+						if ( empty( $case_procedure_id ) ) {
+							$case_procedure_id = get_post_meta( $wp_post_id, 'brag_book_gallery_original_case_id', true );
+						}
 
-					// Try to get procedure ID from post meta if not provided
-					if ( empty( $procedure_id ) ) {
-						$procedure_id = absint( get_post_meta( $wp_post_id, '_procedure_id', true ) );
+						// Try to get procedure ID from post meta if not provided
+						if ( empty( $procedure_id ) ) {
+							$procedure_id = absint( get_post_meta( $wp_post_id, '_procedure_id', true ) );
+						}
 					}
 				}
-			}
 
-			// If we didn't find a WordPress post, treat received_case_id as a BRAG book API caseProcedureId
-			// Only do this if we did NOT find a valid WordPress post (wp_post_id is 0)
-			if ( empty( $case_procedure_id ) && ! empty( $received_case_id ) && 0 === $wp_post_id ) {
-				$case_procedure_id = $received_case_id; // Use it directly as caseProcedureId
+				// If we didn't find a WordPress post, treat received_case_id as a caseProcedureId
+				if ( empty( $case_procedure_id ) && ! empty( $received_case_id ) && 0 === $wp_post_id ) {
+					$case_procedure_id = $received_case_id;
+				}
 			}
 
 			// Debug logging for favorites troubleshooting
@@ -824,6 +828,7 @@ final class Favorites_Handler {
 			$email   = sanitize_email( $_POST['email'] ?? '' );
 			$received_case_id = sanitize_text_field( $_POST['case_id'] ?? '' );
 			$procedure_id = absint( $_POST['procedure_id'] ?? 0 );
+			$id_type = sanitize_text_field( $_POST['id_type'] ?? '' );
 
 			if ( empty( $email ) || ! is_email( $email ) ) {
 				wp_send_json_error( [
@@ -841,56 +846,51 @@ final class Favorites_Handler {
 			$case_procedure_id = '';
 			$wp_post_id = 0;
 
-			// First, try to treat it as a WordPress post ID
-			if ( is_numeric( $received_case_id ) ) {
-				$test_post_id = absint( $received_case_id );
-				$test_post = get_post( $test_post_id );
+			// If JS tells us this is already a caseProcedureId (junction ID), use it directly
+			if ( 'caseProcedureId' === $id_type && ! empty( $received_case_id ) ) {
+				$case_procedure_id = $received_case_id;
+			} else {
+				// Legacy path: try to treat it as a WordPress post ID
+				if ( is_numeric( $received_case_id ) ) {
+					$test_post_id = absint( $received_case_id );
+					$test_post = get_post( $test_post_id );
 
-				// If it's a valid WordPress post of type brag_book_cases
-				if ( $test_post && $test_post->post_type === 'brag_book_cases' ) {
-					$wp_post_id = $test_post_id;
+					if ( $test_post && $test_post->post_type === 'brag_book_cases' ) {
+						$wp_post_id = $test_post_id;
+						$case_procedure_id = get_post_meta( $wp_post_id, 'brag_book_gallery_procedure_case_id', true );
 
-					// Get the case procedure ID - this is the 'id' field from the API
-					// It's typically a small number like 35, 36, etc. (not the large caseId)
-					$case_procedure_id = get_post_meta( $wp_post_id, 'brag_book_gallery_procedure_case_id', true );
-
-					// Fallback to original_case_id if procedure_case_id is empty
-					if ( empty( $case_procedure_id ) ) {
-						$case_procedure_id = get_post_meta( $wp_post_id, 'brag_book_gallery_original_case_id', true );
-					}
-
-					// Try to get procedure ID from post meta if not provided
-					if ( empty( $procedure_id ) ) {
-						$procedure_id = absint( get_post_meta( $wp_post_id, '_procedure_id', true ) );
-					}
-
-					// Fallback: try brag_book_gallery_procedure_ids (comma-separated list, get first)
-					if ( empty( $procedure_id ) ) {
-						$procedure_ids_meta = get_post_meta( $wp_post_id, 'brag_book_gallery_procedure_ids', true );
-						if ( ! empty( $procedure_ids_meta ) ) {
-							$procedure_ids_array = explode( ',', $procedure_ids_meta );
-							$procedure_id = absint( trim( $procedure_ids_array[0] ) );
+						if ( empty( $case_procedure_id ) ) {
+							$case_procedure_id = get_post_meta( $wp_post_id, 'brag_book_gallery_original_case_id', true );
 						}
-					}
 
-					// Fallback: try getting procedure ID from taxonomy term meta
-					if ( empty( $procedure_id ) ) {
-						$procedure_terms = wp_get_object_terms( $wp_post_id, 'brag_book_procedures', [ 'fields' => 'ids' ] );
-						if ( ! empty( $procedure_terms ) && ! is_wp_error( $procedure_terms ) ) {
-							// Get the API procedure ID from term meta
-							$term_procedure_id = get_term_meta( $procedure_terms[0], 'brag_book_gallery_procedure_id', true );
-							if ( ! empty( $term_procedure_id ) ) {
-								$procedure_id = absint( $term_procedure_id );
+						if ( empty( $procedure_id ) ) {
+							$procedure_id = absint( get_post_meta( $wp_post_id, '_procedure_id', true ) );
+						}
+
+						if ( empty( $procedure_id ) ) {
+							$procedure_ids_meta = get_post_meta( $wp_post_id, 'brag_book_gallery_procedure_ids', true );
+							if ( ! empty( $procedure_ids_meta ) ) {
+								$procedure_ids_array = explode( ',', $procedure_ids_meta );
+								$procedure_id = absint( trim( $procedure_ids_array[0] ) );
+							}
+						}
+
+						if ( empty( $procedure_id ) ) {
+							$procedure_terms = wp_get_object_terms( $wp_post_id, 'brag_book_procedures', [ 'fields' => 'ids' ] );
+							if ( ! empty( $procedure_terms ) && ! is_wp_error( $procedure_terms ) ) {
+								$term_procedure_id = get_term_meta( $procedure_terms[0], 'brag_book_gallery_procedure_id', true );
+								if ( ! empty( $term_procedure_id ) ) {
+									$procedure_id = absint( $term_procedure_id );
+								}
 							}
 						}
 					}
 				}
-			}
 
-			// If we didn't find a WordPress post, treat received_case_id as a BRAG book API caseProcedureId
-			// Only do this if we did NOT find a valid WordPress post (wp_post_id is 0)
-			if ( empty( $case_procedure_id ) && ! empty( $received_case_id ) && 0 === $wp_post_id ) {
-				$case_procedure_id = $received_case_id; // Use it directly as caseProcedureId
+				// If we didn't find a WordPress post, treat received_case_id as a caseProcedureId
+				if ( empty( $case_procedure_id ) && ! empty( $received_case_id ) && 0 === $wp_post_id ) {
+					$case_procedure_id = $received_case_id;
+				}
 			}
 
 			// Debug logging for favorites troubleshooting
@@ -1392,11 +1392,11 @@ final class Favorites_Handler {
 				<div class="brag-book-gallery-image-container">
 					<div class="brag-book-gallery-skeleton-loader" style="display: none;"></div>
 					<div class="brag-book-gallery-item-actions">
-						<button class="brag-book-gallery-favorite-button favorited"
+						<button class="brag-book-gallery-favorite-button"
 								data-favorited="true"
 								data-item-id="<?php echo esc_attr( $favorite_item_id ); ?>"
 								aria-label="Remove from favorites">
-							<svg fill="#ff595c" stroke="#ff595c" stroke-width="2" viewBox="0 0 24 24">
+							<svg fill="rgba(255, 255, 255, 0.5)" stroke="white" stroke-width="2" viewBox="0 0 24 24">
 								<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
 							</svg>
 						</button>

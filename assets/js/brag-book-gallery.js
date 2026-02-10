@@ -1011,6 +1011,7 @@ class FavoritesManager {
     formData.append('nonce', window.bragBookGalleryConfig?.nonce || '');
     formData.append('case_id', caseId);
     formData.append('procedure_id', procedureId);
+    formData.append('id_type', 'caseProcedureId');
     formData.append('email', this.userInfo.email || '');
 
     // Submit via WordPress AJAX (API tokens handled securely on server)
@@ -1051,8 +1052,9 @@ class FavoritesManager {
    * @param {string} caseId - The case ID to remove
    */
   removeCardFromFavoritesGrid(caseId) {
-    // Find the card element by various possible selectors
-    const card = document.querySelector(`.brag-book-gallery-case-card[data-post-id="${caseId}"], ` + `.brag-book-gallery-case-card[data-case-id="${caseId}"], ` + `.brag-book-gallery-favorites-card[data-post-id="${caseId}"], ` + `.brag-book-gallery-favorites-card[data-case-id="${caseId}"]`);
+    // Find the card element — caseId is the procedureCaseId (junction ID),
+    // stored in data-procedure-case-id on the card element
+    const card = document.querySelector(`.brag-book-gallery-case-card[data-procedure-case-id="${caseId}"], ` + `.brag-book-gallery-favorites-card[data-procedure-case-id="${caseId}"], ` + `.brag-book-gallery-case-card[data-post-id="${caseId}"], ` + `.brag-book-gallery-case-card[data-case-id="${caseId}"], ` + `.brag-book-gallery-favorites-card[data-post-id="${caseId}"], ` + `.brag-book-gallery-favorites-card[data-case-id="${caseId}"]`);
     if (card) {
       // Add fade-out animation
       card.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
@@ -1117,6 +1119,7 @@ class FavoritesManager {
     formData.append('nonce', window.bragBookGalleryConfig?.nonce || '');
     formData.append('case_id', caseId);
     formData.append('procedure_id', procedureId);
+    formData.append('id_type', 'caseProcedureId');
     formData.append('email', this.userInfo.email || '');
     formData.append('phone', this.userInfo.phone || '');
     formData.append('name', this.userInfo.name || '');
@@ -1255,6 +1258,7 @@ class FavoritesManager {
     formData.append('nonce', window.bragBookGalleryConfig?.nonce || '');
     formData.append('case_id', caseId);
     formData.append('procedure_id', procedureId);
+    formData.append('id_type', 'caseProcedureId');
     formData.append('email', email);
     formData.append('phone', phone);
     formData.append('name', name);
@@ -9651,6 +9655,19 @@ class BRAGbookGalleryApp {
 
     // Display cases if we have them
     if (favoritesData.cases_data && Object.keys(favoritesData.cases_data).length > 0) {
+      // Sync API favorites into the FavoritesManager so counts stay accurate
+      // Use junction IDs (caseProcedures[0].id) — these match data-procedure-case-id on cards
+      if (this.components.favoritesManager) {
+        const junctionIds = Object.values(favoritesData.cases_data).map(c => {
+          if (c.caseProcedures && c.caseProcedures.length > 0) {
+            return String(c.caseProcedures[0].id);
+          }
+          return String(c.id || c.case_id || '');
+        }).filter(Boolean);
+        this.components.favoritesManager.favorites = new Set(junctionIds);
+        this.components.favoritesManager.saveToStorage();
+      }
+
       // Hide empty state when we have content
       if (emptyState) {
         emptyState.style.display = 'none';
@@ -9757,9 +9774,18 @@ class BRAGbookGalleryApp {
       procedureId = caseData.procedureId || caseData.procedure_id || '';
     }
 
-    // Get the procedure case ID (junction ID) from WP post meta or API data
+    // Get the procedure case ID (junction ID) — prefer caseProcedures from API data
+    // (the source of truth), fall back to WP post meta, then apiCaseId.
+    // When using a junction ID from caseProcedures, always pair it with the matching
+    // procedureId from the same record to keep the IDs consistent for the API.
     let procedureCaseId = '';
-    if (wpPostData && wpPostData.post_meta) {
+    if (caseData.caseProcedures && caseData.caseProcedures.length > 0) {
+      procedureCaseId = String(caseData.caseProcedures[0].id);
+      if (caseData.caseProcedures[0].procedureId) {
+        procedureId = String(caseData.caseProcedures[0].procedureId);
+      }
+    }
+    if (!procedureCaseId && wpPostData && wpPostData.post_meta) {
       procedureCaseId = wpPostData.post_meta.brag_book_gallery_procedure_case_id || wpPostData.post_meta.brag_book_gallery_original_case_id || '';
     }
     if (!procedureCaseId) {
@@ -9784,8 +9810,8 @@ class BRAGbookGalleryApp {
 
     // Favorite button
     html += '<div class="brag-book-gallery-item-actions">';
-    html += `<button class="brag-book-gallery-favorite-button favorited" data-favorited="true" data-item-id="${escapedItemId}" aria-label="Remove from favorites">`;
-    html += '<svg fill="#ff595c" stroke="#ff595c" stroke-width="2" viewBox="0 0 24 24">';
+    html += `<button class="brag-book-gallery-favorite-button" data-favorited="true" data-item-id="${escapedItemId}" aria-label="Remove from favorites">`;
+    html += '<svg fill="rgba(255, 255, 255, 0.5)" stroke="white" stroke-width="2" viewBox="0 0 24 24">';
     html += '<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>';
     html += '</svg>';
     html += '</button>';

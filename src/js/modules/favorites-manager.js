@@ -272,6 +272,7 @@ class FavoritesManager {
 		formData.append('nonce', window.bragBookGalleryConfig?.nonce || '');
 		formData.append('case_id', caseId);
 		formData.append('procedure_id', procedureId);
+		formData.append('id_type', 'caseProcedureId');
 		formData.append('email', this.userInfo.email || '');
 
 		// Submit via WordPress AJAX (API tokens handled securely on server)
@@ -315,8 +316,11 @@ class FavoritesManager {
 	 * @param {string} caseId - The case ID to remove
 	 */
 	removeCardFromFavoritesGrid(caseId) {
-		// Find the card element by various possible selectors
+		// Find the card element — caseId is the procedureCaseId (junction ID),
+		// stored in data-procedure-case-id on the card element
 		const card = document.querySelector(
+			`.brag-book-gallery-case-card[data-procedure-case-id="${caseId}"], ` +
+			`.brag-book-gallery-favorites-card[data-procedure-case-id="${caseId}"], ` +
 			`.brag-book-gallery-case-card[data-post-id="${caseId}"], ` +
 			`.brag-book-gallery-case-card[data-case-id="${caseId}"], ` +
 			`.brag-book-gallery-favorites-card[data-post-id="${caseId}"], ` +
@@ -391,6 +395,7 @@ class FavoritesManager {
 		formData.append('nonce', window.bragBookGalleryConfig?.nonce || '');
 		formData.append('case_id', caseId);
 		formData.append('procedure_id', procedureId);
+		formData.append('id_type', 'caseProcedureId');
 		formData.append('email', this.userInfo.email || '');
 		formData.append('phone', this.userInfo.phone || '');
 		formData.append('name', this.userInfo.name || '');
@@ -539,6 +544,7 @@ class FavoritesManager {
 		formData.append('nonce', window.bragBookGalleryConfig?.nonce || '');
 		formData.append('case_id', caseId);
 		formData.append('procedure_id', procedureId);
+		formData.append('id_type', 'caseProcedureId');
 		formData.append('email', email);
 		formData.append('phone', phone);
 		formData.append('name', name);
