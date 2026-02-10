@@ -701,26 +701,25 @@ class FavoritesManager {
 						localStorage.setItem('brag-book-user-info', JSON.stringify(userInfo));
 						this.userInfo = userInfo;
 
-						// Save favorites data if available
+						// Save favorites data if available — use junction IDs from caseProcedures
 						if (favoritesData.cases_data && Object.keys(favoritesData.cases_data).length > 0) {
-							// Convert case IDs to strings for consistency with frontend
-							const favoriteIds = (favoritesData.case_ids || []).map(id => String(id));
+							// Extract junction IDs (caseProcedures[0].id) — these match
+							// data-procedure-case-id on cards and are used for add/remove calls
+							const favoriteIds = Object.values(favoritesData.cases_data).map(c => {
+								if (c.caseProcedures && c.caseProcedures.length > 0) {
+									return String(c.caseProcedures[0].id);
+								}
+								return String(c.id || '');
+							}).filter(Boolean);
 
-							// Save favorites to localStorage
+							// Replace localStorage — API is authoritative
 							localStorage.setItem('brag-book-favorites', JSON.stringify(favoriteIds));
 
 							// Update internal favorites
 							this.favorites = new Set(favoriteIds);
 
 							// Update UI to reflect loaded favorites
-							favoriteIds.forEach(itemId => {
-								const buttons = document.querySelectorAll(`[data-item-id="${itemId}"], [data-case-id="${itemId}"]`);
-								buttons.forEach(button => {
-									if (button.dataset.favorited !== undefined) {
-										button.dataset.favorited = 'true';
-									}
-								});
-							});
+							this.updateAllButtonStates();
 						}
 
 						this.showLookupSuccess(form, email, userInfo, favoritesData);

@@ -1408,26 +1408,25 @@ class FavoritesManager {
             localStorage.setItem('brag-book-user-info', JSON.stringify(userInfo));
             this.userInfo = userInfo;
 
-            // Save favorites data if available
+            // Save favorites data if available — use junction IDs from caseProcedures
             if (favoritesData.cases_data && Object.keys(favoritesData.cases_data).length > 0) {
-              // Convert case IDs to strings for consistency with frontend
-              const favoriteIds = (favoritesData.case_ids || []).map(id => String(id));
+              // Extract junction IDs (caseProcedures[0].id) — these match
+              // data-procedure-case-id on cards and are used for add/remove calls
+              const favoriteIds = Object.values(favoritesData.cases_data).map(c => {
+                if (c.caseProcedures && c.caseProcedures.length > 0) {
+                  return String(c.caseProcedures[0].id);
+                }
+                return String(c.id || '');
+              }).filter(Boolean);
 
-              // Save favorites to localStorage
+              // Replace localStorage — API is authoritative
               localStorage.setItem('brag-book-favorites', JSON.stringify(favoriteIds));
 
               // Update internal favorites
               this.favorites = new Set(favoriteIds);
 
               // Update UI to reflect loaded favorites
-              favoriteIds.forEach(itemId => {
-                const buttons = document.querySelectorAll(`[data-item-id="${itemId}"], [data-case-id="${itemId}"]`);
-                buttons.forEach(button => {
-                  if (button.dataset.favorited !== undefined) {
-                    button.dataset.favorited = 'true';
-                  }
-                });
-              });
+              this.updateAllButtonStates();
             }
             this.showLookupSuccess(form, email, userInfo, favoritesData);
           } else {
@@ -8074,90 +8073,68 @@ class BRAGbookGalleryApp {
           }
         }
 
-        // Handle favorites - NEVER delete localStorage, only add to it
-        // The API returns 'favorites.case_ids' and 'favorites.cases_data'
+        // Handle favorites — API response is the source of truth.
+        // Extract junction IDs (caseProcedures[0].id) which match
+        // data-procedure-case-id on cards and are used for add/remove calls.
         const favoritesData = data.data.favorites || {};
-        const caseIds = favoritesData.case_ids || [];
         const casesData = favoritesData.cases_data || {};
-
-        // Use case_ids array directly, or fall back to cases array
-        const casesArray = data.data.cases || Object.values(casesData);
-        if (caseIds.length > 0 || casesArray.length > 0) {
-          // Check if brag-book-favorites exists in localStorage
-          let existingFavorites = [];
-          const storedFavorites = localStorage.getItem('brag-book-favorites');
-          if (storedFavorites) {
-            // If it exists, parse it
-            try {
-              existingFavorites = JSON.parse(storedFavorites);
-            } catch (e) {
-              console.error('Error parsing existing favorites:', e);
-              existingFavorites = [];
+        const casesArray = Object.values(casesData);
+        if (casesArray.length > 0) {
+          // Extract junction IDs from caseProcedures — same logic as displayFavoritesGrid
+          const junctionIds = casesArray.map(c => {
+            if (c.caseProcedures && c.caseProcedures.length > 0) {
+              return String(c.caseProcedures[0].id);
             }
-          }
+            return String(c.id || '');
+          }).filter(Boolean);
 
-          // Create a Set with existing favorites to avoid duplicates
-          const favoritesSet = new Set(existingFavorites);
-
-          // Add case IDs from API response to the Set
-          // Use caseIds array first, then fall back to iterating casesArray
-          if (caseIds.length > 0) {
-            caseIds.forEach(id => {
-              if (id) favoritesSet.add(String(id));
-            });
-          } else {
-            casesArray.forEach(caseItem => {
-              const caseId = caseItem.id || caseItem.caseId || '';
-              if (caseId) {
-                favoritesSet.add(String(caseId));
-              }
-            });
-          }
-
-          // Convert back to array and save to localStorage
-          const updatedFavorites = Array.from(favoritesSet);
-          localStorage.setItem('brag-book-favorites', JSON.stringify(updatedFavorites));
+          // Replace localStorage entirely — API is authoritative
+          localStorage.setItem('brag-book-favorites', JSON.stringify(junctionIds));
 
           // Update favorites manager if it exists
-          if (this.favoritesManager) {
-            this.favoritesManager.favorites = new Set(updatedFavorites);
-            // Trigger UI update to reflect the synced favorites
-            this.favoritesManager.updateUI();
+          if (this.components.favoritesManager) {
+            this.components.favoritesManager.favorites = new Set(junctionIds);
+            this.components.favoritesManager.updateUI();
           }
 
           // Update favorites count in navigation
           const countElements = document.querySelectorAll('[data-favorites-count]');
           countElements.forEach(element => {
-            // Check if this is in tiles view (no parentheses)
-            const isTilesView = element.closest('.brag-book-gallery-favorites-link--tiles');
-            element.textContent = isTilesView ? updatedFavorites.length : `(${updatedFavorites.length})`;
-            // Ensure it's visible
+            const format = element.dataset.favoritesFormat;
+            if (format === 'text') {
+              element.textContent = `${junctionIds.length} favorite${junctionIds.length !== 1 ? 's' : ''}`;
+            } else {
+              const isTilesView = element.closest('.brag-book-gallery-favorites-link--tiles');
+              element.textContent = isTilesView ? junctionIds.length : `(${junctionIds.length})`;
+            }
             if (element.style) {
               element.style.opacity = '1';
             }
           });
         } else {
-          // No cases in response, but ensure localStorage has empty array if nothing exists
-          if (!localStorage.getItem('brag-book-favorites')) {
-            localStorage.setItem('brag-book-favorites', JSON.stringify([]));
+          // No cases — replace localStorage with empty array
+          localStorage.setItem('brag-book-favorites', JSON.stringify([]));
+
+          // Update favorites manager if it exists
+          if (this.components.favoritesManager) {
+            this.components.favoritesManager.favorites = new Set();
+            this.components.favoritesManager.updateUI();
           }
 
           // Update favorites count to 0
           const countElements = document.querySelectorAll('[data-favorites-count]');
           countElements.forEach(element => {
-            // Check if this is in tiles view (no parentheses)
-            const isTilesView = element.closest('.brag-book-gallery-favorites-link--tiles');
-            element.textContent = isTilesView ? '0' : '(0)';
+            const format = element.dataset.favoritesFormat;
+            if (format === 'text') {
+              element.textContent = '0 favorites';
+            } else {
+              const isTilesView = element.closest('.brag-book-gallery-favorites-link--tiles');
+              element.textContent = isTilesView ? '0' : '(0)';
+            }
             if (element.style) {
               element.style.opacity = '1';
             }
           });
-
-          // Update favorites manager if it exists
-          if (this.favoritesManager) {
-            this.favoritesManager.favorites = new Set();
-            this.favoritesManager.updateUI();
-          }
         }
 
         // Check if we have cases data from the API lookup
