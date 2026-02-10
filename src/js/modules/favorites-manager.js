@@ -83,22 +83,14 @@ class FavoritesManager {
 		const carouselItem = button.closest('.brag-book-gallery-carousel-item');
 		const caseContainer = caseCard || caseDetailView || carouselItem;
 
-		// Prioritize case procedure ID (currentProcedureId) for favorites
-		// This is the unique identifier for a case-procedure combination
 		if (caseContainer) {
-			// Try various procedure ID attributes in priority order
-			procedureId = caseContainer.dataset.currentProcedureId ||  // Current procedure ID (taxonomy pages)
-				caseContainer.dataset.procedureId ||                   // Single procedure ID (favorites cards)
-				(caseContainer.dataset.procedureIds ? caseContainer.dataset.procedureIds.split(',')[0] : '');  // First from list
+			// itemId must be the caseProcedureId (junction ID unique to each case-procedure combo)
+			// NEVER use currentProcedureId as itemId — it's shared across all cards on taxonomy pages
+			itemId = caseContainer.dataset.procedureCaseId || '';
 
-			// Use procedure ID as the item ID for favorites
-			if (procedureId) {
-				itemId = procedureId;
-			} else {
-				// Fallback to button's own data attributes only if no procedure ID
+			// Fallback to the button's own data-item-id (set by PHP to the junction ID)
+			if (!itemId) {
 				itemId = button.dataset.itemId || '';
-
-				// Extract numeric ID from values like "case-12345" or "case_12345_main"
 				if (itemId) {
 					const matches = itemId.match(/(\d+)/);
 					if (matches) {
@@ -106,11 +98,14 @@ class FavoritesManager {
 					}
 				}
 			}
+
+			// procedureId is a separate value — the taxonomy/API procedure ID for the API call
+			procedureId = caseContainer.dataset.currentProcedureId ||
+				caseContainer.dataset.procedureId ||
+				(caseContainer.dataset.procedureIds ? caseContainer.dataset.procedureIds.split(',')[0] : '');
 		} else {
 			// No container found, use button's own data attributes
 			itemId = button.dataset.itemId || '';
-
-			// Extract numeric ID from values like "case-12345"
 			if (itemId) {
 				const matches = itemId.match(/(\d+)/);
 				if (matches) {
@@ -119,14 +114,10 @@ class FavoritesManager {
 			}
 		}
 
-		// Fallback to active nav link procedure ID if still no procedure ID
+		// Fallback to active nav link for procedureId only (never for itemId)
 		if (!procedureId) {
 			const activeNavLink = document.querySelector('.brag-book-gallery-nav-link.brag-book-gallery-active');
 			procedureId = activeNavLink?.dataset.procedureId || '';
-			// If we got a procedure ID from nav link, use it as item ID too
-			if (procedureId && !itemId) {
-				itemId = procedureId;
-			}
 		}
 
 		// Update hidden case ID field if it exists
@@ -420,18 +411,47 @@ class FavoritesManager {
 				// Show success notification
 				this.showSuccessNotification('Added to favorites!');
 			} else {
-				// Show error notification and remove from local favorites
+				// Show error notification and undo local state only (don't call API remove)
 				console.error('Failed to save favorite:', response.data?.message);
-				this.removeFavorite(caseId);
+				this.undoLocalFavorite(caseId);
 				this.showErrorNotification('Failed to save favorite. Please try again.');
 			}
 		})
 		.catch(error => {
 			console.error('Error submitting favorite:', error);
-			// Remove from local favorites if API call failed
-			this.removeFavorite(caseId);
+			// Undo local state only (don't call API remove — item was never added)
+			this.undoLocalFavorite(caseId);
 			this.showErrorNotification('Error saving favorite. Please try again.');
 		});
+	}
+
+	/**
+	 * Undo a local favorite without calling the API remove endpoint.
+	 * Used when an add API call fails — the item was never added to the API.
+	 * @param {string} itemId - The item ID to remove locally
+	 */
+	undoLocalFavorite(itemId) {
+		// Update button states
+		const buttons = document.querySelectorAll(`[data-item-id="${itemId}"][data-favorited="true"]`);
+		buttons.forEach(btn => {
+			btn.dataset.favorited = 'false';
+		});
+
+		// Remove from internal favorites collection
+		this.favorites.delete(itemId);
+
+		// Persist changes to localStorage
+		if (this.options.persistToStorage) {
+			this.saveToStorage();
+		}
+
+		// Update UI
+		this.updateUI();
+		this.options.onUpdate(this.favorites);
+
+		window.dispatchEvent(new CustomEvent('favoritesUpdated', {
+			detail: { favorites: this.favorites }
+		}));
 	}
 
 	/**
@@ -571,9 +591,9 @@ class FavoritesManager {
 				// Parse and show detailed error
 				this.parseAndShowDetailedError(form, response, 'save');
 
-				// If there was an error, remove the favorite that was added
-				if (this.lastAddedFavorite && this.lastAddedButton) {
-					this.removeFavorite(this.lastAddedFavorite, this.lastAddedButton);
+				// Undo local state only (item was never added to API)
+				if (this.lastAddedFavorite) {
+					this.undoLocalFavorite(this.lastAddedFavorite);
 				}
 			}
 		})
@@ -591,9 +611,9 @@ class FavoritesManager {
 				]
 			});
 
-			// If there was an error, remove the favorite that was added
-			if (this.lastAddedFavorite && this.lastAddedButton) {
-				this.removeFavorite(this.lastAddedFavorite, this.lastAddedButton);
+			// Undo local state only (item was never added to API)
+			if (this.lastAddedFavorite) {
+				this.undoLocalFavorite(this.lastAddedFavorite);
 			}
 		})
 		.finally(() => {
@@ -1055,9 +1075,14 @@ class FavoritesManager {
 		const count = this.favorites.size;
 
 		countElements.forEach(countElement => {
-			// Check if this is in tiles view (no parentheses)
-			const isTilesView = countElement.closest('.brag-book-gallery-favorites-link--tiles');
-			countElement.textContent = isTilesView ? count : `(${count})`;
+			// Check format: text format ("N favorites"), tiles (N), or default "(N)"
+			const format = countElement.dataset.favoritesFormat;
+			if (format === 'text') {
+				countElement.textContent = `${count} favorite${count !== 1 ? 's' : ''}`;
+			} else {
+				const isTilesView = countElement.closest('.brag-book-gallery-favorites-link--tiles');
+				countElement.textContent = isTilesView ? count : `(${count})`;
+			}
 		});
 
 		// Update all favorite button states (including dynamically loaded ones)
@@ -1076,23 +1101,18 @@ class FavoritesManager {
 		const allButtons = document.querySelectorAll('[data-favorited]');
 
 		allButtons.forEach(button => {
-			// Extract item ID from the button - prioritize procedure ID
 			let itemId = '';
 
-			// Check for procedure ID in parent container (card or carousel item)
-			const caseCard = button.closest('.brag-book-gallery-case-card, .brag-book-gallery-carousel-item');
+			// Use ONLY procedureCaseId from parent container — never currentProcedureId
+			// (currentProcedureId is shared across all cards on taxonomy pages)
+			const caseCard = button.closest('.brag-book-gallery-case-card, .brag-book-gallery-carousel-item, .brag-book-gallery-case-detail-view');
 			if (caseCard) {
-				// Prioritize procedure ID for favorites matching
-				itemId = caseCard.dataset.currentProcedureId ||
-					caseCard.dataset.procedureId ||
-					(caseCard.dataset.procedureIds ? caseCard.dataset.procedureIds.split(',')[0] : '');
+				itemId = caseCard.dataset.procedureCaseId || '';
 			}
 
-			// Fallback to button's own data attributes
+			// Fallback to button's own data-item-id (set by PHP to the junction ID)
 			if (!itemId) {
 				itemId = button.dataset.itemId || '';
-
-				// Extract numeric ID from values like "case-12345"
 				if (itemId) {
 					const matches = itemId.match(/(\d+)/);
 					if (matches) {
@@ -1219,31 +1239,6 @@ class FavoritesManager {
 		}
 
 		return null;
-	}
-
-	/**
-	 * Get current favorites set
-	 * @returns {Set} Set of favorite IDs
-	 */
-	getFavorites() {
-		return this.favorites;
-	}
-
-	/**
-	 * Save user info to localStorage
-	 */
-	saveUserInfo() {
-		// Only save if we have complete user information
-		if (!this.userInfo || !this.userInfo.email || !this.userInfo.name || !this.userInfo.phone) {
-			console.warn('Cannot save incomplete user info to localStorage:', this.userInfo);
-			return;
-		}
-
-		try {
-			localStorage.setItem(this.options.userInfoKey, JSON.stringify(this.userInfo));
-		} catch (e) {
-			console.error('Failed to save user info to localStorage:', e);
-		}
 	}
 
 	/**

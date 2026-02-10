@@ -1347,14 +1347,8 @@ final class Carousel_Handler {
 			return '';
 		}
 
-		// Get API procedure ID from term meta if available - use this for favorites
+		// Use case_id directly - it's the procedure_case_id (junction ID) from the API
 		$favorite_item_id = $case_id;
-		if ( ! empty( $procedure_id ) ) {
-			$api_procedure_id = get_term_meta( $procedure_id, 'procedure_id', true );
-			if ( ! empty( $api_procedure_id ) ) {
-				$favorite_item_id = $api_procedure_id;
-			}
-		}
 
 		return sprintf(
 			'<div class="brag-book-gallery-item-actions"><button class="brag-book-gallery-favorite-button" data-favorited="false" data-item-id="%s" aria-label="%s"><svg fill="rgba(255, 255, 255, 0.5)" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button></div>',

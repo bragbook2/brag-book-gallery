@@ -822,25 +822,14 @@ class FavoritesManager {
     const caseDetailView = button.closest('.brag-book-gallery-case-detail-view');
     const carouselItem = button.closest('.brag-book-gallery-carousel-item');
     const caseContainer = caseCard || caseDetailView || carouselItem;
-
-    // Prioritize case procedure ID (currentProcedureId) for favorites
-    // This is the unique identifier for a case-procedure combination
     if (caseContainer) {
-      // Try various procedure ID attributes in priority order
-      procedureId = caseContainer.dataset.currentProcedureId ||
-      // Current procedure ID (taxonomy pages)
-      caseContainer.dataset.procedureId || (
-      // Single procedure ID (favorites cards)
-      caseContainer.dataset.procedureIds ? caseContainer.dataset.procedureIds.split(',')[0] : ''); // First from list
+      // itemId must be the caseProcedureId (junction ID unique to each case-procedure combo)
+      // NEVER use currentProcedureId as itemId — it's shared across all cards on taxonomy pages
+      itemId = caseContainer.dataset.procedureCaseId || '';
 
-      // Use procedure ID as the item ID for favorites
-      if (procedureId) {
-        itemId = procedureId;
-      } else {
-        // Fallback to button's own data attributes only if no procedure ID
+      // Fallback to the button's own data-item-id (set by PHP to the junction ID)
+      if (!itemId) {
         itemId = button.dataset.itemId || '';
-
-        // Extract numeric ID from values like "case-12345" or "case_12345_main"
         if (itemId) {
           const matches = itemId.match(/(\d+)/);
           if (matches) {
@@ -848,11 +837,12 @@ class FavoritesManager {
           }
         }
       }
+
+      // procedureId is a separate value — the taxonomy/API procedure ID for the API call
+      procedureId = caseContainer.dataset.currentProcedureId || caseContainer.dataset.procedureId || (caseContainer.dataset.procedureIds ? caseContainer.dataset.procedureIds.split(',')[0] : '');
     } else {
       // No container found, use button's own data attributes
       itemId = button.dataset.itemId || '';
-
-      // Extract numeric ID from values like "case-12345"
       if (itemId) {
         const matches = itemId.match(/(\d+)/);
         if (matches) {
@@ -861,14 +851,10 @@ class FavoritesManager {
       }
     }
 
-    // Fallback to active nav link procedure ID if still no procedure ID
+    // Fallback to active nav link for procedureId only (never for itemId)
     if (!procedureId) {
       const activeNavLink = document.querySelector('.brag-book-gallery-nav-link.brag-book-gallery-active');
       procedureId = activeNavLink?.dataset.procedureId || '';
-      // If we got a procedure ID from nav link, use it as item ID too
-      if (procedureId && !itemId) {
-        itemId = procedureId;
-      }
     }
 
     // Update hidden case ID field if it exists
@@ -1149,17 +1135,47 @@ class FavoritesManager {
         // Show success notification
         this.showSuccessNotification('Added to favorites!');
       } else {
-        // Show error notification and remove from local favorites
+        // Show error notification and undo local state only (don't call API remove)
         console.error('Failed to save favorite:', response.data?.message);
-        this.removeFavorite(caseId);
+        this.undoLocalFavorite(caseId);
         this.showErrorNotification('Failed to save favorite. Please try again.');
       }
     }).catch(error => {
       console.error('Error submitting favorite:', error);
-      // Remove from local favorites if API call failed
-      this.removeFavorite(caseId);
+      // Undo local state only (don't call API remove — item was never added)
+      this.undoLocalFavorite(caseId);
       this.showErrorNotification('Error saving favorite. Please try again.');
     });
+  }
+
+  /**
+   * Undo a local favorite without calling the API remove endpoint.
+   * Used when an add API call fails — the item was never added to the API.
+   * @param {string} itemId - The item ID to remove locally
+   */
+  undoLocalFavorite(itemId) {
+    // Update button states
+    const buttons = document.querySelectorAll(`[data-item-id="${itemId}"][data-favorited="true"]`);
+    buttons.forEach(btn => {
+      btn.dataset.favorited = 'false';
+    });
+
+    // Remove from internal favorites collection
+    this.favorites.delete(itemId);
+
+    // Persist changes to localStorage
+    if (this.options.persistToStorage) {
+      this.saveToStorage();
+    }
+
+    // Update UI
+    this.updateUI();
+    this.options.onUpdate(this.favorites);
+    window.dispatchEvent(new CustomEvent('favoritesUpdated', {
+      detail: {
+        favorites: this.favorites
+      }
+    }));
   }
 
   /**
@@ -1293,9 +1309,9 @@ class FavoritesManager {
         // Parse and show detailed error
         this.parseAndShowDetailedError(form, response, 'save');
 
-        // If there was an error, remove the favorite that was added
-        if (this.lastAddedFavorite && this.lastAddedButton) {
-          this.removeFavorite(this.lastAddedFavorite, this.lastAddedButton);
+        // Undo local state only (item was never added to API)
+        if (this.lastAddedFavorite) {
+          this.undoLocalFavorite(this.lastAddedFavorite);
         }
       }
     }).catch(error => {
@@ -1308,9 +1324,9 @@ class FavoritesManager {
         details: ['Check your internet connection', 'The server may be temporarily unavailable', `Technical details: ${error.message}`]
       });
 
-      // If there was an error, remove the favorite that was added
-      if (this.lastAddedFavorite && this.lastAddedButton) {
-        this.removeFavorite(this.lastAddedFavorite, this.lastAddedButton);
+      // Undo local state only (item was never added to API)
+      if (this.lastAddedFavorite) {
+        this.undoLocalFavorite(this.lastAddedFavorite);
       }
     }).finally(() => {
       // Reset button state
@@ -1722,9 +1738,14 @@ class FavoritesManager {
     const countElements = document.querySelectorAll('[data-favorites-count]');
     const count = this.favorites.size;
     countElements.forEach(countElement => {
-      // Check if this is in tiles view (no parentheses)
-      const isTilesView = countElement.closest('.brag-book-gallery-favorites-link--tiles');
-      countElement.textContent = isTilesView ? count : `(${count})`;
+      // Check format: text format ("N favorites"), tiles (N), or default "(N)"
+      const format = countElement.dataset.favoritesFormat;
+      if (format === 'text') {
+        countElement.textContent = `${count} favorite${count !== 1 ? 's' : ''}`;
+      } else {
+        const isTilesView = countElement.closest('.brag-book-gallery-favorites-link--tiles');
+        countElement.textContent = isTilesView ? count : `(${count})`;
+      }
     });
 
     // Update all favorite button states (including dynamically loaded ones)
@@ -1742,21 +1763,18 @@ class FavoritesManager {
     // Get all favorite buttons on the page
     const allButtons = document.querySelectorAll('[data-favorited]');
     allButtons.forEach(button => {
-      // Extract item ID from the button - prioritize procedure ID
       let itemId = '';
 
-      // Check for procedure ID in parent container (card or carousel item)
-      const caseCard = button.closest('.brag-book-gallery-case-card, .brag-book-gallery-carousel-item');
+      // Use ONLY procedureCaseId from parent container — never currentProcedureId
+      // (currentProcedureId is shared across all cards on taxonomy pages)
+      const caseCard = button.closest('.brag-book-gallery-case-card, .brag-book-gallery-carousel-item, .brag-book-gallery-case-detail-view');
       if (caseCard) {
-        // Prioritize procedure ID for favorites matching
-        itemId = caseCard.dataset.currentProcedureId || caseCard.dataset.procedureId || (caseCard.dataset.procedureIds ? caseCard.dataset.procedureIds.split(',')[0] : '');
+        itemId = caseCard.dataset.procedureCaseId || '';
       }
 
-      // Fallback to button's own data attributes
+      // Fallback to button's own data-item-id (set by PHP to the junction ID)
       if (!itemId) {
         itemId = button.dataset.itemId || '';
-
-        // Extract numeric ID from values like "case-12345"
         if (itemId) {
           const matches = itemId.match(/(\d+)/);
           if (matches) {
@@ -1881,30 +1899,6 @@ class FavoritesManager {
       console.error('Failed to retrieve user info from localStorage:', e);
     }
     return null;
-  }
-
-  /**
-   * Get current favorites set
-   * @returns {Set} Set of favorite IDs
-   */
-  getFavorites() {
-    return this.favorites;
-  }
-
-  /**
-   * Save user info to localStorage
-   */
-  saveUserInfo() {
-    // Only save if we have complete user information
-    if (!this.userInfo || !this.userInfo.email || !this.userInfo.name || !this.userInfo.phone) {
-      console.warn('Cannot save incomplete user info to localStorage:', this.userInfo);
-      return;
-    }
-    try {
-      localStorage.setItem(this.options.userInfoKey, JSON.stringify(this.userInfo));
-    } catch (e) {
-      console.error('Failed to save user info to localStorage:', e);
-    }
   }
 
   /**
@@ -7956,6 +7950,10 @@ class BRAGbookGalleryApp {
     }
   }
   showFavoritesOnly() {
+    // On the dedicated favorites page, defer to initializeDedicatedFavoritesPage
+    if (document.getElementById('brag-book-gallery-favorites')) {
+      return;
+    }
     const galleryContent = document.getElementById('gallery-content');
     if (!galleryContent) return;
 
@@ -8157,82 +8155,39 @@ class BRAGbookGalleryApp {
             this.favoritesManager.updateUI();
           }
         }
-        if (data.data.html) {
-          // Show favorites grid container and populate with HTML
+
+        // Check if we have cases data from the API lookup
+        const hasCasesData = favoritesData.cases_data && Object.keys(favoritesData.cases_data).length > 0;
+        if (hasCasesData) {
+          // Render cards client-side using displayFavoritesGrid
+          this.displayFavoritesGrid(favoritesData, gridContainer, loadingState);
+
+          // Reinitialize components for the new content
+          setTimeout(() => {
+            this.reinitializeGalleryComponents();
+          }, 200);
+        } else if (data.data.html) {
+          // Server-rendered HTML fallback (sanitized server-side by PHP)
           if (gridContainer) {
             gridContainer.style.display = 'block';
             const favoritesGrid = gridContainer.querySelector('#favoritesGrid');
             if (favoritesGrid) {
-              favoritesGrid.innerHTML = data.data.html;
+              // HTML is pre-sanitized by WordPress esc_html/esc_attr in PHP
+              favoritesGrid.innerHTML = data.data.html; // phpcs:ignore -- server-sanitized
             }
-
-            // Show favorites actions
             const favoritesActions = gridContainer.querySelector('#favoritesActions');
             if (favoritesActions) {
               favoritesActions.style.display = 'block';
             }
-
-            // Hide empty state
             const emptyState = gridContainer.querySelector('#favoritesEmpty');
             if (emptyState) {
               emptyState.style.display = 'none';
             }
           }
-
-          // Reinitialize components for the new content first
           this.reinitializeGalleryComponents();
-
-          // Update favorite button states after rendering - use ALL favorites from localStorage
-          // Small delay to ensure DOM is ready
-          setTimeout(() => {
-            const allFavorites = localStorage.getItem('brag-book-favorites');
-            if (allFavorites) {
-              try {
-                const favoriteIds = JSON.parse(allFavorites);
-                favoriteIds.forEach(favId => {
-                  // Find all favorite buttons for this case and mark them as favorited
-                  // Try multiple selector patterns to catch all variations
-                  const selectors = [`[data-item-id="${favId}"]`, `[data-case-id="${favId}"]`, `[data-item-id="case-${favId}"]`, `[data-item-id="${favId}_main"]`];
-                  selectors.forEach(selector => {
-                    const buttons = document.querySelectorAll(selector);
-                    buttons.forEach(button => {
-                      if (button.dataset.favorited !== undefined) {
-                        button.dataset.favorited = 'true';
-                      }
-                    });
-                  });
-                });
-              } catch (e) {
-                console.error('Error updating favorite button states:', e);
-              }
-            }
-          }, 100);
         } else {
-          // Empty or no cases - show the server-side empty state
-          if (!localStorage.getItem('brag-book-favorites')) {
-            localStorage.setItem('brag-book-favorites', JSON.stringify([]));
-          }
-
-          // Show favorites grid container with empty state
-          if (gridContainer) {
-            gridContainer.style.display = 'block';
-
-            // Hide the favorites grid and actions
-            const favoritesGrid = gridContainer.querySelector('#favoritesGrid');
-            if (favoritesGrid) {
-              favoritesGrid.innerHTML = '';
-            }
-            const favoritesActions = gridContainer.querySelector('#favoritesActions');
-            if (favoritesActions) {
-              favoritesActions.style.display = 'none';
-            }
-
-            // Show empty state
-            const emptyState = gridContainer.querySelector('#favoritesEmpty');
-            if (emptyState) {
-              emptyState.style.display = 'block';
-            }
-          }
+          // No favorites data - show empty state
+          this.showEmptyFavoritesState(gridContainer, loadingState);
         }
       } else {
         // Show error message - ensure localStorage is initialized even on error
@@ -9678,8 +9633,8 @@ class BRAGbookGalleryApp {
     // Show grid container
     if (gridContainer) gridContainer.style.display = 'block';
 
-    // Use the existing PHP-rendered grid element
-    let grid = gridContainer.querySelector('.brag-book-gallery-favorites-grid');
+    // Use the existing PHP-rendered grid element (query by class or ID as fallback)
+    let grid = gridContainer.querySelector('.brag-book-gallery-favorites-grid') || gridContainer.querySelector('#favoritesGrid');
     if (!grid) {
       console.error('Expected .brag-book-gallery-favorites-grid element not found in container');
       return;
@@ -9802,79 +9757,69 @@ class BRAGbookGalleryApp {
       procedureId = caseData.procedureId || caseData.procedure_id || '';
     }
 
+    // Get the procedure case ID (junction ID) from WP post meta or API data
+    let procedureCaseId = '';
+    if (wpPostData && wpPostData.post_meta) {
+      procedureCaseId = wpPostData.post_meta.brag_book_gallery_procedure_case_id || wpPostData.post_meta.brag_book_gallery_original_case_id || '';
+    }
+    if (!procedureCaseId) {
+      procedureCaseId = apiCaseId;
+    }
+
     // Build data attributes
-    const dataAttrs = [`data-case-id="${this.escapeHtml(caseId)}"`, `data-post-id="${postId}"`, `data-procedure-id="${procedureId}"`, `data-age="${caseData.age || ''}"`, `data-gender="${caseData.gender || ''}"`, `data-ethnicity="${caseData.ethnicity || ''}"`, `data-procedure-ids="${procedureId}"`, `data-card="true"`, `data-favorited="true"`].join(' ');
+    const dataAttrs = [`data-case-id="${this.escapeHtml(caseId)}"`, `data-post-id="${postId}"`, `data-procedure-id="${procedureId}"`, `data-procedure-case-id="${this.escapeHtml(procedureCaseId)}"`, `data-age="${caseData.age || ''}"`, `data-gender="${caseData.gender || ''}"`, `data-ethnicity="${caseData.ethnicity || ''}"`, `data-procedure-ids="${procedureId}"`, `data-card="true"`, `data-favorited="true"`].join(' ');
 
-    // Start building HTML (matching filter-system.js structure exactly)
-    let html = `<article class="brag-book-gallery-case-card" ${dataAttrs}>`;
-
-    // Case images section (matching PHP structure)
+    // Build HTML matching the v3 gallery card structure exactly
+    const favoriteItemId = procedureCaseId || caseId;
+    const escapedCaseId = this.escapeHtml(caseId);
+    const escapedCaseUrl = this.escapeHtml(caseUrl);
+    const escapedProcTitle = this.escapeHtml(procedureTitle);
+    const escapedItemId = this.escapeHtml(favoriteItemId);
+    const escapedImageUrl = this.escapeHtml(imageUrl);
+    const escapedProcId = caseData.procedure_id || procedureId || '';
+    let html = `<article class="brag-book-gallery-case-card brag-book-gallery-case-card--v3 brag-book-gallery-favorites-card" ${dataAttrs}>`;
     html += '<div class="brag-book-gallery-case-images single-image">';
     html += '<div class="brag-book-gallery-image-container">';
-
-    // Skeleton loader
     html += '<div class="brag-book-gallery-skeleton-loader" style="display: none;"></div>';
 
-    // Favorites button (matching PHP structure)
-    // Use procedure ID for favorites consistency, fallback to case ID
-    const favoriteItemId = procedureId || caseId;
+    // Favorite button
     html += '<div class="brag-book-gallery-item-actions">';
-    html += `<button class="brag-book-gallery-favorite-button favorited" data-favorited="true" data-item-id="${this.escapeHtml(favoriteItemId)}" aria-label="Remove from favorites">`;
-    html += '<svg fill="rgba(255, 255, 255, 0.5)" stroke="white" stroke-width="2" viewBox="0 0 24 24">';
+    html += `<button class="brag-book-gallery-favorite-button favorited" data-favorited="true" data-item-id="${escapedItemId}" aria-label="Remove from favorites">`;
+    html += '<svg fill="#ff595c" stroke="#ff595c" stroke-width="2" viewBox="0 0 24 24">';
     html += '<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>';
     html += '</svg>';
     html += '</button>';
     html += '</div>';
 
-    // Case link with image (matching exact PHP structure)
-    html += `<a href="${this.escapeHtml(caseUrl)}" class="brag-book-gallery-case-permalink" data-case-id="${this.escapeHtml(caseId)}" data-procedure-ids="${caseData.procedure_id || ''}">`;
+    // Carousel wrapper with image link (matching v3 gallery structure)
+    html += '<div class="brag-book-gallery-case-carousel">';
+    html += `<a href="${escapedCaseUrl}" class="brag-book-gallery-case-permalink brag-book-gallery-carousel-slides" data-case-id="${escapedCaseId}" data-procedure-ids="${escapedProcId}">`;
     if (imageUrl) {
       html += '<picture class="brag-book-gallery-picture">';
-      html += `<img src="${this.escapeHtml(imageUrl)}" alt="${this.escapeHtml(procedureTitle)} - Case ${this.escapeHtml(caseId)}" loading="eager" data-image-type="single" data-image-url="${this.escapeHtml(imageUrl)}" onload="this.closest('.brag-book-gallery-image-container').querySelector('.brag-book-gallery-skeleton-loader').style.display='none';" fetchpriority="high">`;
+      html += `<img src="${escapedImageUrl}" alt="${escapedProcTitle} - Case ${escapedCaseId}" loading="eager" data-image-type="carousel" data-image-url="${escapedImageUrl}" onload="this.closest('.brag-book-gallery-image-container').querySelector('.brag-book-gallery-skeleton-loader').style.display='none';" fetchpriority="high">`;
       html += '</picture>';
     }
-    html += '</a>'; // Close case link
+    html += '</a>';
+    html += '</div>'; // Close carousel
+
+    // Overlay with case name and arrow (matching v3 gallery structure)
+    html += '<div class="brag-book-gallery-case-card-overlay">';
+    html += '<div class="brag-book-gallery-case-card-overlay-content">';
+    html += '<div class="brag-book-gallery-case-card-overlay-info">';
+    html += `<span class="brag-book-gallery-case-card-overlay-title">${escapedProcTitle}</span>`;
+    html += `<span class="brag-book-gallery-case-card-overlay-case-number">Case #${escapedCaseId}</span>`;
+    html += '</div>';
+    html += `<a href="${escapedCaseUrl}" class="brag-book-gallery-case-card-overlay-button" data-case-id="${escapedCaseId}" data-procedure-ids="${escapedProcId}" aria-label="View case details">`;
+    html += '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor">';
+    html += '<path d="M504-480 348-636q-11-11-11-28t11-28q11-11 28-11t28 11l184 184q6 6 8.5 13t2.5 15q0 8-2.5 15t-8.5 13L404-268q-11 11-28 11t-28-11q-11-11-11-28t11-28l156-156Z"></path>';
+    html += '</svg>';
+    html += '</a>';
+    html += '</div>';
+    html += '</div>'; // Close overlay
 
     html += '</div>'; // Close image-container
     html += '</div>'; // Close case-images
-
-    // Case details section (matching PHP structure)
-    html += '<details class="brag-book-gallery-case-card-details">';
-    html += '<summary class="brag-book-gallery-case-card-summary">';
-
-    // Summary info
-    html += '<div class="brag-book-gallery-case-card-summary-info">';
-    html += `<span class="brag-book-gallery-case-card-summary-info__name">${this.escapeHtml(procedureTitle)}</span>`;
-    html += `<span class="brag-book-gallery-case-card-summary-info__case-number">Case #${this.escapeHtml(caseId)}</span>`;
-    html += '</div>';
-
-    // Summary details
-    html += '<p class="brag-book-gallery-case-card-summary-details">';
-    html += '<strong>More Details</strong>';
-    html += '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor">';
-    html += '<path d="M444-288h72v-156h156v-72H516v-156h-72v156H288v72h156v156Zm36.28 192Q401-96 331-126t-122.5-82.5Q156-261 126-330.96t-30-149.5Q96-560 126-629.5q30-69.5 82.5-122T330.96-834q69.96-30 149.5-30t149.04 30q69.5 30 122 82.5T834-629.28q30 69.73 30 149Q864-401 834-331t-82.5 122.5Q699-156 629.28-126q-69.73 30-149 30Z"></path>';
-    html += '</svg>';
-    html += '</p>';
-    html += '</summary>';
-
-    // Details content
-    html += '<div class="brag-book-gallery-case-card-details-content">';
-    html += '<p class="brag-book-gallery-case-card-details-content__title">Procedures Performed:</p>';
-    html += '<ul class="brag-book-gallery-case-card-procedures-list">';
-
-    // Generate procedure list
-    if (caseData.procedures && Array.isArray(caseData.procedures) && caseData.procedures.length > 0) {
-      caseData.procedures.forEach(procedure => {
-        html += `<li class="brag-book-gallery-case-card-procedures-list__item">${this.escapeHtml(procedure.name || 'Unknown Procedure')}</li>`;
-      });
-    } else {
-      html += `<li class="brag-book-gallery-case-card-procedures-list__item">${this.escapeHtml(procedureTitle)}</li>`;
-    }
-    html += '</ul>';
-    html += '</div>'; // Close details-content
-    html += '</details>'; // Close details
-    html += '</article>'; // Close article
-
+    html += '</article>';
     return html;
   }
 
@@ -10028,7 +9973,7 @@ class BRAGbookGalleryApp {
 						<span>${userEmail}</span>
 					</div>
 					<div class="favorites-count">
-						<span>${favoritesCount} favorite${favoritesCount !== 1 ? 's' : ''}</span>
+						<span data-favorites-count data-favorites-format="text">${favoritesCount} favorite${favoritesCount !== 1 ? 's' : ''}</span>
 					</div>
 				</div>
 				<div class="brag-book-gallery-grid-selector">

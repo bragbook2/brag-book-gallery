@@ -640,6 +640,54 @@ final class Favorites_Handler {
 	}
 
 	/**
+	 * Get API credentials (token, website property ID, base URL).
+	 *
+	 * @return array{api_token: string, website_property_id: int, api_base_url: string}
+	 * @throws \Exception If API token or website property ID is not configured.
+	 * @since 4.3.3
+	 */
+	private static function get_api_credentials(): array {
+		$api_tokens = get_option( 'brag_book_gallery_api_token', [] );
+		$website_property_ids = get_option( 'brag_book_gallery_website_property_id', [] );
+
+		// Extract API token - try string, numeric array, then mode-based array formats
+		$api_token = '';
+		if ( is_string( $api_tokens ) && ! empty( $api_tokens ) ) {
+			$api_token = $api_tokens;
+		} elseif ( is_array( $api_tokens ) && ! empty( $api_tokens[0] ) ) {
+			$api_token = $api_tokens[0];
+		} elseif ( is_array( $api_tokens ) && ! empty( $api_tokens['default'] ) ) {
+			$api_token = $api_tokens['default'];
+		}
+
+		// Extract website property ID - try string, numeric array, then mode-based array formats
+		$website_property_id = 0;
+		if ( is_string( $website_property_ids ) && ! empty( $website_property_ids ) ) {
+			$website_property_id = (int) $website_property_ids;
+		} elseif ( is_array( $website_property_ids ) && ! empty( $website_property_ids[0] ) ) {
+			$website_property_id = (int) $website_property_ids[0];
+		} elseif ( is_array( $website_property_ids ) && ! empty( $website_property_ids['default'] ) ) {
+			$website_property_id = (int) $website_property_ids['default'];
+		}
+
+		if ( empty( $api_token ) ) {
+			throw new \Exception( 'No API token configured. Please configure API settings first.' );
+		}
+
+		if ( empty( $website_property_id ) ) {
+			throw new \Exception( 'No website property ID configured. Please configure API settings first.' );
+		}
+
+		$api_base_url = get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' );
+
+		return [
+			'api_token'           => $api_token,
+			'website_property_id' => $website_property_id,
+			'api_base_url'        => $api_base_url,
+		];
+	}
+
+	/**
 	 * Add a favorite to the BRAG book API using v2 endpoint
 	 *
 	 * @param string $name User's name.
@@ -652,43 +700,10 @@ final class Favorites_Handler {
 	 * @since 3.3.2 Updated to use v2 API endpoint with Bearer authentication.
 	 */
 	private static function add_favorite_to_api( string $name, string $email, string $phone, string $case_procedure_id, int $procedure_id = 0 ): bool {
-		// Get API credentials from arrays
-		$api_tokens_option = get_option( 'brag_book_gallery_api_token', [] );
-		$website_property_ids_option = get_option( 'brag_book_gallery_website_property_id', [] );
-
-		// Extract values - try both numeric array and mode-based array formats
-		$api_token = '';
-		$website_property_id = 0;
-
-		// Try numeric array format first (legacy)
-		if ( is_array( $api_tokens_option ) && ! empty( $api_tokens_option[0] ) ) {
-			$api_token = $api_tokens_option[0];
-		}
-		// Fall back to mode-based array format ('default' key)
-		if ( empty( $api_token ) && is_array( $api_tokens_option ) && ! empty( $api_tokens_option['default'] ) ) {
-			$api_token = $api_tokens_option['default'];
-		}
-
-		// Try numeric array format first (legacy)
-		if ( is_array( $website_property_ids_option ) && ! empty( $website_property_ids_option[0] ) ) {
-			$website_property_id = intval( $website_property_ids_option[0] );
-		}
-		// Fall back to mode-based array format ('default' key)
-		if ( empty( $website_property_id ) && is_array( $website_property_ids_option ) && ! empty( $website_property_ids_option['default'] ) ) {
-			$website_property_id = intval( $website_property_ids_option['default'] );
-		}
-
-		// Validate API credentials
-		if ( empty( $api_token ) ) {
-			throw new \Exception( 'No API token configured. Please configure API settings first.' );
-		}
-
-		if ( empty( $website_property_id ) ) {
-			throw new \Exception( 'No website property ID configured. Please configure API settings first.' );
-		}
-
-		// Get API base URL
-		$api_base_url = get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' );
+		$credentials         = self::get_api_credentials();
+		$api_token           = $credentials['api_token'];
+		$website_property_id = $credentials['website_property_id'];
+		$api_base_url        = $credentials['api_base_url'];
 
 		// Build query parameters for v2 API
 		// caseProcedureId should be an integer - ensure it's numeric before casting
@@ -898,9 +913,11 @@ final class Favorites_Handler {
 			}
 
 			if ( empty( $procedure_id ) ) {
-				wp_send_json_error( [
-					'message' => __( 'Unable to determine the procedure for this case. The case may need to be re-synced.', 'brag-book-gallery' ),
-				] );
+				// Log warning but allow remove to proceed — API can identify by caseProcedureId + email
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+					error_log( 'BRAGBook Gallery: procedure_id empty for remove favorite, caseProcedureId=' . $case_procedure_id );
+				}
+				$procedure_id = 0;
 			}
 
 			// Remove favorite from BRAGBook API using the v2 endpoint
@@ -936,43 +953,10 @@ final class Favorites_Handler {
 	 * @since 3.3.2
 	 */
 	private static function remove_favorite_from_api( string $email, string $case_procedure_id, int $procedure_id = 0 ): bool {
-		// Get API credentials from arrays
-		$api_tokens_option = get_option( 'brag_book_gallery_api_token', [] );
-		$website_property_ids_option = get_option( 'brag_book_gallery_website_property_id', [] );
-
-		// Extract values - try both numeric array and mode-based array formats
-		$api_token = '';
-		$website_property_id = 0;
-
-		// Try numeric array format first (legacy)
-		if ( is_array( $api_tokens_option ) && ! empty( $api_tokens_option[0] ) ) {
-			$api_token = $api_tokens_option[0];
-		}
-		// Fall back to mode-based array format ('default' key)
-		if ( empty( $api_token ) && is_array( $api_tokens_option ) && ! empty( $api_tokens_option['default'] ) ) {
-			$api_token = $api_tokens_option['default'];
-		}
-
-		// Try numeric array format first (legacy)
-		if ( is_array( $website_property_ids_option ) && ! empty( $website_property_ids_option[0] ) ) {
-			$website_property_id = intval( $website_property_ids_option[0] );
-		}
-		// Fall back to mode-based array format ('default' key)
-		if ( empty( $website_property_id ) && is_array( $website_property_ids_option ) && ! empty( $website_property_ids_option['default'] ) ) {
-			$website_property_id = intval( $website_property_ids_option['default'] );
-		}
-
-		// Validate API credentials
-		if ( empty( $api_token ) ) {
-			throw new \Exception( 'No API token configured. Please configure API settings first.' );
-		}
-
-		if ( empty( $website_property_id ) ) {
-			throw new \Exception( 'No website property ID configured. Please configure API settings first.' );
-		}
-
-		// Get API base URL
-		$api_base_url = get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' );
+		$credentials         = self::get_api_credentials();
+		$api_token           = $credentials['api_token'];
+		$website_property_id = $credentials['website_property_id'];
+		$api_base_url        = $credentials['api_base_url'];
 
 		// Build query parameters for v2 API
 		// caseProcedureId should be an integer - ensure it's numeric before casting
@@ -1381,8 +1365,8 @@ final class Favorites_Handler {
 			$case_url = '/' . ltrim( $gallery_slug, '/' ) . '/' . $case_id . '/';
 		}
 
-		// Determine the item ID for the favorite button (prefer procedure ID for consistency)
-		$favorite_item_id = ! empty( $procedure_id ) ? $procedure_id : ( ! empty( $post_id ) ? $post_id : $case_id );
+		// Determine the item ID for the favorite button (use case_id which is the caseProcedureId junction ID)
+		$favorite_item_id = ! empty( $case_id ) ? $case_id : ( ! empty( $post_id ) ? $post_id : '' );
 
 		// Build data attributes for filtering
 		$data_attrs = [
@@ -1390,6 +1374,7 @@ final class Favorites_Handler {
 			'data-case-id="' . esc_attr( $case_id ) . '"',
 			'data-post-id="' . esc_attr( $post_id ) . '"',
 			'data-procedure-id="' . esc_attr( $procedure_id ) . '"',
+			'data-procedure-case-id="' . esc_attr( $case_id ) . '"', // Junction ID for favorites
 			'data-favorited="true"', // Always favorited in favorites view
 		];
 
@@ -1402,29 +1387,31 @@ final class Favorites_Handler {
 
 		ob_start();
 		?>
-		<article class="brag-book-gallery-case-card brag-book-gallery-favorites-card" <?php echo implode( ' ', $data_attrs ); ?>>
+		<article class="brag-book-gallery-case-card brag-book-gallery-case-card--v3 brag-book-gallery-favorites-card" <?php echo implode( ' ', $data_attrs ); ?>>
 			<div class="brag-book-gallery-case-images single-image">
 				<div class="brag-book-gallery-image-container">
-						<div class="brag-book-gallery-skeleton-loader" style="display: none;"></div>
-						<div class="brag-book-gallery-item-actions">
-							<button class="brag-book-gallery-favorite-button favorited"
-									data-favorited="true"
-									data-item-id="<?php echo esc_attr( $favorite_item_id ); ?>"
-									aria-label="Remove from favorites">
-								<svg fill="#ff595c" stroke="#ff595c" stroke-width="2" viewBox="0 0 24 24">
-									<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-								</svg>
-							</button>
-						</div>
+					<div class="brag-book-gallery-skeleton-loader" style="display: none;"></div>
+					<div class="brag-book-gallery-item-actions">
+						<button class="brag-book-gallery-favorite-button favorited"
+								data-favorited="true"
+								data-item-id="<?php echo esc_attr( $favorite_item_id ); ?>"
+								aria-label="Remove from favorites">
+							<svg fill="#ff595c" stroke="#ff595c" stroke-width="2" viewBox="0 0 24 24">
+								<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+							</svg>
+						</button>
+					</div>
+					<div class="brag-book-gallery-case-carousel">
 						<a href="<?php echo esc_url( $case_url ); ?>"
-						   class="brag-book-gallery-case-permalink"
-						   data-case-id="<?php echo esc_attr( $case_id ); ?>">
+						   class="brag-book-gallery-case-permalink brag-book-gallery-carousel-slides"
+						   data-case-id="<?php echo esc_attr( $case_id ); ?>"
+						   data-procedure-ids="<?php echo esc_attr( $procedure_id ); ?>">
 							<?php if ( ! empty( $primary_image ) ) : ?>
 								<picture class="brag-book-gallery-picture">
 									<img src="<?php echo esc_url( $primary_image ); ?>"
 										 alt="<?php echo esc_attr( $primary_procedure . ' - Case ' . $case_id ); ?>"
 										 loading="lazy"
-										 data-image-type="single"
+										 data-image-type="carousel"
 										 data-image-url="<?php echo esc_url( $primary_image ); ?>"
 										 onload="this.closest('.brag-book-gallery-image-container').querySelector('.brag-book-gallery-skeleton-loader').style.display='none';">
 								</picture>
@@ -1434,40 +1421,26 @@ final class Favorites_Handler {
 								</div>
 							<?php endif; ?>
 						</a>
+					</div>
+					<div class="brag-book-gallery-case-card-overlay">
+						<div class="brag-book-gallery-case-card-overlay-content">
+							<div class="brag-book-gallery-case-card-overlay-info">
+								<span class="brag-book-gallery-case-card-overlay-title"><?php echo esc_html( $primary_procedure ); ?></span>
+								<span class="brag-book-gallery-case-card-overlay-case-number">Case #<?php echo esc_html( $case_id ); ?></span>
+							</div>
+							<a href="<?php echo esc_url( $case_url ); ?>"
+							   class="brag-book-gallery-case-card-overlay-button"
+							   data-case-id="<?php echo esc_attr( $case_id ); ?>"
+							   data-procedure-ids="<?php echo esc_attr( $procedure_id ); ?>"
+							   aria-label="View case details">
+								<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor">
+									<path d="M504-480 348-636q-11-11-11-28t11-28q11-11 28-11t28 11l184 184q6 6 8.5 13t2.5 15q0 8-2.5 15t-8.5 13L404-268q-11 11-28 11t-28-11q-11-11-11-28t11-28l156-156Z"></path>
+								</svg>
+							</a>
+						</div>
+					</div>
 				</div>
 			</div>
-			<details class="brag-book-gallery-case-card-details">
-				<summary class="brag-book-gallery-case-card-summary">
-					<div class="brag-book-gallery-case-card-summary-info">
-						<span class="brag-book-gallery-case-card-summary-info__name"><?php echo esc_html( $primary_procedure ); ?></span>
-						<span class="brag-book-gallery-case-card-summary-info__case-number">Case #<?php echo esc_html( $case_id ); ?></span>
-					</div>
-					<div class="brag-book-gallery-case-card-summary-details">
-						<p class="brag-book-gallery-case-card-summary-details__more">
-							<strong>More Details</strong>
-							<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor">
-								<path d="M444-288h72v-156h156v-72H516v-156h-72v156H288v72h156v156Zm36.28 192Q401-96 331-126t-122.5-82.5Q156-261 126-330.96t-30-149.5Q96-560 126-629.5q30-69.5 82.5-122T330.96-834q69.96-30 149.5-30t149.04 30q69.5 30 122 82.5T834-629.28q30 69.73 30 149Q864-401 834-331t-82.5 122.5Q699-156 629.28-126q-69.73 30-149 30Z"></path>
-							</svg>
-						</p>
-					</div>
-				</summary>
-				<div class="brag-book-gallery-case-card-details-content">
-					<p class="brag-book-gallery-case-card-details-content__title">Procedures Performed:</p>
-					<ul class="brag-book-gallery-case-card-procedures-list">
-						<?php if ( ! empty( $procedures ) && is_array( $procedures ) ) : ?>
-							<?php foreach ( $procedures as $procedure ) : ?>
-								<li class="brag-book-gallery-case-card-procedures-list__item">
-									<?php echo esc_html( is_array( $procedure ) ? $procedure['name'] ?? 'Unknown' : $procedure ); ?>
-								</li>
-							<?php endforeach; ?>
-						<?php else : ?>
-							<li class="brag-book-gallery-case-card-procedures-list__item">
-								<?php echo esc_html( $primary_procedure ); ?>
-							</li>
-						<?php endif; ?>
-					</ul>
-				</div>
-			</details>
 		</article>
 		<?php
 		return ob_get_clean();
@@ -1537,36 +1510,10 @@ final class Favorites_Handler {
 			return false;
 		}
 
-		// Get API credentials (handle array format)
-		$api_tokens = get_option( 'brag_book_gallery_api_token', [] );
-		$website_property_ids = get_option( 'brag_book_gallery_website_property_id', [] );
-
-		// Extract API token - try multiple formats
-		$api_token = '';
-		if ( is_string( $api_tokens ) && ! empty( $api_tokens ) ) {
-			$api_token = $api_tokens;
-		} elseif ( is_array( $api_tokens ) && ! empty( $api_tokens[0] ) ) {
-			$api_token = $api_tokens[0];
-		} elseif ( is_array( $api_tokens ) && ! empty( $api_tokens['default'] ) ) {
-			$api_token = $api_tokens['default'];
-		} else {
-			throw new \Exception( 'No API token configured. Please configure API settings first.' );
-		}
-
-		// Extract website property ID - try multiple formats
-		$website_property_id = 0;
-		if ( is_string( $website_property_ids ) && ! empty( $website_property_ids ) ) {
-			$website_property_id = (int) $website_property_ids;
-		} elseif ( is_array( $website_property_ids ) && ! empty( $website_property_ids[0] ) ) {
-			$website_property_id = (int) $website_property_ids[0];
-		} elseif ( is_array( $website_property_ids ) && ! empty( $website_property_ids['default'] ) ) {
-			$website_property_id = (int) $website_property_ids['default'];
-		} else {
-			throw new \Exception( 'No website property ID configured. Please configure API settings first.' );
-		}
-
-		// Get API base URL
-		$api_base_url = get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' );
+		$credentials         = self::get_api_credentials();
+		$api_token           = $credentials['api_token'];
+		$website_property_id = $credentials['website_property_id'];
+		$api_base_url        = $credentials['api_base_url'];
 
 		// Build query parameters for v2 API
 		$query_params = [

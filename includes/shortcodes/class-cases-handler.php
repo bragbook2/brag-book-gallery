@@ -2168,12 +2168,22 @@ final class Cases_Handler {
 		// Initialize current API procedure ID (will be set on taxonomy pages)
 		$current_api_procedure_id = '';
 
+		// Get procedure case ID (small junction ID) for favorites
+		$procedure_case_id = get_post_meta( $post_id, 'brag_book_gallery_procedure_case_id', true );
+		if ( empty( $procedure_case_id ) ) {
+			$procedure_case_id = get_post_meta( $post_id, 'brag_book_gallery_original_case_id', true );
+		}
+
 		if ( ! empty( $case_id ) ) {
 			$data_attrs[] = 'data-case-id="' . $case_id . '"';
 		}
 
 		if ( $post_id ) {
 			$data_attrs[] = 'data-post-id="' . $post_id . '"';
+		}
+
+		if ( ! empty( $procedure_case_id ) ) {
+			$data_attrs[] = 'data-procedure-case-id="' . esc_attr( $procedure_case_id ) . '"';
 		}
 
 		if ( is_tax() ) {
@@ -2323,14 +2333,12 @@ final class Cases_Handler {
 						<div class="brag-book-gallery-skeleton-loader" style="display: none;"></div>
 						<div class="brag-book-gallery-item-actions">
 							<?php
-							// Determine the favorite item ID - prioritize current procedure ID, then first procedure ID
+							// Determine the favorite item ID - use procedure_case_id (junction ID) for API
 							$favorite_item_id = '';
-							if ( ! empty( $current_api_procedure_id ) ) {
-								$favorite_item_id = $current_api_procedure_id;
-							} elseif ( ! empty( $procedure_ids ) && is_array( $procedure_ids ) ) {
-								$favorite_item_id = $procedure_ids[0];
-							} else {
-								$favorite_item_id = $case_id; // Fallback to case ID
+							if ( ! empty( $procedure_case_id ) ) {
+								$favorite_item_id = $procedure_case_id;
+							} elseif ( ! empty( $case_id ) ) {
+								$favorite_item_id = $case_id;
 							}
 							?>
 							<button class="brag-book-gallery-favorite-button"
