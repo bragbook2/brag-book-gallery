@@ -177,7 +177,8 @@ final class Carousel_Handler {
 				'show_pagination'     => 'true',
 				'auto_play'           => 'false',
 				'class'               => '',
-				'nudity'              => 'false'
+				'nudity'              => 'false',
+				'title'               => ''
 			),
 			$atts,
 			'brag_book_carousel'
@@ -357,6 +358,7 @@ final class Carousel_Handler {
 				'auto_play'           => filter_var( $atts['auto_play'] ?? false, FILTER_VALIDATE_BOOLEAN ),
 				'class'               => sanitize_html_class( (string) $atts['class'] ),
 				'nudity'              => $nudity,
+				'title'               => sanitize_text_field( (string) ( $atts['title'] ?? '' ) ),
 			],
 		];
 	}
@@ -498,8 +500,8 @@ final class Carousel_Handler {
 		ob_start();
 		?>
 		<?php
-		// Get procedure name for title
-		$procedure_name = self::get_procedure_name( $config );
+		// Use explicit title if provided, otherwise derive from procedure
+		$procedure_name = ! empty( $config['title'] ) ? $config['title'] : self::get_procedure_name( $config );
 		?>
 		<div class="<?php echo esc_attr( $css_class ); ?>"
 			 data-carousel="<?php echo esc_attr( $carousel_id ); ?>"
@@ -875,9 +877,16 @@ final class Carousel_Handler {
 					];
 				}
 
+				// Get the procedure case ID (junction ID) for view tracking
+				$procedure_case_id = get_post_meta( $post_id, 'brag_book_gallery_procedure_case_id', true );
+				if ( empty( $procedure_case_id ) ) {
+					$procedure_case_id = get_post_meta( $post_id, 'brag_book_gallery_original_case_id', true );
+				}
+
 				$carousel_items[] = [
-					'id'         => $case_id,
-					'post_id'    => $post_id,
+					'id'                => $case_id,
+					'procedure_case_id' => $procedure_case_id,
+					'post_id'           => $post_id,
 					'images'     => $images,
 					'age'        => get_post_meta( $post_id, 'age', true ) ?: '',
 					'gender'     => get_post_meta( $post_id, 'gender', true ) ?: '',
@@ -1001,11 +1010,18 @@ final class Carousel_Handler {
 				$first_image_url = ! empty( $url_array ) ? $url_array[0] : '';
 				$case_id = get_post_meta( $post_id, 'brag_book_gallery_case_id', true );
 
+				// Get the procedure case ID (junction ID) for view tracking
+				$procedure_case_id = get_post_meta( $post_id, 'brag_book_gallery_procedure_case_id', true );
+				if ( empty( $procedure_case_id ) ) {
+					$procedure_case_id = get_post_meta( $post_id, 'brag_book_gallery_original_case_id', true );
+				}
+
 				// Only include cases that have images
 				if ( ! empty( $first_image_url ) ) {
 					$cases[] = [
-						'id'         => $case_id,
-						'post_id'    => $post_id,
+						'id'                => $case_id,
+						'procedure_case_id' => $procedure_case_id,
+						'post_id'           => $post_id,
 						'title'      => get_the_title(),
 						'images'     => [
 							[
@@ -1138,11 +1154,12 @@ final class Carousel_Handler {
 		}
 
 		return array(
-			'id'           => sanitize_text_field( $case['id'] ?? '' ),
-			'post_id'      => absint( $case['post_id'] ?? 0 ),
-			'seo_suffix'   => $seo_suffix,
-			'procedures'   => $case['procedures'] ?? array(),
-			'total_slides' => count( $case['photos'] ?? $case['images'] ?? array() ),
+			'id'                => sanitize_text_field( $case['id'] ?? '' ),
+			'procedure_case_id' => sanitize_text_field( $case['procedure_case_id'] ?? '' ),
+			'post_id'           => absint( $case['post_id'] ?? 0 ),
+			'seo_suffix'        => $seo_suffix,
+			'procedures'        => $case['procedures'] ?? array(),
+			'total_slides'      => count( $case['photos'] ?? $case['images'] ?? array() ),
 		);
 	}
 
@@ -1235,12 +1252,20 @@ final class Carousel_Handler {
 
 		// Add case debugging data attributes
 		if ( ! empty( $case_data ) ) {
-			// API case ID (procedure case ID - the small number for view tracking)
+			// API case ID
 			if ( ! empty( $case_data['id'] ) ) {
 				$data_attributes .= sprintf(
-					' data-case-id="%s" data-procedure-case-id="%s"',
-					esc_attr( $case_data['id'] ),
-					esc_attr( $case_data['id'] ) // Same value, explicit for view tracking
+					' data-case-id="%s"',
+					esc_attr( $case_data['id'] )
+				);
+			}
+
+			// Procedure case ID (junction ID - the small number for view tracking)
+			$pcid = $case_data['procedure_case_id'] ?? $case_data['id'] ?? '';
+			if ( ! empty( $pcid ) ) {
+				$data_attributes .= sprintf(
+					' data-procedure-case-id="%s"',
+					esc_attr( $pcid )
 				);
 			}
 

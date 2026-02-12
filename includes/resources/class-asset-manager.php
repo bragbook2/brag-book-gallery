@@ -404,7 +404,7 @@ final class Asset_Manager {
 			'websitePropertyId' => sanitize_text_field( $config['website_property_id'] ?? '' ),
 			'apiEndpoint'       => esc_url_raw( get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' ) ),
 			'ajaxUrl'           => esc_url_raw( admin_url( 'admin-ajax.php' ) ),
-			'nonce'             => wp_create_nonce( 'brag_book_gallery_carousel_nonce' ),
+			'nonce'             => wp_create_nonce( 'brag_book_gallery_nonce' ),
 			'pluginUrl'         => esc_url_raw( Setup::get_plugin_url() ),
 			'showControls'      => (bool) ( $config['show_controls'] ?? true ),
 			'showPagination'    => (bool) ( $config['show_pagination'] ?? true ),
@@ -418,6 +418,23 @@ final class Asset_Manager {
 			'bragBookCarouselConfig',
 			$localized_data
 		);
+
+		// Ensure bragBookGalleryConfig is available for view tracking on carousel-only pages
+		global $wp_scripts;
+		$already_localized = isset( $wp_scripts->registered['brag-book-gallery-main'] )
+			&& ! empty( $wp_scripts->registered['brag-book-gallery-main']->extra['data'] )
+			&& strpos( $wp_scripts->registered['brag-book-gallery-main']->extra['data'], 'bragBookGalleryConfig' ) !== false;
+
+		if ( ! $already_localized ) {
+			wp_localize_script(
+				'brag-book-gallery-main',
+				'bragBookGalleryConfig',
+				[
+					'ajaxUrl' => esc_url_raw( admin_url( 'admin-ajax.php' ) ),
+					'nonce'   => wp_create_nonce( 'brag_book_gallery_nonce' ),
+				]
+			);
+		}
 	}
 
 	/**
