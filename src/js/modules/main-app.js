@@ -32,6 +32,21 @@ class BRAGbookGalleryApp {
 		// Track page view on load (case or procedure)
 		this.trackPageView();
 
+		// Procedure details accordion toggle (event delegation)
+		document.addEventListener('click', (e) => {
+			const header = e.target.closest('.procedure-accordion-header');
+			if (!header) return;
+
+			const content = header.nextElementSibling;
+			if (!content) return;
+
+			const isOpen = content.classList.contains('is-open');
+
+			// Toggle this item
+			content.classList.toggle('is-open');
+			header.setAttribute('aria-expanded', !isOpen);
+		});
+
 		// Check if this is a direct case URL first and handle it
 		if (await this.handleDirectCaseUrl()) {
 			// If we're loading a case directly, skip normal gallery initialization
@@ -1192,6 +1207,7 @@ class BRAGbookGalleryApp {
 								<div class="skeleton-procedure-badges">
 									<div class="skeleton-badge"></div>
 									<div class="skeleton-badge"></div>
+									<div class="skeleton-badge"></div>
 								</div>
 							</div>
 						</div>
@@ -1219,21 +1235,7 @@ class BRAGbookGalleryApp {
 								<div class="skeleton-procedure-details">
 									<div class="skeleton-detail-row"></div>
 									<div class="skeleton-detail-row"></div>
-								</div>
-							</div>
-						</div>
-
-						<!-- Case Notes Card (full width) -->
-						<div class="case-detail-card case-notes-card">
-							<div class="card-header">
-								<div class="skeleton-card-title"></div>
-							</div>
-							<div class="card-content">
-								<div class="skeleton-case-notes">
-									<div class="skeleton-text-line"></div>
-									<div class="skeleton-text-line short"></div>
-									<div class="skeleton-text-line medium"></div>
-									<div class="skeleton-text-line"></div>
+									<div class="skeleton-detail-row"></div>
 								</div>
 							</div>
 						</div>
@@ -1506,7 +1508,124 @@ class BRAGbookGalleryApp {
 	}
 
 	initializeCaseDetailThumbnails() {
-		// Use event delegation for better reliability
+		const thumbnailContainer = document.querySelector('.brag-book-gallery-case-thumbnails');
+		if (!thumbnailContainer) return;
+
+		const track = thumbnailContainer.querySelector('.brag-book-gallery-thumbnails-track');
+		const prevBtn = thumbnailContainer.querySelector('.brag-book-gallery-carousel-btn--prev');
+		const nextBtn = thumbnailContainer.querySelector('.brag-book-gallery-carousel-btn--next');
+		const paginationContainer = thumbnailContainer.querySelector('.brag-book-gallery-thumbnails-pagination');
+
+		if (!track) return;
+
+		// --- Arrow navigation ---
+		const scrollByThumbnail = (direction) => {
+			const firstThumb = track.querySelector('.brag-book-gallery-thumbnail-item');
+			if (!firstThumb) return;
+			const scrollAmount = firstThumb.offsetWidth + 8; // width + gap
+			track.scrollBy({ left: direction === 'next' ? scrollAmount : -scrollAmount, behavior: 'smooth' });
+		};
+
+		if (prevBtn) {
+			prevBtn.addEventListener('click', () => scrollByThumbnail('prev'));
+		}
+		if (nextBtn) {
+			nextBtn.addEventListener('click', () => scrollByThumbnail('next'));
+		}
+
+		// --- Update arrow disabled/hidden state ---
+		const updateArrowStates = () => {
+			if (!prevBtn || !nextBtn) return;
+			const { scrollLeft, scrollWidth, clientWidth } = track;
+			const canScroll = scrollWidth > clientWidth + 1;
+			prevBtn.style.display = canScroll ? '' : 'none';
+			nextBtn.style.display = canScroll ? '' : 'none';
+			prevBtn.disabled = scrollLeft <= 1;
+			nextBtn.disabled = scrollLeft + clientWidth >= scrollWidth - 1;
+		};
+
+		// --- Pagination helpers ---
+		const getPageMetrics = () => {
+			const firstThumb = track.querySelector('.brag-book-gallery-thumbnail-item');
+			if (!firstThumb) return null;
+			const gap = 8;
+			const thumbWidth = firstThumb.offsetWidth + gap;
+			const trackWidth = track.clientWidth;
+			const visibleCount = Math.max(Math.floor(trackWidth / thumbWidth), 1);
+			const thumbs = track.querySelectorAll('.brag-book-gallery-thumbnail-item');
+			const totalPages = Math.ceil(thumbs.length / visibleCount);
+			const pageWidth = visibleCount * thumbWidth;
+			return { thumbWidth, trackWidth, visibleCount, totalPages, pageWidth, thumbCount: thumbs.length };
+		};
+
+		const buildPaginationDots = () => {
+			if (!paginationContainer) return;
+			const metrics = getPageMetrics();
+			if (!metrics || metrics.thumbCount <= 1) {
+				paginationContainer.innerHTML = '';
+				return;
+			}
+
+			const canScroll = track.scrollWidth > metrics.trackWidth + 1;
+			if (!canScroll) {
+				paginationContainer.innerHTML = '';
+				return;
+			}
+
+			const { totalPages, pageWidth } = metrics;
+			paginationContainer.innerHTML = '';
+			for (let i = 0; i < totalPages; i++) {
+				const dot = document.createElement('button');
+				dot.className = 'brag-book-gallery-pagination-dot' + (i === 0 ? ' brag-book-gallery-active' : '');
+				dot.setAttribute('aria-label', `Go to thumbnail page ${i + 1}`);
+				dot.addEventListener('click', () => {
+					const currentMetrics = getPageMetrics();
+					if (currentMetrics) {
+						track.scrollTo({ left: i * currentMetrics.pageWidth, behavior: 'smooth' });
+					}
+				});
+				paginationContainer.appendChild(dot);
+			}
+		};
+
+		const updatePaginationDots = () => {
+			if (!paginationContainer) return;
+			const dots = paginationContainer.querySelectorAll('.brag-book-gallery-pagination-dot');
+			if (!dots.length) return;
+
+			const metrics = getPageMetrics();
+			if (!metrics || metrics.pageWidth === 0) return;
+			const currentPage = Math.min(
+				Math.round(track.scrollLeft / metrics.pageWidth),
+				dots.length - 1
+			);
+
+			dots.forEach((dot, i) => {
+				dot.classList.toggle('brag-book-gallery-active', i === currentPage);
+			});
+		};
+
+		// Listen for scroll on track
+		track.addEventListener('scroll', () => {
+			updateArrowStates();
+			updatePaginationDots();
+		}, { passive: true });
+
+		// Build dots and set initial arrow states
+		buildPaginationDots();
+		updateArrowStates();
+
+		// Rebuild on resize (debounced)
+		let resizeTimer;
+		window.addEventListener('resize', () => {
+			clearTimeout(resizeTimer);
+			resizeTimer = setTimeout(() => {
+				buildPaginationDots();
+				updateArrowStates();
+			}, 150);
+		});
+
+		// --- Thumbnail click handler (event delegation) ---
 		document.addEventListener('click', (e) => {
 			const thumbnail = e.target.closest('.brag-book-gallery-thumbnail-item');
 			if (!thumbnail) return;
@@ -1522,59 +1641,21 @@ class BRAGbookGalleryApp {
 			// Add active class to clicked thumbnail
 			thumbnail.classList.add('active');
 
-			// Get image URL from thumbnail data attributes
+			// Get image URL and alt from thumbnail
 			const processedUrl = thumbnail.dataset.processedUrl;
 			const imageIndex = thumbnail.dataset.imageIndex;
+			const thumbnailImg = thumbnail.querySelector('img');
+			const thumbnailAlt = thumbnailImg ? thumbnailImg.alt : '';
 
 			// Update main container data attribute
 			mainContainer.dataset.imageIndex = imageIndex;
 
-			// Build new HTML for main image
-			let newContent = '';
-
-			if (processedUrl) {
-				const existingButton = mainContainer.querySelector('.brag-book-gallery-favorite-button');
-				const caseId = existingButton ? existingButton.dataset.itemId.replace('_main', '') : '';
-
-				newContent = `
-					<div class="brag-book-gallery-main-single">
-						<img src="${processedUrl}" alt="Case Image" loading="eager">
-						<div class="brag-book-gallery-item-actions">
-							<button class="brag-book-gallery-favorite-button" data-favorited="false" data-item-id="${caseId}_main" aria-label="Add to favorites">
-								<svg fill="rgba(255, 255, 255, 0.5)" stroke="white" stroke-width="2" viewBox="0 0 24 24">
-									<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-								</svg>
-							</button>
-				`;
-
-				// Check if sharing is enabled
-				if (typeof bragBookGalleryConfig !== 'undefined' && bragBookGalleryConfig.enableSharing === 'yes') {
-					newContent += `
-							<button class="brag-book-gallery-share-button" data-item-id="${caseId}_main" aria-label="Share this image">
-								<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor">
-									<path d="M672.22-100q-44.91 0-76.26-31.41-31.34-31.41-31.34-76.28 0-6 4.15-29.16L284.31-404.31q-14.46 15-34.36 23.5t-42.64 8.5q-44.71 0-76.01-31.54Q100-435.39 100-480q0-44.61 31.3-76.15 31.3-31.54 76.01-31.54 22.74 0 42.64 8.5 19.9 8.5 34.36 23.5l284.46-167.08q-2.38-7.38-3.27-14.46-.88-7.08-.88-15.08 0-44.87 31.43-76.28Q627.49-860 672.4-860t76.25 31.44Q780-797.13 780-752.22q0 44.91-31.41 76.26-31.41 31.34-76.28 31.34-22.85 0-42.5-8.69Q610.15-662 595.69-677L311.23-509.54q2.38 7.39 3.27 14.46.88 7.08.88 15.08t-.88 15.08q-.89 7.07-3.27 14.46L595.69-283q14.46-15 34.12-23.69 19.65-8.69 42.5-8.69 44.87 0 76.28 31.43Q780-252.51 780-207.6t-31.44 76.25Q717.13-100 672.22-100Zm.09-60q20.27 0 33.98-13.71Q720-187.42 720-207.69q0-20.27-13.71-33.98-13.71-13.72-33.98-13.72-20.27 0-33.98 13.72-13.72 13.71-13.72 33.98 0 20.27 13.72 33.98Q652.04-160 672.31-160Zm-465-272.31q20.43 0 34.25-13.71 13.83-13.71 13.83-33.98 0-20.27-13.83-33.98-13.82-13.71-34.25-13.71-20.11 0-33.71 13.71Q160-500.27 160-480q0 20.27 13.6 33.98 13.6 13.71 33.71 13.71Zm465-272.3q20.27 0 33.98-13.72Q720-732.04 720-752.31q0-20.27-13.71-33.98Q692.58-800 672.31-800q-20.27 0-33.98 13.71-13.72 13.71-13.72 33.98 0 20.27 13.72 33.98 13.71 13.72 33.98 13.72Zm0 496.92ZM207.69-480Zm464.62-272.31Z"/>
-								</svg>
-							</button>
-					`;
-				}
-
-				newContent += `
-						</div>
-					</div>
-				`;
-			}
-
-			// Update main container content
-			mainContainer.innerHTML = newContent;
-
-			// Re-initialize any event handlers for the new buttons
-			if (window.bragBookGalleryApp && window.bragBookGalleryApp.components) {
-				if (window.bragBookGalleryApp.components.favoritesManager) {
-					window.bragBookGalleryApp.components.favoritesManager.initializeFavoriteButtons();
-				}
-				if (window.bragBookGalleryApp.components.shareManager) {
-					window.bragBookGalleryApp.components.shareManager.initializeShareButtons();
-				}
+			// Update existing main image src/alt instead of replacing the DOM
+			const mainImg = mainContainer.querySelector('.brag-book-gallery-main-single img');
+			if (mainImg && processedUrl) {
+				const mainAlt = thumbnailAlt.replace(/ - Angle \d+$/, '');
+				mainImg.src = processedUrl;
+				mainImg.alt = mainAlt;
 			}
 		});
 	}
@@ -3332,11 +3413,17 @@ class BRAGbookGalleryApp {
 			`;
 		}).filter(html => html).join('');
 
+		const prevSvg = '<svg class="brag-book-gallery-arrow-icon" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M400-240 160-480l240-240 56 58-142 142h486v80H314l142 142-56 58Z"/></svg>';
+		const nextSvg = '<svg class="brag-book-gallery-arrow-icon" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="m560-240-56-58 142-142H160v-80h486L504-662l56-58 240 240-240 240Z"/></svg>';
+
 		return `
-			<div class="brag-book-gallery-thumbnails-section">
-				<div class="brag-book-gallery-thumbnails-grid">
+			<div class="brag-book-gallery-case-thumbnails">
+				<button class="brag-book-gallery-carousel-btn brag-book-gallery-carousel-btn--prev" data-direction="prev" aria-label="Previous thumbnails">${prevSvg}</button>
+				<div class="brag-book-gallery-thumbnails-track">
 					${thumbnailsHTML}
 				</div>
+				<button class="brag-book-gallery-carousel-btn brag-book-gallery-carousel-btn--next" data-direction="next" aria-label="Next thumbnails">${nextSvg}</button>
+				<div class="brag-book-gallery-thumbnails-pagination"></div>
 			</div>
 		`;
 	}
@@ -3368,16 +3455,16 @@ class BRAGbookGalleryApp {
 		}
 
 		const proceduresList = caseData.procedures.map(procedure =>
-			`<li>${this.escapeHtml(procedure.name || 'Unknown Procedure')}</li>`
+			`<span class="procedure-badge">${this.escapeHtml(procedure.name || 'Unknown Procedure')}</span>`
 		).join('');
 
 		return `
-			<div class="brag-book-gallery-detail-card">
-				<h3 class="brag-book-gallery-detail-card-title">Procedures Performed</h3>
-				<div class="brag-book-gallery-detail-card-content">
-					<ul class="brag-book-gallery-procedures-list">
-						${proceduresList}
-					</ul>
+			<div class="case-detail-card procedures-performed-card">
+				<div class="card-header">
+					<h2 class="card-title">Procedures Performed</h2>
+				</div>
+				<div class="card-content">
+					<div class="brag-book-gallery-procedure-badges-list">${proceduresList}</div>
 				</div>
 			</div>
 		`;
@@ -3387,66 +3474,78 @@ class BRAGbookGalleryApp {
 	 * Render patient details card
 	 */
 	renderPatientDetailsCard(caseData) {
-		const patientDetails = [];
+		const itemTemplate = (label, value) =>
+			`<div class="brag-book-gallery-info-item"><span class="brag-book-gallery-info-label">${this.escapeHtml(label)}</span><span class="brag-book-gallery-info-value">${this.escapeHtml(String(value))}</span></div>`;
 
-		if (caseData.age) {
-			patientDetails.push(`<div class="brag-book-gallery-detail-row"><span class="brag-book-gallery-detail-label">Age:</span> <span class="brag-book-gallery-detail-value">${this.escapeHtml(String(caseData.age))}</span></div>`);
-		}
-		if (caseData.gender) {
-			patientDetails.push(`<div class="brag-book-gallery-detail-row"><span class="brag-book-gallery-detail-label">Gender:</span> <span class="brag-book-gallery-detail-value">${this.escapeHtml(caseData.gender)}</span></div>`);
-		}
-		if (caseData.ethnicity) {
-			patientDetails.push(`<div class="brag-book-gallery-detail-row"><span class="brag-book-gallery-detail-label">Ethnicity:</span> <span class="brag-book-gallery-detail-value">${this.escapeHtml(caseData.ethnicity)}</span></div>`);
-		}
-		if (caseData.height) {
-			patientDetails.push(`<div class="brag-book-gallery-detail-row"><span class="brag-book-gallery-detail-label">Height:</span> <span class="brag-book-gallery-detail-value">${this.escapeHtml(caseData.height)}</span></div>`);
-		}
-		if (caseData.weight) {
-			patientDetails.push(`<div class="brag-book-gallery-detail-row"><span class="brag-book-gallery-detail-label">Weight:</span> <span class="brag-book-gallery-detail-value">${this.escapeHtml(caseData.weight)}</span></div>`);
-		}
+		let items = '';
 
-		if (patientDetails.length === 0) {
-			return '';
-		}
+		if (caseData.ethnicity) items += itemTemplate('Ethnicity', caseData.ethnicity);
+		if (caseData.gender) items += itemTemplate('Gender', caseData.gender);
+		if (caseData.age) items += itemTemplate('Age', `${caseData.age} years`);
+		if (caseData.height) items += itemTemplate('Height', caseData.height);
+		if (caseData.weight) items += itemTemplate('Weight', caseData.weight);
+
+		if (!items) return '';
 
 		return `
-			<div class="brag-book-gallery-detail-card">
-				<h3 class="brag-book-gallery-detail-card-title">Patient Information</h3>
-				<div class="brag-book-gallery-detail-card-content">
-					${patientDetails.join('')}
+			<div class="case-detail-card patient-details-card">
+				<div class="card-header">
+					<h2 class="card-title">Patient Information</h2>
+				</div>
+				<div class="card-content">
+					<div class="patient-info-grid">${items}</div>
 				</div>
 			</div>
 		`;
 	}
 
 	/**
-	 * Render procedure details card
+	 * Render procedure details card with accordion
 	 */
 	renderProcedureDetailsCard(caseData) {
-		const procedureDetails = [];
-
-		if (caseData.surgeryDate) {
-			procedureDetails.push(`<div class="brag-book-gallery-detail-row"><span class="brag-book-gallery-detail-label">Surgery Date:</span> <span class="brag-book-gallery-detail-value">${this.escapeHtml(caseData.surgeryDate)}</span></div>`);
-		}
-		if (caseData.followUpDate) {
-			procedureDetails.push(`<div class="brag-book-gallery-detail-row"><span class="brag-book-gallery-detail-label">Follow-up Date:</span> <span class="brag-book-gallery-detail-value">${this.escapeHtml(caseData.followUpDate)}</span></div>`);
-		}
-		if (caseData.surgeon) {
-			procedureDetails.push(`<div class="brag-book-gallery-detail-row"><span class="brag-book-gallery-detail-label">Surgeon:</span> <span class="brag-book-gallery-detail-value">${this.escapeHtml(caseData.surgeon)}</span></div>`);
-		}
-		if (caseData.location) {
-			procedureDetails.push(`<div class="brag-book-gallery-detail-row"><span class="brag-book-gallery-detail-label">Location:</span> <span class="brag-book-gallery-detail-value">${this.escapeHtml(caseData.location)}</span></div>`);
-		}
-
-		if (procedureDetails.length === 0) {
+		if (!caseData.procedures || !Array.isArray(caseData.procedures) || caseData.procedures.length === 0) {
 			return '';
 		}
 
+		const chevronSvg = '<span class="accordion-chevron"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>';
+
+		const procedureDetails = caseData.procedureDetails || {};
+		let accordionItems = '';
+
+		caseData.procedures.forEach(procedure => {
+			const procId = procedure.procedure_id || procedure.id;
+			const procName = this.escapeHtml(procedure.name || 'Unknown Procedure');
+			const details = procedureDetails[procId] || {};
+
+			let detailRows = '';
+			Object.entries(details).forEach(([label, value]) => {
+				const displayValue = Array.isArray(value) ? value.join(', ') : value;
+				detailRows += `<div class="brag-book-gallery-info-item"><span class="brag-book-gallery-info-label">${this.escapeHtml(label)}</span><span class="brag-book-gallery-info-value">${this.escapeHtml(String(displayValue))}</span></div>`;
+			});
+
+			if (!detailRows) return;
+
+			accordionItems += `
+				<div class="procedure-accordion-item">
+					<button type="button" class="procedure-accordion-header" aria-expanded="false">
+						<span>${procName}</span>${chevronSvg}
+					</button>
+					<div class="procedure-accordion-content">
+						${detailRows}
+					</div>
+				</div>
+			`;
+		});
+
+		if (!accordionItems) return '';
+
 		return `
-			<div class="brag-book-gallery-detail-card">
-				<h3 class="brag-book-gallery-detail-card-title">Procedure Details</h3>
-				<div class="brag-book-gallery-detail-card-content">
-					${procedureDetails.join('')}
+			<div class="case-detail-card procedure-details-card">
+				<div class="card-header">
+					<h2 class="card-title">Procedure Details</h2>
+				</div>
+				<div class="card-content">
+					<div class="procedure-details-accordion">${accordionItems}</div>
 				</div>
 			</div>
 		`;
@@ -3463,12 +3562,10 @@ class BRAGbookGalleryApp {
 		}
 
 		return `
-			<div class="brag-book-gallery-detail-card brag-book-gallery-case-notes-card">
-				<h3 class="brag-book-gallery-detail-card-title">Case Notes</h3>
-				<div class="brag-book-gallery-detail-card-content">
-					<div class="brag-book-gallery-case-notes-content">
-						${this.escapeHtml(notes).replace(/\n/g, '<br>')}
-					</div>
+			<div class="case-detail-card case-notes-card">
+				<h2 class="case-notes-title">Case Notes</h2>
+				<div class="case-notes-body">
+					<p>${this.escapeHtml(notes).replace(/\n/g, '</p><p>')}</p>
 				</div>
 			</div>
 		`;

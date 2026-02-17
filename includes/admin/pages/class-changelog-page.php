@@ -93,6 +93,32 @@ class Changelog_Page extends Settings_Base {
 				</div>
 			</div>
 
+			<!-- Version 4.3.3-beta8 -->
+			<div class="brag-book-gallery-section">
+				<div class="brag-book-gallery-changelog-version">
+					<h3>
+						<span class="version-badge version-patch">v4.3.3-beta8</span>
+						<?php esc_html_e( 'February 17, 2026', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Beta Release', 'brag-book-gallery' ); ?>
+					</h3>
+					<div class="brag-book-gallery-card">
+						<p><?php esc_html_e( 'This release adds a thumbnail carousel to the case detail page and fixes image alt text and swap behavior.', 'brag-book-gallery' ); ?></p>
+						<h4><?php esc_html_e( '✨ New Features', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Case Detail Thumbnail Carousel: Thumbnails now display in a proper carousel with prev/next arrow navigation and pagination dots', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Responsive thumbnail layout: 3 per row on desktop, 2 on tablet, 1 on mobile', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Arrows and pagination auto-hide when all thumbnails fit on screen', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Pagination dynamically recalculates on resize across breakpoints', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '🐛 Bug Fixes', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Main Image Alt Text: Now uses base SEO alt text only (removed redundant "Angle 1" suffix)', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Thumbnail Alt Text: Angles now start from "Angle 1" instead of "Angle 2"', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Image Swap Flash: Clicking a thumbnail now updates the image in-place instead of replacing the DOM, eliminating page flash', 'brag-book-gallery' ); ?></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
 			<!-- Version 4.3.3-beta1 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">

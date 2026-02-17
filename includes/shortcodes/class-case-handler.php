@@ -629,6 +629,10 @@ class Case_Handler {
 			$procedure_case_id = get_post_meta( get_the_ID(), 'brag_book_gallery_original_case_id', true );
 		}
 
+		// Build base alt text: prefer SEO alt text from post meta, fallback to procedure + case ID.
+		$seo_alt_text = get_post_meta( $wp_post_id, 'brag_book_gallery_seo_alt_text', true );
+		$base_alt     = ! empty( $seo_alt_text ) ? sanitize_text_field( $seo_alt_text ) : $procedure_name . ' - Case ' . $case_id;
+
 		// Generate schema markup for the image gallery
 		$schema_markup = $this->generate_gallery_schema( $images, $case_data );
 
@@ -649,7 +653,8 @@ class Case_Handler {
 
 		// Main image (first image) with microdata
 		if ( ! empty( $images[0] ) ) {
-			$html .= '<img src="' . esc_url( $images[0] ) . '" alt="' . esc_attr( $procedure_name . ' - Case ' . $case_id ) . '" loading="eager" itemprop="image">';
+			
+			$html .= '<img src="' . esc_url( $images[0] ) . '" alt="' . esc_attr( $base_alt ) . '" loading="eager" itemprop="image">';
 			$html .= '<div class="brag-book-gallery-item-actions">';
 			// Use procedure case ID (junction ID) for favorites - fallback to post ID
 			$favorite_item_id = ! empty( $procedure_case_id ) ? $procedure_case_id : $wp_post_id;
@@ -665,20 +670,38 @@ class Case_Handler {
 		$html .= '</div>';
 		$html .= '</div>';
 
-		// Thumbnails (only show if there are 2 or more images)
+		// Thumbnails carousel (only show if there are 2 or more images)
 		if ( count( $images ) >= 2 ) {
 			$html .= '<div class="brag-book-gallery-case-thumbnails">';
-			$html .= '<div class="brag-book-gallery-thumbnails-grid">';
+
+			// Previous arrow button
+			$html .= '<button class="brag-book-gallery-carousel-btn brag-book-gallery-carousel-btn--prev" data-direction="prev" aria-label="' . esc_attr__( 'Previous thumbnails', 'brag-book-gallery' ) . '">';
+			$html .= '<svg class="brag-book-gallery-arrow-icon" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor">';
+			$html .= '<path d="M400-240 160-480l240-240 56 58-142 142h486v80H314l142 142-56 58Z"/>';
+			$html .= '</svg></button>';
+
+			// Thumbnail track
+			$html .= '<div class="brag-book-gallery-thumbnails-track">';
 
 			foreach ( $images as $index => $image_url ) {
-				$active_class = $index === 0 ? ' active' : '';
-				$thumbnail_alt = sprintf( '%s - Thumbnail %d', $procedure_name, $index + 1 );
+				$active_class  = $index === 0 ? ' active' : '';
+				$thumbnail_alt = sprintf( '%s - Angle %d', $base_alt, $index + 1 );
 				$html .= '<div class="brag-book-gallery-thumbnail-item' . $active_class . '" data-image-index="' . $index . '" data-processed-url="' . esc_attr( $image_url ) . '">';
 				$html .= '<img src="' . esc_url( $image_url ) . '" alt="' . esc_attr( $thumbnail_alt ) . '" loading="lazy" itemprop="thumbnail">';
 				$html .= '</div>';
 			}
 
 			$html .= '</div>';
+
+			// Next arrow button
+			$html .= '<button class="brag-book-gallery-carousel-btn brag-book-gallery-carousel-btn--next" data-direction="next" aria-label="' . esc_attr__( 'Next thumbnails', 'brag-book-gallery' ) . '">';
+			$html .= '<svg class="brag-book-gallery-arrow-icon" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor">';
+			$html .= '<path d="m560-240-56-58 142-142H160v-80h486L504-662l56-58 240 240-240 240Z"/>';
+			$html .= '</svg></button>';
+
+			// Pagination dots container (populated by JS)
+			$html .= '<div class="brag-book-gallery-thumbnails-pagination"></div>';
+
 			$html .= '</div>';
 		}
 
@@ -856,27 +879,23 @@ class Case_Handler {
 			);
 		}
 
-		// Procedure details card (if available) - includes post-op information
+			// Procedure details card (if available) - accordion style with post-op info
 		if ( ! empty( $case_data['procedures'] ) ) {
 
-			$procedure_details = $this->get_procedure_details_for_card( $case_data );
-			$postop_info = $this->get_postop_info_for_card( $case_data );
+			$accordion_html = $this->get_procedure_details_accordion( $case_data );
 
-			// Combine procedure details and post-op info
-			$combined_details = $procedure_details . $postop_info;
-
-			if ( ! empty( $combined_details ) ) {
+			if ( ! empty( $accordion_html ) ) {
 				$html .= sprintf(
 					'<div class="case-detail-card procedure-details-card">' .
 						'<div class="card-header">' .
 							'<h2 class="card-title">%s</h2>' .
 						'</div>' .
 						'<div class="card-content">' .
-							'<div class="procedure-details-grid">%s</div>' .
+							'<div class="procedure-details-accordion">%s</div>' .
 						'</div>' .
-						'</div>',
-						esc_html__( 'Procedure Details', 'brag-book-gallery' ),
-					$combined_details
+					'</div>',
+					esc_html__( 'Procedure Details', 'brag-book-gallery' ),
+					$accordion_html
 				);
 			}
 		}
@@ -884,16 +903,12 @@ class Case_Handler {
 		// Close grid
 		$html .= '</div>';
 
-		// Case notes card - outside the grid, full width
+		// Case notes card - outside the grid, full width, no dark header
 		if ( ! empty( $case_data['caseNotes'] ) ) {
 			$html .= sprintf(
 				'<div class="case-detail-card case-notes-card">' .
-					'<div class="card-header">' .
-						'<h2 class="card-title">' . esc_html__( 'Case Notes', 'brag-book-gallery' ) . '</h2>' .
-					'</div>' .
-					'<div class="card-content">' .
-						'<div class="case-details-content">%s</div>' .
-					'</div>' .
+					'<h2 class="case-notes-title">' . esc_html__( 'Case Notes', 'brag-book-gallery' ) . '</h2>' .
+					'<div class="case-notes-body">%s</div>' .
 				'</div>',
 				wp_kses_post( wpautop( $case_data['caseNotes'] ) )
 			);
@@ -1098,6 +1113,99 @@ class Case_Handler {
 		}
 
 		return $html;
+	}
+
+	/**
+	 * Build accordion HTML for procedure details card.
+	 *
+	 * Each procedure gets its own collapsible section. The first procedure
+	 * with details is expanded by default; the rest are collapsed.
+	 *
+	 * @since 4.4.0
+	 * @param array $case_data The case data array.
+	 * @return string Accordion HTML.
+	 */
+	private function get_procedure_details_accordion( array $case_data ): string {
+		$html    = '';
+		$post_id = $case_data['id'] ?? 0;
+
+		if ( empty( $post_id ) ) {
+			return $html;
+		}
+
+		// Get procedure details JSON from post meta.
+		$procedure_details_json = get_post_meta( $post_id, 'brag_book_gallery_procedure_details', true );
+		$procedure_details      = ! empty( $procedure_details_json ) ? json_decode( $procedure_details_json, true ) : [];
+
+		if ( ! is_array( $procedure_details ) ) {
+			$procedure_details = [];
+		}
+
+		// Build a map of procedure IDs to names from the case data.
+		$procedure_names = [];
+		if ( ! empty( $case_data['procedures'] ) ) {
+			foreach ( $case_data['procedures'] as $proc ) {
+				$procedure_names[ $proc['procedure_id'] ] = $proc['name'];
+			}
+		}
+
+		// Get post-op info once (shared across all procedures).
+		$postop_info = $this->get_postop_info_for_card( $case_data );
+
+		// Chevron SVG icon.
+		$chevron_svg = '<span class="accordion-chevron"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>';
+
+		$has_content = false;
+
+		foreach ( $case_data['procedures'] as $index => $procedure ) {
+			$proc_id   = $procedure['procedure_id'];
+			$proc_name = esc_html( $procedure['name'] );
+			$details   = $procedure_details[ $proc_id ] ?? [];
+
+			// Build detail rows for this procedure.
+			$detail_rows = '';
+			if ( is_array( $details ) && ! empty( $details ) ) {
+				foreach ( $details as $label => $value ) {
+					$display_value = is_array( $value ) ? implode( ', ', $value ) : $value;
+					$detail_rows  .= sprintf(
+						'<div class="brag-book-gallery-info-item">' .
+							'<span class="brag-book-gallery-info-label">%s</span>' .
+							'<span class="brag-book-gallery-info-value">%s</span>' .
+						'</div>',
+						esc_html( $label ),
+						esc_html( $display_value )
+					);
+				}
+			}
+
+			// Add post-op info to the first procedure only.
+			if ( 0 === $index && ! empty( $postop_info ) ) {
+				$detail_rows .= $postop_info;
+			}
+
+			// Skip procedures with no details.
+			if ( empty( $detail_rows ) ) {
+				continue;
+			}
+
+			$has_content = true;
+
+			$html .= sprintf(
+				'<div class="procedure-accordion-item">' .
+					'<button type="button" class="procedure-accordion-header" aria-expanded="false">' .
+						'<span>%s</span>%s' .
+					'</button>' .
+					'<div class="procedure-accordion-content">' .
+						'%s' .
+					'</div>' .
+				'</div>',
+				$proc_name,
+				$chevron_svg,
+				$detail_rows
+			);
+		}
+
+		return $has_content ? $html : '';
 	}
 
 	/**

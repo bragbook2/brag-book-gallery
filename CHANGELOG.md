@@ -4,6 +4,23 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.3.3-beta8] - 2026-02-17 (Beta Release)
+
+### Added
+- **Case Detail Thumbnail Carousel**: Thumbnails now display in a proper carousel with prev/next arrow navigation and pagination dots
+  - Responsive layout: 3 thumbnails on desktop, 2 on tablet, 1 on mobile
+  - Arrows and pagination dots auto-hide when all thumbnails fit on screen
+  - Pagination dynamically recalculates on window resize across breakpoints
+  - Carousel capped at 1100px max-width and centered
+  - Updated in `includes/shortcodes/class-case-handler.php`, `src/scss/components/case-detail/_index.scss`, `src/js/modules/main-app.js`
+
+### Fixed
+- **Main Image Alt Text**: Main case image now uses base SEO alt text only (removed redundant "- Angle 1" suffix)
+- **Thumbnail Alt Text**: Thumbnail angles now start from "Angle 1" instead of "Angle 2"
+- **Image Swap Flash**: Clicking a thumbnail now updates the main image src/alt in-place instead of replacing the entire DOM, eliminating page flash
+
+---
+
 ## [4.3.3-beta1] - 2026-02-09 (Beta Release)
 
 ### Added
