@@ -1349,6 +1349,23 @@ final class Favorites_Handler {
 			$primary_procedure = is_array( $procedures[0] ) ? $procedures[0]['name'] ?? 'Case' : $procedures[0];
 		}
 
+		// Set alt text: prefer SEO alt text from post meta, then descriptive fallback
+		$image_alt = '';
+		if ( ! empty( $post_id ) ) {
+			$seo_alt_text = get_post_meta( $post_id, 'brag_book_gallery_seo_alt_text', true );
+			if ( ! empty( $seo_alt_text ) ) {
+				$image_alt = sanitize_text_field( $seo_alt_text );
+			}
+		}
+		if ( empty( $image_alt ) ) {
+			$image_alt = sprintf(
+				/* translators: 1: procedure name, 2: case number */
+				__( 'Before and after %1$s case %2$s', 'brag-book-gallery' ),
+				$primary_procedure,
+				$case_id
+			);
+		}
+
 		// Get procedure slug for URL
 		$procedure_slug = $case_data['procedure_slug'] ?? '';
 
@@ -1409,7 +1426,7 @@ final class Favorites_Handler {
 							<?php if ( ! empty( $primary_image ) ) : ?>
 								<picture class="brag-book-gallery-picture">
 									<img src="<?php echo esc_url( $primary_image ); ?>"
-										 alt="<?php echo esc_attr( $primary_procedure . ' - Case ' . $case_id ); ?>"
+										 alt="<?php echo esc_attr( $image_alt ); ?>"
 										 loading="lazy"
 										 data-image-type="carousel"
 										 data-image-url="<?php echo esc_url( $primary_image ); ?>"

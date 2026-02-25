@@ -1071,6 +1071,26 @@ final class Carousel_Handler {
 
 		$photo_data = self::extract_photo_data( $photo, $config );
 
+		// Override alt text: prefer post meta, then build descriptive fallback
+		$post_id = $case['post_id'] ?? 0;
+		if ( ! empty( $post_id ) ) {
+			$seo_alt = get_post_meta( $post_id, 'brag_book_gallery_seo_alt_text', true );
+			if ( ! empty( $seo_alt ) ) {
+				$photo_data['alt_text'] = sanitize_text_field( $seo_alt );
+			} else {
+				$procedure_name = ! empty( $case['procedures'] ) && is_array( $case['procedures'] )
+					? $case['procedures'][0]
+					: ucwords( str_replace( array( '-', '_' ), ' ', $procedure_slug ) );
+				$case_id = get_post_meta( $post_id, 'brag_book_gallery_case_id', true );
+				$photo_data['alt_text'] = sprintf(
+					/* translators: 1: procedure name, 2: case number */
+					__( 'Before and after %1$s case %2$s', 'brag-book-gallery' ),
+					sanitize_text_field( $procedure_name ),
+					sanitize_text_field( $case_id ?: ( $case['id'] ?? '' ) )
+				);
+			}
+		}
+
 		$case_data = self::extract_case_data_for_slide( $case );
 
 		$slide_data = self::build_slide_data( $photo_data, $case_data, $slide_index );

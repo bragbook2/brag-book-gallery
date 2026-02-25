@@ -2282,8 +2282,19 @@ final class Cases_Handler {
 				}
 			}
 
-			// Set alt text
-			$image_alt = sprintf( '%s - Case %s', is_object( $primary_procedure ) ? $primary_procedure->name : $primary_procedure, $case_id );
+			// Set alt text: prefer SEO alt text from post meta, then descriptive fallback
+			$seo_alt_text = get_post_meta( $post_id, 'brag_book_gallery_seo_alt_text', true );
+			if ( ! empty( $seo_alt_text ) ) {
+				$image_alt = sanitize_text_field( $seo_alt_text );
+			} else {
+				$procedure_name = is_object( $primary_procedure ) ? $primary_procedure->name : $primary_procedure;
+				$image_alt = sprintf(
+					/* translators: 1: procedure name, 2: case number */
+					__( 'Before and after %1$s case %2$s', 'brag-book-gallery' ),
+					$procedure_name,
+					$case_id
+				);
+			}
 		}
 
 		// Final debug log
@@ -2364,7 +2375,7 @@ final class Cases_Handler {
 										<?php foreach ( $carousel_images as $index => $carousel_url ) : ?>
 											<picture class="brag-book-gallery-picture" id="case-<?php echo esc_attr( $case_id ); ?>-img-<?php echo $index; ?>">
 												<img src="<?php echo esc_url( $carousel_url ); ?>"
-													 alt="<?php echo esc_attr( $image_alt ?: 'Case Image' ); ?> - Image <?php echo $index + 1; ?>"
+													 alt="<?php echo esc_attr( $image_alt ?: 'Case Image' ); ?><?php echo count( $carousel_images ) > 1 ? ' - Angle ' . ( $index + 1 ) : ''; ?>"
 													 loading="<?php echo 0 === $index ? 'eager' : 'lazy'; ?>"
 													 data-image-type="carousel"
 													 data-image-url="<?php echo esc_url( $carousel_url ); ?>"

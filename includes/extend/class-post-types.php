@@ -697,15 +697,19 @@ class Post_Types {
 								// Get the current value from the new meta field format
 								$urls_value = get_post_meta( $post->ID, $meta_key, true );
 
-								// Clean up the display value (remove extra semicolons for display)
+								// Clean up the display value: handle both semicolon-delimited and newline-delimited formats
 								$display_value = '';
 								if ( ! empty( $urls_value ) ) {
+									// First split by newlines, then split each line by semicolons
 									$lines       = explode( "\n", $urls_value );
 									$clean_lines = array();
 									foreach ( $lines as $line ) {
-										$clean_line = trim( rtrim( trim( $line ), ';' ) );
-										if ( ! empty( $clean_line ) ) {
-											$clean_lines[] = $clean_line;
+										$parts = explode( ';', $line );
+										foreach ( $parts as $part ) {
+											$clean_url = trim( $part );
+											if ( ! empty( $clean_url ) ) {
+												$clean_lines[] = $clean_url;
+											}
 										}
 									}
 									$display_value = implode( "\n", $clean_lines );
@@ -1257,16 +1261,19 @@ class Post_Types {
 			if ( isset( $_POST[ $field ] ) ) {
 				$urls_input = sanitize_textarea_field( wp_unslash( $_POST[ $field ] ) );
 
-				// Process the textarea input: split by lines, trim, add semicolons
+				// Process the textarea input: split by lines and semicolons, trim, add semicolons
 				$lines           = explode( "\n", $urls_input );
 				$processed_lines = array();
 
 				foreach ( $lines as $line ) {
-					$clean_url = trim( $line );
-					$clean_url = rtrim( $clean_url, ';' ); // Remove existing semicolons
+					// Split each line by semicolons to handle legacy format
+					$parts = explode( ';', $line );
+					foreach ( $parts as $part ) {
+						$clean_url = trim( $part );
 
-					if ( ! empty( $clean_url ) && filter_var( $clean_url, FILTER_VALIDATE_URL ) ) {
-						$processed_lines[] = esc_url_raw( $clean_url ) . ';';
+						if ( ! empty( $clean_url ) && filter_var( $clean_url, FILTER_VALIDATE_URL ) ) {
+							$processed_lines[] = esc_url_raw( $clean_url ) . ';';
+						}
 					}
 				}
 
