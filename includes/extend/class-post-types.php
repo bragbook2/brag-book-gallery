@@ -1858,10 +1858,6 @@ class Post_Types {
 					update_post_meta( $post_id, 'brag_book_gallery_case_high_res_url', $updated_urls );
 				}
 
-				if ( isset( $photo_set['seoAltText'] ) ) {
-					update_post_meta( $post_id, 'brag_book_gallery_seo_alt_text', sanitize_text_field( $photo_set['seoAltText'] ) );
-				}
-
 				if ( isset( $photo_set['isNude'] ) ) {
 					update_post_meta( $post_id, 'brag_book_gallery_is_nude', $photo_set['isNude'] ? '1' : '0' );
 				}
@@ -1873,6 +1869,13 @@ class Post_Types {
 					$progress_callback( 'Saved ' . count( $image_url_sets ) . " image URL sets for post {$post_id}" );
 				}
 			}
+		}
+
+		// Save SEO alt text from seoInfo (root-level, not per photo set).
+		if ( ! empty( $api_data['seoAltText'] ) ) {
+			update_post_meta( $post_id, 'brag_book_gallery_seo_alt_text', sanitize_text_field( $api_data['seoAltText'] ) );
+		} else {
+			delete_post_meta( $post_id, 'brag_book_gallery_seo_alt_text' );
 		}
 
 		// Store the full API response for reference

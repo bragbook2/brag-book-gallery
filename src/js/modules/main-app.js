@@ -1314,6 +1314,7 @@ class BRAGbookGalleryApp {
 		html += '</div>';
 
 		// Before/After images
+		const caseAltText = `Before and after ${caseData.procedureName || ''} case ${caseData.caseNumber || ''}`;
 		if (caseData.photos && caseData.photos.length > 0) {
 			html += '<div class="brag-book-gallery-case-images">';
 
@@ -1326,7 +1327,7 @@ class BRAGbookGalleryApp {
 				// For processed images, show single combined image
 				if (photo.isProcessed && photo.beforeImage) {
 					html += '<div class="processed-image">';
-					html += `<img src="${photo.beforeImage}" alt="Before and After" />`;
+					html += `<img src="${photo.beforeImage}" alt="${caseAltText}" />`;
 					if (photo.caption) {
 						html += `<p class="image-caption">${photo.caption}</p>`;
 					}
@@ -1337,7 +1338,7 @@ class BRAGbookGalleryApp {
 					if (photo.beforeImage) {
 						html += '<div class="before-image">';
 						html += '<h3>Before</h3>';
-						html += `<img src="${photo.beforeImage}" alt="Before" loading="lazy" />`;
+						html += `<img src="${photo.beforeImage}" alt="${caseAltText}" loading="lazy" />`;
 						html += '</div>';
 					}
 
@@ -1345,7 +1346,7 @@ class BRAGbookGalleryApp {
 					if (photo.afterImage) {
 						html += '<div class="after-image">';
 						html += '<h3>After</h3>';
-						html += `<img src="${photo.afterImage}" alt="After" loading="lazy" />`;
+						html += `<img src="${photo.afterImage}" alt="${caseAltText}" loading="lazy" />`;
 						html += '</div>';
 					}
 
@@ -2570,7 +2571,7 @@ class BRAGbookGalleryApp {
 					</div>
 					<a href="${caseUrl}" class="brag-book-gallery-case-card-link" data-case-id="${caseId}">
 						<picture class="brag-book-gallery-picture">
-							<img src="${imageUrl}" alt="Case ${caseId}" loading="lazy" data-image-type="single">
+							<img src="${imageUrl}" alt="Before and after ${procedureDisplayName} case ${caseId}" loading="lazy" data-image-type="single">
 						</picture>
 					</a>
 				</div>
@@ -3324,8 +3325,10 @@ class BRAGbookGalleryApp {
 			return this.renderNoImagesSection();
 		}
 
+		const procedureTitle = procedureData.procedureName || 'Case Study';
+		const baseAlt = `Before and after ${procedureTitle} case ${caseId}`;
 		const mainViewer = this.renderMainImageViewer(caseData.photoSets, procedureData, caseId);
-		const thumbnails = caseData.photoSets.length > 1 ? this.renderThumbnails(caseData.photoSets) : '';
+		const thumbnails = caseData.photoSets.length > 1 ? this.renderThumbnails(caseData.photoSets, baseAlt) : '';
 
 		return `
 			<div class="brag-book-gallery-brag-book-gallery-case-content">
@@ -3377,7 +3380,7 @@ class BRAGbookGalleryApp {
 			<div class="brag-book-gallery-main-image-viewer">
 				<div class="brag-book-gallery-main-image-container" data-photoset-index="0">
 					<img src="${this.escapeHtml(mainImage)}"
-						 alt="${this.escapeHtml(procedureTitle)} - Case ${this.escapeHtml(caseId)}"
+						 alt="Before and after ${this.escapeHtml(procedureTitle)} case ${this.escapeHtml(caseId)}"
 						 class="brag-book-gallery-main-image"
 						 loading="lazy">
 				</div>
@@ -3388,7 +3391,7 @@ class BRAGbookGalleryApp {
 	/**
 	 * Render thumbnails for multiple photosets
 	 */
-	renderThumbnails(photoSets) {
+	renderThumbnails(photoSets, baseAlt = '') {
 		if (!photoSets || photoSets.length <= 1) {
 			return '';
 		}
@@ -3407,7 +3410,7 @@ class BRAGbookGalleryApp {
 			return `
 				<div class="brag-book-gallery-thumbnail${isActive}" data-photoset-index="${index}">
 					<img src="${this.escapeHtml(thumbImage)}"
-						 alt="Thumbnail ${index + 1}"
+						 alt="${this.escapeHtml(baseAlt)} - Angle ${index + 1}"
 						 loading="lazy">
 				</div>
 			`;
@@ -4183,7 +4186,7 @@ class BRAGbookGalleryApp {
 
 		if (imageUrl) {
 			html += '<picture class="brag-book-gallery-picture">';
-			html += `<img src="${escapedImageUrl}" alt="${escapedProcTitle} - Case ${escapedCaseId}" loading="eager" data-image-type="carousel" data-image-url="${escapedImageUrl}" onload="this.closest('.brag-book-gallery-image-container').querySelector('.brag-book-gallery-skeleton-loader').style.display='none';" fetchpriority="high">`;
+			html += `<img src="${escapedImageUrl}" alt="Before and after ${escapedProcTitle} case ${escapedCaseId}" loading="eager" data-image-type="carousel" data-image-url="${escapedImageUrl}" onload="this.closest('.brag-book-gallery-image-container').querySelector('.brag-book-gallery-skeleton-loader').style.display='none';" fetchpriority="high">`;
 			html += '</picture>';
 		}
 
@@ -4545,7 +4548,7 @@ class BRAGbookGalleryApp {
 			card.innerHTML = `
 				<div class="brag-book-gallery-case-card-image">
 					<img src="${window.bragBookGalleryConfig?.placeholderImage || '#'}"
-						 alt="Case ${caseId}"
+						 alt="Before and after case ${caseId}"
 						 loading="lazy">
 				</div>
 				<div class="brag-book-gallery-case-card-content">

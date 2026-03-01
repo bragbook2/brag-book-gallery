@@ -1181,7 +1181,6 @@ class Debug_Page extends Settings_Base {
 	 */
 	public function render_api_test_content_hook( array $api_tokens, array $website_property_ids ): void {
 		$this->render_api_test_content( $api_tokens, $website_property_ids );
-		$this->render_api_test_styles_and_scripts( $api_tokens, $website_property_ids );
 	}
 
 	private function render_api_test_panel(): void {

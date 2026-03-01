@@ -1518,6 +1518,7 @@ class Chunked_Data_Sync {
 		if ( isset( $v2_data['seoInfo'] ) ) {
 			// Keep seoInfo at root level for slug generation
 			$normalized['seoInfo'] = $v2_data['seoInfo'];
+			$normalized['seoAltText'] = $v2_data['seoInfo']['altText'] ?? '';
 
 			// Also convert to caseDetails format for backward compatibility
 			$normalized['caseDetails'] = [
@@ -1546,7 +1547,7 @@ class Chunked_Data_Sync {
 					'afterLocationUrl3'                    => '', // No equivalent in v2
 					'postProcessedImageLocation'           => $images['sideBySide']['standard']['url'] ?? '',
 					'highResPostProcessedImageLocation'    => $images['sideBySide']['highDefinition']['url'] ?? '',
-					'seoAltText'                           => $images['before']['altText'] ?? $images['after']['altText'] ?? '',
+					'seoAltText'                           => '', // Alt text comes from seoInfo, not photo images
 					'isNude'                               => false, // Default value (not in v2 response)
 				];
 

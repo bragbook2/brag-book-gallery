@@ -3270,6 +3270,8 @@ class Data_Sync {
 
 		// SEO data (convert from seoInfo to caseDetails array format)
 		if ( isset( $v2_data['seoInfo'] ) ) {
+			$normalized['seoAltText'] = $v2_data['seoInfo']['altText'] ?? '';
+
 			$normalized['caseDetails'] = [
 				[
 					'seoSuffixUrl'       => $v2_data['seoInfo']['slug'] ?? '',
@@ -3294,7 +3296,7 @@ class Data_Sync {
 					'afterLocationUrl3'                    => '',
 					'postProcessedImageLocation'           => $images['sideBySide']['standard']['url'] ?? '',
 					'highResPostProcessedImageLocation'    => $images['sideBySide']['highDefinition']['url'] ?? '',
-					'seoAltText'                           => $images['before']['altText'] ?? $images['after']['altText'] ?? '',
+					'seoAltText'                           => '', // Alt text comes from seoInfo, not photo images
 					'isNude'                               => false,
 				];
 

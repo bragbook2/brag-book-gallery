@@ -629,9 +629,8 @@ class Case_Handler {
 			$procedure_case_id = get_post_meta( get_the_ID(), 'brag_book_gallery_original_case_id', true );
 		}
 
-		// Build base alt text: prefer SEO alt text from post meta, fallback to procedure + case ID.
-		$seo_alt_text = get_post_meta( $wp_post_id, 'brag_book_gallery_seo_alt_text', true );
-		$base_alt     = ! empty( $seo_alt_text ) ? sanitize_text_field( $seo_alt_text ) : $procedure_name . ' - Case ' . $case_id;
+		// Build base alt text using standardized helper.
+		$base_alt = Cases_Handler::get_case_alt_text( $wp_post_id, $procedure_name, $case_id );
 
 		// Generate schema markup for the image gallery
 		$schema_markup = $this->generate_gallery_schema( $images, $case_data );

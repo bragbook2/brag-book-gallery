@@ -918,7 +918,7 @@ class FilterSystem {
 
 		if (imageUrl) {
 			html += '<picture class="brag-book-gallery-picture">';
-			html += `<img src="${this.escapeHtml(imageUrl)}" alt="${this.escapeHtml(procedureTitle)} - Case ${this.escapeHtml(caseId)}" loading="lazy" data-image-type="single" data-image-url="${this.escapeHtml(imageUrl)}" onload="this.closest('.brag-book-gallery-image-container').querySelector('.brag-book-gallery-skeleton-loader').style.display='none';">`;
+			html += `<img src="${this.escapeHtml(imageUrl)}" alt="Before and after ${this.escapeHtml(procedureTitle)} case ${this.escapeHtml(caseId)}" loading="lazy" data-image-type="single" data-image-url="${this.escapeHtml(imageUrl)}" onload="this.closest('.brag-book-gallery-image-container').querySelector('.brag-book-gallery-skeleton-loader').style.display='none';">`;
 			html += '</picture>';
 		}
 

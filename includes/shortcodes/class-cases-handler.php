@@ -730,21 +730,36 @@ final class Cases_Handler {
 			$procedure_ids = implode( ',', array_map( 'intval', $case['procedureIds'] ) );
 		}
 
+		// Compute standardized alt text from API case data.
+		$procedure_name = ! empty( $case['procedures'][0]['name'] ) ? $case['procedures'][0]['name'] : '';
+		$post_id        = get_the_ID();
+		if ( $post_id ) {
+			$case_alt = self::get_case_alt_text( $post_id, $procedure_name, $case_info['case_id'] );
+		} else {
+			$case_alt = sprintf(
+				/* translators: 1: procedure name, 2: case number */
+				__( 'Before and after %1$s case %2$s', 'brag-book-gallery' ),
+				sanitize_text_field( $procedure_name ),
+				sanitize_text_field( $case_info['case_id'] )
+			);
+		}
+
 		$html .= sprintf(
-			'<article class="brag-book-gallery-case-card" %s data-case-id="%s" data-procedure-case-id="%s" data-procedure-ids="%s" data-current-procedure-id="%s" data-current-term-id="%s">',
+			'<article class="brag-book-gallery-case-card" %s data-case-id="%s" data-procedure-case-id="%s" data-procedure-ids="%s" data-current-procedure-id="%s" data-current-term-id="%s" data-alt-text="%s">',
 			$data_attrs,
 			esc_attr( $case_info['case_id'] ),
 			esc_attr( $case['id'] ?? $case_info['case_id'] ), // The small ID from API for view tracking
 			esc_attr( $procedure_ids ),
 			esc_attr( $current_procedure_id ),
-			esc_attr( $current_term_id )
+			esc_attr( $current_term_id ),
+			esc_attr( $case_alt )
 		);
 
 		// Get case URL.
 		$case_url = self::get_case_url( $case_info, $procedure_context, $case );
 
 		// Add case content.
-		$html .= '<a href="' . esc_url( $case_url ) . '" class="case-link">';
+		$html .= '<a href="' . esc_url( $case_url ) . '" class="case-link" data-alt-text="' . esc_attr( $case_alt ) . '">';
 
 		// Add images.
 		if ( ! empty( $case['photoSets'] ) && is_array( $case['photoSets'] ) ) {
@@ -757,14 +772,14 @@ final class Cases_Handler {
 					$html .= sprintf(
 						'<img src="%s" alt="%s" class="before-image" />',
 						esc_url( $first_photo['beforePhoto'] ),
-						esc_attr__( 'Before', 'brag-book-gallery' )
+						esc_attr( $case_alt )
 					);
 				}
 				if ( ! empty( $first_photo['afterPhoto'] ) ) {
 					$html .= sprintf(
 						'<img src="%s" alt="%s" class="after-image" />',
 						esc_url( $first_photo['afterPhoto'] ),
-						esc_attr__( 'After', 'brag-book-gallery' )
+						esc_attr( $case_alt )
 					);
 				}
 				$html .= '</div>';
@@ -775,7 +790,7 @@ final class Cases_Handler {
 					$html .= sprintf(
 						'<div class="brag-book-gallery-case-images"><img src="%s" alt="%s" /></div>',
 						esc_url( $image_url ),
-						esc_attr__( 'Case Image', 'brag-book-gallery' )
+						esc_attr( $case_alt )
 					);
 				}
 			}
@@ -1043,12 +1058,23 @@ final class Cases_Handler {
 			$seo_suffix_url = $post->post_name; // Use post slug as fallback
 		}
 
+		// Get procedure name for alt text from taxonomy terms.
+		$post_procedures    = wp_get_post_terms( $post->ID, Taxonomies::TAXONOMY_PROCEDURES );
+		$post_procedure_name = '';
+		if ( ! is_wp_error( $post_procedures ) && ! empty( $post_procedures ) ) {
+			$post_procedure_name = $post_procedures[0]->name;
+		}
+
+		// Compute standardized alt text.
+		$case_alt = self::get_case_alt_text( $post->ID, $post_procedure_name, $case_id );
+
 		$html .= sprintf(
-			'<article class="brag-book-gallery-case-card" %s data-case-id="%s" data-procedure-case-id="%s" data-procedure-ids="%s">',
+			'<article class="brag-book-gallery-case-card" %s data-case-id="%s" data-procedure-case-id="%s" data-procedure-ids="%s" data-alt-text="%s">',
 			$data_attrs,
 			esc_attr( $case_id ),
 			esc_attr( $procedure_case_id ), // The small API ID for view tracking
-			esc_attr( $procedure_ids )
+			esc_attr( $procedure_ids ),
+			esc_attr( $case_alt )
 		);
 
 		// Build case URL.
@@ -1106,12 +1132,12 @@ final class Cases_Handler {
 			$html .= sprintf(
 				'<img src="%s" alt="%s" class="before-image" />',
 				esc_url( $before_url ),
-				esc_attr__( 'Before', 'brag-book-gallery' )
+				esc_attr( $case_alt )
 			);
 			$html .= sprintf(
 				'<img src="%s" alt="%s" class="after-image" />',
 				esc_url( $after_url ),
-				esc_attr__( 'After', 'brag-book-gallery' )
+				esc_attr( $case_alt )
 			);
 			$html .= '</div>';
 		} elseif ( ! empty( $main_image_url ) ) {
@@ -1120,7 +1146,7 @@ final class Cases_Handler {
 			$html .= sprintf(
 				'<img src="%s" alt="%s" class="case-image" />',
 				esc_url( $main_image_url ),
-				esc_attr( sprintf( __( 'Case %s', 'brag-book-gallery' ), $case_id ) )
+				esc_attr( $case_alt )
 			);
 			$html .= '</div>';
 		} else {
@@ -1688,6 +1714,38 @@ final class Cases_Handler {
 		$info['url_suffix'] = ! empty( $info['seo_suffix_url'] ) ? $info['seo_suffix_url'] : $info['case_id'];
 
 		return $info;
+	}
+
+	/**
+	 * Get standardized alt text for a case image.
+	 *
+	 * Uses SEO alt text override from post meta if set, otherwise falls back
+	 * to the format: "Before and after {procedure} case {case_id}".
+	 *
+	 * @param int    $post_id          WordPress post ID.
+	 * @param string $procedure_name   Procedure display name.
+	 * @param string $fallback_case_id Case ID fallback if meta is empty.
+	 *
+	 * @return string Sanitized alt text.
+	 * @since 3.3.2
+	 */
+	public static function get_case_alt_text( int $post_id, string $procedure_name = '', string $fallback_case_id = '' ): string {
+		$seo_alt = get_post_meta( $post_id, 'brag_book_gallery_seo_alt_text', true );
+		if ( ! empty( $seo_alt ) ) {
+			return sanitize_text_field( $seo_alt );
+		}
+
+		$case_id = get_post_meta( $post_id, 'brag_book_gallery_case_id', true );
+		if ( empty( $case_id ) ) {
+			$case_id = $fallback_case_id;
+		}
+
+		return sprintf(
+			/* translators: 1: procedure name, 2: case number */
+			__( 'Before and after %1$s case %2$s', 'brag-book-gallery' ),
+			sanitize_text_field( $procedure_name ),
+			sanitize_text_field( $case_id )
+		);
 	}
 
 	/**
@@ -2282,19 +2340,9 @@ final class Cases_Handler {
 				}
 			}
 
-			// Set alt text: prefer SEO alt text from post meta, then descriptive fallback
-			$seo_alt_text = get_post_meta( $post_id, 'brag_book_gallery_seo_alt_text', true );
-			if ( ! empty( $seo_alt_text ) ) {
-				$image_alt = sanitize_text_field( $seo_alt_text );
-			} else {
-				$procedure_name = is_object( $primary_procedure ) ? $primary_procedure->name : $primary_procedure;
-				$image_alt = sprintf(
-					/* translators: 1: procedure name, 2: case number */
-					__( 'Before and after %1$s case %2$s', 'brag-book-gallery' ),
-					$procedure_name,
-					$case_id
-				);
-			}
+			// Set alt text using standardized helper.
+			$procedure_name = is_object( $primary_procedure ) ? $primary_procedure->name : $primary_procedure;
+			$image_alt      = self::get_case_alt_text( $post_id, $procedure_name, $case_id );
 		}
 
 		// Final debug log
@@ -2338,7 +2386,7 @@ final class Cases_Handler {
 
 		ob_start();
 		?>
-		<article class="brag-book-gallery-case-card<?php echo esc_attr( $card_type_class ); ?>" <?php echo implode( ' ', $data_attrs ); ?>>
+		<article class="brag-book-gallery-case-card<?php echo esc_attr( $card_type_class ); ?>" <?php echo implode( ' ', $data_attrs ); ?> data-alt-text="<?php echo esc_attr( $image_alt ); ?>">
 			<div class="brag-book-gallery-case-images single-image">
 				<div class="brag-book-gallery-image-container">
 						<div class="brag-book-gallery-skeleton-loader" style="display: none;"></div>
@@ -2375,7 +2423,7 @@ final class Cases_Handler {
 										<?php foreach ( $carousel_images as $index => $carousel_url ) : ?>
 											<picture class="brag-book-gallery-picture" id="case-<?php echo esc_attr( $case_id ); ?>-img-<?php echo $index; ?>">
 												<img src="<?php echo esc_url( $carousel_url ); ?>"
-													 alt="<?php echo esc_attr( $image_alt ?: 'Case Image' ); ?><?php echo count( $carousel_images ) > 1 ? ' - Angle ' . ( $index + 1 ) : ''; ?>"
+													 alt="<?php echo esc_attr( $image_alt ); ?><?php echo count( $carousel_images ) > 1 ? ' - Angle ' . ( $index + 1 ) : ''; ?>"
 													 loading="<?php echo 0 === $index ? 'eager' : 'lazy'; ?>"
 													 data-image-type="carousel"
 													 data-image-url="<?php echo esc_url( $carousel_url ); ?>"
@@ -2406,7 +2454,7 @@ final class Cases_Handler {
 								<!-- Single image fallback -->
 								<picture class="brag-book-gallery-picture">
 									<img src="<?php echo esc_url( $image_url ); ?>"
-										 alt="<?php echo esc_attr( $image_alt ?: 'Case Image' ); ?>"
+										 alt="<?php echo esc_attr( $image_alt ); ?>"
 										 loading="eager"
 										 data-image-type="single"
 										 data-image-url="<?php echo esc_url( $image_url ); ?>"
@@ -2429,7 +2477,7 @@ final class Cases_Handler {
 								if ( ! empty( $image_url ) ) : ?>
 									<picture class="brag-book-gallery-picture">
 										<img src="<?php echo esc_url( $image_url ); ?>"
-											 alt="<?php echo esc_attr( $image_alt ?: 'Case Image' ); ?>"
+											 alt="<?php echo esc_attr( $image_alt ); ?>"
 											 loading="eager"
 											 data-image-type="single"
 											 data-image-url="<?php echo esc_url( $image_url ); ?>"

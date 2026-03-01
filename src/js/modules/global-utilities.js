@@ -1183,7 +1183,7 @@ function generateFilteredCaseHTML(caseData) {
 	html += `<div class="brag-book-gallery-case-image-container" onclick="loadCaseDetails('${caseId}')">`;
 
 	if (mainImageUrl) {
-		html += `<img src="${escapeHtml(mainImageUrl)}" alt="${escapeHtml(procedureTitle)} case" loading="lazy">`;
+		html += `<img src="${escapeHtml(mainImageUrl)}" alt="Before and after ${escapeHtml(procedureTitle)} case ${escapeHtml(String(caseId))}" loading="lazy">`;
 	}
 
 	// Add nudity warning only if the active procedure has data-nudity="true"
@@ -1877,6 +1877,7 @@ function generateLoadMoreCaseHTML(caseData, hasNudity) {
 	html += `<a href="${escapeHtml(caseUrl)}" class="case-link" data-case-id="${escapeHtml(caseId)}" data-procedure-ids="${escapeHtml(procedureIds)}">`;
 
 	// Add images (matching PHP image display logic)
+	const caseAltText = `Before and after ${escapeHtml(procedureTitle)} case ${escapeHtml(caseId)}`;
 	const imageDisplayMode = window.bragBookGalleryConfig?.imageDisplayMode || 'single';
 	if (caseData.photoSets && Array.isArray(caseData.photoSets) && caseData.photoSets.length > 0) {
 		const firstPhoto = caseData.photoSets[0];
@@ -1885,17 +1886,17 @@ function generateLoadMoreCaseHTML(caseData, hasNudity) {
 			// Show both before and after images
 			html += `<div class="brag-book-gallery-case-images before-after">`;
 			if (firstPhoto.beforePhoto) {
-				html += `<img src="${escapeHtml(firstPhoto.beforePhoto)}" alt="Before" class="before-image" />`;
+				html += `<img src="${escapeHtml(firstPhoto.beforePhoto)}" alt="${caseAltText}" class="before-image" />`;
 			}
 			if (firstPhoto.afterPhoto) {
-				html += `<img src="${escapeHtml(firstPhoto.afterPhoto)}" alt="After" class="after-image" />`;
+				html += `<img src="${escapeHtml(firstPhoto.afterPhoto)}" alt="${caseAltText}" class="after-image" />`;
 			}
 			html += `</div>`;
 		} else {
 			// Show single image (after preferred, fallback to before)
 			const imageUrl = firstPhoto.afterPhoto || firstPhoto.beforePhoto || '';
 			if (imageUrl) {
-				html += `<div class="brag-book-gallery-case-images"><img src="${escapeHtml(imageUrl)}" alt="Case Image" /></div>`;
+				html += `<div class="brag-book-gallery-case-images"><img src="${escapeHtml(imageUrl)}" alt="${caseAltText}" /></div>`;
 			}
 		}
 	}
