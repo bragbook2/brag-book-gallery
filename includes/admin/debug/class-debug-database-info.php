@@ -74,52 +74,46 @@ final class Debug_Database_Info {
 		$gallery_count = wp_count_posts( 'brag_gallery' )->publish ?? 0;
 		$draft_count   = wp_count_posts( 'brag_gallery' )->draft ?? 0;
 		?>
-		<h3><?php esc_html_e( 'Plugin Options', 'brag-book-gallery' ); ?></h3>
-		<table class="widefat striped">
-			<thead>
-			<tr>
-				<th><?php esc_html_e( 'Option Name', 'brag-book-gallery' ); ?></th>
-				<th><?php esc_html_e( 'Size', 'brag-book-gallery' ); ?></th>
-			</tr>
-			</thead>
-			<tbody>
-			<?php if ( ! empty( $options ) ) : ?>
-				<?php foreach ( $options as $option ) : ?>
-					<tr>
-						<td><code><?php echo esc_html( $option->option_name ); ?></code></td>
-						<td><?php echo esc_html( size_format( $option->size ) ); ?></td>
-					</tr>
+		<h3><?php esc_html_e( 'Plugin Options (Top 10 by Size)', 'brag-book-gallery' ); ?></h3>
+		<?php if ( ! empty( $options ) ) : ?>
+			<div class="debug-db-table-wrapper">
+				<div class="debug-db-table-head">
+					<span class="debug-db-table-th debug-db-table-th--name"><?php esc_html_e( 'Option Name', 'brag-book-gallery' ); ?></span>
+					<span class="debug-db-table-th debug-db-table-th--size"><?php esc_html_e( 'Size', 'brag-book-gallery' ); ?></span>
+				</div>
+				<?php foreach ( $options as $index => $option ) : ?>
+					<div class="debug-db-table-row<?php echo $index % 2 !== 0 ? ' debug-db-table-row--alt' : ''; ?>">
+						<span class="debug-db-table-cell debug-db-table-cell--name"><code><?php echo esc_html( $option->option_name ); ?></code></span>
+						<span class="debug-db-table-cell debug-db-table-cell--size"><?php echo esc_html( size_format( $option->size ) ); ?></span>
+					</div>
 				<?php endforeach; ?>
-			<?php else : ?>
-				<tr>
-					<td colspan="2"><?php esc_html_e( 'No plugin options found.', 'brag-book-gallery' ); ?></td>
-				</tr>
-			<?php endif; ?>
-			</tbody>
-		</table>
+			</div>
+		<?php else : ?>
+			<div class="debug-logs-empty">
+				<p><?php esc_html_e( 'No plugin options found.', 'brag-book-gallery' ); ?></p>
+			</div>
+		<?php endif; ?>
 
 		<?php if ( $gallery_count > 0 || $draft_count > 0 ) : ?>
 			<h3><?php esc_html_e( 'Gallery Data', 'brag-book-gallery' ); ?></h3>
-			<table class="widefat striped">
-				<tbody>
-				<tr>
-					<th><?php esc_html_e( 'Published Galleries', 'brag-book-gallery' ); ?></th>
-					<td><?php echo esc_html( (string) $gallery_count ); ?></td>
-				</tr>
-				<tr>
-					<th><?php esc_html_e( 'Draft Galleries', 'brag-book-gallery' ); ?></th>
-					<td><?php echo esc_html( (string) $draft_count ); ?></td>
-				</tr>
-				<tr>
-					<th><?php esc_html_e( 'Categories', 'brag-book-gallery' ); ?></th>
-					<td><?php echo esc_html( (string) wp_count_terms( 'brag_category' ) ); ?></td>
-				</tr>
-				<tr>
-					<th><?php esc_html_e( 'Procedures', 'brag-book-gallery' ); ?></th>
-					<td><?php echo esc_html( (string) wp_count_terms( 'brag_procedure' ) ); ?></td>
-				</tr>
-				</tbody>
-			</table>
+			<div class="system-status-rows">
+				<div class="system-status-row">
+					<span class="system-status-label"><?php esc_html_e( 'Published Galleries', 'brag-book-gallery' ); ?></span>
+					<span class="system-status-value"><?php echo esc_html( (string) $gallery_count ); ?></span>
+				</div>
+				<div class="system-status-row system-status-row--alt">
+					<span class="system-status-label"><?php esc_html_e( 'Draft Galleries', 'brag-book-gallery' ); ?></span>
+					<span class="system-status-value"><?php echo esc_html( (string) $draft_count ); ?></span>
+				</div>
+				<div class="system-status-row">
+					<span class="system-status-label"><?php esc_html_e( 'Categories', 'brag-book-gallery' ); ?></span>
+					<span class="system-status-value"><?php echo esc_html( (string) wp_count_terms( 'brag_category' ) ); ?></span>
+				</div>
+				<div class="system-status-row system-status-row--alt">
+					<span class="system-status-label"><?php esc_html_e( 'Procedures', 'brag-book-gallery' ); ?></span>
+					<span class="system-status-value"><?php echo esc_html( (string) wp_count_terms( 'brag_procedure' ) ); ?></span>
+				</div>
+			</div>
 		<?php endif; ?>
 		<?php
 	}

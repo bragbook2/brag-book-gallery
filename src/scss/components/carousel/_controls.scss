@@ -16,7 +16,7 @@
 	margin: 0;
 	font-size: var(--wp--custom--brag-book-gallery--font-size--xl, 24px);
 	font-weight: 600;
-	color: var(--wp--custom--brag-book-gallery--color--dark-grey, #333);
+	color: var(--wp--custom--brag-book-gallery--color--dark-gray, #333);
 }
 
 .brag-book-gallery-carousel-nav {
@@ -42,7 +42,7 @@
 	transition: all 0.3s ease;
 	z-index: 10;
 	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-	color: var(--wp--custom--brag-book-gallery--color--dark-grey, #333);
+	color: var(--wp--custom--brag-book-gallery--color--dark-gray, #333);
 
 	&:hover {
 		&:not(:disabled) {

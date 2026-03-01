@@ -184,9 +184,11 @@ class Dashboard_Page extends Settings_Base {
 					</div>
 					<div class="stat-value">
 						<?php if ( $has_api ) : ?>
-							<span class="status-badge status-success"><?php esc_html_e( 'Connected', 'brag-book-gallery' ); ?></span>
+							<span class="status-dot status-dot--success"></span>
+							<span class="stat-status-text"><?php esc_html_e( 'Connected', 'brag-book-gallery' ); ?></span>
 						<?php else : ?>
-							<span class="status-badge status-warning"><?php esc_html_e( 'Not Configured', 'brag-book-gallery' ); ?></span>
+							<span class="status-dot status-dot--warning"></span>
+							<span class="stat-status-text"><?php esc_html_e( 'Not Configured', 'brag-book-gallery' ); ?></span>
 						<?php endif; ?>
 					</div>
 				</div>
@@ -290,18 +292,19 @@ class Dashboard_Page extends Settings_Base {
 			<h2><?php esc_html_e( 'Gallery Statistics', 'brag-book-gallery' ); ?></h2>
 			<div class="brag-book-gallery-stats-grid">
 				<div class="stat-card">
+					<div class="stat-label"><?php esc_html_e( 'Synced Cases', 'brag-book-gallery' ); ?></div>
 					<div class="stat-value">
 						<?php echo esc_html( wp_count_posts( 'brag_book_cases' )->publish ?? 0 ); ?>
 					</div>
-					<div class="stat-label"><?php esc_html_e( 'Synced Cases', 'brag-book-gallery' ); ?></div>
 				</div>
 				<div class="stat-card">
+					<div class="stat-label"><?php esc_html_e( 'Procedures', 'brag-book-gallery' ); ?></div>
 					<div class="stat-value">
 						<?php echo esc_html( wp_count_terms( array( 'taxonomy' => \BRAGBookGallery\Includes\Extend\Taxonomies::TAXONOMY_PROCEDURES, 'hide_empty' => false ) ) ); ?>
 					</div>
-					<div class="stat-label"><?php esc_html_e( 'Procedures', 'brag-book-gallery' ); ?></div>
 				</div>
 				<div class="stat-card">
+					<div class="stat-label"><?php esc_html_e( 'Last Sync', 'brag-book-gallery' ); ?></div>
 					<div class="stat-value">
 						<?php
 						$stage3_status = get_option( 'brag_book_stage3_last_run', array() );
@@ -312,9 +315,9 @@ class Dashboard_Page extends Settings_Base {
 						}
 						?>
 					</div>
-					<div class="stat-label"><?php esc_html_e( 'Last Sync', 'brag-book-gallery' ); ?></div>
 				</div>
 				<div class="stat-card">
+					<div class="stat-label"><?php esc_html_e( 'Gallery Pages', 'brag-book-gallery' ); ?></div>
 					<div class="stat-value">
 						<?php
 						// Count pages with the shortcode
@@ -328,7 +331,6 @@ class Dashboard_Page extends Settings_Base {
 						echo esc_html( $pages_with_gallery );
 						?>
 					</div>
-					<div class="stat-label"><?php esc_html_e( 'Gallery Pages', 'brag-book-gallery' ); ?></div>
 				</div>
 			</div>
 		</div>

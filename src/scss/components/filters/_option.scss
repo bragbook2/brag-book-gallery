@@ -42,7 +42,7 @@
 		background-color: rgba(0,0,0,0);
 
 		label {
-			color: var(--wp--custom--brag-book-gallery--color--grey);
+			color: var(--wp--custom--brag-book-gallery--color--gray);
 		}
 	}
 
@@ -54,14 +54,14 @@
 		width: calc( 5 * var(--wp--custom--brag-book-gallery--spacer,4px) );
 		height: calc( 5 * var(--wp--custom--brag-book-gallery--spacer,4px) );
 		background-color: var(--wp--custom--brag-book-gallery--color--white,#FFF);
-		border: 1px solid var(--wp--custom--brag-book-gallery--color--lighter-grey);
+		border: 1px solid var(--wp--custom--brag-book-gallery--color--lighter-gray);
 		border-radius: var(--wp--custom--brag-book-gallery--rounded,4px);
 		cursor: pointer;
 		transition: var(--wp--custom--brag-book-gallery--transition);
 		flex-shrink: 0;
 
 		&:hover {
-			border-color: var(--wp--custom--brag-book-gallery--color--light-grey);
+			border-color: var(--wp--custom--brag-book-gallery--color--light-gray);
 		}
 
 		&:checked {

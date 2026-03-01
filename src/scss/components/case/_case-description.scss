@@ -9,7 +9,7 @@
 .brag-book-gallery-case-notes {
 	background: var(--wp--custom--brag-book-gallery--color--white);
 	padding: var(--wp--custom--brag-book-gallery--spacer--2xl);
-	border: 1px solid var(--wp--custom--brag-book-gallery--color--lighter-grey);
+	border: 1px solid var(--wp--custom--brag-book-gallery--color--lighter-gray);
 	border-radius: var(--wp--custom--brag-book-gallery--rounded, 4px);
 	box-shadow: var(--wp--custom--brag-book-gallery--shadow-sm);
 	transition: var(--wp--custom--brag-book-gallery--transition);
@@ -68,7 +68,7 @@
 
 		.brag-book-gallery-procedure-name {
 			font-size: 1.25rem;
-			color: var(--wp--custom--brag-book-gallery--color--grey, #666);
+			color: var(--wp--custom--brag-book-gallery--color--gray, #666);
 			text-transform: capitalize;
 			margin-bottom: var(--wp--custom--brag-book-gallery--spacer--sm);
 		}
@@ -79,7 +79,7 @@
 
 			span {
 				padding: 4px 12px;
-				background: var(--wp--custom--brag-book-gallery--color--light-grey, #f0f0f0);
+				background: var(--wp--custom--brag-book-gallery--color--light-gray, #f0f0f0);
 				border-radius: 4px;
 				font-size: 0.875rem;
 			}

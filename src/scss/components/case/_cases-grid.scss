@@ -93,7 +93,7 @@
 
 		.brag-book-gallery-procedure-name {
 			font-size: 1.25rem;
-			color: var(--wp--custom--brag-book-gallery--color--grey, #666);
+			color: var(--wp--custom--brag-book-gallery--color--gray, #666);
 			text-transform: capitalize;
 			margin-bottom: var(--wp--custom--brag-book-gallery--spacer--sm);
 		}
@@ -104,7 +104,7 @@
 
 			span {
 				padding: 4px 12px;
-				background: var(--wp--custom--brag-book-gallery--color--light-grey, #f0f0f0);
+				background: var(--wp--custom--brag-book-gallery--color--light-gray, #f0f0f0);
 				border-radius: 4px;
 				font-size: 0.875rem;
 			}
@@ -363,7 +363,7 @@
 		min-width: 320px;
 		max-width: 400px;
 		background: var(--wp--custom--brag-book-gallery--color--white, #ffffff);
-		border: 1px solid var(--wp--custom--brag-book-gallery--color--light-grey, #e0e0e0);
+		border: 1px solid var(--wp--custom--brag-book-gallery--color--light-gray, #e0e0e0);
 		border-radius: var(--wp--custom--brag-book-gallery--rounded, 4px);
 		box-shadow: var(--wp--custom--brag-book-gallery--shadow-xl);
 		z-index: 1000;
@@ -414,7 +414,7 @@
 }
 
 .brag-book-gallery-category-item {
-	border-bottom: 1px solid var(--wp--custom--brag-book-gallery--color--lightest-grey);
+	border-bottom: 1px solid var(--wp--custom--brag-book-gallery--color--lightest-gray);
 
 	&:last-child {
 		border-bottom: none;
@@ -439,7 +439,7 @@
 
 	&:hover,
 	&:active {
-		background-color: var(--wp--custom--brag-book-gallery--color--lightest-grey);
+		background-color: var(--wp--custom--brag-book-gallery--color--lightest-gray);
 	}
 
 	&:focus {
@@ -495,7 +495,7 @@
 	cursor: pointer;
 	transition: var(--wp--custom--brag-book-gallery--transition);
 	font-family: inherit;
-	border-bottom: 1px solid var(--wp--custom--brag-book-gallery--color--lighter-grey);
+	border-bottom: 1px solid var(--wp--custom--brag-book-gallery--color--lighter-gray);
 
 	svg {
 		flex-shrink: 0;
@@ -512,7 +512,7 @@
 
 	.brag-book-gallery-search-wrapper {
 		padding: var(--wp--custom--brag-book-gallery--spacer--lg, 16px);
-		border-bottom: 1px solid var(--wp--custom--brag-book-gallery--color--lighter-grey);
+		border-bottom: 1px solid var(--wp--custom--brag-book-gallery--color--lighter-gray);
 		margin-bottom: 0;
 
 		.brag-book-gallery-search-icon {
@@ -543,7 +543,7 @@
 }
 
 .brag-book-gallery-procedure-item {
-	border-bottom: 1px solid var(--wp--custom--brag-book-gallery--color--lightest-grey);
+	border-bottom: 1px solid var(--wp--custom--brag-book-gallery--color--lightest-gray);
 	font-weight: var(--wp--custom--brag-book-gallery--font-weight--semi-bold, 600);
 
 	&:last-child {
@@ -564,7 +564,7 @@
 .brag-book-gallery-favorites-link--tiles {
 	position: relative;
 	width: auto !important;
-	border-right: 1px solid var(--wp--custom--brag-book-gallery--color--light-grey) !important;
+	border-right: 1px solid var(--wp--custom--brag-book-gallery--color--light-gray) !important;
 	padding: var(--wp--custom--brag-book-gallery--spacer--xs, 8px) var(--wp--custom--brag-book-gallery--spacer--3xl) !important;
 
 	svg {
@@ -610,7 +610,7 @@
 }
 
 .brag-book-gallery-procedures-category-count {
-	color: var(--wp--custom--brag-book-gallery--color--grey, #999999);
+	color: var(--wp--custom--brag-book-gallery--color--gray, #999999);
 	font-weight: var(--wp--custom--brag-book-gallery--font-weight--regular, 400);
 }
 
@@ -640,7 +640,7 @@
 	gap: var(--wp--custom--brag-book-gallery--spacer--sm, 12px);
 	padding: var(--wp--custom--brag-book-gallery--spacer--lg, 24px);
 	background: var(--wp--custom--brag-book-gallery--color--white, #ffffff);
-	border: 1px solid var(--wp--custom--brag-book-gallery--color--light-grey, #e0e0e0);
+	border: 1px solid var(--wp--custom--brag-book-gallery--color--light-gray, #e0e0e0);
 	border-radius: var(--wp--custom--brag-book-gallery--rounded, 8px);
 	text-decoration: none;
 	color: var(--wp--custom--brag-book-gallery--color--text, #333333);
@@ -667,7 +667,7 @@
 
 .brag-book-gallery-procedure-card-count {
 	font-size: var(--wp--custom--brag-book-gallery--text-sm, 14px);
-	color: var(--wp--custom--brag-book-gallery--color--grey, #999999);
+	color: var(--wp--custom--brag-book-gallery--color--gray, #999999);
 	font-weight: var(--wp--custom--brag-book-gallery--font-weight--regular, 400);
 }
 

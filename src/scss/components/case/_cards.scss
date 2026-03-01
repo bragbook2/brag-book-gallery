@@ -48,7 +48,7 @@
 			padding: var(--wp--custom--brag-book-gallery--spacer--md,12px);
 			border-width: 1px;
 			border-style: solid;
-			border-color: var(--wp--custom--brag-book-gallery--color--light-grey);
+			border-color: var(--wp--custom--brag-book-gallery--color--light-gray);
 			line-height: 20px;
 
 			@container (min-width: 400px) {
@@ -127,7 +127,7 @@
 			display: flex;
 			flex-direction: column;
 			gap: var(--wp--custom--brag-book-gallery--spacer--md);
-			background-color: var(--wp--custom--brag-book-gallery--color--lighter-grey);
+			background-color: var(--wp--custom--brag-book-gallery--color--lighter-gray);
 			padding: var(--wp--custom--brag-book-gallery--spacer--lg,16px);
 
 			&__title {
@@ -366,8 +366,8 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		background-color: var(--wp--custom--brag-book-gallery--color--light-grey, #e5e7eb);
-		color: var(--wp--custom--brag-book-gallery--color--grey, #9ca3af);
+		background-color: var(--wp--custom--brag-book-gallery--color--light-gray, #e5e7eb);
+		color: var(--wp--custom--brag-book-gallery--color--gray, #9ca3af);
 
 		svg {
 			width: 16px;
@@ -434,8 +434,8 @@
 
 		&--placeholder {
 			@media (hover: hover) and (pointer: fine) {
-				background-color: var(--wp--custom--brag-book-gallery--color--light-grey, #e5e7eb);
-				color: var(--wp--custom--brag-book-gallery--color--grey, #9ca3af);
+				background-color: var(--wp--custom--brag-book-gallery--color--light-gray, #e5e7eb);
+				color: var(--wp--custom--brag-book-gallery--color--gray, #9ca3af);
 			}
 
 			svg {

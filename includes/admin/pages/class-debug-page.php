@@ -122,6 +122,9 @@ class Debug_Page extends Settings_Base {
 		$this->init_ajax_handlers();
 		$this->init_log_file();
 
+		// Hook the API test content into the API test component's action.
+		add_action( 'brag_book_gallery_render_api_test_content', array( $this, 'render_api_test_content_hook' ), 10, 2 );
+
 		// Handle export/import early, before any output.
 		add_action( 'admin_init', array( $this, 'handle_export_import_early' ), 1 );
 	}
@@ -392,17 +395,7 @@ class Debug_Page extends Settings_Base {
 
 		<!-- API Test Tab -->
 		<div id="api-test" class="brag-book-gallery-tab-panel">
-			<h2><?php esc_html_e( 'API Test', 'brag-book-gallery' ); ?></h2>
-			<p class="description">
-				<?php esc_html_e( 'Test your BRAG book API connection and endpoints to ensure proper gallery functionality.', 'brag-book-gallery' ); ?>
-			</p>
 			<?php $this->api_test->render(); ?>
-			<?php
-			// Hook for detailed API test content (handled in render_api_test_panel for now)
-			if ( has_action( 'brag_book_gallery_render_api_test_content' ) === false ) {
-				$this->render_api_test_panel();
-			}
-			?>
 		</div>
 
 		<!-- Diagnostic Tools Tab -->
@@ -1178,6 +1171,19 @@ class Debug_Page extends Settings_Base {
 		}
 	}
 
+	/**
+	 * Action callback for rendering API test content.
+	 *
+	 * @since 3.3.0
+	 *
+	 * @param array $api_tokens           API tokens.
+	 * @param array $website_property_ids Website property IDs.
+	 */
+	public function render_api_test_content_hook( array $api_tokens, array $website_property_ids ): void {
+		$this->render_api_test_content( $api_tokens, $website_property_ids );
+		$this->render_api_test_styles_and_scripts( $api_tokens, $website_property_ids );
+	}
+
 	private function render_api_test_panel(): void {
 		// Enqueue CodeMirror for JSON display
 		wp_enqueue_code_editor( array( 'type' => 'application/json' ) );
@@ -1215,24 +1221,23 @@ class Debug_Page extends Settings_Base {
 	}
 
 	private function render_api_test_content( array $api_tokens, array $website_property_ids ): void {
-		// Get saved account info which contains organization names
-		$account_info = get_option( 'brag_book_gallery_account_info', array() );
+		// Get saved account info which contains organization names.
+		$account_info    = get_option( 'brag_book_gallery_account_info', array() );
+		$configured_url  = get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' );
 		$connections_info = [];
 
 		foreach ( $api_tokens as $index => $token ) {
-			$property_id = $website_property_ids[$index] ?? null;
+			$property_id = $website_property_ids[ $index ] ?? null;
 			if ( ! empty( $token ) && ! empty( $property_id ) ) {
-				// Get organization name from saved account info
-				$org_name = 'Unknown';
-				if ( ! empty( $account_info[$index]['organization']['name'] ) ) {
-					$org_name = $account_info[$index]['organization']['name'];
-				}
+				$org_name = ! empty( $account_info[ $index ]['organization']['name'] )
+					? $account_info[ $index ]['organization']['name']
+					: 'Unknown';
 
-				$connections_info[$index] = [
-					'token' => $token,
-					'property_id' => $property_id,
+				$connections_info[ $index ] = [
+					'token'        => $token,
+					'property_id'  => $property_id,
 					'organization' => $org_name,
-					'valid' => ! empty( $token ) && ! empty( $property_id ),
+					'valid'        => true,
 				];
 			}
 		}
@@ -1240,17 +1245,16 @@ class Debug_Page extends Settings_Base {
 		<div class="api-test-config">
 			<div class="config-info">
 				<strong><?php esc_html_e( 'API Connections:', 'brag-book-gallery' ); ?></strong>
-				<?php if ( count( $api_tokens ) > 1 ) : ?>
+				<?php if ( count( $connections_info ) > 1 ) : ?>
 					<p class="description"><?php esc_html_e( 'Multiple connections configured. Tests will use all connections.', 'brag-book-gallery' ); ?></p>
 				<?php endif; ?>
 				<ul>
 					<?php foreach ( $connections_info as $index => $info ) : ?>
 						<li>
 							<?php
-							$status_icon = $info['valid'] ? '<span style="color: #00a32a;">●</span>' : '<span style="color: #d63638;">●</span>';
 							echo wp_kses_post( sprintf(
-								__( '%s Connection %d: <strong>%s</strong> | Token %s... | Property ID: %s', 'brag-book-gallery' ),
-								$status_icon,
+								/* translators: 1: Status indicator, 2: Connection number, 3: Organization name, 4: Truncated token, 5: Property ID */
+								__( '<span class="connection-status connection-status--active">●</span> Connection %1$d: <strong>%2$s</strong> | Token %3$s… | Property ID: %4$s', 'brag-book-gallery' ),
 								$index + 1,
 								esc_html( $info['organization'] ),
 								esc_html( substr( $info['token'], 0, 10 ) ),
@@ -1260,73 +1264,78 @@ class Debug_Page extends Settings_Base {
 						</li>
 					<?php endforeach; ?>
 				</ul>
-				<p><strong><?php esc_html_e( 'Base URL:', 'brag-book-gallery' ); ?></strong> <code>https://app.bragbookgallery.com</code></p>
 			</div>
 			<div class="test-parameters">
 				<strong><?php esc_html_e( 'Test Parameters:', 'brag-book-gallery' ); ?></strong>
 				<p class="description"><?php esc_html_e( 'Configure optional parameters for testing different scenarios.', 'brag-book-gallery' ); ?></p>
-				<table class="form-table" style="margin-top: 10px;">
+				<table class="api-test-params-table">
 					<tr>
-						<th style="padding: 5px; width: 150px;">
+						<th>
 							<label for="test-base-url"><?php esc_html_e( 'Base URL:', 'brag-book-gallery' ); ?></label>
 						</th>
-						<td style="padding: 5px;">
-							<input type="text" id="test-base-url" value="https://app.bragbookgallery.com" class="input-field regular-text" style="width: 350px;">
-							<span class="description"><?php esc_html_e( 'API base URL (e.g., https://dev.bragbookgallery.com for dev)', 'brag-book-gallery' ); ?></span>
+						<td>
+							<select id="test-base-url" class="api-test-base-url-select">
+								<option value="<?php echo esc_attr( $configured_url ); ?>">
+									<?php echo esc_html( $configured_url ); ?> (<?php esc_html_e( 'configured', 'brag-book-gallery' ); ?>)
+								</option>
+								<?php if ( 'https://app.bragbookgallery.com' !== $configured_url ) : ?>
+									<option value="https://app.bragbookgallery.com">https://app.bragbookgallery.com (<?php esc_html_e( 'production', 'brag-book-gallery' ); ?>)</option>
+								<?php endif; ?>
+								<option value="https://staging.bragbookgallery.com">https://staging.bragbookgallery.com (<?php esc_html_e( 'staging', 'brag-book-gallery' ); ?>)</option>
+								<option value="https://dev.bragbookgallery.com">https://dev.bragbookgallery.com (<?php esc_html_e( 'dev', 'brag-book-gallery' ); ?>)</option>
+							</select>
 						</td>
 					</tr>
 					<tr>
-						<th style="padding: 5px;">
+						<th>
 							<label for="test-api-token"><?php esc_html_e( 'API Token:', 'brag-book-gallery' ); ?></label>
 						</th>
-						<td style="padding: 5px;">
-							<input type="text" id="test-api-token" placeholder="<?php echo esc_attr( ! empty( $api_tokens[0] ) ? substr( $api_tokens[0], 0, 20 ) . '...' : 'Enter API token' ); ?>" class="input-field regular-text" style="width: 350px;">
-							<span class="description"><?php esc_html_e( 'API token for Bearer authentication (used by v2 endpoints)', 'brag-book-gallery' ); ?></span>
+						<td>
+							<input type="text" id="test-api-token" placeholder="<?php echo esc_attr( ! empty( $api_tokens[0] ) ? substr( $api_tokens[0], 0, 20 ) . '...' : 'Enter API token' ); ?>" class="input-field regular-text">
+							<span class="description"><?php esc_html_e( 'Bearer authentication (used by v2 endpoints)', 'brag-book-gallery' ); ?></span>
 						</td>
 					</tr>
 					<tr>
-						<th style="padding: 5px;">
-							<label for="test-website-property-id"><?php esc_html_e( 'Website Property ID:', 'brag-book-gallery' ); ?></label>
+						<th>
+							<label for="test-website-property-id"><?php esc_html_e( 'Property ID:', 'brag-book-gallery' ); ?></label>
 						</th>
-						<td style="padding: 5px;">
-							<input type="number" id="test-website-property-id" placeholder="<?php echo esc_attr( ! empty( $website_property_ids[0] ) ? $website_property_ids[0] : '84' ); ?>" class="input-field regular-text" style="width: 150px;">
+						<td>
+							<input type="number" id="test-website-property-id" placeholder="<?php echo esc_attr( ! empty( $website_property_ids[0] ) ? $website_property_ids[0] : '84' ); ?>" class="input-field small-text">
 							<span class="description"><?php esc_html_e( 'Website Property ID for API requests', 'brag-book-gallery' ); ?></span>
 						</td>
 					</tr>
 					<tr>
-						<th style="padding: 5px;">
+						<th>
 							<label for="test-procedure-id"><?php esc_html_e( 'Procedure ID:', 'brag-book-gallery' ); ?></label>
 						</th>
-						<td style="padding: 5px;">
-							<input type="number" id="test-procedure-id" placeholder="3405" class="input-field regular-text" style="width: 150px;">
-							<span class="description"><?php esc_html_e( 'Used by: Carousel, Cases, Filters (default: 3405)', 'brag-book-gallery' ); ?></span>
+						<td>
+							<input type="number" id="test-procedure-id" placeholder="3405" class="input-field small-text">
+							<span class="description"><?php esc_html_e( 'Carousel, Cases, Filters (default: 3405)', 'brag-book-gallery' ); ?></span>
 						</td>
 					</tr>
 					<tr>
-						<th style="padding: 5px;">
+						<th>
 							<label for="test-member-id"><?php esc_html_e( 'Member ID:', 'brag-book-gallery' ); ?></label>
 						</th>
-						<td style="padding: 5px;">
-							<input type="number" id="test-member-id" placeholder="129" class="input-field regular-text" style="width: 150px;">
-							<span class="description"><?php esc_html_e( 'Used by: Cases, Filters (default: 129)', 'brag-book-gallery' ); ?></span>
+						<td>
+							<input type="number" id="test-member-id" placeholder="129" class="input-field small-text">
+							<span class="description"><?php esc_html_e( 'Cases, Filters (default: 129)', 'brag-book-gallery' ); ?></span>
 						</td>
 					</tr>
 					<tr>
-						<th style="padding: 5px;">
+						<th>
 							<label for="test-page"><?php esc_html_e( 'Page:', 'brag-book-gallery' ); ?></label>
 						</th>
-						<td style="padding: 5px;">
-							<input type="number" id="test-page" placeholder="1" value="1" class="input-field regular-text" style="width: 150px;">
-							<span class="description"><?php esc_html_e( 'Page number for pagination (default: 1)', 'brag-book-gallery' ); ?></span>
+						<td>
+							<input type="number" id="test-page" placeholder="1" value="1" class="input-field small-text">
 						</td>
 					</tr>
 					<tr>
-						<th style="padding: 5px;">
+						<th>
 							<label for="test-limit"><?php esc_html_e( 'Limit:', 'brag-book-gallery' ); ?></label>
 						</th>
-						<td style="padding: 5px;">
-							<input type="number" id="test-limit" placeholder="20" value="20" class="input-field regular-text" style="width: 150px;">
-							<span class="description"><?php esc_html_e( 'Items per page (default: 20)', 'brag-book-gallery' ); ?></span>
+						<td>
+							<input type="number" id="test-limit" placeholder="20" value="20" class="input-field small-text">
 						</td>
 					</tr>
 				</table>
@@ -1334,244 +1343,169 @@ class Debug_Page extends Settings_Base {
 		</div>
 
 		<div class="api-test-container">
-			<table class="wp-list-table widefat fixed striped">
-				<thead>
-				<tr>
-					<th><?php esc_html_e( 'Endpoint', 'brag-book-gallery' ); ?></th>
-					<th><?php esc_html_e( 'Method', 'brag-book-gallery' ); ?></th>
-					<th><?php esc_html_e( 'Description', 'brag-book-gallery' ); ?></th>
-					<th><?php esc_html_e( 'Action', 'brag-book-gallery' ); ?></th>
-				</tr>
-				</thead>
-				<tbody>
-				<!-- Terms Endpoint -->
-				<tr>
-					<td><code>/api/plugin/v2/terms</code></td>
-					<td><span class="method-badge method-get">GET</span></td>
-					<td><?php esc_html_e( 'Get categories and procedures with case counts', 'brag-book-gallery' ); ?></td>
-					<td>
-						<button class="button button-secondary test-endpoint-btn"
-						        data-endpoint="terms"
-						        data-method="GET"
-						        data-url="/api/plugin/v2/terms">
-							<?php esc_html_e( 'Test', 'brag-book-gallery' ); ?>
-						</button>
-					</td>
-				</tr>
-
-				<!-- Cases Endpoint -->
-				<tr>
-					<td><code>/api/plugin/combine/cases</code></td>
-					<td><span class="method-badge method-post">POST</span></td>
-					<td><?php esc_html_e( 'Get paginated case listings', 'brag-book-gallery' ); ?></td>
-					<td>
-						<button class="button button-secondary test-endpoint-btn"
-						        data-endpoint="cases"
-						        data-method="POST"
-						        data-url="/api/plugin/combine/cases">
-							<?php esc_html_e( 'Test', 'brag-book-gallery' ); ?>
-						</button>
-					</td>
-				</tr>
-
-				<!-- Carousel Endpoint -->
-				<tr>
-					<td><code>/api/plugin/carousel</code></td>
-					<td><span class="method-badge method-get">GET</span></td>
-					<td><?php esc_html_e( 'Get carousel data (requires procedureId)', 'brag-book-gallery' ); ?></td>
-					<td>
-						<button class="button button-secondary test-endpoint-btn"
-						        data-endpoint="carousel"
-						        data-method="GET"
-						        data-url="/api/plugin/carousel">
-							<?php esc_html_e( 'Test', 'brag-book-gallery' ); ?>
-						</button>
-					</td>
-				</tr>
-
-				<!-- Filters Endpoint -->
-				<tr>
-					<td><code>/api/plugin/combine/filters</code></td>
-					<td><span class="method-badge method-post">POST</span></td>
-					<td><?php esc_html_e( 'Get available filter options', 'brag-book-gallery' ); ?></td>
-					<td>
-						<button class="button button-secondary test-endpoint-btn"
-						        data-endpoint="filters"
-						        data-method="POST"
-						        data-url="/api/plugin/combine/filters">
-							<?php esc_html_e( 'Test', 'brag-book-gallery' ); ?>
-						</button>
-					</td>
-				</tr>
-
-				<!-- Favorites List (v2) -->
-				<tr>
-					<td><code>/api/plugin/v2/leads/favorites/list</code></td>
-					<td><span class="method-badge method-post">POST</span></td>
-					<td><?php esc_html_e( 'Get user\'s favorite cases (v2 - Bearer auth)', 'brag-book-gallery' ); ?></td>
-					<td>
-						<button class="button button-secondary test-endpoint-btn"
-						        data-endpoint="favorites-list-v2"
-						        data-method="POST"
-						        data-url="/api/plugin/v2/leads/favorites/list"
-						        data-v2-bearer="true">
-							<?php esc_html_e( 'Test', 'brag-book-gallery' ); ?>
-						</button>
-					</td>
-				</tr>
-
-				<!-- Favorites Add (v2) -->
-				<tr>
-					<td><code>/api/plugin/v2/leads/favorites/add</code></td>
-					<td><span class="method-badge method-post">POST</span></td>
-					<td><?php esc_html_e( 'Add case to favorites (v2 - Bearer auth)', 'brag-book-gallery' ); ?></td>
-					<td>
-						<button class="button button-secondary test-endpoint-btn"
-						        data-endpoint="favorites-add-v2"
-						        data-method="POST"
-						        data-url="/api/plugin/v2/leads/favorites/add"
-						        data-v2-bearer="true">
-							<?php esc_html_e( 'Test', 'brag-book-gallery' ); ?>
-						</button>
-					</td>
-				</tr>
-
-				<!-- Favorites Remove (v2) -->
-				<tr>
-					<td><code>/api/plugin/v2/leads/favorites/remove</code></td>
-					<td><span class="method-badge method-post">POST</span></td>
-					<td><?php esc_html_e( 'Remove case from favorites (v2 - Bearer auth)', 'brag-book-gallery' ); ?></td>
-					<td>
-						<button class="button button-secondary test-endpoint-btn"
-						        data-endpoint="favorites-remove-v2"
-						        data-method="POST"
-						        data-url="/api/plugin/v2/leads/favorites/remove"
-						        data-v2-bearer="true">
-							<?php esc_html_e( 'Test', 'brag-book-gallery' ); ?>
-						</button>
-					</td>
-				</tr>
-
-				<!-- Sitemap -->
-				<tr>
-					<td><code>/api/plugin/sitemap</code></td>
-					<td><span class="method-badge method-post">POST</span></td>
-					<td><?php esc_html_e( 'Generate sitemap data', 'brag-book-gallery' ); ?></td>
-					<td>
-						<button class="button button-secondary test-endpoint-btn"
-						        data-endpoint="sitemap"
-						        data-method="POST"
-						        data-url="/api/plugin/sitemap">
-							<?php esc_html_e( 'Test', 'brag-book-gallery' ); ?>
-						</button>
-					</td>
-				</tr>
-
-				<!-- Single Case -->
-				<tr>
-					<td><code>/api/plugin/combine/cases/{id}</code></td>
-					<td><span class="method-badge method-post">POST</span></td>
-					<td>
-						<?php esc_html_e( 'Get specific case details', 'brag-book-gallery' ); ?>
-						<input type="number" id="case-id-input" placeholder="Case ID" class="small-text" style="margin-left: 10px;">
-					</td>
-					<td>
-						<button class="button button-secondary test-endpoint-btn"
-						        data-endpoint="single-case"
-						        data-method="POST"
-						        data-url="/api/plugin/combine/cases/"
-						        data-needs-id="true">
-							<?php esc_html_e( 'Test', 'brag-book-gallery' ); ?>
-						</button>
-					</td>
-				</tr>
-
-				<!-- Consultations (v2) -->
-				<tr>
-					<td><code>/api/plugin/v2/leads/consultations</code></td>
-					<td><span class="method-badge method-post">POST</span></td>
-					<td>
-						<?php esc_html_e( 'Submit consultation request (v2 - Bearer auth)', 'brag-book-gallery' ); ?>
-					</td>
-					<td>
-						<button class="button button-secondary test-endpoint-btn"
-						        data-endpoint="consultations-v2"
-						        data-method="POST"
-						        data-url="/api/plugin/v2/leads/consultations"
-						        data-test-consultation="true"
-						        data-v2-bearer="true">
-							<?php esc_html_e( 'Test', 'brag-book-gallery' ); ?>
-						</button>
-					</td>
-				</tr>
-				</tbody>
-			</table>
-		</div>
-
-		<!-- v2 API Endpoints -->
-		<h3 style="margin-top: 30px;"><?php esc_html_e( 'v2 API Endpoints', 'brag-book-gallery' ); ?></h3>
-		<div class="api-test-container">
-			<table class="wp-list-table widefat fixed striped">
-				<thead>
-				<tr>
-					<th><?php esc_html_e( 'Endpoint', 'brag-book-gallery' ); ?></th>
-					<th><?php esc_html_e( 'Method', 'brag-book-gallery' ); ?></th>
-					<th><?php esc_html_e( 'Description', 'brag-book-gallery' ); ?></th>
-					<th><?php esc_html_e( 'Action', 'brag-book-gallery' ); ?></th>
-				</tr>
-				</thead>
-				<tbody>
-				<!-- Cases Endpoint (v2) -->
-				<tr>
-					<td><code>/api/plugin/v2/cases/</code></td>
-					<td><span class="method-badge method-get">GET</span></td>
-					<td><?php esc_html_e( 'Get paginated case listings (v2 - requires procedureId)', 'brag-book-gallery' ); ?></td>
-					<td>
-						<button class="button button-secondary test-endpoint-btn"
-						        data-endpoint="cases-v2"
-						        data-method="GET"
-						        data-url="/api/plugin/v2/cases/">
-							<?php esc_html_e( 'Test', 'brag-book-gallery' ); ?>
-						</button>
-					</td>
-				</tr>
-
-				<!-- Single Case (v2) -->
-				<tr>
-					<td><code>/api/plugin/v2/cases/{id}</code></td>
-					<td><span class="method-badge method-get">GET</span></td>
-					<td>
-						<?php esc_html_e( 'Get specific case details (v2 - Bearer auth)', 'brag-book-gallery' ); ?>
-						<input type="number" id="case-id-v2-input" placeholder="Case ID" class="small-text" style="margin-left: 10px;">
-					</td>
-					<td>
-						<button class="button button-secondary test-endpoint-btn"
-						        data-endpoint="single-case-v2"
-						        data-method="GET"
-						        data-url="/api/plugin/v2/cases/"
-						        data-needs-case-id-v2="true">
-							<?php esc_html_e( 'Test', 'brag-book-gallery' ); ?>
-						</button>
-					</td>
-				</tr>
-
-				<!-- Token Validation -->
-				<tr>
-					<td><code>/api/plugin/v2/validation/token</code></td>
-					<td><span class="method-badge method-get">GET</span></td>
-					<td><?php esc_html_e( 'Validate API token (Bearer auth)', 'brag-book-gallery' ); ?></td>
-					<td>
-						<button class="button button-secondary test-endpoint-btn"
-						        data-endpoint="validate-token"
-						        data-method="GET"
-						        data-url="/api/plugin/v2/validation/token">
-							<?php esc_html_e( 'Test', 'brag-book-gallery' ); ?>
-						</button>
-					</td>
-				</tr>
-
-				</tbody>
-			</table>
+			<div class="brag-book-consultation-table-wrapper">
+				<table class="brag-book-consultation-table">
+					<thead class="brag-book-consultation-table-head">
+					<tr class="brag-book-consultation-table-row brag-book-consultation-table-row--head">
+						<th class="brag-book-consultation-table-header"><?php esc_html_e( 'Endpoint', 'brag-book-gallery' ); ?></th>
+						<th class="brag-book-consultation-table-header"><?php esc_html_e( 'Method', 'brag-book-gallery' ); ?></th>
+						<th class="brag-book-consultation-table-header"><?php esc_html_e( 'Description', 'brag-book-gallery' ); ?></th>
+						<th class="brag-book-consultation-table-header"><?php esc_html_e( 'Action', 'brag-book-gallery' ); ?></th>
+					</tr>
+					</thead>
+					<tbody>
+					<!-- Terms -->
+					<tr class="brag-book-consultation-table-row">
+						<td class="brag-book-consultation-table-cell"><code>/api/plugin/v2/terms</code></td>
+						<td class="brag-book-consultation-table-cell"><span class="method-badge method-get">GET</span></td>
+						<td class="brag-book-consultation-table-cell"><?php esc_html_e( 'Get categories and procedures with case counts', 'brag-book-gallery' ); ?></td>
+						<td class="brag-book-consultation-table-cell">
+							<button class="button button-secondary test-endpoint-btn" data-endpoint="terms" data-method="GET" data-url="/api/plugin/v2/terms">
+								<?php esc_html_e( 'Test', 'brag-book-gallery' ); ?>
+							</button>
+						</td>
+					</tr>
+					<!-- Cases (v1) -->
+					<tr class="brag-book-consultation-table-row">
+						<td class="brag-book-consultation-table-cell"><code>/api/plugin/combine/cases</code></td>
+						<td class="brag-book-consultation-table-cell"><span class="method-badge method-post">POST</span></td>
+						<td class="brag-book-consultation-table-cell"><?php esc_html_e( 'Get paginated case listings', 'brag-book-gallery' ); ?></td>
+						<td class="brag-book-consultation-table-cell">
+							<button class="button button-secondary test-endpoint-btn" data-endpoint="cases" data-method="POST" data-url="/api/plugin/combine/cases">
+								<?php esc_html_e( 'Test', 'brag-book-gallery' ); ?>
+							</button>
+						</td>
+					</tr>
+					<!-- Cases (v2) -->
+					<tr class="brag-book-consultation-table-row">
+						<td class="brag-book-consultation-table-cell"><code>/api/plugin/v2/cases/</code></td>
+						<td class="brag-book-consultation-table-cell"><span class="method-badge method-get">GET</span></td>
+						<td class="brag-book-consultation-table-cell"><?php esc_html_e( 'Get paginated case listings (v2 - requires procedureId)', 'brag-book-gallery' ); ?></td>
+						<td class="brag-book-consultation-table-cell">
+							<button class="button button-secondary test-endpoint-btn" data-endpoint="cases-v2" data-method="GET" data-url="/api/plugin/v2/cases/">
+								<?php esc_html_e( 'Test', 'brag-book-gallery' ); ?>
+							</button>
+						</td>
+					</tr>
+					<!-- Carousel -->
+					<tr class="brag-book-consultation-table-row">
+						<td class="brag-book-consultation-table-cell"><code>/api/plugin/carousel</code></td>
+						<td class="brag-book-consultation-table-cell"><span class="method-badge method-get">GET</span></td>
+						<td class="brag-book-consultation-table-cell"><?php esc_html_e( 'Get carousel data (requires procedureId)', 'brag-book-gallery' ); ?></td>
+						<td class="brag-book-consultation-table-cell">
+							<button class="button button-secondary test-endpoint-btn" data-endpoint="carousel" data-method="GET" data-url="/api/plugin/carousel">
+								<?php esc_html_e( 'Test', 'brag-book-gallery' ); ?>
+							</button>
+						</td>
+					</tr>
+					<!-- Filters -->
+					<tr class="brag-book-consultation-table-row">
+						<td class="brag-book-consultation-table-cell"><code>/api/plugin/combine/filters</code></td>
+						<td class="brag-book-consultation-table-cell"><span class="method-badge method-post">POST</span></td>
+						<td class="brag-book-consultation-table-cell"><?php esc_html_e( 'Get available filter options', 'brag-book-gallery' ); ?></td>
+						<td class="brag-book-consultation-table-cell">
+							<button class="button button-secondary test-endpoint-btn" data-endpoint="filters" data-method="POST" data-url="/api/plugin/combine/filters">
+								<?php esc_html_e( 'Test', 'brag-book-gallery' ); ?>
+							</button>
+						</td>
+					</tr>
+					<!-- Favorites List (v2) -->
+					<tr class="brag-book-consultation-table-row">
+						<td class="brag-book-consultation-table-cell"><code>/api/plugin/v2/leads/favorites/list</code></td>
+						<td class="brag-book-consultation-table-cell"><span class="method-badge method-post">POST</span></td>
+						<td class="brag-book-consultation-table-cell"><?php esc_html_e( 'Get user\'s favorite cases (v2)', 'brag-book-gallery' ); ?></td>
+						<td class="brag-book-consultation-table-cell">
+							<button class="button button-secondary test-endpoint-btn" data-endpoint="favorites-list-v2" data-method="POST" data-url="/api/plugin/v2/leads/favorites/list" data-v2-bearer="true">
+								<?php esc_html_e( 'Test', 'brag-book-gallery' ); ?>
+							</button>
+						</td>
+					</tr>
+					<!-- Favorites Add (v2) -->
+					<tr class="brag-book-consultation-table-row">
+						<td class="brag-book-consultation-table-cell"><code>/api/plugin/v2/leads/favorites/add</code></td>
+						<td class="brag-book-consultation-table-cell"><span class="method-badge method-post">POST</span></td>
+						<td class="brag-book-consultation-table-cell"><?php esc_html_e( 'Add case to favorites (v2)', 'brag-book-gallery' ); ?></td>
+						<td class="brag-book-consultation-table-cell">
+							<button class="button button-secondary test-endpoint-btn" data-endpoint="favorites-add-v2" data-method="POST" data-url="/api/plugin/v2/leads/favorites/add" data-v2-bearer="true">
+								<?php esc_html_e( 'Test', 'brag-book-gallery' ); ?>
+							</button>
+						</td>
+					</tr>
+					<!-- Favorites Remove (v2) -->
+					<tr class="brag-book-consultation-table-row">
+						<td class="brag-book-consultation-table-cell"><code>/api/plugin/v2/leads/favorites/remove</code></td>
+						<td class="brag-book-consultation-table-cell"><span class="method-badge method-post">POST</span></td>
+						<td class="brag-book-consultation-table-cell"><?php esc_html_e( 'Remove case from favorites (v2)', 'brag-book-gallery' ); ?></td>
+						<td class="brag-book-consultation-table-cell">
+							<button class="button button-secondary test-endpoint-btn" data-endpoint="favorites-remove-v2" data-method="POST" data-url="/api/plugin/v2/leads/favorites/remove" data-v2-bearer="true">
+								<?php esc_html_e( 'Test', 'brag-book-gallery' ); ?>
+							</button>
+						</td>
+					</tr>
+					<!-- Sitemap -->
+					<tr class="brag-book-consultation-table-row">
+						<td class="brag-book-consultation-table-cell"><code>/api/plugin/sitemap</code></td>
+						<td class="brag-book-consultation-table-cell"><span class="method-badge method-post">POST</span></td>
+						<td class="brag-book-consultation-table-cell"><?php esc_html_e( 'Generate sitemap data', 'brag-book-gallery' ); ?></td>
+						<td class="brag-book-consultation-table-cell">
+							<button class="button button-secondary test-endpoint-btn" data-endpoint="sitemap" data-method="POST" data-url="/api/plugin/sitemap">
+								<?php esc_html_e( 'Test', 'brag-book-gallery' ); ?>
+							</button>
+						</td>
+					</tr>
+					<!-- Single Case (v1) -->
+					<tr class="brag-book-consultation-table-row">
+						<td class="brag-book-consultation-table-cell"><code>/api/plugin/combine/cases/{id}</code></td>
+						<td class="brag-book-consultation-table-cell"><span class="method-badge method-post">POST</span></td>
+						<td class="brag-book-consultation-table-cell">
+							<?php esc_html_e( 'Get specific case details', 'brag-book-gallery' ); ?>
+							<input type="number" id="case-id-input" placeholder="Case ID" class="small-text">
+						</td>
+						<td class="brag-book-consultation-table-cell">
+							<button class="button button-secondary test-endpoint-btn" data-endpoint="single-case" data-method="POST" data-url="/api/plugin/combine/cases/" data-needs-id="true">
+								<?php esc_html_e( 'Test', 'brag-book-gallery' ); ?>
+							</button>
+						</td>
+					</tr>
+					<!-- Single Case (v2) -->
+					<tr class="brag-book-consultation-table-row">
+						<td class="brag-book-consultation-table-cell"><code>/api/plugin/v2/cases/{id}</code></td>
+						<td class="brag-book-consultation-table-cell"><span class="method-badge method-get">GET</span></td>
+						<td class="brag-book-consultation-table-cell">
+							<?php esc_html_e( 'Get specific case details (v2)', 'brag-book-gallery' ); ?>
+							<input type="number" id="case-id-v2-input" placeholder="Case ID" class="small-text">
+						</td>
+						<td class="brag-book-consultation-table-cell">
+							<button class="button button-secondary test-endpoint-btn" data-endpoint="single-case-v2" data-method="GET" data-url="/api/plugin/v2/cases/" data-needs-case-id-v2="true">
+								<?php esc_html_e( 'Test', 'brag-book-gallery' ); ?>
+							</button>
+						</td>
+					</tr>
+					<!-- Consultations (v2) -->
+					<tr class="brag-book-consultation-table-row">
+						<td class="brag-book-consultation-table-cell"><code>/api/plugin/v2/leads/consultations</code></td>
+						<td class="brag-book-consultation-table-cell"><span class="method-badge method-post">POST</span></td>
+						<td class="brag-book-consultation-table-cell"><?php esc_html_e( 'Submit consultation request (v2)', 'brag-book-gallery' ); ?></td>
+						<td class="brag-book-consultation-table-cell">
+							<button class="button button-secondary test-endpoint-btn" data-endpoint="consultations-v2" data-method="POST" data-url="/api/plugin/v2/leads/consultations" data-test-consultation="true" data-v2-bearer="true">
+								<?php esc_html_e( 'Test', 'brag-book-gallery' ); ?>
+							</button>
+						</td>
+					</tr>
+					<!-- Token Validation -->
+					<tr class="brag-book-consultation-table-row">
+						<td class="brag-book-consultation-table-cell"><code>/api/plugin/v2/validation/token</code></td>
+						<td class="brag-book-consultation-table-cell"><span class="method-badge method-get">GET</span></td>
+						<td class="brag-book-consultation-table-cell"><?php esc_html_e( 'Validate API token (Bearer auth)', 'brag-book-gallery' ); ?></td>
+						<td class="brag-book-consultation-table-cell">
+							<button class="button button-secondary test-endpoint-btn" data-endpoint="validate-token" data-method="GET" data-url="/api/plugin/v2/validation/token">
+								<?php esc_html_e( 'Test', 'brag-book-gallery' ); ?>
+							</button>
+						</td>
+					</tr>
+					</tbody>
+				</table>
+			</div>
 		</div>
 
 		<!-- Response Display Area -->
@@ -1602,123 +1536,7 @@ class Debug_Page extends Settings_Base {
 	}
 
 	private function render_api_test_styles_and_scripts( array $api_tokens, array $website_property_ids ): void {
-		?>
-		<style>
-			.api-test-config {
-				background: var(--slate-100);
-				border: 1px solid var(--slate-200);
-				padding: var(--space-6);
-				border-radius: 0.25rem;
-				margin-block: var(--space-6);
-				display: flex;
-				gap: var(--space-6);
-			}
-			.config-info, .test-parameters {
-				flex: 1;
-			}
-			.config-info ul {
-				margin: 10px 0 0 20px;
-			}
-			.config-info code {
-				background: #fff;
-				padding: 2px 5px;
-				border-radius: 3px;
-			}
-			.test-parameters {
-				border-left: 1px solid #c3c4c7;
-				padding-left: 30px;
-			}
-			.test-parameters .description {
-				margin: 10px 0;
-			}
-			.method-badge {
-				display: inline-block;
-				padding: 3px 8px;
-				border-radius: 3px;
-				font-size: 11px;
-				font-weight: 600;
-				text-transform: uppercase;
-			}
-			.method-get {
-				background: #00a32a;
-				color: white;
-			}
-			.method-post {
-				background: #2271b1;
-				color: white;
-			}
-			.api-test-container {
-				margin: 20px 0;
-			}
-			.api-response-container {
-				margin-top: 30px;
-				background: #fff;
-				border: 1px solid #c3c4c7;
-				border-radius: 4px;
-				padding: 20px;
-			}
-			.response-header {
-				display: flex;
-				align-items: center;
-				gap: 15px;
-				margin-bottom: 15px;
-				padding-bottom: 15px;
-				border-bottom: 1px solid #dcdcde;
-			}
-			.response-status {
-				font-weight: 600;
-			}
-			.response-status.success {
-				color: #00a32a;
-			}
-			.response-status.error {
-				color: #d63638;
-			}
-			.response-time {
-				color: #646970;
-				font-size: 13px;
-			}
-			.api-response-content, .api-request-content {
-				width: 100%;
-				border: 1px solid #dcdcde;
-				border-radius: 4px;
-				font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-				font-size: 13px;
-				line-height: 1.6;
-				resize: vertical;
-			}
-
-			/* CodeMirror will handle the styling, but we need some basic fallback */
-			.CodeMirror {
-				border: 1px solid #dcdcde;
-				border-radius: 4px;
-				max-height: 400px;
-			}
-
-			.CodeMirror-scroll {
-				max-height: 400px;
-			}
-			.request-details, .response-details {
-				margin-top: 20px;
-			}
-			.request-details h4, .response-details h4 {
-				margin: 0 0 10px 0;
-				color: #1d2327;
-				font-size: 14px;
-			}
-			.test-endpoint-btn:disabled {
-				opacity: 0.6;
-				cursor: not-allowed;
-			}
-			.spinner {
-				display: inline-block;
-				margin-left: 5px;
-			}
-		</style>
-
-		<?php
-		// Include the JavaScript from the original API test file
-		// We need to access the handle_api_test method, so we'll include the AJAX handler
+		// Register the AJAX handler for API testing.
 		$this->register_ajax_action( 'brag_book_test_api', array( $this, 'handle_api_test' ) );
 		?>
 
@@ -1735,10 +1553,10 @@ class Debug_Page extends Settings_Base {
 					console.error('No valid API tokens found. Please check your API settings.');
 				}
 
-				// Helper function to get base URL from input
+				// Helper function to get base URL from select
 				const getBaseUrl = () => {
-					const baseUrlInput = document.getElementById('test-base-url');
-					return baseUrlInput ? baseUrlInput.value.trim() : 'https://app.bragbookgallery.com';
+					const baseUrlSelect = document.getElementById('test-base-url');
+					return baseUrlSelect ? baseUrlSelect.value : 'https://app.bragbookgallery.com';
 				};
 
 				const getWebsitePropertyId = () => {

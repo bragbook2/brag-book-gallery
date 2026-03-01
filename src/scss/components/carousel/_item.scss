@@ -5,7 +5,7 @@
 // -----------------------------------------------------------------------------
 
 .brag-book-gallery-carousel-item {
-	background: linear-gradient(135deg, var(--wp--custom--brag-book-gallery--color--lighter-grey) 0%, var(--wp--custom--brag-book-gallery--color--light-grey) 100%);
+	background: linear-gradient(135deg, var(--wp--custom--brag-book-gallery--color--lighter-gray) 0%, var(--wp--custom--brag-book-gallery--color--light-gray) 100%);
 	border-radius: var(--wp--custom--brag-book-gallery--spacer--sm);
 	position: relative;
 	overflow: hidden;
@@ -14,7 +14,7 @@
 	display: block;
 	font-size: var(--wp--custom--brag-book-gallery--text-sm);
 	font-weight: var(--wp--custom--brag-book-gallery--font-weight--semibold);
-	color: var(--wp--custom--brag-book-gallery--color--grey);
+	color: var(--wp--custom--brag-book-gallery--color--gray);
 	transform: scale(1);
 	transition: transform 0.3s ease, box-shadow 0.3s ease;
 	outline: none;

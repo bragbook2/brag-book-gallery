@@ -72,108 +72,113 @@ final class Debug_Logs {
 		?>
 		<div class="brag-book-gallery-debug-logs">
 			<!-- Log Settings -->
-			<div class="brag-book-gallery-card">
-				<h3><?php esc_html_e( 'Debug Log Settings', 'brag-book-gallery' ); ?></h3>
+			<div class="debug-logs-settings">
 				<form method="post">
 					<?php wp_nonce_field( 'brag_book_gallery_debug_action', 'debug_nonce' ); ?>
-					<table class="form-table">
-						<tr>
-							<th scope="row"><?php esc_html_e( 'Enable Debug Logging', 'brag-book-gallery' ); ?></th>
-							<td>
-								<label>
+
+					<div class="debug-logs-setting-row">
+						<div class="debug-logs-setting-row__label">
+							<?php esc_html_e( 'Debug Logging', 'brag-book-gallery' ); ?>
+						</div>
+						<div class="debug-logs-setting-row__control">
+							<div class="brag-book-gallery-toggle-wrapper">
+								<label class="brag-book-gallery-toggle">
+									<input type="hidden" name="enable_logs" value="no" />
 									<input type="checkbox" name="enable_logs" value="yes" <?php checked( $enable_logs, 'yes' ); ?> />
-									<?php esc_html_e( 'Enable debug logging to file', 'brag-book-gallery' ); ?>
+									<span class="brag-book-gallery-toggle-slider"></span>
 								</label>
-							</td>
-						</tr>
-						<tr>
-							<th scope="row"><?php esc_html_e( 'Log Level', 'brag-book-gallery' ); ?></th>
-							<td>
-								<select name="log_level">
-									<option value="error" <?php selected( $log_level, 'error' ); ?>><?php esc_html_e( 'Errors Only', 'brag-book-gallery' ); ?></option>
-									<option value="warning" <?php selected( $log_level, 'warning' ); ?>><?php esc_html_e( 'Warnings & Errors', 'brag-book-gallery' ); ?></option>
-									<option value="info" <?php selected( $log_level, 'info' ); ?>><?php esc_html_e( 'Info, Warnings & Errors', 'brag-book-gallery' ); ?></option>
-									<option value="debug" <?php selected( $log_level, 'debug' ); ?>><?php esc_html_e( 'All Messages (Debug)', 'brag-book-gallery' ); ?></option>
-								</select>
-							</td>
-						</tr>
-					</table>
-					<p class="submit">
+								<span class="brag-book-gallery-toggle-label">
+									<?php esc_html_e( 'Enable debug logging to file', 'brag-book-gallery' ); ?>
+								</span>
+							</div>
+						</div>
+					</div>
+
+					<div class="debug-logs-setting-row">
+						<div class="debug-logs-setting-row__label">
+							<?php esc_html_e( 'Log Level', 'brag-book-gallery' ); ?>
+						</div>
+						<div class="debug-logs-setting-row__control">
+							<select name="log_level" class="debug-logs-level-select">
+								<option value="error" <?php selected( $log_level, 'error' ); ?>><?php esc_html_e( 'Errors Only', 'brag-book-gallery' ); ?></option>
+								<option value="warning" <?php selected( $log_level, 'warning' ); ?>><?php esc_html_e( 'Warnings & Errors', 'brag-book-gallery' ); ?></option>
+								<option value="info" <?php selected( $log_level, 'info' ); ?>><?php esc_html_e( 'Info, Warnings & Errors', 'brag-book-gallery' ); ?></option>
+								<option value="debug" <?php selected( $log_level, 'debug' ); ?>><?php esc_html_e( 'All Messages (Debug)', 'brag-book-gallery' ); ?></option>
+							</select>
+						</div>
+					</div>
+
+					<div class="debug-logs-setting-row debug-logs-setting-row--actions">
 						<button type="submit" name="save_log_settings" class="button button-primary">
 							<?php esc_html_e( 'Save Settings', 'brag-book-gallery' ); ?>
 						</button>
-					</p>
+					</div>
 				</form>
 			</div>
 
 			<!-- Log File Contents -->
-			<div class="brag-book-gallery-card">
-				<h3><?php esc_html_e( 'Debug Log File', 'brag-book-gallery' ); ?></h3>
-				<?php if ( file_exists( $log_file ) && is_readable( $log_file ) ) : ?>
-					<?php
-					$log_contents  = file_get_contents( $log_file );
-					$file_size     = filesize( $log_file );
-					$file_modified = filemtime( $log_file );
+			<?php if ( file_exists( $log_file ) && is_readable( $log_file ) ) : ?>
+				<?php
+				$log_contents  = file_get_contents( $log_file );
+				$file_size     = filesize( $log_file );
+				$file_modified = filemtime( $log_file );
 
-					// If file is too large, get last 100 lines.
-					if ( $file_size > 1048576 ) { // 1MB
-						$lines        = file( $log_file );
-						$last_lines   = array_slice( $lines, -100 );
-						$log_contents = implode( '', $last_lines );
-						$truncated    = true;
-					} else {
-						$truncated = false;
-					}
-					?>
-					<div class="log-file-info">
-						<p>
-							<strong><?php esc_html_e( 'File Path:', 'brag-book-gallery' ); ?></strong>
-							<code><?php echo esc_html( $log_file ); ?></code>
-						</p>
-						<p>
-							<strong><?php esc_html_e( 'File Size:', 'brag-book-gallery' ); ?></strong>
-							<?php echo esc_html( size_format( $file_size ) ); ?>
-						</p>
-						<p>
-							<strong><?php esc_html_e( 'Last Modified:', 'brag-book-gallery' ); ?></strong>
-							<?php echo esc_html( date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $file_modified ) ); ?>
-						</p>
-						<?php if ( $truncated ) : ?>
-							<p class="notice notice-warning inline">
-								<?php esc_html_e( 'Log file is large. Showing last 100 lines only.', 'brag-book-gallery' ); ?>
-							</p>
-						<?php endif; ?>
+				if ( $file_size > 1048576 ) { // 1MB
+					$lines        = file( $log_file );
+					$last_lines   = array_slice( $lines, -100 );
+					$log_contents = implode( '', $last_lines );
+					$truncated    = true;
+				} else {
+					$truncated = false;
+				}
+				?>
+				<div class="debug-logs-file-meta">
+					<div class="debug-logs-file-meta__items">
+						<div class="debug-logs-file-meta__item">
+							<span class="debug-logs-file-meta__label"><?php esc_html_e( 'Path', 'brag-book-gallery' ); ?></span>
+							<code class="debug-logs-file-meta__value"><?php echo esc_html( $log_file ); ?></code>
+						</div>
+						<div class="debug-logs-file-meta__item">
+							<span class="debug-logs-file-meta__label"><?php esc_html_e( 'Size', 'brag-book-gallery' ); ?></span>
+							<span class="debug-logs-file-meta__value"><?php echo esc_html( size_format( $file_size ) ); ?></span>
+						</div>
+						<div class="debug-logs-file-meta__item">
+							<span class="debug-logs-file-meta__label"><?php esc_html_e( 'Modified', 'brag-book-gallery' ); ?></span>
+							<span class="debug-logs-file-meta__value"><?php echo esc_html( date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $file_modified ) ); ?></span>
+						</div>
 					</div>
+					<?php if ( $truncated ) : ?>
+						<div class="debug-logs-truncation-notice">
+							<?php esc_html_e( 'Log file is large. Showing last 100 lines only.', 'brag-book-gallery' ); ?>
+						</div>
+					<?php endif; ?>
+				</div>
 
-					<div class="log-file-actions">
-						<form method="post" style="display: inline;">
-							<?php wp_nonce_field( 'brag_book_gallery_debug_action', 'debug_nonce' ); ?>
-							<button type="submit" name="clear_debug_log" class="button" onclick="return confirm('<?php esc_attr_e( 'Are you sure you want to clear the debug log?', 'brag-book-gallery' ); ?>');">
-								<?php esc_html_e( 'Clear Log', 'brag-book-gallery' ); ?>
-							</button>
-						</form>
-						<a href="<?php echo esc_url( add_query_arg( array( 'download_log' => 1, 'nonce' => wp_create_nonce( 'download_log' ) ) ) ); ?>" class="button">
-							<?php esc_html_e( 'Download Log', 'brag-book-gallery' ); ?>
-						</a>
-					</div>
+				<div class="debug-logs-actions">
+					<form method="post" class="debug-logs-actions__form">
+						<?php wp_nonce_field( 'brag_book_gallery_debug_action', 'debug_nonce' ); ?>
+						<button type="submit" name="clear_debug_log" class="button" onclick="return confirm('<?php esc_attr_e( 'Are you sure you want to clear the debug log?', 'brag-book-gallery' ); ?>');">
+							<?php esc_html_e( 'Clear Log', 'brag-book-gallery' ); ?>
+						</button>
+					</form>
+					<a href="<?php echo esc_url( add_query_arg( array( 'download_log' => 1, 'nonce' => wp_create_nonce( 'download_log' ) ) ) ); ?>" class="button">
+						<?php esc_html_e( 'Download Log', 'brag-book-gallery' ); ?>
+					</a>
+				</div>
 
-					<div class="log-file-contents">
-						<label for="debug-log-contents"><?php esc_html_e( 'Log Contents:', 'brag-book-gallery' ); ?></label>
-						<textarea id="debug-log-contents" readonly rows="20" style="width: 100%; font-family: monospace; font-size: 12px; background: #f0f0f0; padding: 10px;"><?php echo esc_textarea( $log_contents ); ?></textarea>
-					</div>
-				<?php else : ?>
-					<p class="notice notice-info inline">
-						<?php esc_html_e( 'No debug log file found. Enable debug logging above to start capturing debug information.', 'brag-book-gallery' ); ?>
-					</p>
+				<div class="brag-book-gallery-log-viewer">
+					<pre class="brag-book-gallery-error-log" id="debug-log-contents" aria-label="<?php esc_attr_e( 'Log Contents', 'brag-book-gallery' ); ?>"><?php echo esc_html( $log_contents ); ?></pre>
+				</div>
+			<?php else : ?>
+				<div class="debug-logs-empty">
+					<p><?php esc_html_e( 'No debug log file found. Enable debug logging above to start capturing debug information.', 'brag-book-gallery' ); ?></p>
 					<p>
-						<strong><?php esc_html_e( 'Log file location:', 'brag-book-gallery' ); ?></strong>
-						<code><?php echo esc_html( $log_file ); ?></code>
+						<span class="debug-logs-file-meta__label"><?php esc_html_e( 'Log file location:', 'brag-book-gallery' ); ?></span>
+						<code class="debug-logs-file-meta__value"><?php echo esc_html( $log_file ); ?></code>
 					</p>
-				<?php endif; ?>
-			</div>
+				</div>
+			<?php endif; ?>
 		</div>
-
-		<?php $this->render_styles(); ?>
 		<?php
 	}
 
@@ -377,42 +382,4 @@ final class Debug_Logs {
 		return $content;
 	}
 
-	/**
-	 * Render component styles
-	 *
-	 * Outputs CSS styles for the debug logs interface.
-	 *
-	 * @since 3.3.0
-	 *
-	 * @return void Outputs style tag
-	 */
-	private function render_styles(): void {
-		?>
-		<style>
-			.brag-book-gallery-debug-logs .log-file-info {
-				background: #f0f0f1;
-				padding: 15px;
-				margin: 15px 0;
-				border-left: 4px solid #2271b1;
-			}
-			.brag-book-gallery-debug-logs .log-file-info p {
-				margin: 5px 0;
-			}
-			.brag-book-gallery-debug-logs .log-file-actions {
-				margin: 15px 0;
-			}
-			.brag-book-gallery-debug-logs .log-file-actions .button {
-				margin-right: 10px;
-			}
-			.brag-book-gallery-debug-logs .log-file-contents {
-				margin-top: 15px;
-			}
-			.brag-book-gallery-debug-logs .log-file-contents label {
-				display: block;
-				margin-bottom: 5px;
-				font-weight: 600;
-			}
-		</style>
-		<?php
-	}
 }

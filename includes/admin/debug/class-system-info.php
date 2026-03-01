@@ -138,37 +138,40 @@ final class System_Info {
 			$system_info = $this->get_cached_system_info();
 			?>
 			<div class="tool-section" data-nonce="<?php echo esc_attr( wp_create_nonce( 'brag_book_system_info' ) ); ?>">
-			<h3><?php esc_html_e( 'System Information', 'brag-book-gallery' ); ?></h3>
-			<p><?php esc_html_e( 'Comprehensive system information for debugging and support.', 'brag-book-gallery' ); ?></p>
+			<details class="brag-book-gallery-accordion-item system-info-accordion">
+				<summary><?php esc_html_e( 'System Information', 'brag-book-gallery' ); ?></summary>
+				<div class="brag-book-gallery-accordion-content system-info-accordion-content">
+					<div class="system-info-actions">
+						<button type="button" class="button button-primary" id="copy-system-info">
+							<svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="currentColor"><path d="M360-240q-33 0-56.5-23.5T280-320v-480q0-33 23.5-56.5T360-880h360q33 0 56.5 23.5T800-800v480q0 33-23.5 56.5T720-240H360Zm0-80h360v-480H360v480ZM200-80q-33 0-56.5-23.5T120-160v-560h80v560h440v80H200Zm160-240v-480 480Z"/></svg>
+							<?php esc_html_e( 'Copy to Clipboard', 'brag-book-gallery' ); ?>
+						</button>
+						<button type="button" class="button button-secondary" id="download-system-info">
+							<svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="currentColor"><path d="M480-320 280-520l56-58 104 104v-326h80v326l104-104 56 58-200 200ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z"/></svg>
+							<?php esc_html_e( 'Download as Text', 'brag-book-gallery' ); ?>
+						</button>
+						<span id="copy-status" class="brag-book-gallery-copy-feedback">
+							<?php esc_html_e( 'Copied to clipboard!', 'brag-book-gallery' ); ?>
+						</span>
+					</div>
 
-			<div class="system-info-actions" style="margin: 20px 0;">
-				<button type="button" class="button button-primary" id="copy-system-info">
-					<svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="currentColor"><path d="M360-240q-33 0-56.5-23.5T280-320v-480q0-33 23.5-56.5T360-880h360q33 0 56.5 23.5T800-800v480q0 33-23.5 56.5T720-240H360Zm0-80h360v-480H360v480ZM200-80q-33 0-56.5-23.5T120-160v-560h80v560h440v80H200Zm160-240v-480 480Z"/></svg>
-					<?php esc_html_e( 'Copy to Clipboard', 'brag-book-gallery' ); ?>
-				</button>
-				<button type="button" class="button button-secondary" id="download-system-info">
-					<svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="currentColor"><path d="M480-320 280-520l56-58 104 104v-326h80v326l104-104 56 58-200 200ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z"/></svg>
-					<?php esc_html_e( 'Download as Text', 'brag-book-gallery' ); ?>
-				</button>
-				<span id="copy-status" style="margin-left: 10px; color: #46b450; display: none;">
-					<?php esc_html_e( 'Copied to clipboard!', 'brag-book-gallery' ); ?>
-				</span>
-			</div>
+					<div class="brag-book-gallery-system-info system-info-terminal">
+						<pre id="system-info-output" aria-label="<?php esc_attr_e( 'System Information Output', 'brag-book-gallery' ); ?>"><?php echo esc_html( $system_info ); ?></pre>
+					</div>
 
-				<textarea id="system-info-output" readonly style="width: 100%; height: 500px; font-family: monospace; font-size: 12px; background: #f5f5f5; padding: 15px; border: 1px solid #ddd; resize: vertical;" aria-label="<?php esc_attr_e( 'System Information Output', 'brag-book-gallery' ); ?>"><?php echo esc_textarea( $system_info ); ?></textarea>
-
-				<!-- Performance Metrics -->
-				<div class="performance-metrics" style="margin-top: 10px; padding: 10px; background: #f0f8ff; border-left: 4px solid #0073aa;">
-					<small>
-						<?php
-						printf(
-							/* translators: %s: Time in seconds */
-							esc_html__( 'System information generated in %s seconds', 'brag-book-gallery' ),
-							number_format( microtime( true ) - $start_time, 3 )
-						);
-						?>
-					</small>
+					<div class="system-info-metrics">
+						<small>
+							<?php
+							printf(
+								/* translators: %s: Time in seconds */
+								esc_html__( 'System information generated in %s seconds', 'brag-book-gallery' ),
+								number_format( microtime( true ) - $start_time, 3 )
+							);
+							?>
+						</small>
+					</div>
 				</div>
+			</details>
 		</div>
 
 			<script>
@@ -227,9 +230,9 @@ final class System_Info {
 					if (!statusElement) return;
 
 					if (success) {
-						await fadeIn(statusElement);
-						setTimeout(async function() {
-							await fadeOut(statusElement);
+						statusElement.classList.add('show');
+						setTimeout(function() {
+							statusElement.classList.remove('show');
 						}, 2000);
 					} else {
 						alert('<?php echo esc_js( __( 'Failed to copy. Please select and copy manually.', 'brag-book-gallery' ) ); ?>');
@@ -244,20 +247,10 @@ final class System_Info {
 				 */
 				const copyToClipboard = async function(text) {
 					try {
-						// Try modern Clipboard API first
 						if (navigator.clipboard && navigator.clipboard.writeText) {
 							await navigator.clipboard.writeText(text);
 							return true;
 						}
-
-						// Fallback to execCommand
-						const textarea = document.getElementById('system-info-output');
-						if (textarea) {
-							textarea.select();
-							textarea.setSelectionRange(0, 99999);
-							return document.execCommand('copy');
-						}
-
 						return false;
 					} catch (error) {
 						console.error('Copy failed:', error);
@@ -269,24 +262,23 @@ final class System_Info {
 				const copyBtn = document.getElementById('copy-system-info');
 				if (copyBtn) {
 					copyBtn.addEventListener('click', async function() {
-						const textarea = document.getElementById('system-info-output');
-						if (!textarea) return;
+						const el = document.getElementById('system-info-output');
+						if (!el) return;
 
-						const success = await copyToClipboard(textarea.value);
+						const success = await copyToClipboard(el.textContent);
 						await showCopyStatus(success);
 					});
 				}
 
-
-				// Download button handler with modern approach
+				// Download button handler
 				const downloadBtn = document.getElementById('download-system-info');
 				if (downloadBtn) {
 					downloadBtn.addEventListener('click', function() {
-						const textarea = document.getElementById('system-info-output');
-						if (!textarea) return;
+						const el = document.getElementById('system-info-output');
+						if (!el) return;
 
 						try {
-							const text = textarea.value;
+							const text = el.textContent;
 							const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
 							const url = URL.createObjectURL(blob);
 

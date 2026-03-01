@@ -15,6 +15,7 @@ declare( strict_types=1 );
 namespace BRAGBookGallery\Includes\Admin\Pages;
 
 use BRAGBookGallery\Includes\Admin\Core\Settings_Base;
+use BRAGBookGallery\Includes\Core\Updater;
 
 if ( ! defined( 'WPINC' ) ) {
 	die( 'Restricted Access' );
@@ -714,7 +715,7 @@ class General_Page extends Settings_Base {
 		$favorites_view      = sanitize_text_field( get_option( 'brag_book_gallery_favorites_view', 'default' ) );
 		$case_card_type      = sanitize_text_field( get_option( 'brag_book_gallery_case_card_type', 'default' ) );
 		$case_image_carousel = (bool) get_option( 'brag_book_gallery_case_image_carousel', false );
-		$items_per_page      = absint( get_option( 'brag_book_gallery_items_per_page', 200 ) );
+		$items_per_page      = absint( get_option( 'brag_book_gallery_items_per_page', 12 ) );
 
 		// Landing page content.
 		$default_landing_text = sprintf(
@@ -741,6 +742,9 @@ class General_Page extends Settings_Base {
 		?>
 
 		<h2><?php esc_html_e( 'Display & Gallery Settings', 'brag-book-gallery' ); ?></h2>
+		<p class="description" style="margin-top: 0;">
+			<?php esc_html_e( 'Configure how your gallery appears on your website', 'brag-book-gallery' ); ?>
+		</p>
 		<?php settings_errors( $this->page_slug ); ?>
 
 		<form method="post" action="" id="brag-book-gallery-display-gallery-form">
@@ -749,8 +753,20 @@ class General_Page extends Settings_Base {
 			wp_nonce_field( 'brag_book_gallery_default_settings', 'brag_book_gallery_default_nonce' );
 			?>
 
-			<!-- Gallery Page Settings Section - Now First -->
-			<h3><?php esc_html_e( 'Gallery Page Settings', 'brag-book-gallery' ); ?></h3>
+			<!-- Gallery Page Settings Section -->
+			<?php
+			$gallery_page = null;
+			$gallery_edit_link = '';
+			if ( ! empty( $slug ) ) {
+				$gallery_page = get_page_by_path( $slug );
+				if ( $gallery_page ) {
+					$gallery_edit_link = get_edit_post_link( $gallery_page->ID, 'raw' );
+				}
+			}
+			?>
+			<div class="gallery-page-settings__header">
+				<h3><?php esc_html_e( 'Gallery Page Settings', 'brag-book-gallery' ); ?></h3>
+			</div>
 
 			<?php if ( $current_mode !== 'default' ) : ?>
 				<div class="brag-book-gallery-notice brag-book-gallery-notice--warning">
@@ -760,135 +776,137 @@ class General_Page extends Settings_Base {
 				</div>
 			<?php endif; ?>
 
-			<table class="form-table brag-book-gallery-form-table" role="presentation">
-				<tr>
-					<th scope="row">
-						<label for="brag_book_gallery_page_slug">
-							<?php esc_html_e( 'Gallery Slug', 'brag-book-gallery' ); ?>
-						</label>
-					</th>
-					<td>
-						<div class="slug-input-wrapper">
-							<input type="text"
-							       id="brag_book_gallery_page_slug"
-							       name="brag_book_gallery_page_slug"
-							       value="<?php echo esc_attr( $slug ); ?>"
-							       class="regular-text"
-							       placeholder="<?php esc_attr_e( 'e.g., gallery, portfolio, before-after', 'brag-book-gallery' ); ?>">
-							<button type="button"
-							        id="generate-page-btn"
-							        class="button button-secondary"
-							        style="margin-left: 10px;"
-							        disabled>
-								<?php esc_html_e( 'Generate Page', 'brag-book-gallery' ); ?>
-							</button>
-						</div>
-						<div id="slug-status-message" class="slug-status"></div>
-						<p class="description">
-							<?php esc_html_e( 'Enter a slug and click "Generate Page" to create the gallery page, or it will be created when you save settings.', 'brag-book-gallery' ); ?>
-						</p>
-					</td>
-				</tr>
+			<div class="brag-book-gallery-card gallery-page-settings-card">
+				<!-- Gallery Slug -->
+				<div class="gallery-page-settings-field">
+					<label for="brag_book_gallery_page_slug" class="gallery-page-settings-field__label">
+						<?php esc_html_e( 'Gallery Slug', 'brag-book-gallery' ); ?>
+					</label>
+					<div class="gallery-slug-input-row">
+						<input type="text"
+						       id="brag_book_gallery_page_slug"
+						       name="brag_book_gallery_page_slug"
+						       value="<?php echo esc_attr( $slug ); ?>"
+						       class="large-text"
+						       placeholder="<?php esc_attr_e( 'e.g., gallery, portfolio, before-after', 'brag-book-gallery' ); ?>">
+						<?php if ( $gallery_page && ! empty( $gallery_edit_link ) ) : ?>
+							<a href="<?php echo esc_url( $gallery_edit_link ); ?>"
+							   class="button button-outline-danger"
+							   target="_blank">
+								<?php esc_html_e( 'Edit Page', 'brag-book-gallery' ); ?>
+							</a>
+						<?php endif; ?>
+					</div>
+					<div id="slug-status-message" class="slug-status"></div>
+					<p class="description">
+						<?php esc_html_e( 'Enter a slug and click "Generate Page" to create the gallery page, or it will be created when you save settings.', 'brag-book-gallery' ); ?>
+					</p>
+					<button type="button"
+					        id="generate-page-btn"
+					        class="button button-secondary"
+					        style="margin-top: 8px;"
+					        disabled>
+						<?php esc_html_e( 'Generate Page', 'brag-book-gallery' ); ?>
+					</button>
+				</div>
 
-				<tr>
-					<th scope="row">
-						<?php esc_html_e( 'My Favorites Page', 'brag-book-gallery' ); ?>
-					</th>
-					<td>
-						<?php
-						// Check if favorites page already exists
-						$gallery_page_slug = get_option( 'brag_book_gallery_page_slug', '' );
-						$favorites_exists = false;
-						$favorites_edit_link = '';
-						$favorites_button_text = __( 'Generate My Favorites Page', 'brag-book-gallery' );
-						$favorites_button_disabled = true;
-						$show_initial_status = false;
-						$initial_status_message = '';
-						$initial_status_class = '';
+				<!-- My Favorites Page -->
+				<div class="gallery-page-settings-field gallery-page-settings-field--favorites">
+					<?php
+					$gallery_page_slug = get_option( 'brag_book_gallery_page_slug', '' );
+					$favorites_exists = false;
+					$favorites_edit_link = '';
+					$favorites_button_text = __( 'Generate My Favorites Page', 'brag-book-gallery' );
+					$favorites_button_disabled = true;
+					$initial_status_message = '';
+					$initial_status_class = '';
 
-						if ( ! empty( $gallery_page_slug ) ) {
-							$favorites_full_path = $gallery_page_slug . '/myfavorites';
-							$favorites_page = get_page_by_path( $favorites_full_path );
+					if ( ! empty( $gallery_page_slug ) ) {
+						$favorites_full_path = $gallery_page_slug . '/myfavorites';
+						$favorites_page = get_page_by_path( $favorites_full_path );
 
-							if ( $favorites_page ) {
-								$favorites_exists = true;
-								$favorites_edit_link = get_edit_post_link( $favorites_page->ID, 'raw' );
-								$favorites_button_disabled = true;
-								$favorites_button_text = __( 'Page Already Exists', 'brag-book-gallery' );
-								$show_initial_status = true;
-								$initial_status_message = __( 'My Favorites page already exists.', 'brag-book-gallery' );
-								$initial_status_class = 'slug-status success';
-							} else {
-								$favorites_button_disabled = false;
-								$show_initial_status = true;
-								$initial_status_message = __( 'Ready to create My Favorites page.', 'brag-book-gallery' );
-								$initial_status_class = 'slug-status success';
-							}
+						if ( $favorites_page ) {
+							$favorites_exists = true;
+							$favorites_edit_link = get_edit_post_link( $favorites_page->ID, 'raw' );
+							$favorites_button_disabled = true;
+							$favorites_button_text = __( 'Page Already Exists', 'brag-book-gallery' );
+							$initial_status_message = __( 'My Favorites page already exists.', 'brag-book-gallery' );
+							$initial_status_class = 'slug-status success';
 						} else {
-							$show_initial_status = true;
-							$initial_status_message = __( 'Please create the gallery page first.', 'brag-book-gallery' );
-							$initial_status_class = 'slug-status';
+							$favorites_button_disabled = false;
+							$initial_status_message = __( 'Ready to create My Favorites page.', 'brag-book-gallery' );
+							$initial_status_class = 'slug-status success';
 						}
-						?>
-						<button type="button"
-						        id="generate-favorites-page-btn"
-						        class="button button-secondary"
-						        <?php echo $favorites_button_disabled ? 'disabled' : ''; ?>>
-							<?php echo esc_html( $favorites_button_text ); ?>
-						</button>
-						<div id="favorites-page-status-message" class="<?php echo esc_attr( $initial_status_class ); ?>" style="margin-top: 10px;">
-							<?php
-							if ( $show_initial_status ) {
-								$icon = $favorites_exists ? '✓' : ( empty( $gallery_page_slug ) ? '' : '✓' );
-								echo esc_html( $icon . ' ' . $initial_status_message );
-								if ( $favorites_exists && ! empty( $favorites_edit_link ) ) {
-									echo ' <a href="' . esc_url( $favorites_edit_link ) . '" target="_blank">' . esc_html__( 'Edit Page', 'brag-book-gallery' ) . '</a>';
+					} else {
+						$initial_status_message = __( 'Please create the gallery page first.', 'brag-book-gallery' );
+						$initial_status_class = 'slug-status';
+					}
+					?>
+					<div class="favorites-row">
+						<div class="favorites-row__info">
+							<label class="gallery-page-settings-field__label">
+								<?php esc_html_e( 'My Favorites Page', 'brag-book-gallery' ); ?>
+							</label>
+							<p class="description">
+								<?php esc_html_e( 'Automatically creates a "My Favorites" child page under your gallery page.', 'brag-book-gallery' ); ?>
+							</p>
+							<div id="favorites-page-status-message" class="<?php echo esc_attr( $initial_status_class ); ?>" style="margin-top: 6px;">
+								<?php
+								if ( ! empty( $initial_status_message ) ) {
+									$icon = $favorites_exists ? '&#10003;' : ( empty( $gallery_page_slug ) ? '' : '&#10003;' );
+									echo wp_kses_post( $icon . ' ' . esc_html( $initial_status_message ) );
 								}
-							}
-							?>
+								?>
+							</div>
 						</div>
-						<p class="description">
-							<?php esc_html_e( 'Automatically creates a "My Favorites" child page under your gallery page. This button is only available after the gallery page is created.', 'brag-book-gallery' ); ?>
-						</p>
-					</td>
-				</tr>
-
-				<tr>
-					<th scope="row">
-						<label for="brag_book_gallery_landing_page_text">
-							<?php esc_html_e( 'Landing Page Text', 'brag-book-gallery' ); ?>
-						</label>
-					</th>
-					<td>
-						<?php
-						// Properly unslash the content - WordPress adds slashes when retrieving from options
-						$editor_content = wp_unslash( $landing_text );
-						?>
-
-						<!-- Trumbowyg WYSIWYG Editor Container -->
-						<div id="trumbowyg-editor-wrapper" style="margin-bottom: 10px;">
-							<textarea id="brag_book_gallery_landing_page_text"
-							          name="brag_book_gallery_landing_page_text"
-							          style="width: 100%;"><?php echo esc_textarea( $editor_content ); ?></textarea>
+						<div class="favorites-row__actions">
+							<?php if ( $favorites_exists && ! empty( $favorites_edit_link ) ) : ?>
+								<a href="<?php echo esc_url( $favorites_edit_link ); ?>"
+								   class="button button-outline-danger"
+								   target="_blank">
+									<?php esc_html_e( 'Edit Page', 'brag-book-gallery' ); ?>
+								</a>
+							<?php else : ?>
+								<button type="button"
+								        id="generate-favorites-page-btn"
+								        class="button button-outline-danger"
+								        <?php echo $favorites_button_disabled ? 'disabled' : ''; ?>>
+									<?php echo esc_html( $favorites_button_text ); ?>
+								</button>
+							<?php endif; ?>
 						</div>
+					</div>
+				</div>
 
-						<p class="description">
-							<?php esc_html_e( 'Text displayed on the gallery landing page. Edit visually or switch to HTML view using the toolbar.', 'brag-book-gallery' ); ?>
-						</p>
-					</td>
-				</tr>
-			</table>
+				<!-- Landing Page Text -->
+				<div class="gallery-page-settings-field">
+					<label for="brag_book_gallery_landing_page_text" class="gallery-page-settings-field__label">
+						<?php esc_html_e( 'Landing Page Text', 'brag-book-gallery' ); ?>
+					</label>
+					<?php
+					$editor_content = wp_unslash( $landing_text );
+					?>
+					<div id="trumbowyg-editor-wrapper">
+						<textarea id="brag_book_gallery_landing_page_text"
+						          name="brag_book_gallery_landing_page_text"
+						          style="width: 100%;"><?php echo esc_textarea( $editor_content ); ?></textarea>
+					</div>
+					<p class="description">
+						<?php esc_html_e( 'Text displayed on the gallery landing page. Edit visually or switch to HTML view using the toolbar.', 'brag-book-gallery' ); ?>
+					</p>
+				</div>
+			</div>
 
-			<!-- Display Settings Section - Now Second -->
+			<!-- Display Settings Section - 2-Column Grid -->
 			<h3><?php esc_html_e( 'Display Settings', 'brag-book-gallery' ); ?></h3>
-			<table class="form-table">
-				<tr>
-					<th scope="row">
-						<label for="brag_book_gallery_main_gallery_view">
-							<?php esc_html_e( 'Main Gallery View Type', 'brag-book-gallery' ); ?>
-						</label>
-					</th>
-					<td>
+
+			<div class="display-settings-grid">
+				<!-- Row 1: Main Gallery View | Procedures View -->
+				<div class="display-settings-grid__cell">
+					<label for="brag_book_gallery_main_gallery_view" class="display-settings-grid__label">
+						<?php esc_html_e( 'Main Gallery View Type', 'brag-book-gallery' ); ?>
+					</label>
+					<div class="display-settings-grid__control">
 						<select id="brag_book_gallery_main_gallery_view" name="brag_book_gallery_main_gallery_view">
 							<option value="default" <?php selected( $main_gallery_view, 'default' ); ?>>
 								<?php esc_html_e( 'Default', 'brag-book-gallery' ); ?>
@@ -900,19 +918,24 @@ class General_Page extends Settings_Base {
 								<?php esc_html_e( 'Tiles', 'brag-book-gallery' ); ?>
 							</option>
 						</select>
-						<p class="description">
-							<?php esc_html_e( 'Choose the view type for the main gallery display. Tiles view shows the landing page text.', 'brag-book-gallery' ); ?>
-						</p>
-					</td>
-				</tr>
+						<button type="button"
+						        class="display-settings-grid__preview-btn"
+						        data-preview-for="brag_book_gallery_main_gallery_view"
+						        data-preview-key="main"
+						        aria-label="<?php esc_attr_e( 'Preview main gallery view', 'brag-book-gallery' ); ?>">
+							<span class="dashicons dashicons-visibility"></span>
+						</button>
+					</div>
+					<p class="description">
+						<?php esc_html_e( 'Choose the view type for the main gallery display. Tiles view shows the landing page text.', 'brag-book-gallery' ); ?>
+					</p>
+				</div>
 
-				<tr>
-					<th scope="row">
-						<label for="brag_book_gallery_procedures_view">
-							<?php esc_html_e( 'Procedures View Type', 'brag-book-gallery' ); ?>
-						</label>
-					</th>
-					<td>
+				<div class="display-settings-grid__cell">
+					<label for="brag_book_gallery_procedures_view" class="display-settings-grid__label">
+						<?php esc_html_e( 'Procedures View Type', 'brag-book-gallery' ); ?>
+					</label>
+					<div class="display-settings-grid__control">
 						<select id="brag_book_gallery_procedures_view" name="brag_book_gallery_procedures_view">
 							<option value="default" <?php selected( $procedures_view, 'default' ); ?>>
 								<?php esc_html_e( 'Default', 'brag-book-gallery' ); ?>
@@ -921,19 +944,25 @@ class General_Page extends Settings_Base {
 								<?php esc_html_e( 'Tiles', 'brag-book-gallery' ); ?>
 							</option>
 						</select>
-						<p class="description">
-							<?php esc_html_e( 'Choose the view type for procedures display.', 'brag-book-gallery' ); ?>
-						</p>
-					</td>
-				</tr>
+						<button type="button"
+						        class="display-settings-grid__preview-btn"
+						        data-preview-for="brag_book_gallery_procedures_view"
+						        data-preview-key="procedures-view"
+						        aria-label="<?php esc_attr_e( 'Preview procedures view', 'brag-book-gallery' ); ?>">
+							<span class="dashicons dashicons-visibility"></span>
+						</button>
+					</div>
+					<p class="description">
+						<?php esc_html_e( 'Choose the view type for procedures display.', 'brag-book-gallery' ); ?>
+					</p>
+				</div>
 
-				<tr>
-					<th scope="row">
-						<label for="brag_book_gallery_cases_view">
-							<?php esc_html_e( 'Cases View Type', 'brag-book-gallery' ); ?>
-						</label>
-					</th>
-					<td>
+				<!-- Row 2: Cases View | MyFavorites View -->
+				<div class="display-settings-grid__cell">
+					<label for="brag_book_gallery_cases_view" class="display-settings-grid__label">
+						<?php esc_html_e( 'Cases View Type', 'brag-book-gallery' ); ?>
+					</label>
+					<div class="display-settings-grid__control">
 						<select id="brag_book_gallery_cases_view" name="brag_book_gallery_cases_view">
 							<option value="default" <?php selected( $cases_view, 'default' ); ?>>
 								<?php esc_html_e( 'Default', 'brag-book-gallery' ); ?>
@@ -942,19 +971,24 @@ class General_Page extends Settings_Base {
 								<?php esc_html_e( 'Alternative', 'brag-book-gallery' ); ?>
 							</option>
 						</select>
-						<p class="description">
-							<?php esc_html_e( 'Choose the view type for cases display.', 'brag-book-gallery' ); ?>
-						</p>
-					</td>
-				</tr>
+						<button type="button"
+						        class="display-settings-grid__preview-btn"
+						        data-preview-for="brag_book_gallery_cases_view"
+						        data-preview-key="cases-view"
+						        aria-label="<?php esc_attr_e( 'Preview cases view', 'brag-book-gallery' ); ?>">
+							<span class="dashicons dashicons-visibility"></span>
+						</button>
+					</div>
+					<p class="description">
+						<?php esc_html_e( 'Choose the view type for cases display.', 'brag-book-gallery' ); ?>
+					</p>
+				</div>
 
-				<tr>
-					<th scope="row">
-						<label for="brag_book_gallery_favorites_view">
-							<?php esc_html_e( 'MyFavorites View Type', 'brag-book-gallery' ); ?>
-						</label>
-					</th>
-					<td>
+				<div class="display-settings-grid__cell">
+					<label for="brag_book_gallery_favorites_view" class="display-settings-grid__label">
+						<?php esc_html_e( 'MyFavorites View Type', 'brag-book-gallery' ); ?>
+					</label>
+					<div class="display-settings-grid__control">
 						<select id="brag_book_gallery_favorites_view" name="brag_book_gallery_favorites_view">
 							<option value="default" <?php selected( $favorites_view, 'default' ); ?>>
 								<?php esc_html_e( 'Default', 'brag-book-gallery' ); ?>
@@ -963,19 +997,25 @@ class General_Page extends Settings_Base {
 								<?php esc_html_e( 'Alternative', 'brag-book-gallery' ); ?>
 							</option>
 						</select>
-						<p class="description">
-							<?php esc_html_e( 'Choose the view type for favorites display.', 'brag-book-gallery' ); ?>
-						</p>
-					</td>
-				</tr>
+						<button type="button"
+						        class="display-settings-grid__preview-btn"
+						        data-preview-for="brag_book_gallery_favorites_view"
+						        data-preview-key="favorites-view"
+						        aria-label="<?php esc_attr_e( 'Preview favorites view', 'brag-book-gallery' ); ?>">
+							<span class="dashicons dashicons-visibility"></span>
+						</button>
+					</div>
+					<p class="description">
+						<?php esc_html_e( 'Choose the view type for favorites display.', 'brag-book-gallery' ); ?>
+					</p>
+				</div>
 
-				<tr>
-					<th scope="row">
-						<label for="brag_book_gallery_case_card_type">
-							<?php esc_html_e( 'Case Card Type', 'brag-book-gallery' ); ?>
-						</label>
-					</th>
-					<td>
+				<!-- Row 3: Case Card Type | Items Per Page -->
+				<div class="display-settings-grid__cell">
+					<label for="brag_book_gallery_case_card_type" class="display-settings-grid__label">
+						<?php esc_html_e( 'Case Card Type', 'brag-book-gallery' ); ?>
+					</label>
+					<div class="display-settings-grid__control">
 						<select id="brag_book_gallery_case_card_type" name="brag_book_gallery_case_card_type">
 							<option value="default" <?php selected( $case_card_type, 'default' ); ?>>
 								<?php esc_html_e( 'Default', 'brag-book-gallery' ); ?>
@@ -987,270 +1027,278 @@ class General_Page extends Settings_Base {
 								<?php esc_html_e( 'V3', 'brag-book-gallery' ); ?>
 							</option>
 						</select>
-						<p class="description">
-							<?php esc_html_e( 'Choose the card design type for case display.', 'brag-book-gallery' ); ?>
-						</p>
-					</td>
-				</tr>
+						<button type="button"
+						        class="display-settings-grid__preview-btn"
+						        data-preview-for="brag_book_gallery_case_card_type"
+						        data-preview-key="card-type"
+						        aria-label="<?php esc_attr_e( 'Preview case card type', 'brag-book-gallery' ); ?>">
+							<span class="dashicons dashicons-visibility"></span>
+						</button>
+					</div>
+					<p class="description">
+						<?php esc_html_e( 'Choose the card design type for case display.', 'brag-book-gallery' ); ?>
+					</p>
+				</div>
 
-				<tr>
-					<th scope="row">
-						<label for="brag_book_gallery_case_image_carousel">
-							<?php esc_html_e( 'Enable Case Image Carousel', 'brag-book-gallery' ); ?>
+				<div class="display-settings-grid__cell">
+					<label for="brag_book_gallery_items_per_page" class="display-settings-grid__label">
+						<?php esc_html_e( 'Sorts Per Page', 'brag-book-gallery' ); ?>
+					</label>
+					<div class="display-settings-grid__control">
+						<input type="number"
+						       id="brag_book_gallery_items_per_page"
+						       name="brag_book_gallery_items_per_page"
+						       value="<?php echo esc_attr( $items_per_page ); ?>"
+						       min="1"
+						       max="200"
+						       step="1" />
+					</div>
+					<p class="description">
+						<?php esc_html_e( 'Number of gallery items to load initially. Additional items can be loaded with the "Load More" button.', 'brag-book-gallery' ); ?>
+					</p>
+				</div>
+			</div>
+
+			<!-- Preview Modal -->
+			<dialog id="display-preview-dialog" class="brag-book-gallery-dialog brag-book-gallery-preview-dialog">
+				<div class="brag-book-gallery-dialog-content">
+					<div class="brag-book-gallery-dialog-header">
+						<h3 class="brag-book-gallery-dialog-title" id="display-preview-title">
+							<?php esc_html_e( 'Preview', 'brag-book-gallery' ); ?>
+						</h3>
+						<button type="button" class="brag-book-gallery-dialog-close" aria-label="<?php esc_attr_e( 'Close', 'brag-book-gallery' ); ?>">
+							<span class="dashicons dashicons-no-alt"></span>
+						</button>
+					</div>
+					<div class="brag-book-gallery-dialog-body brag-book-gallery-preview-body">
+						<img id="display-preview-image"
+						     src=""
+						     alt="<?php esc_attr_e( 'View type preview', 'brag-book-gallery' ); ?>"
+						     class="display-preview-image" />
+						<p id="display-preview-fallback" class="display-preview-fallback" style="display: none;">
+							<?php esc_html_e( 'Preview image not available for this view type.', 'brag-book-gallery' ); ?>
+						</p>
+					</div>
+				</div>
+			</dialog>
+
+			<div class="display-settings-options">
+				<!-- Carousel Toggle -->
+				<div class="display-settings-option">
+					<div class="brag-book-gallery-toggle-wrapper">
+						<label class="brag-book-gallery-toggle">
+							<input type="hidden" name="brag_book_gallery_case_image_carousel" value="0" />
+							<input type="checkbox"
+							       id="brag_book_gallery_case_image_carousel"
+							       name="brag_book_gallery_case_image_carousel"
+							       value="1"
+							       <?php checked( $case_image_carousel, true ); ?> />
+							<span class="brag-book-gallery-toggle-slider"></span>
 						</label>
-					</th>
-					<td>
-						<div class="brag-book-gallery-toggle-wrapper">
-							<label class="brag-book-gallery-toggle">
-								<input type="hidden" name="brag_book_gallery_case_image_carousel" value="0" />
-								<input type="checkbox"
-								       id="brag_book_gallery_case_image_carousel"
-								       name="brag_book_gallery_case_image_carousel"
-								       value="1"
-								       <?php checked( $case_image_carousel, true ); ?> />
-								<span class="brag-book-gallery-toggle-slider"></span>
-							</label>
-							<span class="brag-book-gallery-toggle-label">
-								<?php esc_html_e( 'Show carousel of high-resolution images in V2/V3 cards', 'brag-book-gallery' ); ?>
-							</span>
-						</div>
-					</td>
-				</tr>
+						<span class="brag-book-gallery-toggle-label">
+							<?php esc_html_e( 'Show carousel of high-resolution images on V2/V3 cards', 'brag-book-gallery' ); ?>
+						</span>
+					</div>
+				</div>
 
 				<?php if ( $has_property_111 ) : ?>
-				<tr>
-					<th scope="row">
-						<label for="brag_book_gallery_show_doctor">
-							<?php esc_html_e( 'Show Doctor Details', 'brag-book-gallery' ); ?>
+				<!-- Show Doctor Toggle -->
+				<div class="display-settings-option">
+					<div class="brag-book-gallery-toggle-wrapper">
+						<label class="brag-book-gallery-toggle">
+							<input type="hidden" name="brag_book_gallery_show_doctor" value="0" />
+							<input type="checkbox"
+							       id="brag_book_gallery_show_doctor"
+							       name="brag_book_gallery_show_doctor"
+							       value="1"
+							       <?php checked( $show_doctor, true ); ?> />
+							<span class="brag-book-gallery-toggle-slider"></span>
 						</label>
-					</th>
-					<td>
-						<div class="brag-book-gallery-toggle-wrapper">
-							<label class="brag-book-gallery-toggle">
-								<input type="hidden" name="brag_book_gallery_show_doctor" value="0" />
-								<input type="checkbox"
-								       id="brag_book_gallery_show_doctor"
-								       name="brag_book_gallery_show_doctor"
-								       value="1"
-								       <?php checked( $show_doctor, true ); ?> />
-								<span class="brag-book-gallery-toggle-slider"></span>
-							</label>
-							<span class="brag-book-gallery-toggle-label">
-								<?php esc_html_e( 'Display doctor information in cases', 'brag-book-gallery' ); ?>
-							</span>
-						</div>
-						<p class="description">
-							<?php esc_html_e( 'When enabled, doctor details will be shown in case displays.', 'brag-book-gallery' ); ?>
-						</p>
-					</td>
-				</tr>
+						<span class="brag-book-gallery-toggle-label">
+							<?php esc_html_e( 'Display doctor information in cases', 'brag-book-gallery' ); ?>
+						</span>
+					</div>
+					<p class="description">
+						<?php esc_html_e( 'When enabled, doctor details will be shown in case displays.', 'brag-book-gallery' ); ?>
+					</p>
+				</div>
 				<?php endif; ?>
 
-				<tr>
-					<th scope="row">
-						<label>
-							<?php esc_html_e( 'Gallery Columns', 'brag-book-gallery' ); ?>
+				<!-- Gallery Columns -->
+				<div class="display-settings-option">
+					<label class="display-settings-option__label">
+						<?php esc_html_e( 'Gallery Columns', 'brag-book-gallery' ); ?>
+					</label>
+					<div class="brag-book-gallery-grid-buttons">
+						<label class="brag-book-gallery-grid-option">
+							<input type="radio" name="brag_book_gallery_columns" value="2" <?php checked( $columns, '2' ); ?> />
+							<div class="brag-book-gallery-grid-btn" aria-label="View in 2 columns">
+								<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+									<rect x="1" y="1" width="6" height="6"></rect>
+									<rect x="9" y="1" width="6" height="6"></rect>
+									<rect x="1" y="9" width="6" height="6"></rect>
+									<rect x="9" y="9" width="6" height="6"></rect>
+								</svg>
+								<span class="sr-only">2 Columns</span>
+							</div>
 						</label>
-					</th>
-					<td>
-						<div class="brag-book-gallery-grid-buttons">
-							<label class="brag-book-gallery-grid-option">
-								<input type="radio" name="brag_book_gallery_columns" value="2" <?php checked( $columns, '2' ); ?> />
-								<div class="brag-book-gallery-grid-btn" aria-label="View in 2 columns">
-									<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-										<rect x="1" y="1" width="6" height="6"></rect>
-										<rect x="9" y="1" width="6" height="6"></rect>
-										<rect x="1" y="9" width="6" height="6"></rect>
-										<rect x="9" y="9" width="6" height="6"></rect>
-									</svg>
-									<span class="sr-only">2 Columns</span>
-								</div>
-							</label>
-							<label class="brag-book-gallery-grid-option">
-								<input type="radio" name="brag_book_gallery_columns" value="3" <?php checked( $columns, '3' ); ?> />
-								<div class="brag-book-gallery-grid-btn" aria-label="View in 3 columns">
-									<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-										<rect x="1" y="1" width="4" height="4"></rect>
-										<rect x="6" y="1" width="4" height="4"></rect>
-										<rect x="11" y="1" width="4" height="4"></rect>
-										<rect x="1" y="6" width="4" height="4"></rect>
-										<rect x="6" y="6" width="4" height="4"></rect>
-										<rect x="11" y="6" width="4" height="4"></rect>
-										<rect x="1" y="11" width="4" height="4"></rect>
-										<rect x="6" y="11" width="4" height="4"></rect>
-										<rect x="11" y="11" width="4" height="4"></rect>
-									</svg>
-									<span class="sr-only">3 Columns</span>
-								</div>
-							</label>
-						</div>
-						<p class="description">
-							<?php esc_html_e( 'Number of columns to display in the gallery grid layout.', 'brag-book-gallery' ); ?>
-						</p>
-					</td>
-				</tr>
+						<label class="brag-book-gallery-grid-option">
+							<input type="radio" name="brag_book_gallery_columns" value="3" <?php checked( $columns, '3' ); ?> />
+							<div class="brag-book-gallery-grid-btn" aria-label="View in 3 columns">
+								<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+									<rect x="1" y="1" width="4" height="4"></rect>
+									<rect x="6" y="1" width="4" height="4"></rect>
+									<rect x="11" y="1" width="4" height="4"></rect>
+									<rect x="1" y="6" width="4" height="4"></rect>
+									<rect x="6" y="6" width="4" height="4"></rect>
+									<rect x="11" y="6" width="4" height="4"></rect>
+									<rect x="1" y="11" width="4" height="4"></rect>
+									<rect x="6" y="11" width="4" height="4"></rect>
+									<rect x="11" y="11" width="4" height="4"></rect>
+								</svg>
+								<span class="sr-only">3 Columns</span>
+							</div>
+						</label>
+					</div>
+				</div>
 
-				<tr>
-					<th scope="row">
-						<label for="brag_book_gallery_items_per_page">
-							<?php esc_html_e( 'Items Per Page', 'brag-book-gallery' ); ?>
-						</label>
-					</th>
-					<td>
-						<input type="number"
-							   id="brag_book_gallery_items_per_page"
-							   name="brag_book_gallery_items_per_page"
-							   value="<?php echo esc_attr( $items_per_page ); ?>"
-							   min="1"
-							   max="200"
-							   step="1" />
-						<p class="description">
-							<?php esc_html_e( 'Number of gallery items to load initially. Additional items can be loaded with the "Load More" button.', 'brag-book-gallery' ); ?>
-						</p>
-					</td>
-				</tr>
+				<!-- Plugin Update Channel -->
+				<div class="display-settings-option">
+					<label for="brag_book_gallery_release_channel" class="display-settings-option__label">
+						<?php esc_html_e( 'Plugin Update Channel', 'brag-book-gallery' ); ?>
+					</label>
+					<?php $release_channel = get_option( 'brag_book_gallery_release_channel', 'stable' ); ?>
+					<select id="brag_book_gallery_release_channel" name="brag_book_gallery_release_channel">
+						<option value="stable" <?php selected( $release_channel, 'stable' ); ?>>
+							<?php esc_html_e( 'Stable (Recommended)', 'brag-book-gallery' ); ?>
+						</option>
+						<option value="rc" <?php selected( $release_channel, 'rc' ); ?>>
+							<?php esc_html_e( 'Release Candidate', 'brag-book-gallery' ); ?>
+						</option>
+						<option value="beta" <?php selected( $release_channel, 'beta' ); ?>>
+							<?php esc_html_e( 'Beta (Early Testing)', 'brag-book-gallery' ); ?>
+						</option>
+					</select>
+					<p class="description">
+						<?php esc_html_e( 'Choose which plugin updates to receive:', 'brag-book-gallery' ); ?>
+						<br/>
+						<strong><?php esc_html_e( 'Stable:', 'brag-book-gallery' ); ?></strong> <?php esc_html_e( 'Production-ready releases only (recommended for live sites)', 'brag-book-gallery' ); ?>
+						<br/>
+						<strong><?php esc_html_e( 'Release Candidate:', 'brag-book-gallery' ); ?></strong> <?php esc_html_e( 'Near-final versions for testing before stable release', 'brag-book-gallery' ); ?>
+						<br/>
+						<strong><?php esc_html_e( 'Beta:', 'brag-book-gallery' ); ?></strong> <?php esc_html_e( 'Early access to new features (not recommended for production sites)', 'brag-book-gallery' ); ?>
+					</p>
+				</div>
 
-				<tr>
-					<th scope="row">
-						<label for="brag_book_gallery_release_channel">
-							<?php esc_html_e( 'Plugin Update Channel', 'brag-book-gallery' ); ?>
-						</label>
-					</th>
-					<td>
-						<?php
-						$release_channel = get_option( 'brag_book_gallery_release_channel', 'stable' );
-						?>
-						<select id="brag_book_gallery_release_channel" name="brag_book_gallery_release_channel">
-							<option value="stable" <?php selected( $release_channel, 'stable' ); ?>>
-								<?php esc_html_e( 'Stable (Recommended)', 'brag-book-gallery' ); ?>
-							</option>
-							<option value="rc" <?php selected( $release_channel, 'rc' ); ?>>
-								<?php esc_html_e( 'Release Candidate', 'brag-book-gallery' ); ?>
-							</option>
-							<option value="beta" <?php selected( $release_channel, 'beta' ); ?>>
-								<?php esc_html_e( 'Beta (Early Testing)', 'brag-book-gallery' ); ?>
-							</option>
-						</select>
-						<p class="description">
-							<?php esc_html_e( 'Choose which plugin updates to receive:', 'brag-book-gallery' ); ?>
-							<br/>
-							<strong><?php esc_html_e( 'Stable:', 'brag-book-gallery' ); ?></strong> <?php esc_html_e( 'Production-ready releases only (recommended for live sites)', 'brag-book-gallery' ); ?>
-							<br/>
-							<strong><?php esc_html_e( 'Release Candidate:', 'brag-book-gallery' ); ?></strong> <?php esc_html_e( 'Near-final versions for testing before stable release', 'brag-book-gallery' ); ?>
-							<br/>
-							<strong><?php esc_html_e( 'Beta:', 'brag-book-gallery' ); ?></strong> <?php esc_html_e( 'Early access to new features (not recommended for production sites)', 'brag-book-gallery' ); ?>
-						</p>
-					</td>
-				</tr>
+				<!-- API Environment (only for beta/rc builds) -->
+				<?php
+				$is_dev_build = in_array( $release_channel, [ Updater::CHANNEL_BETA, Updater::CHANNEL_RC ], true );
+				if ( $is_dev_build ) :
+					$api_base_url    = get_option( 'brag_book_gallery_api_base_url', '' );
+					$current_api_env = ! empty( $api_base_url ) && $api_base_url === 'https://staging.bragbookgallery.com' ? 'staging' : 'production';
+				?>
+				<div class="display-settings-option">
+					<label for="brag_book_gallery_api_environment" class="display-settings-option__label">
+						<?php esc_html_e( 'API Environment', 'brag-book-gallery' ); ?>
+					</label>
+					<select id="brag_book_gallery_api_environment" name="brag_book_gallery_api_environment">
+						<option value="production" <?php selected( $current_api_env, 'production' ); ?>>
+							<?php esc_html_e( 'Production (app.bragbookgallery.com)', 'brag-book-gallery' ); ?>
+						</option>
+						<option value="staging" <?php selected( $current_api_env, 'staging' ); ?>>
+							<?php esc_html_e( 'Staging (staging.bragbookgallery.com)', 'brag-book-gallery' ); ?>
+						</option>
+					</select>
+					<p class="description">
+						<?php esc_html_e( 'Choose which API server the plugin connects to. Staging data may differ from production.', 'brag-book-gallery' ); ?>
+					</p>
+				</div>
+				<?php endif; ?>
 
-				<tr>
-					<th scope="row">
-						<label for="brag_book_gallery_expand_nav_menus">
-							<?php esc_html_e( 'Expand Navigation Menus', 'brag-book-gallery' ); ?>
+				<!-- Expand Navigation Menus Toggle -->
+				<div class="display-settings-option">
+					<div class="brag-book-gallery-toggle-wrapper">
+						<label class="brag-book-gallery-toggle">
+							<input type="hidden" name="brag_book_gallery_expand_nav_menus" value="0" />
+							<input type="checkbox"
+							       id="brag_book_gallery_expand_nav_menus"
+							       name="brag_book_gallery_expand_nav_menus"
+							       value="1"
+							       <?php checked( $expand_nav_menus, true ); ?> />
+							<span class="brag-book-gallery-toggle-slider"></span>
 						</label>
-					</th>
-					<td>
-						<div class="brag-book-gallery-toggle-wrapper">
-							<label class="brag-book-gallery-toggle">
-								<input type="hidden" name="brag_book_gallery_expand_nav_menus" value="0" />
-								<input type="checkbox"
-								       id="brag_book_gallery_expand_nav_menus"
-								       name="brag_book_gallery_expand_nav_menus"
-								       value="1"
-								       <?php checked( $expand_nav_menus, true ); ?> />
-								<span class="brag-book-gallery-toggle-slider"></span>
-							</label>
-							<span class="brag-book-gallery-toggle-label">
-								<?php esc_html_e( 'Show navigation filter menus expanded by default', 'brag-book-gallery' ); ?>
-							</span>
-						</div>
-						<p class="description">
-							<?php esc_html_e( 'When enabled, all navigation filter menus will be expanded by default when users load the gallery page.', 'brag-book-gallery' ); ?>
-						</p>
-					</td>
-				</tr>
+						<span class="brag-book-gallery-toggle-label">
+							<?php esc_html_e( 'Show navigation filter menus expanded by default', 'brag-book-gallery' ); ?>
+						</span>
+					</div>
+					<p class="description">
+						<?php esc_html_e( 'When enabled, all navigation filter menus will be expanded by default when users load the gallery page. If unChecked, sub menu will load the gallery page.', 'brag-book-gallery' ); ?>
+					</p>
+				</div>
 
-				<tr>
-					<th scope="row">
-						<label for="brag_book_gallery_show_filter_counts">
-							<?php esc_html_e( 'Show Filter Counts', 'brag-book-gallery' ); ?>
+				<!-- Show Filter Counts Toggle -->
+				<div class="display-settings-option">
+					<div class="brag-book-gallery-toggle-wrapper">
+						<label class="brag-book-gallery-toggle">
+							<input type="hidden" name="brag_book_gallery_show_filter_counts" value="0" />
+							<input type="checkbox"
+							       id="brag_book_gallery_show_filter_counts"
+							       name="brag_book_gallery_show_filter_counts"
+							       value="1"
+							       <?php checked( $show_filter_counts, true ); ?> />
+							<span class="brag-book-gallery-toggle-slider"></span>
 						</label>
-					</th>
-					<td>
-						<div class="brag-book-gallery-toggle-wrapper">
-							<label class="brag-book-gallery-toggle">
-								<input type="hidden" name="brag_book_gallery_show_filter_counts" value="0" />
-								<input type="checkbox"
-								       id="brag_book_gallery_show_filter_counts"
-								       name="brag_book_gallery_show_filter_counts"
-								       value="1"
-								       <?php checked( $show_filter_counts, true ); ?> />
-								<span class="brag-book-gallery-toggle-slider"></span>
-							</label>
-							<span class="brag-book-gallery-toggle-label">
-								<?php esc_html_e( 'Display case counts next to filter categories', 'brag-book-gallery' ); ?>
-							</span>
-						</div>
-						<p class="description">
-							<?php esc_html_e( 'Display the number of available items for each filter category (e.g., "Procedure (15)", "Age Group (8)").', 'brag-book-gallery' ); ?>
-						</p>
-					</td>
-				</tr>
+						<span class="brag-book-gallery-toggle-label">
+							<?php esc_html_e( 'Display case counts next to filter categories', 'brag-book-gallery' ); ?>
+						</span>
+					</div>
+					<p class="description">
+						<?php esc_html_e( 'Display the number of available items for each filter category (e.g., "Procedure (15)", "Age Group (8)").', 'brag-book-gallery' ); ?>
+					</p>
+				</div>
 
-				<tr>
-					<th scope="row">
-						<label for="brag_book_gallery_enable_favorites">
-							<?php esc_html_e( 'Enable Favorites', 'brag-book-gallery' ); ?>
+				<!-- Enable Favorites Toggle -->
+				<div class="display-settings-option">
+					<div class="brag-book-gallery-toggle-wrapper">
+						<label class="brag-book-gallery-toggle">
+							<input type="hidden" name="brag_book_gallery_enable_favorites" value="0" />
+							<input type="checkbox"
+							       id="brag_book_gallery_enable_favorites"
+							       name="brag_book_gallery_enable_favorites"
+							       value="1"
+							       <?php checked( $enable_favorites, true ); ?> />
+							<span class="brag-book-gallery-toggle-slider"></span>
 						</label>
-					</th>
-					<td>
-						<div class="brag-book-gallery-toggle-wrapper">
-							<label class="brag-book-gallery-toggle">
-								<input type="hidden" name="brag_book_gallery_enable_favorites" value="0" />
-								<input type="checkbox"
-								       id="brag_book_gallery_enable_favorites"
-								       name="brag_book_gallery_enable_favorites"
-								       value="1"
-								       <?php checked( $enable_favorites, true ); ?> />
-								<span class="brag-book-gallery-toggle-slider"></span>
-							</label>
-							<span class="brag-book-gallery-toggle-label">
-								<?php esc_html_e( 'Allow users to save and manage favorite cases', 'brag-book-gallery' ); ?>
-							</span>
-						</div>
-						<p class="description">
-							<?php esc_html_e( 'When enabled, favorite buttons and the My Favorites page will be available. When disabled, all favorites functionality is hidden.', 'brag-book-gallery' ); ?>
-						</p>
-					</td>
-				</tr>
+						<span class="brag-book-gallery-toggle-label">
+							<?php esc_html_e( 'Allow users to save and manage favorite cases', 'brag-book-gallery' ); ?>
+						</span>
+					</div>
+					<p class="description">
+						<?php esc_html_e( 'When enabled, favorite buttons and the My Favorites page will be available. When disabled, all favorites functionality is hidden.', 'brag-book-gallery' ); ?>
+					</p>
+				</div>
 
-				<tr>
-					<th scope="row">
-						<label for="brag_book_gallery_enable_consultation">
-							<?php esc_html_e( 'Enable Consultation Requests', 'brag-book-gallery' ); ?>
+				<!-- Enable Consultation Toggle -->
+				<div class="display-settings-option">
+					<div class="brag-book-gallery-toggle-wrapper">
+						<label class="brag-book-gallery-toggle">
+							<input type="hidden" name="brag_book_gallery_enable_consultation" value="0" />
+							<input type="checkbox"
+							       id="brag_book_gallery_enable_consultation"
+							       name="brag_book_gallery_enable_consultation"
+							       value="1"
+							       <?php checked( $enable_consultation, true ); ?> />
+							<span class="brag-book-gallery-toggle-slider"></span>
 						</label>
-					</th>
-					<td>
-						<div class="brag-book-gallery-toggle-wrapper">
-							<label class="brag-book-gallery-toggle">
-								<input type="hidden" name="brag_book_gallery_enable_consultation" value="0" />
-								<input type="checkbox"
-								       id="brag_book_gallery_enable_consultation"
-								       name="brag_book_gallery_enable_consultation"
-								       value="1"
-								       <?php checked( $enable_consultation, true ); ?> />
-								<span class="brag-book-gallery-toggle-slider"></span>
-							</label>
-							<span class="brag-book-gallery-toggle-label">
-								<?php esc_html_e( 'Display consultation request CTA and dialog forms', 'brag-book-gallery' ); ?>
-							</span>
-						</div>
-						<p class="description">
-							<?php esc_html_e( 'When enabled, the "Ready for the next step?" text, "Request a Consultation" button, and consultation dialog will be shown. When disabled, all consultation elements are hidden.', 'brag-book-gallery' ); ?>
-						</p>
-					</td>
-				</tr>
-			</table>
+						<span class="brag-book-gallery-toggle-label">
+							<?php esc_html_e( 'Display consultation request CTA and dialog forms', 'brag-book-gallery' ); ?>
+						</span>
+					</div>
+					<p class="description">
+						<?php esc_html_e( 'When enabled, the "Ready for the next step?" text, "Request a Consultation" button, and consultation dialog will be shown. When disabled, all consultation elements are hidden.', 'brag-book-gallery' ); ?>
+					</p>
+				</div>
+			</div>
 
 			<div class="brag-book-gallery-tab-actions">
 				<button type="submit" name="submit" class="button button-primary button-large">
@@ -1258,6 +1306,71 @@ class General_Page extends Settings_Base {
 				</button>
 			</div>
 		</form>
+
+		<script>
+		(function() {
+			'use strict';
+
+			var dialog = document.getElementById('display-preview-dialog');
+			if (!dialog) return;
+
+			var previewImage = document.getElementById('display-preview-image');
+			var previewTitle = document.getElementById('display-preview-title');
+			var previewFallback = document.getElementById('display-preview-fallback');
+			var closeBtn = dialog.querySelector('.brag-book-gallery-dialog-close');
+
+			var pluginBaseUrl = <?php echo wp_json_encode( plugins_url( 'assets/images/previews/', dirname( __DIR__, 3 ) . '/brag-book-gallery.php' ) ); ?>;
+
+			// Map of preview-key + value to actual filename
+			var previewFiles = {
+				'main-default': 'main-default.png',
+				'main-columns': 'main-columns.png',
+				'main-tiles': 'main-tiles.png',
+				'card-type-default': 'care-type-default.png',
+				'card-type-v2': 'card-type-v2.gif',
+				'card-type-v3': 'card-type-v3.gif'
+			};
+
+			document.querySelectorAll('.display-settings-grid__preview-btn').forEach(function(btn) {
+				btn.addEventListener('click', function() {
+					var selectId = btn.getAttribute('data-preview-for');
+					var previewKey = btn.getAttribute('data-preview-key');
+					var selectEl = document.getElementById(selectId);
+
+					if (!selectEl) return;
+
+					var selectedValue = selectEl.value;
+					var fileKey = previewKey + '-' + selectedValue;
+					var filename = previewFiles[fileKey];
+					var label = selectEl.closest('.display-settings-grid__cell')
+						.querySelector('.display-settings-grid__label').textContent.trim();
+
+					previewTitle.textContent = label + ': ' + selectEl.options[selectEl.selectedIndex].text;
+
+					if (filename) {
+						previewImage.src = pluginBaseUrl + filename;
+						previewImage.style.display = '';
+						previewFallback.style.display = 'none';
+
+						previewImage.onerror = function() {
+							previewImage.style.display = 'none';
+							previewFallback.style.display = '';
+						};
+					} else {
+						previewImage.style.display = 'none';
+						previewFallback.style.display = '';
+					}
+
+					dialog.showModal();
+				});
+			});
+
+			closeBtn.addEventListener('click', function() { dialog.close(); });
+			dialog.addEventListener('click', function(e) {
+				if (e.target === dialog) dialog.close();
+			});
+		})();
+		</script>
 		<?php
 	}
 
@@ -2010,6 +2123,16 @@ class General_Page extends Settings_Base {
 		}
 
 		update_option( 'brag_book_gallery_release_channel', $release_channel );
+
+		// Save API environment if present (only on beta/rc builds)
+		if ( isset( $_POST['brag_book_gallery_api_environment'] ) ) {
+			$api_env = sanitize_text_field( wp_unslash( $_POST['brag_book_gallery_api_environment'] ) );
+			if ( $api_env === 'staging' ) {
+				update_option( 'brag_book_gallery_api_base_url', 'https://staging.bragbookgallery.com' );
+			} else {
+				delete_option( 'brag_book_gallery_api_base_url' );
+			}
+		}
 	}
 
 	/**

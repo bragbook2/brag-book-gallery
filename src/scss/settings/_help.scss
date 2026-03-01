@@ -1,0 +1,192 @@
+// -----------------------------------------------------------------------------
+// Help page
+// -----------------------------------------------------------------------------
+
+.brag-book-gallery-help-content {
+
+	// Spacing between top-level accordions
+	> .brag-book-gallery-accordion-item {
+		margin-block-end: var(--space-3);
+	}
+
+	// Nested lists inside accordion content
+	.brag-book-gallery-accordion-content {
+
+		ol,
+		ul {
+			list-style: revert;
+			padding-inline-start: var(--space-5);
+			margin-block-end: var(--space-4);
+		}
+
+		li {
+			margin-block-end: var(--space-2);
+
+			ul {
+				margin-block-start: var(--space-1);
+				margin-block-end: var(--space-2);
+			}
+		}
+
+		h4 {
+			margin-block-start: var(--space-5);
+			margin-block-end: var(--space-2);
+			font-size: var(--text-sm);
+			font-weight: var(--font-semibold);
+			color: var(--slate-800);
+
+			&:first-child {
+				margin-block-start: 0;
+			}
+		}
+	}
+
+	// Nested FAQ accordions
+	.brag-book-gallery-faq-container {
+		.brag-book-gallery-accordion-item {
+			margin-block-end: var(--space-1);
+		}
+
+		summary {
+			font-size: var(--text-sm);
+			padding: var(--space-2) var(--space-3);
+		}
+	}
+}
+
+// Getting Started steps with red circle numbers
+.help-steps {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-4);
+}
+
+.help-step {
+	display: flex;
+	gap: var(--space-4);
+	align-items: flex-start;
+
+	ul {
+		list-style: disc;
+		padding-inline-start: var(--space-5);
+		margin-block-start: var(--space-1);
+		margin-block-end: 0;
+	}
+
+	li {
+		margin-block-end: var(--space-1);
+		color: var(--slate-600);
+		font-size: var(--text-sm);
+	}
+}
+
+.help-step-number {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	min-width: 28px;
+	border-radius: var(--rounded-full);
+	background: var(--red-500);
+	color: white;
+	font-size: var(--text-sm);
+	font-weight: var(--font-semibold);
+	line-height: 1;
+}
+
+.help-step-content {
+	flex: 1;
+	padding-block-start: var(--space-1);
+
+	> strong {
+		color: var(--slate-800);
+		font-size: var(--text-sm);
+	}
+}
+
+// Shortcode copy blocks — black bg, green text
+.help-shortcode-block {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--space-3);
+	padding: var(--space-2) var(--space-3);
+	background: var(--slate-900);
+	border-radius: var(--rounded-md);
+	cursor: pointer;
+	transition: var(--transition-colors);
+	margin-block: var(--space-2);
+
+	&:hover {
+		background: var(--slate-800);
+	}
+
+	code {
+		color: var(--green-400);
+		font-size: var(--text-sm);
+		font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+		background: none;
+		padding: 0;
+		white-space: nowrap;
+	}
+}
+
+.help-shortcode-copy {
+	color: var(--slate-400);
+	display: flex;
+	align-items: center;
+	transition: color 0.2s ease;
+
+	&.copied {
+		color: var(--green-400);
+	}
+}
+
+// Inline shortcode blocks inside list items
+.help-shortcode-inline {
+	display: inline-flex;
+	margin-block: 0;
+	margin-inline-end: var(--space-2);
+	padding: var(--space-1) var(--space-2);
+	vertical-align: middle;
+
+	code {
+		font-size: var(--text-xs);
+	}
+}
+
+// Code blocks in help content
+.help-code-block {
+	display: block;
+	padding: var(--space-3);
+	background: var(--slate-50);
+	border: var(--space-px) solid var(--slate-200);
+	border-radius: var(--rounded-md);
+	margin-block: var(--space-2);
+	font-size: var(--text-sm);
+	overflow-x: auto;
+	white-space: pre;
+}
+
+// Quick actions section
+.help-quick-actions {
+	margin-block-start: var(--space-6);
+
+	h3 {
+		font-size: var(--text-base);
+		font-weight: var(--font-semibold);
+		color: var(--slate-900);
+		margin-block-end: var(--space-3);
+	}
+}
+
+.help-quick-actions-grid {
+	display: grid;
+	grid-template-columns: repeat(4, 1fr);
+	gap: var(--space-3);
+
+	.button {
+		text-align: center;
+		justify-content: center;
+	}
+}

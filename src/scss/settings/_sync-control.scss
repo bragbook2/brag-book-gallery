@@ -295,6 +295,14 @@
 	}
 }
 
+// Inline SVG icon inside buttons
+.sync-btn-icon {
+	width: 16px;
+	height: 16px;
+	flex-shrink: 0;
+	vertical-align: middle;
+}
+
 // Stage-Based Sync Section
 .stage-sync-section {
 	margin-bottom: var(--space-5, 1.25rem);
@@ -480,6 +488,7 @@
 		&:hover:not(:disabled) {
 			background: var(--slate-800, #1e293b);
 			border-color: var(--slate-800, #1e293b);
+			color: white;
 		}
 
 		&:disabled {

@@ -15,8 +15,8 @@
 	width: 100%;
 	padding: var(--wp--custom--brag-book-gallery--spacer--md,12px) var(--wp--custom--brag-book-gallery--spacer--lg,16px) var(--wp--custom--brag-book-gallery--spacer--md,12px) calc( 10 * var(--wp--custom--brag-book-gallery--spacer,4px) ) !important;
 	background: var(--wp--custom--brag-book-gallery--color--white,#FFF) !important;
-	border: 1px solid var(--wp--custom--brag-book-gallery--color--lighter-grey) !important;
-	box-shadow: 0 0 0 1px var(--wp--custom--brag-book-gallery--color--lighter-grey);
+	border: 1px solid var(--wp--custom--brag-book-gallery--color--lighter-gray) !important;
+	box-shadow: 0 0 0 1px var(--wp--custom--brag-book-gallery--color--lighter-gray);
 	border-radius: var(--wp--custom--brag-book-gallery--rounded,4px) !important;
 	font-size: var(--wp--custom--brag-book-gallery--text-xs) !important;
 	line-height: var(--wp--custom--brag-book-gallery--spacer--lg,16px) !important;
@@ -25,7 +25,7 @@
 	outline: none;
 
 	&:hover {
-		border-color: var(--wp--custom--brag-book-gallery--light-grey);
+		border-color: var(--wp--custom--brag-book-gallery--light-gray);
 	}
 
 	&:focus {
@@ -47,7 +47,7 @@
 	transform: translateY(-50%);
 	width: var(--wp--custom--brag-book-gallery--spacer--2xl,24px);
 	height: var(--wp--custom--brag-book-gallery--spacer--2xl,24px);
-	stroke: var(--wp--custom--brag-book-gallery--color--grey);
+	stroke: var(--wp--custom--brag-book-gallery--color--gray);
 	pointer-events: none;
 	z-index: 1
 }
@@ -59,7 +59,7 @@
 	left: 0;
 	right: 0;
 	background-color: var(--wp--custom--brag-book-gallery--color--white,#FFF);
-	border: 2px solid var(--wp--custom--brag-book-gallery--color--light-grey);
+	border: 2px solid var(--wp--custom--brag-book-gallery--color--light-gray);
 	border-radius: var(--wp--custom--brag-book-gallery--spacer--sm, 8px );
 	box-shadow: var(--wp--custom--brag-book-gallery--shadow-lg);
 	max-height: calc( 80 * var(--wp--custom--brag-book-gallery--spacer,4px) );
@@ -77,17 +77,17 @@
 	}
 
 	&::-webkit-scrollbar-track {
-		background: var(--wp--custom--brag-book-gallery--color--lightest-grey);
+		background: var(--wp--custom--brag-book-gallery--color--lightest-gray);
 		border-radius: var(--wp--custom--brag-book-gallery--spacer,4px);
 	}
 
 	&::-webkit-scrollbar-thumb {
-		background: var(--wp--custom--brag-book-gallery--color--light-grey);
+		background: var(--wp--custom--brag-book-gallery--color--light-gray);
 		border-radius: var(--wp--custom--brag-book-gallery--spacer,4px);
 	}
 
 	&::-webkit-scrollbar-thumb:hover {
-		background: var(--wp--custom--brag-book-gallery--color--grey)
+		background: var(--wp--custom--brag-book-gallery--color--gray)
 	}
 
 	.brag-book-gallery-search-wrapper.active & {
@@ -101,7 +101,7 @@
 	padding: var(--wp--custom--brag-book-gallery--spacer--sm, 8px ) var(--wp--custom--brag-book-gallery--spacer--lg,16px);
 	cursor: pointer;
 	transition: var(--wp--custom--brag-book-gallery--transition);
-	border-bottom: 1px solid var(--wp--custom--brag-book-gallery--color--lightest-grey);
+	border-bottom: 1px solid var(--wp--custom--brag-book-gallery--color--lightest-gray);
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
@@ -114,11 +114,11 @@
 
 	&:hover,
 	&[aria-selected=true] {
-		background: var(--wp--custom--brag-book-gallery--color--lightest-grey);
+		background: var(--wp--custom--brag-book-gallery--color--lightest-gray);
 		padding-left: var(--wp--custom--brag-book-gallery--xl);
 
 		.brag-book-gallery-search-item-count {
-			color: var(--wp--custom--brag-book-gallery--color--grey)
+			color: var(--wp--custom--brag-book-gallery--color--gray)
 		}
 	}
 
@@ -148,7 +148,7 @@
 
 	&-count {
 		font-size: var(--wp--custom--brag-book-gallery--text-xs);
-		color: var(--wp--custom--brag-book-gallery--color--grey);
+		color: var(--wp--custom--brag-book-gallery--color--gray);
 		font-weight: var(--wp--custom--brag-book-gallery--font-weight--regular);
 		display: inline-flex;
 		align-items: center;
@@ -156,14 +156,14 @@
 
 		&::before {
 			content: "•";
-			color: var(--wp--custom--brag-book-gallery--color--light-grey);
+			color: var(--wp--custom--brag-book-gallery--color--light-gray);
 		}
 	}
 
 	&-category {
 		font-size: var(--wp--custom--brag-book-gallery--text-xs);
-		color: var(--wp--custom--brag-book-gallery--color--grey);
-		background: var(--wp--custom--brag-book-gallery--color--lighter-grey);
+		color: var(--wp--custom--brag-book-gallery--color--gray);
+		background: var(--wp--custom--brag-book-gallery--color--lighter-gray);
 		padding: var(--wp--custom--brag-book-gallery--spacer,4px) var(--wp--custom--brag-book-gallery--spacer--sm, 8px );
 		border-radius: var(--wp--custom--brag-book-gallery--rounded-full);
 		font-weight: var(--wp--custom--brag-book-gallery--font-weight--regular);
@@ -171,7 +171,7 @@
 	}
 
 	mark {
-		background: var(--wp--custom--brag-book-gallery--color--lighter-grey);
+		background: var(--wp--custom--brag-book-gallery--color--lighter-gray);
 		color: var(--wp--custom--brag-book-gallery--color--black);
 		font-weight: 600;
 		padding: 0 2px;
@@ -182,7 +182,7 @@
 .brag-book-gallery-search-no-results {
 	padding: var(--wp--custom--brag-book-gallery--spacer--2xl,24px);
 	text-align: center;
-	color: var(--wp--custom--brag-book-gallery--color--grey);
+	color: var(--wp--custom--brag-book-gallery--color--gray);
 	font-size: var(--wp--custom--brag-book-gallery--text-sm);
 }
 

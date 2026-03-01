@@ -1,0 +1,201 @@
+// -----------------------------------------------------------------------------
+// API Settings — connection cards, fields, actions, account info
+// -----------------------------------------------------------------------------
+
+// Section description
+.api-section-description {
+	color: var(--slate-600);
+	font-size: var(--text-sm);
+	line-height: var(--leading-relaxed);
+	margin-block: 0 var(--space-6);
+}
+
+// Connection card
+.api-connection-card {
+	margin-block-end: var(--space-6);
+
+	&:hover {
+		box-shadow: var(--shadow); // subtle, don't over-elevate
+	}
+}
+
+// Card header — title + status badge
+.api-connection-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-block-end: var(--space-4);
+
+	h3 {
+		margin: 0;
+		font-size: var(--text-base);
+		font-weight: var(--font-semibold);
+		color: var(--slate-900);
+	}
+}
+
+.brag-book-gallery-api-status {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--space-1);
+	font-size: var(--text-sm);
+	color: var(--slate-500);
+
+	.spinner {
+		float: none;
+		margin: 0;
+	}
+
+	.api-status-success {
+		color: var(--green-500);
+	}
+
+	.api-status-error {
+		color: var(--red-500);
+	}
+}
+
+// Stacked fields inside a card
+.api-connection-fields {
+	display: flex;
+	flex-direction: column;
+}
+
+.api-connection-field {
+	padding-block: var(--space-4);
+
+	& + & {
+		border-block-start: var(--space-px) solid var(--slate-200);
+	}
+
+	label {
+		display: block;
+		font-weight: var(--font-medium);
+		color: var(--slate-700);
+		font-size: var(--text-sm);
+		margin-block-end: var(--space-2);
+	}
+
+	input[type="text"],
+	input[type="password"] {
+		width: 100%;
+		box-sizing: border-box;
+	}
+}
+
+// Token field — input with toggle overlay inside
+.api-token-field {
+	position: relative;
+	width: 100%;
+
+	input {
+		width: 100%;
+		box-sizing: border-box;
+		padding-inline-end: var(--space-10); // room for the toggle button
+	}
+}
+
+.toggle-api-token {
+	position: absolute;
+	inset-block-start: 50%;
+	inset-inline-end: var(--space-2);
+	transform: translateY(-50%);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: var(--space-7);
+	height: var(--space-7);
+	padding: 0;
+	background: transparent;
+	border: none;
+	border-radius: var(--rounded-md);
+	color: var(--slate-400);
+	cursor: pointer;
+	transition: var(--transition-colors);
+
+	.dashicons {
+		font-size: 18px;
+		width: 18px;
+		height: 18px;
+		line-height: 1;
+	}
+
+	&:hover {
+		color: var(--blue-600);
+		background: var(--slate-100);
+	}
+
+	&:focus {
+		outline: 2px solid var(--blue-500);
+		outline-offset: -1px;
+	}
+}
+
+// Action buttons row
+.api-connection-actions {
+	display: flex;
+	align-items: center;
+	gap: var(--space-3);
+	padding-block-start: var(--space-4);
+	border-block-start: var(--space-px) solid var(--slate-200);
+}
+
+// Account info section
+.api-connection-account {
+	padding-block-start: var(--space-4);
+	margin-block-start: var(--space-4);
+	border-block-start: var(--space-px) solid var(--slate-200);
+
+	h4 {
+		margin: 0 0 var(--space-3) 0;
+		font-size: var(--text-sm);
+		font-weight: var(--font-semibold);
+		color: var(--slate-800);
+	}
+}
+
+// 3-column grid for Organization / Subscription / Usage
+.api-account-grid {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: var(--space-4);
+
+	@media (max-width: 782px) {
+		grid-template-columns: 1fr;
+	}
+}
+
+.api-account-item {
+	&__label {
+		display: block;
+		font-size: var(--text-xs);
+		color: var(--slate-500);
+		font-weight: var(--font-semibold);
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		margin-block-end: var(--space-1);
+	}
+
+	&__value {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		font-size: var(--text-sm);
+		color: var(--slate-900);
+	}
+}
+
+// Add new connection button container
+.add-api-connection {
+	margin-block-start: var(--space-2);
+
+	.button {
+		gap: var(--space-2);
+
+		svg {
+			width: 20px;
+			height: 20px;
+			flex-shrink: 0;
+		}
+	}
+}

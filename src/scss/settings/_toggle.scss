@@ -37,7 +37,7 @@
 
 		&:checked {
 			+ .brag-book-gallery-toggle-slider {
-				background-color: #2271b1;
+				background-color: var(--red-500);
 
 				&::before {
 					transform: translateX(20px);
@@ -47,7 +47,7 @@
 
 		&:focus-visible {
 			+ .brag-book-gallery-toggle-slider {
-				outline: 2px solid #2271b1;
+				outline: 2px solid var(--red-500);
 				outline-offset: 2px;
 			}
 		}
@@ -81,7 +81,7 @@
 
 		&:checked {
 			+ .brag-book-toggle-slider {
-				background-color: #2271b1;
+				background-color: var(--red-500);
 
 				&::before {
 					transform: translateX(20px);
@@ -91,7 +91,7 @@
 
 		&:focus-visible {
 			+ .brag-book-toggle-slider {
-				outline: 2px solid #2271b1;
+				outline: 2px solid var(--red-500);
 				outline-offset: 2px;
 			}
 		}

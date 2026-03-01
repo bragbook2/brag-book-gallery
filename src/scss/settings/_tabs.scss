@@ -12,6 +12,7 @@
 	margin-block-end: var(--space-6);
 	box-shadow: var(--shadow-sm);
 	margin-inline: calc( -1 * var(--space-6) );
+	border-block: var(--space-px) solid var(--slate-200);
 
 	@media (max-width: 768px) {
 		margin-inline: calc(var(--space-4) * -1);
@@ -125,58 +126,62 @@
 .brag-book-gallery-tabbed-section {
 	display: flex;
 	min-height: 600px;
-	border: 1px solid var(--slate-100);
 }
 
 .brag-book-gallery-side-tabs {
 	width: 196px;
-	background: var(--slate-50);
-	padding: 0;
+	background: white;
+	padding: var(--space-2);
 	flex-shrink: 0;
 
 	ul {
 		margin: 0;
 		padding: 0;
 		list-style: none;
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-1);
 	}
 
 	li {
 		margin: 0;
-
-		&:last-child {
-			border-bottom: none;
-		}
 	}
 
 	a {
 		display: block;
-		padding: 12px 16px;
+		padding: 10px 14px;
 		text-decoration: none;
-		color: var(--slate-800);
-		font-weight: 600;
-		border-left: 2px solid transparent;
-		transition: all 0.2s ease;
+		color: var(--slate-700);
+		font-weight: var(--font-medium);
+		font-size: var(--text-sm);
+		border-radius: var(--rounded-md);
+		transition: all 0.15s ease;
 		position: relative;
+		border: none;
 
 		&:hover,
 		&:focus {
-			background: var(--brag-book-gallery-white);
-			color: var(--brag-book-gallery-primary);
+			background: var(--slate-100);
+			color: var(--slate-900);
 			box-shadow: none;
 		}
 
 		&.active {
-			background: var(--brag-book-gallery-white);
-			color: var(--brag-book-gallery-primary);
-			border-left-color: var(--brag-book-gallery-primary);
-			font-weight: 600;
+			background: var(--brag-book-gallery-primary);
+			color: white;
+			font-weight: var(--font-semibold);
+
+			&:hover {
+				background: var(--brag-book-gallery-primary);
+				color: white;
+			}
 		}
 
 		// Badge styles for side tabs
 		.brag-book-gallery-tab-badge {
 			position: absolute;
 			top: 50%;
-			right: 16px;
+			right: 12px;
 			transform: translateY(-50%);
 			display: inline-flex;
 			align-items: center;
@@ -190,6 +195,11 @@
 			font-size: var(--text-xs);
 			font-weight: var(--font-bold);
 			margin: 0;
+
+			.active & {
+				background: white;
+				color: var(--brag-book-gallery-primary);
+			}
 		}
 	}
 }

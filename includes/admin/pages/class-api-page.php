@@ -165,6 +165,9 @@ class API_Page extends Settings_Base {
 
 			<div class="brag-book-gallery-section">
 				<h2><?php esc_html_e( 'API Connections', 'brag-book-gallery' ); ?></h2>
+				<p class="api-section-description">
+					<?php esc_html_e( 'Manage your BRAG book API connections. Each connection requires an API token and website property ID.', 'brag-book-gallery' ); ?>
+				</p>
 
 				<?php if ( empty( $api_tokens ) ) : ?>
 					<div class="brag-book-gallery-notice brag-book-gallery-notice--warning">
@@ -176,118 +179,110 @@ class API_Page extends Settings_Base {
 					<?php
 					// Ensure at least one row is shown.
 					if ( empty( $api_tokens ) ) {
-						$api_tokens = array( '' );
+						$api_tokens           = array( '' );
 						$website_property_ids = array( '' );
 					}
 					?>
 					<?php foreach ( $api_tokens as $index => $token ) : ?>
-							<div class="brag-book-gallery-api-row" data-index="<?php echo esc_attr( $index ); ?>">
-								<div class="brag-book-gallery-api-row-header">
-									<h3><?php esc_html_e( 'Connection', 'brag-book-gallery' ); ?> <span class="connection-number"><?php echo esc_html( $index + 1 ); ?></span></h3>
-									<span class="brag-book-gallery-api-status" data-index="<?php echo esc_attr( $index ); ?>"></span>
-								</div>
-								<table class="form-table brag-book-gallery-form-table">
-									<tr>
-										<th scope="row">
-											<label><?php esc_html_e( 'API Token', 'brag-book-gallery' ); ?></label>
-										</th>
-										<td>
-											<div class="api-token-field">
-												<input type="password"
-												       name="brag_book_gallery_api_token[]"
-												       value="<?php echo esc_attr( $token ); ?>"
-												       placeholder="<?php esc_attr_e( 'Enter your API token', 'brag-book-gallery' ); ?>"
-												       class="regular-text brag-book-gallery-api-token"/>
-												<button type="button"
-												        class="toggle-api-token"
-												        title="<?php esc_attr_e( 'Toggle visibility', 'brag-book-gallery' ); ?>">
-													<span class="dashicons dashicons-visibility"></span>
-												</button>
-											</div>
-										</td>
-									</tr>
-									<tr>
-										<th scope="row">
-											<label><?php esc_html_e( 'Website Property ID', 'brag-book-gallery' ); ?></label>
-										</th>
-										<td>
-											<?php
-												$property_id_value = $website_property_ids[ $index ] ?? '';
-												// Ensure we have a string, not an array
-												if ( is_array( $property_id_value ) ) {
-													$property_id_value = $property_id_value[0] ?? '';
-												}
-											?>
-											<input type="text"
-											       name="brag_book_gallery_website_property_id[]"
-											       value="<?php echo esc_attr( $property_id_value ); ?>"
-											       placeholder="<?php esc_attr_e( 'Enter your website property ID', 'brag-book-gallery' ); ?>"
-											       class="regular-text brag-book-gallery-websiteproperty-id"/>
-										</td>
-									</tr>
-									<tr>
-										<th scope="row"></th>
-										<td>
-											<button type="button"
-											        class="button button-primary brag-book-gallery-validate-api"
-											        data-index="<?php echo esc_attr( $index ); ?>">
-												<?php esc_html_e( 'Validate & Save', 'brag-book-gallery' ); ?>
-											</button>
-											<button type="button"
-											        class="button button-secondary button-link-delete brag-book-gallery-remove-api-row"
-											        data-index="<?php echo esc_attr( $index ); ?>">
-												<?php esc_html_e( 'Remove Connection', 'brag-book-gallery' ); ?>
-											</button>
-										</td>
-									</tr>
-									<?php if ( ! empty( $account_info[ $index ] ) ) : ?>
-										<?php $info = $account_info[ $index ]; ?>
-										<tr>
-											<th scope="row">
-												<label><?php esc_html_e( 'Account Information', 'brag-book-gallery' ); ?></label>
-											</th>
-											<td>
-												<div class="brag-book-account-info">
-													<?php if ( ! empty( $info['organization']['name'] ) ) : ?>
-														<div class="account-info-row">
-															<strong><?php esc_html_e( 'Organization:', 'brag-book-gallery' ); ?></strong>
-															<span><?php echo esc_html( $info['organization']['name'] ); ?></span>
-															<?php if ( ! empty( $info['organization']['status'] ) ) : ?>
-																<span class="status-badge status-<?php echo esc_attr( $info['organization']['status'] ); ?>">
-																	<?php echo esc_html( ucfirst( $info['organization']['status'] ) ); ?>
-																</span>
-															<?php endif; ?>
-														</div>
-													<?php endif; ?>
-													<?php if ( ! empty( $info['subscription']['status'] ) ) : ?>
-														<div class="account-info-row">
-															<strong><?php esc_html_e( 'Subscription:', 'brag-book-gallery' ); ?></strong>
-															<span class="status-badge status-<?php echo esc_attr( $info['subscription']['status'] ); ?>">
-																<?php echo esc_html( ucfirst( $info['subscription']['status'] ) ); ?>
-															</span>
-														</div>
-													<?php endif; ?>
-													<?php if ( ! empty( $info['usage'] ) ) : ?>
-														<div class="account-info-row">
-															<strong><?php esc_html_e( 'Usage:', 'brag-book-gallery' ); ?></strong>
-															<span>
-																<?php
-																printf(
-																	/* translators: 1: Number of cases, 2: Number of websites */
-																	esc_html__( '%1$d Cases, %2$d Websites', 'brag-book-gallery' ),
-																	absint( $info['usage']['totalCases'] ?? 0 ),
-																	absint( $info['usage']['totalWebsites'] ?? 0 )
-																);
-																?>
-															</span>
-														</div>
-													<?php endif; ?>
-												</div>
-											</td>
-										</tr>
-									<?php endif; ?>
-								</table>
+						<div class="brag-book-gallery-card api-connection-card brag-book-gallery-api-row" data-index="<?php echo esc_attr( $index ); ?>">
+							<div class="api-connection-header">
+								<h3><?php esc_html_e( 'Connection', 'brag-book-gallery' ); ?> <span class="connection-number"><?php echo esc_html( $index + 1 ); ?></span></h3>
+								<span class="brag-book-gallery-api-status" data-index="<?php echo esc_attr( $index ); ?>"></span>
 							</div>
+
+							<div class="api-connection-fields">
+								<div class="api-connection-field">
+									<label><?php esc_html_e( 'API Token', 'brag-book-gallery' ); ?></label>
+									<div class="api-token-field">
+										<input type="password"
+											name="brag_book_gallery_api_token[]"
+											value="<?php echo esc_attr( $token ); ?>"
+											placeholder="<?php esc_attr_e( 'Enter your API token', 'brag-book-gallery' ); ?>"
+											class="brag-book-gallery-api-token" />
+										<button type="button"
+											class="toggle-api-token"
+											title="<?php esc_attr_e( 'Toggle visibility', 'brag-book-gallery' ); ?>">
+											<span class="dashicons dashicons-visibility"></span>
+										</button>
+									</div>
+								</div>
+
+								<div class="api-connection-field">
+									<label><?php esc_html_e( 'Website Property ID', 'brag-book-gallery' ); ?></label>
+									<?php
+										$property_id_value = $website_property_ids[ $index ] ?? '';
+										if ( is_array( $property_id_value ) ) {
+											$property_id_value = $property_id_value[0] ?? '';
+										}
+									?>
+									<input type="text"
+										name="brag_book_gallery_website_property_id[]"
+										value="<?php echo esc_attr( $property_id_value ); ?>"
+										placeholder="<?php esc_attr_e( 'Enter your website property ID', 'brag-book-gallery' ); ?>"
+										class="brag-book-gallery-websiteproperty-id" />
+								</div>
+							</div>
+
+							<div class="api-connection-actions">
+								<button type="button"
+									class="button button-primary brag-book-gallery-validate-api"
+									data-index="<?php echo esc_attr( $index ); ?>">
+									<?php esc_html_e( 'Validate & Save', 'brag-book-gallery' ); ?>
+								</button>
+								<button type="button"
+									class="button button-secondary brag-book-gallery-remove-api-row"
+									data-index="<?php echo esc_attr( $index ); ?>">
+									<?php esc_html_e( 'Remove Connection', 'brag-book-gallery' ); ?>
+								</button>
+							</div>
+
+							<?php if ( ! empty( $account_info[ $index ] ) ) : ?>
+								<?php $info = $account_info[ $index ]; ?>
+								<div class="api-connection-account">
+									<h4><?php esc_html_e( 'Account Information', 'brag-book-gallery' ); ?></h4>
+									<div class="api-account-grid">
+										<?php if ( ! empty( $info['organization']['name'] ) ) : ?>
+											<div class="api-account-item">
+												<span class="api-account-item__label"><?php esc_html_e( 'Organization', 'brag-book-gallery' ); ?></span>
+												<span class="api-account-item__value">
+													<?php echo esc_html( $info['organization']['name'] ); ?>
+													<?php if ( ! empty( $info['organization']['status'] ) ) : ?>
+														<span class="status-badge status-<?php echo esc_attr( $info['organization']['status'] ); ?>">
+															<?php echo esc_html( ucfirst( $info['organization']['status'] ) ); ?>
+														</span>
+													<?php endif; ?>
+												</span>
+											</div>
+										<?php endif; ?>
+										<?php if ( ! empty( $info['subscription']['status'] ) ) : ?>
+											<div class="api-account-item">
+												<span class="api-account-item__label"><?php esc_html_e( 'Subscription', 'brag-book-gallery' ); ?></span>
+												<span class="api-account-item__value">
+													<span class="status-badge status-<?php echo esc_attr( $info['subscription']['status'] ); ?>">
+														<?php echo esc_html( ucfirst( $info['subscription']['status'] ) ); ?>
+													</span>
+												</span>
+											</div>
+										<?php endif; ?>
+										<?php if ( ! empty( $info['usage'] ) ) : ?>
+											<div class="api-account-item">
+												<span class="api-account-item__label"><?php esc_html_e( 'Usage', 'brag-book-gallery' ); ?></span>
+												<span class="api-account-item__value">
+													<?php
+													printf(
+														/* translators: 1: Number of cases, 2: Number of websites */
+														esc_html__( '%1$d Cases, %2$d Websites', 'brag-book-gallery' ),
+														absint( $info['usage']['totalCases'] ?? 0 ),
+														absint( $info['usage']['totalWebsites'] ?? 0 )
+													);
+													?>
+												</span>
+											</div>
+										<?php endif; ?>
+									</div>
+								</div>
+							<?php endif; ?>
+						</div>
 					<?php endforeach; ?>
 				</div>
 
@@ -309,7 +304,7 @@ class API_Page extends Settings_Base {
 							<a href="<?php echo esc_url( admin_url( 'admin.php?page=brag-book-gallery-general' ) ); ?>" class="button button-primary">
 								<?php esc_html_e( 'Create Gallery Page', 'brag-book-gallery' ); ?>
 							</a>
-						</>
+						</div>
 					</div>
 				<?php endif; ?>
 
@@ -326,65 +321,26 @@ class API_Page extends Settings_Base {
 		</form>
 
 		<!-- Confirmation Dialog -->
-		<dialog id="brag-api-dialog" class="brag-api-dialog">
-			<div class="dialog-content">
-				<h3 class="dialog-title"></h3>
-				<p class="dialog-message"></p>
-				<div class="dialog-buttons">
-					<button type="button" class="button dialog-cancel" style="display: none;">
+		<dialog id="brag-api-dialog" class="brag-book-gallery-dialog">
+			<div class="brag-book-gallery-dialog-content">
+				<div class="brag-book-gallery-dialog-header">
+					<h3 class="brag-book-gallery-dialog-title"></h3>
+					<button type="button" class="brag-book-gallery-dialog-close">&times;</button>
+				</div>
+				<div class="brag-book-gallery-dialog-body">
+					<div class="brag-book-gallery-dialog-icon"><span class="dashicons"></span></div>
+					<div class="brag-book-gallery-dialog-message"></div>
+				</div>
+				<div class="brag-book-gallery-dialog-footer">
+					<button type="button" class="button button-secondary dialog-cancel" style="display: none;">
 						<?php esc_html_e( 'Cancel', 'brag-book-gallery' ); ?>
 					</button>
-					<button type="button" class="button button-primary dialog-close">
+					<button type="button" class="button button-primary dialog-close-btn">
 						<?php esc_html_e( 'OK', 'brag-book-gallery' ); ?>
 					</button>
 				</div>
 			</div>
 		</dialog>
-
-		<style>
-		.brag-api-dialog {
-			border: none;
-			border-radius: 4px;
-			box-shadow: 0 3px 30px rgba(0, 0, 0, 0.2);
-			padding: 0;
-			max-width: 500px;
-			min-width: 300px;
-		}
-		.brag-api-dialog::backdrop {
-			background: rgba(0, 0, 0, 0.5);
-		}
-		.brag-api-dialog .dialog-content {
-			padding: 20px;
-		}
-		.brag-api-dialog .dialog-title {
-			margin: 0 0 10px;
-			font-size: 18px;
-			font-weight: 600;
-			color: #1d2327;
-		}
-		.brag-api-dialog .dialog-message {
-			margin: 0 0 20px;
-			color: #50575e;
-			line-height: 1.5;
-		}
-		.brag-api-dialog .dialog-buttons {
-			text-align: right;
-			padding-top: 10px;
-			border-top: 1px solid #dcdcde;
-		}
-		.brag-api-dialog.success .dialog-title {
-			color: #00a32a;
-		}
-		.brag-api-dialog.error .dialog-title {
-			color: #d63638;
-		}
-		.brag-api-dialog.warning .dialog-title {
-			color: #dba617;
-		}
-		.brag-api-dialog .dialog-cancel {
-			margin-right: 10px;
-		}
-		</style>
 
 		<script type="module">
 		/**
@@ -461,17 +417,37 @@ class API_Page extends Settings_Base {
 				const dialog = document.getElementById('brag-api-dialog');
 				if (!dialog) return Promise.resolve(false);
 
-				const titleEl = dialog.querySelector('.dialog-title');
-				const messageEl = dialog.querySelector('.dialog-message');
+				const titleEl = dialog.querySelector('.brag-book-gallery-dialog-title');
+				const messageEl = dialog.querySelector('.brag-book-gallery-dialog-message');
+				const iconEl = dialog.querySelector('.brag-book-gallery-dialog-icon .dashicons');
 				const cancelBtn = dialog.querySelector('.dialog-cancel');
-				const okBtn = dialog.querySelector('.dialog-close');
+				const okBtn = dialog.querySelector('.dialog-close-btn');
+				const closeBtn = dialog.querySelector('.brag-book-gallery-dialog-close');
 
 				// Set content
 				titleEl.textContent = title;
 				messageEl.textContent = message;
 
-				// Set type class
-				dialog.className = `brag-api-dialog ${type}`;
+				// Set variant class on dialog
+				dialog.className = 'brag-book-gallery-dialog';
+				const variantMap = {
+					success: 'brag-book-gallery-dialog-success',
+					error: 'brag-book-gallery-dialog-error',
+					warning: 'brag-book-gallery-dialog-warning',
+					info: 'brag-book-gallery-dialog-info'
+				};
+				if (variantMap[type]) {
+					dialog.classList.add(variantMap[type]);
+				}
+
+				// Set icon based on type
+				const iconMap = {
+					success: 'dashicons-yes-alt',
+					error: 'dashicons-warning',
+					warning: 'dashicons-info-outline',
+					info: 'dashicons-info-outline'
+				};
+				iconEl.className = `dashicons ${iconMap[type] || 'dashicons-info-outline'}`;
 
 				// Show/hide cancel button
 				cancelBtn.style.display = showCancel ? 'inline-block' : 'none';
@@ -482,29 +458,35 @@ class API_Page extends Settings_Base {
 
 				// Return a promise that resolves with true/false
 				return new Promise((resolve) => {
+					const cleanup = () => {
+						okBtn.removeEventListener('click', okHandler);
+						cancelBtn.removeEventListener('click', cancelHandler);
+						closeBtn.removeEventListener('click', cancelHandler);
+					};
+
 					const okHandler = () => {
 						dialog.close();
-						okBtn.removeEventListener('click', okHandler);
-						if (cancelBtn) cancelBtn.removeEventListener('click', cancelHandler);
+						cleanup();
 						resolve(true);
 					};
 
 					const cancelHandler = () => {
 						dialog.close();
-						if (cancelBtn) cancelBtn.removeEventListener('click', cancelHandler);
-						okBtn.removeEventListener('click', okHandler);
+						cleanup();
 						resolve(false);
 					};
 
 					okBtn.addEventListener('click', okHandler);
-					if (showCancel && cancelBtn) {
+					if (showCancel) {
 						cancelBtn.addEventListener('click', cancelHandler);
 					}
+					closeBtn.addEventListener('click', cancelHandler);
 
 					// Close on backdrop click (counts as cancel)
 					dialog.addEventListener('click', (e) => {
 						if (e.target === dialog) {
 							dialog.close();
+							cleanup();
 							resolve(false);
 						}
 					}, { once: true });
@@ -556,33 +538,30 @@ class API_Page extends Settings_Base {
 				const connectionNumber = rows.length + 1;
 
 				const newRowHTML = `
-					<div class="brag-book-gallery-api-row" data-index="${apiRowIndex}">
-						<div class="brag-book-gallery-api-row-header">
+					<div class="brag-book-gallery-card api-connection-card brag-book-gallery-api-row" data-index="${apiRowIndex}">
+						<div class="api-connection-header">
 							<h3><?php esc_html_e( "Connection", "brag-book-gallery" ); ?> <span class="connection-number">${connectionNumber}</span></h3>
 							<span class="brag-book-gallery-api-status" data-index="${apiRowIndex}"></span>
 						</div>
-						<table class="form-table brag-book-gallery-form-table">
-							<tr>
-								<th scope="row"><label><?php esc_html_e( "API Token", "brag-book-gallery" ); ?></label></th>
-								<td><div class="api-token-field">
-									<input type="password" name="brag_book_gallery_api_token[]" placeholder="<?php esc_attr_e( "Enter your API token", "brag-book-gallery" ); ?>" class="regular-text brag-book-gallery-api-token"/>
+						<div class="api-connection-fields">
+							<div class="api-connection-field">
+								<label><?php esc_html_e( "API Token", "brag-book-gallery" ); ?></label>
+								<div class="api-token-field">
+									<input type="password" name="brag_book_gallery_api_token[]" placeholder="<?php esc_attr_e( "Enter your API token", "brag-book-gallery" ); ?>" class="brag-book-gallery-api-token"/>
 									<button type="button" class="toggle-api-token" title="<?php esc_attr_e( "Toggle visibility", "brag-book-gallery" ); ?>">
 										<span class="dashicons dashicons-visibility"></span>
 									</button>
-								</div></td>
-							</tr>
-							<tr>
-								<th scope="row"><label><?php esc_html_e( "Website Property ID", "brag-book-gallery" ); ?></label></th>
-								<td><input type="text" name="brag_book_gallery_website_property_id[]" placeholder="<?php esc_attr_e( "Enter your website property ID", "brag-book-gallery" ); ?>" class="regular-text brag-book-gallery-websiteproperty-id"/></td>
-							</tr>
-							<tr>
-								<th scope="row"></th>
-								<td>
-									<button type="button" class="button brag-book-gallery-validate-api" data-index="${apiRowIndex}"><?php esc_html_e( "Validate & Save", "brag-book-gallery" ); ?></button>
-									<button type="button" class="button button-link-delete brag-book-gallery-remove-api-row" data-index="${apiRowIndex}"><?php esc_html_e( "Remove Connection", "brag-book-gallery" ); ?></button>
-								</td>
-							</tr>
-						</table>
+								</div>
+							</div>
+							<div class="api-connection-field">
+								<label><?php esc_html_e( "Website Property ID", "brag-book-gallery" ); ?></label>
+								<input type="text" name="brag_book_gallery_website_property_id[]" placeholder="<?php esc_attr_e( "Enter your website property ID", "brag-book-gallery" ); ?>" class="brag-book-gallery-websiteproperty-id"/>
+							</div>
+						</div>
+						<div class="api-connection-actions">
+							<button type="button" class="button button-primary brag-book-gallery-validate-api" data-index="${apiRowIndex}"><?php esc_html_e( "Validate & Save", "brag-book-gallery" ); ?></button>
+							<button type="button" class="button button-secondary brag-book-gallery-remove-api-row" data-index="${apiRowIndex}"><?php esc_html_e( "Remove Connection", "brag-book-gallery" ); ?></button>
+						</div>
 					</div>`;
 
 				const container = document.getElementById('brag-book-gallery-api-rows');
@@ -1576,7 +1555,8 @@ class API_Page extends Settings_Base {
 		}
 
 		// Use validation endpoint with GET request and Bearer authentication
-		$test_endpoint = 'https://app.bragbookgallery.com/api/plugin/v2/validation/token';
+		$api_base        = get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' );
+		$test_endpoint   = $api_base . '/api/plugin/v2/validation/token';
 
 		// Add query parameter
 		$url = add_query_arg( 'websitePropertyId', intval( $website_property_id ), $test_endpoint );

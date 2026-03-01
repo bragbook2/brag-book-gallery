@@ -10,9 +10,11 @@
 @use 'accordion';
 @use 'alerts-notices';
 @use 'api-account';
+@use 'api-settings';
 @use 'badge';
 @use 'buttons';
 @use 'cache-management';
+@use 'changelog';
 @use 'cards';
 @use 'communications';
 @use 'dashboard';
@@ -21,6 +23,7 @@
 @use 'dialog';
 @use 'export-import';
 @use 'forms';
+@use 'help';
 @use 'log';
 @use 'notice';
 @use 'rewrite-debug';

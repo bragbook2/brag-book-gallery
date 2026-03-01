@@ -63,7 +63,7 @@ trait Trait_Api {
 	 * @since 3.0.0
 	 * @var string
 	 */
-	protected string $api_base_url = 'https://app.bragbookgallery.com';
+	protected string $api_base_url = '';
 
 	/**
 	 * Default request timeout
@@ -137,6 +137,10 @@ trait Trait_Api {
 	 * @return string API base URL
 	 */
 	public static function get_api_url(): string {
+		$custom_url = get_option( 'brag_book_gallery_api_base_url', '' );
+		if ( ! empty( $custom_url ) ) {
+			return $custom_url;
+		}
 		return 'https://app.bragbookgallery.com';
 	}
 
@@ -147,6 +151,9 @@ trait Trait_Api {
 	 * @return string API base URL.
 	 */
 	protected function get_api_base_url(): string {
+		if ( empty( $this->api_base_url ) ) {
+			$this->api_base_url = self::get_api_url();
+		}
 		return apply_filters(
 			hook_name: 'brag_book_gallery_api_base_url',
 			value: $this->api_base_url

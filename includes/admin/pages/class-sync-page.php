@@ -24,6 +24,9 @@ use BRAGBookGallery\Includes\Admin\Sync\Sync_Automatic_Settings;
 use BRAGBookGallery\Includes\Admin\Sync\Sync_History_Manager;
 use BRAGBookGallery\Includes\Sync\Data_Sync;
 use BRAGBookGallery\Includes\Sync\Sync_Api;
+use BRAGBookGallery\Includes\Core\Updater;
+use BRAGBookGallery\Includes\Extend\Post_Types;
+use BRAGBookGallery\Includes\Extend\Taxonomies;
 use Exception;
 use Error;
 
@@ -99,6 +102,8 @@ class Sync_Page extends Settings_Base {
 		add_action( 'wp_ajax_brag_book_validate_procedure_assignments', [ $this, 'handle_validate_procedure_assignments' ] );
 		add_action( 'wp_ajax_brag_book_get_sync_report', [ $this, 'handle_get_sync_report' ] );
 		add_action( 'wp_ajax_brag_book_get_bragbook_sync_status', [ $this, 'handle_get_bragbook_sync_status' ] );
+		add_action( 'wp_ajax_brag_book_toggle_api_environment', [ $this, 'handle_toggle_api_environment' ] );
+		add_action( 'wp_ajax_brag_book_delete_all_data', [ $this, 'handle_delete_all_data' ] );
 
 		// Register REST API endpoint for remote sync triggering
 		add_action( 'rest_api_init', [ $this, 'register_rest_endpoints' ] );
@@ -178,6 +183,8 @@ class Sync_Page extends Settings_Base {
 			<?php $this->render_automatic_sync_section(); ?>
 		</form>
 
+		<?php $this->render_delete_all_data_section(); ?>
+
 		<?php
 		$this->render_footer();
 	}
@@ -229,223 +236,117 @@ class Sync_Page extends Settings_Base {
 				<?php esc_html_e( 'Configure automatic weekly synchronization. After enabling, syncs will run automatically on your chosen day and time.', 'brag-book-gallery' ); ?>
 			</p>
 
-			<div class="brag-book-gallery-card" style="margin-top: 15px;">
-				<!-- Active Sync Status -->
-				<?php
-				$automatic_settings = new Sync_Automatic_Settings();
-				$automatic_settings->render_cron_status();
-				?>
+			<div class="brag-book-gallery-card auto-sync-card">
+				<!-- BRAG book Sync Status Header -->
+				<div class="auto-sync-header">
+					<span class="auto-sync-header__title"><?php esc_html_e( 'BRAG book Sync Status', 'brag-book-gallery' ); ?></span>
+					<svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="currentColor" class="auto-sync-header__icon"><path d="M480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm-40-360v240h80v-240h-80Zm0-160v80h80v-80h-80Z"/></svg>
+				</div>
 
-				<table class="form-table" role="presentation">
-					<tbody>
-						<!-- Enable Auto Sync -->
-						<tr>
-							<th scope="row">
-								<label for="auto_sync_enabled"><?php esc_html_e( 'Enable Automatic Sync', 'brag-book-gallery' ); ?></label>
-							</th>
-							<td>
-								<div class="brag-book-gallery-toggle-wrapper">
-									<label class="brag-book-gallery-toggle">
-										<input type="hidden" name="brag_book_gallery_sync_settings[auto_sync_enabled]" value="0" />
-										<input type="checkbox"
-											   name="brag_book_gallery_sync_settings[auto_sync_enabled]"
-											   id="auto_sync_enabled"
-											   value="1"
-											   <?php checked( $auto_enabled ); ?> />
-										<span class="brag-book-gallery-toggle-slider"></span>
-									</label>
-									<span class="brag-book-gallery-toggle-label">
-										<?php esc_html_e( 'Schedule weekly automatic synchronization', 'brag-book-gallery' ); ?>
-									</span>
-								</div>
-							</td>
-						</tr>
+				<!-- Last Sync Stats -->
+				<div class="auto-sync-field">
+					<div class="auto-sync-status-row">
+						<div class="auto-sync-status-item">
+							<span class="auto-sync-status-item__label"><?php esc_html_e( 'Last Sync Reported', 'brag-book-gallery' ); ?></span>
+							<span class="auto-sync-status-item__value">
+								<?php
+								$last_time = strtotime( $last_sync_time );
+								echo esc_html( wp_date( 'F j, Y \a\t g:i A', $last_time ) );
+								echo ' (' . esc_html( human_time_diff( $last_time, time() ) ) . ' ' . esc_html__( 'ago', 'brag-book-gallery' ) . ')';
+								?>
+							</span>
+						</div>
+						<div class="auto-sync-status-item">
+							<span class="auto-sync-status-item__label"><?php esc_html_e( 'Cases Synced', 'brag-book-gallery' ); ?></span>
+							<span class="auto-sync-status-item__value">
+								<?php
+								$last_cases = get_option( 'brag_book_gallery_last_sync_cases', 0 );
+								echo esc_html( number_format( (int) $last_cases ) );
+								?>
+							</span>
+						</div>
+					</div>
+				</div>
 
-						<!-- Schedule Settings (shown when enabled) -->
-						<tr class="auto-sync-schedule-row" <?php echo ! $auto_enabled ? 'style="display: none;"' : ''; ?>>
-							<th scope="row">
-								<label><?php esc_html_e( 'Schedule', 'brag-book-gallery' ); ?></label>
-							</th>
-							<td>
-								<div class="sync-schedule-fields">
-									<div class="sync-schedule-field">
-										<label for="sync_day"><?php esc_html_e( 'Day of Week', 'brag-book-gallery' ); ?></label>
-										<select name="brag_book_gallery_sync_settings[sync_day]" id="sync_day" class="sync-day-select">
-											<?php foreach ( $days_of_week as $day_value => $day_label ) : ?>
-												<option value="<?php echo esc_attr( $day_value ); ?>" <?php selected( $sync_day, $day_value ); ?>>
-													<?php echo esc_html( $day_label ); ?>
-												</option>
-											<?php endforeach; ?>
-										</select>
-									</div>
-									<div class="sync-schedule-field">
-										<label for="sync_time"><?php esc_html_e( 'Time', 'brag-book-gallery' ); ?></label>
-										<input type="time"
-											   name="brag_book_gallery_sync_settings[sync_time]"
-											   id="sync_time"
-											   value="<?php echo esc_attr( $sync_time ); ?>"
-											   class="sync-time-input" />
-									</div>
-								</div>
-								<p class="description" style="margin-top: 10px;">
-									<?php esc_html_e( 'Syncs will run weekly on the selected day and time. Times are in your WordPress timezone.', 'brag-book-gallery' ); ?>
-									<br>
-									<strong><?php esc_html_e( 'Current timezone:', 'brag-book-gallery' ); ?></strong> <?php echo esc_html( wp_timezone_string() ); ?>
-								</p>
-							</td>
-						</tr>
+				<!-- Enable Auto Sync -->
+				<div class="auto-sync-field">
+					<div class="brag-book-gallery-toggle-wrapper">
+						<svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="currentColor" class="auto-sync-toggle-icon"><path d="M160-160v-80h110l-16-14q-52-46-73-105t-21-119q0-111 66.5-197.5T400-790v84q-72 26-116 88.5T240-478q0 45 17 87.5t53 78.5l10 10v-98h80v240H160Zm400-10v-84q72-26 116-88.5T720-482q0-45-17-87.5T650-648l-10-10v98h-80v-240h240v80H690l16 14q49 49 71.5 106.5T800-482q0 111-66.5 197.5T560-170Z"/></svg>
+						<label class="brag-book-gallery-toggle">
+							<input type="hidden" name="brag_book_gallery_sync_settings[auto_sync_enabled]" value="0" />
+							<input type="checkbox"
+								name="brag_book_gallery_sync_settings[auto_sync_enabled]"
+								id="auto_sync_enabled"
+								value="1"
+								<?php checked( $auto_enabled ); ?> />
+							<span class="brag-book-gallery-toggle-slider"></span>
+						</label>
+						<div class="brag-book-gallery-toggle-text">
+							<span class="brag-book-gallery-toggle-label"><?php esc_html_e( 'Enable Automatic Sync', 'brag-book-gallery' ); ?></span>
+							<span class="description"><?php esc_html_e( 'Schedule weekly automatic synchronization', 'brag-book-gallery' ); ?></span>
+						</div>
+					</div>
+				</div>
 
-						<!-- Next Scheduled Sync -->
-						<?php if ( $next_scheduled ) : ?>
-						<tr class="auto-sync-schedule-row" <?php echo ! $auto_enabled ? 'style="display: none;"' : ''; ?>>
-							<th scope="row">
-								<?php esc_html_e( 'Next Scheduled Sync', 'brag-book-gallery' ); ?>
-							</th>
-							<td>
-								<div class="next-sync-info">
-									<?php
-									$human_time = human_time_diff( time(), $next_scheduled );
-									$exact_time = wp_date( 'l, F j, Y \a\t g:i A', $next_scheduled );
+				<!-- Schedule Settings (shown when enabled) -->
+				<div class="auto-sync-schedule-row auto-sync-field" <?php echo ! $auto_enabled ? 'style="display: none;"' : ''; ?>>
+					<div class="sync-schedule-fields">
+						<div class="sync-schedule-field">
+							<label for="sync_day"><?php esc_html_e( 'Day of Week', 'brag-book-gallery' ); ?></label>
+							<select name="brag_book_gallery_sync_settings[sync_day]" id="sync_day" class="sync-day-select">
+								<?php foreach ( $days_of_week as $day_value => $day_label ) : ?>
+									<option value="<?php echo esc_attr( $day_value ); ?>" <?php selected( $sync_day, $day_value ); ?>>
+										<?php echo esc_html( $day_label ); ?>
+									</option>
+								<?php endforeach; ?>
+							</select>
+						</div>
+						<div class="sync-schedule-field">
+							<label for="sync_time"><?php esc_html_e( 'Time', 'brag-book-gallery' ); ?></label>
+							<input type="time"
+								name="brag_book_gallery_sync_settings[sync_time]"
+								id="sync_time"
+								value="<?php echo esc_attr( $sync_time ); ?>"
+								class="sync-time-input" />
+						</div>
+					</div>
+					<p class="description">
+						<?php esc_html_e( 'Syncs will run weekly on the selected day and time. Times are in your WordPress timezone.', 'brag-book-gallery' ); ?>
+						<br>
+						<strong><?php esc_html_e( 'Current timezone:', 'brag-book-gallery' ); ?></strong> <?php echo esc_html( wp_timezone_string() ); ?>
+					</p>
+				</div>
 
-									if ( time() > $next_scheduled ) {
-										printf(
-											'<span class="sync-overdue">%s <strong>%s</strong></span>',
-											esc_html__( 'Overdue - was scheduled for', 'brag-book-gallery' ),
-											esc_html( $exact_time )
-										);
-									} else {
-										printf(
-											'<span class="sync-scheduled"><strong>%s</strong> <span class="time-until">(%s)</span></span>',
-											esc_html( $exact_time ),
-											/* translators: %s: human readable time difference */
-											sprintf( esc_html__( 'in %s', 'brag-book-gallery' ), esc_html( $human_time ) )
-										);
-									}
-									?>
-								</div>
-							</td>
-						</tr>
-						<?php endif; ?>
+				<?php if ( $next_scheduled ) : ?>
+					<div class="auto-sync-schedule-row auto-sync-field" <?php echo ! $auto_enabled ? 'style="display: none;"' : ''; ?>>
+						<div class="next-sync-info">
+							<?php
+							$human_time = human_time_diff( time(), $next_scheduled );
+							$exact_time = wp_date( 'l, F j, Y \a\t g:i A', $next_scheduled );
 
-						<!-- Last Sync Info -->
-						<tr>
-							<th scope="row">
-								<?php esc_html_e( 'Last Sync', 'brag-book-gallery' ); ?>
-							</th>
-							<td>
-								<div class="last-sync-info">
-									<?php
-									$last_time = strtotime( $last_sync_time );
-									echo '<strong>' . esc_html( wp_date( 'F j, Y \a\t g:i A', $last_time ) ) . '</strong>';
-									echo ' <span class="time-ago">(' . esc_html( human_time_diff( $last_time, time() ) ) . ' ' . esc_html__( 'ago', 'brag-book-gallery' ) . ')</span>';
+							if ( time() > $next_scheduled ) {
+								printf(
+									'<span class="sync-overdue">%s <strong>%s</strong></span>',
+									esc_html__( 'Overdue - was scheduled for', 'brag-book-gallery' ),
+									esc_html( $exact_time )
+								);
+							} else {
+								printf(
+									'<span class="sync-scheduled"><strong>%s</strong> <span class="time-until">(%s)</span></span>',
+									esc_html( $exact_time ),
+									sprintf( esc_html__( 'in %s', 'brag-book-gallery' ), esc_html( $human_time ) )
+								);
+							}
+							?>
+						</div>
+					</div>
+				<?php endif; ?>
 
-									if ( $last_sync_source ) {
-										$source_label = $last_sync_source === 'automatic' ? __( 'Automatic', 'brag-book-gallery' ) : __( 'Manual', 'brag-book-gallery' );
-										echo ' &mdash; <em>' . esc_html( $source_label ) . '</em>';
-									}
-									?>
-								</div>
-							</td>
-						</tr>
-					</tbody>
-				</table>
-
-				<p class="submit" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #ddd;">
-					<?php submit_button( __( 'Save Schedule Settings', 'brag-book-gallery' ), 'primary', 'save_auto_sync_settings', false ); ?>
-				</p>
+				<div class="auto-sync-actions">
+					<?php submit_button( __( 'Save Schedule Settings', 'brag-book-gallery' ), 'primary button-primary-dark', 'save_auto_sync_settings', false ); ?>
+				</div>
 			</div>
 		</div>
-
-		<style>
-			#automatic-sync-section .brag-book-gallery-card {
-				background: #fff;
-				border: 1px solid #c3c4c7;
-				border-radius: 4px;
-				padding: 20px;
-			}
-			.sync-schedule-fields {
-				display: flex;
-				gap: 20px;
-				align-items: flex-start;
-			}
-			.sync-schedule-field {
-				display: flex;
-				flex-direction: column;
-				gap: 5px;
-			}
-			.sync-schedule-field label {
-				font-weight: 600;
-				font-size: 13px;
-			}
-			.sync-day-select {
-				min-width: 150px;
-				height: 32px;
-			}
-			.sync-time-input {
-				min-width: 120px;
-				height: 32px;
-				padding: 0 8px;
-			}
-			.next-sync-info {
-				padding: 10px 15px;
-				background: #f0f6fc;
-				border-left: 4px solid #2271b1;
-				border-radius: 0 4px 4px 0;
-			}
-			.next-sync-info .time-until {
-				color: #666;
-			}
-			.sync-overdue {
-				color: #d63638;
-			}
-			.last-sync-info .time-ago {
-				color: #666;
-			}
-			.brag-book-gallery-toggle-wrapper {
-				display: flex;
-				align-items: center;
-				gap: 12px;
-			}
-			.brag-book-gallery-toggle {
-				position: relative;
-				display: inline-block;
-				width: 48px;
-				height: 24px;
-			}
-			.brag-book-gallery-toggle input {
-				opacity: 0;
-				width: 0;
-				height: 0;
-			}
-			.brag-book-gallery-toggle-slider {
-				position: absolute;
-				cursor: pointer;
-				top: 0;
-				left: 0;
-				right: 0;
-				bottom: 0;
-				background-color: #ccc;
-				transition: .3s;
-				border-radius: 24px;
-			}
-			.brag-book-gallery-toggle-slider:before {
-				position: absolute;
-				content: "";
-				height: 18px;
-				width: 18px;
-				left: 3px;
-				bottom: 3px;
-				background-color: white;
-				transition: .3s;
-				border-radius: 50%;
-			}
-			.brag-book-gallery-toggle input:checked + .brag-book-gallery-toggle-slider {
-				background-color: #2271b1;
-			}
-			.brag-book-gallery-toggle input:checked + .brag-book-gallery-toggle-slider:before {
-				transform: translateX(24px);
-			}
-		</style>
 
 		<script>
 		jQuery(document).ready(function($) {
@@ -460,6 +361,282 @@ class Sync_Page extends Settings_Base {
 		});
 		</script>
 		<?php
+	}
+
+	/**
+	 * Render Delete All Data danger zone section
+	 *
+	 * Displays a destructive action section that allows administrators
+	 * to delete all synced procedures, doctors, and cases.
+	 *
+	 * @since 3.4.0
+	 * @return void
+	 */
+	private function render_delete_all_data_section(): void {
+		?>
+		<div class="brag-book-gallery-section brag-book-gallery-danger-zone">
+			<h2><?php esc_html_e( 'Danger Zone', 'brag-book-gallery' ); ?></h2>
+			<p class="description">
+				<?php esc_html_e( 'Irreversible actions that will permanently remove data from this site.', 'brag-book-gallery' ); ?>
+			</p>
+
+			<div class="danger-zone-action" style="margin-top: 16px;">
+				<div class="danger-zone-info">
+					<strong><?php esc_html_e( 'Delete All Synced Data', 'brag-book-gallery' ); ?></strong>
+					<p class="description">
+						<?php esc_html_e( 'Permanently delete all synced cases, procedures, and doctors from this WordPress site. This does not affect data on the BRAG book API.', 'brag-book-gallery' ); ?>
+					</p>
+				</div>
+				<button type="button" class="button button-danger" id="brag-book-delete-all-data">
+					<span class="dashicons dashicons-trash" style="margin-top: 3px;"></span>
+					<?php esc_html_e( 'Delete All Data', 'brag-book-gallery' ); ?>
+				</button>
+			</div>
+		</div>
+
+		<!-- Delete All Data Confirmation Dialog -->
+		<dialog class="brag-book-gallery-dialog brag-book-gallery-dialog-danger" id="brag-book-delete-all-dialog">
+			<div class="brag-book-gallery-dialog-content">
+				<div class="brag-book-gallery-dialog-header">
+					<h3 class="brag-book-gallery-dialog-title">
+						<span class="dashicons dashicons-warning"></span>
+						<?php esc_html_e( 'Delete All Synced Data', 'brag-book-gallery' ); ?>
+					</h3>
+					<button type="button" class="brag-book-gallery-dialog-close" id="brag-book-delete-dialog-close">
+						<span class="dashicons dashicons-no-alt"></span>
+					</button>
+				</div>
+				<div class="brag-book-gallery-dialog-body">
+					<div class="brag-book-gallery-dialog-icon">
+						<span class="dashicons dashicons-trash"></span>
+					</div>
+					<div class="brag-book-gallery-dialog-message">
+						<p><strong><?php esc_html_e( 'Are you sure? This action cannot be undone.', 'brag-book-gallery' ); ?></strong></p>
+						<p><?php esc_html_e( 'This will permanently delete all synced:', 'brag-book-gallery' ); ?></p>
+						<ul style="margin: 8px 0 8px 20px; list-style: disc;">
+							<li><?php esc_html_e( 'Cases (posts)', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Procedures (taxonomy terms)', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Doctors (taxonomy terms)', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<p>
+							<?php
+							printf(
+								/* translators: %s: the word DELETE in bold */
+								esc_html__( 'Type %s below to confirm.', 'brag-book-gallery' ),
+								'<strong>DELETE</strong>'
+							);
+							?>
+						</p>
+						<input type="text" id="brag-book-delete-confirm-input" placeholder="DELETE" autocomplete="off" style="width: 100%; margin-top: 8px; padding: 8px 12px; border: 2px solid #e2e8f0; border-radius: 6px;" />
+					</div>
+				</div>
+				<div class="brag-book-gallery-dialog-footer">
+					<button type="button" class="button" id="brag-book-delete-dialog-cancel">
+						<?php esc_html_e( 'Cancel', 'brag-book-gallery' ); ?>
+					</button>
+					<button type="button" class="button button-danger" id="brag-book-delete-confirm-btn" disabled>
+						<span class="dashicons dashicons-trash" style="margin-top: 3px;"></span>
+						<?php esc_html_e( 'Delete Everything', 'brag-book-gallery' ); ?>
+					</button>
+				</div>
+			</div>
+		</dialog>
+
+		<script>
+		jQuery(document).ready(function($) {
+			var $dialog = document.getElementById('brag-book-delete-all-dialog');
+			var $confirmInput = $('#brag-book-delete-confirm-input');
+			var $confirmBtn = $('#brag-book-delete-confirm-btn');
+
+			// Open dialog
+			$('#brag-book-delete-all-data').on('click', function() {
+				$confirmInput.val('');
+				$confirmBtn.prop('disabled', true);
+				$dialog.showModal();
+			});
+
+			// Close dialog
+			$('#brag-book-delete-dialog-close, #brag-book-delete-dialog-cancel').on('click', function() {
+				$dialog.close();
+			});
+
+			// Enable confirm button when DELETE is typed
+			$confirmInput.on('input', function() {
+				$confirmBtn.prop('disabled', $(this).val() !== 'DELETE');
+			});
+
+			// Handle deletion
+			$confirmBtn.on('click', function() {
+				var $btn = $(this);
+				$btn.prop('disabled', true).text('<?php echo esc_js( __( 'Deleting...', 'brag-book-gallery' ) ); ?>');
+
+				$.ajax({
+					url: ajaxurl,
+					type: 'POST',
+					data: {
+						action: 'brag_book_delete_all_data',
+						nonce: '<?php echo esc_js( wp_create_nonce( 'brag_book_delete_all_data' ) ); ?>'
+					},
+					success: function(response) {
+						$dialog.close();
+						if (response.success) {
+							var msg = response.data.message || '<?php echo esc_js( __( 'All data has been deleted.', 'brag-book-gallery' ) ); ?>';
+							alert(msg);
+							location.reload();
+						} else {
+							alert(response.data.message || '<?php echo esc_js( __( 'Failed to delete data.', 'brag-book-gallery' ) ); ?>');
+						}
+					},
+					error: function() {
+						$dialog.close();
+						alert('<?php echo esc_js( __( 'An error occurred. Please try again.', 'brag-book-gallery' ) ); ?>');
+					},
+					complete: function() {
+						$btn.prop('disabled', false).html('<span class="dashicons dashicons-trash" style="margin-top: 3px;"></span> <?php echo esc_js( __( 'Delete Everything', 'brag-book-gallery' ) ); ?>');
+					}
+				});
+			});
+
+			// Close on backdrop click
+			$dialog.addEventListener('click', function(e) {
+				if (e.target === $dialog) {
+					$dialog.close();
+				}
+			});
+		});
+		</script>
+		<?php
+	}
+
+	/**
+	 * Handle AJAX request to toggle API environment
+	 *
+	 * @since 3.4.0
+	 * @return void
+	 */
+	public function handle_toggle_api_environment(): void {
+		if ( ! wp_verify_nonce( $_POST['nonce'] ?? '', 'brag_book_toggle_api_environment' ) ) {
+			wp_send_json_error( [ 'message' => __( 'Security check failed.', 'brag-book-gallery' ) ] );
+		}
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( [ 'message' => __( 'Insufficient permissions.', 'brag-book-gallery' ) ] );
+		}
+
+		$environment = sanitize_text_field( $_POST['environment'] ?? '' );
+
+		if ( $environment === 'staging' ) {
+			update_option( 'brag_book_gallery_api_base_url', 'https://staging.bragbookgallery.com' );
+		} else {
+			delete_option( 'brag_book_gallery_api_base_url' );
+		}
+
+		wp_send_json_success( [
+			'message'     => sprintf(
+				/* translators: %s: environment name */
+				__( 'API environment switched to %s.', 'brag-book-gallery' ),
+				$environment
+			),
+			'environment' => $environment,
+		] );
+	}
+
+	/**
+	 * Handle AJAX request to delete all synced data
+	 *
+	 * Deletes all cases (posts), procedures (taxonomy terms),
+	 * and doctors (taxonomy terms) from the WordPress site.
+	 *
+	 * @since 3.4.0
+	 * @return void
+	 */
+	public function handle_delete_all_data(): void {
+		if ( ! wp_verify_nonce( $_POST['nonce'] ?? '', 'brag_book_delete_all_data' ) ) {
+			wp_send_json_error( [ 'message' => __( 'Security check failed.', 'brag-book-gallery' ) ] );
+		}
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( [ 'message' => __( 'Insufficient permissions.', 'brag-book-gallery' ) ] );
+		}
+
+		$deleted_cases      = 0;
+		$deleted_procedures = 0;
+		$deleted_doctors    = 0;
+
+		// Delete all cases
+		$cases = get_posts( [
+			'post_type'      => Post_Types::POST_TYPE_CASES,
+			'posts_per_page' => -1,
+			'post_status'    => 'any',
+			'fields'         => 'ids',
+		] );
+
+		foreach ( $cases as $case_id ) {
+			if ( wp_delete_post( $case_id, true ) ) {
+				$deleted_cases++;
+			}
+		}
+
+		// Delete all procedure terms
+		$procedures = get_terms( [
+			'taxonomy'   => Taxonomies::TAXONOMY_PROCEDURES,
+			'hide_empty' => false,
+			'fields'     => 'ids',
+		] );
+
+		if ( ! is_wp_error( $procedures ) ) {
+			foreach ( $procedures as $term_id ) {
+				if ( wp_delete_term( $term_id, Taxonomies::TAXONOMY_PROCEDURES ) ) {
+					$deleted_procedures++;
+				}
+			}
+		}
+
+		// Delete all doctor terms
+		$doctors = get_terms( [
+			'taxonomy'   => Taxonomies::TAXONOMY_DOCTORS,
+			'hide_empty' => false,
+			'fields'     => 'ids',
+		] );
+
+		if ( ! is_wp_error( $doctors ) ) {
+			foreach ( $doctors as $term_id ) {
+				if ( wp_delete_term( $term_id, Taxonomies::TAXONOMY_DOCTORS ) ) {
+					$deleted_doctors++;
+				}
+			}
+		}
+
+		// Clear related transients and sync status
+		delete_option( 'brag_book_gallery_last_sync_time' );
+		delete_option( 'brag_book_gallery_last_sync_status' );
+		delete_option( 'brag_book_gallery_last_sync_source' );
+
+		// Clear API cache
+		global $wpdb;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$wpdb->query(
+			"DELETE FROM {$wpdb->options}
+			WHERE option_name LIKE '_transient_brag_book_gallery_transient_%'
+			OR option_name LIKE '_transient_timeout_brag_book_gallery_transient_%'"
+		);
+
+		wp_cache_flush();
+
+		wp_send_json_success( [
+			'message' => sprintf(
+				/* translators: 1: number of cases, 2: number of procedures, 3: number of doctors */
+				__( 'Successfully deleted %1$d cases, %2$d procedures, and %3$d doctors.', 'brag-book-gallery' ),
+				$deleted_cases,
+				$deleted_procedures,
+				$deleted_doctors
+			),
+			'deleted' => [
+				'cases'      => $deleted_cases,
+				'procedures' => $deleted_procedures,
+				'doctors'    => $deleted_doctors,
+			],
+		] );
 	}
 
 	/**

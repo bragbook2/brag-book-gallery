@@ -65,52 +65,220 @@
 	background: var(--slate-800);
 }
 
-.brag-book-gallery-system-info {
-	background: var(--slate-50);
+// -----------------------------------------------------------------------------
+// System Status rows
+// -----------------------------------------------------------------------------
+
+.system-status-rows {
 	border: var(--space-px) solid var(--slate-200);
 	border-radius: var(--rounded-lg);
 	overflow: hidden;
+	margin-block-end: var(--space-6);
+}
+
+.system-status-row {
+	display: flex;
+	align-items: center;
+	padding: var(--space-3) var(--space-4);
+	background: white;
+
+	&--alt {
+		background: var(--slate-50);
+	}
+
+	& + & {
+		border-top: var(--space-px) solid var(--slate-100);
+	}
+}
+
+.system-status-label {
+	flex: 0 0 200px;
+	font-weight: var(--font-medium);
+	color: var(--slate-700);
+	font-size: var(--text-sm);
+}
+
+.system-status-value {
+	flex: 1;
+	color: var(--slate-900);
+	font-size: var(--text-sm);
+}
+
+.system-status-indicator {
+	flex-shrink: 0;
+	margin-inline-start: var(--space-4);
+}
+
+.status-badge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: var(--space-7);
+	height: var(--space-7);
+	border-radius: var(--rounded-full);
+
+	svg {
+		display: block;
+	}
+
+	&--success {
+		background: var(--green-100);
+		color: var(--green-700);
+	}
+
+	&--error {
+		background: var(--red-100);
+		color: var(--red-700);
+	}
+}
+
+// -----------------------------------------------------------------------------
+// Database Info — Plugin Options table
+// -----------------------------------------------------------------------------
+
+.debug-db-table-wrapper {
+	border: var(--space-px) solid var(--slate-200);
+	border-radius: var(--rounded-lg);
+	overflow: hidden;
+	margin-block-end: var(--space-6);
+}
+
+.debug-db-table-head {
+	display: flex;
+	background: var(--slate-50);
+	border-bottom: var(--space-px) solid var(--slate-200);
+}
+
+.debug-db-table-th {
+	padding: var(--space-3) var(--space-4);
+	font-weight: var(--font-medium);
+	font-size: var(--text-xs);
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: var(--slate-500);
+
+	&--name {
+		flex: 1;
+	}
+
+	&--size {
+		flex: 0 0 120px;
+		text-align: right;
+	}
+}
+
+.debug-db-table-row {
+	display: flex;
+	background: white;
+
+	&--alt {
+		background: var(--slate-50);
+	}
+
+	& + & {
+		border-top: var(--space-px) solid var(--slate-100);
+	}
+}
+
+.debug-db-table-cell {
+	padding: var(--space-3) var(--space-4);
+	font-size: var(--text-sm);
+	color: var(--slate-900);
+
+	&--name {
+		flex: 1;
+		min-width: 0;
+
+		code {
+			background: var(--slate-100);
+			padding: var(--space-0-5) var(--space-1-5);
+			border-radius: var(--rounded-sm);
+			font-size: var(--text-xs);
+			word-break: break-all;
+		}
+	}
+
+	&--size {
+		flex: 0 0 120px;
+		text-align: right;
+		color: var(--slate-600);
+	}
+}
+
+// -----------------------------------------------------------------------------
+// System Information — terminal style in accordion
+// -----------------------------------------------------------------------------
+
+.system-info-accordion {
+	margin-block-start: var(--space-6);
+}
+
+.system-info-accordion-content {
+	padding: var(--space-4);
+}
+
+.system-info-actions {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
 	margin-block-end: var(--space-4);
 }
 
-.brag-book-gallery-system-info pre {
+.system-info-terminal {
+	background: var(--slate-900);
+	border: var(--space-px) solid var(--slate-700);
+	border-radius: var(--rounded-lg);
+	overflow: auto;
+	max-width: 100%;
+}
+
+.system-info-terminal pre {
 	display: block;
 	margin: 0;
 	padding: var(--space-4);
-	background: var(--slate-50);
-	color: var(--slate-900);
+	background: var(--slate-900);
+	color: var(--green-400);
 	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 	font-size: var(--text-sm);
 	line-height: var(--leading-relaxed);
-	max-block-size: var(--space-96);
+	max-height: 400px;
 	overflow: auto;
 	white-space: pre;
 	word-wrap: normal;
 	tab-size: 4;
 }
 
-/* Custom scrollbar for system info */
-.brag-book-gallery-system-info pre::-webkit-scrollbar {
+.system-info-terminal pre::-webkit-scrollbar {
 	inline-size: var(--space-2);
 	block-size: var(--space-2);
 }
 
-.brag-book-gallery-system-info pre::-webkit-scrollbar-track {
-	background: var(--slate-100);
+.system-info-terminal pre::-webkit-scrollbar-track {
+	background: var(--slate-800);
 	border-radius: var(--rounded);
 }
 
-.brag-book-gallery-system-info pre::-webkit-scrollbar-thumb {
-	background: var(--slate-400);
+.system-info-terminal pre::-webkit-scrollbar-thumb {
+	background: var(--slate-600);
 	border-radius: var(--rounded);
 }
 
-.brag-book-gallery-system-info pre::-webkit-scrollbar-thumb:hover {
+.system-info-terminal pre::-webkit-scrollbar-thumb:hover {
 	background: var(--slate-500);
 }
 
-.brag-book-gallery-system-info pre::-webkit-scrollbar-corner {
-	background: var(--slate-100);
+.system-info-terminal pre::-webkit-scrollbar-corner {
+	background: var(--slate-800);
+}
+
+.system-info-metrics {
+	margin-block-start: var(--space-3);
+	padding: var(--space-2) var(--space-3);
+	background: var(--slate-50);
+	border-inline-start: 3px solid var(--blue-500);
+	border-radius: var(--rounded-sm);
+	color: var(--slate-600);
+	font-size: var(--text-xs);
 }
 
 .brag-book-gallery-copy-feedback {
@@ -130,4 +298,346 @@
 
 .brag-book-gallery-copy-feedback.show {
 	opacity: 1;
+}
+
+// -----------------------------------------------------------------------------
+// Debug Logs
+// -----------------------------------------------------------------------------
+
+.brag-book-gallery-debug-logs {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-5);
+}
+
+.debug-logs-settings {
+	background: white;
+	border: var(--space-px) solid var(--slate-200);
+	border-radius: var(--rounded-lg);
+	padding: var(--space-5);
+}
+
+.debug-logs-setting-row {
+	display: flex;
+	align-items: center;
+	padding: var(--space-3) 0;
+
+	& + & {
+		border-top: var(--space-px) solid var(--slate-100);
+	}
+
+	&--actions {
+		padding-top: var(--space-4);
+		border-top: var(--space-px) solid var(--slate-200);
+	}
+
+	&__label {
+		flex: 0 0 160px;
+		font-weight: var(--font-medium);
+		font-size: var(--text-sm);
+		color: var(--slate-700);
+	}
+
+	&__control {
+		flex: 1;
+	}
+}
+
+.debug-logs-level-select {
+	border: var(--space-px) solid var(--slate-300);
+	border-radius: var(--rounded-md);
+	padding: var(--space-1-5) var(--space-3);
+	font-size: var(--text-sm);
+	background: white;
+	min-width: 200px;
+	transition: border-color 0.15s ease;
+
+	&:focus {
+		border-color: var(--blue-500);
+		outline: none;
+		box-shadow: 0 0 0 2px rgb(59 130 246 / 0.15);
+	}
+}
+
+.debug-logs-file-meta {
+	background: var(--slate-50);
+	border: var(--space-px) solid var(--slate-200);
+	border-radius: var(--rounded-lg);
+	padding: var(--space-4);
+
+	&__items {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-4) var(--space-6);
+	}
+
+	&__item {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+	}
+
+	&__label {
+		font-weight: var(--font-medium);
+		font-size: var(--text-xs);
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: var(--slate-500);
+	}
+
+	&__value {
+		font-size: var(--text-sm);
+		color: var(--slate-900);
+	}
+
+	code {
+		background: white;
+		padding: var(--space-0-5) var(--space-1-5);
+		border-radius: var(--rounded-sm);
+		font-size: var(--text-xs);
+		border: var(--space-px) solid var(--slate-200);
+	}
+}
+
+.debug-logs-truncation-notice {
+	margin-top: var(--space-3);
+	padding: var(--space-2) var(--space-3);
+	background: var(--amber-50);
+	border: var(--space-px) solid var(--amber-200);
+	border-radius: var(--rounded-md);
+	font-size: var(--text-sm);
+	color: var(--amber-800);
+}
+
+.debug-logs-actions {
+	display: flex;
+	gap: var(--space-2);
+}
+
+.debug-logs-empty {
+	background: var(--slate-50);
+	border: var(--space-px) solid var(--slate-200);
+	border-radius: var(--rounded-lg);
+	padding: var(--space-5);
+	color: var(--slate-600);
+	font-size: var(--text-sm);
+
+	p {
+		margin: var(--space-2) 0;
+
+		&:first-child {
+			margin-top: 0;
+		}
+	}
+}
+
+// -----------------------------------------------------------------------------
+// API Test panel
+// -----------------------------------------------------------------------------
+
+.api-test-config {
+	background: var(--slate-50);
+	border: var(--space-px) solid var(--slate-200);
+	padding: var(--space-6);
+	border-radius: var(--rounded-lg);
+	margin-block: var(--space-6);
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-6);
+}
+
+.connection-status {
+	font-size: var(--text-base);
+
+	&--active {
+		color: var(--green-500);
+	}
+
+	&--inactive {
+		color: var(--red-500);
+	}
+}
+
+.config-info {
+	ul {
+		margin: var(--space-3) 0 0 var(--space-5);
+		list-style: none;
+	}
+
+	code {
+		background: white;
+		padding: var(--space-0-5) var(--space-1);
+		border-radius: var(--rounded-sm);
+		font-size: var(--text-xs);
+	}
+}
+
+.test-parameters {
+	border-top: var(--space-px) solid var(--slate-200);
+	padding-top: var(--space-6);
+
+	.description {
+		margin: var(--space-2) 0;
+	}
+}
+
+// Parameters table inside API test config
+.api-test-params-table {
+	width: 100%;
+	border-collapse: collapse;
+	margin-top: var(--space-3);
+
+	th,
+	td {
+		padding: var(--space-2) var(--space-1);
+		vertical-align: middle;
+	}
+
+	th {
+		width: 140px;
+		text-align: left;
+		font-weight: var(--font-medium);
+		font-size: var(--text-sm);
+		color: var(--slate-700);
+	}
+
+	.input-field {
+		border: var(--space-px) solid var(--slate-300);
+		border-radius: var(--rounded-md);
+		padding: var(--space-1-5) var(--space-3);
+		font-size: var(--text-sm);
+		transition: border-color 0.15s ease;
+
+		&:focus {
+			border-color: var(--blue-500);
+			outline: none;
+			box-shadow: 0 0 0 2px rgb(59 130 246 / 0.15);
+		}
+	}
+
+	.description {
+		font-size: var(--text-xs);
+		color: var(--slate-500);
+		margin-left: var(--space-2);
+	}
+}
+
+// Base URL select dropdown
+.api-test-base-url-select {
+	border: var(--space-px) solid var(--slate-300);
+	border-radius: var(--rounded-md);
+	padding: var(--space-1-5) var(--space-3);
+	font-size: var(--text-sm);
+	min-width: 350px;
+	background: white;
+	transition: border-color 0.15s ease;
+
+	&:focus {
+		border-color: var(--blue-500);
+		outline: none;
+		box-shadow: 0 0 0 2px rgb(59 130 246 / 0.15);
+	}
+}
+
+// Method badges
+.method-badge {
+	display: inline-block;
+	padding: var(--space-0-5) var(--space-2);
+	border-radius: var(--rounded);
+	font-size: var(--text-xs);
+	font-weight: var(--font-semibold);
+	text-transform: uppercase;
+	letter-spacing: 0.025em;
+}
+
+.method-get {
+	background: var(--green-100);
+	color: var(--green-700);
+}
+
+.method-post {
+	background: var(--blue-100);
+	color: var(--blue-700);
+}
+
+// Endpoints table container
+.api-test-container {
+	margin: var(--space-5) 0;
+}
+
+// Response area
+.api-response-container {
+	margin-top: var(--space-6);
+	background: white;
+	border: var(--space-px) solid var(--slate-200);
+	border-radius: var(--rounded-lg);
+	padding: var(--space-5);
+}
+
+.response-header {
+	display: flex;
+	align-items: center;
+	gap: var(--space-4);
+	margin-bottom: var(--space-4);
+	padding-bottom: var(--space-4);
+	border-bottom: var(--space-px) solid var(--slate-200);
+}
+
+.response-status {
+	font-weight: var(--font-semibold);
+	font-size: var(--text-sm);
+
+	&.success {
+		color: var(--green-600);
+	}
+
+	&.error {
+		color: var(--red-600);
+	}
+}
+
+.response-time {
+	color: var(--slate-500);
+	font-size: var(--text-sm);
+}
+
+.api-response-content,
+.api-request-content {
+	width: 100%;
+	border: var(--space-px) solid var(--slate-200);
+	border-radius: var(--rounded-md);
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+	font-size: var(--text-sm);
+	line-height: var(--leading-relaxed);
+	resize: vertical;
+}
+
+.request-details,
+.response-details {
+	margin-top: var(--space-5);
+
+	h4 {
+		margin: 0 0 var(--space-2) 0;
+		color: var(--slate-900);
+		font-size: var(--text-sm);
+		font-weight: var(--font-semibold);
+	}
+}
+
+.test-endpoint-btn {
+	&:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+}
+
+// CodeMirror overrides
+.api-response-container .CodeMirror {
+	border: var(--space-px) solid var(--slate-200);
+	border-radius: var(--rounded-md);
+	max-height: 400px;
+}
+
+.api-response-container .CodeMirror-scroll {
+	max-height: 400px;
 }

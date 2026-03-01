@@ -304,7 +304,7 @@ class API_Test_Page extends Settings_Base {
 								</li>
 							<?php endforeach; ?>
 						</ul>
-						<p><strong><?php esc_html_e( 'Base URL:', 'brag-book-gallery' ); ?></strong> <code>https://app.bragbookgallery.com</code></p>
+						<p><strong><?php esc_html_e( 'Base URL:', 'brag-book-gallery' ); ?></strong> <code><?php echo esc_html( get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' ) ); ?></code></p>
 					</div>
 					<div class="test-parameters">
 						<strong><?php esc_html_e( 'Test Parameters:', 'brag-book-gallery' ); ?></strong>
@@ -718,7 +718,7 @@ class API_Test_Page extends Settings_Base {
 			// Get all API tokens and property IDs as arrays
 			const apiTokens = <?php echo wp_json_encode( array_values( array_filter( $api_tokens ) ) ); ?>;
 			const websitePropertyIds = <?php echo wp_json_encode( array_values( array_filter( array_map( 'intval', $website_property_ids ) ) ) ); ?>;
-			const baseUrl = 'https://app.bragbookgallery.com';
+			const baseUrl = '<?php echo esc_js( get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' ) ); ?>';
 			const ajaxUrl = '<?php echo admin_url( 'admin-ajax.php' ); ?>';
 			const nonce = '<?php echo wp_create_nonce( 'brag_book_api_test' ); ?>';
 

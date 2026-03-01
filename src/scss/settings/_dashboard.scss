@@ -6,14 +6,15 @@
 
 // Welcome Hero Section
 .brag-book-gallery-welcome-hero {
-	background: var(--brag-book-gallery-primary);
+	background: linear-gradient(135deg, #8B1A1A 0%, var(--brag-book-gallery-primary) 100%);
 	color: var(--brag-book-gallery-white);
-	padding: 2.5rem;
-	border-radius: var(--space-1);
+	padding: 2rem 2.5rem;
+	border-radius: var(--rounded-lg);
 	margin-block-end: var(--space-6);
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+	box-shadow: var(--shadow-md);
 }
 
 .welcome-content {
@@ -21,15 +22,17 @@
 
 	h2 {
 		color: var(--brag-book-gallery-white);
-		font-size: 2rem;
+		font-size: var(--text-2xl);
+		font-weight: var(--font-bold);
 		margin-block-end: var(--space-2);
 	}
 }
 
 .welcome-description {
-	font-size: 1rem;
-	line-height: 1.5;
+	font-size: var(--text-lg);
+	line-height: var(--leading-relaxed);
 	margin-block-end: var(--space-4);
+	opacity: 0.9;
 }
 
 .welcome-actions {
@@ -141,7 +144,7 @@
 
 .resource-card {
 	background: white;
-	border: 1px solid var(--wp--custom--brag-book-gallery--color--lighter-grey);
+	border: 1px solid var(--wp--custom--brag-book-gallery--color--lighter-gray);
 	border-radius: var(--space-2);
 	padding: var(--space-4);
 	transition: all 0.3s ease;

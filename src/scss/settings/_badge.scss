@@ -30,3 +30,24 @@
 		color: var(--slate-600);
 	}
 }
+
+.status-dot {
+	display: inline-block;
+	width: 8px;
+	height: 8px;
+	border-radius: var(--rounded-full);
+	margin-inline-end: var(--space-1-5);
+	flex-shrink: 0;
+
+	&--success {
+		background: var(--green-500);
+	}
+
+	&--warning {
+		background: var(--amber-500);
+	}
+
+	&--error {
+		background: var(--red-500);
+	}
+}

@@ -65,50 +65,39 @@ final class Sync_Manual_Controls {
 	 */
 	public function render(): void {
 		?>
-		<table class="form-table brag-book-gallery-form-table">
-			<tr>
-				<th scope="row"><?php esc_html_e( 'Sync Control Center', 'brag-book-gallery' ); ?></th>
-				<td>
-					<!-- Enhanced sync control container with modern design -->
-					<div id="sync-control-center" class="sync-control-center">
+		<!-- Sync Control Center -->
+		<div id="sync-control-center" class="sync-control-center">
 
-						<!-- Main Control Panel -->
-						<div class="sync-control-panel">
+			<!-- Header with Status Badge -->
+			<div class="sync-control-header">
+				<div class="sync-control-title">
+					<h3><?php esc_html_e( 'Data Synchronization', 'brag-book-gallery' ); ?></h3>
+				</div>
+			</div>
 
-							<!-- Header with Status Badge -->
-							<div class="sync-control-header">
-								<div class="sync-control-title">
-									<h3><?php esc_html_e( 'Data Synchronization', 'brag-book-gallery' ); ?></h3>
-								</div>
-							</div>
+			<!-- BRAG book Sync Status -->
+			<?php $this->render_bragbook_sync_status(); ?>
 
-							<!-- BRAG book Sync Status -->
-							<?php $this->render_bragbook_sync_status(); ?>
+			<!-- Stage-Based Sync Controls -->
+			<div class="stage-sync-section">
+				<h4><?php esc_html_e( 'Stage-Based Sync', 'brag-book-gallery' ); ?></h4>
 
-							<!-- Stage-Based Sync Controls -->
-							<div class="stage-sync-section">
-								<h4><?php esc_html_e( 'Stage-Based Sync', 'brag-book-gallery' ); ?></h4>
+				<!-- File Status Indicators -->
+				<?php $this->render_file_status_indicators(); ?>
 
-								<!-- File Status Indicators -->
-								<?php $this->render_file_status_indicators(); ?>
+				<!-- Stage Buttons -->
+				<?php $this->render_stage_buttons(); ?>
 
-								<!-- Stage Buttons -->
-								<?php $this->render_stage_buttons(); ?>
+				<!-- Stage Progress -->
+				<?php $this->render_stage_progress(); ?>
 
-								<!-- Stage Progress -->
-								<?php $this->render_stage_progress(); ?>
+				<!-- Stage Status Panels -->
+				<?php $this->render_stage_status_panels(); ?>
 
-								<!-- Stage Status Panels -->
-								<?php $this->render_stage_status_panels(); ?>
-
-								<!-- Full Sync Controls -->
-								<?php $this->render_full_sync_controls(); ?>
-							</div>
-						</div>
-					</div>
-				</td>
-			</tr>
-		</table>
+				<!-- Full Sync Controls -->
+				<?php $this->render_full_sync_controls(); ?>
+			</div>
+		</div>
 
 		<!-- Results Section (Hidden by default) -->
 		<div id="sync-results" class="brag-book-gallery-section" style="display:none;">
@@ -223,7 +212,7 @@ final class Sync_Manual_Controls {
 			<h5><?php esc_html_e( 'Stage 1 Status', 'brag-book-gallery' ); ?></h5>
 			<div id="stage1-status-content" class="stage-status-content"></div>
 			<button type="button" id="delete-sync-data-btn" class="button button-link-delete" title="<?php esc_attr_e( 'Delete procedures.json file', 'brag-book-gallery' ); ?>">
-				<svg xmlns="http://www.w3.org/2000/svg" height="16px" viewBox="0 -960 960 960" width="16px" fill="currentColor" style="vertical-align: middle; margin-right: 4px;"><path d="m376-313.85 104-104 104 104L626.15-356l-104-104 104-104L584-606.15l-104 104-104-104L333.85-564l104 104-104 104L376-313.85ZM292.31-140Q262-140 241-161q-21-21-21-51.31V-720h-40v-60h180v-35.38h240V-780h180v60h-40v507.69Q740-182 719-161q-21 21-51.31 21H292.31Z"/></svg>
+				<svg xmlns="http://www.w3.org/2000/svg" height="16px" viewBox="0 -960 960 960" width="16px" fill="currentColor" class="sync-btn-icon"><path d="m376-313.85 104-104 104 104L626.15-356l-104-104 104-104L584-606.15l-104 104-104-104L333.85-564l104 104-104 104L376-313.85ZM292.31-140Q262-140 241-161q-21-21-21-51.31V-720h-40v-60h180v-35.38h240V-780h180v60h-40v507.69Q740-182 719-161q-21 21-51.31 21H292.31Z"/></svg>
 				<?php esc_html_e( 'Delete Sync Data', 'brag-book-gallery' ); ?>
 			</button>
 		</div>
@@ -233,7 +222,7 @@ final class Sync_Manual_Controls {
 			<h5><?php esc_html_e( 'Manifest Preview', 'brag-book-gallery' ); ?></h5>
 			<div id="manifest-preview-content" class="stage-status-content"></div>
 			<button type="button" id="delete-manifest-btn" class="button button-link-delete" title="<?php esc_attr_e( 'Delete manifest.json file', 'brag-book-gallery' ); ?>">
-				<svg xmlns="http://www.w3.org/2000/svg" height="16px" viewBox="0 -960 960 960" width="16px" fill="currentColor" style="vertical-align: middle; margin-right: 4px;"><path d="m376-313.85 104-104 104 104L626.15-356l-104-104 104-104L584-606.15l-104 104-104-104L333.85-564l104 104-104 104L376-313.85ZM292.31-140Q262-140 241-161q-21-21-21-51.31V-720h-40v-60h180v-35.38h240V-780h180v60h-40v507.69Q740-182 719-161q-21 21-51.31 21H292.31Z"/></svg>
+				<svg xmlns="http://www.w3.org/2000/svg" height="16px" viewBox="0 -960 960 960" width="16px" fill="currentColor" class="sync-btn-icon"><path d="m376-313.85 104-104 104 104L626.15-356l-104-104 104-104L584-606.15l-104 104-104-104L333.85-564l104 104-104 104L376-313.85ZM292.31-140Q262-140 241-161q-21-21-21-51.31V-720h-40v-60h180v-35.38h240V-780h180v60h-40v507.69Q740-182 719-161q-21 21-51.31 21H292.31Z"/></svg>
 				<?php esc_html_e( 'Delete Manifest', 'brag-book-gallery' ); ?>
 			</button>
 		</div>
@@ -252,7 +241,7 @@ final class Sync_Manual_Controls {
 			</div>
 			<div id="orphan-actions" style="display: none; margin-top: 10px;">
 				<button type="button" id="delete-orphans-btn" class="button button-link-delete">
-					<svg xmlns="http://www.w3.org/2000/svg" height="16px" viewBox="0 -960 960 960" width="16px" fill="currentColor" style="vertical-align: middle; margin-right: 4px;"><path d="m376-313.85 104-104 104 104L626.15-356l-104-104 104-104L584-606.15l-104 104-104-104L333.85-564l104 104-104 104L376-313.85ZM292.31-140Q262-140 241-161q-21-21-21-51.31V-720h-40v-60h180v-35.38h240V-780h180v60h-40v507.69Q740-182 719-161q-21 21-51.31 21H292.31Z"/></svg>
+					<svg xmlns="http://www.w3.org/2000/svg" height="16px" viewBox="0 -960 960 960" width="16px" fill="currentColor" class="sync-btn-icon"><path d="m376-313.85 104-104 104 104L626.15-356l-104-104 104-104L584-606.15l-104 104-104-104L333.85-564l104 104-104 104L376-313.85ZM292.31-140Q262-140 241-161q-21-21-21-51.31V-720h-40v-60h180v-35.38h240V-780h180v60h-40v507.69Q740-182 719-161q-21 21-51.31 21H292.31Z"/></svg>
 					<?php esc_html_e( 'Delete Orphaned Items', 'brag-book-gallery' ); ?>
 				</button>
 				<button type="button" id="skip-orphans-btn" class="button">
@@ -277,10 +266,11 @@ final class Sync_Manual_Controls {
 		?>
 		<div class="full-sync-controls">
 			<button type="button" id="full-sync-btn" class="button button-hero button-primary-dark" title="<?php esc_attr_e( 'Run all three stages sequentially', 'brag-book-gallery' ); ?>">
+				<svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="currentColor" class="sync-btn-icon"><path d="M160-160v-80h110l-16-14q-52-46-73-105t-21-119q0-111 66.5-197.5T400-790v84q-72 26-116 88.5T240-478q0 45 17 87.5t53 78.5l10 10v-98h80v240H160Zm400-10v-84q72-26 116-88.5T720-482q0-45-17-87.5T650-648l-10-10v98h-80v-240h240v80H690l16 14q49 49 71.5 106.5T800-482q0 111-66.5 197.5T560-170Z"/></svg>
 				<?php esc_html_e( 'Full Sync', 'brag-book-gallery' ); ?>
 			</button>
 			<button type="button" id="stop-sync-btn" class="button button-link-delete" style="display: none;" title="<?php esc_attr_e( 'Stop the running sync process', 'brag-book-gallery' ); ?>">
-				<span class="dashicons dashicons-no"></span>
+				<svg xmlns="http://www.w3.org/2000/svg" height="16px" viewBox="0 -960 960 960" width="16px" fill="currentColor" class="sync-btn-icon"><path d="M320-320h320v-320H320v320ZM480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Z"/></svg>
 				<?php esc_html_e( 'Stop', 'brag-book-gallery' ); ?>
 			</button>
 		</div>

@@ -1533,16 +1533,16 @@ class Communications {
 
 			// Build table row HTML with proper escaping.
 			$html .= sprintf(
-				'<tr class="brag-book-communications-table-row communications-row" data-id="%d">
-					<td class="brag-book-communications-table-cell communications-name"><strong>%s</strong></td>
-					<td class="brag-book-communications-table-cell communications-email"><a href="mailto:%s">%s</a></td>
-					<td class="brag-book-communications-table-cell communications-phone"><a href="tel:%s">%s</a></td>
-					<td class="brag-book-communications-table-cell communications-date">%s</td>
-					<td class="brag-book-communications-table-cell communications-description">
+				'<tr class="brag-book-consultation-table-row communications-row" data-id="%d">
+					<td class="brag-book-consultation-table-cell consultation-name"><strong>%s</strong></td>
+					<td class="brag-book-consultation-table-cell consultation-email"><a href="mailto:%s">%s</a></td>
+					<td class="brag-book-consultation-table-cell consultation-phone"><a href="tel:%s">%s</a></td>
+					<td class="brag-book-consultation-table-cell consultation-date" data-date="%s"><span class="consultation-date-icon" title="%s"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></span></td>
+					<td class="brag-book-consultation-table-cell consultation-description">
 						<div class="description-content">%s</div>
 						%s
 					</td>
-					<td class="brag-book-communications-table-cell communications-actions">
+					<td class="brag-book-consultation-table-cell consultation-actions">
 						<button class="button button-small button-secondary view-communications" data-id="%d" title="%s">
 							<span class="dashicons dashicons-visibility"></span> %s
 						</button>
@@ -1557,7 +1557,8 @@ class Communications {
 				esc_html( $email ),
 				esc_attr( $phone ),
 				esc_html( $phone ),
-				esc_html( $date ),
+				esc_attr( $date ),
+				esc_attr( $date ),
 				wp_kses_post( $description ),
 				( strlen( $full_description ) > $truncate_length ?
 					'<div class="description-full" style="display:none;">' . wp_kses_post( $full_description ) . '</div>' :
@@ -1773,36 +1774,32 @@ class Communications {
 	 */
 	private function render_admin_page( string $nonce, string $delete_nonce ): void {
 		?>
-		<div class="wrap brag-book-gallery-admin-wrap">
-			<div class="brag-book-gallery-section">
-				<h2><?php esc_html_e( 'Consultation Entries', 'brag-book-gallery' ); ?></h2>
+		<div class="brag-book-gallery-section">
+			<h2><?php esc_html_e( 'Consultation Entries', 'brag-book-gallery' ); ?></h2>
 
-				<?php $this->render_admin_scripts( $nonce, $delete_nonce ); ?>
+			<?php $this->render_admin_scripts( $nonce, $delete_nonce ); ?>
 
-				<div class="brag-book-gallery-page-loading" style="display: none;">
-					<p><?php esc_html_e( 'Loading consultation entries...', 'brag-book-gallery' ); ?></p>
-				</div>
-
-				<table class="wp-list-table widefat fixed striped consultation-entries" style="width: 100%;">
-					<thead>
-					<tr>
-						<th style="width: 15%;"><?php esc_html_e( 'Name', 'brag-book-gallery' ); ?></th>
-						<th style="width: 18%;"><?php esc_html_e( 'Email', 'brag-book-gallery' ); ?></th>
-						<th style="width: 12%;"><?php esc_html_e( 'Phone', 'brag-book-gallery' ); ?></th>
-						<th style="width: 12%;"><?php esc_html_e( 'Date', 'brag-book-gallery' ); ?></th>
-						<th style="width: 33%;"><?php esc_html_e( 'Message', 'brag-book-gallery' ); ?></th>
-						<th style="width: 10%; text-align: center;"><?php esc_html_e( 'Actions', 'brag-book-gallery' ); ?></th>
+			<div class="brag-book-consultation-table-wrapper">
+				<table class="brag-book-consultation-table">
+					<thead class="brag-book-consultation-table-head">
+					<tr class="brag-book-consultation-table-row brag-book-consultation-table-row--head">
+						<th class="brag-book-consultation-table-header brag-book-consultation-table-header--name"><?php esc_html_e( 'Name', 'brag-book-gallery' ); ?></th>
+						<th class="brag-book-consultation-table-header brag-book-consultation-table-header--email"><?php esc_html_e( 'Email', 'brag-book-gallery' ); ?></th>
+						<th class="brag-book-consultation-table-header brag-book-consultation-table-header--phone"><?php esc_html_e( 'Phone', 'brag-book-gallery' ); ?></th>
+						<th class="brag-book-consultation-table-header brag-book-consultation-table-header--date"><?php esc_html_e( 'Date', 'brag-book-gallery' ); ?></th>
+						<th class="brag-book-consultation-table-header brag-book-consultation-table-header--message"><?php esc_html_e( 'Message', 'brag-book-gallery' ); ?></th>
+						<th class="brag-book-consultation-table-header brag-book-consultation-table-header--actions"><?php esc_html_e( 'Actions', 'brag-book-gallery' ); ?></th>
 					</tr>
 					</thead>
 					<tbody class="brag_book_gallery_universal_container">
-					<tr>
-						<td colspan="6" style="text-align: center;">
+					<tr class="brag-book-consultation-table-row brag-book-consultation-table-row--loading">
+						<td class="brag-book-consultation-table-cell brag-book-consultation-table-cell--loading" colspan="6">
 							<?php esc_html_e( 'Loading communications entries...', 'brag-book-gallery' ); ?>
 						</td>
 					</tr>
 					</tbody>
 				</table>
-				<div class="brag-book-gallery-pagination-nav" style="margin-top: 20px;"></div>
+				<div class="brag-book-gallery-pagination-nav"></div>
 			</div>
 		</div>
 		<?php
@@ -1869,18 +1866,12 @@ class Communications {
 			 * @param {number} page Page number to load.
 			 */
 			const loadCommunicationsPosts = async function( page ) {
-				const loadingDiv = document.querySelector( '.brag-book-gallery-page-loading' );
 				const container = document.querySelector( '.brag_book_gallery_universal_container' );
 				const paginationNav = document.querySelector( '.brag-book-gallery-pagination-nav' );
 
-				// Show loading state.
-				if ( loadingDiv ) {
-					loadingDiv.style.display = 'block';
-				}
-
 				// Show loading message in table.
 				if ( container ) {
-					container.innerHTML = '<tr><td colspan="6" style="text-align: center;">Loading...</td></tr>';
+					container.innerHTML = '<tr class="brag-book-consultation-table-row brag-book-consultation-table-row--loading"><td class="brag-book-consultation-table-cell brag-book-consultation-table-cell--loading" colspan="6">Loading...</td></tr>';
 				}
 
 				// Prepare form data.
@@ -1905,17 +1896,12 @@ class Communications {
 						paginationNav.innerHTML = data.data.pagination;
 					} else {
 						// Show error message.
-						container.innerHTML = '<tr><td colspan="6">' + ( data.data || 'Error loading data' ) + '</td></tr>';
+						container.innerHTML = '<tr class="brag-book-consultation-table-row brag-book-consultation-table-row--loading"><td class="brag-book-consultation-table-cell brag-book-consultation-table-cell--loading" colspan="6">' + ( data.data || 'Error loading data' ) + '</td></tr>';
 					}
 				} catch ( error ) {
 					// Handle fetch error.
 					console.error( 'Error loading communications entries:', error );
-					container.innerHTML = '<tr><td colspan="6">Failed to load communications entries.</td></tr>';
-				} finally {
-					// Hide loading state.
-					if ( loadingDiv ) {
-						loadingDiv.style.display = 'none';
-					}
+					container.innerHTML = '<tr class="brag-book-consultation-table-row brag-book-consultation-table-row--loading"><td class="brag-book-consultation-table-cell brag-book-consultation-table-cell--loading" colspan="6">Failed to load communications entries.</td></tr>';
 				}
 			};
 
@@ -1959,7 +1945,7 @@ class Communications {
 							// Check if table is empty.
 							const tbody = document.querySelector( '.brag_book_gallery_universal_container' );
 							if ( tbody && tbody.children.length === 0 ) {
-								tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px;">No communications entries found.</td></tr>';
+								tbody.innerHTML = '<tr class="brag-book-consultation-table-row brag-book-consultation-table-row--loading"><td class="brag-book-consultation-table-cell brag-book-consultation-table-cell--loading" colspan="6">No communications entries found.</td></tr>';
 							}
 						}, 300 );
 					} else {
@@ -1985,69 +1971,77 @@ class Communications {
 				const postId = button.dataset.id;
 
 				// Get entry details from the row.
-				const name = row.querySelector( '.communications-name strong' ).textContent;
-				const email = row.querySelector( '.communications-email a' ).textContent;
-				const phone = row.querySelector( '.communications-phone a' ).textContent;
-				const date = row.querySelector( '.communications-date' ).textContent;
+				const name = row.querySelector( '.consultation-name strong' ).textContent;
+				const email = row.querySelector( '.consultation-email a' ).textContent;
+				const phone = row.querySelector( '.consultation-phone a' ).textContent;
+				const date = row.querySelector( '.consultation-date' ).dataset.date;
 				const fullDesc = row.querySelector( '.description-full' );
 				const contentDiv = row.querySelector( '.description-content' );
 				const message = fullDesc ? fullDesc.textContent : contentDiv.textContent;
 
-				// Check if dialog element is supported.
-				const supportsDialog = typeof HTMLDialogElement === 'function';
-
 				// Create or get the dialog.
 				let dialog = document.getElementById( 'communications-detail-dialog' );
 				if ( ! dialog ) {
-					if ( supportsDialog ) {
-						dialog = document.createElement( 'dialog' );
-					} else {
-						dialog = document.createElement( 'div' );
-						dialog.setAttribute( 'role', 'dialog' );
-						dialog.setAttribute( 'aria-modal', 'true' );
-					}
+					dialog = document.createElement( 'dialog' );
 					dialog.id = 'communications-detail-dialog';
-					dialog.className = 'communications-dialog';
+					dialog.className = 'brag-book-gallery-dialog communications-detail-dialog';
 					document.body.appendChild( dialog );
 				}
 
-				// Populate dialog content (with proper escaping).
+				// Populate dialog content using the standard dialog pattern.
 				dialog.innerHTML = `
-					<div class="communications-dialog-content">
-						<div class="communications-dialog-header">
-							<h2>Communications Details</h2>
-							<button type="button" class="dialog-close" aria-label="Close">
-								<span class="dashicons dashicons-no-alt"></span>
+					<div class="brag-book-gallery-dialog-content">
+						<div class="brag-book-gallery-dialog-header">
+							<h3 class="brag-book-gallery-dialog-title">Communication Details</h3>
+							<button type="button" class="brag-book-gallery-dialog-close dialog-close" aria-label="Close">
+								<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
 							</button>
 						</div>
 						<div class="communications-dialog-body">
-							<div class="detail-row">
-								<label>Name:</label>
-								<div class="detail-value"><strong>${escapeHtml( name )}</strong></div>
-							</div>
-							<div class="detail-row">
-								<label>Email:</label>
-								<div class="detail-value">
-									<a href="mailto:${escapeHtml( email )}">${escapeHtml( email )}</a>
+							<div class="detail-grid">
+								<div class="detail-card">
+									<label class="detail-card-label">
+										<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+										Name
+									</label>
+									<div class="detail-card-value"><strong>${escapeHtml( name )}</strong></div>
+								</div>
+								<div class="detail-card">
+									<label class="detail-card-label">
+										<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+										Date
+									</label>
+									<div class="detail-card-value">${escapeHtml( date )}</div>
+								</div>
+								<div class="detail-card">
+									<label class="detail-card-label">
+										<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+										Email
+									</label>
+									<div class="detail-card-value">
+										<a href="mailto:${escapeHtml( email )}">${escapeHtml( email )}</a>
+									</div>
+								</div>
+								<div class="detail-card">
+									<label class="detail-card-label">
+										<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+										Phone
+									</label>
+									<div class="detail-card-value">
+										<a href="tel:${escapeHtml( phone )}">${escapeHtml( phone )}</a>
+									</div>
 								</div>
 							</div>
-							<div class="detail-row">
-								<label>Phone:</label>
-								<div class="detail-value">
-									<a href="tel:${escapeHtml( phone )}">${escapeHtml( phone )}</a>
-								</div>
-							</div>
-							<div class="detail-row">
-								<label>Date Submitted:</label>
-								<div class="detail-value">${escapeHtml( date )}</div>
-							</div>
-							<div class="detail-row">
-								<label>Message:</label>
-								<div class="detail-value message-content">${escapeHtml( message )}</div>
+							<div class="detail-card detail-card--full">
+								<label class="detail-card-label">
+									<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+									Message
+								</label>
+								<div class="detail-card-value message-content">${escapeHtml( message )}</div>
 							</div>
 						</div>
-						<div class="communications-dialog-footer">
-							<button type="button" class="button button-primary reply-email" data-email="${escapeHtml( email )}">
+						<div class="brag-book-gallery-dialog-footer">
+							<button type="button" class="button reply-email" data-email="${escapeHtml( email )}">
 								<span class="dashicons dashicons-email"></span> Reply via Email
 							</button>
 							<button type="button" class="button dialog-close-btn">Close</button>
@@ -2056,40 +2050,11 @@ class Communications {
 				`;
 
 				// Show the dialog.
-				if ( supportsDialog && dialog.showModal ) {
-					dialog.showModal();
-				} else {
-					// Fallback for browsers that don't support dialog.
-					dialog.style.display = 'block';
-					dialog.style.position = 'fixed';
-					dialog.style.top = '50%';
-					dialog.style.left = '50%';
-					dialog.style.transform = 'translate(-50%, -50%)';
-					dialog.style.zIndex = '10000';
-
-					// Create backdrop.
-					let backdrop = document.getElementById( 'communications-backdrop' );
-					if ( ! backdrop ) {
-						backdrop = document.createElement( 'div' );
-						backdrop.id = 'communications-backdrop';
-						backdrop.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);backdrop-filter:blur(2px);z-index:9999;';
-						document.body.appendChild( backdrop );
-					} else {
-						backdrop.style.display = 'block';
-					}
-				}
+				dialog.showModal();
 
 				// Function to close the dialog.
 				const closeDialog = function() {
-					if ( supportsDialog && dialog.close ) {
-						dialog.close();
-					} else {
-						dialog.style.display = 'none';
-						const backdrop = document.getElementById( 'communications-backdrop' );
-						if ( backdrop ) {
-							backdrop.style.display = 'none';
-						}
-					}
+					dialog.close();
 				};
 
 				// Handle close button clicks.
@@ -2106,26 +2071,12 @@ class Communications {
 					} );
 				}
 
-				// Close dialog on outside click.
+				// Close dialog on outside click (backdrop).
 				dialog.addEventListener( 'click', function( e ) {
 					if ( e.target === dialog ) {
 						closeDialog();
 					}
 				} );
-
-				// Close dialog on ESC key.
-				if ( supportsDialog ) {
-					dialog.addEventListener( 'cancel', function( e ) {
-						e.preventDefault();
-						closeDialog();
-					} );
-				} else {
-					document.addEventListener( 'keydown', function( e ) {
-						if ( e.key === 'Escape' && dialog.style.display === 'block' ) {
-							closeDialog();
-						}
-					} );
-				}
 			};
 
 			// Initial load.

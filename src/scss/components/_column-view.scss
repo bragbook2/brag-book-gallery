@@ -81,7 +81,7 @@
 
 .brag-book-gallery-procedure-group {
 	background: var(--wp--custom--brag-book-gallery--color--white);
-	border: 1px solid var(--wp--custom--brag-book-gallery--color--lighter-grey);
+	border: 1px solid var(--wp--custom--brag-book-gallery--color--lighter-gray);
 	border-radius: var(--wp--custom--brag-book-gallery--rounded);
 	overflow: hidden;
 	box-shadow: var(--wp--custom--brag-book-gallery--shadow-xl);
@@ -93,7 +93,7 @@
 	overflow: hidden;
 	margin: 0;
 	padding: 0;
-	background: var(--wp--custom--brag-book-gallery--color--lighter-grey);
+	background: var(--wp--custom--brag-book-gallery--color--lighter-gray);
 
 	.brag-book-gallery-banner-image {
 		width: 100%;
@@ -150,7 +150,7 @@
 	width: 100%;
 	border-radius: var(--wp--custom--brag-book-gallery--rounded, 4px);
 	text-decoration: none;
-	border-bottom: 1px solid var(--wp--custom--brag-book-gallery--color--lighter-grey);
+	border-bottom: 1px solid var(--wp--custom--brag-book-gallery--color--lighter-gray);
 
 	&:hover,
 	&:focus {

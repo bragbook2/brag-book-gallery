@@ -18,8 +18,8 @@
 		padding-block: var(--wp--custom--brag-book-gallery--spacer--sm,8px);
 		padding-inline: var(--wp--custom--brag-book-gallery--spacer--lg,16px);
 		background-color: var(--wp--custom--brag-book-gallery--color--white,#FFF);
-		color: var(--wp--custom--brag-book-gallery--color--grey);
-		border: 1px solid var(--wp--custom--brag-book-gallery--color--light-grey);
+		color: var(--wp--custom--brag-book-gallery--color--gray);
+		border: 1px solid var(--wp--custom--brag-book-gallery--color--light-gray);
 		border-radius: var(--wp--custom--brag-book-gallery--rounded);
 		font-size: var(--wp--custom--brag-book-gallery--text-sm);
 		line-height: var(--wp--custom--brag-book-gallery--xl);
@@ -44,8 +44,8 @@
 
 		&:hover {
 			color: var(--wp--custom--brag-book-gallery--color--black);
-			background-color: var(--wp--custom--brag-book-gallery--color--lighter-grey);
-			border-color: var(--wp--custom--brag-book-gallery--color--light-grey);
+			background-color: var(--wp--custom--brag-book-gallery--color--lighter-gray);
+			border-color: var(--wp--custom--brag-book-gallery--color--light-gray);
 			box-shadow: var(--wp--custom--brag-book-gallery--shadow-lg);
 		}
 
@@ -78,7 +78,7 @@
 		top: calc( 100% + var(--wp--custom--brag-book-gallery--spacer--sm,8px) );
 		left: 0;
 		background-color: var(--wp--custom--brag-book-gallery--color--white,#FFF);
-		border: 1px solid var(--wp--custom--brag-book-gallery--color--light-grey);
+		border: 1px solid var(--wp--custom--brag-book-gallery--color--light-gray);
 		border-radius: var(--wp--custom--brag-book-gallery--rounded);
 		box-shadow: var(--wp--custom--brag-book-gallery--shadow-xl);
 		z-index: 50;
@@ -119,8 +119,8 @@
 	padding-block: var(--wp--custom--brag-book-gallery--spacer--sm,8px);
 	padding-inline: var(--wp--custom--brag-book-gallery--spacer--lg,16px);
 	background-color: var(--wp--custom--brag-book-gallery--color--white,#FFF);
-	color: var(--wp--custom--brag-book-gallery--color--grey);
-	border: 1px solid var(--wp--custom--brag-book-gallery--color--light-grey);
+	color: var(--wp--custom--brag-book-gallery--color--gray);
+	border: 1px solid var(--wp--custom--brag-book-gallery--color--light-gray);
 	border-radius: var(--wp--custom--brag-book-gallery--rounded);
 	font-size: var(--wp--custom--brag-book-gallery--text-sm);
 	line-height: var(--wp--custom--brag-book-gallery--xl);
@@ -141,7 +141,7 @@
 		svg {
 			width: var(--wp--custom--brag-book-gallery--spacer--lg,16px);
 			height: var(--wp--custom--brag-book-gallery--spacer--lg,16px);
-			color: var(--wp--custom--brag-book-gallery--color--grey);
+			color: var(--wp--custom--brag-book-gallery--color--gray);
 		}
 
 		span {
@@ -155,7 +155,7 @@
 	}
 
 	.favorites-count {
-		color: var(--wp--custom--brag-book-gallery--color--grey);
+		color: var(--wp--custom--brag-book-gallery--color--gray);
 
 		svg {
 			color: #ef4444; // Heart icon color

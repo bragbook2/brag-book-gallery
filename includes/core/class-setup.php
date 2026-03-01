@@ -274,6 +274,9 @@ final class Setup {
 	 * @return void
 	 */
 	private function register_hooks(): void {
+		// Override API endpoint when staging environment is active
+		add_filter( 'pre_option_brag_book_gallery_api_endpoint', [ $this, 'filter_api_endpoint' ] );
+
 		// Core initialization
 		add_action( 'init', [ $this, 'init' ], self::INIT_PRIORITY );
 		add_action( 'plugins_loaded', [ $this, 'init_updater' ], 10 );
@@ -1735,6 +1738,24 @@ final class Setup {
 			];
 		}
 		return $schedules;
+	}
+
+	/**
+	 * Filter the API endpoint option when staging environment is active
+	 *
+	 * Intercepts get_option('brag_book_gallery_api_endpoint') and returns
+	 * the staging URL when the staging environment is selected.
+	 *
+	 * @since 3.4.0
+	 * @param mixed $pre_option The pre-filtered value (false by default).
+	 * @return mixed The staging URL or false to use the default option value.
+	 */
+	public function filter_api_endpoint( mixed $pre_option ): mixed {
+		$custom_url = get_option( 'brag_book_gallery_api_base_url', '' );
+		if ( ! empty( $custom_url ) ) {
+			return $custom_url;
+		}
+		return $pre_option;
 	}
 
 }

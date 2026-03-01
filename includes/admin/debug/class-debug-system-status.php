@@ -73,67 +73,59 @@ final class Debug_System_Status {
 		// Determine API connection status for system health assessment.
 		$api_tokens = get_option( 'brag_book_gallery_api_token', array() );
 		$api_status = ! empty( $api_tokens ) ? 'configured' : 'not-configured';
+
+		$memory_limit    = wp_convert_hr_to_bytes( ini_get( 'memory_limit' ) );
+		$memory_ok       = $memory_limit >= 134217728; // 128M
+
+		$rows = [
+			[
+				'label'  => __( 'Plugin Version', 'brag-book-gallery' ),
+				'value'  => $plugin_data['Version'] ?? '3.0.0',
+				'status' => version_compare( $plugin_data['Version'] ?? '3.0.0', '3.0.0', '>=' ),
+			],
+			[
+				'label'  => __( 'WordPress Version', 'brag-book-gallery' ),
+				'value'  => get_bloginfo( 'version' ),
+				'status' => version_compare( get_bloginfo( 'version' ), '6.0', '>=' ),
+			],
+			[
+				'label'  => __( 'PHP Version', 'brag-book-gallery' ),
+				'value'  => phpversion(),
+				'status' => version_compare( phpversion(), '8.2', '>=' ),
+			],
+			[
+				'label'  => __( 'API Connection', 'brag-book-gallery' ),
+				'value'  => $api_status === 'configured'
+					? __( 'Configured', 'brag-book-gallery' )
+					: __( 'Not Configured', 'brag-book-gallery' ),
+				'status' => $api_status === 'configured',
+			],
+			[
+				'label'  => __( 'Memory Limit', 'brag-book-gallery' ),
+				'value'  => ini_get( 'memory_limit' ),
+				'status' => $memory_ok,
+			],
+		];
 		?>
-		<table class="widefat striped">
-			<tbody>
-			<tr>
-				<th><?php esc_html_e( 'Plugin Version', 'brag-book-gallery' ); ?></th>
-				<td><?php echo esc_html( $plugin_data['Version'] ?? '3.0.0' ); ?></td>
-				<td>
-					<?php $this->render_version_status_icon( $plugin_data['Version'] ?? '3.0.0', '3.0.0' ); ?>
-				</td>
-			</tr>
-			<tr>
-				<th><?php esc_html_e( 'WordPress Version', 'brag-book-gallery' ); ?></th>
-				<td><?php echo esc_html( get_bloginfo( 'version' ) ); ?></td>
-				<td>
-					<?php $this->render_version_status_icon( get_bloginfo( 'version' ), '6.0' ); ?>
-				</td>
-			</tr>
-			<tr>
-				<th><?php esc_html_e( 'PHP Version', 'brag-book-gallery' ); ?></th>
-				<td><?php echo esc_html( phpversion() ); ?></td>
-				<td>
-					<?php $this->render_version_status_icon( phpversion(), '8.2' ); ?>
-				</td>
-			</tr>
-			<tr>
-				<th><?php esc_html_e( 'API Connection', 'brag-book-gallery' ); ?></th>
-				<td>
-					<?php
-					if ( $api_status === 'configured' ) {
-						esc_html_e( 'Configured', 'brag-book-gallery' );
-					} else {
-						esc_html_e( 'Not Configured', 'brag-book-gallery' );
-					}
-					?>
-				</td>
-				<td>
-					<?php
-					if ( $api_status === 'configured' ) {
-						$this->render_success_icon();
-					} else {
-						$this->render_warning_icon();
-					}
-					?>
-				</td>
-			</tr>
-			<tr>
-				<th><?php esc_html_e( 'Memory Limit', 'brag-book-gallery' ); ?></th>
-				<td><?php echo esc_html( ini_get( 'memory_limit' ) ); ?></td>
-				<td>
-					<?php
-					$memory_limit = wp_convert_hr_to_bytes( ini_get( 'memory_limit' ) );
-					if ( $memory_limit >= 134217728 ) : // 128M
-						$this->render_success_icon();
-					else :
-						$this->render_warning_icon();
-					endif;
-					?>
-				</td>
-			</tr>
-			</tbody>
-		</table>
+		<div class="system-status-rows">
+			<?php foreach ( $rows as $index => $row ) : ?>
+				<div class="system-status-row<?php echo $index % 2 === 0 ? '' : ' system-status-row--alt'; ?>">
+					<span class="system-status-label"><?php echo esc_html( $row['label'] ); ?></span>
+					<span class="system-status-value"><?php echo esc_html( $row['value'] ); ?></span>
+					<span class="system-status-indicator">
+						<?php if ( $row['status'] ) : ?>
+							<span class="status-badge status-badge--success">
+								<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+							</span>
+						<?php else : ?>
+							<span class="status-badge status-badge--error">
+								<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+							</span>
+						<?php endif; ?>
+					</span>
+				</div>
+			<?php endforeach; ?>
+		</div>
 		<?php
 	}
 
