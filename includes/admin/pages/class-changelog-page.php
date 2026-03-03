@@ -93,55 +93,41 @@ class Changelog_Page extends Settings_Base {
 				</div>
 			</div>
 
-			<!-- Version 4.3.3-beta8 -->
+			<!-- Version 4.4.0 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">
 					<h3>
-						<span class="version-badge version-patch">v4.3.3-beta8</span>
-						<?php esc_html_e( 'February 17, 2026', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Beta Release', 'brag-book-gallery' ); ?>
+						<span class="version-badge version-minor">v4.4.0</span>
+						<?php esc_html_e( 'March 3, 2026', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Minor Release', 'brag-book-gallery' ); ?>
 					</h3>
 					<div class="brag-book-gallery-card">
-						<p><?php esc_html_e( 'This release adds a thumbnail carousel to the case detail page and fixes image alt text and swap behavior.', 'brag-book-gallery' ); ?></p>
+						<p><?php esc_html_e( 'This release adds a HIPAA-compliant sync registry with orphan detection, a case detail thumbnail carousel, standardized image alt text, and a comprehensive admin UI overhaul.', 'brag-book-gallery' ); ?></p>
 						<h4><?php esc_html_e( '✨ New Features', 'brag-book-gallery' ); ?></h4>
 						<ul>
-							<li><?php esc_html_e( 'Case Detail Thumbnail Carousel: Thumbnails now display in a proper carousel with prev/next arrow navigation and pagination dots', 'brag-book-gallery' ); ?></li>
-							<li><?php esc_html_e( 'Responsive thumbnail layout: 3 per row on desktop, 2 on tablet, 1 on mobile', 'brag-book-gallery' ); ?></li>
-							<li><?php esc_html_e( 'Arrows and pagination auto-hide when all thumbnails fit on screen', 'brag-book-gallery' ); ?></li>
-							<li><?php esc_html_e( 'Pagination dynamically recalculates on resize across breakpoints', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Sync Registry: New wp_brag_sync_registry table tracks all synced cases, procedures, and doctors with API-to-WordPress ID mapping', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Orphan Detection & Cleanup: Automatically detects and removes WordPress items no longer present in the BRAGBook API', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Orphan Review UI: Admin panel shows orphaned items grouped by type with preview before deletion', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Case Detail Thumbnail Carousel: Thumbnails display in a carousel with arrow navigation, pagination dots, and responsive layout', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Standardized Alt Text: Consistent "Before and after {procedure} case {id}" format with SEO override support', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Carousel Title Parameter: New title parameter on [brag_book_carousel] shortcode', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Database Tables Diagnostic: Diagnostic tools page verifies sync tables exist with row counts', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Display Settings Previews: Preview images added for Procedures View settings', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '🎨 Enhancements', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Admin UI Overhaul: Modern BEM-styled components replace default WordPress tables across all admin pages', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Design System: Status indicators, terminal-style log viewers, accordion panels, and consistent styling with design tokens', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Delete All Synced Data now also clears the sync registry table', 'brag-book-gallery' ); ?></li>
 						</ul>
 						<h4><?php esc_html_e( '🐛 Bug Fixes', 'brag-book-gallery' ); ?></h4>
 						<ul>
-							<li><?php esc_html_e( 'Main Image Alt Text: Now uses base SEO alt text only (removed redundant "Angle 1" suffix)', 'brag-book-gallery' ); ?></li>
-							<li><?php esc_html_e( 'Thumbnail Alt Text: Angles now start from "Angle 1" instead of "Angle 2"', 'brag-book-gallery' ); ?></li>
-							<li><?php esc_html_e( 'Image Swap Flash: Clicking a thumbnail now updates the image in-place instead of replacing the DOM, eliminating page flash', 'brag-book-gallery' ); ?></li>
-						</ul>
-					</div>
-				</div>
-			</div>
-
-			<!-- Version 4.3.3-beta1 -->
-			<div class="brag-book-gallery-section">
-				<div class="brag-book-gallery-changelog-version">
-					<h3>
-						<span class="version-badge version-patch">v4.3.3-beta1</span>
-						<?php esc_html_e( 'February 9, 2026', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Beta Release', 'brag-book-gallery' ); ?>
-					</h3>
-					<div class="brag-book-gallery-card">
-						<p><?php esc_html_e( 'This release adds a HIPAA-compliant sync registry for tracking all synced items and orphan detection/cleanup to remove WordPress items no longer present in the BRAGBook API.', 'brag-book-gallery' ); ?></p>
-						<h4><?php esc_html_e( '✨ New Features', 'brag-book-gallery' ); ?></h4>
-						<ul>
-							<li><?php esc_html_e( 'Sync Registry: New unified wp_brag_sync_registry table tracks all synced cases, procedures, and doctors with API-to-WordPress ID mapping', 'brag-book-gallery' ); ?></li>
-							<li><?php esc_html_e( 'Orphan Detection: Automatically detects WordPress items that no longer exist in the BRAGBook API after sync', 'brag-book-gallery' ); ?></li>
-							<li><?php esc_html_e( 'Orphan Cleanup UI: Admin panel shows orphaned items grouped by type with preview before deletion', 'brag-book-gallery' ); ?></li>
-							<li><?php esc_html_e( 'Automatic Orphan Removal: REST/automatic syncs auto-detect and remove orphans after successful completion', 'brag-book-gallery' ); ?></li>
-							<li><?php esc_html_e( 'HIPAA Audit Logging: All orphan deletions are logged with no PHI - only item types, IDs, and session info', 'brag-book-gallery' ); ?></li>
-						</ul>
-						<h4><?php esc_html_e( '🔧 Technical Changes', 'brag-book-gallery' ); ?></h4>
-						<ul>
-							<li><?php esc_html_e( 'Database Migration: Automatic migration from wp_brag_case_map to wp_brag_sync_registry with data preservation (DB version 1.3.0)', 'brag-book-gallery' ); ?></li>
-							<li><?php esc_html_e( 'New Orphan Manager class for detection, deletion, and reporting', 'brag-book-gallery' ); ?></li>
-							<li><?php esc_html_e( 'New AJAX endpoints for orphan management (detect and delete)', 'brag-book-gallery' ); ?></li>
-							<li><?php esc_html_e( 'Session-based tracking persists across batched Stage 3 HTTP requests', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'SEO Alt Text Sync: Fixed to source from seoInfo.altText instead of photo image altText', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Favorites System: Fixed incorrect caseProcedureId, card removal animation, heart state, and localStorage count', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Carousel View Tracking: Fixed nonce mismatch and missing config on carousel-only pages', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'API v2 Sidebar: Replaced deprecated /sidebar endpoint with /api/plugin/v2/terms', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Duplicate API Test Output: Fixed debug page rendering request/response details twice', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Image Alt Text: Fixed main image removing redundant Angle suffix, thumbnails starting from Angle 1', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Image Swap Flash: Clicking a thumbnail now updates the image in-place instead of replacing the DOM', 'brag-book-gallery' ); ?></li>
 						</ul>
 					</div>
 				</div>

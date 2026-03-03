@@ -4,35 +4,45 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [4.3.3-beta8] - 2026-02-17 (Beta Release)
-
-### Added
-- **Case Detail Thumbnail Carousel**: Thumbnails now display in a proper carousel with prev/next arrow navigation and pagination dots
-  - Responsive layout: 3 thumbnails on desktop, 2 on tablet, 1 on mobile
-  - Arrows and pagination dots auto-hide when all thumbnails fit on screen
-  - Pagination dynamically recalculates on window resize across breakpoints
-  - Carousel capped at 1100px max-width and centered
-  - Updated in `includes/shortcodes/class-case-handler.php`, `src/scss/components/case-detail/_index.scss`, `src/js/modules/main-app.js`
-
-### Fixed
-- **Main Image Alt Text**: Main case image now uses base SEO alt text only (removed redundant "- Angle 1" suffix)
-- **Thumbnail Alt Text**: Thumbnail angles now start from "Angle 1" instead of "Angle 2"
-- **Image Swap Flash**: Clicking a thumbnail now updates the main image src/alt in-place instead of replacing the entire DOM, eliminating page flash
-
----
-
-## [4.3.3-beta1] - 2026-02-09 (Beta Release)
+## [4.4.0] - 2026-03-03 (Stable Release)
 
 ### Added
 - **HIPAA-Compliant Sync Registry**: New unified `wp_brag_sync_registry` table replaces the old `wp_brag_case_map` table, tracking all synced items (cases, procedures, doctors) with API-to-WordPress ID mapping
 - **Orphan Detection & Cleanup**: Detects WordPress items (posts and terms) that no longer exist in the BRAGBook API after a sync completes
-- **Orphan Manager** (`class-orphan-manager.php`): New class for orphan detection, deletion, and HIPAA-compliant audit logging (no PHI in logs)
+- **Orphan Manager**: New class for orphan detection, deletion, and HIPAA-compliant audit logging (no PHI in logs)
 - **Manual Orphan Review**: Admin UI panel after Stage 3 sync shows orphaned items grouped by type with names, allowing preview before deletion
 - **Automatic Orphan Cleanup**: REST/automatic syncs auto-detect and remove orphans after successful completion
-- **AJAX Endpoints**: New `brag_book_sync_detect_orphans` and `brag_book_sync_delete_orphans` endpoints for admin orphan management
 - **Database Migration**: Automatic migration from `wp_brag_case_map` to `wp_brag_sync_registry` with data preservation (DB version 1.3.0)
-- **Multi-tenant Isolation**: Registry entries include `api_token` and `property_id` for tenant isolation
-- **Session-based Tracking**: Sync session IDs persist across batched Stage 3 HTTP requests for accurate orphan detection
+- **Case Detail Thumbnail Carousel**: Thumbnails now display in a proper carousel with prev/next arrow navigation and pagination dots
+  - Responsive layout: 3 thumbnails on desktop, 2 on tablet, 1 on mobile
+  - Arrows and pagination dots auto-hide when all thumbnails fit on screen
+  - Pagination dynamically recalculates on window resize across breakpoints
+- **Carousel Title Parameter**: New `title` parameter on `[brag_book_carousel]` shortcode to override the procedure name heading
+- **Standardized Case Image Alt Text**: New `get_case_alt_text()` helper for consistent "Before and after {procedure} case {id}" format across all views
+  - SEO alt text override supported via `brag_book_gallery_seo_alt_text` post meta
+  - `data-alt-text` attribute added to case cards for JS-rendered image support
+- **Database Tables Diagnostic**: Diagnostic tools page now verifies `brag_sync_registry` and `brag_sync_log` tables exist with row counts
+- **Display Settings Previews**: Preview images added for Procedures View settings dialogs
+
+### Enhanced
+- **Admin UI Overhaul**: Replaced WordPress default tables with modern BEM-styled components across debug, communications, dashboard, sync, and settings pages
+  - System status uses alternating rows with SVG status indicators
+  - System information wrapped in accordion with terminal-style dark theme
+  - Debug logs restyled with toggle switch, file metadata cards, and log viewer
+  - Communications table, dialog, and pagination updated to design system
+  - API test panel consolidated with base URL dropdown
+  - All inline styles moved to SCSS with design tokens
+- **Delete All Synced Data**: Now also clears the `brag_sync_registry` table
+
+### Fixed
+- **SEO Alt Text Sync Source**: Fixed `seoAltText` to source from `seoInfo.altText` instead of photo image `altText`
+- **Favorites System**: Fixed incorrect `caseProcedureId` sent to API, card removal animation, heart state sync, and localStorage count using junction IDs
+- **Carousel View Tracking**: Fixed nonce mismatch and missing config on carousel-only pages; uses correct junction ID for view tracking
+- **API v2 Sidebar Endpoint**: Replaced deprecated `/sidebar` endpoint with `/api/plugin/v2/terms`
+- **Duplicate API Test Output**: Fixed debug page rendering request/response details twice
+- **Main Image Alt Text**: Uses base SEO alt text only (removed redundant "Angle 1" suffix)
+- **Thumbnail Alt Text**: Angles now start from "Angle 1" instead of "Angle 2"
+- **Image Swap Flash**: Clicking a thumbnail now updates the image in-place instead of replacing the DOM
 
 ---
 
