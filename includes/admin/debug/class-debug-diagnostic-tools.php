@@ -95,39 +95,40 @@ final class Debug_Diagnostic_Tools {
 
 		?>
 		<h3><?php esc_html_e( 'Database Tables', 'brag-book-gallery' ); ?></h3>
-		<table class="widefat striped">
-			<thead>
-				<tr>
-					<th><?php esc_html_e( 'Table', 'brag-book-gallery' ); ?></th>
-					<th><?php esc_html_e( 'Status', 'brag-book-gallery' ); ?></th>
-					<th><?php esc_html_e( 'Rows', 'brag-book-gallery' ); ?></th>
-				</tr>
-			</thead>
-			<tbody>
-				<?php foreach ( $tables as $table_name => $label ) :
-					// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-					$exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_name ) ) === $table_name;
-					$row_count = 0;
+		<div class="system-status-rows">
+			<?php
+			$index = 0;
+			foreach ( $tables as $table_name => $label ) :
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+				$exists    = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_name ) ) === $table_name;
+				$row_count = 0;
 
-					if ( $exists ) {
-						// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-						$row_count = (int) $wpdb->get_var( "SELECT COUNT(*) FROM `{$table_name}`" );
-					}
-					?>
-					<tr>
-						<td><code><?php echo esc_html( $table_name ); ?></code><br><small><?php echo esc_html( $label ); ?></small></td>
-						<td>
-							<?php if ( $exists ) : ?>
-								<span style="color: #00a32a;">&#10003; <?php esc_html_e( 'Exists', 'brag-book-gallery' ); ?></span>
-							<?php else : ?>
-								<span style="color: #d63638;">&#10007; <?php esc_html_e( 'Missing', 'brag-book-gallery' ); ?></span>
-							<?php endif; ?>
-						</td>
-						<td><?php echo $exists ? esc_html( number_format_i18n( $row_count ) ) : '—'; ?></td>
-					</tr>
-				<?php endforeach; ?>
-			</tbody>
-		</table>
+				if ( $exists ) {
+					// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+					$row_count = (int) $wpdb->get_var( "SELECT COUNT(*) FROM `{$table_name}`" );
+				}
+				?>
+				<div class="system-status-row<?php echo $index % 2 !== 0 ? ' system-status-row--alt' : ''; ?>">
+					<span class="system-status-label"><?php echo esc_html( $label ); ?></span>
+					<span class="system-status-value"><code><?php echo esc_html( $table_name ); ?></code></span>
+					<span class="system-status-value"><?php echo $exists ? esc_html( number_format_i18n( $row_count ) ) . ' ' . esc_html__( 'rows', 'brag-book-gallery' ) : '—'; ?></span>
+					<span class="system-status-indicator">
+						<?php if ( $exists ) : ?>
+							<span class="status-badge status-badge--success">
+								<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+							</span>
+						<?php else : ?>
+							<span class="status-badge status-badge--error">
+								<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+							</span>
+						<?php endif; ?>
+					</span>
+				</div>
+				<?php
+				++$index;
+			endforeach;
+			?>
+		</div>
 		<?php
 	}
 
