@@ -971,13 +971,6 @@ class General_Page extends Settings_Base {
 								<?php esc_html_e( 'Alternative', 'brag-book-gallery' ); ?>
 							</option>
 						</select>
-						<button type="button"
-						        class="display-settings-grid__preview-btn"
-						        data-preview-for="brag_book_gallery_cases_view"
-						        data-preview-key="cases-view"
-						        aria-label="<?php esc_attr_e( 'Preview cases view', 'brag-book-gallery' ); ?>">
-							<span class="dashicons dashicons-visibility"></span>
-						</button>
 					</div>
 					<p class="description">
 						<?php esc_html_e( 'Choose the view type for cases display.', 'brag-book-gallery' ); ?>
@@ -997,13 +990,6 @@ class General_Page extends Settings_Base {
 								<?php esc_html_e( 'Alternative', 'brag-book-gallery' ); ?>
 							</option>
 						</select>
-						<button type="button"
-						        class="display-settings-grid__preview-btn"
-						        data-preview-for="brag_book_gallery_favorites_view"
-						        data-preview-key="favorites-view"
-						        aria-label="<?php esc_attr_e( 'Preview favorites view', 'brag-book-gallery' ); ?>">
-							<span class="dashicons dashicons-visibility"></span>
-						</button>
 					</div>
 					<p class="description">
 						<?php esc_html_e( 'Choose the view type for favorites display.', 'brag-book-gallery' ); ?>
