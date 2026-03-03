@@ -93,6 +93,27 @@ class Changelog_Page extends Settings_Base {
 				</div>
 			</div>
 
+			<!-- Version 4.4.1 -->
+			<div class="brag-book-gallery-section">
+				<div class="brag-book-gallery-changelog-version">
+					<h3>
+						<span class="version-badge version-patch">v4.4.1</span>
+						<?php esc_html_e( 'March 3, 2026', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Patch Release', 'brag-book-gallery' ); ?>
+					</h3>
+					<div class="brag-book-gallery-card">
+						<p><?php esc_html_e( 'This release fixes gallery page detection matching unrelated pages, search autocomplete not populating on landing views, and improves sync job tracking.', 'brag-book-gallery' ); ?></p>
+						<h4><?php esc_html_e( '🐛 Bug Fixes', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Search Autocomplete: Fixed search not populating results on gallery landing view by adding category navigation as a procedure data source', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '✨ Enhancements', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Sync Job Tracking: Next scheduled sync job is now stored after current job completes, preventing duplicate sync registration attempts', 'brag-book-gallery' ); ?></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
 			<!-- Version 4.4.0 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">

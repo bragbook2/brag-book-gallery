@@ -1,5 +1,18 @@
 === BRAGBook Gallery Changelog ===
 
+= 4.4.1 (2026-03-03) =
+
+Fixed:
+* Search Autocomplete on Landing Page - Fixed search not populating results on gallery landing view
+  - Added category navigation (.brag-book-gallery-category-nav) as a procedure data source
+  - Search now works on landing pages that use the "Choose a Gallery" panel instead of sidebar or tiles view
+  - Updated in src/js/modules/search-autocomplete.js
+
+Enhanced:
+* Sync Job Tracking - Store next scheduled sync job after current job completes
+  - Prevents duplicate sync registration attempts when API schedules a follow-up sync
+  - Updated in includes/sync/class-sync-api.php
+
 = 4.3.1 (2025-01-19) =
 
 Fixed:

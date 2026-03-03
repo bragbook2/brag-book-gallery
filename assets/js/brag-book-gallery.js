@@ -10523,13 +10523,14 @@ class SearchAutocomplete {
     this.setupEventListeners();
   }
   collectProcedures() {
-    // Collect all procedures from rendered sidebar DOM or tiles view
+    // Collect all procedures from rendered sidebar DOM, tiles view, or category nav
     const procedureMap = new Map();
     const sidebarNav = document.querySelector('.brag-book-gallery-nav');
     const tilesNav = document.querySelector('.brag-book-gallery-tiles-view');
+    const categoryNav = document.querySelector('.brag-book-gallery-category-nav');
 
-    // Check if we have either sidebar nav or tiles view
-    if (!sidebarNav && !tilesNav) {
+    // Check if we have any navigation source
+    if (!sidebarNav && !tilesNav && !categoryNav) {
       console.warn('BRAGBook Gallery: No navigation found for search autocomplete');
       this.procedures = [];
       return;
@@ -10575,9 +10576,10 @@ class SearchAutocomplete {
       });
     }
 
-    // Extract procedures from tiles view navigation
-    if (tilesNav) {
-      const procedureLinks = tilesNav.querySelectorAll('.brag-book-gallery-procedure-link');
+    // Extract procedures from tiles view or category navigation
+    const procedureLinkSource = tilesNav || categoryNav;
+    if (procedureLinkSource) {
+      const procedureLinks = procedureLinkSource.querySelectorAll('.brag-book-gallery-procedure-link');
       procedureLinks.forEach(link => {
         const url = link.href;
         // Extract procedure slug from URL
