@@ -330,6 +330,22 @@ class Sync_Api {
 		// Clear job data on completion statuses
 		if ( in_array( $status, [ self::STATUS_SUCCESS, self::STATUS_FAILED, self::STATUS_PARTIAL, self::STATUS_TIMEOUT ], true ) ) {
 			$this->clear_current_job();
+
+			// If the API scheduled a next sync, store it as the current job
+			// so has_active_job() prevents duplicate registration attempts.
+			$next_sync = $data['nextSync'] ?? null;
+			if ( ! empty( $next_sync['jobId'] ) ) {
+				$this->store_current_job( [
+					'job_id'        => $next_sync['jobId'],
+					'sync_site_id'  => $current_job['sync_site_id'] ?? null,
+					'status'        => 'PENDING',
+					'scheduled_at'  => $next_sync['scheduledAt'] ?? null,
+					'registered_at' => current_time( 'c' ),
+					'started_at'    => null,
+					'completed_at'  => null,
+					'sync_type'     => self::SYNC_TYPE_AUTO,
+				] );
+			}
 		}
 
 		return [

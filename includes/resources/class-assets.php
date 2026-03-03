@@ -848,7 +848,12 @@ class Assets {
 	private function path_matches_gallery_slugs( string $current_path, array $gallery_slugs ): bool {
 		foreach ( $gallery_slugs as $slug ) {
 			if ( ! empty( $slug ) && str_starts_with( $current_path, $slug ) ) {
-				return true;
+				// Ensure we match the full slug segment, not just a prefix
+				// e.g. slug "before-after" should match "before-after/foo" but not "before-after-columbia"
+				$remaining = substr( $current_path, strlen( $slug ) );
+				if ( $remaining === '' || $remaining === false || $remaining[0] === '/' ) {
+					return true;
+				}
 			}
 		}
 		return false;
@@ -863,7 +868,11 @@ class Assets {
 	 */
 	private function is_combined_gallery_page( string $current_path ): bool {
 		$slug = get_option( 'brag_book_gallery_brag_book_gallery_page_slug', '' );
-		return ! empty( $slug ) && str_starts_with( $current_path, $slug );
+		if ( empty( $slug ) || ! str_starts_with( $current_path, $slug ) ) {
+			return false;
+		}
+		$remaining = substr( $current_path, strlen( $slug ) );
+		return $remaining === '' || $remaining === false || $remaining[0] === '/';
 	}
 
 	/**
