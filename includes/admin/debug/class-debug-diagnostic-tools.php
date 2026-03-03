@@ -60,6 +60,11 @@ final class Debug_Diagnostic_Tools {
 				<?php esc_html_e( 'Advanced diagnostic tools for troubleshooting and debugging gallery functionality.', 'brag-book-gallery' ); ?>
 			</p>
 
+			<!-- Database Tables Check -->
+			<div class="diagnostic-section database-tables-section">
+				<?php $this->render_database_tables_check(); ?>
+			</div>
+
 			<!-- Gallery Checker Section -->
 			<div class="diagnostic-section gallery-checker-section">
 				<?php
@@ -68,6 +73,61 @@ final class Debug_Diagnostic_Tools {
 			</div>
 
 		</div>
+		<?php
+	}
+
+	/**
+	 * Render the database tables check
+	 *
+	 * Verifies that required plugin database tables exist and reports row counts.
+	 *
+	 * @since 4.3.3
+	 *
+	 * @return void Outputs HTML directly
+	 */
+	private function render_database_tables_check(): void {
+		global $wpdb;
+
+		$tables = [
+			$wpdb->prefix . 'brag_sync_registry' => __( 'Sync Registry', 'brag-book-gallery' ),
+			$wpdb->prefix . 'brag_sync_log'      => __( 'Sync Log', 'brag-book-gallery' ),
+		];
+
+		?>
+		<h3><?php esc_html_e( 'Database Tables', 'brag-book-gallery' ); ?></h3>
+		<table class="widefat striped">
+			<thead>
+				<tr>
+					<th><?php esc_html_e( 'Table', 'brag-book-gallery' ); ?></th>
+					<th><?php esc_html_e( 'Status', 'brag-book-gallery' ); ?></th>
+					<th><?php esc_html_e( 'Rows', 'brag-book-gallery' ); ?></th>
+				</tr>
+			</thead>
+			<tbody>
+				<?php foreach ( $tables as $table_name => $label ) :
+					// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+					$exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_name ) ) === $table_name;
+					$row_count = 0;
+
+					if ( $exists ) {
+						// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+						$row_count = (int) $wpdb->get_var( "SELECT COUNT(*) FROM `{$table_name}`" );
+					}
+					?>
+					<tr>
+						<td><code><?php echo esc_html( $table_name ); ?></code><br><small><?php echo esc_html( $label ); ?></small></td>
+						<td>
+							<?php if ( $exists ) : ?>
+								<span style="color: #00a32a;">&#10003; <?php esc_html_e( 'Exists', 'brag-book-gallery' ); ?></span>
+							<?php else : ?>
+								<span style="color: #d63638;">&#10007; <?php esc_html_e( 'Missing', 'brag-book-gallery' ); ?></span>
+							<?php endif; ?>
+						</td>
+						<td><?php echo $exists ? esc_html( number_format_i18n( $row_count ) ) : '—'; ?></td>
+					</tr>
+				<?php endforeach; ?>
+			</tbody>
+		</table>
 		<?php
 	}
 
