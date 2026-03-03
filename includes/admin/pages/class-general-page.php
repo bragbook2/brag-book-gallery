@@ -1326,6 +1326,8 @@ class General_Page extends Settings_Base {
 				'main-default': 'main-default.png',
 				'main-columns': 'main-columns.png',
 				'main-tiles': 'main-tiles.png',
+				'procedures-view-default': 'procedures-view-default.png',
+				'procedures-view-tiles': 'procedures-view-tiles.png',
 				'card-type-default': 'care-type-default.png',
 				'card-type-v2': 'card-type-v2.gif',
 				'card-type-v3': 'card-type-v3.gif'
