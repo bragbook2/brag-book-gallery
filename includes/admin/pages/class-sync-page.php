@@ -612,8 +612,13 @@ class Sync_Page extends Settings_Base {
 		delete_option( 'brag_book_gallery_last_sync_status' );
 		delete_option( 'brag_book_gallery_last_sync_source' );
 
-		// Clear API cache
+		// Clear sync registry table
 		global $wpdb;
+		$registry_table = $wpdb->prefix . 'brag_sync_registry';
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$wpdb->query( "TRUNCATE TABLE `{$registry_table}`" );
+
+		// Clear API cache
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$wpdb->query(
 			"DELETE FROM {$wpdb->options}
