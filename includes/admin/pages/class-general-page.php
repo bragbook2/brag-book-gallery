@@ -1305,7 +1305,7 @@ class General_Page extends Settings_Base {
 			var previewFallback = document.getElementById('display-preview-fallback');
 			var closeBtn = dialog.querySelector('.brag-book-gallery-dialog-close');
 
-			var pluginBaseUrl = <?php echo wp_json_encode( plugins_url( 'assets/images/previews/', dirname( __DIR__, 3 ) . '/brag-book-gallery.php' ) ); ?>;
+			var pluginBaseUrl = 'https://bragbookgallery.com/wp-content/uploads/previews/';
 
 			// Map of preview-key + value to actual filename
 			var previewFiles = {
