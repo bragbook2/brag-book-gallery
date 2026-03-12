@@ -93,6 +93,23 @@ class Changelog_Page extends Settings_Base {
 				</div>
 			</div>
 
+			<!-- Version 4.4.2-beta3 -->
+			<div class="brag-book-gallery-section">
+				<div class="brag-book-gallery-changelog-version">
+					<h3>
+						<span class="version-badge version-beta">v4.4.2-beta3</span>
+						<?php esc_html_e( 'March 12, 2026', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Beta Release', 'brag-book-gallery' ); ?>
+					</h3>
+					<div class="brag-book-gallery-card">
+						<p><?php esc_html_e( 'This release removes display settings preview images to reduce plugin package size.', 'brag-book-gallery' ); ?></p>
+						<h4><?php esc_html_e( '🗑️ Removed', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Display Settings Preview Images: Removed all preview images from assets/images/previews/ to reduce plugin package size', 'brag-book-gallery' ); ?></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
 			<!-- Version 4.4.2-beta2 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">
