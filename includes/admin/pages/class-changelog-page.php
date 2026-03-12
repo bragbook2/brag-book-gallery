@@ -93,6 +93,30 @@ class Changelog_Page extends Settings_Base {
 				</div>
 			</div>
 
+			<!-- Version 4.4.2-beta2 -->
+			<div class="brag-book-gallery-section">
+				<div class="brag-book-gallery-changelog-version">
+					<h3>
+						<span class="version-badge version-beta">v4.4.2-beta2</span>
+						<?php esc_html_e( 'March 12, 2026', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Beta Release', 'brag-book-gallery' ); ?>
+					</h3>
+					<div class="brag-book-gallery-card">
+						<p><?php esc_html_e( 'This release adds a tablet mode parameter to the v2 cases API endpoint, allowing filtering of cases marked for tablet use across the sync pipeline and debug tools.', 'brag-book-gallery' ); ?></p>
+						<h4><?php esc_html_e( '✨ New Features', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Tablet Mode: New tablet parameter on the v2 cases endpoint filters results to only return cases marked for tablet use', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Sync Page Toggle: Standalone tablet mode toggle card on the sync page enables tablet-only case syncing during Stage 2 manifest building', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Debug Tool Updates: Tablet checkbox added to API test panels on the Debug and API Test pages for v2 cases endpoint testing', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '🎨 Enhancements', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'v2 Cases Endpoint: get_cases_v2() now accepts a tablet parameter passed through as a query parameter to the external API', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Sync Pipeline: Tablet mode flows through the full sync chain including AJAX handler, Chunked_Data_Sync, and Data_Sync classes', 'brag-book-gallery' ); ?></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
 			<!-- Version 4.4.1 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">

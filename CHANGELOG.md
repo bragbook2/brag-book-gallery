@@ -4,6 +4,19 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.4.2-beta2] - 2026-03-12 (Beta Release)
+
+### Added
+- **Tablet Mode Parameter**: New `tablet` parameter on the v2 cases API endpoint that filters results to only return cases marked for tablet use
+- **Tablet Mode Toggle on Sync Page**: Standalone toggle card on the sync page to enable tablet-only case syncing during Stage 2 manifest building
+- **API Debug Tool Updates**: Tablet checkbox added to the API test panels on both the Debug and API Test pages for v2 cases endpoint testing
+
+### Enhanced
+- **v2 Cases Endpoint**: `get_cases_v2()` now accepts a `tablet` parameter, passed through as a query parameter to the external API
+- **Sync Pipeline**: Tablet mode flows through the full sync chain — AJAX handler, Chunked_Data_Sync, and Data_Sync classes
+
+---
+
 ## [4.4.0] - 2026-03-03 (Stable Release)
 
 ### Added
