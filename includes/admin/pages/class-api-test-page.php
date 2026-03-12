@@ -160,6 +160,7 @@ class API_Test_Page extends Settings_Base {
 					$page = intval( $query_params['page'] ?? 1 );
 					$limit = intval( $query_params['limit'] ?? 20 );
 					$member_id = isset( $query_params['memberId'] ) ? strval( $query_params['memberId'] ) : null;
+					$tablet = isset( $query_params['tablet'] ) && 'true' === $query_params['tablet'];
 
 					$result = $endpoints->get_cases_v2(
 						$api_tokens[0],
@@ -167,7 +168,10 @@ class API_Test_Page extends Settings_Base {
 						$procedure_id,
 						$page,
 						$limit,
-						$member_id
+						$member_id,
+						null,
+						null,
+						$tablet
 					);
 					$response_body = wp_json_encode( $result );
 					break;
@@ -326,6 +330,18 @@ class API_Test_Page extends Settings_Base {
 								<td style="padding: 5px;">
 									<input type="number" id="test-member-id" placeholder="129" class="input-field regular-text" style="width: 150px;">
 									<span class="description"><?php esc_html_e( 'Used by: Cases, Filters (default: 129) - Not used by Carousel', 'brag-book-gallery' ); ?></span>
+								</td>
+							</tr>
+							<tr>
+								<th style="padding: 5px;">
+									<label for="test-tablet"><?php esc_html_e( 'Tablet:', 'brag-book-gallery' ); ?></label>
+								</th>
+								<td style="padding: 5px;">
+									<label>
+										<input type="checkbox" id="test-tablet" value="1">
+										<?php esc_html_e( 'Only return cases marked for tablet use', 'brag-book-gallery' ); ?>
+									</label>
+									<span class="description"><?php esc_html_e( 'Used by: Cases v2', 'brag-book-gallery' ); ?></span>
 								</td>
 							</tr>
 						</table>
@@ -731,6 +747,11 @@ class API_Test_Page extends Settings_Base {
 				console.error('No valid API tokens found. Please check your API settings.');
 			}
 
+			const getTablet = () => {
+				const tabletInput = document.getElementById('test-tablet');
+				return tabletInput ? tabletInput.checked : false;
+			};
+
 			// Helper functions
 			const showElement = (selector) => {
 				const el = document.querySelector(selector);
@@ -1003,6 +1024,32 @@ class API_Test_Page extends Settings_Base {
 							url += '?' + params.toString();
 							console.log('Token Validation GET Request URL:', url);
 							console.log('Token Validation will use Bearer auth with token:', apiTokens[0].substring(0, 10) + '...');
+						} else if (endpoint === 'cases-v2') {
+							// v2 cases endpoint uses Bearer auth with query params
+							const procedureInput = document.getElementById('test-procedure-id');
+							const memberInput = document.getElementById('test-member-id');
+							const testProcedureId = procedureInput ? (procedureInput.value || '4168') : '4168';
+							const testMemberId = memberInput ? memberInput.value : '';
+
+							const params = new URLSearchParams({
+								websitePropertyId: websitePropertyIds[0].toString(),
+								procedureId: testProcedureId,
+								page: '1',
+								limit: '20'
+							});
+
+							if (testMemberId) {
+								params.append('memberId', testMemberId);
+							}
+
+							if (getTablet()) {
+								params.append('tablet', 'true');
+							}
+
+							url += '?' + params.toString();
+							requestHeaders['Authorization'] = 'Bearer ' + apiTokens[0];
+							console.log('v2 Cases GET Request URL:', url);
+							console.log('v2 Cases will use Bearer auth with token:', apiTokens[0].substring(0, 10) + '...');
 						} else {
 							// For other GET requests (carousel), add params to URL
 							const procedureInput = document.getElementById('test-procedure-id');

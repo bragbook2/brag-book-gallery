@@ -463,8 +463,9 @@ class Sync_Ajax_Handler {
 
 		try {
 			// Use new Chunked_Data_Sync
+			$tablet = ! empty( $_POST['tablet'] ) && '1' === $_POST['tablet'];
 			$sync   = new \BRAGBookGallery\Includes\Sync\Chunked_Data_Sync();
-			$result = $sync->execute_stage_2();
+			$result = $sync->execute_stage_2( $tablet );
 
 			if ( $result['success'] ) {
 				// Update log entry

@@ -2178,7 +2178,7 @@ class Data_Sync {
 	 * @throws Exception If API request fails
 	 * @since 3.3.0
 	 */
-	private function fetch_case_ids_for_single_procedure_count( int $procedure_id, int $page, int $limit = 50 ): array {
+	private function fetch_case_ids_for_single_procedure_count( int $procedure_id, int $page, int $limit = 50, bool $tablet = false ): array {
 		$api_token           = get_option( 'brag_book_gallery_api_token', [] )[0] ?? '';
 		$website_property_id = get_option( 'brag_book_gallery_website_property_id', [] )[0] ?? 0;
 
@@ -2186,7 +2186,7 @@ class Data_Sync {
 			throw new Exception( __( 'Invalid API configuration', 'brag-book-gallery' ) );
 		}
 
-		error_log( 'BRAG book Gallery Sync: Fetching procedure ' . $procedure_id . ' page ' . $page . ' (v2 API)' );
+		error_log( 'BRAG book Gallery Sync: Fetching procedure ' . $procedure_id . ' page ' . $page . ' (v2 API)' . ( $tablet ? ' (tablet mode)' : '' ) );
 
 		// Use Endpoints class for v2 API call
 		$endpoints = new \BRAGBookGallery\Includes\REST\Endpoints();
@@ -2195,7 +2195,11 @@ class Data_Sync {
 			intval( $website_property_id ),
 			$procedure_id,
 			$page,
-			$limit
+			$limit,
+			null,
+			null,
+			null,
+			$tablet
 		);
 
 		if ( ! $response ) {

@@ -514,8 +514,8 @@ class Chunked_Data_Sync {
 	 *
 	 * @return array Result with success status and details
 	 */
-	public function execute_stage_2(): array {
-		error_log( 'Chunked Sync: Starting Stage 2 - Build case ID manifest' );
+	public function execute_stage_2( bool $tablet = false ): array {
+		error_log( 'Chunked Sync: Starting Stage 2 - Build case ID manifest' . ( $tablet ? ' (tablet mode)' : '' ) );
 
 		try {
 			// Check if sync data exists (required for Stage 2)
@@ -543,7 +543,7 @@ class Chunked_Data_Sync {
 			$sidebar_data = $this->load_sync_data();
 
 			// Build manifest
-			$manifest = $this->build_case_manifest( $sidebar_data );
+			$manifest = $this->build_case_manifest( $sidebar_data, $tablet );
 
 			// Save manifest
 			$this->save_manifest( $manifest );
@@ -586,7 +586,7 @@ class Chunked_Data_Sync {
 	 *
 	 * @return array Manifest data
 	 */
-	private function build_case_manifest( array $sidebar_data ): array {
+	private function build_case_manifest( array $sidebar_data, bool $tablet = false ): array {
 		$manifest = [];
 
 		if ( empty( $sidebar_data['data']['terms'] ) ) {
@@ -631,7 +631,7 @@ class Chunked_Data_Sync {
 				}
 
 				try {
-					$case_ids = $this->fetch_all_case_ids_for_procedure( intval( $procedure_id ) );
+					$case_ids = $this->fetch_all_case_ids_for_procedure( intval( $procedure_id ), $tablet );
 
 					if ( ! empty( $case_ids ) ) {
 						// Ensure case_ids is a sequential array of IDs, not an associative array
@@ -703,7 +703,7 @@ class Chunked_Data_Sync {
 	 *
 	 * @return array Case IDs
 	 */
-	private function fetch_all_case_ids_for_procedure( int $procedure_id ): array {
+	private function fetch_all_case_ids_for_procedure( int $procedure_id, bool $tablet = false ): array {
 		$all_case_ids = [];
 		$page         = 1;
 		$limit        = 50;
@@ -712,7 +712,7 @@ class Chunked_Data_Sync {
 
 		while ( true ) {
 			try {
-				$result = $this->fetch_case_ids_with_count( $procedure_id, $page, $limit );
+				$result = $this->fetch_case_ids_with_count( $procedure_id, $page, $limit, $tablet );
 
 				if ( empty( $result['case_ids'] ) ) {
 					break;
@@ -757,7 +757,7 @@ class Chunked_Data_Sync {
 	 * @return array Case IDs and pagination info
 	 * @throws Exception If API request fails
 	 */
-	private function fetch_case_ids_with_count( int $procedure_id, int $page = 1, int $limit = 50 ): array {
+	private function fetch_case_ids_with_count( int $procedure_id, int $page = 1, int $limit = 50, bool $tablet = false ): array {
 		$api_token            = get_option( 'brag_book_gallery_api_token', [] )[0] ?? '';
 		$website_property_id  = get_option( 'brag_book_gallery_website_property_id', [] )[0] ?? 0;
 
@@ -772,7 +772,11 @@ class Chunked_Data_Sync {
 			intval( $website_property_id ),
 			$procedure_id,
 			$page,
-			$limit
+			$limit,
+			null,
+			null,
+			null,
+			$tablet
 		);
 
 		if ( ! $response || ! isset( $response['data']['cases'] ) ) {

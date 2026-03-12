@@ -1337,6 +1337,17 @@ class Debug_Page extends Settings_Base {
 							<input type="number" id="test-limit" placeholder="20" value="20" class="input-field small-text">
 						</td>
 					</tr>
+					<tr>
+						<th>
+							<label for="test-tablet"><?php esc_html_e( 'Tablet:', 'brag-book-gallery' ); ?></label>
+						</th>
+						<td>
+							<label>
+								<input type="checkbox" id="test-tablet" value="1">
+								<?php esc_html_e( 'Only return cases marked for tablet use', 'brag-book-gallery' ); ?>
+							</label>
+						</td>
+					</tr>
 				</table>
 			</div>
 		</div>
@@ -1565,6 +1576,11 @@ class Debug_Page extends Settings_Base {
 					}
 					// Fallback to configured value or default
 					return websitePropertyIds[0] ? websitePropertyIds[0].toString() : '84';
+				};
+
+				const getTablet = () => {
+					const tabletInput = document.getElementById('test-tablet');
+					return tabletInput ? tabletInput.checked : false;
 				};
 
 				const getApiToken = () => {
@@ -1801,6 +1817,11 @@ class Debug_Page extends Settings_Base {
 								// Add optional memberId if provided
 								if (testMemberId) {
 									params.append('memberId', testMemberId);
+								}
+
+								// Add tablet parameter if checked
+								if (getTablet()) {
+									params.append('tablet', 'true');
 								}
 
 								url += '?' + params.toString();
@@ -2105,6 +2126,7 @@ class Debug_Page extends Settings_Base {
 					$page = intval( $query_params['page'] ?? 1 );
 					$limit = intval( $query_params['limit'] ?? 20 );
 					$member_id = isset( $query_params['memberId'] ) ? strval( $query_params['memberId'] ) : null;
+					$tablet = isset( $query_params['tablet'] ) && 'true' === $query_params['tablet'];
 
 					$result = $endpoints->get_cases_v2(
 						$api_tokens[0],
@@ -2112,7 +2134,10 @@ class Debug_Page extends Settings_Base {
 						$procedure_id,
 						$page,
 						$limit,
-						$member_id
+						$member_id,
+						null,
+						null,
+						$tablet
 					);
 					$response_body = wp_json_encode( $result );
 					break;

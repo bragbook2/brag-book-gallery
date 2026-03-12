@@ -1697,7 +1697,8 @@ class Endpoints {
 		int $limit = 20,
 		?string $member_id = null,
 		?string $include = null,
-		?string $exclude = null
+		?string $exclude = null,
+		bool $tablet = false
 	): ?array {
 		// Validate inputs
 		if ( empty( $api_token ) || $website_property_id <= 0 || $procedure_id <= 0 ) {
@@ -1724,6 +1725,10 @@ class Endpoints {
 
 		if ( ! empty( $exclude ) ) {
 			$params['exclude'] = $exclude;
+		}
+
+		if ( $tablet ) {
+			$params['tablet'] = 'true';
 		}
 
 		// Build URL with query parameters

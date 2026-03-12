@@ -78,6 +78,22 @@ final class Sync_Manual_Controls {
 			<!-- BRAG book Sync Status -->
 			<?php $this->render_bragbook_sync_status(); ?>
 
+			<!-- Tablet Mode Card -->
+			<div class="sync-option-card">
+				<div class="sync-option-card-inner">
+					<div class="sync-option-card-content">
+						<div class="sync-option-card-text">
+							<span class="sync-option-card-title"><?php esc_html_e( 'Tablet Mode', 'brag-book-gallery' ); ?></span>
+							<span class="sync-option-card-description"><?php esc_html_e( 'When enabled, only cases marked for tablet use will be synced from the API.', 'brag-book-gallery' ); ?></span>
+						</div>
+					</div>
+					<label class="brag-book-gallery-toggle">
+						<input type="checkbox" id="sync-tablet-toggle" value="1" />
+						<span class="brag-book-gallery-toggle-slider"></span>
+					</label>
+				</div>
+			</div>
+
 			<!-- Stage-Based Sync Controls -->
 			<div class="stage-sync-section">
 				<h4><?php esc_html_e( 'Stage-Based Sync', 'brag-book-gallery' ); ?></h4>

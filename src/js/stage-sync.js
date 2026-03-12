@@ -20,6 +20,7 @@ class StageSyncManager {
 		this.stage1Btn = document.getElementById('stage-1-btn');
 		this.stage2Btn = document.getElementById('stage-2-btn');
 		this.stage3Btn = document.getElementById('stage-3-btn');
+		this.tabletToggle = document.getElementById('sync-tablet-toggle');
 		this.fullSyncBtn = document.getElementById('full-sync-btn');
 		this.stopSyncBtn = document.getElementById('stop-sync-btn');
 		this.deleteSyncDataBtn = document.getElementById('delete-sync-data-btn');
@@ -411,7 +412,7 @@ class StageSyncManager {
 
 		try {
 			// Start the sync with a longer timeout
-			const response = await this.makeAjaxRequest('brag_book_sync_stage_2', {}, 300000); // 5 minute timeout
+			const response = await this.makeAjaxRequest('brag_book_sync_stage_2', { tablet: this.tabletToggle?.checked ? '1' : '0' }, 300000); // 5 minute timeout
 
 			// Stop progress polling
 			clearInterval(progressInterval);
@@ -665,7 +666,7 @@ class StageSyncManager {
 				}
 			}, 2000);
 
-			const stage2Response = await this.makeAjaxRequest('brag_book_sync_stage_2', {}, 300000);
+			const stage2Response = await this.makeAjaxRequest('brag_book_sync_stage_2', { tablet: this.tabletToggle?.checked ? '1' : '0' }, 300000);
 			clearInterval(this.currentProgressInterval);
 			this.currentProgressInterval = null;
 
