@@ -1180,7 +1180,13 @@ class General_Page extends Settings_Base {
 				$is_dev_build = in_array( $release_channel, [ Updater::CHANNEL_BETA, Updater::CHANNEL_RC ], true );
 				if ( $is_dev_build ) :
 					$api_base_url    = get_option( 'brag_book_gallery_api_base_url', '' );
-					$current_api_env = ! empty( $api_base_url ) && $api_base_url === 'https://staging.bragbookgallery.com' ? 'staging' : 'production';
+					if ( ! empty( $api_base_url ) && $api_base_url === 'https://staging.bragbookgallery.com' ) {
+						$current_api_env = 'staging';
+					} elseif ( ! empty( $api_base_url ) && $api_base_url === 'https://dev.bragbookgallery.com' ) {
+						$current_api_env = 'dev';
+					} else {
+						$current_api_env = 'production';
+					}
 				?>
 				<div class="display-settings-option">
 					<label for="brag_book_gallery_api_environment" class="display-settings-option__label">
@@ -1192,6 +1198,9 @@ class General_Page extends Settings_Base {
 						</option>
 						<option value="staging" <?php selected( $current_api_env, 'staging' ); ?>>
 							<?php esc_html_e( 'Staging (staging.bragbookgallery.com)', 'brag-book-gallery' ); ?>
+						</option>
+						<option value="dev" <?php selected( $current_api_env, 'dev' ); ?>>
+							<?php esc_html_e( 'Dev (dev.bragbookgallery.com)', 'brag-book-gallery' ); ?>
 						</option>
 					</select>
 					<p class="description">
@@ -2116,6 +2125,8 @@ class General_Page extends Settings_Base {
 			$api_env = sanitize_text_field( wp_unslash( $_POST['brag_book_gallery_api_environment'] ) );
 			if ( $api_env === 'staging' ) {
 				update_option( 'brag_book_gallery_api_base_url', 'https://staging.bragbookgallery.com' );
+			} elseif ( $api_env === 'dev' ) {
+				update_option( 'brag_book_gallery_api_base_url', 'https://dev.bragbookgallery.com' );
 			} else {
 				delete_option( 'brag_book_gallery_api_base_url' );
 			}
