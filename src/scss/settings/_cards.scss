@@ -44,11 +44,13 @@
 }
 
 .stat-card {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
 	background: white;
 	border: var(--space-px) solid var(--slate-200);
 	border-radius: var(--rounded-lg);
 	padding: var(--space-5);
-	box-shadow: var(--shadow-md);
 }
 
 .stat-header {

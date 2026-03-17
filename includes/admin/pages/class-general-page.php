@@ -741,7 +741,7 @@ class General_Page extends Settings_Base {
 		$current_mode = 'default';
 		?>
 
-		<h2><?php esc_html_e( 'Display & Gallery Settings', 'brag-book-gallery' ); ?></h2>
+		<h1 style="margin-bottom: 4px; font-weight: bold;"><?php esc_html_e( 'Display & Gallery Settings', 'brag-book-gallery' ); ?></h1>
 		<p class="description" style="margin-top: 0;">
 			<?php esc_html_e( 'Configure how your gallery appears on your website', 'brag-book-gallery' ); ?>
 		</p>
@@ -764,10 +764,6 @@ class General_Page extends Settings_Base {
 				}
 			}
 			?>
-			<div class="gallery-page-settings__header">
-				<h3><?php esc_html_e( 'Gallery Page Settings', 'brag-book-gallery' ); ?></h3>
-			</div>
-
 			<?php if ( $current_mode !== 'default' ) : ?>
 				<div class="brag-book-gallery-notice brag-book-gallery-notice--warning">
 					<p>
@@ -777,6 +773,9 @@ class General_Page extends Settings_Base {
 			<?php endif; ?>
 
 			<div class="brag-book-gallery-card gallery-page-settings-card">
+				<div class="gallery-page-settings__header">
+					<h3><?php esc_html_e( 'Gallery Page Settings', 'brag-book-gallery' ); ?></h3>
+				</div>
 				<!-- Gallery Slug -->
 				<div class="gallery-page-settings-field">
 					<label for="brag_book_gallery_page_slug" class="gallery-page-settings-field__label">

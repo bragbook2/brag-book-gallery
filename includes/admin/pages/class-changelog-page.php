@@ -93,15 +93,31 @@ class Changelog_Page extends Settings_Base {
 				</div>
 			</div>
 
-			<!-- Version 4.4.2-beta3 -->
+			<!-- Version 4.4.2 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">
 					<h3>
-						<span class="version-badge version-beta">v4.4.2-beta3</span>
-						<?php esc_html_e( 'March 12, 2026', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Beta Release', 'brag-book-gallery' ); ?>
+						<span class="version-badge version-patch">v4.4.2</span>
+						<?php esc_html_e( 'March 17, 2026', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Stable Release', 'brag-book-gallery' ); ?>
 					</h3>
 					<div class="brag-book-gallery-card">
-						<p><?php esc_html_e( 'This release removes display settings preview images to reduce plugin package size.', 'brag-book-gallery' ); ?></p>
+						<p><?php esc_html_e( 'This release includes a comprehensive admin UI polish pass across the Dashboard, General Settings, Communications, Sync, and Debug pages.', 'brag-book-gallery' ); ?></p>
+						<h4><?php esc_html_e( '🎨 Enhancements', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Dashboard: API Connection status uses a green badge instead of dot with red text', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Dashboard: Improved spacing between Gallery Statistics title and stat cards', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Dashboard: Stat cards use flexbox column layout with proper gap, no box-shadow', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'General Settings: Larger bold title with tighter description spacing', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'General Settings: Gallery Page Settings heading moved inside the card', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Communications: Detail dialog widened to 720px minimum with blue email/phone links', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Communications: Red Reply via Email button, black Close button, stacked action buttons', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Communications: Date icon custom CSS tooltip, active tab badge turns white', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Communications: Dialog title renamed to Consultation Entry Details', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Sync: Tablet Mode section hidden', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Debug: Factory reset section cleaned up (no red background, border, margin, or padding)', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Admin UI: Improved tab content padding, removed tab panel h2 borders, better section spacing', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Admin UI: API row uses border instead of background, status badge size constraints removed', 'brag-book-gallery' ); ?></li>
+						</ul>
 						<h4><?php esc_html_e( '🗑️ Removed', 'brag-book-gallery' ); ?></h4>
 						<ul>
 							<li><?php esc_html_e( 'Display Settings Preview Images: Removed all preview images from assets/images/previews/ to reduce plugin package size', 'brag-book-gallery' ); ?></li>

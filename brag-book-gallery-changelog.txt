@@ -1,5 +1,25 @@
 === BRAGBook Gallery Changelog ===
 
+= 4.4.2 (2026-03-17) =
+
+Enhanced:
+* Dashboard Page - API Connection status now uses a green badge instead of a dot with red text
+* Dashboard Page - Gallery Statistics section spacing improved; stat cards use flexbox with proper gap
+* Dashboard Page - Removed box-shadow from stat cards
+* General Settings Page - Display & Gallery Settings title upgraded to bold h1 with tighter description spacing
+* General Settings Page - Gallery Page Settings heading moved inside the card above the gallery slug field
+* Communications Page - Detail dialog widened to 720px minimum on desktop with blue email/phone links
+* Communications Page - Reply via Email styled red, Close styled black, action buttons stack vertically
+* Communications Page - Date icon custom CSS tooltip, active tab badge turns white, dialog title renamed
+* Communications Page - Added description paragraph below Consultation Entries heading
+* Sync Page - Tablet Mode section hidden
+* Debug Page - Factory reset section cleaned up (no red background, border, margin, or padding)
+* Admin UI - Tab content padding, tab panel h2 border, section spacing, API row border improvements
+* Admin UI - Status badge fixed width/height constraints removed
+
+Removed:
+* Display Settings Preview Images - Removed all preview images from assets/images/previews/
+
 = 4.4.1 (2026-03-03) =
 
 Fixed:

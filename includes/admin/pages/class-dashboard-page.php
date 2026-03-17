@@ -184,11 +184,9 @@ class Dashboard_Page extends Settings_Base {
 					</div>
 					<div class="stat-value">
 						<?php if ( $has_api ) : ?>
-							<span class="status-dot status-dot--success"></span>
-							<span class="stat-status-text"><?php esc_html_e( 'Connected', 'brag-book-gallery' ); ?></span>
+							<span class="status-badge status-badge--success"><?php esc_html_e( 'Connected', 'brag-book-gallery' ); ?></span>
 						<?php else : ?>
-							<span class="status-dot status-dot--warning"></span>
-							<span class="stat-status-text"><?php esc_html_e( 'Not Configured', 'brag-book-gallery' ); ?></span>
+							<span class="status-badge status-badge--warning"><?php esc_html_e( 'Not Configured', 'brag-book-gallery' ); ?></span>
 						<?php endif; ?>
 					</div>
 				</div>

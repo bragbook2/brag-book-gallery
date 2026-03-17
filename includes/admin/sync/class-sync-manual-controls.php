@@ -78,8 +78,8 @@ final class Sync_Manual_Controls {
 			<!-- BRAG book Sync Status -->
 			<?php $this->render_bragbook_sync_status(); ?>
 
-			<!-- Tablet Mode Card -->
-			<div class="sync-option-card">
+			<!-- Tablet Mode Card (hidden for now) -->
+			<div class="sync-option-card" style="display: none;">
 				<div class="sync-option-card-inner">
 					<div class="sync-option-card-content">
 						<div class="sync-option-card-text">

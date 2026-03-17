@@ -5,8 +5,8 @@
 // -----------------------------------------------------------------------------
 
 .brag-book-gallery-api-row {
-	background: var(--slate-50);
-	border: none;
+	background: none;
+	border: var(--space-px) solid var(--slate-200);
 	border-radius: var(--rounded-lg);
 	padding: var(--space-6);
 	margin-block-end: var(--space-4);

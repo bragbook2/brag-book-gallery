@@ -1776,6 +1776,7 @@ class Communications {
 		?>
 		<div class="brag-book-gallery-section">
 			<h2><?php esc_html_e( 'Consultation Entries', 'brag-book-gallery' ); ?></h2>
+			<p><?php esc_html_e( 'View and manage consultation form submissions', 'brag-book-gallery' ); ?></p>
 
 			<?php $this->render_admin_scripts( $nonce, $delete_nonce ); ?>
 
@@ -1992,7 +1993,7 @@ class Communications {
 				dialog.innerHTML = `
 					<div class="brag-book-gallery-dialog-content">
 						<div class="brag-book-gallery-dialog-header">
-							<h3 class="brag-book-gallery-dialog-title">Communication Details</h3>
+							<h3 class="brag-book-gallery-dialog-title">Consultation Entry Details</h3>
 							<button type="button" class="brag-book-gallery-dialog-close dialog-close" aria-label="Close">
 								<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
 							</button>
@@ -2042,7 +2043,7 @@ class Communications {
 						</div>
 						<div class="brag-book-gallery-dialog-footer">
 							<button type="button" class="button reply-email" data-email="${escapeHtml( email )}">
-								<span class="dashicons dashicons-email"></span> Reply via Email
+								Reply via Email
 							</button>
 							<button type="button" class="button dialog-close-btn">Close</button>
 						</div>

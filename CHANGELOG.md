@@ -4,7 +4,31 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [4.4.2-beta3] - 2026-03-12 (Beta Release)
+## [4.4.2] - 2026-03-17 (Stable Release)
+
+### Enhanced
+- **Dashboard Page**: API Connection status now uses a green badge instead of a dot with red text
+- **Dashboard Page**: Gallery Statistics section spacing improved between title and stat cards
+- **Dashboard Page**: Stat cards use flexbox column layout with proper gap between label and value
+- **Dashboard Page**: Removed box-shadow from stat cards for cleaner appearance
+- **General Settings Page**: "Display & Gallery Settings" title upgraded to h1, bold, with tighter description spacing
+- **General Settings Page**: "Gallery Page Settings" heading moved inside the card above the gallery slug field
+- **Communications Page**: Detail dialog widened to 720px minimum on desktop
+- **Communications Page**: Email and phone links styled as blue links in detail dialog
+- **Communications Page**: Reply via Email button styled red, Close button styled black
+- **Communications Page**: Removed icon and hover lift animation from Reply via Email button
+- **Communications Page**: View and Delete action buttons now stack vertically
+- **Communications Page**: Date icon tooltip displays date on hover with custom CSS tooltip
+- **Communications Page**: Added description paragraph below Consultation Entries heading
+- **Communications Page**: Dialog title renamed to "Consultation Entry Details"
+- **Communications Page**: Tab badge turns white when parent tab is active
+- **Sync Page**: Tablet Mode section hidden
+- **Debug Page**: Factory reset section no longer has red background, border, margin, or padding
+- **Admin UI**: Tab content padding changed to horizontal-only (0 30px)
+- **Admin UI**: Tab panel h2 border-bottom removed
+- **Admin UI**: Section h2 margin-bottom increased for better spacing
+- **Admin UI**: API row uses border instead of background color
+- **Admin UI**: Status badge no longer has fixed width/height constraints
 
 ### Removed
 - **Display Settings Preview Images**: Removed all preview images from `assets/images/previews/` to reduce plugin package size

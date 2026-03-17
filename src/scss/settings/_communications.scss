@@ -116,11 +116,12 @@
 }
 
 .consultation-actions {
-	white-space: nowrap;
-	text-align: center;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--space-1);
 
 	.button {
-		margin: 0 var(--space-0-5);
 		padding: var(--space-1) var(--space-2);
 		min-width: auto;
 		display: inline-flex;
@@ -192,9 +193,31 @@
 	color: var(--slate-400);
 	cursor: help;
 	transition: color 0.15s ease;
+	position: relative;
 
 	&:hover {
 		color: var(--slate-600);
+	}
+
+	&::after {
+		content: attr(title);
+		position: absolute;
+		bottom: calc(100% + 6px);
+		left: 50%;
+		transform: translateX(-50%);
+		padding: var(--space-1) var(--space-2);
+		background: var(--slate-900);
+		color: #fff;
+		font-size: var(--text-xs);
+		white-space: nowrap;
+		border-radius: var(--rounded-md);
+		pointer-events: none;
+		opacity: 0;
+		transition: opacity 0.15s ease;
+	}
+
+	&:hover::after {
+		opacity: 1;
 	}
 }
 
@@ -280,13 +303,48 @@
 
 // Communications detail dialog — width override for the standard dialog
 .communications-detail-dialog {
-	max-inline-size: 42rem;
+	min-inline-size: 720px;
+	max-inline-size: 48rem;
 	inline-size: 90vw;
 
 	.brag-book-gallery-dialog-content {
 		display: flex;
 		flex-direction: column;
 		max-height: 85vh;
+	}
+
+	.detail-card-value a {
+		color: var(--blue-600);
+
+		&:hover {
+			color: var(--blue-800);
+		}
+	}
+
+	.reply-email {
+		background: var(--red-600) !important;
+		border-color: var(--red-600) !important;
+		color: #fff !important;
+
+		&:hover {
+			background: var(--red-700) !important;
+			border-color: var(--red-700) !important;
+		}
+	}
+
+	.dialog-close-btn {
+		background: var(--slate-900) !important;
+		border-color: var(--slate-900) !important;
+		color: #fff !important;
+
+		&:hover {
+			background: var(--slate-800) !important;
+			border-color: var(--slate-800) !important;
+		}
+	}
+
+	@media (max-width: 768px) {
+		min-inline-size: auto;
 	}
 }
 
@@ -338,7 +396,7 @@
 	color: var(--slate-900);
 	line-height: var(--leading-6);
 	font-size: var(--text-sm);
-	white-space: nowrap;
+	word-break: break-word;
 
 	a {
 		color: var(--blue-600);
@@ -411,15 +469,6 @@
 		border-color: var(--red-700);
 		color: #fff;
 		text-decoration: none;
-		transform: translateY(-1px);
-		box-shadow: 0 2px 4px rgb(239 68 68 / 0.3);
-	}
-
-	.dashicons {
-		font-size: var(--text-base);
-		width: var(--space-4);
-		height: var(--space-4);
-		color: #fff;
 	}
 }
 
@@ -437,12 +486,6 @@
 	border-radius: var(--rounded-lg);
 	padding: var(--space-5);
 	text-align: center;
-	transition: box-shadow 0.3s ease;
-
-	&:hover {
-		box-shadow: var(--shadow-md);
-	}
-
 	.stat-value {
 		font-size: var(--text-3xl);
 		font-weight: var(--font-bold);

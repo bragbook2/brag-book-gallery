@@ -15,17 +15,20 @@
 	text-transform: uppercase;
 	letter-spacing: 0.05em;
 
-	&.status-success {
+	&.status-success,
+	&--success {
 		background: var(--green-100);
 		color: var(--green-700);
 	}
 
-	&.status-warning {
+	&.status-warning,
+	&--warning {
 		background: var(--amber-100);
 		color: var(--amber-700);
 	}
 
-	&.status-default {
+	&.status-default,
+	&--default {
 		background: var(--slate-100);
 		color: var(--slate-600);
 	}
