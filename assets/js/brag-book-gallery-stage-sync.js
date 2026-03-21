@@ -687,11 +687,7 @@ class StageSyncManager {
     this.stageProgress = document.getElementById('stage-progress');
     this.stageProgressFill = document.getElementById('stage-progress-fill');
     this.stageProgressText = document.getElementById('stage-progress-text');
-
-    // Debug: Check if progress elements are found
-    if (!this.stageProgress) console.error('Stage progress element not found');
-    if (!this.stageProgressFill) console.error('Stage progress fill element not found');
-    if (!this.stageProgressText) console.error('Stage progress text element not found');
+    this.stageProgressTimer = document.getElementById('stage-progress-timer');
     this.manifestPreview = document.getElementById('manifest-preview');
     this.manifestPreviewContent = document.getElementById('manifest-preview-content');
     this.stage1Status = document.getElementById('stage1-status');
@@ -712,6 +708,8 @@ class StageSyncManager {
     this._isRunning = false;
     this.shouldStop = false;
     this.currentProgressInterval = null;
+    this.syncStartTime = null;
+    this.syncTimerInterval = null;
 
     // Create sync warning banner
     this.syncWarningBanner = this.createSyncWarningBanner();
@@ -1184,7 +1182,7 @@ class StageSyncManager {
 
       // Brief pause between batches
       if (needsContinue) {
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 1500));
       }
     }
 
@@ -1228,44 +1226,42 @@ class StageSyncManager {
     this.shouldStop = false;
     this.setAllButtonsDisabled(true);
     this.showStopButton(true);
+
+    // Start elapsed timer
+    this.syncStartTime = Date.now();
+    this.syncTimerInterval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - this.syncStartTime) / 1000);
+      const mins = Math.floor(elapsed / 60);
+      const secs = elapsed % 60;
+      if (this.stageProgressTimer) {
+        this.stageProgressTimer.textContent = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+      }
+    }, 1000);
     try {
-      // Clear previous status panels immediately (stages overwrite their own files)
+      // Clear previous status panels immediately
       this.cleanPreviousSyncData();
 
       // Stage 1
-      this.showProgress('Full Sync - Stage 1: Fetching procedures...', 0);
+      this.showProgress('Stage 1: Fetching procedures...', 0);
+      // Yield to the browser so the progress bar renders before the network request starts.
+      await new Promise(resolve => requestAnimationFrame(resolve));
       const stage1Response = await this.makeAjaxRequest('brag_book_sync_stage_1');
       if (!stage1Response.success) {
         throw new Error(stage1Response.data?.message || 'Stage 1 failed');
       }
-      const stage1Data = stage1Response.data;
-      this.showProgress('Full Sync - Stage 1 completed', 33);
-
-      // Refresh file status
-      await this.checkFileStatus(true);
-
-      // Check if should stop
-      if (this.shouldStop) {
-        throw new Error('Sync stopped by user');
-      }
+      this.showProgress('Stage 1 complete — building manifest...', 33);
+      this.displayStage1Status(stage1Response.data);
+      if (this.shouldStop) throw new Error('Sync stopped by user');
 
       // Stage 2
-      this.showProgress('Full Sync - Stage 2: Building manifest...', 33);
-
-      // Start progress polling for Stage 2
       this.currentProgressInterval = setInterval(async () => {
         try {
           const progressResponse = await this.makeAjaxRequest('brag_book_sync_get_progress');
           if (progressResponse.success && progressResponse.data.active) {
-            const progress = progressResponse.data;
-            const percentage = progress.percentage || 0;
-            const adjustedPercentage = 33 + percentage * 0.33; // Scale to 33-66%
-            const message = progress.message || 'Processing...';
-            this.showProgress(`Full Sync - Stage 2: ${message}`, adjustedPercentage);
+            const pct = 33 + (progressResponse.data.percentage || 0) * 0.33;
+            this.showProgress(`Stage 2: ${progressResponse.data.message || 'Building manifest...'}`, pct);
           }
-        } catch (error) {
-          console.error('Progress polling error:', error);
-        }
+        } catch (_) {}
       }, 2000);
       const stage2Response = await this.makeAjaxRequest('brag_book_sync_stage_2', {
         tablet: this.tabletToggle?.checked ? '1' : '0'
@@ -1275,37 +1271,11 @@ class StageSyncManager {
       if (!stage2Response.success) {
         throw new Error(stage2Response.data?.message || 'Stage 2 failed');
       }
-      const stage2Data = stage2Response.data;
-      this.showProgress('Full Sync - Stage 2 completed', 66);
+      this.showProgress('Stage 2 complete — processing cases...', 66);
+      await this.loadManifestPreview();
+      if (this.shouldStop) throw new Error('Sync stopped by user');
 
-      // Refresh file status
-      await this.checkFileStatus(true);
-
-      // Check if should stop
-      if (this.shouldStop) {
-        throw new Error('Sync stopped by user');
-      }
-
-      // Stage 3 (with batch processing)
-      this.showProgress('Full Sync - Stage 3: Processing cases...', 66);
-
-      // Start progress polling for Stage 3
-      this.currentProgressInterval = setInterval(async () => {
-        try {
-          const progressResponse = await this.makeAjaxRequest('brag_book_sync_get_progress');
-          if (progressResponse.success && progressResponse.data.active) {
-            const progress = progressResponse.data;
-            const percentage = progress.percentage || 0;
-            const adjustedPercentage = 66 + percentage * 0.34; // Scale to 66-100%
-            const message = progress.message || 'Processing...';
-            this.showProgress(`Full Sync - Stage 3: ${message}`, adjustedPercentage);
-          }
-        } catch (error) {
-          console.error('Progress polling error:', error);
-        }
-      }, 2000);
-
-      // Process Stage 3 in batches
+      // Stage 3 (batch loop)
       let needsContinue = true;
       let created = 0;
       let updated = 0;
@@ -1315,28 +1285,22 @@ class StageSyncManager {
       let lastProcessed = -1;
       let stuckCount = 0;
       while (needsContinue) {
-        // Check if should stop
-        if (this.shouldStop) {
-          throw new Error('Sync stopped by user');
-        }
+        if (this.shouldStop) throw new Error('Sync stopped by user');
         const stage3Response = await this.makeAjaxRequest('brag_book_sync_stage_3', {}, 180000);
         if (!stage3Response.success) {
           throw new Error(stage3Response.data?.message || stage3Response.data?.error || 'Stage 3 failed');
         }
-        const stage3Data = stage3Response.data;
-        created = stage3Data.created_posts || 0;
-        updated = stage3Data.updated_posts || 0;
-        failed = stage3Data.failed_cases || 0;
-        processed = stage3Data.processed_cases || 0;
-        total = stage3Data.total_cases || 0;
-        needsContinue = stage3Data.needs_continue || false;
-
-        // Detect infinite loop - if no progress after 3 attempts, stop
+        const d = stage3Response.data;
+        created = d.created_posts || 0;
+        updated = d.updated_posts || 0;
+        failed = d.failed_cases || 0;
+        processed = d.processed_cases || 0;
+        total = d.total_cases || 0;
+        needsContinue = d.needs_continue || false;
         if (processed === lastProcessed) {
           stuckCount++;
-          console.warn(`Full Sync Stage 3: No progress detected (attempt ${stuckCount}/3)`);
           if (stuckCount >= 3) {
-            this.showNotice('warning', `Stage 3 processing stopped at ${processed}/${total} cases - no further progress possible`);
+            this.showNotice('warning', `Stage 3 stopped at ${processed}/${total} cases — no further progress`);
             needsContinue = false;
             break;
           }
@@ -1344,37 +1308,29 @@ class StageSyncManager {
           stuckCount = 0;
         }
         lastProcessed = processed;
-
-        // Update progress (scale from 66% to 100%)
-        const batchProgress = total > 0 ? processed / total : 1;
-        const adjustedPercentage = 66 + batchProgress * 34;
-        this.showProgress(`Full Sync - Stage 3: ${processed}/${total} cases`, adjustedPercentage);
-
-        // Brief pause between batches
+        const pct = 66 + (total > 0 ? processed / total : 1) * 34;
+        this.showProgress(`Stage 3: ${processed}/${total} cases`, pct);
         if (needsContinue) {
-          await new Promise(resolve => setTimeout(resolve, 500));
+          await new Promise(resolve => setTimeout(resolve, 1500));
         }
       }
-      clearInterval(this.currentProgressInterval);
-      this.currentProgressInterval = null;
 
-      // Final success message
-      this.showProgress('Full Sync completed successfully!', 100);
-      const finalMessage = `Full Sync completed successfully! ${created} cases created, ${updated} updated${failed > 0 ? `, ${failed} failed` : ''} (${processed}/${total} total)`;
+      // Show final Stage 3 results
+      this.displayStage3Status({
+        completed_at: new Date().toLocaleString(),
+        created_posts: created,
+        updated_posts: updated,
+        failed_cases: failed,
+        processed_cases: processed,
+        total_cases: total
+      });
+      this.showProgress('Full Sync completed', 100);
+      const finalMessage = `Full Sync complete — ${created} created, ${updated} updated${failed > 0 ? `, ${failed} failed` : ''} (${processed}/${total} cases)`;
       this.showNotice('success', finalMessage);
-
-      // Refresh file status to show final state
       await this.checkFileStatus();
-
-      // Auto-detect orphans after full sync completes
       await this.detectOrphans();
-
-      // Hide progress after 3 seconds
-      setTimeout(() => {
-        this.fadeOut(this.stageProgress);
-      }, 3000);
+      setTimeout(() => this.fadeOut(this.stageProgress), 3000);
     } catch (error) {
-      // Clear any active progress intervals
       if (this.currentProgressInterval) {
         clearInterval(this.currentProgressInterval);
         this.currentProgressInterval = null;
@@ -1383,18 +1339,20 @@ class StageSyncManager {
         this.showNotice('warning', 'Full Sync stopped by user');
         this.showProgress('Sync stopped', 0);
       } else {
-        console.error('Full Sync error:', error);
         this.showNotice('error', `Full Sync failed: ${error.message}`);
       }
       setTimeout(() => {
         if (this.stageProgress) this.stageProgress.style.display = 'none';
       }, 3000);
     } finally {
+      clearInterval(this.syncTimerInterval);
+      this.syncTimerInterval = null;
+      this.syncStartTime = null;
+      if (this.stageProgressTimer) this.stageProgressTimer.textContent = '';
       this.isRunning = false;
       this.shouldStop = false;
       this.setAllButtonsDisabled(false);
       this.showStopButton(false);
-      // Refresh button states
       await this.checkFileStatus();
     }
   }
@@ -1913,8 +1871,8 @@ class StageSyncManager {
   showProgress(message, percentage = 0) {
     if (this.stageProgress) {
       this.stageProgress.style.display = 'block';
-      this.stageProgress.style.opacity = '1'; // Ensure opacity is set to 1
-      this.stageProgress.style.transition = 'opacity 0.3s ease-in'; // Smooth fade in
+      this.stageProgress.style.opacity = '1';
+      this.stageProgress.style.transition = 'opacity 0.3s ease-in';
     }
     if (this.stageProgressFill) {
       this.stageProgressFill.style.width = `${percentage}%`;

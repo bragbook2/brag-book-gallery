@@ -138,7 +138,10 @@ final class Sync_Manual_Controls {
 					<div class="stage-progress-stripes"></div>
 				</div>
 			</div>
-			<div id="stage-progress-text" class="stage-progress-text"></div>
+			<div class="stage-progress-footer">
+				<div id="stage-progress-text" class="stage-progress-text"></div>
+				<span id="stage-progress-timer" class="stage-progress-timer"></span>
+			</div>
 		</div>
 		<?php
 	}

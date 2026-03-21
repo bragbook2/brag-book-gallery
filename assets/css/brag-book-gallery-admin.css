@@ -8593,11 +8593,26 @@ body.wp-admin #wpfooter {
   animation: progress-bar-stripes 1s linear infinite;
 }
 
-.stage-progress-text {
+.stage-progress-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-top: var(--space-2, 0.5rem);
+}
+
+.stage-progress-text {
   font-size: var(--text-sm, 0.875rem);
   color: var(--slate-600, #555);
   font-weight: var(--font-medium, 500);
+}
+
+.stage-progress-timer {
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--slate-400, #94a3b8);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--font-medium, 500);
+  min-width: 3rem;
+  text-align: right;
 }
 
 .stage-status-panel {

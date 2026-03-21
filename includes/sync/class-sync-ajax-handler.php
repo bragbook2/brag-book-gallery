@@ -333,8 +333,8 @@ class Sync_Ajax_Handler {
 			wp_send_json_error( 'Invalid nonce' );
 		}
 
-		// Release the PHP session lock immediately so concurrent status-poll AJAX requests
-		// are not blocked waiting for this long-running handler to finish.
+		// Release the PHP session lock so concurrent page loads and status-polls
+		// are not blocked while this handler runs.
 		if ( session_status() === PHP_SESSION_ACTIVE ) {
 			session_write_close();
 		}
@@ -343,26 +343,9 @@ class Sync_Ajax_Handler {
 		// Uses wp_options (not transients) for reliability on hosts with persistent object caches (e.g. WP Engine).
 		update_option( 'brag_book_gallery_staged_sync_start', time(), false );
 
-		// Clear any stale job from a previous sync before registering
+		// Clear any stale job from a previous sync.
 		$sync_api = new Sync_Api();
 		$sync_api->clear_current_job();
-
-		// Register sync with BRAG book API
-		$registration_result = $sync_api->register_sync( Sync_Api::SYNC_TYPE_MANUAL );
-
-		if ( ! is_wp_error( $registration_result ) && isset( $registration_result['job_id'] ) ) {
-			error_log( 'AJAX: Stage 1 - Registered with BRAG book API - Job ID: ' . $registration_result['job_id'] );
-
-			// Report IN_PROGRESS status
-			$sync_api->report_sync(
-				Sync_Api::STATUS_IN_PROGRESS,
-				[ 'message' => 'Starting staged sync - Stage 1: Fetching procedures' ]
-			);
-		} else {
-			$error_msg = is_wp_error( $registration_result ) ? $registration_result->get_error_message() : 'Unknown error';
-			error_log( 'AJAX: Stage 1 - Failed to register with BRAG book API: ' . $error_msg );
-			// Continue anyway - graceful degradation
-		}
 
 		// Get database instance for logging
 		$setup = \BRAGBookGallery\Includes\Core\Setup::get_instance();
@@ -400,7 +383,26 @@ class Sync_Ajax_Handler {
 				update_option( 'brag_book_gallery_last_sync_time', current_time( 'mysql' ) );
 				update_option( 'brag_book_gallery_last_sync_status', 'success' );
 
-				wp_send_json_success( $result );
+				// Send the stage 1 result to the browser immediately, then register the
+				// sync and report IN_PROGRESS to the BRAGBook API. Those two calls block
+				// for up to 30 s each, so we defer them until after the response is sent.
+				header( 'Content-Type: application/json; charset=' . get_option( 'blog_charset' ) );
+				echo wp_json_encode( [ 'success' => true, 'data' => $result ] );
+				if ( function_exists( 'fastcgi_finish_request' ) ) {
+					fastcgi_finish_request();
+				} else {
+					flush();
+				}
+
+				// Browser has received stage 1 data. Now register with BRAGBook API.
+				$registration_result = $sync_api->register_sync( Sync_Api::SYNC_TYPE_MANUAL );
+				if ( ! is_wp_error( $registration_result ) && isset( $registration_result['job_id'] ) ) {
+					$sync_api->report_sync(
+						Sync_Api::STATUS_IN_PROGRESS,
+						[ 'message' => 'Starting staged sync - Stage 1: Fetching procedures' ]
+					);
+				}
+				exit;
 			} else {
 				// Update log entry
 				if ( $database && $log_id ) {
@@ -1202,16 +1204,14 @@ class Sync_Ajax_Handler {
 			session_write_close();
 		}
 
-		// Send an empty response now so nginx / the web server closes its end of
-		// the connection. The PHP-FPM worker continues executing in the background.
-		header( 'Connection: close' );
-		header( 'Content-Length: 0' );
-		if ( ob_get_level() > 0 ) {
-			ob_end_clean();
-		}
-		flush();
+		// Close the FastCGI connection so nginx considers this request complete.
+		// The PHP-FPM worker continues running the sync in the background.
 		if ( function_exists( 'fastcgi_finish_request' ) ) {
 			fastcgi_finish_request();
+		} else {
+			header( 'Connection: close' );
+			header( 'Content-Length: 0' );
+			flush();
 		}
 
 		// Fire the same action the WP-Cron fallback uses so both paths share

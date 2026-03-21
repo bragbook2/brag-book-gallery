@@ -243,9 +243,12 @@ class Sync_Api {
 		// Build endpoint with query parameter
 		$endpoint = self::REPORT_ENDPOINT . '?websitePropertyId=' . urlencode( (string) $website_property_id );
 
-		// Get plugin version from plugin header
-		$plugin_data    = get_file_data( Setup::get_plugin_path() . 'brag-book-gallery.php', [ 'Version' => 'Version' ] );
-		$plugin_version = $plugin_data['Version'] ?? 'unknown';
+		// Get plugin version directly from the plugin header file using a path
+		// anchored to this file's location — avoids reliance on Setup::get_plugin_path()
+		// which may not be initialised in all AJAX contexts.
+		$plugin_file    = dirname( __DIR__, 2 ) . '/brag-book-gallery.php';
+		$plugin_data    = file_exists( $plugin_file ) ? get_file_data( $plugin_file, [ 'Version' => 'Version' ] ) : [];
+		$plugin_version = $plugin_data['Version'] ?: 'unknown';
 
 		// Build request body — required + auto-gathered system fields
 		$body = [
@@ -259,6 +262,20 @@ class Sync_Api {
 			'peakMemoryMb'   => round( memory_get_peak_usage( true ) / 1048576, 1 ),
 		];
 
+		// Count procedure terms directly from the taxonomy so the report always
+		// reflects the live state of the site, regardless of which sync path ran.
+		if ( taxonomy_exists( 'brag_book_procedures' ) ) {
+			$terms = get_terms( [
+				'taxonomy'   => 'brag_book_procedures',
+				'hide_empty' => false,
+				'fields'     => 'id=>parent',
+			] );
+			if ( ! is_wp_error( $terms ) ) {
+				$body['categoriesSynced'] = count( array_filter( $terms, fn( $parent ) => $parent === 0 ) );
+				$body['proceduresSynced'] = count( array_filter( $terms, fn( $parent ) => $parent > 0 ) );
+			}
+		}
+
 		// Map caller-supplied snake_case keys to API camelCase field names
 		$field_map = [
 			'cases_synced'      => 'casesSynced',
@@ -266,8 +283,6 @@ class Sync_Api {
 			'cases_updated'     => 'casesUpdated',
 			'cases_skipped'     => 'casesSkipped',
 			'cases_deleted'     => 'casesDeleted',
-			'categories_synced' => 'categoriesSynced',
-			'procedures_synced' => 'proceduresSynced',
 			'failed_item_ids'   => 'failedItemIds',
 			'execution_time_ms' => 'executionTimeMs',
 			'content_hash'      => 'contentHash',

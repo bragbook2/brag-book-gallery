@@ -397,8 +397,6 @@ class Data_Sync {
 					'cases_synced'      => $cases_synced,
 					'cases_created'     => $total_result['cases_created'] ?? 0,
 					'cases_updated'     => $total_result['cases_updated'] ?? 0,
-					'categories_synced' => $total_result['categories_synced'] ?? 0,
-					'procedures_synced' => $total_result['procedures_synced'] ?? 0,
 					'execution_time_ms' => ( time() - $this->sync_start_time ) * 1000,
 					'message'           => $status_message,
 					'error_log'         => ! empty( $total_result['errors'] ) ? implode( "\n", $total_result['errors'] ) : '',
