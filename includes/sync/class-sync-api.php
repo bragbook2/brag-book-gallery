@@ -190,22 +190,24 @@ class Sync_Api {
 	 * Report sync status to the BRAG book API
 	 *
 	 * Updates the job status after WordPress completes (or fails) the sync.
+	 * System fields (wpVersion, phpVersion, serverTimezone, peakMemoryMb, pluginVersion,
+	 * gallerySlug) are gathered automatically. All other fields are supplied by the caller
+	 * via the $data array using snake_case keys.
+	 *
+	 * Supported $data keys:
+	 *   cases_synced, cases_created, cases_updated, cases_skipped, cases_deleted,
+	 *   categories_synced, procedures_synced, failed_item_ids, execution_time_ms,
+	 *   content_hash, message, warning_log, error_log
 	 *
 	 * @since 4.0.2
+	 * @since 4.4.0 Replaced positional parameters with $data array; added full field set.
 	 *
-	 * @param string $status       Job status: IN_PROGRESS, SUCCESS, FAILED, PARTIAL, TIMEOUT.
-	 * @param int    $cases_synced Number of cases synced in this job.
-	 * @param string $message      Human-readable status message.
-	 * @param string $error_log    Error details for debugging.
+	 * @param string $status Job status: IN_PROGRESS, SUCCESS, FAILED, PARTIAL, TIMEOUT.
+	 * @param array  $data   Optional sync metrics and log strings.
 	 *
 	 * @return array{success: bool, job?: array, next_sync?: array, message: string}|WP_Error
 	 */
-	public function report_sync(
-		string $status,
-		int $cases_synced = 0,
-		string $message = '',
-		string $error_log = ''
-	): array|WP_Error {
+	public function report_sync( string $status, array $data = [] ): array|WP_Error {
 		error_log( 'BRAG book Gallery Sync API: Reporting sync status - ' . $status );
 
 		// Validate status
@@ -245,25 +247,40 @@ class Sync_Api {
 		$plugin_data    = get_file_data( Setup::get_plugin_path() . 'brag-book-gallery.php', [ 'Version' => 'Version' ] );
 		$plugin_version = $plugin_data['Version'] ?? 'unknown';
 
-		// Build request body - use URL for job lookup (recommended approach)
+		// Build request body — required + auto-gathered system fields
 		$body = [
-			'url'           => home_url(),
-			'status'        => $status,
-			'gallerySlug'   => get_option( 'brag_book_gallery_page_slug', '' ),
-			'pluginVersion' => $plugin_version,
+			'url'            => home_url(),
+			'status'         => $status,
+			'pluginVersion'  => $plugin_version,
+			'gallerySlug'    => get_option( 'brag_book_gallery_page_slug', '' ),
+			'wpVersion'      => get_bloginfo( 'version' ),
+			'phpVersion'     => phpversion(),
+			'serverTimezone' => wp_timezone_string(),
+			'peakMemoryMb'   => round( memory_get_peak_usage( true ) / 1048576, 1 ),
 		];
 
-		// Add optional fields
-		if ( $cases_synced > 0 ) {
-			$body['casesSynced'] = $cases_synced;
-		}
+		// Map caller-supplied snake_case keys to API camelCase field names
+		$field_map = [
+			'cases_synced'      => 'casesSynced',
+			'cases_created'     => 'casesCreated',
+			'cases_updated'     => 'casesUpdated',
+			'cases_skipped'     => 'casesSkipped',
+			'cases_deleted'     => 'casesDeleted',
+			'categories_synced' => 'categoriesSynced',
+			'procedures_synced' => 'proceduresSynced',
+			'failed_item_ids'   => 'failedItemIds',
+			'execution_time_ms' => 'executionTimeMs',
+			'content_hash'      => 'contentHash',
+			'message'           => 'message',
+			'warning_log'       => 'warningLog',
+			'error_log'         => 'errorLog',
+		];
 
-		if ( ! empty( $message ) ) {
-			$body['message'] = $message;
-		}
-
-		if ( ! empty( $error_log ) ) {
-			$body['errorLog'] = $error_log;
+		foreach ( $field_map as $php_key => $api_key ) {
+			$value = $data[ $php_key ] ?? null;
+			if ( $value !== null && $value !== '' && $value !== [] ) {
+				$body[ $api_key ] = $value;
+			}
 		}
 
 		// Make the API request
@@ -297,7 +314,7 @@ class Sync_Api {
 			);
 		}
 
-		$data = $response['data'];
+		$api_data = $response['data'];
 
 		// Update stored job status
 		$current_job = $this->get_current_job();
@@ -306,7 +323,7 @@ class Sync_Api {
 				$current_job['started_at'] = current_time( 'c' );
 			}
 
-			if ( in_array( $status, [ self::STATUS_SUCCESS, self::STATUS_FAILED, self::STATUS_PARTIAL, self::STATUS_TIMEOUT ], true ) ) {
+			if ( in_array( $status, $terminal_statuses, true ) ) {
 				$current_job['completed_at'] = current_time( 'c' );
 			}
 
@@ -318,22 +335,28 @@ class Sync_Api {
 		$report_data = [
 			'reported_at'          => current_time( 'c' ),
 			'status'               => $status,
-			'cases_synced'         => $cases_synced,
-			'job'                  => $data['job'] ?? null,
-			'next_sync'            => $data['nextSync'] ?? null,
-			'manual_sync_required' => $data['manualSyncRequired'] ?? false,
+			'cases_synced'         => $data['cases_synced'] ?? 0,
+			'cases_created'        => $data['cases_created'] ?? null,
+			'cases_updated'        => $data['cases_updated'] ?? null,
+			'cases_skipped'        => $data['cases_skipped'] ?? null,
+			'cases_deleted'        => $data['cases_deleted'] ?? null,
+			'procedures_synced'    => $data['procedures_synced'] ?? null,
+			'categories_synced'    => $data['categories_synced'] ?? null,
+			'job'                  => $api_data['job'] ?? null,
+			'next_sync'            => $api_data['nextSync'] ?? null,
+			'manual_sync_required' => $api_data['manualSyncRequired'] ?? false,
 		];
 		update_option( self::LAST_REPORT_OPTION_NAME, $report_data );
 
 		error_log( 'BRAG book Gallery Sync API: Report successful - Status: ' . $status );
 
 		// Clear job data on completion statuses
-		if ( in_array( $status, [ self::STATUS_SUCCESS, self::STATUS_FAILED, self::STATUS_PARTIAL, self::STATUS_TIMEOUT ], true ) ) {
+		if ( in_array( $status, $terminal_statuses, true ) ) {
 			$this->clear_current_job();
 
 			// If the API scheduled a next sync, store it as the current job
 			// so has_active_job() prevents duplicate registration attempts.
-			$next_sync = $data['nextSync'] ?? null;
+			$next_sync = $api_data['nextSync'] ?? null;
 			if ( ! empty( $next_sync['jobId'] ) ) {
 				$this->store_current_job( [
 					'job_id'        => $next_sync['jobId'],
@@ -350,8 +373,8 @@ class Sync_Api {
 
 		return [
 			'success'   => true,
-			'job'       => $data['job'] ?? null,
-			'next_sync' => $data['nextSync'] ?? null,
+			'job'       => $api_data['job'] ?? null,
+			'next_sync' => $api_data['nextSync'] ?? null,
 			'message'   => 'Sync status reported successfully',
 		];
 	}

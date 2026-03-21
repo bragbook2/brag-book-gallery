@@ -17,8 +17,16 @@
 		font-weight: var(--font-medium);
 		border-radius: var(--rounded-md);
 		transition: var(--transition-colors);
-		border: var(--space-px) solid transparent;
+		border: var(--space-px) solid var(--slate-900);
 		line-height: var(--leading-5);
+		background: var(--slate-900);
+		color: white;
+
+		&:hover {
+			background: var(--slate-800);
+			border-color: var(--slate-800);
+			color: white;
+		}
 	}
 
 	.button-small {

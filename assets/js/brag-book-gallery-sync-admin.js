@@ -313,6 +313,7 @@ if (typeof window.BRAGbookSyncAdmin === 'undefined') {
       this.syncInProgress = false;
       this.progressTimer = null;
       this.syncStartTime = null;
+      this.remoteSyncPollInterval = null;
 
       // Initialize when DOM is ready
       if (document.readyState === 'loading') {
@@ -414,6 +415,187 @@ if (typeof window.BRAGbookSyncAdmin === 'undefined') {
         this.updateSyncsInProgress([]);
         // Ensure sync in progress flag is false on error
         this.setSyncInProgress(false);
+      }
+
+      // Also check for syncs triggered remotely (REST API / automatic schedule).
+      // These don't set the detailed-progress transient so the check above
+      // won't see them. We poll a separate endpoint that reads active_sync.
+      this.checkRemoteSync();
+    }
+
+    /**
+     * Check whether a remotely-triggered sync is currently running and start
+     * polling the status card if one is detected. Called once on page load.
+     */
+    async checkRemoteSync() {
+      try {
+        const formData = new FormData();
+        formData.append('action', 'brag_book_get_remote_sync_status');
+        formData.append('nonce', this.nonces.sync);
+        const response = await fetch(this.ajaxUrl, {
+          method: 'POST',
+          body: formData,
+          credentials: 'same-origin'
+        });
+        const result = await response.json();
+        if (result.success && result.data.is_remote_sync_in_progress) {
+          const activeSyncData = result.data.active_sync;
+          this.showRemoteSyncBanner(activeSyncData);
+          this.startRemoteSyncPolling();
+          // Also refresh the status card immediately.
+          this.refreshBragBookStatus();
+          this.startBragBookStatusPolling();
+        }
+      } catch (error) {
+        // Silent — this is a background check.
+        console.error('BRAGbook Sync Admin: Error checking remote sync status:', error);
+      }
+    }
+
+    /**
+     * Show an in-page banner when a remotely-triggered sync is in progress.
+     * @param {Object|null} activeSyncData - The active_sync option value from PHP.
+     */
+    showRemoteSyncBanner(activeSyncData) {
+      if (document.getElementById('bragbook-remote-sync-banner')) {
+        return; // Already shown.
+      }
+      const source = activeSyncData?.source === 'automatic' ? 'Automatic' : 'Remote';
+      const startedAt = activeSyncData?.started_at ?? '';
+      const banner = document.createElement('div');
+      banner.id = 'bragbook-remote-sync-banner';
+      banner.style.cssText = ['background:#fff8e1', 'border:1px solid #f9a825', 'border-radius:4px', 'padding:12px 16px', 'margin-bottom:16px', 'display:flex', 'align-items:center', 'gap:10px', 'font-size:13px'].join(';');
+      banner.innerHTML = `
+				<span>
+					<strong>${source} sync in progress</strong>
+					— triggered by the BRAGBook application${startedAt ? ` at ${startedAt}` : ''}.
+					This page will update automatically when the sync completes.
+				</span>
+				<button type="button" id="remote-sync-cancel-btn" style="margin-left:auto;flex-shrink:0;background:#fef2f2;color:#CC0000;border:1px solid #fecaca;border-radius:4px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;">
+					Cancel Sync
+				</button>
+			`;
+      const target = document.getElementById('bragbook-sync-status-card') ?? document.querySelector('.stage-sync-section');
+      if (target) {
+        target.insertAdjacentElement('beforebegin', banner);
+      }
+      const cancelBtn = document.getElementById('remote-sync-cancel-btn');
+      if (cancelBtn) {
+        cancelBtn.addEventListener('click', async () => {
+          cancelBtn.disabled = true;
+          cancelBtn.textContent = 'Cancelling…';
+          await this.stopSync();
+        });
+      }
+
+      // Disable all local sync controls while remote sync is running
+      this.setSyncControlsDisabled(true);
+    }
+
+    /**
+     * Update the remote sync banner when the sync finishes.
+     * @param {Object} activeSyncData - Completed active_sync data.
+     */
+    updateRemoteSyncBanner(activeSyncData) {
+      const banner = document.getElementById('bragbook-remote-sync-banner');
+      if (!banner) {
+        return;
+      }
+      const status = activeSyncData?.status ?? 'unknown';
+      const statusMap = {
+        completed: {
+          label: 'Sync completed successfully',
+          bg: '#e8f5e9',
+          border: '#43a047'
+        },
+        partial: {
+          label: 'Sync completed with some failures',
+          bg: '#fff3e0',
+          border: '#fb8c00'
+        },
+        failed: {
+          label: 'Sync failed',
+          bg: '#fce4ec',
+          border: '#e53935'
+        }
+      };
+      const display = statusMap[status] ?? {
+        label: `Sync finished (${status})`,
+        bg: '#e3f2fd',
+        border: '#1e88e5'
+      };
+      banner.style.background = display.bg;
+      banner.style.borderColor = display.border;
+      const cases = activeSyncData?.cases_synced != null ? ` — ${activeSyncData.cases_synced} cases synced` : '';
+      banner.innerHTML = `
+				<span><strong>${display.label}</strong>${cases}. Refresh the page to see updated sync history.</span>
+			`;
+
+      // Re-enable local sync controls now that the remote sync is done
+      this.setSyncControlsDisabled(false);
+    }
+
+    /**
+     * Enable or disable the stage sync buttons on this page.
+     * Prevents the user from starting a local sync while a remote one is running.
+     * @param {boolean} disabled
+     */
+    setSyncControlsDisabled(disabled) {
+      const ids = ['stage-1-btn', 'stage-2-btn', 'stage-3-btn', 'full-sync-btn'];
+      ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.disabled = disabled;
+          el.title = disabled ? 'A remote sync is currently in progress. Please wait for it to complete.' : el.dataset.originalTitle ?? '';
+          if (disabled) {
+            el.dataset.originalTitle = el.title;
+          }
+        }
+      });
+    }
+
+    /**
+     * Start polling for remote sync completion every 5 seconds.
+     * Stops automatically once the sync is no longer in progress.
+     */
+    startRemoteSyncPolling() {
+      if (this.remoteSyncPollInterval) {
+        return; // Already polling.
+      }
+      this.remoteSyncPollInterval = setInterval(async () => {
+        try {
+          const formData = new FormData();
+          formData.append('action', 'brag_book_get_remote_sync_status');
+          formData.append('nonce', this.nonces.sync);
+          const response = await fetch(this.ajaxUrl, {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin'
+          });
+          const result = await response.json();
+          if (!result.success) {
+            return;
+          }
+          if (!result.data.is_remote_sync_in_progress) {
+            // Sync has finished — stop polling and update UI.
+            this.stopRemoteSyncPolling();
+            this.stopBragBookStatusPolling();
+            this.refreshBragBookStatus();
+            this.updateRemoteSyncBanner(result.data.active_sync);
+          }
+        } catch (error) {
+          console.error('BRAGbook Sync Admin: Remote sync poll error:', error);
+        }
+      }, 5000);
+    }
+
+    /**
+     * Stop polling for remote sync completion.
+     */
+    stopRemoteSyncPolling() {
+      if (this.remoteSyncPollInterval) {
+        clearInterval(this.remoteSyncPollInterval);
+        this.remoteSyncPollInterval = null;
       }
     }
 

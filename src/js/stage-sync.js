@@ -327,10 +327,9 @@ class StageSyncManager {
 
 		this.isRunning = true;
 		if (this.stage1Btn) this.stage1Btn.disabled = true;
-		this.showProgress('Stage 1: Cleaning previous sync data...');
 
-		// Clean previous sync artifacts since new data invalidates them
-		await this.cleanPreviousSyncData();
+		// Clear previous status panels (stages overwrite their own files)
+		this.cleanPreviousSyncData();
 
 		this.showProgress('Stage 1: Fetching terms data...');
 
@@ -624,9 +623,8 @@ class StageSyncManager {
 		this.showStopButton(true);
 
 		try {
-			// Clean previous sync artifacts before starting fresh
-			this.showProgress('Full Sync - Cleaning previous sync data...', 0);
-			await this.cleanPreviousSyncData();
+			// Clear previous status panels immediately (stages overwrite their own files)
+			this.cleanPreviousSyncData();
 
 			// Stage 1
 			this.showProgress('Full Sync - Stage 1: Fetching procedures...', 0);
@@ -807,23 +805,14 @@ class StageSyncManager {
 	}
 
 	/**
-	 * Clean previous sync data, manifest, and status displays
+	 * Clean previous sync data UI — sync stages overwrite their own files,
+	 * so pre-deletion is unnecessary and only added latency before Stage 1.
 	 */
-	async cleanPreviousSyncData() {
-		// Hide status displays immediately
+	cleanPreviousSyncData() {
 		if (this.stage1Status) this.stage1Status.style.display = 'none';
 		if (this.stage3Status) this.stage3Status.style.display = 'none';
 		if (this.manifestPreview) this.manifestPreview.style.display = 'none';
 		if (this.orphanPanel) this.orphanPanel.style.display = 'none';
-
-		// Delete sync data file, manifest file, and stage 3 status in parallel
-		const requests = [
-			this.makeAjaxRequest('brag_book_sync_delete_file', { file: 'sync_data' }).catch(() => {}),
-			this.makeAjaxRequest('brag_book_sync_delete_file', { file: 'manifest' }).catch(() => {}),
-			this.makeAjaxRequest('brag_book_sync_clear_stage3_status').catch(() => {}),
-		];
-
-		await Promise.all(requests);
 	}
 
 	/**
@@ -951,7 +940,7 @@ class StageSyncManager {
 	}
 
 	/**
-	 * Load manifest preview
+	 * Load manifest summary
 	 */
 	async loadManifestPreview() {
 		try {
@@ -959,26 +948,11 @@ class StageSyncManager {
 
 			if (response.success && response.data.exists) {
 				const data = response.data;
-				let html = `<div style="margin-bottom: 10px;">`;
-				html += `<strong>Date:</strong> ${data.date}<br>`;
-				html += `<strong>Total Procedures:</strong> ${data.total_procedures}<br>`;
-				html += `<strong>Total Cases:</strong> ${data.total_cases}<br>`;
-				html += `</div>`;
-
-				if (data.preview) {
-					html += `<div style="border-top: 1px solid #ddd; padding-top: 10px;">`;
-					html += `<strong>Preview (first 5):</strong><br>`;
-
-					for (const [procedureId, info] of Object.entries(data.preview)) {
-						html += `<div style="margin: 5px 0;">`;
-						html += `Procedure ${procedureId}: ${info.case_count} cases`;
-						if (info.sample_ids && info.sample_ids.length > 0) {
-							html += ` (${info.sample_ids.join(', ')}...)`;
-						}
-						html += `</div>`;
-					}
-					html += `</div>`;
-				}
+				const html = `<div>`
+					+ `<strong>Procedures:</strong> ${data.total_procedures} &nbsp; `
+					+ `<strong>Cases:</strong> ${data.total_cases} &nbsp; `
+					+ `<strong>Built:</strong> ${data.date}`
+					+ `</div>`;
 
 				if (this.manifestPreviewContent) this.manifestPreviewContent.innerHTML = html;
 				if (this.manifestPreview) this.manifestPreview.style.display = 'block';
@@ -1043,8 +1017,8 @@ class StageSyncManager {
 		html += `</div>`;
 
 		// Add clear button
-		html += `<button type="button" id="clear-stage3-status-btn" class="button button-link-delete" style="margin-top: 10px; font-size: 12px;" title="Clear Stage 3 status">`;
-		html += `<svg xmlns="http://www.w3.org/2000/svg" height="16px" viewBox="0 -960 960 960" width="16px" fill="currentColor" style="vertical-align: middle; margin-right: 4px;"><path d="m336-293.85 144-144 144 144L666.15-336l-144-144 144-144L624-666.15l-144 144-144-144L293.85-624l144 144-144 144L336-293.85ZM480.07-100q-78.84 0-148.21-29.92t-120.68-81.21q-51.31-51.29-81.25-120.63Q100-401.1 100-479.93q0-78.84 29.92-148.21t81.21-120.68q51.29-51.31 120.63-81.25Q401.1-860 479.93-860q78.84 0 148.21 29.92t120.68 81.21q51.31 51.29 81.25 120.63Q860-558.9 860-480.07q0 78.84-29.92 148.21t-81.21 120.68q-51.29 51.31-120.63 81.25Q558.9-100 480.07-100Z"/></svg>`;
+		html += `<button type="button" id="clear-stage3-status-btn" class="button button-danger-outline button-small" title="Clear Stage 3 status">`;
+		html += `<svg xmlns="http://www.w3.org/2000/svg" height="14px" viewBox="0 -960 960 960" width="14px" fill="currentColor"><path d="m336-293.85 144-144 144 144L666.15-336l-144-144 144-144L624-666.15l-144 144-144-144L293.85-624l144 144-144 144L336-293.85ZM480.07-100q-78.84 0-148.21-29.92t-120.68-81.21q-51.31-51.29-81.25-120.63Q100-401.1 100-479.93q0-78.84 29.92-148.21t81.21-120.68q51.29-51.31 120.63-81.25Q401.1-860 479.93-860q78.84 0 148.21 29.92t120.68 81.21q51.31 51.29 81.25 120.63Q860-558.9 860-480.07q0 78.84-29.92 148.21t-81.21 120.68q-51.29 51.31-120.63 81.25Q558.9-100 480.07-100Z"/></svg>`;
 		html += `Clear Status`;
 		html += `</button>`;
 
@@ -1528,26 +1502,38 @@ const addStyles = () => {
 			height: 20px;
 			width: 16px;
 		}
-		/* Stage buttons - non-active buttons are white */
+		/* Stage buttons - shared layout (must apply regardless of button/button-primary class) */
+		.stage-sync-buttons .stage-button {
+			display: inline-flex !important;
+			align-items: center !important;
+			justify-content: flex-start !important;
+			gap: 0.625rem !important;
+		}
+		/* Stage buttons - non-active state */
 		.stage-sync-buttons .stage-button.button {
-			background: white !important;
-			border-color: #ddd !important;
-			color: #333 !important;
+			background: #f8fafc !important;
+			border-color: #e2e8f0 !important;
+			color: #334155 !important;
 		}
 		.stage-sync-buttons .stage-button.button:hover:not(:disabled) {
-			background: #f0f0f0 !important;
-			border-color: #ccc !important;
-			color: #000 !important;
+			background: white !important;
+			border-color: #fca5a5 !important;
+			color: #0f172a !important;
 		}
-		/* Stage buttons - active button (button-primary) is black */
+		/* Stage buttons - active button is brand red */
 		.stage-sync-buttons .stage-button.button-primary {
-			background: #0f172a !important;
-			border-color: #0f172a !important;
+			background: #CC0000 !important;
+			border-color: #CC0000 !important;
 			color: white !important;
 		}
 		.stage-sync-buttons .stage-button.button-primary:hover:not(:disabled) {
-			background: #1e293b !important;
-			border-color: #1e293b !important;
+			background: #aa0000 !important;
+			border-color: #aa0000 !important;
+		}
+		/* Active stage badge turns white on red button */
+		.stage-sync-buttons .stage-button.button-primary .stage-btn-number {
+			background: rgba(255, 255, 255, 0.2) !important;
+			color: white !important;
 		}
 		/* Full sync button hover state */
 		#full-sync-btn:hover:not(:disabled) {

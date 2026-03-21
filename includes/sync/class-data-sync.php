@@ -251,8 +251,7 @@ class Data_Sync {
 		// Report sync as IN_PROGRESS
 		$this->report_sync_status(
 			Sync_Api::STATUS_IN_PROGRESS,
-			0,
-			'Starting two-stage sync'
+			[ 'message' => 'Starting two-stage sync' ]
 		);
 
 		// Get current limits (we can't change them on WP Engine)
@@ -277,9 +276,10 @@ class Data_Sync {
 				// Report failure to BRAG book API
 				$this->report_sync_status(
 					Sync_Api::STATUS_FAILED,
-					0,
-					'Stage 1 (procedures) sync failed',
-					implode( "\n", $stage1_result['errors'] )
+					[
+						'message'   => 'Stage 1 (procedures) sync failed',
+						'error_log' => implode( "\n", $stage1_result['errors'] ),
+					]
 				);
 
 				return $stage1_result;
@@ -393,9 +393,17 @@ class Data_Sync {
 
 			$this->report_sync_status(
 				$sync_status,
-				$cases_synced,
-				$status_message,
-				! empty( $total_result['errors'] ) ? implode( "\n", $total_result['errors'] ) : ''
+				[
+					'cases_synced'      => $cases_synced,
+					'cases_created'     => $total_result['cases_created'] ?? 0,
+					'cases_updated'     => $total_result['cases_updated'] ?? 0,
+					'categories_synced' => $total_result['categories_synced'] ?? 0,
+					'procedures_synced' => $total_result['procedures_synced'] ?? 0,
+					'execution_time_ms' => ( time() - $this->sync_start_time ) * 1000,
+					'message'           => $status_message,
+					'error_log'         => ! empty( $total_result['errors'] ) ? implode( "\n", $total_result['errors'] ) : '',
+					'warning_log'       => ! empty( $total_result['warnings'] ) ? implode( "\n", $total_result['warnings'] ) : '',
+				]
 			);
 
 			$this->log_sync_complete( $total_result );
@@ -431,9 +439,10 @@ class Data_Sync {
 			// Report failure to BRAG book API
 			$this->report_sync_status(
 				Sync_Api::STATUS_FAILED,
-				0,
-				'Sync failed with exception',
-				$e->getMessage() . "\n" . $e->getTraceAsString()
+				[
+					'message'   => 'Sync failed with exception',
+					'error_log' => $e->getMessage() . "\n" . $e->getTraceAsString(),
+				]
 			);
 
 			// Clean up any sync data files on error
@@ -4568,19 +4577,17 @@ class Data_Sync {
 	 *
 	 * @since 4.0.2
 	 *
-	 * @param string $status       Status to report.
-	 * @param int    $cases_synced Number of cases synced.
-	 * @param string $message      Status message.
-	 * @param string $error_log    Error details.
+	 * @param string $status Status to report.
+	 * @param array  $data   Optional data fields (see Sync_Api::report_sync).
 	 *
 	 * @return array|null Report result or null on failure.
 	 */
-	private function report_sync_status( string $status, int $cases_synced = 0, string $message = '', string $error_log = '' ): ?array {
+	private function report_sync_status( string $status, array $data = [] ): ?array {
 		if ( ! $this->enable_sync_reporting || ! $this->sync_api ) {
 			return null;
 		}
 
-		$result = $this->sync_api->report_sync( $status, $cases_synced, $message, $error_log );
+		$result = $this->sync_api->report_sync( $status, $data );
 
 		if ( is_wp_error( $result ) ) {
 			error_log( 'BRAG book Gallery Sync: Failed to report sync status: ' . $result->get_error_message() );

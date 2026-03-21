@@ -252,6 +252,8 @@ class Chunked_Data_Sync {
 				'procedures_created' => $result['created'],
 				'procedures_updated' => $result['updated'],
 				'total_procedures'   => $result['total'],
+				'categories_synced'  => $result['categories_synced'],
+				'procedures_synced'  => $result['procedures_synced'],
 				'message'            => 'Stage 1 completed: Procedures processed',
 			);
 
@@ -372,16 +374,19 @@ class Chunked_Data_Sync {
 	 * @return array Processing results
 	 */
 	private function process_procedures_from_data( array $sidebar_data ): array {
-		$created_count = 0;
-		$updated_count = 0;
-		$total_count   = 0;
+		$categories_created  = 0;
+		$categories_updated  = 0;
+		$procedures_created  = 0;
+		$procedures_updated  = 0;
 
 		$terms = $sidebar_data['data']['terms'] ?? [];
 		if ( empty( $terms ) ) {
 			return [
-				'created' => 0,
-				'updated' => 0,
-				'total'   => 0,
+				'created'             => 0,
+				'updated'             => 0,
+				'total'               => 0,
+				'categories_synced'   => 0,
+				'procedures_synced'   => 0,
 			];
 		}
 
@@ -398,11 +403,10 @@ class Chunked_Data_Sync {
 			$parent_result = $this->create_or_update_procedure( $category, null );
 
 			if ( $parent_result['created'] ) {
-				$created_count ++;
+				$categories_created++;
 			} else {
-				$updated_count ++;
+				$categories_updated++;
 			}
-			$total_count ++;
 
 			$parent_term_id = $parent_result['term_id'];
 
@@ -411,19 +415,23 @@ class Chunked_Data_Sync {
 				foreach ( $category['procedures'] as $procedure ) {
 					$child_result = $this->create_or_update_procedure( $procedure, $parent_term_id );
 					if ( $child_result['created'] ) {
-						$created_count++;
+						$procedures_created++;
 					} else {
-						$updated_count++;
+						$procedures_updated++;
 					}
-					$total_count++;
 				}
 			}
 		}
 
+		$total_categories = $categories_created + $categories_updated;
+		$total_procedures = $procedures_created + $procedures_updated;
+
 		return [
-			'created' => $created_count,
-			'updated' => $updated_count,
-			'total'   => $total_count,
+			'created'           => $categories_created + $procedures_created,
+			'updated'           => $categories_updated + $procedures_updated,
+			'total'             => $total_categories + $total_procedures,
+			'categories_synced' => $total_categories,
+			'procedures_synced' => $total_procedures,
 		];
 	}
 

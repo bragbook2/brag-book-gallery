@@ -58,6 +58,12 @@ class Sync_Ajax_Handler {
 
 		// Legacy endpoints for backward compatibility
 		add_action( 'wp_ajax_brag_book_sync_data', [ self::class, 'handle_sync_start' ] );
+
+		// Background sync execution — called via non-blocking loopback from the
+		// REST trigger endpoint. Registered as nopriv because the loopback has
+		// no user session; authentication is handled by the one-time token.
+		add_action( 'wp_ajax_nopriv_brag_book_gallery_background_sync_execute', [ self::class, 'handle_background_sync_execute' ] );
+		add_action( 'wp_ajax_brag_book_gallery_background_sync_execute', [ self::class, 'handle_background_sync_execute' ] );
 	}
 
 	/**
@@ -340,8 +346,7 @@ class Sync_Ajax_Handler {
 			// Report IN_PROGRESS status
 			$sync_api->report_sync(
 				Sync_Api::STATUS_IN_PROGRESS,
-				0,
-				'Starting staged sync - Stage 1: Fetching procedures'
+				[ 'message' => 'Starting staged sync - Stage 1: Fetching procedures' ]
 			);
 		} else {
 			$error_msg = is_wp_error( $registration_result ) ? $registration_result->get_error_message() : 'Unknown error';
@@ -576,7 +581,16 @@ class Sync_Ajax_Handler {
 						$failed_cases
 					);
 
-					$sync_api->report_sync( $status, $cases_synced, $message );
+					$sync_api->report_sync(
+						$status,
+						[
+							'cases_synced'  => $cases_synced,
+							'cases_created' => $result['created_posts'] ?? 0,
+							'cases_updated' => $result['updated_posts'] ?? 0,
+							'message'       => $message,
+							'error_log'     => ! empty( $result['errors'] ) ? implode( "\n", $result['errors'] ) : '',
+						]
+					);
 					error_log( 'AJAX: Stage 3 - Reported ' . $status . ' to BRAG book API' );
 				}
 
@@ -593,8 +607,7 @@ class Sync_Ajax_Handler {
 				$sync_api = new Sync_Api();
 				$sync_api->report_sync(
 					Sync_Api::STATUS_FAILED,
-					0,
-					'Stage 3 failed: ' . ( $result['message'] ?? 'Unknown error' )
+					[ 'message' => 'Stage 3 failed: ' . ( $result['message'] ?? 'Unknown error' ) ]
 				);
 				error_log( 'AJAX: Stage 3 - Reported FAILED to BRAG book API' );
 
@@ -616,9 +629,10 @@ class Sync_Ajax_Handler {
 			$sync_api = new Sync_Api();
 			$sync_api->report_sync(
 				Sync_Api::STATUS_FAILED,
-				0,
-				'Stage 3 exception: ' . $e->getMessage(),
-				$e->getTraceAsString()
+				[
+					'message'   => 'Stage 3 exception: ' . $e->getMessage(),
+					'error_log' => $e->getTraceAsString(),
+				]
 			);
 
 			wp_send_json_error( [
@@ -640,9 +654,10 @@ class Sync_Ajax_Handler {
 			$sync_api = new Sync_Api();
 			$sync_api->report_sync(
 				Sync_Api::STATUS_FAILED,
-				0,
-				'Stage 3 fatal error: ' . $e->getMessage(),
-				$e->getTraceAsString()
+				[
+					'message'   => 'Stage 3 fatal error: ' . $e->getMessage(),
+					'error_log' => $e->getTraceAsString(),
+				]
 			);
 
 			wp_send_json_error( [
@@ -1114,5 +1129,49 @@ class Sync_Ajax_Handler {
 			error_log( 'Orphan deletion error: ' . $e->getMessage() );
 			wp_send_json_error( 'Error deleting orphans: ' . $e->getMessage() );
 		}
+	}
+
+	/**
+	 * Handle background sync execution via loopback HTTP request
+	 *
+	 * Called by the non-blocking loopback fired from handle_rest_trigger_sync().
+	 * Authenticates via a single-use token (no user session available in a
+	 * server-to-server loopback). Deletes the token immediately on use to
+	 * prevent replay attacks, then executes the full sync via the registered
+	 * WordPress action hook.
+	 *
+	 * @since 4.3.3
+	 * @return void
+	 */
+	public static function handle_background_sync_execute(): void {
+		$provided_token = sanitize_text_field( wp_unslash( $_POST['token'] ?? '' ) );
+		$stored         = get_option( 'brag_book_gallery_bg_sync_token', null );
+
+		// Validate: token must exist, not be expired, and match exactly.
+		if (
+			! $stored ||
+			! is_array( $stored ) ||
+			time() > ( $stored['expires'] ?? 0 ) ||
+			! hash_equals( (string) ( $stored['token'] ?? '' ), $provided_token )
+		) {
+			error_log( 'BRAG book Gallery: Background sync execute — invalid or expired token.' );
+			wp_die( '', '', 403 );
+		}
+
+		// Delete the token immediately so it cannot be replayed.
+		delete_option( 'brag_book_gallery_bg_sync_token' );
+
+		error_log( 'BRAG book Gallery: Background sync execute — token valid, starting sync.' );
+
+		// Allow the sync to run to completion even if the HTTP client disconnects,
+		// and give it up to 5 minutes of execution time.
+		ignore_user_abort( true );
+		@set_time_limit( 300 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
+
+		// Fire the same action the WP-Cron fallback uses so both paths share
+		// exactly the same sync execution logic.
+		do_action( 'brag_book_gallery_rest_sync' );
+
+		wp_die( '', '', 200 );
 	}
 }
