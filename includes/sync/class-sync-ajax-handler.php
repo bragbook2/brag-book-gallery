@@ -397,9 +397,12 @@ class Sync_Ajax_Handler {
 				// Browser has received stage 1 data. Now register with BRAGBook API.
 				$registration_result = $sync_api->register_sync( Sync_Api::SYNC_TYPE_MANUAL );
 				if ( ! is_wp_error( $registration_result ) && isset( $registration_result['job_id'] ) ) {
+					// Non-blocking: the response is not needed, and blocking here keeps
+					// a PHP-FPM worker occupied for up to 30 s, starving stage 3.
 					$sync_api->report_sync(
 						Sync_Api::STATUS_IN_PROGRESS,
-						[ 'message' => 'Starting staged sync - Stage 1: Fetching procedures' ]
+						[ 'message' => 'Starting staged sync - Stage 1: Fetching procedures' ],
+						false
 					);
 				}
 				exit;
@@ -763,6 +766,10 @@ class Sync_Ajax_Handler {
 			wp_send_json_error( 'Insufficient permissions' );
 		}
 
+		if ( session_status() === PHP_SESSION_ACTIVE ) {
+			session_write_close();
+		}
+
 		try {
 			$sync    = new \BRAGBookGallery\Includes\Sync\Chunked_Data_Sync();
 			$preview = $sync->get_manifest_preview();
@@ -784,6 +791,10 @@ class Sync_Ajax_Handler {
 		// Check permissions
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_send_json_error( 'Insufficient permissions' );
+		}
+
+		if ( session_status() === PHP_SESSION_ACTIVE ) {
+			session_write_close();
 		}
 
 		try {

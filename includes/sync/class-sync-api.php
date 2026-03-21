@@ -207,7 +207,7 @@ class Sync_Api {
 	 *
 	 * @return array{success: bool, job?: array, next_sync?: array, message: string}|WP_Error
 	 */
-	public function report_sync( string $status, array $data = [] ): array|WP_Error {
+	public function report_sync( string $status, array $data = [], bool $blocking = true ): array|WP_Error {
 		error_log( 'BRAG book Gallery Sync API: Reporting sync status - ' . $status );
 
 		// Validate status
@@ -299,7 +299,20 @@ class Sync_Api {
 		}
 
 		// Make the API request
-		$response = $this->make_sync_api_request( $endpoint, $body );
+		$response = $this->make_sync_api_request( $endpoint, $body, $blocking );
+
+		// For non-blocking calls, update local state and return immediately.
+		if ( ! $blocking ) {
+			$current_job = $this->get_current_job();
+			if ( $current_job ) {
+				if ( self::STATUS_IN_PROGRESS === $status ) {
+					$current_job['started_at'] = current_time( 'c' );
+				}
+				$current_job['status'] = $status;
+				$this->store_current_job( $current_job );
+			}
+			return [ 'success' => true, 'message' => 'Status reported (non-blocking)' ];
+		}
 
 		$terminal_statuses = [ self::STATUS_SUCCESS, self::STATUS_FAILED, self::STATUS_PARTIAL, self::STATUS_TIMEOUT ];
 
@@ -406,7 +419,7 @@ class Sync_Api {
 	 *
 	 * @return array|WP_Error Response data or error.
 	 */
-	private function make_sync_api_request( string $endpoint, array $body ): array|WP_Error {
+	private function make_sync_api_request( string $endpoint, array $body, bool $blocking = true ): array|WP_Error {
 		// Get API token for Bearer authentication
 		$api_tokens = get_option( 'brag_book_gallery_api_token', [] );
 		error_log( 'BRAG book Gallery Sync API: Raw api_tokens option: ' . wp_json_encode( $api_tokens ) );
@@ -439,7 +452,7 @@ class Sync_Api {
 			'timeout'     => $timeout,
 			'redirection' => 5,
 			'httpversion' => '1.1',
-			'blocking'    => true,
+			'blocking'    => $blocking,
 			'headers'     => [
 				'Content-Type'  => 'application/json',
 				'Accept'        => 'application/json',
@@ -456,6 +469,11 @@ class Sync_Api {
 		error_log( 'BRAG book Gallery Sync API: Authorization: Bearer ' . substr( $api_token, 0, 8 ) . '...' );
 
 		$response = wp_remote_request( $url, $args );
+
+		// For non-blocking calls, return immediately without parsing the response.
+		if ( ! $blocking ) {
+			return [ 'code' => 0, 'data' => [] ];
+		}
 
 		if ( is_wp_error( $response ) ) {
 			error_log( 'BRAG book Gallery Sync API: WP_Error: ' . $response->get_error_message() );
