@@ -444,8 +444,9 @@ class Sync_Api {
 		$url = $this->get_api_base_url() . $endpoint;
 		error_log( 'BRAG book Gallery Sync API: Base URL: ' . $this->get_api_base_url() );
 
-		// Get timeout from settings
-		$timeout = intval( get_option( 'brag_book_gallery_api_timeout', 30 ) );
+		// Use a dedicated short timeout for status-update calls (register/report).
+		// These are lightweight POSTs; if the API hasn't responded in 10 s something is wrong.
+		$timeout = 10;
 
 		$args = [
 			'method'      => 'POST',

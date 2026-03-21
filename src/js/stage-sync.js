@@ -682,6 +682,18 @@ class StageSyncManager {
 			let lastProcessed = -1;
 			let stuckCount = 0;
 
+			// Poll stage progress every 2s so the user sees per-case feedback
+			// within each batch (same transient mechanism used by stage 2).
+			this.currentProgressInterval = setInterval(async () => {
+				try {
+					const p = await this.makeAjaxRequest('brag_book_sync_get_progress');
+					if (p.success && p.data?.active && p.data.total > 0) {
+						const pct = 66 + (p.data.current / p.data.total) * 34;
+						this.showProgress(`Stage 3: ${p.data.current}/${p.data.total} cases`, pct);
+					}
+				} catch (_) {}
+			}, 2000);
+
 			while (needsContinue) {
 				if (this.shouldStop) throw new Error('Sync stopped by user');
 
@@ -718,6 +730,9 @@ class StageSyncManager {
 					await new Promise(resolve => setTimeout(resolve, 1500));
 				}
 			}
+
+			clearInterval(this.currentProgressInterval);
+			this.currentProgressInterval = null;
 
 			// Show final Stage 3 results
 			this.displayStage3Status({

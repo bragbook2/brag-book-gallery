@@ -923,7 +923,7 @@ class Chunked_Data_Sync {
 	 *
 	 * @return array Result with success status and details
 	 */
-	public function execute_stage_3( int $batch_size = 20 ): array {
+	public function execute_stage_3( int $batch_size = 10 ): array {
 		error_log( 'Chunked Sync: Starting Stage 3 - Process cases from manifest (batch size: ' . $batch_size . ')' );
 
 		// Increase memory limit and time limit for processing
