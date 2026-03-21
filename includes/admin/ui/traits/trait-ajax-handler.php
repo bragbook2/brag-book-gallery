@@ -57,6 +57,12 @@ trait Trait_Ajax_Handler {
 		if ( ! current_user_can( $capability ) ) {
 			wp_send_json_error( __( 'You do not have permission to perform this action.', 'brag-book-gallery' ) );
 		}
+
+		// Release the PHP session lock so concurrent AJAX requests are not blocked
+		// while this handler runs. WordPress uses cookies for auth, not sessions.
+		if ( session_status() === PHP_SESSION_ACTIVE ) {
+			session_write_close();
+		}
 	}
 
 	/**

@@ -333,6 +333,16 @@ class Sync_Ajax_Handler {
 			wp_send_json_error( 'Invalid nonce' );
 		}
 
+		// Release the PHP session lock immediately so concurrent status-poll AJAX requests
+		// are not blocked waiting for this long-running handler to finish.
+		if ( session_status() === PHP_SESSION_ACTIVE ) {
+			session_write_close();
+		}
+
+		// Record sync start time for execution_time_ms reporting at Stage 3 completion.
+		// Uses wp_options (not transients) for reliability on hosts with persistent object caches (e.g. WP Engine).
+		update_option( 'brag_book_gallery_staged_sync_start', time(), false );
+
 		// Clear any stale job from a previous sync before registering
 		$sync_api = new Sync_Api();
 		$sync_api->clear_current_job();
@@ -456,6 +466,12 @@ class Sync_Ajax_Handler {
 			wp_send_json_error( 'Invalid nonce' );
 		}
 
+		// Release the PHP session lock immediately so concurrent status-poll AJAX requests
+		// are not blocked waiting for this long-running handler to finish.
+		if ( session_status() === PHP_SESSION_ACTIVE ) {
+			session_write_close();
+		}
+
 		// Get database instance for logging
 		$setup = \BRAGBookGallery\Includes\Core\Setup::get_instance();
 		$database = $setup->get_service( 'database' );
@@ -529,6 +545,12 @@ class Sync_Ajax_Handler {
 			wp_send_json_error( 'Invalid nonce' );
 		}
 
+		// Release the PHP session lock immediately so concurrent status-poll AJAX requests
+		// are not blocked waiting for this long-running handler to finish.
+		if ( session_status() === PHP_SESSION_ACTIVE ) {
+			session_write_close();
+		}
+
 		// Get database instance for logging
 		$setup = \BRAGBookGallery\Includes\Core\Setup::get_instance();
 		$database = $setup->get_service( 'database' );
@@ -567,12 +589,17 @@ class Sync_Ajax_Handler {
 					// Save sync session ID for orphan detection
 					update_option( 'brag_book_last_sync_session', $sync->get_sync_session_id(), false );
 
-					$sync_api = new Sync_Api();
+					$sync_api     = new Sync_Api();
 					$cases_synced = ( $result['processed_cases'] ?? 0 );
 					$failed_cases = ( $result['failed_cases'] ?? 0 );
 
+					// Calculate execution time from Stage 1 start (stored as option for WP Engine compatibility)
+					$sync_start        = get_option( 'brag_book_gallery_staged_sync_start' );
+					$execution_time_ms = $sync_start ? ( time() - (int) $sync_start ) * 1000 : null;
+					delete_option( 'brag_book_gallery_staged_sync_start' );
+
 					// Determine status based on results
-					$status = ( $failed_cases > 0 ) ? Sync_Api::STATUS_PARTIAL : Sync_Api::STATUS_SUCCESS;
+					$status  = ( $failed_cases > 0 ) ? Sync_Api::STATUS_PARTIAL : Sync_Api::STATUS_SUCCESS;
 					$message = sprintf(
 						'Staged sync completed: %d cases processed (%d created, %d updated, %d failed)',
 						$cases_synced,
@@ -584,11 +611,12 @@ class Sync_Ajax_Handler {
 					$sync_api->report_sync(
 						$status,
 						[
-							'cases_synced'  => $cases_synced,
-							'cases_created' => $result['created_posts'] ?? 0,
-							'cases_updated' => $result['updated_posts'] ?? 0,
-							'message'       => $message,
-							'error_log'     => ! empty( $result['errors'] ) ? implode( "\n", $result['errors'] ) : '',
+							'cases_synced'      => $cases_synced,
+							'cases_created'     => $result['created_posts'] ?? 0,
+							'cases_updated'     => $result['updated_posts'] ?? 0,
+							'execution_time_ms' => $execution_time_ms,
+							'message'           => $message,
+							'error_log'         => ! empty( $result['errors'] ) ? implode( "\n", $result['errors'] ) : '',
 						]
 					);
 					error_log( 'AJAX: Stage 3 - Reported ' . $status . ' to BRAG book API' );
@@ -1167,6 +1195,24 @@ class Sync_Ajax_Handler {
 		// and give it up to 5 minutes of execution time.
 		ignore_user_abort( true );
 		@set_time_limit( 300 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
+
+		// Release the PHP session lock immediately so concurrent admin AJAX requests
+		// (e.g. status polls) are not blocked for the duration of the sync.
+		if ( session_status() === PHP_SESSION_ACTIVE ) {
+			session_write_close();
+		}
+
+		// Send an empty response now so nginx / the web server closes its end of
+		// the connection. The PHP-FPM worker continues executing in the background.
+		header( 'Connection: close' );
+		header( 'Content-Length: 0' );
+		if ( ob_get_level() > 0 ) {
+			ob_end_clean();
+		}
+		flush();
+		if ( function_exists( 'fastcgi_finish_request' ) ) {
+			fastcgi_finish_request();
+		}
 
 		// Fire the same action the WP-Cron fallback uses so both paths share
 		// exactly the same sync execution logic.

@@ -1079,6 +1079,11 @@ class Sync_Page extends Settings_Base {
 			[ 'message' => 'Starting sync via REST API' ]
 		);
 
+		// Release the PHP session lock before the long-running sync begins.
+		if ( session_status() === PHP_SESSION_ACTIVE ) {
+			session_write_close();
+		}
+
 		// Execute the sync using shared method
 		$this->execute_full_sync( $sync_source, $sync_api );
 
@@ -1284,8 +1289,6 @@ class Sync_Page extends Settings_Base {
 					'cases_synced'      => $cases_synced,
 					'cases_created'     => $total_created,
 					'cases_updated'     => $total_updated,
-					'categories_synced' => $stage1_result['categories_synced'] ?? 0,
-					'procedures_synced' => $stage1_result['procedures_synced'] ?? 0,
 					'execution_time_ms' => ( time() - $sync_started ) * 1000,
 					'message'           => $status_message,
 					'error_log'         => $total_failed > 0 ? "Failed cases: {$total_failed}" : '',
@@ -1651,6 +1654,12 @@ class Sync_Page extends Settings_Base {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_send_json_error( 'Insufficient permissions.' );
 			return;
+		}
+
+		// Release the PHP session lock so this read-only handler is not blocked by
+		// concurrent long-running sync AJAX requests holding the session.
+		if ( session_status() === PHP_SESSION_ACTIVE ) {
+			session_write_close();
 		}
 
 		try {
@@ -3532,8 +3541,6 @@ class Sync_Page extends Settings_Base {
 					'cases_synced'      => $cases_synced,
 					'cases_created'     => $total_created,
 					'cases_updated'     => $total_updated,
-					'categories_synced' => $stage1_result['categories_synced'] ?? 0,
-					'procedures_synced' => $stage1_result['procedures_synced'] ?? 0,
 					'execution_time_ms' => ( time() - $sync_started ) * 1000,
 					'message'           => $status_message,
 					'error_log'         => $total_failed > 0 ? "Failed cases: {$total_failed}" : '',
