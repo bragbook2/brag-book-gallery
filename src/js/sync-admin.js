@@ -263,7 +263,15 @@ if (typeof window.BRAGbookSyncAdmin === 'undefined') {
 				return;
 			}
 
-			const status    = activeSyncData?.status ?? 'unknown';
+			const status = activeSyncData?.status ?? null;
+
+			// If active_sync was cleared (cancelled/force-cleared), just remove the banner
+			if (!status || status === 'in_progress') {
+				banner.remove();
+				this.setSyncControlsDisabled(false);
+				return;
+			}
+
 			const statusMap = {
 				completed: { label: 'Sync completed successfully',        bg: '#e8f5e9', border: '#43a047' },
 				partial:   { label: 'Sync completed with some failures',  bg: '#fff3e0', border: '#fb8c00' },

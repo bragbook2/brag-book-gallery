@@ -501,7 +501,14 @@ if (typeof window.BRAGbookSyncAdmin === 'undefined') {
       if (!banner) {
         return;
       }
-      const status = activeSyncData?.status ?? 'unknown';
+      const status = activeSyncData?.status ?? null;
+
+      // If active_sync was cleared (cancelled/force-cleared), just remove the banner
+      if (!status || status === 'in_progress') {
+        banner.remove();
+        this.setSyncControlsDisabled(false);
+        return;
+      }
       const statusMap = {
         completed: {
           label: 'Sync completed successfully',

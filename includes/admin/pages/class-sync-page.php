@@ -2487,12 +2487,15 @@ class Sync_Page extends Settings_Base {
 		// Set stop flag
 		update_option( 'brag_book_gallery_sync_stop_flag', true, false );
 
+		// Clear active sync state so the remote sync banner dismisses
+		delete_option( 'brag_book_gallery_active_sync' );
+		delete_option( 'brag_book_stage3_state' );
+
 		// Clear progress tracking for both Data_Sync and legacy
 		delete_transient( 'brag_book_gallery_sync_progress' ); // Data_Sync uses transient
+		delete_transient( 'brag_book_stage_progress' );
 		delete_option( 'brag_book_gallery_case_progress' );
 		delete_option( 'brag_book_gallery_detailed_progress' );
-
-		error_log( 'BRAG book Gallery Sync: Stop flag set by user' );
 
 		wp_send_json_success( [
 			'message' => 'Sync stop requested. The process will stop at the next safe checkpoint.',
@@ -2510,20 +2513,21 @@ class Sync_Page extends Settings_Base {
 		$this->verify_ajax_request();
 
 		try {
-			// Clear all sync-related options
+			// Clear all sync-related options including the active sync state
+			delete_option( 'brag_book_gallery_active_sync' );
+			delete_option( 'brag_book_stage3_state' );
 			delete_option( 'brag_book_gallery_sync_stop_flag' );
 			delete_option( 'brag_book_gallery_case_progress' );
 			delete_option( 'brag_book_gallery_detailed_progress' );
 			delete_option( 'brag_book_gallery_sync_progress' );
-
-			error_log( 'BRAG book Gallery Sync: Force cleared all sync state options' );
+			delete_transient( 'brag_book_stage_progress' );
+			delete_transient( 'brag_book_gallery_sync_progress' );
 
 			wp_send_json_success( [
 				'message' => 'Sync state forcefully cleared. You can now start a new sync.',
 			] );
 
 		} catch ( Exception $e ) {
-			error_log( 'BRAG book Gallery Sync: Error force clearing sync state: ' . $e->getMessage() );
 			wp_send_json_error( [
 				'message' => 'Failed to clear sync state: ' . $e->getMessage(),
 			] );
