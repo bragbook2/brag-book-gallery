@@ -66,6 +66,27 @@ class Chunked_Data_Sync {
 	private string $date_string;
 
 	/**
+	 * Cached API token
+	 *
+	 * @var string
+	 */
+	private string $api_token = '';
+
+	/**
+	 * Cached website property ID
+	 *
+	 * @var int
+	 */
+	private int $property_id = 0;
+
+	/**
+	 * Cached Endpoints instance
+	 *
+	 * @var \BRAGBookGallery\Includes\REST\Endpoints|null
+	 */
+	private ?\BRAGBookGallery\Includes\REST\Endpoints $endpoints_instance = null;
+
+	/**
 	 * Constructor
 	 */
 	public function __construct() {
@@ -88,8 +109,15 @@ class Chunked_Data_Sync {
 				$this->database = $db;
 			}
 		} catch ( \Exception $e ) {
-			error_log( 'Chunked Sync: Could not initialize database for registry: ' . $e->getMessage() );
+			$this->debug_log( 'Chunked Sync: Could not initialize database for registry: ' . $e->getMessage() );
 		}
+
+		// Cache API token and property ID to avoid repeated DB reads per-call
+		$tokens              = get_option( 'brag_book_gallery_api_token', [] );
+		$this->api_token     = is_array( $tokens ) ? ( $tokens[0] ?? '' ) : (string) $tokens;
+		$ids                 = get_option( 'brag_book_gallery_website_property_id', [] );
+		$this->property_id   = is_array( $ids ) ? absint( $ids[0] ?? 0 ) : absint( $ids );
+		$this->endpoints_instance = new \BRAGBookGallery\Includes\REST\Endpoints();
 	}
 
 	/**
@@ -109,8 +137,7 @@ class Chunked_Data_Sync {
 	 * @return string
 	 */
 	private function get_api_token(): string {
-		$tokens = get_option( 'brag_book_gallery_api_token', [] );
-		return is_array( $tokens ) ? ( $tokens[0] ?? '' ) : (string) $tokens;
+		return $this->api_token;
 	}
 
 	/**
@@ -120,8 +147,7 @@ class Chunked_Data_Sync {
 	 * @return int
 	 */
 	private function get_property_id(): int {
-		$ids = get_option( 'brag_book_gallery_website_property_id', [] );
-		return is_array( $ids ) ? absint( $ids[0] ?? 0 ) : absint( $ids );
+		return $this->property_id;
 	}
 
 	/**
@@ -141,19 +167,12 @@ class Chunked_Data_Sync {
 			$htaccess_file = $this->sync_dir . '/.htaccess';
 			if ( ! file_exists( $htaccess_file ) ) {
 				$htaccess_content = "Options -Indexes\n";
-				$htaccess_content .= "<FilesMatch \"\\.(json)$\">\n";
-				$htaccess_content .= "    Order Allow,Deny\n";
-				$htaccess_content .= "    Allow from all\n";
-				$htaccess_content .= "</FilesMatch>\n";
-				$htaccess_content .= "<FilesMatch \"^(?!.*\\.json$).*$\">\n";
-				$htaccess_content .= "    Order Deny,Allow\n";
-				$htaccess_content .= "    Deny from all\n";
-				$htaccess_content .= "</FilesMatch>\n";
+				$htaccess_content .= "Deny from all\n";
 				file_put_contents( $htaccess_file, $htaccess_content );
 			}
 		}
 
-		error_log( 'Chunked Sync: Initialized sync directory: ' . $this->sync_dir );
+		$this->debug_log( 'Chunked Sync: Initialized sync directory: ' . $this->sync_dir );
 	}
 
 	/**
@@ -331,7 +350,7 @@ class Chunked_Data_Sync {
 
 		// Save to file
 		$file_path     = $this->get_sync_data_file();
-		$bytes_written = file_put_contents( $file_path, wp_json_encode( $data, JSON_PRETTY_PRINT ) );
+		$bytes_written = file_put_contents( $file_path, wp_json_encode( $data ) );
 
 		if ( $bytes_written === false ) {
 			throw new Exception( 'Failed to save sync data to file' );
@@ -392,7 +411,7 @@ class Chunked_Data_Sync {
 
 		// Ensure taxonomy is registered
 		if ( ! taxonomy_exists( Taxonomies::TAXONOMY_PROCEDURES ) ) {
-			error_log( 'Chunked Sync: Procedures taxonomy not registered, attempting to register' );
+			$this->debug_log( 'Chunked Sync: Procedures taxonomy not registered, attempting to register' );
 			$taxonomies = new Taxonomies();
 			$taxonomies->register_procedures_taxonomy();
 		}
@@ -523,7 +542,7 @@ class Chunked_Data_Sync {
 	 * @return array Result with success status and details
 	 */
 	public function execute_stage_2( bool $tablet = false ): array {
-		error_log( 'Chunked Sync: Starting Stage 2 - Build case ID manifest' . ( $tablet ? ' (tablet mode)' : '' ) );
+		$this->debug_log( 'Chunked Sync: Starting Stage 2 - Build case ID manifest' . ( $tablet ? ' (tablet mode)' : '' ) );
 
 		try {
 			// Check if sync data exists (required for Stage 2)
@@ -533,7 +552,7 @@ class Chunked_Data_Sync {
 
 			// Check if manifest already exists for today
 			if ( $this->manifest_exists() ) {
-				error_log( 'Chunked Sync: Manifest file already exists for today' );
+				$this->debug_log( 'Chunked Sync: Manifest file already exists for today' );
 				$manifest   = $this->load_manifest();
 				$case_count = $this->count_cases_in_manifest( $manifest );
 
@@ -561,7 +580,7 @@ class Chunked_Data_Sync {
 			// Clear progress tracking
 			$this->clear_stage_progress();
 
-			error_log( 'Chunked Sync: Stage 2 completed successfully' );
+			$this->debug_log( 'Chunked Sync: Stage 2 completed successfully' );
 
 			return [
 				'success'         => true,
@@ -576,7 +595,7 @@ class Chunked_Data_Sync {
 			// Clear progress on error
 			$this->clear_stage_progress();
 
-			error_log( 'Chunked Sync: Stage 2 failed: ' . $e->getMessage() );
+			$this->debug_log( 'Chunked Sync: Stage 2 failed: ' . $e->getMessage() );
 
 			return [
 				'success' => false,
@@ -598,7 +617,7 @@ class Chunked_Data_Sync {
 		$manifest = [];
 
 		if ( empty( $sidebar_data['data']['terms'] ) ) {
-			error_log( 'Chunked Sync: No terms found in sidebar_data' );
+			$this->debug_log( 'Chunked Sync: No terms found in sidebar_data' );
 
 			return $manifest;
 		}
@@ -607,7 +626,7 @@ class Chunked_Data_Sync {
 		$procedures       = $this->extract_procedures_from_sidebar( $sidebar_data );
 		$total_procedures = count( $procedures );
 
-		error_log( 'Chunked Sync: Found ' . $total_procedures . ' procedures to process for manifest' );
+		$this->debug_log( 'Chunked Sync: Found ' . $total_procedures . ' procedures to process for manifest' );
 
 		// Update progress tracking
 		$this->update_stage_progress( 0, $total_procedures, 'Starting manifest creation...' );
@@ -625,7 +644,7 @@ class Chunked_Data_Sync {
 			$procedure_ids  = $procedure['ids'];
 			$case_count     = $procedure['caseCount'];
 
-			error_log( "Chunked Sync: Processing procedure '{$procedure_name}' with {$case_count} expected cases" );
+			$this->debug_log( "Chunked Sync: Processing procedure '{$procedure_name}' with {$case_count} expected cases" );
 
 			// Update progress
 			$this->update_stage_progress( $processed, $total_procedures, "Processing: {$procedure_name}" );
@@ -634,7 +653,7 @@ class Chunked_Data_Sync {
 			foreach ( $procedure_ids as $procedure_id ) {
 				// Skip invalid procedure IDs (0, null, empty)
 				if ( empty( $procedure_id ) || $procedure_id === 0 || $procedure_id === '0' ) {
-					error_log( "Chunked Sync: Skipping invalid procedure ID: " . var_export( $procedure_id, true ) . " for procedure '{$procedure_name}'" );
+					$this->debug_log( "Chunked Sync: Skipping invalid procedure ID: " . var_export( $procedure_id, true ) . " for procedure '{$procedure_name}'" );
 					continue;
 				}
 
@@ -653,12 +672,12 @@ class Chunked_Data_Sync {
 						$manifest[ $procedure_id ] = $case_ids;
 						$case_count_actual         = count( $case_ids );
 						$total_cases_found         += $case_count_actual;
-						error_log( "Chunked Sync: Added {$case_count_actual} cases for procedure ID {$procedure_id} ('{$procedure_name}')" );
+						$this->debug_log( "Chunked Sync: Added {$case_count_actual} cases for procedure ID {$procedure_id} ('{$procedure_name}')" );
 					} else {
-						error_log( "Chunked Sync: No cases found for procedure ID {$procedure_id} ('{$procedure_name}')" );
+						$this->debug_log( "Chunked Sync: No cases found for procedure ID {$procedure_id} ('{$procedure_name}')" );
 					}
 				} catch ( Exception $e ) {
-					error_log( "Chunked Sync: ERROR fetching cases for procedure ID {$procedure_id}: " . $e->getMessage() );
+					$this->debug_log( "Chunked Sync: ERROR fetching cases for procedure ID {$procedure_id}: " . $e->getMessage() );
 					// Continue with next procedure instead of failing completely
 				}
 			}
@@ -669,7 +688,7 @@ class Chunked_Data_Sync {
 			$this->update_stage_progress( $processed, $total_procedures, "Processed: {$procedure_name} - Total cases so far: {$total_cases_found}" );
 		}
 
-		error_log( "Chunked Sync: Manifest creation complete. Total procedures: " . count( $manifest ) . ", Total cases: {$total_cases_found}" );
+		$this->debug_log( "Chunked Sync: Manifest creation complete. Total procedures: " . count( $manifest ) . ", Total cases: {$total_cases_found}" );
 
 		return $manifest;
 	}
@@ -695,7 +714,7 @@ class Chunked_Data_Sync {
 							'caseCount' => $procedure['caseCount'],
 						];
 
-						error_log( "Chunked Sync: Procedure '{$procedure['name']}' has ID: {$procedure['id']}" );
+						$this->debug_log( "Chunked Sync: Procedure '{$procedure['name']}' has ID: {$procedure['id']}" );
 					}
 				}
 			}
@@ -716,7 +735,7 @@ class Chunked_Data_Sync {
 		$page         = 1;
 		$limit        = 50;
 
-		error_log( "Chunked Sync: Fetching case IDs for procedure {$procedure_id}" );
+		$this->debug_log( "Chunked Sync: Fetching case IDs for procedure {$procedure_id}" );
 
 		while ( true ) {
 			try {
@@ -727,7 +746,7 @@ class Chunked_Data_Sync {
 				}
 
 				$all_case_ids = array_merge( $all_case_ids, $result['case_ids'] );
-				error_log( "Chunked Sync: Page {$page} returned " . count( $result['case_ids'] ) . " case IDs" );
+				$this->debug_log( "Chunked Sync: Page {$page} returned " . count( $result['case_ids'] ) . " case IDs" );
 
 				// Check pagination metadata to see if there are more pages
 				$pagination = $result['pagination'];
@@ -737,11 +756,8 @@ class Chunked_Data_Sync {
 
 				$page++;
 
-				// Small delay to avoid overwhelming the API
-				usleep( 100000 ); // 0.1 second
-
 			} catch ( Exception $e ) {
-				error_log( "Chunked Sync: Failed to fetch page {$page} for procedure {$procedure_id}: " . $e->getMessage() );
+				$this->debug_log( "Chunked Sync: Failed to fetch page {$page} for procedure {$procedure_id}: " . $e->getMessage() );
 				break;
 			}
 		}
@@ -750,7 +766,7 @@ class Chunked_Data_Sync {
 		$all_case_ids = array_unique( $all_case_ids );
 		$all_case_ids = array_values( $all_case_ids );
 
-		error_log( "Chunked Sync: Total of " . count( $all_case_ids ) . " unique case IDs for procedure {$procedure_id}" );
+		$this->debug_log( "Chunked Sync: Total of " . count( $all_case_ids ) . " unique case IDs for procedure {$procedure_id}" );
 
 		return $all_case_ids;
 	}
@@ -766,18 +782,13 @@ class Chunked_Data_Sync {
 	 * @throws Exception If API request fails
 	 */
 	private function fetch_case_ids_with_count( int $procedure_id, int $page = 1, int $limit = 50, bool $tablet = false ): array {
-		$api_token            = get_option( 'brag_book_gallery_api_token', [] )[0] ?? '';
-		$website_property_id  = get_option( 'brag_book_gallery_website_property_id', [] )[0] ?? 0;
-
-		if ( empty( $api_token ) || $website_property_id <= 0 ) {
+		if ( empty( $this->api_token ) || $this->property_id <= 0 ) {
 			throw new Exception( 'Invalid API configuration' );
 		}
 
-		// Use Endpoints class for v2 API call
-		$endpoints = new \BRAGBookGallery\Includes\REST\Endpoints();
-		$response  = $endpoints->get_cases_v2(
-			$api_token,
-			intval( $website_property_id ),
+		$response = $this->endpoints_instance->get_cases_v2(
+			$this->api_token,
+			$this->property_id,
 			$procedure_id,
 			$page,
 			$limit,
@@ -815,13 +826,13 @@ class Chunked_Data_Sync {
 	 */
 	private function save_manifest( array $manifest ): void {
 		$file_path     = $this->get_manifest_file();
-		$bytes_written = file_put_contents( $file_path, wp_json_encode( $manifest, JSON_PRETTY_PRINT ) );
+		$bytes_written = file_put_contents( $file_path, wp_json_encode( $manifest ) );
 
 		if ( $bytes_written === false ) {
 			throw new Exception( 'Failed to save manifest to file' );
 		}
 
-		error_log( 'Chunked Sync: Saved manifest to file: ' . basename( $file_path ) );
+		$this->debug_log( 'Chunked Sync: Saved manifest to file: ' . basename( $file_path ) );
 	}
 
 	/**
@@ -924,7 +935,7 @@ class Chunked_Data_Sync {
 	 * @return array Result with success status and details
 	 */
 	public function execute_stage_3( int $batch_size = 10 ): array {
-		error_log( 'Chunked Sync: Starting Stage 3 - Process cases from manifest (batch size: ' . $batch_size . ')' );
+		$this->debug_log( 'Chunked Sync: Starting Stage 3 - Process cases from manifest (batch size: ' . $batch_size . ')' );
 
 		// Increase memory limit and time limit for processing
 		@ini_set( 'memory_limit', '512M' );
@@ -945,17 +956,17 @@ class Chunked_Data_Sync {
 			// Check for existing state to resume from
 			$state = get_option( 'brag_book_stage3_state', null );
 			if ( $state ) {
-				error_log( 'Chunked Sync: Resuming Stage 3 from saved state' );
+				$this->debug_log( 'Chunked Sync: Resuming Stage 3 from saved state' );
 				$result = $this->process_batch_from_state( $state, $manifest, $batch_size );
 			} else {
 				// Start fresh processing
-				error_log( 'Chunked Sync: Starting fresh Stage 3 processing' );
+				$this->debug_log( 'Chunked Sync: Starting fresh Stage 3 processing' );
 				$result = $this->process_batch_from_manifest( $manifest, $batch_size );
 			}
 
 			// Check if we need to continue processing
 			if ( $result['needs_continue'] ?? false ) {
-				error_log( 'Chunked Sync: Stage 3 needs to continue - ' . $result['processed_cases'] . '/' . $result['total_cases'] . ' processed' );
+				$this->debug_log( 'Chunked Sync: Stage 3 needs to continue - ' . $result['processed_cases'] . '/' . $result['total_cases'] . ' processed' );
 				return [
 					'success'         => true,
 					'stage'           => 3,
@@ -975,7 +986,7 @@ class Chunked_Data_Sync {
 			}
 
 			// Processing complete
-			error_log( 'Chunked Sync: Stage 3 completed successfully' );
+			$this->debug_log( 'Chunked Sync: Stage 3 completed successfully' );
 
 			// Store completion status for display
 			$completion_status = [
@@ -1024,7 +1035,7 @@ class Chunked_Data_Sync {
 			$this->clear_stage_progress();
 			delete_option( 'brag_book_stage3_state' );
 
-			error_log( 'Chunked Sync: Stage 3 failed: ' . $e->getMessage() );
+			$this->debug_log( 'Chunked Sync: Stage 3 failed: ' . $e->getMessage() );
 
 			return [
 				'success' => false,
@@ -1058,7 +1069,7 @@ class Chunked_Data_Sync {
 
 		// Also log for debugging
 		if ( ! empty( $message ) ) {
-			error_log( "Chunked Sync Progress: [{$current}/{$total}] {$message}" );
+			$this->debug_log( "Chunked Sync Progress: [{$current}/{$total}] {$message}" );
 		}
 	}
 
@@ -1081,6 +1092,19 @@ class Chunked_Data_Sync {
 	}
 
 	/**
+	 * Log a message only when debug mode is enabled
+	 *
+	 * @param string $message Message to log
+	 *
+	 * @return void
+	 */
+	private function debug_log( string $message ): void {
+		if ( get_option( 'brag_book_gallery_debug_mode' ) === 'yes' ) {
+			error_log( $message );
+		}
+	}
+
+	/**
 	 * Process a batch of cases from manifest (fresh start)
 	 *
 	 * @param array $manifest Manifest data with procedure IDs and case IDs
@@ -1095,11 +1119,10 @@ class Chunked_Data_Sync {
 			$total_cases += count( $case_ids );
 		}
 
-		error_log( "Chunked Sync: Processing first batch of {$batch_size} cases from total {$total_cases}" );
+		$this->debug_log( "Chunked Sync: Processing first batch of {$batch_size} cases from total {$total_cases}" );
 
 		// Initialize state
 		$state = [
-			'manifest'        => $manifest,
 			'total_cases'     => $total_cases,
 			'processed_cases' => 0,
 			'created_posts'   => 0,
@@ -1126,6 +1149,7 @@ class Chunked_Data_Sync {
 	private function process_batch_from_state( array $state, array $manifest, int $batch_size ): array {
 		$processed_in_batch = 0;
 		$procedure_keys     = array_keys( $manifest );
+		$num_procedure_keys = count( $procedure_keys );
 
 		// Ensure total_cases is set (calculate if missing)
 		if ( empty( $state['total_cases'] ) ) {
@@ -1147,8 +1171,8 @@ class Chunked_Data_Sync {
 		$procedure_index = $state['procedure_index'] ?? 0;
 		$case_index      = $state['case_index'] ?? 0;
 
-		error_log( "Chunked Sync: Resuming from procedure index {$procedure_index}, case index {$case_index}" );
-		error_log( "Chunked Sync: Progress so far: {$state['processed_cases']}/{$state['total_cases']} cases" );
+		$this->debug_log( "Chunked Sync: Resuming from procedure index {$procedure_index}, case index {$case_index}" );
+		$this->debug_log( "Chunked Sync: Progress so far: {$state['processed_cases']}/{$state['total_cases']} cases" );
 
 		// Update progress
 		$this->update_stage_progress(
@@ -1158,14 +1182,15 @@ class Chunked_Data_Sync {
 		);
 
 		// Process cases until batch is full
-		while ( $processed_in_batch < $batch_size && $procedure_index < count( $procedure_keys ) ) {
+		while ( $processed_in_batch < $batch_size && $procedure_index < $num_procedure_keys ) {
 			$procedure_id = $procedure_keys[ $procedure_index ];
 			$case_ids     = $manifest[ $procedure_id ];
+			$num_case_ids = count( $case_ids );
 
 			// Get procedure term
 			$procedure_term = $this->get_procedure_term_by_api_id( intval( $procedure_id ) );
 			if ( ! $procedure_term ) {
-				error_log( "Chunked Sync: WARNING - No procedure term found for API ID {$procedure_id}, skipping" );
+				$this->debug_log( "Chunked Sync: WARNING - No procedure term found for API ID {$procedure_id}, skipping" );
 				$procedure_index ++;
 				$case_index = 0;
 				continue;
@@ -1178,7 +1203,7 @@ class Chunked_Data_Sync {
 			}
 
 			// Process cases for this procedure
-			while ( $case_index < count( $case_ids ) && $processed_in_batch < $batch_size ) {
+			while ( $case_index < $num_case_ids && $processed_in_batch < $batch_size ) {
 				$case_id = $case_ids[ $case_index ];
 
 				try {
@@ -1216,25 +1241,21 @@ class Chunked_Data_Sync {
 				} catch ( Exception $e ) {
 					$state['failed_cases'] ++;
 					$state['errors'][] = "Failed to process case {$case_id}: " . $e->getMessage();
-					error_log( "Chunked Sync: ERROR - Failed to process case {$case_id}: " . $e->getMessage() );
+					$this->debug_log( "Chunked Sync: ERROR - Failed to process case {$case_id}: " . $e->getMessage() );
 					$state['processed_cases'] ++;
 				}
 
 				$case_index ++;
 				$processed_in_batch ++;
 
-				// Pause briefly to avoid overwhelming the server
-				if ( $processed_in_batch % 5 === 0 ) {
-					usleep( 50000 ); // 0.05 second
-				}
 			}
 
 			// Move to next procedure if we finished this one
-			if ( $case_index >= count( $case_ids ) ) {
+			if ( $case_index >= $num_case_ids ) {
 				// Store the case order for this completed procedure
 				if ( ! empty( $state['current_procedure_case_order'] ) ) {
 					$this->store_procedure_case_order( $procedure_term->term_id, $state['current_procedure_case_order'] );
-					error_log( "Chunked Sync: Stored case ordering for procedure {$procedure_id} (term: {$procedure_term->term_id}) - " . count( $state['current_procedure_case_order'] ) . " cases" );
+					$this->debug_log( "Chunked Sync: Stored case ordering for procedure {$procedure_id} (term: {$procedure_term->term_id}) - " . count( $state['current_procedure_case_order'] ) . " cases" );
 				}
 
 				$procedure_index ++;
@@ -1249,22 +1270,23 @@ class Chunked_Data_Sync {
 
 		// Check if we need to continue
 		// We're done if we've reached the end of all procedures OR if we've processed all cases
-		$reached_end    = $procedure_index >= count( $procedure_keys );
+		$reached_end    = $procedure_index >= $num_procedure_keys;
 		$needs_continue = ! $reached_end && ( $state['processed_cases'] < $state['total_cases'] );
 
 		if ( $needs_continue ) {
-			// Save state for resumption
+			// Save state for resumption — omit manifest as it's loaded from file
+			unset( $state['manifest'] );
 			update_option( 'brag_book_stage3_state', $state, false );
-			error_log( "Chunked Sync: Saved state - {$state['processed_cases']}/{$state['total_cases']} processed, continuing..." );
+			$this->debug_log( "Chunked Sync: Saved state - {$state['processed_cases']}/{$state['total_cases']} processed, continuing..." );
 		} else {
 			// Log completion or end of available data
 			if ( $reached_end ) {
-				error_log( "Chunked Sync: Reached end of manifest - {$state['processed_cases']}/{$state['total_cases']} processed" );
+				$this->debug_log( "Chunked Sync: Reached end of manifest - {$state['processed_cases']}/{$state['total_cases']} processed" );
 				if ( $state['processed_cases'] < $state['total_cases'] ) {
-					error_log( "Chunked Sync: WARNING - Expected {$state['total_cases']} cases but only found {$state['processed_cases']} in manifest" );
+					$this->debug_log( "Chunked Sync: WARNING - Expected {$state['total_cases']} cases but only found {$state['processed_cases']} in manifest" );
 				}
 			} else {
-				error_log( "Chunked Sync: All cases processed - {$state['processed_cases']}/{$state['total_cases']}" );
+				$this->debug_log( "Chunked Sync: All cases processed - {$state['processed_cases']}/{$state['total_cases']}" );
 			}
 		}
 
@@ -1284,163 +1306,6 @@ class Chunked_Data_Sync {
 		];
 	}
 
-	/**
-	 * Process cases from manifest (OLD METHOD - kept for reference)
-	 *
-	 * @param array $manifest Manifest data with procedure IDs and case IDs
-	 *
-	 * @return array Processing results
-	 */
-	private function process_cases_from_manifest( array $manifest ): array {
-		$total_procedures = count( $manifest );
-		$total_cases      = 0;
-		$processed_cases  = 0;
-		$created_posts    = 0;
-		$updated_posts    = 0;
-		$failed_cases     = 0;
-		$errors           = [];
-
-		// Count total cases
-		foreach ( $manifest as $case_ids ) {
-			$total_cases += count( $case_ids );
-		}
-
-		error_log( "Chunked Sync: Stage 3 - Processing {$total_cases} cases from {$total_procedures} procedures" );
-
-		// Update initial progress
-		$this->update_stage_progress( 0, $total_cases, 'Starting case processing...' );
-
-		$procedure_index = 0;
-		$batch_size      = 5; // Process 5 cases at a time for better memory management
-		$batch_count     = 0;
-
-		// Loop through each procedure in the manifest
-		foreach ( $manifest as $procedure_id => $case_ids ) {
-			$procedure_index ++;
-			$procedure_case_count = count( $case_ids );
-
-			error_log( "Chunked Sync: Processing procedure ID {$procedure_id} ({$procedure_index}/{$total_procedures}) with {$procedure_case_count} cases" );
-
-			// Get the procedure term for this ID
-			$procedure_term = $this->get_procedure_term_by_api_id( $procedure_id );
-			if ( ! $procedure_term ) {
-				error_log( "Chunked Sync: WARNING - No procedure term found for API ID {$procedure_id}, skipping cases" );
-				$processed_cases += $procedure_case_count;
-				continue;
-			}
-
-			// Store case ordering for this procedure (case IDs are already in API order)
-			$this->store_procedure_case_order( $procedure_term->term_id, $case_ids );
-			error_log( "Chunked Sync: Stored case ordering for procedure {$procedure_id} - " . count( $case_ids ) . " cases" );
-
-			// Track the position of cases within this procedure for ordering
-			$case_position = 0;
-
-			// Process cases in batches
-			$case_batches = array_chunk( $case_ids, $batch_size );
-
-			foreach ( $case_batches as $batch_index => $batch ) {
-				$batch_count ++;
-				$batch_start = $batch_index * $batch_size;
-
-				error_log( "Chunked Sync: Processing batch " . ( $batch_index + 1 ) . " of " . count( $case_batches ) . " for procedure {$procedure_id} (cases " . ( $batch_start + 1 ) . "-" . ( $batch_start + count( $batch ) ) . ")" );
-
-				// Process each case ID in the batch
-				foreach ( $batch as $case_offset => $case_id ) {
-					$case_index = $batch_start + $case_offset;
-
-					try {
-						// Update progress
-						$case_number = $case_index + 1;
-						$this->update_stage_progress(
-							$processed_cases,
-							$total_cases,
-							"Processing case {$case_id} from procedure {$procedure_id} ({$case_number}/{$procedure_case_count})"
-						);
-
-						// Fetch full case details from API (pass procedure_id for proper API authentication)
-						error_log( "Chunked Sync: Fetching details for case {$case_id} with procedure ID {$procedure_id}..." );
-						$case_details = $this->fetch_case_details( $case_id, intval( $procedure_id ) );
-						if ( ! $case_details ) {
-							throw new Exception( "Failed to fetch details for case {$case_id}" );
-						}
-						error_log( "Chunked Sync: Successfully fetched details for case {$case_id}, data keys: " . implode( ', ', array_keys( $case_details ) ) );
-
-						// Create or update WordPress post with order position
-						error_log( "Chunked Sync: Creating/updating post for case {$case_id} at position {$case_position}..." );
-						$result = $this->create_or_update_case_post( $case_details, $procedure_term, $case_position );
-
-						if ( $result['created'] ) {
-							$created_posts ++;
-							error_log( "Chunked Sync: Created NEW post for case {$case_id} (Post ID: {$result['post_id']}) at position {$case_position}" );
-						} else {
-							$updated_posts ++;
-							error_log( "Chunked Sync: Updated EXISTING post for case {$case_id} (Post ID: {$result['post_id']}) at position {$case_position}" );
-						}
-
-						// Increment position for next case
-						$case_position ++;
-
-					} catch ( Exception $e ) {
-						$failed_cases ++;
-						$error_msg = "Failed to process case {$case_id}: " . $e->getMessage();
-						$errors[]  = $error_msg;
-						error_log( "Chunked Sync: ERROR - " . $error_msg );
-					}
-
-					$processed_cases ++;
-
-					// Check if we should save state for resumption (every 10 cases)
-					if ( $processed_cases % 10 === 0 ) {
-						$this->save_stage3_state( $manifest, $procedure_id, $case_index, $processed_cases, $created_posts, $updated_posts, $failed_cases );
-					}
-
-					// Small delay to avoid overwhelming the API
-					if ( $processed_cases % 5 === 0 ) {
-						usleep( 100000 ); // 0.1 second delay every 5 cases
-					}
-				}
-
-				// Clear memory after every batch with smaller batch size
-				error_log( "Chunked Sync: Clearing memory after batch {$batch_count}" );
-
-				// Force garbage collection
-				if ( function_exists( 'gc_collect_cycles' ) ) {
-					gc_collect_cycles();
-				}
-
-				// Log memory usage
-				$memory_usage = memory_get_usage( true ) / 1024 / 1024; // Convert to MB
-				$memory_peak  = memory_get_peak_usage( true ) / 1024 / 1024; // Convert to MB
-				error_log( "Chunked Sync: Memory usage: {$memory_usage}MB, Peak: {$memory_peak}MB" );
-
-				// If memory is getting high, pause briefly
-				if ( $memory_usage > 200 ) {
-					error_log( "Chunked Sync: High memory usage detected (>{$memory_usage}MB), pausing for 1 second" );
-					sleep( 1 );
-				}
-			}
-		}
-
-		// Final progress update
-		$this->update_stage_progress( $total_cases, $total_cases, 'Case processing complete' );
-
-		// Limit errors in response to prevent memory issues
-		$limited_errors = array_slice( $errors, 0, 10 );
-		if ( count( $errors ) > 10 ) {
-			$limited_errors[] = sprintf( '... and %d more errors', count( $errors ) - 10 );
-		}
-
-		return [
-			'total_cases'     => $total_cases,
-			'processed_cases' => $processed_cases,
-			'created_posts'   => $created_posts,
-			'updated_posts'   => $updated_posts,
-			'failed_cases'    => $failed_cases,
-			'errors'          => $limited_errors,
-			'error_count'     => count( $errors ),
-		];
-	}
 
 	/**
 	 * Fetch case details from API
@@ -1451,28 +1316,24 @@ class Chunked_Data_Sync {
 	 * @return array|null Normalized case data or null on failure
 	 */
 	private function fetch_case_details( int $case_id, ?int $procedure_id = null ): ?array {
-		$api_token           = get_option( 'brag_book_gallery_api_token', [] )[0] ?? '';
-		$website_property_id = get_option( 'brag_book_gallery_website_property_id', [] )[0] ?? 0;
-
-		if ( empty( $api_token ) || $website_property_id <= 0 ) {
-			error_log( 'Chunked Sync: Invalid API configuration for case fetch' );
+		if ( empty( $this->api_token ) || $this->property_id <= 0 ) {
+			$this->debug_log( 'Chunked Sync: Invalid API configuration for case fetch' );
 			return null;
 		}
 
-		$endpoints = new \BRAGBookGallery\Includes\REST\Endpoints();
-		$response  = $endpoints->get_case_detail_v2(
-			$api_token,
+		$response = $this->endpoints_instance->get_case_detail_v2(
+			$this->api_token,
 			$case_id,
-			intval( $website_property_id ),
+			$this->property_id,
 			$procedure_id
 		);
 
 		if ( ! $response || ! isset( $response['data']['case'] ) ) {
-			error_log( "Chunked Sync: Failed to fetch case {$case_id}" );
+			$this->debug_log( "Chunked Sync: Failed to fetch case {$case_id}" );
 			return null;
 		}
 
-		error_log( "Chunked Sync: Successfully fetched case {$case_id}" );
+		$this->debug_log( "Chunked Sync: Successfully fetched case {$case_id}" );
 
 		// Normalize v2 data to v1 format
 		return $this->normalize_v2_to_v1( $response['data']['case'] );
@@ -1492,17 +1353,17 @@ class Chunked_Data_Sync {
 		$case_id = $v2_data['caseId'] ?? 'unknown';
 
 		// DEBUG: Log incoming v2 data structure
-		error_log( "=== NORMALIZATION DEBUG: Case {$case_id} ===" );
-		error_log( "V2 Data Keys: " . implode( ', ', array_keys( $v2_data ) ) );
-		error_log( "Has patientInfo: " . ( isset( $v2_data['patientInfo'] ) ? 'YES' : 'NO' ) );
-		error_log( "Has seoInfo: " . ( isset( $v2_data['seoInfo'] ) ? 'YES' : 'NO' ) );
-		error_log( "Has photoSets: " . ( isset( $v2_data['photoSets'] ) ? 'YES (' . count( $v2_data['photoSets'] ) . ' sets)' : 'NO' ) );
+		$this->debug_log( "=== NORMALIZATION DEBUG: Case {$case_id} ===" );
+		$this->debug_log( "V2 Data Keys: " . implode( ', ', array_keys( $v2_data ) ) );
+		$this->debug_log( "Has patientInfo: " . ( isset( $v2_data['patientInfo'] ) ? 'YES' : 'NO' ) );
+		$this->debug_log( "Has seoInfo: " . ( isset( $v2_data['seoInfo'] ) ? 'YES' : 'NO' ) );
+		$this->debug_log( "Has photoSets: " . ( isset( $v2_data['photoSets'] ) ? 'YES (' . count( $v2_data['photoSets'] ) . ' sets)' : 'NO' ) );
 
 		if ( isset( $v2_data['photoSets'][0]['images'] ) ) {
 			$first_images = $v2_data['photoSets'][0]['images'];
-			error_log( "First photoSet image keys: " . implode( ', ', array_keys( $first_images ) ) );
-			error_log( "Before URL: " . ( $first_images['before']['url'] ?? 'MISSING' ) );
-			error_log( "After URL: " . ( $first_images['after']['url'] ?? 'MISSING' ) );
+			$this->debug_log( "First photoSet image keys: " . implode( ', ', array_keys( $first_images ) ) );
+			$this->debug_log( "Before URL: " . ( $first_images['before']['url'] ?? 'MISSING' ) );
+			$this->debug_log( "After URL: " . ( $first_images['after']['url'] ?? 'MISSING' ) );
 		}
 
 		$normalized = [];
@@ -1586,19 +1447,19 @@ class Chunked_Data_Sync {
 		}
 
 		// DEBUG: Log normalized output
-		error_log( "Normalized Data Keys: " . implode( ', ', array_keys( $normalized ) ) );
-		error_log( "Normalized age: " . ( $normalized['age'] ?? 'NULL' ) );
-		error_log( "Normalized gender: " . ( $normalized['gender'] ?? 'NULL' ) );
-		error_log( "Normalized photoSets count: " . ( isset( $normalized['photoSets'] ) ? count( $normalized['photoSets'] ) : '0' ) );
+		$this->debug_log( "Normalized Data Keys: " . implode( ', ', array_keys( $normalized ) ) );
+		$this->debug_log( "Normalized age: " . ( $normalized['age'] ?? 'NULL' ) );
+		$this->debug_log( "Normalized gender: " . ( $normalized['gender'] ?? 'NULL' ) );
+		$this->debug_log( "Normalized photoSets count: " . ( isset( $normalized['photoSets'] ) ? count( $normalized['photoSets'] ) : '0' ) );
 		if ( isset( $normalized['photoSets'][0] ) ) {
-			error_log( "First normalized photoSet keys: " . implode( ', ', array_keys( $normalized['photoSets'][0] ) ) );
-			error_log( "Normalized beforeLocationUrl: " . ( $normalized['photoSets'][0]['beforeLocationUrl'] ?? 'MISSING' ) );
-			error_log( "Normalized afterLocationUrl1: " . ( $normalized['photoSets'][0]['afterLocationUrl1'] ?? 'MISSING' ) );
+			$this->debug_log( "First normalized photoSet keys: " . implode( ', ', array_keys( $normalized['photoSets'][0] ) ) );
+			$this->debug_log( "Normalized beforeLocationUrl: " . ( $normalized['photoSets'][0]['beforeLocationUrl'] ?? 'MISSING' ) );
+			$this->debug_log( "Normalized afterLocationUrl1: " . ( $normalized['photoSets'][0]['afterLocationUrl1'] ?? 'MISSING' ) );
 		}
 		if ( isset( $normalized['caseDetails'][0] ) ) {
-			error_log( "Normalized seoPageTitle: " . ( $normalized['caseDetails'][0]['seoPageTitle'] ?? 'MISSING' ) );
+			$this->debug_log( "Normalized seoPageTitle: " . ( $normalized['caseDetails'][0]['seoPageTitle'] ?? 'MISSING' ) );
 		}
-		error_log( "=== END NORMALIZATION DEBUG ===" );
+		$this->debug_log( "=== END NORMALIZATION DEBUG ===" );
 
 		return $normalized;
 	}
@@ -1615,7 +1476,7 @@ class Chunked_Data_Sync {
 	private function create_or_update_case_post( array $case_details, object $procedure_term, int $case_position = 0 ): array {
 		$procedure_case_id = $case_details['id'] ?? '';
 		$global_case_id    = $case_details['caseId'] ?? '';
-		error_log( "Chunked Sync: create_or_update_case_post called for procedure case {$procedure_case_id} (global caseId: {$global_case_id})" );
+		$this->debug_log( "Chunked Sync: create_or_update_case_post called for procedure case {$procedure_case_id} (global caseId: {$global_case_id})" );
 
 		// Check if post already exists by procedure-specific case ID
 		// Each procedure gets its own post, even if they share the same global caseId
@@ -1626,7 +1487,7 @@ class Chunked_Data_Sync {
 			'posts_per_page' => 1,
 		] );
 
-		error_log( "Chunked Sync: Found " . count( $existing_posts ) . " existing posts for procedure case {$procedure_case_id}" );
+		$this->debug_log( "Chunked Sync: Found " . count( $existing_posts ) . " existing posts for procedure case {$procedure_case_id}" );
 
 		// Generate slug from case data
 		$slug = $this->generate_case_slug( $case_details );
@@ -1663,7 +1524,7 @@ class Chunked_Data_Sync {
 				'post_status'  => isset( $case_details['draft'] ) && $case_details['draft'] ? 'draft' : 'publish',
 			];
 			$result    = wp_update_post( $post_data );
-			error_log( "Chunked Sync: wp_update_post result for procedure case {$procedure_case_id}: " . ( $result ? "success (ID: $result)" : "failed" ) );
+			$this->debug_log( "Chunked Sync: wp_update_post result for procedure case {$procedure_case_id}: " . ( $result ? "success (ID: $result)" : "failed" ) );
 			if ( is_wp_error( $result ) ) {
 				throw new Exception( "Failed to update post: " . $result->get_error_message() );
 			}
@@ -1689,7 +1550,7 @@ class Chunked_Data_Sync {
 				],
 			];
 			$post_id   = wp_insert_post( $post_data );
-			error_log( "Chunked Sync: wp_insert_post result for procedure case {$procedure_case_id}: " . ( is_wp_error( $post_id ) ? "error: " . $post_id->get_error_message() : "success (ID: $post_id)" ) );
+			$this->debug_log( "Chunked Sync: wp_insert_post result for procedure case {$procedure_case_id}: " . ( is_wp_error( $post_id ) ? "error: " . $post_id->get_error_message() : "success (ID: $post_id)" ) );
 			if ( is_wp_error( $post_id ) ) {
 				throw new Exception( "Failed to create post: " . $post_id->get_error_message() );
 			}
@@ -1717,14 +1578,14 @@ class Chunked_Data_Sync {
 		try {
 			Post_Types::save_api_response_data( $post_id, $case_details );
 		} catch ( Exception $e ) {
-			error_log( "Chunked Sync: Failed to save API data for procedure case {$procedure_case_id}: " . $e->getMessage() );
+			$this->debug_log( "Chunked Sync: Failed to save API data for procedure case {$procedure_case_id}: " . $e->getMessage() );
 			// Don't throw - the post is created, just missing some metadata
 			// The title is already set properly
 		}
 
 		// Store the case position for ordering within this procedure
 		update_post_meta( $post_id, 'brag_book_gallery_case_order', $case_position );
-		error_log( "Chunked Sync: Set case order position to {$case_position} for post {$post_id}" );
+		$this->debug_log( "Chunked Sync: Set case order position to {$case_position} for post {$post_id}" );
 
 		// Assign doctor taxonomy if enabled (website property ID 111)
 		$this->maybe_assign_doctor_taxonomy( $post_id, $case_details );
@@ -1776,7 +1637,7 @@ class Chunked_Data_Sync {
 
 			// Make sure it's not empty after sanitization and processing
 			if ( ! empty( $slug ) ) {
-				error_log( 'Chunked Sync: Using seoInfo.slug for procedure case ' . $procedure_case_id . ': ' . $slug );
+				$this->debug_log( 'Chunked Sync: Using seoInfo.slug for procedure case ' . $procedure_case_id . ': ' . $slug );
 
 				return $slug;
 			}
@@ -1784,7 +1645,7 @@ class Chunked_Data_Sync {
 
 		// Fallback to procedure-specific case ID (from manifest)
 		$fallback_slug = (string) $procedure_case_id;
-		error_log( 'Chunked Sync: Using fallback slug (procedure case id) for case: ' . $fallback_slug );
+		$this->debug_log( 'Chunked Sync: Using fallback slug (procedure case id) for case: ' . $fallback_slug );
 
 		return $fallback_slug;
 	}
@@ -1807,47 +1668,7 @@ class Chunked_Data_Sync {
 		return ! empty( $terms ) ? $terms[0] : null;
 	}
 
-	/**
-	 * Save Stage 3 state for resumption
-	 *
-	 * @param array $manifest Full manifest
-	 * @param string $current_procedure_id Current procedure ID
-	 * @param int $current_case_index Current case index
-	 * @param int $processed_cases Total processed cases
-	 * @param int $created_posts Created posts count
-	 * @param int $updated_posts Updated posts count
-	 * @param int $failed_cases Failed cases count
-	 *
-	 * @return void
-	 */
-	private function save_stage3_state( array $manifest, int $current_procedure_id, int $current_case_index, int $processed_cases, int $created_posts, int $updated_posts, int $failed_cases ): void {
-		$state = [
-			'session_id'           => $this->sync_session_id,
-			'manifest'             => $manifest,
-			'current_procedure_id' => $current_procedure_id,
-			'current_case_index'   => $current_case_index,
-			'processed_cases'      => $processed_cases,
-			'created_posts'        => $created_posts,
-			'updated_posts'        => $updated_posts,
-			'failed_cases'         => $failed_cases,
-			'timestamp'            => time(),
-		];
 
-		update_option( 'brag_book_stage3_state', $state, false );
-	}
-
-	/**
-	 * Resume Stage 3 from saved state
-	 *
-	 * @param array $state Saved state
-	 *
-	 * @return array Processing results
-	 */
-	private function resume_stage_3( array $state ): array {
-		// Implementation would continue from saved position
-		// This is a placeholder for the resume logic
-		return $this->process_cases_from_manifest( $state['manifest'] );
-	}
 
 	/**
 	 * Store case ordering for a procedure
@@ -1876,7 +1697,7 @@ class Chunked_Data_Sync {
 			return "WP:{$case['wp_id']}/API:{$case['api_id']}";
 		}, $sample_cases ) );
 
-		error_log( "Chunked Sync: Stored case order for term {$term_id} - " . count( $case_order ) . " cases. Sample: " . $sample_str . ( count( $case_order ) > 3 ? '...' : '' ) );
+		$this->debug_log( "Chunked Sync: Stored case order for term {$term_id} - " . count( $case_order ) . " cases. Sample: " . $sample_str . ( count( $case_order ) > 3 ? '...' : '' ) );
 	}
 
 	/**
@@ -1900,7 +1721,7 @@ class Chunked_Data_Sync {
 		] );
 
 		if ( empty( $terms ) || is_wp_error( $terms ) ) {
-			error_log( "Chunked Sync: No procedure term found for API ID {$procedure_id}" );
+			$this->debug_log( "Chunked Sync: No procedure term found for API ID {$procedure_id}" );
 
 			return [];
 		}
@@ -1910,7 +1731,7 @@ class Chunked_Data_Sync {
 		// Get the case order list stored on the term
 		$case_ids_in_order = get_term_meta( $term->term_id, 'brag_book_gallery_case_order_list', true );
 		if ( ! is_array( $case_ids_in_order ) || empty( $case_ids_in_order ) ) {
-			error_log( "Chunked Sync: No case order list found for procedure {$procedure_id} (term: {$term->term_id})" );
+			$this->debug_log( "Chunked Sync: No case order list found for procedure {$procedure_id} (term: {$term->term_id})" );
 
 			return [];
 		}
@@ -1955,7 +1776,7 @@ class Chunked_Data_Sync {
 			}
 		}
 
-		error_log( "Chunked Sync: Returning " . count( $ordered_post_ids ) . " ordered posts for procedure {$procedure_id}" );
+		$this->debug_log( "Chunked Sync: Returning " . count( $ordered_post_ids ) . " ordered posts for procedure {$procedure_id}" );
 
 		return $ordered_post_ids;
 	}
@@ -2018,7 +1839,7 @@ class Chunked_Data_Sync {
 
 		// Check if taxonomy exists (it should be registered if enabled)
 		if ( ! taxonomy_exists( Taxonomies::TAXONOMY_DOCTORS ) ) {
-			error_log( 'Chunked Sync: Doctors taxonomy is enabled but not registered' );
+			$this->debug_log( 'Chunked Sync: Doctors taxonomy is enabled but not registered' );
 
 			return;
 		}
@@ -2027,7 +1848,7 @@ class Chunked_Data_Sync {
 		$creator = $case_data['creator'] ?? null;
 
 		if ( empty( $creator ) || ! is_array( $creator ) ) {
-			error_log( "Chunked Sync: No creator data found for post {$post_id}" );
+			$this->debug_log( "Chunked Sync: No creator data found for post {$post_id}" );
 
 			return;
 		}
@@ -2036,7 +1857,7 @@ class Chunked_Data_Sync {
 		$member_id = $creator['id'] ?? null;
 
 		if ( empty( $member_id ) ) {
-			error_log( "Chunked Sync: No member ID found in creator data for post {$post_id}" );
+			$this->debug_log( "Chunked Sync: No member ID found in creator data for post {$post_id}" );
 
 			return;
 		}
@@ -2045,7 +1866,7 @@ class Chunked_Data_Sync {
 		$doctor_term = $this->create_or_update_doctor_term( $creator );
 
 		if ( ! $doctor_term ) {
-			error_log( "Chunked Sync: Failed to create/update doctor term for member {$member_id}" );
+			$this->debug_log( "Chunked Sync: Failed to create/update doctor term for member {$member_id}" );
 
 			return;
 		}
@@ -2054,9 +1875,9 @@ class Chunked_Data_Sync {
 		$result = wp_set_object_terms( $post_id, [ $doctor_term->term_id ], Taxonomies::TAXONOMY_DOCTORS );
 
 		if ( is_wp_error( $result ) ) {
-			error_log( "Chunked Sync: Failed to assign doctor term to post {$post_id}: " . $result->get_error_message() );
+			$this->debug_log( "Chunked Sync: Failed to assign doctor term to post {$post_id}: " . $result->get_error_message() );
 		} else {
-			error_log( "Chunked Sync: ✓ Assigned doctor '{$doctor_term->name}' (term ID: {$doctor_term->term_id}) to post {$post_id}" );
+			$this->debug_log( "Chunked Sync: ✓ Assigned doctor '{$doctor_term->name}' (term ID: {$doctor_term->term_id}) to post {$post_id}" );
 		}
 	}
 
@@ -2118,7 +1939,7 @@ class Chunked_Data_Sync {
 					'name' => $doctor_name,
 					'slug' => sanitize_title( $doctor_name . '-' . $member_id ),
 				] );
-				error_log( "Chunked Sync: Updated doctor term name to '{$doctor_name}' (term ID: {$term->term_id})" );
+				$this->debug_log( "Chunked Sync: Updated doctor term name to '{$doctor_name}' (term ID: {$term->term_id})" );
 			}
 
 			// Update term meta
@@ -2153,7 +1974,7 @@ class Chunked_Data_Sync {
 				if ( $term && ! is_wp_error( $term ) ) {
 					// Update meta for the existing term
 					$this->update_doctor_term_meta( $term->term_id, $first_name, $last_name, $suffix, $member_id, $profile_url );
-					error_log( "Chunked Sync: Using existing doctor term '{$doctor_name}' (term ID: {$term->term_id})" );
+					$this->debug_log( "Chunked Sync: Using existing doctor term '{$doctor_name}' (term ID: {$term->term_id})" );
 
 					// Register doctor in sync registry
 					$this->register_doctor_in_registry( $member_id, $term->term_id );
@@ -2162,7 +1983,7 @@ class Chunked_Data_Sync {
 				}
 			}
 
-			error_log( "Chunked Sync: Failed to create doctor term '{$doctor_name}': " . $result->get_error_message() );
+			$this->debug_log( "Chunked Sync: Failed to create doctor term '{$doctor_name}': " . $result->get_error_message() );
 
 			return null;
 		}
@@ -2175,7 +1996,7 @@ class Chunked_Data_Sync {
 		// Register doctor in sync registry
 		$this->register_doctor_in_registry( $member_id, $term_id );
 
-		error_log( "Chunked Sync: ✓ Created new doctor term '{$doctor_name}' (term ID: {$term_id})" );
+		$this->debug_log( "Chunked Sync: ✓ Created new doctor term '{$doctor_name}' (term ID: {$term_id})" );
 
 		return get_term( $term_id, Taxonomies::TAXONOMY_DOCTORS );
 	}
