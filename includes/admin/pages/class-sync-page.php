@@ -1508,9 +1508,13 @@ class Sync_Page extends Settings_Base {
 			in_array( $active_sync['source'] ?? '', [ 'rest_api', 'automatic' ], true )
 		);
 
+		// Include live stage progress so the banner can show a progress bar
+		$stage_progress = $is_remote_in_progress ? get_transient( 'brag_book_stage_progress' ) : false;
+
 		wp_send_json_success( [
 			'active_sync'                => $active_sync,
 			'is_remote_sync_in_progress' => $is_remote_in_progress,
+			'stage_progress'             => $stage_progress ?: null,
 		] );
 	}
 
@@ -3440,6 +3444,13 @@ class Sync_Page extends Settings_Base {
 
 			// Run Stage 1: Fetch procedures
 			error_log( 'BRAG book Gallery: Running Stage 1 - Fetching procedures' );
+			set_transient( 'brag_book_stage_progress', [
+				'current'    => 0,
+				'total'      => 3,
+				'percentage' => 5,
+				'message'    => 'Stage 1: Fetching procedures and sidebar data...',
+				'timestamp'  => time(),
+			], 300 );
 			$stage1_result = $sync->execute_stage_1();
 
 			if ( ! $stage1_result['success'] ) {
@@ -3451,6 +3462,13 @@ class Sync_Page extends Settings_Base {
 
 			// Run Stage 2: Build manifest
 			error_log( 'BRAG book Gallery: Running Stage 2 - Building manifest' );
+			set_transient( 'brag_book_stage_progress', [
+				'current'    => 1,
+				'total'      => 3,
+				'percentage' => 33,
+				'message'    => 'Stage 2: Building case manifest...',
+				'timestamp'  => time(),
+			], 300 );
 			$stage2_result = $sync->execute_stage_2();
 
 			if ( ! $stage2_result['success'] ) {
@@ -3462,6 +3480,13 @@ class Sync_Page extends Settings_Base {
 
 			// Run Stage 3: Process cases in batches
 			error_log( 'BRAG book Gallery: Running Stage 3 - Processing cases' );
+			set_transient( 'brag_book_stage_progress', [
+				'current'    => 2,
+				'total'      => 3,
+				'percentage' => 66,
+				'message'    => 'Stage 3: Processing cases...',
+				'timestamp'  => time(),
+			], 300 );
 
 			$total_created   = 0;
 			$total_updated   = 0;

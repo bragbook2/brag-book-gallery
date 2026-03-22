@@ -220,17 +220,19 @@ if (typeof window.BRAGbookSyncAdmin === 'undefined') {
 				'margin-bottom:16px',
 				'display:flex',
 				'align-items:center',
-				'gap:10px',
+				'gap:12px',
 				'font-size:13px'
 			].join(';');
 
 			banner.innerHTML = `
-				<span>
-					<strong>${source} sync in progress</strong>
-					— triggered by the BRAGBook application${startedAt ? ` at ${startedAt}` : ''}.
-					This page will update automatically when the sync completes.
-				</span>
-				<button type="button" id="remote-sync-cancel-btn" style="margin-left:auto;flex-shrink:0;background:#fef2f2;color:#CC0000;border:1px solid #fecaca;border-radius:4px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;">
+				<div style="flex:1;min-width:0">
+					<div><strong>${source} sync in progress</strong>${startedAt ? ` — started at ${startedAt}` : ''}</div>
+					<div id="remote-sync-progress-msg" style="margin-top:4px;font-size:11px;color:#6b7280">Starting...</div>
+					<div style="margin-top:6px;height:4px;background:rgba(0,0,0,0.12);border-radius:2px;overflow:hidden">
+						<div id="remote-sync-progress-bar" style="height:4px;background:#f9a825;border-radius:2px;width:5%;transition:width 0.4s ease"></div>
+					</div>
+				</div>
+				<button type="button" id="remote-sync-cancel-btn" style="flex-shrink:0;background:#fef2f2;color:#CC0000;border:1px solid #fecaca;border-radius:4px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;">
 					Cancel Sync
 				</button>
 			`;
@@ -346,6 +348,15 @@ if (typeof window.BRAGbookSyncAdmin === 'undefined') {
 						this.stopBragBookStatusPolling();
 						this.refreshBragBookStatus();
 						this.updateRemoteSyncBanner(result.data.active_sync);
+					} else {
+						// Sync still running — update progress bar if data available
+						const p = result.data.stage_progress;
+						if (p) {
+							const msg = document.getElementById('remote-sync-progress-msg');
+							const bar = document.getElementById('remote-sync-progress-bar');
+							if (msg) msg.textContent = p.message || '';
+							if (bar) bar.style.width = (p.percentage || 0) + '%';
+						}
 					}
 
 				} catch (error) {
