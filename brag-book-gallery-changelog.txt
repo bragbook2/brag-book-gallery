@@ -1,5 +1,20 @@
 === BRAGBook Gallery Changelog ===
 
+= 4.4.3-beta2 (2026-03-22) =
+
+Improved:
+* Sync Performance - API token, property ID, and Endpoints instance cached at construction; eliminates repeated DB reads and object instantiation per case during Stage 3
+* Sync Performance - Removed usleep() delays from batch loop (50ms per 5 cases) and pagination loop (100ms per page)
+* Sync Performance - count() pre-calculated outside loops in process_batch_from_state()
+* Sync Performance - Stage 3 state no longer stores the full manifest array between batches; manifest is always loaded from file
+* Sync Performance - Removed JSON_PRETTY_PRINT from manifest and sidebar data file writes
+* Debug Logging - All sync logging now gated behind debug mode flag via debug_log(); no disk I/O in production when debug is off
+* Security - Sync data directory .htaccess updated to Deny from all; previously JSON files were publicly accessible via HTTP
+
+Removed:
+* Dead methods: process_cases_from_manifest(), resume_stage_3(), save_stage3_state()
+* test-sync-validation.php development file removed from production plugin
+
 = 4.4.2 (2026-03-17) =
 
 Enhanced:

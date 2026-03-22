@@ -93,6 +93,40 @@ class Changelog_Page extends Settings_Base {
 				</div>
 			</div>
 
+			<!-- Version 4.4.3-beta2 -->
+			<div class="brag-book-gallery-section">
+				<div class="brag-book-gallery-changelog-version">
+					<h3>
+						<span class="version-badge version-beta">v4.4.3-beta2</span>
+						<?php esc_html_e( 'March 22, 2026', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Beta Release', 'brag-book-gallery' ); ?>
+					</h3>
+					<div class="brag-book-gallery-card">
+						<p><?php esc_html_e( 'This release focuses on sync performance and code quality. Eliminates redundant database reads and object construction during Stage 3, removes artificial delays, gates all debug logging behind a flag, and hardens the sync data directory against direct HTTP access.', 'brag-book-gallery' ); ?></p>
+						<h4><?php esc_html_e( '⚡ Performance', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'API token, property ID, and Endpoints instance are cached at construction time — eliminates repeated get_option() calls and object instantiation on every case fetch during Stage 3', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Removed artificial usleep() delays from the batch processing loop and pagination loop in manifest building', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'count() pre-calculated outside loops in batch state processing', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Stage 3 state saved between batches no longer stores the full manifest array, reducing option storage size', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Removed JSON_PRETTY_PRINT from manifest and sidebar data file writes', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '🎨 Improvements', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'All sync debug output is now gated behind the debug mode setting — no disk I/O from logging in production', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '🔒 Security', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Sync data directory .htaccess updated to deny all HTTP access; previously JSON files were publicly readable', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '🗑️ Removed', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Dead methods removed: process_cases_from_manifest(), resume_stage_3(), and save_stage3_state()', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'test-sync-validation.php development file removed from production plugin', 'brag-book-gallery' ); ?></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
 			<!-- Version 4.4.2 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">

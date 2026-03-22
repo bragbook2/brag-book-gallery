@@ -4,6 +4,23 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.4.3-beta2] - 2026-03-22 (Beta Release)
+
+### Improved
+- **Sync Performance**: API token, website property ID, and `Endpoints` instance are now cached at construction time, eliminating repeated `get_option()` calls and object instantiation on every case fetch during Stage 3 (previously ~2 DB reads + 1 object construction per case)
+- **Sync Performance**: Removed artificial `usleep()` delays — the 50ms pause every 5 cases in the batch loop and the 100ms pause between pagination pages in manifest building are gone
+- **Sync Performance**: `count()` is now pre-calculated outside loops in batch processing, avoiding repeated array counting on every iteration
+- **Sync Performance**: Stage 3 state saved between batches no longer includes the full manifest array; manifest is always loaded from file, reducing option storage size significantly
+- **Sync Performance**: Removed `JSON_PRETTY_PRINT` from manifest and sidebar data file writes, reducing file I/O overhead
+- **Debug Logging**: All sync debug output is now gated behind `brag_book_gallery_debug_mode = yes` via a new `debug_log()` method, eliminating disk I/O on every sync operation in production
+- **Security**: Sync data directory `.htaccess` now denies all HTTP access (`Deny from all`); previously JSON files were publicly readable
+
+### Removed
+- Dead code: `process_cases_from_manifest()` (old method, superseded by batched processing), `resume_stage_3()` (placeholder, never called), and `save_stage3_state()` (only used by the deleted method)
+- `test-sync-validation.php` development file removed from production plugin
+
+---
+
 ## [4.4.2] - 2026-03-17 (Stable Release)
 
 ### Enhanced
