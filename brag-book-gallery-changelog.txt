@@ -1,5 +1,13 @@
 === BRAGBook Gallery Changelog ===
 
+= 4.4.3-beta7 (2026-03-22) =
+
+Fixed:
+* Remote Sync - Batch chain never executed on nopriv loopback or WP-Cron requests because the listener was registered in Sync_Page::__construct() which is only called in logged-in admin context; moved execute_sync_batch, fire_next_batch, and finalize_sync to static methods on Sync_Ajax_Handler
+* Remote Sync - register_batch_hook() now called unconditionally in Setup::init() so the action listener is present for both admin-ajax loopback (is_admin = true) and wp-cron.php (is_admin = false) paths
+* Remote Sync - handle_process_sync_batch() now calls self::execute_sync_batch() directly instead of do_action() to avoid relying on hook registration order
+* Remote Sync - WP-Cron race condition fixed: handle_rest_sync_execution() now skips if a batch token exists (chain already in flight), preventing a second execute_full_sync() run from overwriting the active batch token and resetting Stage 3 to offset 0 — the root cause of the "0 cases synced" result in beta6
+
 = 4.4.3-beta6 (2026-03-22) =
 
 Fixed:

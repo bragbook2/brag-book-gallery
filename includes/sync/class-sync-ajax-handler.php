@@ -1273,11 +1273,253 @@ class Sync_Ajax_Handler {
 		}
 
 		try {
-			do_action( 'brag_book_gallery_process_sync_batch', $provided_token );
+			self::execute_sync_batch( $provided_token );
 		} catch ( \Throwable $e ) {
 			error_log( 'BRAG book Gallery: Fatal error in batch handler: ' . $e->getMessage() );
 		}
 
 		wp_die( '', '', 200 );
+	}
+
+	/**
+	 * Register the Stage 3 batch execution action hook.
+	 *
+	 * Called unconditionally (not inside is_admin()) so the hook is present for
+	 * both the admin-ajax loopback path and the WP-Cron fallback path.
+	 *
+	 * @since 4.4.3
+	 * @return void
+	 */
+	public static function register_batch_hook(): void {
+		add_action( 'brag_book_gallery_process_sync_batch', [ self::class, 'execute_sync_batch' ] );
+	}
+
+	/**
+	 * Execute one Stage 3 batch and dispatch the next (or finalize).
+	 *
+	 * Shared entry point for the admin-ajax loopback and the WP-Cron fallback.
+	 * Validates the token to prevent duplicate execution when both paths are
+	 * in flight simultaneously.
+	 *
+	 * @since 4.4.3
+	 *
+	 * @param string $batch_token Token issued when this batch was scheduled.
+	 * @return void
+	 */
+	public static function execute_sync_batch( string $batch_token ): void {
+		$stored_token = get_option( 'brag_book_gallery_sync_batch_token', '' );
+
+		if ( ! $stored_token || ! hash_equals( (string) $stored_token, $batch_token ) ) {
+			error_log( 'BRAG book Gallery: Batch token mismatch — skipping (already processed or sync was cancelled).' );
+			return;
+		}
+
+		$sync_context = get_option( 'brag_book_gallery_sync_context', [] );
+
+		if ( get_option( 'brag_book_gallery_sync_stop_flag', false ) ) {
+			error_log( 'BRAG book Gallery: Stop flag set — aborting batch chain.' );
+			self::finalize_sync( false, $sync_context, 0, 0, 0, 0, 'Sync cancelled by user.' );
+			return;
+		}
+
+		try {
+			$sync          = new Chunked_Data_Sync();
+			$stage3_result = $sync->execute_stage_3();
+
+			if ( ! $stage3_result['success'] ) {
+				self::finalize_sync(
+					false,
+					$sync_context,
+					0, 0, 0, 0,
+					$stage3_result['message'] ?? 'Stage 3 batch failed.'
+				);
+				return;
+			}
+
+			$processed = (int) ( $stage3_result['processed_cases'] ?? 0 );
+			$total     = (int) ( $stage3_result['total_cases'] ?? 0 );
+			$created   = (int) ( $stage3_result['created_posts'] ?? 0 );
+			$updated   = (int) ( $stage3_result['updated_posts'] ?? 0 );
+			$failed    = (int) ( $stage3_result['failed_cases'] ?? 0 );
+
+			if ( $stage3_result['needs_continue'] ?? false ) {
+				self::fire_next_batch( $sync_context, $processed, $total );
+			} else {
+				self::finalize_sync( true, $sync_context, $created, $updated, $failed, $processed );
+			}
+		} catch ( \Exception $e ) {
+			error_log( 'BRAG book Gallery: Uncaught exception in batch execution: ' . $e->getMessage() );
+			self::finalize_sync( false, $sync_context, 0, 0, 0, 0, $e->getMessage() );
+		}
+	}
+
+	/**
+	 * Generate a fresh batch token, persist context, dispatch the next loopback
+	 * request, and schedule a WP-Cron fallback event.
+	 *
+	 * Called by execute_sync_batch() when needs_continue is true, and by
+	 * Sync_Page::execute_full_sync() to kick off the very first batch.
+	 *
+	 * @since 4.4.3
+	 *
+	 * @param array $sync_context Keys: log_id, sync_source, sync_started.
+	 * @param int   $processed    Cases processed so far (progress display).
+	 * @param int   $total        Total cases in the sync (progress display).
+	 * @return void
+	 */
+	public static function fire_next_batch( array $sync_context, int $processed, int $total ): void {
+		$batch_token = wp_generate_password( 32, false );
+
+		update_option( 'brag_book_gallery_sync_batch_token', $batch_token, false );
+		update_option( 'brag_book_gallery_sync_context', $sync_context, false );
+
+		$percentage = ( $total > 0 )
+			? min( 99, (int) round( 66 + ( $processed / $total ) * 33 ) )
+			: 66;
+
+		set_transient(
+			'brag_book_stage_progress',
+			[
+				'current'    => $processed,
+				'total'      => $total,
+				'percentage' => $percentage,
+				'message'    => $total > 0
+					? "Stage 3: Processing cases ({$processed}/{$total})..."
+					: 'Stage 3: Processing cases...',
+				'timestamp'  => time(),
+			],
+			300
+		);
+
+		wp_remote_post(
+			admin_url( 'admin-ajax.php' ),
+			[
+				'timeout'   => 0.01,
+				'blocking'  => false,
+				'sslverify' => apply_filters( 'https_local_ssl_verify', false ),
+				'body'      => [
+					'action'      => 'brag_book_gallery_process_sync_batch',
+					'batch_token' => $batch_token,
+				],
+			]
+		);
+
+		wp_schedule_single_event(
+			time() + 30,
+			'brag_book_gallery_process_sync_batch',
+			[ $batch_token ]
+		);
+
+		error_log( 'BRAG book Gallery: Batch dispatched — ' . $processed . '/' . $total . ' processed so far.' );
+	}
+
+	/**
+	 * Finalize the sync after all Stage 3 batches complete (or on failure).
+	 *
+	 * Updates the database log, plugin sync settings, the active-sync status
+	 * option, and reports the result to the BRAGBook API. Cleans up the
+	 * batch-chain options so a subsequent sync starts cleanly.
+	 *
+	 * @since 4.4.3
+	 *
+	 * @param bool   $success      Whether the sync completed successfully.
+	 * @param array  $sync_context Context persisted across the batch chain.
+	 * @param int    $created      Posts created.
+	 * @param int    $updated      Posts updated.
+	 * @param int    $failed       Cases that failed.
+	 * @param int    $processed    Total cases processed.
+	 * @param string $error        Error message; empty string on success.
+	 * @return void
+	 */
+	public static function finalize_sync(
+		bool $success,
+		array $sync_context,
+		int $created,
+		int $updated,
+		int $failed,
+		int $processed,
+		string $error = ''
+	): void {
+		$log_id       = $sync_context['log_id'] ?? null;
+		$sync_source  = (string) ( $sync_context['sync_source'] ?? 'rest_api' );
+		$sync_started = (int) ( $sync_context['sync_started'] ?? time() );
+
+		$setup    = \BRAGBookGallery\Includes\Core\Setup::get_instance();
+		$database = $setup->get_service( 'database' );
+		$sync_api = new Sync_Api();
+
+		if ( $success ) {
+			$db_status   = 'completed';
+			$sync_status = 'success';
+		} elseif ( $error ) {
+			$db_status   = 'failed';
+			$sync_status = 'error';
+		} else {
+			$db_status   = 'partial';
+			$sync_status = 'partial';
+		}
+
+		if ( $database && $log_id ) {
+			$database->update_sync_log( $log_id, $db_status, $processed, $failed, $error );
+		}
+
+		$settings                   = get_option( 'brag_book_gallery_sync_settings', [] );
+		$settings['last_sync_time'] = current_time( 'mysql' );
+		$settings['sync_status']    = $sync_status;
+		update_option( 'brag_book_gallery_sync_settings', $settings );
+
+		update_option( 'brag_book_gallery_last_sync_time', $settings['last_sync_time'] );
+		update_option( 'brag_book_gallery_last_sync_status', $sync_status );
+		update_option( 'brag_book_gallery_last_sync_source', $sync_source );
+
+		$active_sync_prev = get_option( 'brag_book_gallery_active_sync', [] );
+		update_option(
+			'brag_book_gallery_active_sync',
+			[
+				'source'       => $sync_source,
+				'started_at'   => is_array( $active_sync_prev ) ? ( $active_sync_prev['started_at'] ?? current_time( 'mysql' ) ) : current_time( 'mysql' ),
+				'completed_at' => current_time( 'mysql' ),
+				'status'       => $db_status,
+				'message'      => $success
+					? sprintf( 'Sync completed via %s: %d cases synced.', $sync_source, $created + $updated )
+					: ( $error ?: 'Sync completed with partial results.' ),
+				'cases_synced' => $created + $updated,
+			]
+		);
+
+		$report_status  = $success ? Sync_Api::STATUS_SUCCESS : Sync_Api::STATUS_PARTIAL;
+		$status_message = sprintf(
+			'%s sync completed: %d processed (%d created, %d updated, %d failed)',
+			ucfirst( $sync_source ),
+			$processed,
+			$created,
+			$updated,
+			$failed
+		);
+
+		$sync_api->report_sync(
+			$report_status,
+			[
+				'cases_synced'      => $created + $updated,
+				'cases_created'     => $created,
+				'cases_updated'     => $updated,
+				'execution_time_ms' => ( time() - $sync_started ) * 1000,
+				'message'           => $status_message,
+				'error_log'         => $failed > 0 ? "Failed cases: {$failed}" : '',
+			]
+		);
+
+		delete_option( 'brag_book_gallery_sync_batch_token' );
+		delete_option( 'brag_book_gallery_sync_context' );
+		delete_option( 'brag_book_gallery_sync_stop_flag' );
+
+		error_log( sprintf(
+			'BRAG book Gallery: Sync finalized (%s) — %d processed, %d created, %d updated, %d failed.',
+			$db_status,
+			$processed,
+			$created,
+			$updated,
+			$failed
+		) );
 	}
 }

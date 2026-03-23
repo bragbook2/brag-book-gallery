@@ -4,6 +4,16 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.4.3-beta7] - 2026-03-22 (Beta Release)
+
+### Fixed
+- **Remote Sync — Batch Chain Never Executed**: The `execute_sync_batch` logic was defined in `Sync_Page` and registered via `add_action` in its constructor. `Sync_Page` is only instantiated in the logged-in admin context, so the nopriv admin-ajax loopback and WP-Cron fallback requests had no listener — `do_action('brag_book_gallery_process_sync_batch')` fired with zero listeners and silently did nothing. Remote syncs therefore always reported 0 cases processed.
+- **Moved batch execution to `Sync_Ajax_Handler`**: `execute_sync_batch`, `fire_next_batch`, and `finalize_sync` are now static methods on `Sync_Ajax_Handler` (same namespace as `Chunked_Data_Sync` and `Sync_Api`). `handle_process_sync_batch` calls `self::execute_sync_batch()` directly rather than relying on `do_action`.
+- **Unconditional hook registration**: `Sync_Ajax_Handler::register_batch_hook()` is now called outside the `is_admin()` block in `Setup::init()`, so the `brag_book_gallery_process_sync_batch` action listener is present for both the admin-ajax loopback path and wp-cron.php requests.
+- **WP-Cron race condition**: `handle_rest_sync_execution()` now also skips if `brag_book_gallery_sync_batch_token` exists, meaning a Stage 3 batch chain is already in flight. Previously the WP-Cron fallback (scheduled 60 s after the REST trigger) would re-run `execute_full_sync()` while the loopback's batch chain was processing — overwriting the batch token and resetting Stage 3 to offset 0, producing the "0 cases synced" result seen in beta6.
+
+---
+
 ## [4.4.3-beta6] - 2026-03-22 (Beta Release)
 
 ### Fixed

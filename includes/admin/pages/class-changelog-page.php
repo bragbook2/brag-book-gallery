@@ -93,6 +93,25 @@ class Changelog_Page extends Settings_Base {
 				</div>
 			</div>
 
+			<!-- Version 4.4.3-beta7 -->
+			<div class="brag-book-gallery-section">
+				<div class="brag-book-gallery-changelog-version">
+					<h3>
+						<span class="version-badge version-beta">v4.4.3-beta7</span>
+						<?php esc_html_e( 'March 22, 2026', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Beta Release', 'brag-book-gallery' ); ?>
+					</h3>
+					<div class="brag-book-gallery-card">
+						<p><?php esc_html_e( 'This release fixes a critical bug introduced in beta6 where remote syncs reported 0 cases processed. The batch chain was registered in a class that is not instantiated during nopriv loopback or WP-Cron requests, so the action had no listener and silently did nothing.', 'brag-book-gallery' ); ?></p>
+						<h4><?php esc_html_e( '🐛 Fixed', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Remote syncs now correctly process all cases — previously always reported 0 cases synced because the batch execution listener was never registered for nopriv requests', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Batch execution logic (execute_sync_batch, fire_next_batch, finalize_sync) moved to Sync_Ajax_Handler as static methods — always available regardless of which admin classes are instantiated', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Batch hook registered unconditionally in Setup so it fires for both the admin-ajax loopback path and WP-Cron fallback path', 'brag-book-gallery' ); ?></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
 			<!-- Version 4.4.3-beta6 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">
