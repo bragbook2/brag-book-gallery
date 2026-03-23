@@ -64,6 +64,11 @@ class Sync_Ajax_Handler {
 		// no user session; authentication is handled by the one-time token.
 		add_action( 'wp_ajax_nopriv_brag_book_gallery_background_sync_execute', [ self::class, 'handle_background_sync_execute' ] );
 		add_action( 'wp_ajax_brag_book_gallery_background_sync_execute', [ self::class, 'handle_background_sync_execute' ] );
+
+		// Stage 3 batch processor — each batch is a short-lived loopback request
+		// so no single PHP process runs longer than one batch (~10 cases, <15 s).
+		add_action( 'wp_ajax_nopriv_brag_book_gallery_process_sync_batch', [ self::class, 'handle_process_sync_batch' ] );
+		add_action( 'wp_ajax_brag_book_gallery_process_sync_batch', [ self::class, 'handle_process_sync_batch' ] );
 	}
 
 	/**
@@ -1228,6 +1233,50 @@ class Sync_Ajax_Handler {
 		// Fire the same action the WP-Cron fallback uses so both paths share
 		// exactly the same sync execution logic.
 		do_action( 'brag_book_gallery_rest_sync' );
+
+		wp_die( '', '', 200 );
+	}
+
+	/**
+	 * Handle a single Stage 3 batch request.
+	 *
+	 * Called via non-blocking admin-ajax loopback (nopriv) or by a logged-in
+	 * request. Validates the batch token stored in options, closes the HTTP
+	 * connection early, then fires the shared batch-execution action so that
+	 * both this loopback path and the WP-Cron fallback run identical logic.
+	 *
+	 * @since 4.4.3
+	 * @return void
+	 */
+	public static function handle_process_sync_batch(): void {
+		$provided_token = sanitize_text_field( wp_unslash( $_POST['batch_token'] ?? '' ) );
+		$stored_token   = get_option( 'brag_book_gallery_sync_batch_token', '' );
+
+		if ( ! $stored_token || ! hash_equals( (string) $stored_token, $provided_token ) ) {
+			error_log( 'BRAG book Gallery: Process-batch request — invalid or stale token.' );
+			wp_die( '', '', 403 );
+		}
+
+		ignore_user_abort( true );
+		@set_time_limit( 120 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
+
+		if ( session_status() === PHP_SESSION_ACTIVE ) {
+			session_write_close();
+		}
+
+		if ( function_exists( 'fastcgi_finish_request' ) ) {
+			fastcgi_finish_request();
+		} else {
+			header( 'Connection: close' );
+			header( 'Content-Length: 0' );
+			flush();
+		}
+
+		try {
+			do_action( 'brag_book_gallery_process_sync_batch', $provided_token );
+		} catch ( \Throwable $e ) {
+			error_log( 'BRAG book Gallery: Fatal error in batch handler: ' . $e->getMessage() );
+		}
 
 		wp_die( '', '', 200 );
 	}

@@ -93,6 +93,27 @@ class Changelog_Page extends Settings_Base {
 				</div>
 			</div>
 
+			<!-- Version 4.4.3-beta6 -->
+			<div class="brag-book-gallery-section">
+				<div class="brag-book-gallery-changelog-version">
+					<h3>
+						<span class="version-badge version-beta">v4.4.3-beta6</span>
+						<?php esc_html_e( 'March 22, 2026', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Beta Release', 'brag-book-gallery' ); ?>
+					</h3>
+					<div class="brag-book-gallery-card">
+						<p><?php esc_html_e( 'This release fixes remote syncs stalling mid-way on production hosting. Stage 3 case processing now runs as a self-chaining batch chain — each batch of 10 cases executes in its own short-lived PHP request, making syncs immune to PHP-FPM timeouts and proxy timeouts on WP Engine and other managed hosts.', 'brag-book-gallery' ); ?></p>
+						<h4><?php esc_html_e( '🐛 Fixed', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Remote syncs with hundreds of cases no longer stall mid-way due to PHP execution time limits on production servers', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Each Stage 3 batch now runs in its own short-lived HTTP request (~5–15 seconds) rather than a single loop that could run for 5+ minutes', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Compatible with WP Engine, Kinsta, Cloudways, and other managed hosts that enforce strict PHP-FPM timeouts', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'WP-Cron single event (30s delay) acts as fallback if the host blocks loopback HTTP requests', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'One-time token prevents duplicate batch processing if both the loopback and cron fallback fire simultaneously', 'brag-book-gallery' ); ?></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
 			<!-- Version 4.4.3-beta2 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">

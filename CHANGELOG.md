@@ -4,6 +4,20 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.4.3-beta6] - 2026-03-22 (Beta Release)
+
+### Fixed
+- **Remote Sync Reliability**: Stage 3 case processing now runs as a self-chaining batch chain instead of a single long-lived PHP process loop. Each batch of 10 cases runs in its own short-lived HTTP request (~5–15 seconds), making the sync immune to PHP-FPM timeouts, Nginx proxy timeouts, and WP Engine's `request_terminate_timeout`. Syncs with hundreds of cases previously stalled mid-way on production hosting; they will now complete regardless of server timeout limits.
+
+### How It Works
+- After Stage 2 completes, a non-blocking loopback POST fires the first batch immediately
+- Each batch processes 10 cases, saves its state, then fires the next batch via loopback
+- A WP-Cron single event (30s delay) acts as a fallback if the host blocks loopback HTTP
+- The WP-Cron fallback validates a one-time token; if the loopback already ran the batch the cron exits without duplicating work
+- On completion the last batch updates the sync log, plugin settings, and reports to the BRAGBook API — identical to the previous single-process flow
+
+---
+
 ## [4.4.3-beta2] - 2026-03-22 (Beta Release)
 
 ### Improved

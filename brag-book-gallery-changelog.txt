@@ -1,5 +1,12 @@
 === BRAGBook Gallery Changelog ===
 
+= 4.4.3-beta6 (2026-03-22) =
+
+Fixed:
+* Remote Sync Reliability - Stage 3 now uses a self-chaining batch chain instead of a single long-lived PHP loop; each batch of 10 cases runs in its own short-lived request, making syncs immune to PHP-FPM and proxy timeouts on WP Engine and other managed hosts
+* Non-blocking loopback fires each batch immediately; a WP-Cron single event (30s delay) acts as fallback if loopback HTTP is blocked by the host
+* One-time token validates each batch dispatch, preventing the cron fallback from duplicating a batch the loopback already processed
+
 = 4.4.3-beta2 (2026-03-22) =
 
 Improved:
