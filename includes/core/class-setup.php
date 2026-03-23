@@ -418,11 +418,6 @@ final class Setup {
 			error_log( 'BRAG book Gallery: Sync_Ajax_Handler initialized' );
 		}
 
-		// Register Stage 3 batch execution hook unconditionally so it fires for
-		// both the admin-ajax loopback (is_admin() = true) and the WP-Cron
-		// fallback (is_admin() = false on wp-cron.php requests).
-		\BRAGBookGallery\Includes\Sync\Sync_Ajax_Handler::register_batch_hook();
-
 		// Register custom cron schedules
 		add_filter( 'cron_schedules', [ $this, 'add_cron_schedules' ] );
 

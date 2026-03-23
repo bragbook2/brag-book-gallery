@@ -1230,8 +1230,6 @@ class Sync_Ajax_Handler {
 			flush();
 		}
 
-		// Fire the same action the WP-Cron fallback uses so both paths share
-		// exactly the same sync execution logic.
 		do_action( 'brag_book_gallery_rest_sync' );
 
 		wp_die( '', '', 200 );
@@ -1242,8 +1240,7 @@ class Sync_Ajax_Handler {
 	 *
 	 * Called via non-blocking admin-ajax loopback (nopriv) or by a logged-in
 	 * request. Validates the batch token stored in options, closes the HTTP
-	 * connection early, then fires the shared batch-execution action so that
-	 * both this loopback path and the WP-Cron fallback run identical logic.
+	 * connection early, then executes the batch directly.
 	 *
 	 * @since 4.4.3
 	 * @return void
@@ -1282,28 +1279,14 @@ class Sync_Ajax_Handler {
 	}
 
 	/**
-	 * Register the Stage 3 batch execution action hook.
-	 *
-	 * Called unconditionally (not inside is_admin()) so the hook is present for
-	 * both the admin-ajax loopback path and the WP-Cron fallback path.
-	 *
-	 * @since 4.4.3
-	 * @return void
-	 */
-	public static function register_batch_hook(): void {
-		add_action( 'brag_book_gallery_process_sync_batch', [ self::class, 'execute_sync_batch' ] );
-	}
-
-	/**
 	 * Execute one Stage 3 batch and dispatch the next (or finalize).
 	 *
-	 * Shared entry point for the admin-ajax loopback and the WP-Cron fallback.
-	 * Validates the token to prevent duplicate execution when both paths are
-	 * in flight simultaneously.
+	 * Validates the token to prevent stale loopbacks from processing a batch
+	 * that has already been handled by a later dispatch.
 	 *
 	 * @since 4.4.3
 	 *
-	 * @param string $batch_token Token issued when this batch was scheduled.
+	 * @param string $batch_token Token issued when this batch was dispatched.
 	 * @return void
 	 */
 	public static function execute_sync_batch( string $batch_token ): void {
@@ -1354,8 +1337,8 @@ class Sync_Ajax_Handler {
 	}
 
 	/**
-	 * Generate a fresh batch token, persist context, dispatch the next loopback
-	 * request, and schedule a WP-Cron fallback event.
+	 * Generate a fresh batch token, persist context, and dispatch the next
+	 * loopback request.
 	 *
 	 * Called by execute_sync_batch() when needs_continue is true, and by
 	 * Sync_Page::execute_full_sync() to kick off the very first batch.
@@ -1402,12 +1385,6 @@ class Sync_Ajax_Handler {
 					'batch_token' => $batch_token,
 				],
 			]
-		);
-
-		wp_schedule_single_event(
-			time() + 30,
-			'brag_book_gallery_process_sync_batch',
-			[ $batch_token ]
 		);
 
 		error_log( 'BRAG book Gallery: Batch dispatched — ' . $processed . '/' . $total . ' processed so far.' );

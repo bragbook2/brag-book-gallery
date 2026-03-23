@@ -1,5 +1,12 @@
 === BRAGBook Gallery Changelog ===
 
+= 4.4.3-beta8 (2026-03-22) =
+
+Changed:
+* Removed all WP-Cron usage from the sync pipeline — WP Engine's system cron fires too infrequently to be a useful fallback; sync now relies entirely on non-blocking loopback HTTP requests
+* Removed wp_schedule_single_event from fire_next_batch() (per-batch cron fallback) and handle_rest_trigger_sync() (main sync cron fallback)
+* Removed register_batch_hook() and its Setup::init() registration
+
 = 4.4.3-beta7 (2026-03-22) =
 
 Fixed:

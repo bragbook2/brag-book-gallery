@@ -1050,25 +1050,6 @@ class Sync_Page extends Settings_Base {
 		error_log( 'BRAG book Gallery: ========== REST API SYNC EXECUTION STARTED ==========' );
 		error_log( 'BRAG book Gallery: Sync triggered via REST API' );
 
-		// Skip if the loopback already completed the sync.
-		$active_sync = get_option( 'brag_book_gallery_active_sync', null );
-		if ( is_array( $active_sync ) && in_array( $active_sync['status'] ?? '', [ 'completed', 'partial', 'failed' ], true ) ) {
-			error_log( 'BRAG book Gallery: Skipping WP-Cron fallback — loopback already completed sync with status: ' . ( $active_sync['status'] ?? 'unknown' ) );
-			return;
-		}
-
-		// Skip if a Stage 3 batch chain is currently in flight (loopback ran
-		// execute_full_sync() and dispatched the first batch before this cron
-		// event fired). Running execute_full_sync() again would overwrite the
-		// active batch token, clobbering the running chain and resetting Stage 3
-		// to offset 0 — which is what caused the "0 cases synced" result in
-		// earlier betas. The batch-level 30 s cron fallbacks handle stalled
-		// individual batches; the main sync cron must not interfere.
-		if ( get_option( 'brag_book_gallery_sync_batch_token', '' ) ) {
-			error_log( 'BRAG book Gallery: Skipping WP-Cron fallback — Stage 3 batch chain is already in progress.' );
-			return;
-		}
-
 		$sync_source = 'rest_api';
 
 		// Store active sync information for UI display
@@ -1572,10 +1553,9 @@ class Sync_Page extends Settings_Base {
 			'expires' => time() + 300,
 		] );
 
-		// Primary: fire a non-blocking loopback HTTP request so the sync runs
-		// in a real PHP process immediately — no dependency on WP-Cron or
-		// site traffic. sslverify is disabled for loopback to avoid self-signed
-		// certificate failures on local/staging environments.
+			// Fire a non-blocking loopback HTTP request so the sync runs in a real
+		// PHP process immediately. sslverify is disabled for loopback to avoid
+		// self-signed certificate failures on local/staging environments.
 		$loopback_result = wp_remote_post(
 			admin_url( 'admin-ajax.php' ),
 			[
@@ -1590,13 +1570,8 @@ class Sync_Page extends Settings_Base {
 		);
 
 		if ( is_wp_error( $loopback_result ) ) {
-			error_log( 'BRAG book Gallery: Loopback request failed (' . $loopback_result->get_error_message() . ') — falling back to WP-Cron' );
+			error_log( 'BRAG book Gallery: Loopback request failed (' . $loopback_result->get_error_message() . ').' );
 		}
-
-		// Fallback: schedule via WP-Cron 60 seconds out in case the loopback
-		// is blocked by the host. The handler checks active_sync status on
-		// entry and skips execution if the loopback already completed the sync.
-		wp_schedule_single_event( time() + 60, 'brag_book_gallery_rest_sync' );
 
 		$response = [
 			'success'    => true,

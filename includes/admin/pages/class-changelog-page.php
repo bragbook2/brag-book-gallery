@@ -93,6 +93,25 @@ class Changelog_Page extends Settings_Base {
 				</div>
 			</div>
 
+			<!-- Version 4.4.3-beta8 -->
+			<div class="brag-book-gallery-section">
+				<div class="brag-book-gallery-changelog-version">
+					<h3>
+						<span class="version-badge version-beta">v4.4.3-beta8</span>
+						<?php esc_html_e( 'March 22, 2026', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Beta Release', 'brag-book-gallery' ); ?>
+					</h3>
+					<div class="brag-book-gallery-card">
+						<p><?php esc_html_e( 'Removes all WP-Cron usage from the sync pipeline. WP Engine\'s system cron fires too infrequently to be a useful fallback — the sync now relies entirely on non-blocking loopback HTTP requests.', 'brag-book-gallery' ); ?></p>
+						<h4><?php esc_html_e( '🔧 Changed', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Removed per-batch WP-Cron fallback from fire_next_batch() — loopbacks are the only dispatch mechanism', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Removed main sync WP-Cron fallback from handle_rest_trigger_sync() — if the initial loopback fails, the admin UI will show the sync as stuck rather than retrying via slow cron', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Removed register_batch_hook() and its Setup registration — no longer needed without cron fallbacks', 'brag-book-gallery' ); ?></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
 			<!-- Version 4.4.3-beta7 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">
