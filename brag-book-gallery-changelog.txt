@@ -1,6 +1,6 @@
 === BRAGBook Gallery Changelog ===
 
-= 4.4.3 (2026-03-23) =
+= 4.4.3 (2026-03-24) =
 
 Fixed:
 * Remote Sync Reliability - Stage 3 now runs as a self-chaining batch chain; each batch of ~10 cases executes in its own short-lived non-blocking loopback request (~5–15 s), immune to PHP-FPM timeouts, Nginx proxy timeouts, and WP Engine execution limits
@@ -26,7 +26,7 @@ Removed:
 * Dead methods: process_cases_from_manifest(), resume_stage_3(), save_stage3_state()
 * test-sync-validation.php development file removed from production plugin
 
-= 4.4.3-beta8 (2026-03-23) =
+= 4.4.3-beta8 (2026-03-24) =
 
 Changed:
 * Removed all WP-Cron usage from the sync pipeline — WP Engine's system cron fires too infrequently to be a useful fallback; sync now relies entirely on non-blocking loopback HTTP requests

@@ -98,7 +98,7 @@ class Changelog_Page extends Settings_Base {
 				<div class="brag-book-gallery-changelog-version">
 					<h3>
 						<span class="version-badge version-stable">v4.4.3</span>
-						<?php esc_html_e( 'March 23, 2026', 'brag-book-gallery' ); ?>
+						<?php esc_html_e( 'March 24, 2026', 'brag-book-gallery' ); ?>
 					</h3>
 					<div class="brag-book-gallery-card">
 						<p><?php esc_html_e( 'This release significantly improves remote sync reliability on WP Engine and other managed hosts. Stage 3 now runs as a self-chaining batch chain — each batch of ~10 cases runs in its own short-lived request, making syncs immune to server timeout limits. Also includes sync performance improvements, improved debug logging, and a security fix for publicly accessible sync data files.', 'brag-book-gallery' ); ?></p>
