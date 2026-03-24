@@ -1292,6 +1292,12 @@
   background: var(--amber-500);
 }
 
+.version-stable {
+  background: white;
+  color: var(--green-700);
+  border: 2px solid var(--green-600);
+}
+
 .brag-book-gallery-card {
   background: white;
   border: var(--space-px) solid var(--slate-200);

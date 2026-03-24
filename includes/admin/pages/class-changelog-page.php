@@ -93,6 +93,29 @@ class Changelog_Page extends Settings_Base {
 				</div>
 			</div>
 
+			<!-- Version 4.4.3 -->
+			<div class="brag-book-gallery-section">
+				<div class="brag-book-gallery-changelog-version">
+					<h3>
+						<span class="version-badge version-stable">v4.4.3</span>
+						<?php esc_html_e( 'March 23, 2026', 'brag-book-gallery' ); ?>
+					</h3>
+					<div class="brag-book-gallery-card">
+						<p><?php esc_html_e( 'This release fixes remote sync reliability on WP Engine and other managed hosts. Stage 3 case processing now runs as a self-chaining batch chain — each batch of ~10 cases runs in its own short-lived request, making syncs immune to server timeout limits.', 'brag-book-gallery' ); ?></p>
+						<h4><?php esc_html_e( '🐛 Fixed', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Remote syncs with hundreds of cases no longer stall mid-way due to PHP-FPM execution time limits', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Fixed "0 cases synced" result caused by a race condition that reset Stage 3 to offset 0 mid-chain', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Batch execution is now always reachable from the nopriv loopback handler regardless of which admin classes are loaded', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '🔧 Changed', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Removed all WP-Cron usage from the sync pipeline — sync relies entirely on non-blocking loopback HTTP, which is more immediate and reliable on WP Engine', 'brag-book-gallery' ); ?></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
 			<!-- Version 4.4.3-beta8 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">

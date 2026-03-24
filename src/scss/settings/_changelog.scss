@@ -63,3 +63,9 @@
 .version-beta {
 	background: var(--amber-500);
 }
+
+.version-stable {
+	background: white;
+	color: var(--green-700);
+	border: 2px solid var(--green-600);
+}
