@@ -101,16 +101,34 @@ class Changelog_Page extends Settings_Base {
 						<?php esc_html_e( 'March 23, 2026', 'brag-book-gallery' ); ?>
 					</h3>
 					<div class="brag-book-gallery-card">
-						<p><?php esc_html_e( 'This release fixes remote sync reliability on WP Engine and other managed hosts. Stage 3 case processing now runs as a self-chaining batch chain — each batch of ~10 cases runs in its own short-lived request, making syncs immune to server timeout limits.', 'brag-book-gallery' ); ?></p>
+						<p><?php esc_html_e( 'This release significantly improves remote sync reliability on WP Engine and other managed hosts. Stage 3 now runs as a self-chaining batch chain — each batch of ~10 cases runs in its own short-lived request, making syncs immune to server timeout limits. Also includes sync performance improvements, improved debug logging, and a security fix for publicly accessible sync data files.', 'brag-book-gallery' ); ?></p>
 						<h4><?php esc_html_e( '🐛 Fixed', 'brag-book-gallery' ); ?></h4>
 						<ul>
-							<li><?php esc_html_e( 'Remote syncs with hundreds of cases no longer stall mid-way due to PHP-FPM execution time limits', 'brag-book-gallery' ); ?></li>
-							<li><?php esc_html_e( 'Fixed "0 cases synced" result caused by a race condition that reset Stage 3 to offset 0 mid-chain', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Remote syncs with hundreds of cases no longer stall mid-way due to PHP-FPM execution time limits on WP Engine and other managed hosts', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Fixed "0 cases synced" result caused by a race condition that overwrote the active batch token mid-chain and reset Stage 3 to offset 0', 'brag-book-gallery' ); ?></li>
 							<li><?php esc_html_e( 'Batch execution is now always reachable from the nopriv loopback handler regardless of which admin classes are loaded', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'One-time batch token rejects stale or duplicate loopback requests after the token has been rotated, preventing double-processing', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '⚡ Improved', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'API token, property ID, and Endpoints instance cached at construction — eliminates repeated database reads and object instantiation on every case fetch during Stage 3', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Removed artificial usleep() delays from batch loop (50ms per 5 cases) and manifest pagination loop (100ms per page)', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Stage 3 state saved between batches no longer stores the full manifest array — manifest always loaded from file, reducing option storage size significantly', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Removed JSON_PRETTY_PRINT from manifest and sidebar data file writes, reducing file I/O overhead', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'All sync debug logging now gated behind debug mode — no disk I/O on every sync operation in production', 'brag-book-gallery' ); ?></li>
 						</ul>
 						<h4><?php esc_html_e( '🔧 Changed', 'brag-book-gallery' ); ?></h4>
 						<ul>
 							<li><?php esc_html_e( 'Removed all WP-Cron usage from the sync pipeline — sync relies entirely on non-blocking loopback HTTP, which is more immediate and reliable on WP Engine', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '🔒 Security', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Sync data directory .htaccess updated to deny all direct HTTP access — previously JSON data files were publicly readable via URL', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '🗑️ Removed', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Dead code removed: process_cases_from_manifest(), resume_stage_3(), save_stage3_state()', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'test-sync-validation.php development file removed from production plugin', 'brag-book-gallery' ); ?></li>
 						</ul>
 					</div>
 				</div>

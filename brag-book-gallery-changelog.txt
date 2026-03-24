@@ -3,12 +3,28 @@
 = 4.4.3 (2026-03-23) =
 
 Fixed:
-* Remote Sync Reliability - Stage 3 now runs as a self-chaining batch chain; each batch executes in its own short-lived non-blocking loopback request (~10 cases, ~5–15 s), immune to PHP-FPM timeouts on WP Engine and other managed hosts
-* Remote Sync - Fixed WP-Cron race condition that caused "0 cases synced" by overwriting the active batch token mid-chain
-* Remote Sync - Batch execution methods moved to Sync_Ajax_Handler as static methods called directly from the nopriv AJAX handler
+* Remote Sync Reliability - Stage 3 now runs as a self-chaining batch chain; each batch of ~10 cases executes in its own short-lived non-blocking loopback request (~5–15 s), immune to PHP-FPM timeouts, Nginx proxy timeouts, and WP Engine execution limits
+* Remote Sync - Fixed race condition that caused "0 cases synced" by overwriting the active batch token mid-chain and resetting Stage 3 to offset 0
+* Remote Sync - Batch execution methods (execute_sync_batch, fire_next_batch, finalize_sync) moved to Sync_Ajax_Handler as static methods called directly from the nopriv AJAX handler — no hook registration dependency
+* Remote Sync - One-time batch token rejects stale or duplicate loopback requests after the token has been rotated
+
+Improved:
+* Sync Performance - API token, property ID, and Endpoints instance cached at construction; eliminates repeated DB reads and object instantiation per case during Stage 3
+* Sync Performance - Removed usleep() delays from batch loop (50ms per 5 cases) and pagination loop (100ms per page)
+* Sync Performance - count() pre-calculated outside loops in batch processing
+* Sync Performance - Stage 3 state no longer stores the full manifest array between batches; always loaded from file
+* Sync Performance - Removed JSON_PRETTY_PRINT from manifest and sidebar data file writes
+* Debug Logging - All sync logging gated behind debug mode flag via debug_log(); no disk I/O in production when debug is off
 
 Changed:
 * Removed all WP-Cron usage from the sync pipeline — sync relies entirely on non-blocking loopback HTTP
+
+Security:
+* Sync data directory .htaccess updated to Deny from all; previously JSON files were publicly accessible via HTTP
+
+Removed:
+* Dead methods: process_cases_from_manifest(), resume_stage_3(), save_stage3_state()
+* test-sync-validation.php development file removed from production plugin
 
 = 4.4.3-beta8 (2026-03-23) =
 

@@ -7,12 +7,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [4.4.3] - 2026-03-23
 
 ### Fixed
-- **Remote Sync Reliability**: Stage 3 case processing now runs as a self-chaining batch chain instead of a single long-lived PHP process. Each batch (~10 cases) runs in its own short-lived non-blocking loopback request (~5–15 s), making syncs immune to PHP-FPM `request_terminate_timeout` on WP Engine and other managed hosts. Syncs with hundreds of cases that previously stalled mid-way will now complete.
-- **Remote Sync — "0 cases synced"**: Fixed a WP-Cron race condition where the fallback cron event re-ran `execute_full_sync()` while a batch chain was already in flight, overwriting the active batch token and resetting Stage 3 to offset 0.
-- **Batch execution always reachable**: Batch execution methods moved to `Sync_Ajax_Handler` as static methods called directly from the nopriv AJAX handler — no action hook registration required.
+- **Remote Sync Reliability**: Stage 3 case processing now runs as a self-chaining batch chain instead of a single long-lived PHP process loop. Each batch of ~10 cases runs in its own short-lived non-blocking loopback request (~5–15 s), making syncs immune to PHP-FPM `request_terminate_timeout`, Nginx proxy timeouts, and WP Engine's execution limits. Syncs with hundreds of cases that previously stalled mid-way will now complete reliably.
+- **Remote Sync — "0 cases synced"**: Fixed a race condition where a fallback sync execution re-ran `execute_full_sync()` while a batch chain was already processing, overwriting the active batch token and resetting Stage 3 to offset 0.
+- **Batch execution always reachable**: `execute_sync_batch`, `fire_next_batch`, and `finalize_sync` moved to `Sync_Ajax_Handler` as static methods and called directly from the nopriv AJAX handler — no action hook registration required, no dependency on which admin classes are loaded.
+- **One-time batch token**: Each batch dispatch generates a fresh token stored in options. Stale or duplicate loopback requests that arrive after the token has been rotated are rejected, preventing double-processing.
+
+### Improved
+- **Sync Performance**: API token, website property ID, and `Endpoints` instance are now cached at construction time in `Chunked_Data_Sync`, eliminating repeated `get_option()` calls and object instantiation on every case fetch during Stage 3 (previously ~2 DB reads + 1 object construction per case).
+- **Sync Performance**: Removed artificial `usleep()` delays — the 50 ms pause every 5 cases in the batch loop and the 100 ms pause between pagination pages in manifest building are gone.
+- **Sync Performance**: `count()` is pre-calculated outside loops in batch processing, avoiding repeated array counting on every iteration.
+- **Sync Performance**: Stage 3 state saved between batches no longer includes the full manifest array; manifest is always loaded from file, reducing option storage size significantly.
+- **Sync Performance**: Removed `JSON_PRETTY_PRINT` from manifest and sidebar data file writes, reducing file I/O overhead.
+- **Debug Logging**: All sync debug output is now gated behind `brag_book_gallery_debug_mode = yes` via a `debug_log()` method — no disk I/O on every sync in production.
 
 ### Changed
-- **Removed all WP-Cron from the sync pipeline**: WP Engine's system cron fires too infrequently to be a useful fallback. The sync relies entirely on non-blocking loopback HTTP for both the initial execution and each Stage 3 batch dispatch.
+- **Removed all WP-Cron from the sync pipeline**: WP Engine's system cron fires too infrequently to be a useful fallback. The sync relies entirely on non-blocking loopback HTTP for both the initial execution trigger and each Stage 3 batch dispatch.
+
+### Security
+- Sync data directory `.htaccess` now denies all direct HTTP access (`Deny from all`); previously JSON data files were publicly readable via URL.
+
+### Removed
+- Dead code: `process_cases_from_manifest()` (superseded by batched processing), `resume_stage_3()` (placeholder, never called), `save_stage3_state()` (only used by deleted method).
+- `test-sync-validation.php` development file removed from production plugin.
 
 ---
 
