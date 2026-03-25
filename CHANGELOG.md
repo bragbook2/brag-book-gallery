@@ -4,6 +4,15 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.4.4-beta1] - 2026-03-25 (Beta Release)
+
+### Fixed
+- **Sync — Cases associated with multiple procedures**: A procedure can appear in multiple member categories, each with its own category-specific slug, producing multiple WP taxonomy terms sharing the same API procedure ID. Stage 3 was resolving only the first matching term, so cases were only attached to one of those terms. Cases are now assigned to all matching taxonomy terms via `wp_set_object_terms`, and case ordering is stored for each term so procedure views in all categories reflect the correct case list.
+- **View tracking — Invalid `caseProcedureId` submissions**: The JS view tracking fell back to `data-case-id` (the global `caseId`, a large number) when `data-procedure-case-id` was absent. The API rejected these as `CaseProcedureRelationship not found` because the global `caseId` is not a valid junction ID. Tracking now uses `data-procedure-case-id` (`brag_book_gallery_procedure_case_id`) exclusively in all three call sites (`trackPageView`, `trackCaseViewFromCard`, and the AJAX case load handler). If the attribute is missing, tracking is skipped and a console warning is logged rather than submitting an invalid ID.
+- **View tracking — Procedure views not accidentally triggered on case pages**: Added a missing `return` so that a case detail page with no `data-procedure-case-id` cannot fall through and fire a procedure view tracking request.
+
+---
+
 ## [4.4.3] - 2026-03-24
 
 ### Fixed
