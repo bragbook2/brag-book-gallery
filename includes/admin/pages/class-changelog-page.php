@@ -104,6 +104,7 @@ class Changelog_Page extends Settings_Base {
 						<p><?php esc_html_e( 'This release fixes cases not appearing under all their associated member categories after a sync, and stops invalid caseProcedureId values from being submitted to the view tracking endpoint.', 'brag-book-gallery' ); ?></p>
 						<h4><?php esc_html_e( '🐛 Fixed', 'brag-book-gallery' ); ?></h4>
 						<ul>
+							<li><?php esc_html_e( 'Sync: procedure_order term meta now populated from the API terms array order during Stage 1 — sidebar, gallery, and tiles sort order now matches the BRAGBook application after every sync', 'brag-book-gallery' ); ?></li>
 							<li><?php esc_html_e( 'Sync: cases now correctly associated with all category-specific procedure terms — previously only the first matching WP taxonomy term was used, leaving cases missing from other categories that share the same procedure', 'brag-book-gallery' ); ?></li>
 							<li><?php esc_html_e( 'View tracking: removed fallback to data-case-id (global caseId) when data-procedure-case-id is absent — the global caseId is not a valid junction ID and was causing "CaseProcedureRelationship not found" errors on the API', 'brag-book-gallery' ); ?></li>
 							<li><?php esc_html_e( 'View tracking: case detail pages with no data-procedure-case-id no longer fall through and accidentally fire a procedure view tracking request', 'brag-book-gallery' ); ?></li>
