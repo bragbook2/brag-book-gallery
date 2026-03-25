@@ -659,6 +659,7 @@ class BRAGbookGalleryApp {
 				return;
 			}
 			console.warn('BRAGBook: Case detail view found but data-procedure-case-id is missing, skipping view tracking');
+			return;
 		}
 
 		// 2. Check for procedure view (procedure listing page with case cards)
