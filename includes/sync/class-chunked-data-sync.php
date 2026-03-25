@@ -1187,10 +1187,12 @@ class Chunked_Data_Sync {
 			$case_ids     = $manifest[ $procedure_id ];
 			$num_case_ids = count( $case_ids );
 
-			// Get procedure term
-			$procedure_term = $this->get_procedure_term_by_api_id( intval( $procedure_id ) );
-			if ( ! $procedure_term ) {
-				$this->debug_log( "Chunked Sync: WARNING - No procedure term found for API ID {$procedure_id}, skipping" );
+			// Get all procedure terms for this API ID — the same procedure can appear
+			// in multiple categories (each with its own slug), so we collect all terms
+			// and assign the case to every one of them.
+			$procedure_terms = $this->get_all_procedure_terms_by_api_id( intval( $procedure_id ) );
+			if ( empty( $procedure_terms ) ) {
+				$this->debug_log( "Chunked Sync: WARNING - No procedure terms found for API ID {$procedure_id}, skipping" );
 				$procedure_index ++;
 				$case_index = 0;
 				continue;
@@ -1214,7 +1216,7 @@ class Chunked_Data_Sync {
 					}
 
 					// Create or update post
-					$result = $this->create_or_update_case_post( $case_details, $procedure_term, $case_index );
+					$result = $this->create_or_update_case_post( $case_details, $procedure_terms, $case_index );
 
 					if ( $result['created'] ) {
 						$state['created_posts'] ++;
@@ -1254,8 +1256,11 @@ class Chunked_Data_Sync {
 			if ( $case_index >= $num_case_ids ) {
 				// Store the case order for this completed procedure
 				if ( ! empty( $state['current_procedure_case_order'] ) ) {
-					$this->store_procedure_case_order( $procedure_term->term_id, $state['current_procedure_case_order'] );
-					$this->debug_log( "Chunked Sync: Stored case ordering for procedure {$procedure_id} (term: {$procedure_term->term_id}) - " . count( $state['current_procedure_case_order'] ) . " cases" );
+					foreach ( $procedure_terms as $term ) {
+						$this->store_procedure_case_order( $term->term_id, $state['current_procedure_case_order'] );
+					}
+					$term_ids_str = implode( ', ', array_map( fn( $t ) => $t->term_id, $procedure_terms ) );
+					$this->debug_log( "Chunked Sync: Stored case ordering for procedure {$procedure_id} (terms: {$term_ids_str}) - " . count( $state['current_procedure_case_order'] ) . " cases" );
 				}
 
 				$procedure_index ++;
@@ -1473,7 +1478,10 @@ class Chunked_Data_Sync {
 	 *
 	 * @return array Result with post_id and created flag
 	 */
-	private function create_or_update_case_post( array $case_details, object $procedure_term, int $case_position = 0 ): array {
+	private function create_or_update_case_post( array $case_details, array $procedure_terms, int $case_position = 0 ): array {
+		// Use the first term as the primary for title and logging; all terms receive
+		// the taxonomy association so the case appears under every category-specific slug.
+		$procedure_term    = $procedure_terms[0];
 		$procedure_case_id = $case_details['id'] ?? '';
 		$global_case_id    = $case_details['caseId'] ?? '';
 		$this->debug_log( "Chunked Sync: create_or_update_case_post called for procedure case {$procedure_case_id} (global caseId: {$global_case_id})" );
@@ -1557,10 +1565,11 @@ class Chunked_Data_Sync {
 			$created = true;
 		}
 
-		// Assign to procedure taxonomy FIRST - ONLY the procedure from the manifest
-		// Since we're using procedure-specific IDs, each case belongs to exactly one procedure
-		// This MUST happen before save_api_response_data() so the correct procedure is used for the title
-		wp_set_object_terms( $post_id, [ $procedure_term->term_id ], Taxonomies::TAXONOMY_PROCEDURES );
+		// Assign to procedure taxonomy FIRST — a procedure can appear in multiple
+		// categories each with its own slug, so we assign all matching terms here.
+		// This MUST happen before save_api_response_data() so the correct procedure is used for the title.
+		$term_ids = array_map( fn( $t ) => $t->term_id, $procedure_terms );
+		wp_set_object_terms( $post_id, $term_ids, Taxonomies::TAXONOMY_PROCEDURES );
 
 		// Store additional sync-specific metadata
 		update_post_meta( $post_id, 'brag_book_gallery_original_case_id', $procedure_case_id );
@@ -1651,13 +1660,16 @@ class Chunked_Data_Sync {
 	}
 
 	/**
-	 * Get procedure term by API ID
+	 * Get all procedure terms for a given API ID
+	 *
+	 * A procedure can appear in multiple categories, each with its own slug,
+	 * so this returns every matching WP term rather than just the first.
 	 *
 	 * @param int $api_id Procedure API ID
 	 *
-	 * @return object|null Term object or null if not found
+	 * @return array Array of WP_Term objects (empty if none found)
 	 */
-	private function get_procedure_term_by_api_id( int $api_id ): ?object {
+	private function get_all_procedure_terms_by_api_id( int $api_id ): array {
 		$terms = get_terms( [
 			'taxonomy'   => Taxonomies::TAXONOMY_PROCEDURES,
 			'meta_key'   => 'procedure_id',
@@ -1665,7 +1677,7 @@ class Chunked_Data_Sync {
 			'hide_empty' => false,
 		] );
 
-		return ! empty( $terms ) ? $terms[0] : null;
+		return is_array( $terms ) ? $terms : [];
 	}
 
 
