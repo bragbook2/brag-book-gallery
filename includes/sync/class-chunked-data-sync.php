@@ -416,10 +416,10 @@ class Chunked_Data_Sync {
 			$taxonomies->register_procedures_taxonomy();
 		}
 
-		foreach ( $terms as $category ) {
+		foreach ( $terms as $category_index => $category ) {
 
-			// Process parent category.
-			$parent_result = $this->create_or_update_procedure( $category, null );
+			// Process parent category — pass its position in the terms array as the order.
+			$parent_result = $this->create_or_update_procedure( $category, null, $category_index );
 
 			if ( $parent_result['created'] ) {
 				$categories_created++;
@@ -429,10 +429,11 @@ class Chunked_Data_Sync {
 
 			$parent_term_id = $parent_result['term_id'];
 
-			// Process child procedures
+			// Process child procedures — pass each procedure's position within the
+			// category's procedures array as its order.
 			if ( ! empty( $category['procedures'] ) ) {
-				foreach ( $category['procedures'] as $procedure ) {
-					$child_result = $this->create_or_update_procedure( $procedure, $parent_term_id );
+				foreach ( $category['procedures'] as $procedure_index => $procedure ) {
+					$child_result = $this->create_or_update_procedure( $procedure, $parent_term_id, $procedure_index );
 					if ( $child_result['created'] ) {
 						$procedures_created++;
 					} else {
@@ -457,12 +458,13 @@ class Chunked_Data_Sync {
 	/**
 	 * Create or update a procedure term
 	 *
-	 * @param array $data Procedure data
+	 * @param array    $data      Procedure data
 	 * @param int|null $parent_id Parent term ID
+	 * @param int      $order     Position in the API terms/procedures array (0-based)
 	 *
 	 * @return array Operation result
 	 */
-	private function create_or_update_procedure( array $data, ?int $parent_id = null ): array {
+	private function create_or_update_procedure( array $data, ?int $parent_id = null, int $order = 0 ): array {
 		$slug = $data['slug'] ?? sanitize_title( $data['name'] );
 		$name = $data['name'];
 
@@ -514,6 +516,10 @@ class Chunked_Data_Sync {
 		if ( $case_count !== null ) {
 			update_term_meta( $term_id, 'total_cases', absint( $case_count ) );
 		}
+
+		// Store the display order from the API response so the sidebar, gallery,
+		// and tiles views sort terms in the same order as the BRAGBook application.
+		update_term_meta( $term_id, 'procedure_order', $order );
 
 		// Register in sync registry
 		if ( $this->database && ! empty( $data['id'] ) ) {
