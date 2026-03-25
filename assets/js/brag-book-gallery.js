@@ -6562,13 +6562,17 @@ class BRAGbookGalleryApp {
 
     // 1. Check for case detail view (single case page)
     if (caseDetailView) {
-      const caseProcedureId = caseDetailView.dataset.procedureCaseId || caseDetailView.dataset.caseId;
+      // Must use data-procedure-case-id (brag_book_gallery_procedure_case_id) exclusively.
+      // data-case-id is the global caseId (large number) and is NOT a valid caseProcedureId —
+      // falling back to it causes "CaseProcedureRelationship not found" errors on the API.
+      const caseProcedureId = caseDetailView.dataset.procedureCaseId;
       console.log('BRAGBook: Case detail view dataset:', caseDetailView.dataset);
       if (caseProcedureId) {
         console.log(`BRAGBook: Detected CASE page, tracking view for caseProcedureId: ${caseProcedureId}`);
         this.trackCaseView(caseProcedureId);
         return;
       }
+      console.warn('BRAGBook: Case detail view found but data-procedure-case-id is missing, skipping view tracking');
     }
 
     // 2. Check for procedure view (procedure listing page with case cards)
@@ -6678,11 +6682,13 @@ class BRAGbookGalleryApp {
   trackCaseViewFromCard(caseCard) {
     if (!caseCard) return;
 
-    // Get the procedure case ID (small API ID) from data attribute
-    const procedureCaseId = caseCard.dataset.procedureCaseId || caseCard.dataset.caseId;
+    // Use data-procedure-case-id only — never fall back to data-case-id (global caseId).
+    const procedureCaseId = caseCard.dataset.procedureCaseId;
     if (procedureCaseId) {
       console.log(`BRAGBook: Tracking view from card for procedureCaseId ${procedureCaseId}`);
       this.trackCaseView(procedureCaseId);
+    } else {
+      console.warn('BRAGBook: Case card missing data-procedure-case-id, skipping view tracking');
     }
   }
 
@@ -6992,12 +6998,15 @@ class BRAGbookGalleryApp {
 
         // Track case view via JavaScript after content loads
         // Get the procedure case ID from the newly loaded content
-        const loadedCaseDetail = galleryContent.querySelector('.brag-book-gallery-case-detail-view, [data-case-id]');
+        const loadedCaseDetail = galleryContent.querySelector('.brag-book-gallery-case-detail-view');
         if (loadedCaseDetail) {
-          const caseProcedureId = loadedCaseDetail.dataset.procedureCaseId || loadedCaseDetail.dataset.caseId;
+          // Use data-procedure-case-id only — never fall back to data-case-id (global caseId).
+          const caseProcedureId = loadedCaseDetail.dataset.procedureCaseId;
           if (caseProcedureId) {
             console.log(`BRAGBook: Case loaded via AJAX, tracking view for caseProcedureId: ${caseProcedureId}`);
             this.trackCaseView(caseProcedureId);
+          } else {
+            console.warn('BRAGBook: AJAX-loaded case detail missing data-procedure-case-id, skipping view tracking');
           }
         }
 
