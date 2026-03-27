@@ -4558,8 +4558,15 @@ class Data_Sync {
 			return null;
 		}
 
+		// Pick up a jobId stored by the REST trigger handler, if the sync was
+		// externally initiated. Delete immediately — it is single-use.
+		$trigger_job_id = intval( get_transient( 'brag_book_gallery_trigger_job_id' ) ) ?: null;
+		if ( $trigger_job_id ) {
+			delete_transient( 'brag_book_gallery_trigger_job_id' );
+		}
+
 		error_log( 'BRAG book Gallery Sync: Calling sync_api->register_sync() with type: ' . $this->sync_type );
-		$result = $this->sync_api->register_sync( $this->sync_type );
+		$result = $this->sync_api->register_sync( $this->sync_type, null, $trigger_job_id );
 
 		if ( is_wp_error( $result ) ) {
 			error_log( 'BRAG book Gallery Sync: Failed to register sync: ' . $result->get_error_message() );

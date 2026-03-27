@@ -99,10 +99,13 @@ class Sync_Api {
 	 *
 	 * @param string      $sync_type      Sync type: 'AUTO' or 'MANUAL'. Default 'MANUAL'.
 	 * @param string|null $scheduled_time ISO 8601 datetime for AUTO syncs. Must be in future.
+	 * @param int|null    $job_id         Existing job ID passed by an external trigger. When
+	 *                                    provided, the server returns the existing job instead
+	 *                                    of creating a new WordPress-attributed one.
 	 *
 	 * @return array{success: bool, job_id?: int, sync_site_id?: int, status?: string, message: string, error?: string}|WP_Error
 	 */
-	public function register_sync( string $sync_type = self::SYNC_TYPE_MANUAL, ?string $scheduled_time = null ): array|WP_Error {
+	public function register_sync( string $sync_type = self::SYNC_TYPE_MANUAL, ?string $scheduled_time = null, ?int $job_id = null ): array|WP_Error {
 		error_log( 'BRAG book Gallery Sync API: ========== REGISTER SYNC CALLED ==========' );
 		error_log( 'BRAG book Gallery Sync API: Sync type: ' . $sync_type );
 		error_log( 'BRAG book Gallery Sync API: WordPress home_url(): ' . home_url() );
@@ -130,6 +133,12 @@ class Sync_Api {
 		// Add scheduled time for AUTO syncs
 		if ( self::SYNC_TYPE_AUTO === $sync_type && ! empty( $scheduled_time ) ) {
 			$body['scheduledTime'] = $scheduled_time;
+		}
+
+		// Echo back jobId when supplied by an external trigger so the server
+		// can attribute this registration to the correct existing job.
+		if ( $job_id ) {
+			$body['jobId'] = $job_id;
 		}
 
 		// Make the API request
@@ -261,6 +270,13 @@ class Sync_Api {
 			'serverTimezone' => wp_timezone_string(),
 			'peakMemoryMb'   => round( memory_get_peak_usage( true ) / 1048576, 1 ),
 		];
+
+		// Include the stored job ID so the server can attribute the report to
+		// the correct job regardless of which trigger source initiated the sync.
+		$current_job = $this->get_current_job();
+		if ( ! empty( $current_job['job_id'] ) ) {
+			$body['jobId'] = $current_job['job_id'];
+		}
 
 		// Count procedure terms directly from the taxonomy so the report always
 		// reflects the live state of the site, regardless of which sync path ran.

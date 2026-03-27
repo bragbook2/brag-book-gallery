@@ -1520,6 +1520,14 @@ class Sync_Page extends Settings_Base {
 	public function handle_rest_trigger_sync( \WP_REST_Request $request ) {
 		error_log( 'BRAG book Gallery: Sync triggered via REST API' );
 
+		// Read jobId passed by the BRAG Book app/cron in the trigger URL.
+		// intval() returns 0 for missing/non-numeric values, so treat 0 as absent.
+		$job_id = intval( $request->get_param( 'jobId' ) ) ?: null;
+		if ( $job_id ) {
+			// Persist for the background process, which runs in a separate request.
+			set_transient( 'brag_book_gallery_trigger_job_id', $job_id, 300 );
+		}
+
 		// Set active sync status immediately so the admin UI reflects the
 		// in-progress state as soon as the trigger is received — before the
 		// background process even starts.
@@ -1533,7 +1541,7 @@ class Sync_Page extends Settings_Base {
 
 		// Register sync with BRAG book API.
 		$sync_api            = new Sync_Api();
-		$registration_result = $sync_api->register_sync( Sync_Api::SYNC_TYPE_MANUAL );
+		$registration_result = $sync_api->register_sync( Sync_Api::SYNC_TYPE_MANUAL, null, $job_id );
 
 		$job_id = null;
 		if ( ! is_wp_error( $registration_result ) && isset( $registration_result['job_id'] ) ) {
