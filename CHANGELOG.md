@@ -4,7 +4,7 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [4.4.4-beta2] - 2026-03-27 (Beta Release)
+## [4.4.4] - 2026-03-27
 
 ### Fixed
 - **Sync — `procedure_order` now populated from API**: Stage 1 now writes each category's and each procedure's position in the terms API response array to the `procedure_order` term meta. Previously this meta was only set manually via the admin UI, so sidebar, gallery, and tiles sort order did not reflect the BRAGBook application's display order after a sync.

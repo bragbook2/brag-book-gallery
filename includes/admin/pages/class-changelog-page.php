@@ -93,12 +93,12 @@ class Changelog_Page extends Settings_Base {
 				</div>
 			</div>
 
-			<!-- Version 4.4.4-beta2 -->
+			<!-- Version 4.4.4 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">
 					<h3>
-						<span class="version-badge version-beta">v4.4.4-beta2</span>
-						<?php esc_html_e( 'March 27, 2026', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Beta Release', 'brag-book-gallery' ); ?>
+						<span class="version-badge version-patch">v4.4.4</span>
+						<?php esc_html_e( 'March 27, 2026', 'brag-book-gallery' ); ?>
 					</h3>
 					<div class="brag-book-gallery-card">
 						<p><?php esc_html_e( 'This release fixes cases not appearing under all their associated member categories after a sync, and stops invalid caseProcedureId values from being submitted to the view tracking endpoint.', 'brag-book-gallery' ); ?></p>
