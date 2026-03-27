@@ -4,6 +4,16 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.4.5-beta1] - 2026-03-27 (Beta Release)
+
+### Fixed
+- **Sync — `procedure_order` written on every sync**: The standard sync path (`class-data-sync.php`) now threads the API array index through `process_category` and `create_or_update_procedure` into `update_procedure_meta`, writing `procedure_order` to term meta on every run. Previously only the chunked sync path wrote this value, so running the standard sync left stale ordering data in place.
+- **Sync — `jobId` echoed back to BRAG Book API**: When the BRAG Book application or its cron job triggers a sync with a `jobId` query parameter, the plugin now reads the value, stores it for the background process, and passes it in the body of both the `/register` and `/report` API calls. Without this, the server was creating a new WordPress-attributed job on every externally-triggered sync instead of attributing it to the correct trigger source.
+- **Nav — sidebar and dropdown ordered by `procedure_order`**: Parent categories in `.brag-book-gallery-nav` and `.brag-book-gallery-category-nav` are now sorted by `procedure_order` (the API-assigned position written during sync). Child procedures sort alphabetically by default; if `procedure_order` is manually set on a child term it takes precedence, with manually-ordered items appearing before unordered ones.
+- **Case detail — height and weight now displayed**: Patient height and weight were present in the case data and rendered by the JavaScript layer but omitted from the PHP-rendered patient details card. Both fields are now included in `get_patient_info_for_card()` and display when the values are available.
+
+---
+
 ## [4.4.4] - 2026-03-27
 
 ### Fixed

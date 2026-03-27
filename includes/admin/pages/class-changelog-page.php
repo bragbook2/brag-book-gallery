@@ -93,6 +93,26 @@ class Changelog_Page extends Settings_Base {
 				</div>
 			</div>
 
+			<!-- Version 4.4.5-beta1 -->
+			<div class="brag-book-gallery-section">
+				<div class="brag-book-gallery-changelog-version">
+					<h3>
+						<span class="version-badge version-beta">v4.4.5-beta1</span>
+						<?php esc_html_e( 'March 27, 2026', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Beta Release', 'brag-book-gallery' ); ?>
+					</h3>
+					<div class="brag-book-gallery-card">
+						<p><?php esc_html_e( 'This release fixes sync attribution for externally-triggered syncs, ensures procedure ordering is written on every sync run, corrects nav ordering in the sidebar and dropdown, and adds height and weight to the case detail patient card.', 'brag-book-gallery' ); ?></p>
+						<h4><?php esc_html_e( '🐛 Fixed', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Sync: standard sync path now writes procedure_order term meta on every run — previously only the chunked sync path wrote this value, leaving stale ordering after a standard sync', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Sync: jobId from the trigger URL is now echoed back in /register and /report API calls so the server correctly attributes externally-triggered syncs instead of creating a new WordPress-attributed job', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Nav: sidebar and dropdown parent categories now sort by procedure_order (API-assigned position); child procedures sort alphabetically by default with manual procedure_order values taking precedence', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Case detail: patient height and weight now displayed in the patient details card when available — previously present in case data but omitted from the PHP-rendered card', 'brag-book-gallery' ); ?></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
 			<!-- Version 4.4.4 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">

@@ -965,6 +965,24 @@ class Case_Handler {
 			);
 		}
 
+		// Display height if available.
+		if ( ! empty( $case_data['patientHeight'] ) ) {
+			$info_html .= sprintf(
+				$item_template,
+				esc_html__( 'Height', 'brag-book-gallery' ),
+				esc_html( $case_data['patientHeight'] )
+			);
+		}
+
+		// Display weight if available.
+		if ( ! empty( $case_data['patientWeight'] ) ) {
+			$info_html .= sprintf(
+				$item_template,
+				esc_html__( 'Weight', 'brag-book-gallery' ),
+				esc_html( $case_data['patientWeight'] )
+			);
+		}
+
 		return $info_html;
 	}
 

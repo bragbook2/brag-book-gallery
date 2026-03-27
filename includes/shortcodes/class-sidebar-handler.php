@@ -183,18 +183,12 @@ class Sidebar_Handler {
 			return '';
 		}
 
-		// Sort by order number first, then alphabetically
+		// Sort parent categories by the order the API returns them (procedure_order),
+		// written during sync as the category's position in the API response array.
 		usort( $parent_terms, function( $a, $b ) {
 			$order_a = (int) get_term_meta( $a->term_id, 'procedure_order', true );
 			$order_b = (int) get_term_meta( $b->term_id, 'procedure_order', true );
-
-			// If orders are different, sort by order
-			if ( $order_a !== $order_b ) {
-				return $order_a - $order_b;
-			}
-
-			// If orders are the same (or both 0), sort alphabetically
-			return strcasecmp( $a->name, $b->name );
+			return $order_a - $order_b;
 		} );
 
 		$filters = [];
@@ -235,18 +229,30 @@ class Sidebar_Handler {
 			$child_terms = [];
 		}
 
-		// Sort by order number first, then alphabetically
+		// Sort child procedures alphabetically by default. If procedure_order has
+		// been manually set on a term (non-empty meta), use that value instead —
+		// manually-ordered items sort before unordered ones.
 		if ( ! empty( $child_terms ) ) {
 			usort( $child_terms, function( $a, $b ) {
-				$order_a = (int) get_term_meta( $a->term_id, 'procedure_order', true );
-				$order_b = (int) get_term_meta( $b->term_id, 'procedure_order', true );
+				$meta_a = get_term_meta( $a->term_id, 'procedure_order', true );
+				$meta_b = get_term_meta( $b->term_id, 'procedure_order', true );
 
-				// If orders are different, sort by order
-				if ( $order_a !== $order_b ) {
-					return $order_a - $order_b;
+				$has_order_a = $meta_a !== '';
+				$has_order_b = $meta_b !== '';
+
+				if ( $has_order_a && $has_order_b ) {
+					$diff = (int) $meta_a - (int) $meta_b;
+					return $diff !== 0 ? $diff : strcasecmp( $a->name, $b->name );
 				}
 
-				// If orders are the same (or both 0), sort alphabetically
+				if ( $has_order_a ) {
+					return -1;
+				}
+
+				if ( $has_order_b ) {
+					return 1;
+				}
+
 				return strcasecmp( $a->name, $b->name );
 			} );
 		}

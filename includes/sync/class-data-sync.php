@@ -595,7 +595,7 @@ class Data_Sync {
 
 			error_log( 'BRAG book Gallery Sync: Step 3 - Processing procedure categories...' );
 
-			foreach ( $categories_data as $category ) {
+			foreach ( $categories_data as $category_index => $category ) {
 				$category_count ++;
 				$category_name = $category['name'] ?? 'Unknown';
 
@@ -620,7 +620,7 @@ class Data_Sync {
 					$child_count = isset( $category['procedures'] ) ? count( $category['procedures'] ) : 0;
 					error_log( "BRAG book Gallery Sync: Category '{$category_name}' contains {$child_count} procedures" );
 
-					$result             = $this->process_category( $category );
+					$result             = $this->process_category( $category, $category_index );
 					$created_procedures = array_merge( $created_procedures, $result['created'] );
 					$updated_procedures = array_merge( $updated_procedures, $result['updated'] );
 
@@ -866,12 +866,12 @@ class Data_Sync {
 	 * @throws Exception If processing fails
 	 * @since 3.0.0
 	 */
-	private function process_category( array $category ): array {
+	private function process_category( array $category, int $category_index = 0 ): array {
 		$created = [];
 		$updated = [];
 
-		// Create parent category
-		$parent_result = $this->create_or_update_procedure( $category, null );
+		// Create parent category — pass its position in the API response as order.
+		$parent_result = $this->create_or_update_procedure( $category, null, $category_index );
 		if ( $parent_result['created'] ) {
 			$created[] = $parent_result;
 		} else {
@@ -880,11 +880,12 @@ class Data_Sync {
 
 		$parent_term_id = $parent_result['term_id'];
 
-		// Process child procedures
+		// Process child procedures — pass each procedure's position within the
+		// category's procedures array as its order.
 		if ( ! empty( $category['procedures'] ) ) {
-			foreach ( $category['procedures'] as $procedure ) {
+			foreach ( $category['procedures'] as $procedure_index => $procedure ) {
 				try {
-					$child_result = $this->create_or_update_procedure( $procedure, $parent_term_id );
+					$child_result = $this->create_or_update_procedure( $procedure, $parent_term_id, $procedure_index );
 					if ( $child_result['created'] ) {
 						$created[] = $child_result;
 					} else {
@@ -924,7 +925,7 @@ class Data_Sync {
 	 * @throws Exception If operation fails
 	 * @since 3.0.0
 	 */
-	private function create_or_update_procedure( array $data, ?int $parent_id = null ): array {
+	private function create_or_update_procedure( array $data, ?int $parent_id = null, int $order = 0 ): array {
 		$slug                 = $data['slug'] ?? sanitize_title( $data['name'] );
 		$name                 = $data['name'];
 		$original_description = $data['description'] ?? '';
@@ -974,7 +975,7 @@ class Data_Sync {
 		}
 
 		// Update term meta
-		$this->update_procedure_meta( $term_id, $data );
+		$this->update_procedure_meta( $term_id, $data, $order );
 
 		// Log the operation
 		$this->log_procedure_operation( $term_id, $data, $created, $parent_id );
@@ -1011,11 +1012,15 @@ class Data_Sync {
 	 * @return void
 	 * @since 3.0.0
 	 */
-	private function update_procedure_meta( int $term_id, array $data ): void {
+	private function update_procedure_meta( int $term_id, array $data, int $order = 0 ): void {
 		// Update procedure ID (from API id field)
 		if ( ! empty( $data['id'] ) ) {
 			update_term_meta( $term_id, 'procedure_id', $data['id'] );
 		}
+
+		// Store the display order from the API response so the sidebar and nav
+		// views sort terms in the same order as the BRAGBook application.
+		update_term_meta( $term_id, 'procedure_order', $order );
 
 		// Update member ID (not available in this API response, but preserve field)
 		if ( isset( $data['member_id'] ) ) {

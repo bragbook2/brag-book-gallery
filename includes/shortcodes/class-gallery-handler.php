@@ -2391,24 +2391,63 @@ final class Gallery_Handler {
 			'order'      => 'ASC',
 		] );
 
-		// Sort by order number first, then alphabetically
+		// Sort parent categories by the order the API returns them (procedure_order),
+		// written during sync as the category's position in the API response array.
 		if ( ! is_wp_error( $parent_terms ) && ! empty( $parent_terms ) ) {
 			usort( $parent_terms, function( $a, $b ) {
 				$order_a = (int) get_term_meta( $a->term_id, 'procedure_order', true );
 				$order_b = (int) get_term_meta( $b->term_id, 'procedure_order', true );
-
-				// If orders are different, sort by order
-				if ( $order_a !== $order_b ) {
-					return $order_a - $order_b;
-				}
-
-				// If orders are the same (or both 0), sort alphabetically
-				return strcasecmp( $a->name, $b->name );
+				return $order_a - $order_b;
 			} );
 		}
 
 		if ( is_wp_error( $parent_terms ) || empty( $parent_terms ) ) {
 			return '<p class="brag-book-gallery-no-categories">' . esc_html__( 'No categories available', 'brag-book-gallery' ) . '</p>';
+		}
+
+		// Pre-fetch and sort child procedures for every parent before output begins.
+		// Alphabetical by default; if procedure_order is manually set (non-empty meta)
+		// on a term it takes precedence, with manually-ordered items sorting before
+		// unordered ones. This also avoids fetching child terms twice in the loops below.
+		$children_by_parent = [];
+		foreach ( $parent_terms as $term ) {
+			$child_terms = get_terms( [
+				'taxonomy'   => Taxonomies::TAXONOMY_PROCEDURES,
+				'parent'     => $term->term_id,
+				'hide_empty' => true,
+				'orderby'    => 'name',
+				'order'      => 'ASC',
+			] );
+
+			if ( is_wp_error( $child_terms ) || empty( $child_terms ) ) {
+				$children_by_parent[ $term->term_id ] = [];
+				continue;
+			}
+
+			usort( $child_terms, function( $a, $b ) {
+				$meta_a = get_term_meta( $a->term_id, 'procedure_order', true );
+				$meta_b = get_term_meta( $b->term_id, 'procedure_order', true );
+
+				$has_order_a = $meta_a !== '';
+				$has_order_b = $meta_b !== '';
+
+				if ( $has_order_a && $has_order_b ) {
+					$diff = (int) $meta_a - (int) $meta_b;
+					return $diff !== 0 ? $diff : strcasecmp( $a->name, $b->name );
+				}
+
+				if ( $has_order_a ) {
+					return -1;
+				}
+
+				if ( $has_order_b ) {
+					return 1;
+				}
+
+				return strcasecmp( $a->name, $b->name );
+			} );
+
+			$children_by_parent[ $term->term_id ] = $child_terms;
 		}
 
 		ob_start();
@@ -2417,15 +2456,7 @@ final class Gallery_Handler {
 			<!-- Parent Categories List -->
 			<ul class="brag-book-gallery-category-list" data-level="parent">
 				<?php foreach ( $parent_terms as $term ) :
-					// Get child procedures
-					$child_terms = get_terms( [
-						'taxonomy'   => Taxonomies::TAXONOMY_PROCEDURES,
-						'parent'     => $term->term_id,
-						'hide_empty' => true,
-						'orderby'    => 'name',
-						'order'      => 'ASC',
-					] );
-					$count = is_array( $child_terms ) ? count( $child_terms ) : 0;
+					$count = count( $children_by_parent[ $term->term_id ] );
 					?>
 					<li class="brag-book-gallery-category-item">
 						<button type="button"
@@ -2448,16 +2479,9 @@ final class Gallery_Handler {
 
 			<!-- Child Procedures Panels (one for each parent category) -->
 			<?php foreach ( $parent_terms as $term ) :
-				// Get child procedures
-				$child_terms = get_terms( [
-					'taxonomy'   => Taxonomies::TAXONOMY_PROCEDURES,
-					'parent'     => $term->term_id,
-					'hide_empty' => true,
-					'orderby'    => 'name',
-					'order'      => 'ASC',
-				] );
+				$child_terms = $children_by_parent[ $term->term_id ];
 
-				if ( empty( $child_terms ) || is_wp_error( $child_terms ) ) {
+				if ( empty( $child_terms ) ) {
 					continue;
 				}
 				?>
