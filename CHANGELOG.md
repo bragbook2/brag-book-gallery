@@ -4,7 +4,7 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [4.4.5-beta1] - 2026-03-27 (Beta Release)
+## [4.4.5] - 2026-03-27
 
 ### Fixed
 - **Sync — `procedure_order` written on every sync**: The standard sync path (`class-data-sync.php`) now threads the API array index through `process_category` and `create_or_update_procedure` into `update_procedure_meta`, writing `procedure_order` to term meta on every run. Previously only the chunked sync path wrote this value, so running the standard sync left stale ordering data in place.

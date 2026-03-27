@@ -93,12 +93,12 @@ class Changelog_Page extends Settings_Base {
 				</div>
 			</div>
 
-			<!-- Version 4.4.5-beta1 -->
+			<!-- Version 4.4.5 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">
 					<h3>
-						<span class="version-badge version-beta">v4.4.5-beta1</span>
-						<?php esc_html_e( 'March 27, 2026', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Beta Release', 'brag-book-gallery' ); ?>
+						<span class="version-badge version-patch">v4.4.5</span>
+						<?php esc_html_e( 'March 27, 2026', 'brag-book-gallery' ); ?>
 					</h3>
 					<div class="brag-book-gallery-card">
 						<p><?php esc_html_e( 'This release fixes sync attribution for externally-triggered syncs, ensures procedure ordering is written on every sync run, corrects nav ordering in the sidebar and dropdown, and adds height and weight to the case detail patient card.', 'brag-book-gallery' ); ?></p>
