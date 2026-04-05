@@ -4,6 +4,15 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.4.6] - 2026-04-05
+
+### Fixed
+- **Favorites — empty state layout broken**: The "No favorites yet" empty state on the dedicated favorites page rendered with an oversized heart SVG and no layout structure. Added proper CSS for the empty state container, content wrapper (max-width 400px, centered), and icon (48×48px). Removed a conflicting sidebar-context rule that was overriding the page layout.
+- **Favorites — logged-in user always sees empty state**: When a user had complete info in localStorage but no locally cached favorites, the page skipped the API call entirely and showed the empty state. The favorites page now always queries the API when the user is logged in, so server-side favorites display even if localStorage is empty.
+- **Sync — `procedure_order` no longer written to child procedures**: The sync was assigning `procedure_order` to both parent categories and child procedures. Only parent categories now receive `procedure_order` during sync; child procedures are left without this meta value.
+
+---
+
 ## [4.4.5] - 2026-03-27
 
 ### Fixed

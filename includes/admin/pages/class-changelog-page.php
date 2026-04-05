@@ -93,6 +93,25 @@ class Changelog_Page extends Settings_Base {
 				</div>
 			</div>
 
+			<!-- Version 4.4.6 -->
+			<div class="brag-book-gallery-section">
+				<div class="brag-book-gallery-changelog-version">
+					<h3>
+						<span class="version-badge version-patch">v4.4.6</span>
+						<?php esc_html_e( 'April 5, 2026', 'brag-book-gallery' ); ?>
+					</h3>
+					<div class="brag-book-gallery-card">
+						<p><?php esc_html_e( 'This release fixes the broken favorites empty state layout, ensures logged-in users always see their server-side favorites, and stops procedure_order from being written to child procedures during sync.', 'brag-book-gallery' ); ?></p>
+						<h4><?php esc_html_e( '🐛 Fixed', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Favorites: the "No favorites yet" empty state on the dedicated favorites page now renders with a properly sized heart icon (48×48px) and centered layout — previously the SVG was unstyled and filled the entire container', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Favorites: logged-in users with empty localStorage now see their server-side favorites — the page previously skipped the API call when localStorage had no cached favorites, showing the empty state even when the user had favorites on the server', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Sync: procedure_order term meta is now only written to parent categories during sync — child procedures no longer receive an order value, which was causing incorrect sorting in some views', 'brag-book-gallery' ); ?></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
 			<!-- Version 4.4.5 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">
