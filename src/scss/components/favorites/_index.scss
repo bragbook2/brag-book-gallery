@@ -75,13 +75,7 @@
 	color: var(--wp--custom--brag-book-gallery--color--white,#FFF)
 }
 
-.brag-book-gallery-favorites-empty {
-	color: var(--wp--custom--brag-book-gallery--color--light-gray);
-	font-size: var(--wp--custom--brag-book-gallery--text-sm);
-	text-align: left;
-	padding: 0;
-	margin: 0
-}
+// Empty state styles are in _view.scss
 
 .brag-book-gallery-favorites-header {
 	display: flex;

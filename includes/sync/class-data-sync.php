@@ -975,7 +975,7 @@ class Data_Sync {
 		}
 
 		// Update term meta
-		$this->update_procedure_meta( $term_id, $data, $order );
+		$this->update_procedure_meta( $term_id, $data, $order, $parent_id );
 
 		// Log the operation
 		$this->log_procedure_operation( $term_id, $data, $created, $parent_id );
@@ -1012,15 +1012,18 @@ class Data_Sync {
 	 * @return void
 	 * @since 3.0.0
 	 */
-	private function update_procedure_meta( int $term_id, array $data, int $order = 0 ): void {
+	private function update_procedure_meta( int $term_id, array $data, int $order = 0, ?int $parent_id = null ): void {
 		// Update procedure ID (from API id field)
 		if ( ! empty( $data['id'] ) ) {
 			update_term_meta( $term_id, 'procedure_id', $data['id'] );
 		}
 
-		// Store the display order from the API response so the sidebar and nav
-		// views sort terms in the same order as the BRAGBook application.
-		update_term_meta( $term_id, 'procedure_order', $order );
+		// Store the display order for parent categories only so the sidebar and
+		// nav views sort top-level terms in the same order as the BRAGBook
+		// application. Child procedures inherit order from their parent.
+		if ( $parent_id === null ) {
+			update_term_meta( $term_id, 'procedure_order', $order );
+		}
 
 		// Update member ID (not available in this API response, but preserve field)
 		if ( isset( $data['member_id'] ) ) {

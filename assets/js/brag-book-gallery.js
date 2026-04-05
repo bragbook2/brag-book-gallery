@@ -9666,14 +9666,9 @@ class BRAGbookGalleryApp {
       return;
     }
 
-    // User has info but no favorites - show empty state
-    if (!hasFavorites) {
-      if (emailCapture) emailCapture.style.display = 'none';
-      this.showEmptyFavoritesState(gridContainer, loadingEl);
-      return;
-    }
-
-    // User has complete info and favorites - fetch from API and display grid
+    // User has complete info — always fetch from API to get the latest
+    // favorites. localStorage may be empty even though the server has data
+    // (e.g. cleared cache, different device).
     if (emailCapture) emailCapture.style.display = 'none';
     if (loadingEl) loadingEl.style.display = 'block';
     if (gridContainer) gridContainer.style.display = 'none';

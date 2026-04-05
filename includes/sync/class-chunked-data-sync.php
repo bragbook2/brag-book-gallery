@@ -517,9 +517,12 @@ class Chunked_Data_Sync {
 			update_term_meta( $term_id, 'total_cases', absint( $case_count ) );
 		}
 
-		// Store the display order from the API response so the sidebar, gallery,
-		// and tiles views sort terms in the same order as the BRAGBook application.
-		update_term_meta( $term_id, 'procedure_order', $order );
+		// Store the display order for parent categories only so the sidebar,
+		// gallery, and tiles views sort top-level terms in the same order as the
+		// BRAGBook application. Child procedures inherit order from their parent.
+		if ( $parent_id === null ) {
+			update_term_meta( $term_id, 'procedure_order', $order );
+		}
 
 		// Register in sync registry
 		if ( $this->database && ! empty( $data['id'] ) ) {
