@@ -266,8 +266,8 @@ final class Debug_Export_Import {
 	 * @return void Outputs script tag
 	 */
 	private function render_javascript(): void {
+		ob_start();
 		?>
-		<script>
 			document.addEventListener('DOMContentLoaded', function() {
 				// File upload handling for Import section
 				const fileInput = document.getElementById('import-settings-file');
@@ -287,7 +287,12 @@ final class Debug_Export_Import {
 					}
 				});
 			});
-		</script>
 		<?php
+		$inline_script = ob_get_clean();
+		if ( ! wp_script_is( 'brag-book-gallery-debug-import', 'registered' ) ) {
+			wp_register_script( 'brag-book-gallery-debug-import', '', array(), '4.4.0', true );
+		}
+		wp_enqueue_script( 'brag-book-gallery-debug-import' );
+		wp_add_inline_script( 'brag-book-gallery-debug-import', $inline_script );
 	}
 }

@@ -254,7 +254,9 @@ final class Sync_Automatic_Settings {
 				</div>
 			</div>
 		</div>
-		<style>
+		<?php
+		ob_start();
+		?>
 			.bragbook-active-sync-status {
 				background: #f0f6fc;
 				border: 1px solid #c5d9ed;
@@ -323,8 +325,13 @@ final class Sync_Automatic_Settings {
 			.bragbook-active-sync-status .status-message-item {
 				grid-column: 1 / -1;
 			}
-		</style>
 		<?php
+		$inline_css = ob_get_clean();
+		if ( ! wp_style_is( 'brag-book-gallery-sync-automatic', 'registered' ) ) {
+			wp_register_style( 'brag-book-gallery-sync-automatic', false, array(), '4.4.0' );
+			wp_enqueue_style( 'brag-book-gallery-sync-automatic' );
+		}
+		wp_add_inline_style( 'brag-book-gallery-sync-automatic', $inline_css );
 	}
 
 	/**
@@ -537,44 +544,13 @@ final class Sync_Automatic_Settings {
 		<p class="description">
 			<?php esc_html_e( 'Procedures will be automatically synced once per week on the selected day and time.', 'brag-book-gallery' ); ?>
 		</p>
-		<style>
-			.sync-schedule-fields {
-				display: flex;
-				gap: 20px;
-				align-items: flex-end;
-				margin-top: 10px;
-			}
-			.sync-schedule-field {
-				display: flex;
-				flex-direction: column;
-				gap: 5px;
-			}
-			.sync-schedule-field label {
-				font-weight: 600;
-				margin: 0;
-			}
-			.sync-day-select {
-				min-width: 200px;
-				height: 36px;
-				padding: 0 8px;
-				font-size: 14px;
-				border: 1px solid #8c8f94;
-				border-radius: 4px;
-				background-color: #fff;
-				box-sizing: border-box;
-			}
-			.sync-time {
-				min-width: 200px;
-				height: 36px;
-				padding: 0 8px;
-				font-size: 14px;
-				border: 1px solid #8c8f94;
-				border-radius: 4px;
-				background-color: #fff;
-				box-sizing: border-box;
-			}
-		</style>
 		<?php
+		$schedule_css = '.sync-schedule-fields{display:flex;gap:20px;align-items:flex-end;margin-top:10px}.sync-schedule-field{display:flex;flex-direction:column;gap:5px}.sync-schedule-field label{font-weight:600;margin:0}.sync-day-select,.sync-time{min-width:200px;height:36px;padding:0 8px;font-size:14px;border:1px solid #8c8f94;border-radius:4px;background-color:#fff;box-sizing:border-box}';
+		if ( ! wp_style_is( 'brag-book-gallery-sync-automatic', 'registered' ) ) {
+			wp_register_style( 'brag-book-gallery-sync-automatic', false, array(), '4.4.0' );
+			wp_enqueue_style( 'brag-book-gallery-sync-automatic' );
+		}
+		wp_add_inline_style( 'brag-book-gallery-sync-automatic', $schedule_css );
 	}
 
 	/**

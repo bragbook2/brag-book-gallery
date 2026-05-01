@@ -12,6 +12,10 @@
 
 namespace BRAGBookGallery\Includes\Shortcodes;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 use BRAGBookGallery\Includes\Extend\Taxonomies;
 use BRAGBookGallery\Includes\Core\Setup;
 
@@ -80,7 +84,7 @@ class Sidebar_Handler {
 		wp_enqueue_script(
 			'brag-book-gallery',
 			Setup::get_asset_url( 'assets/js/brag-book-gallery.js' ),
-			[ 'jquery' ],
+			[],
 			$plugin_version,
 			true
 		);

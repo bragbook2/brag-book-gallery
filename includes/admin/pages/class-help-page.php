@@ -485,22 +485,14 @@ location ~ ^/gallery/([^/]+)/? {
 
 		</div>
 
-		<script>
-		document.querySelectorAll( '.help-shortcode-block' ).forEach( function( block ) {
-			block.addEventListener( 'click', function() {
-				var code = this.querySelector( 'code' ).textContent;
-				navigator.clipboard.writeText( code ).then( function() {
-					var icon = block.querySelector( '.help-shortcode-copy' );
-					icon.classList.add( 'copied' );
-					setTimeout( function() {
-						icon.classList.remove( 'copied' );
-					}, 1500 );
-				} );
-			} );
-		} );
-		</script>
-
 		<?php
+		$copy_script = 'document.querySelectorAll(".help-shortcode-block").forEach(function(block){block.addEventListener("click",function(){var code=this.querySelector("code").textContent;navigator.clipboard.writeText(code).then(function(){var icon=block.querySelector(".help-shortcode-copy");icon.classList.add("copied");setTimeout(function(){icon.classList.remove("copied");},1500);});});});';
+		if ( ! wp_script_is( 'brag-book-gallery-help-page', 'registered' ) ) {
+			wp_register_script( 'brag-book-gallery-help-page', '', array(), '4.4.0', true );
+		}
+		wp_enqueue_script( 'brag-book-gallery-help-page' );
+		wp_add_inline_script( 'brag-book-gallery-help-page', $copy_script );
+
 		$this->render_footer();
 	}
 }

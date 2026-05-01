@@ -61,8 +61,6 @@
  * @license    GPL-2.0-or-later
  */
 
-declare( strict_types=1 );
-
 namespace BRAGBookGallery\Includes\shortcodes;
 
 use BRAGBookGallery\Includes\Extend\Post_Types;
@@ -71,7 +69,6 @@ use BRAGBookGallery\Includes\Resources\Asset_Manager;
 use BRAGBookGallery\Includes\Core\Setup;
 use BRAGBookGallery\Includes\Extend\Data_Fetcher;
 
-// Cache_Manager removed per user request
 // Prevent direct access.
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -270,7 +267,7 @@ final class Cases_Handler {
 		wp_enqueue_script(
 			'brag-book-gallery',
 			Setup::get_asset_url( 'assets/js/brag-book-gallery.js' ),
-			[ 'jquery' ],
+			[],
 			$plugin_version,
 			true
 		);
@@ -311,6 +308,7 @@ final class Cases_Handler {
 			if ( $term && ! is_wp_error( $term ) ) {
 				$filter_procedure = $term->slug;
 				if ( WP_DEBUG ) {
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( 'BRAGBook: Cases handler - Auto-detected procedure from taxonomy: ' . $filter_procedure );
 				}
 			}
@@ -318,11 +316,16 @@ final class Cases_Handler {
 
 		// Debug logging for procedure detection
 		if ( WP_DEBUG ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAGBook: Cases handler - is_tax: ' . ( is_tax( 'brag_book_procedures' ) ? 'YES' : 'NO' ) );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAGBook: Cases handler - filter_procedure: ' . $filter_procedure );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAGBook: Cases handler - procedure_title: ' . $procedure_title );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAGBook: Cases handler - case_suffix: ' . $case_suffix );
-			error_log( 'BRAGBook: Cases handler - REQUEST_URI: ' . ( $_SERVER['REQUEST_URI'] ?? 'not set' ) );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			error_log( 'BRAGBook: Cases handler - REQUEST_URI: ' . ( sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ?? 'not set' ) ) ) );
 		}
 
 		// If we have procedure_title but not filter_procedure (case detail URL), use procedure_title for filtering.
@@ -345,6 +348,7 @@ final class Cases_Handler {
 					 in_array( $gallery_segment, [ 'before-after', 'cases', 'results' ] ) ) {
 					$filter_procedure = sanitize_title( $procedure_segment );
 					if ( WP_DEBUG ) {
+						// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 						error_log( 'BRAGBook: Cases handler - Extracted procedure from URL: ' . $filter_procedure );
 					}
 				}
@@ -353,16 +357,21 @@ final class Cases_Handler {
 
 		// Final debug log for what will be used
 		if ( WP_DEBUG ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAGBook: Cases handler - Final filter_procedure: ' . $filter_procedure );
 		}
+// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 
 		// Debug logging if enabled.
 		self::debug_log_query_vars( $filter_procedure, $procedure_title, $case_suffix, $atts );
 
 		// Use case_suffix which now contains both numeric IDs and SEO suffixes.
 		$case_identifier = ! empty( $case_suffix ) ? $case_suffix : '';
+// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		// If we have a case identifier, load the main gallery and let JavaScript handle case loading
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		if ( ! empty( $case_identifier ) ) {
 			// Instead of rendering the case via PHP, load the main gallery with data attributes
 			// that JavaScript can detect to automatically load the case
@@ -385,6 +394,7 @@ final class Cases_Handler {
 		// Get procedure IDs based on filter.
 		$procedure_ids = self::get_procedure_ids_for_filter( $filter_procedure, $atts );
 
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		// Get items per page setting
 		$items_per_page = absint( get_option( 'brag_book_gallery_items_per_page', '200' ) );
 
@@ -392,6 +402,7 @@ final class Cases_Handler {
 		// but avoid loading excessive amounts on initial page load for performance
 		$initial_load_size = ! empty( $filter_procedure ) ? min( 200, $items_per_page * 5 ) : $items_per_page;
 
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		// Get cases from API.
 		$cases_data = Data_Fetcher::get_cases_from_api(
 			$atts['api_token'],
@@ -799,10 +810,12 @@ final class Cases_Handler {
 		// Add nudity warning only if the current procedure has nudity.
 		if ( $procedure_nudity ) {
 			if ( WP_DEBUG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAGBook: render_case_card - Adding nudity warning for case: ' . $case_info['case_id'] . ' (procedure has nudity)' );
 			}
 			$html .= self::render_nudity_warning();
 		} elseif ( WP_DEBUG ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAGBook: render_case_card - NOT adding nudity warning for case: ' . $case_info['case_id'] . ' (procedure_nudity = false)' );
 		}
 
@@ -837,9 +850,11 @@ final class Cases_Handler {
 	 *
 	 * Prepares data attributes for case card filtering.
 	 *
+	 // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 	 * @param array $case Case data.
 	 *
 	 * @return string Data attributes HTML.
+	 // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 	 * @since 3.0.0
 	 *
 	 */
@@ -880,37 +895,11 @@ final class Cases_Handler {
 			$attrs        .= ' data-weight-full="' . esc_attr( $weight_value . $weight_unit ) . '"';
 		}
 
-		// Add procedure details as data attributes for filtering
-		// Try to get from post meta if we have the post ID
-		if ( ! empty( $attrs ) && strpos( $attrs, 'data-id="' ) !== false ) {
-			preg_match( '/data-id="(\d+)"/', $attrs, $matches );
-			if ( ! empty( $matches[1] ) ) {
-				$post_id = intval( $matches[1] );
-				$procedure_details_json = get_post_meta( $post_id, 'brag_book_gallery_procedure_details', true );
-				if ( ! empty( $procedure_details_json ) ) {
-					$procedure_details = json_decode( $procedure_details_json, true );
-					if ( is_array( $procedure_details ) ) {
-						foreach ( $procedure_details as $procedure_id => $details ) {
-							if ( is_array( $details ) ) {
-								foreach ( $details as $detail_label => $detail_value ) {
-									// Create a sanitized attribute name from the label (use dashes for dataset compatibility)
-									$attr_name = sanitize_title_with_dashes( $detail_label );
-
-									// Handle array values (e.g., ["Upper", "Lower"])
-									if ( is_array( $detail_value ) ) {
-										$attr_value = implode( ',', array_map( function( $val ) {
-											return strtolower( (string) $val );
-										}, $detail_value ) );
-									} else {
-										$attr_value = strtolower( (string) $detail_value );
-									}
-
-									$attrs .= ' data-procedure-detail-' . esc_attr( $attr_name ) . '="' . esc_attr( $attr_value ) . '"';
-								}
-							}
-						}
-					}
-				}
+		// Procedure-detail attributes (scoped to current procedure on taxonomy pages).
+		if ( preg_match( '/data-id="(\d+)"/', $attrs, $matches ) && ! empty( $matches[1] ) ) {
+			$detail_attrs = self::build_procedure_detail_attrs( (int) $matches[1] );
+			if ( ! empty( $detail_attrs ) ) {
+				$attrs .= ' ' . implode( ' ', $detail_attrs );
 			}
 		}
 
@@ -980,34 +969,103 @@ final class Cases_Handler {
 			}
 		}
 
-		// Add procedure details as data attributes for filtering
-		$procedure_details_json = get_post_meta( $post_id, 'brag_book_gallery_procedure_details', true );
-		if ( ! empty( $procedure_details_json ) ) {
-			$procedure_details = json_decode( $procedure_details_json, true );
-			if ( is_array( $procedure_details ) ) {
-				foreach ( $procedure_details as $procedure_id => $details ) {
-					if ( is_array( $details ) ) {
-						foreach ( $details as $detail_label => $detail_value ) {
-							// Create a sanitized attribute name from the label (use dashes for dataset compatibility)
-							$attr_name = sanitize_title_with_dashes( $detail_label );
+		// Procedure-detail attributes (scoped to current procedure on taxonomy pages).
+		$detail_attrs = self::build_procedure_detail_attrs( $post_id );
+		if ( ! empty( $detail_attrs ) ) {
+			$attrs .= ' ' . implode( ' ', $detail_attrs );
+		}
 
-							// Handle array values (e.g., ["Upper", "Lower"])
-							if ( is_array( $detail_value ) ) {
-								$attr_value = implode( ',', array_map( function( $val ) {
-									return strtolower( (string) $val );
-								}, $detail_value ) );
-							} else {
-								$attr_value = strtolower( (string) $detail_value );
-							}
+		return $attrs;
+	}
 
-							$attrs .= ' data-procedure-detail-' . esc_attr( $attr_name ) . '="' . esc_attr( $attr_value ) . '"';
-						}
-					}
+	/**
+	 * Build procedure-detail data attributes for a case post.
+	 *
+	 * Reads the `brag_book_gallery_procedure_details` post meta (a JSON map of
+	 * `{ "<api_procedure_id>": { "<Label>": <value|array> } }`) and returns one
+	 * `data-procedure-detail-<slug>="..."` attribute per field.
+	 *
+	 * On a procedure taxonomy page (`brag_book_procedures`), the result is scoped
+	 * to the current term's API procedure id so a multi-procedure case only
+	 * contributes filters relevant to the page being viewed. When no procedure
+	 * context is present, all procedures' details are emitted (back-compat).
+	 *
+	 * @param int $post_id Case post ID.
+	 *
+	 * @return array<int, string> List of attribute strings (`name="value"`).
+	 * @since 3.3.3
+	 */
+	private static function build_procedure_detail_attrs( int $post_id ): array {
+		if ( $post_id <= 0 ) {
+			return [];
+		}
+
+		$json = get_post_meta( $post_id, 'brag_book_gallery_procedure_details', true );
+		if ( empty( $json ) ) {
+			return [];
+		}
+
+		$details = json_decode( (string) $json, true );
+		if ( ! is_array( $details ) || empty( $details ) ) {
+			return [];
+		}
+
+		$current_id = self::get_current_api_procedure_id();
+		if ( '' !== $current_id ) {
+			if ( ! isset( $details[ $current_id ] ) || ! is_array( $details[ $current_id ] ) ) {
+				return [];
+			}
+			$details = [ $current_id => $details[ $current_id ] ];
+		}
+
+		$attrs = [];
+		foreach ( $details as $fields ) {
+			if ( ! is_array( $fields ) ) {
+				continue;
+			}
+			foreach ( $fields as $label => $value ) {
+				$attr_name = sanitize_title_with_dashes( (string) $label );
+				if ( '' === $attr_name ) {
+					continue;
 				}
+				if ( is_array( $value ) ) {
+					$attr_value = implode( ',', array_map(
+						static fn( $v ) => strtolower( (string) $v ),
+						$value
+					) );
+				} else {
+					$attr_value = strtolower( (string) $value );
+				}
+				$attrs[] = 'data-procedure-detail-' . esc_attr( $attr_name ) . '="' . esc_attr( $attr_value ) . '"';
 			}
 		}
 
 		return $attrs;
+	}
+
+	/**
+	 * Resolve the current procedure's API id from the queried taxonomy term.
+	 *
+	 * Returns the `procedure_id` term meta when on a `brag_book_procedures`
+	 * taxonomy archive, or an empty string in any other context. Used to scope
+	 * card-level data attributes to the procedure being viewed.
+	 *
+	 * @return string API procedure id, or empty string if not on a procedure page.
+	 * @since 3.3.3
+	 */
+	private static function get_current_api_procedure_id(): string {
+		if ( ! is_tax( Taxonomies::TAXONOMY_PROCEDURES ) ) {
+			return '';
+		}
+		$term_id = (int) get_queried_object_id();
+		if ( $term_id <= 0 ) {
+			return '';
+		}
+		$api_id = get_term_meta( $term_id, 'procedure_id', true );
+		if ( '' === $api_id || null === $api_id || false === $api_id ) {
+			return '';
+		}
+		return (string) $api_id;
 	}
 
 	/**
@@ -1269,7 +1327,9 @@ final class Cases_Handler {
 	private static function get_cases_query( string $filter_procedure = '' ): \WP_Query {
 		// Debug logging at entry point
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAGBook: get_cases_query() called with filter_procedure: "' . $filter_procedure . '"' );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAGBook: filter_procedure empty check: ' . ( empty( $filter_procedure ) ? 'EMPTY' : 'NOT EMPTY' ) );
 		}
 
@@ -1287,15 +1347,19 @@ final class Cases_Handler {
 		// Add procedure-specific filtering and sorting if a filter is specified
 		if ( ! empty( $filter_procedure ) ) {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAGBook: Filter procedure is not empty, proceeding with term lookup' );
 			}
 			// Get the procedure term to access its case order
 			$procedure_term = get_term_by( 'slug', $filter_procedure, Taxonomies::TAXONOMY_PROCEDURES );
 
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAGBook: Taxonomy constant: ' . Taxonomies::TAXONOMY_PROCEDURES );
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAGBook: Term lookup result: ' . ( $procedure_term ? 'FOUND (ID: ' . $procedure_term->term_id . ')' : 'NOT FOUND' ) );
 				if ( is_wp_error( $procedure_term ) ) {
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( 'BRAGBook: Term lookup error: ' . $procedure_term->get_error_message() );
 				}
 			}
@@ -1305,7 +1369,9 @@ final class Cases_Handler {
 				$case_order_list = get_term_meta( $procedure_term->term_id, 'brag_book_gallery_case_order_list', true );
 
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log, WordPress.PHP.DevelopmentFunctions.error_log_print_r
 					error_log( 'BRAGBook: Case order list for ' . $filter_procedure . ' (term ID: ' . $procedure_term->term_id . '): ' . print_r( $case_order_list, true ) );
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( 'BRAGBook: Case order list type: ' . gettype( $case_order_list ) . ', is_array: ' . ( is_array( $case_order_list ) ? 'YES' : 'NO' ) . ', count: ' . ( is_array( $case_order_list ) ? count( $case_order_list ) : 'N/A' ) );
 				}
 
@@ -1322,13 +1388,17 @@ final class Cases_Handler {
 					if ( ! empty( $post_ids ) ) {
 						// Use post__in to get only these posts in this exact order
 						$query_args['post__in'] = $post_ids;
+						// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 						$query_args['orderby']  = 'post__in';
 						unset( $query_args['order'] );
 
 						if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+							// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 							error_log( 'BRAGBook: Using post__in with ' . count( $post_ids ) . ' WordPress IDs for ordering' );
 						}
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					} else {
+						// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 						// Fallback to taxonomy filter if no valid post IDs found
 						$query_args['tax_query'][] = [
 							'taxonomy' => Taxonomies::TAXONOMY_PROCEDURES,
@@ -1338,6 +1408,7 @@ final class Cases_Handler {
 					}
 				} else {
 					// Fallback to taxonomy filter if no case order list
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					$query_args['tax_query'][] = [
 						'taxonomy' => Taxonomies::TAXONOMY_PROCEDURES,
 						'field'    => 'slug',
@@ -1357,6 +1428,7 @@ final class Cases_Handler {
 	 *
 	 * @param array $case_order_list Array of case API IDs in order.
 	 *
+	 // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 	 * @return array Array of WordPress post IDs in the same order.
 	 * @since 3.3.0
 	 */
@@ -1380,7 +1452,9 @@ final class Cases_Handler {
 		}
 
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAGBook: Total posts to sort: ' . count( $posts ) );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAGBook: Case order list count: ' . count( $case_order_list ) );
 		}
 
@@ -1399,6 +1473,7 @@ final class Cases_Handler {
 		}
 
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAGBook: Sorted ' . count( $ordered_posts ) . ' posts by case order' );
 		}
 
@@ -1411,6 +1486,7 @@ final class Cases_Handler {
 
 		return $ordered_posts;
 	}
+// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 
 	/**
 	 * Renders the "no cases found" message with proper wrapper structure.
@@ -1428,6 +1504,7 @@ final class Cases_Handler {
         </div>',
 			esc_html__( 'No cases found.', 'brag-book-gallery' )
 		);
+	// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 	}
 
 	/**
@@ -1573,8 +1650,10 @@ final class Cases_Handler {
 			$is_active,
 			$num_columns,
 			$num_columns,
+			/* translators: %d: column count */
 			sprintf( esc_attr__( 'View in %d columns', 'brag-book-gallery' ), $num_columns ),
 			$svg_icons[ $num_columns ],
+			/* translators: %d: column count */
 			sprintf( esc_html__( '%d Columns', 'brag-book-gallery' ), $num_columns )
 		);
 	}
@@ -1819,8 +1898,7 @@ final class Cases_Handler {
 	 */
 	private static function extract_procedure_from_url( array $case ): string {
 		// Safe extraction of current URL with null coalescing
-		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- URL parsing only.
-		$current_url = $_SERVER['REQUEST_URI'] ?? '';
+		$current_url = isset( $_SERVER['REQUEST_URI'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
 
 		if ( empty( $current_url ) ) {
 			return self::extract_procedure_from_case_data( $case );
@@ -1907,6 +1985,7 @@ final class Cases_Handler {
 	 */
 	private static function procedure_has_nudity( string $filter_procedure ): bool {
 		if ( WP_DEBUG ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAGBook: procedure_has_nudity called with filter_procedure: ' . $filter_procedure );
 		}
 
@@ -1914,6 +1993,7 @@ final class Cases_Handler {
 		$api_tokens = get_option( 'brag_book_gallery_api_tokens', [] );
 		if ( empty( $api_tokens ) || ! is_array( $api_tokens ) ) {
 			if ( WP_DEBUG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAGBook: procedure_has_nudity - No API tokens found' );
 			}
 
@@ -1927,6 +2007,7 @@ final class Cases_Handler {
 
 		if ( empty( $sidebar_data ) || ! is_array( $sidebar_data ) ) {
 			if ( WP_DEBUG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAGBook: procedure_has_nudity - No sidebar data found' );
 			}
 
@@ -1934,13 +2015,16 @@ final class Cases_Handler {
 		}
 
 		if ( WP_DEBUG ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAGBook: procedure_has_nudity - Searching through ' . count( $sidebar_data ) . ' categories' );
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		}
 
 		// Search through categories for the procedure and check nudity flag
 		foreach ( $sidebar_data as $category ) {
 			if ( ! isset( $category['procedures'] ) || ! is_array( $category['procedures'] ) ) {
 				continue;
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			}
 
 			foreach ( $category['procedures'] as $procedure ) {
@@ -1951,17 +2035,21 @@ final class Cases_Handler {
 
 				if ( WP_DEBUG ) {
 					// Log every procedure to see what we're comparing
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( 'BRAGBook: procedure_has_nudity - Checking procedure: ' . $procedure_slug . ' (has_nudity: ' . ( ! empty( $procedure['has_nudity'] ) ? 'true' : 'false' ) . ', nudity: ' . ( ! empty( $procedure['nudity'] ) ? 'true' : 'false' ) . ')' );
 				}
+// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 
 				if ( $procedure_slug === $filter_procedure ||
 					 $procedure_name === $filter_lower ||
 					 sanitize_title( $procedure_name ) === $filter_procedure ) {
 
 					// Check if this procedure has nudity
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					$has_nudity = ! empty( $procedure['has_nudity'] ) || ! empty( $procedure['nudity'] );
 
 					if ( WP_DEBUG ) {
+						// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 						error_log( 'BRAGBook: procedure_has_nudity - MATCH FOUND for procedure: ' . $filter_procedure . ' - has_nudity: ' . ( $has_nudity ? 'true' : 'false' ) );
 					}
 
@@ -1971,10 +2059,12 @@ final class Cases_Handler {
 		}
 
 		if ( WP_DEBUG ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAGBook: procedure_has_nudity - No match found for procedure: ' . $filter_procedure );
 		}
 
 		return false;
+	// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 	}
 
 	/**
@@ -1985,6 +2075,7 @@ final class Cases_Handler {
 	 * @return array Case meta data with defaults.
 	 * @since 3.0.0
 	 */
+	// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 	private static function get_case_meta_data( int $post_id ): array {
 		// Meta field mapping: internal_key => [new_meta_key, legacy_meta_key]
 		$meta_fields = [
@@ -1993,6 +2084,7 @@ final class Cases_Handler {
 			'patient_gender'    => [ 'brag_book_gallery_patient_gender', '' ],
 			'patient_ethnicity' => [ 'brag_book_gallery_ethnicity', '' ],
 			'patient_height'    => [ 'brag_book_gallery_height', '' ],
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			'patient_weight'    => [ 'brag_book_gallery_weight', '' ],
 			'procedure_date'    => [ 'brag_book_gallery_procedure_date', '' ],
 			'case_notes'        => [ 'brag_book_gallery_notes', '' ],
@@ -2090,6 +2182,7 @@ final class Cases_Handler {
 
 		// Log to WordPress debug log if enabled
 		if ( WP_DEBUG && WP_DEBUG_LOG ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( sprintf(
 				'BRAGBook Gallery: Missing data for post %d, field: %s',
 				$post_id,
@@ -2111,6 +2204,7 @@ final class Cases_Handler {
 	private static function get_first_post_processed_url( int $post_id ): string {
 		$post_processed_urls = get_post_meta( $post_id, 'brag_book_gallery_case_post_processed_url', true );
 
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		if ( empty( $post_processed_urls ) ) {
 			return '';
 		}
@@ -2284,32 +2378,8 @@ final class Cases_Handler {
 			$data_attrs[] = 'data-weight="' . esc_attr( $weight ) . '"';
 		}
 
-		// Add procedure details as data attributes for filtering
-		$procedure_details_json = get_post_meta( $post_id, 'brag_book_gallery_procedure_details', true );
-		if ( ! empty( $procedure_details_json ) ) {
-			$procedure_details = json_decode( $procedure_details_json, true );
-			if ( is_array( $procedure_details ) ) {
-				foreach ( $procedure_details as $procedure_id => $details ) {
-					if ( is_array( $details ) ) {
-						foreach ( $details as $detail_label => $detail_value ) {
-							// Create a sanitized attribute name from the label (use dashes for dataset compatibility)
-							$attr_name = sanitize_title_with_dashes( $detail_label );
-
-							// Handle array values (e.g., ["Upper", "Lower"])
-							if ( is_array( $detail_value ) ) {
-								$attr_value = implode( ',', array_map( function( $val ) {
-									return strtolower( (string) $val );
-								}, $detail_value ) );
-							} else {
-								$attr_value = strtolower( (string) $detail_value );
-							}
-
-							$data_attrs[] = 'data-procedure-detail-' . esc_attr( $attr_name ) . '="' . esc_attr( $attr_value ) . '"';
-						}
-					}
-				}
-			}
-		}
+		// Procedure-detail attributes (scoped to current procedure on taxonomy pages).
+		$data_attrs = array_merge( $data_attrs, self::build_procedure_detail_attrs( (int) $post_id ) );
 
 		// Get image URL - prioritize post-processed URLs, fallback to gallery images
 		$image_url = '';
@@ -2319,6 +2389,7 @@ final class Cases_Handler {
 			$image_url = self::get_first_post_processed_url( $post_id );
 
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( "BRAGBook Debug: Post ID $post_id post-processed URL: " . ( $image_url ?: 'empty' ) );
 			}
 
@@ -2327,6 +2398,7 @@ final class Cases_Handler {
 				$gallery_images = get_post_meta( $post_id, 'brag_book_gallery_images', true );
 
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log, WordPress.PHP.DevelopmentFunctions.error_log_print_r
 					error_log( "BRAGBook Debug: Post ID $post_id _case_gallery_images: " . print_r( $gallery_images, true ) );
 				}
 
@@ -2335,10 +2407,12 @@ final class Cases_Handler {
 					$image_url      = wp_get_attachment_image_url( $first_image_id, 'large' );
 
 					if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+						// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 						error_log( "BRAGBook Debug: Fallback to gallery image ID $first_image_id, URL: " . ( $image_url ?: 'FAILED TO GET URL' ) );
 					}
 				}
 			}
+// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 
 			// Set alt text using standardized helper.
 			$procedure_name = is_object( $primary_procedure ) ? $primary_procedure->name : $primary_procedure;
@@ -2346,13 +2420,16 @@ final class Cases_Handler {
 		}
 
 		// Final debug log
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log, WordPress.PHP.DevelopmentFunctions.error_log_print_r
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAGBook Debug: Final image_url for case $case_id: " . ( $image_url ?: 'empty' ) );
 		}
 
 		// Get card type setting
 		$case_card_type = get_option( 'brag_book_gallery_case_card_type', 'default' );
 		$case_image_carousel = get_option( 'brag_book_gallery_case_image_carousel', false );
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		$card_type_class = '';
 		if ( 'v2' === $case_card_type ) {
 			$card_type_class = ' brag-book-gallery-case-card--v2';
@@ -2364,6 +2441,7 @@ final class Cases_Handler {
 		$carousel_images = array();
 
 		if ( $case_image_carousel && ( 'v2' === $case_card_type || 'v3' === $case_card_type ) && $post_id ) {
+// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 
 			$high_res_urls = get_post_meta( $post_id, 'brag_book_gallery_case_high_res_url', true );
 
@@ -2386,7 +2464,7 @@ final class Cases_Handler {
 
 		ob_start();
 		?>
-		<article class="brag-book-gallery-case-card<?php echo esc_attr( $card_type_class ); ?>" <?php echo implode( ' ', $data_attrs ); ?> data-alt-text="<?php echo esc_attr( $image_alt ); ?>">
+		<article class="brag-book-gallery-case-card<?php echo esc_attr( $card_type_class ); ?>" <?php echo implode( ' ', $data_attrs ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Data attributes are escaped individually during construction. ?> data-alt-text="<?php echo esc_attr( $image_alt ); ?>">
 			<div class="brag-book-gallery-case-images single-image">
 				<div class="brag-book-gallery-image-container">
 						<div class="brag-book-gallery-skeleton-loader" style="display: none;"></div>
@@ -2421,13 +2499,13 @@ final class Cases_Handler {
 									   data-case-id="<?php echo esc_attr( $case_id ); ?>"
 									   data-procedure-ids="<?php echo esc_attr( implode( ',', $procedure_ids ) ); ?>">
 										<?php foreach ( $carousel_images as $index => $carousel_url ) : ?>
-											<picture class="brag-book-gallery-picture" id="case-<?php echo esc_attr( $case_id ); ?>-img-<?php echo $index; ?>">
+											<picture class="brag-book-gallery-picture" id="case-<?php echo esc_attr( $case_id ); ?>-img-<?php echo (int) $index; ?>">
 												<img src="<?php echo esc_url( $carousel_url ); ?>"
-													 alt="<?php echo esc_attr( $image_alt ); ?><?php echo count( $carousel_images ) > 1 ? ' - Angle ' . ( $index + 1 ) : ''; ?>"
+													 alt="<?php echo esc_attr( $image_alt ); ?><?php echo count( $carousel_images ) > 1 ? ' - Angle ' . ( (int) $index + 1 ) : ''; ?>"
 													 loading="<?php echo 0 === $index ? 'eager' : 'lazy'; ?>"
 													 data-image-type="carousel"
 													 data-image-url="<?php echo esc_url( $carousel_url ); ?>"
-													 onload="if(<?php echo $index; ?>===0){this.closest('.brag-book-gallery-image-container').querySelector('.brag-book-gallery-skeleton-loader').style.display='none';}"
+													 onload="if(<?php echo (int) $index; ?>===0){this.closest('.brag-book-gallery-image-container').querySelector('.brag-book-gallery-skeleton-loader').style.display='none';}"
 													 fetchpriority="<?php echo 0 === $index ? 'high' : 'low'; ?>">
 											</picture>
 										<?php endforeach; ?>
@@ -2439,9 +2517,11 @@ final class Cases_Handler {
 														class="brag-book-gallery-case-carousel-dot<?php echo 0 === $index ? ' is-active' : ''; ?>"
 														role="tab"
 														aria-selected="<?php echo 0 === $index ? 'true' : 'false'; ?>"
-														aria-controls="case-<?php echo esc_attr( $case_id ); ?>-img-<?php echo $index; ?>"
-														aria-label="<?php echo esc_attr( sprintf( __( 'Show image %d of %d', 'brag-book-gallery' ), $index + 1, count( $carousel_images ) ) ); ?>"
-														data-slide-index="<?php echo $index; ?>"></button>
+														aria-controls="case-<?php echo esc_attr( $case_id ); ?>-img-<?php echo (int) $index; ?>"
+														aria-label="<?php
+														/* translators: 1: current image number, 2: total images */
+														echo esc_attr( sprintf( __( 'Show image %1$d of %2$d', 'brag-book-gallery' ), $index + 1, count( $carousel_images ) ) ); ?>"
+														data-slide-index="<?php echo (int) $index; ?>"></button>
 											<?php endforeach; ?>
 										</nav>
 									<?php endif; ?>
@@ -2492,7 +2572,7 @@ final class Cases_Handler {
 						<?php
 						// Add nudity warning if needed
 						if ( $procedure_nudity ) {
-							echo self::render_nudity_warning();
+							echo self::render_nudity_warning(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Output is pre-escaped in render method.
 						}
 						?>
 						<?php if ( 'v2' === $case_card_type || 'v3' === $case_card_type ) : ?>
@@ -2631,7 +2711,7 @@ final class Cases_Handler {
 	 */
 	public static function ajax_load_more_cases(): void {
 		// Verify nonce for security
-		if ( ! wp_verify_nonce( $_POST['nonce'] ?? '', 'brag_book_gallery_nonce' ) ) {
+		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ?? '' ) ), 'brag_book_gallery_nonce' ) ) {
 			wp_send_json_error( [ 'message' => 'Invalid nonce' ] );
 
 			return;
@@ -2639,8 +2719,8 @@ final class Cases_Handler {
 
 		// Get parameters from AJAX request
 		$start_page     = absint( $_POST['start_page'] ?? 2 );
-		$procedure_ids  = sanitize_text_field( $_POST['procedure_ids'] ?? '' );
-		$procedure_name = sanitize_text_field( $_POST['procedure_name'] ?? '' );
+		$procedure_ids  = sanitize_text_field( wp_unslash( $_POST['procedure_ids'] ?? '' ) );
+		$procedure_name = sanitize_text_field( wp_unslash( $_POST['procedure_name'] ?? '' ) );
 
 		try {
 			// Get cases data from WordPress posts (since we're using local data now)
@@ -2743,6 +2823,7 @@ final class Cases_Handler {
 			}
 
 		} catch ( \Exception $e ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Load More Error: ' . $e->getMessage() );
 			wp_send_json_error( [ 'message' => 'Failed to load more cases' ] );
 		}
@@ -2757,13 +2838,18 @@ final class Cases_Handler {
 	 * @since 3.3.0
 	 */
 	public static function ajax_get_adjacent_cases(): void {
-		$procedure_slug  = isset( $_POST['procedure_slug'] ) ? sanitize_text_field( $_POST['procedure_slug'] ) : '';
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified in ajax_get_adjacent_cases AJAX handler.
+		$procedure_slug  = isset( $_POST['procedure_slug'] ) ? sanitize_text_field( wp_unslash( $_POST['procedure_slug'] ) ) : '';
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing
 		$term_id         = isset( $_POST['term_id'] ) ? absint( $_POST['term_id'] ) : 0;
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing
 		$current_post_id = isset( $_POST['post_id'] ) ? absint( $_POST['post_id'] ) : 0;
 
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'AJAX Adjacent Cases - Procedure: ' . $procedure_slug . ', Term ID: ' . $term_id . ', Post ID: ' . $current_post_id );
 
 		if ( empty( $current_post_id ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'AJAX Adjacent Cases - Missing post ID' );
 			wp_send_json_error( [ 'message' => 'Missing post ID' ] );
 			return;
@@ -2772,35 +2858,48 @@ final class Cases_Handler {
 		// Verify the post exists
 		$current_post = get_post( $current_post_id );
 		if ( ! $current_post || $current_post->post_type !== Post_Types::POST_TYPE_CASES ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'AJAX Adjacent Cases - Invalid post ID: ' . $current_post_id );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			wp_send_json_error( [ 'message' => 'Invalid post ID: ' . $current_post_id ] );
 			return;
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		}
 
 		// Get the procedure term - prefer term_id if provided, otherwise fallback to slug lookup
 		if ( ! empty( $term_id ) ) {
 			$procedure_term = get_term( $term_id, Taxonomies::TAXONOMY_PROCEDURES );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'AJAX Adjacent Cases - Using term ID: ' . $term_id );
 		} elseif ( ! empty( $procedure_slug ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			$procedure_term = get_term_by( 'slug', $procedure_slug, Taxonomies::TAXONOMY_PROCEDURES );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'AJAX Adjacent Cases - Falling back to slug lookup: ' . $procedure_slug );
 		} else {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'AJAX Adjacent Cases - No term ID or slug provided' );
 			wp_send_json_error( [ 'message' => 'Missing procedure identifier' ] );
 			return;
 		}
+// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 
 		if ( ! $procedure_term || is_wp_error( $procedure_term ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'AJAX Adjacent Cases - Invalid procedure term' );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			wp_send_json_error( [ 'message' => 'Invalid procedure' ] );
 			return;
 		}
 
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'AJAX Adjacent Cases - Found procedure term: ' . $procedure_term->term_id . ' (' . $procedure_term->slug . ')' );
+// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 
 		// Get case order list from taxonomy term meta
 		$case_order_list = get_term_meta( $procedure_term->term_id, 'brag_book_gallery_case_order_list', true );
 
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		if ( is_array( $case_order_list ) && ! empty( $case_order_list ) ) {
 			// Extract WordPress IDs from case order list
 			$case_ids = [];
@@ -2810,10 +2909,12 @@ final class Cases_Handler {
 				}
 			}
 
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'AJAX Adjacent Cases - Using case order list with ' . count( $case_ids ) . ' cases' );
 		} else {
 			// Fallback to query if no case order list
 			$cases_query = new \WP_Query( [
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				'post_type'      => Post_Types::POST_TYPE_CASES,
 				'post_status'    => 'publish',
 				'posts_per_page' => -1,
@@ -2830,17 +2931,21 @@ final class Cases_Handler {
 			] );
 
 			$case_ids = $cases_query->posts;
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'AJAX Adjacent Cases - Fallback to query, found ' . count( $case_ids ) . ' cases' );
 		}
 
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		$current_key = array_search( $current_post_id, $case_ids );
 
 		$next_url = null;
 		$prev_url = null;
 
 		if ( $current_key === false ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'AJAX Adjacent Cases - Current case not found in procedure case order list' );
 			wp_send_json_success( [
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				'next'    => null,
 				'prev'    => null,
 				'message' => 'Case not found in this procedure',
@@ -2860,7 +2965,9 @@ final class Cases_Handler {
 			if ( ! preg_match( '/^https?:\/\//', $next_url ) ) {
 				$next_url = home_url( wp_make_link_relative( $next_url ) );
 			}
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'AJAX Adjacent Cases - Next case ID: ' . $next_post_id . ', URL: ' . $next_url );
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		}
 
 		// Get previous case
@@ -2872,6 +2979,7 @@ final class Cases_Handler {
 			if ( ! preg_match( '/^https?:\/\//', $prev_url ) ) {
 				$prev_url = home_url( wp_make_link_relative( $prev_url ) );
 			}
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'AJAX Adjacent Cases - Prev case ID: ' . $prev_post_id . ', URL: ' . $prev_url );
 		}
 

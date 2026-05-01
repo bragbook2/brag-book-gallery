@@ -320,14 +320,16 @@ final class Favorites_Handler {
 			</div>
 		</div>
 
-		<script>
-			// Initialize favorites page when DOM is ready
-			document.addEventListener('DOMContentLoaded', function() {
-				if (typeof window.initializeFavoritesPage === 'function') {
-					window.initializeFavoritesPage();
-				}
-			});
-		</script>
+		<?php
+		if ( ! wp_script_is( 'brag-book-gallery-favorites-init', 'registered' ) ) {
+			wp_register_script( 'brag-book-gallery-favorites-init', '', array(), '4.4.0', true );
+		}
+		wp_enqueue_script( 'brag-book-gallery-favorites-init' );
+		wp_add_inline_script(
+			'brag-book-gallery-favorites-init',
+			'document.addEventListener("DOMContentLoaded",function(){if(typeof window.initializeFavoritesPage==="function"){window.initializeFavoritesPage();}});'
+		);
+		?>
 
 		<!-- BRAG book Gallery Favorites Component End -->
 		<?php
@@ -357,7 +359,10 @@ final class Favorites_Handler {
 				<div class="brag-book-gallery-tiles-container" style="max-width: 1440px; margin: 0 auto; padding: 0 20px;">
 
 					<!-- Horizontal Filter Bar -->
-					<?php echo Gallery_Handler::render_tiles_filter_bar(); ?>
+					<?php
+					// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Output is escaped in Gallery_Handler::render_tiles_filter_bar().
+					echo Gallery_Handler::render_tiles_filter_bar();
+					?>
 
 					<!-- Favorites Content -->
 					<div class="brag-book-gallery-favorites-content">
@@ -456,14 +461,16 @@ final class Favorites_Handler {
 			</div>
 		</div>
 
-		<script>
-			// Initialize favorites page when DOM is ready
-			document.addEventListener('DOMContentLoaded', function() {
-				if (typeof window.initializeFavoritesPage === 'function') {
-					window.initializeFavoritesPage();
-				}
-			});
-		</script>
+		<?php
+		if ( ! wp_script_is( 'brag-book-gallery-favorites-init', 'registered' ) ) {
+			wp_register_script( 'brag-book-gallery-favorites-init', '', array(), '4.4.0', true );
+		}
+		wp_enqueue_script( 'brag-book-gallery-favorites-init' );
+		wp_add_inline_script(
+			'brag-book-gallery-favorites-init',
+			'document.addEventListener("DOMContentLoaded",function(){if(typeof window.initializeFavoritesPage==="function"){window.initializeFavoritesPage();}});'
+		);
+		?>
 
 		<!-- BRAG book Gallery Favorites Component End (Alternative View) -->
 		<?php
@@ -525,19 +532,19 @@ final class Favorites_Handler {
 		try {
 
 			// Verify nonce for security
-			if ( ! wp_verify_nonce( $_POST['nonce'] ?? '', 'brag_book_gallery_nonce' ) ) {
+			if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ?? '' ) ), 'brag_book_gallery_nonce' ) ) {
 				wp_send_json_error( [
 					'message' => __( 'Security verification failed. Please try again.', 'brag-book-gallery' ),
 				] );
 			}
 
 			// Validate required fields
-			$name    = sanitize_text_field( $_POST['name'] ?? '' );
-			$email   = sanitize_email( $_POST['email'] ?? '' );
-			$phone   = sanitize_text_field( $_POST['phone'] ?? '' );
-			$received_case_id = sanitize_text_field( $_POST['case_id'] ?? '' );
+			$name    = sanitize_text_field( wp_unslash( $_POST['name'] ?? '' ) );
+			$email   = sanitize_email( wp_unslash( $_POST['email'] ?? '' ) );
+			$phone   = sanitize_text_field( wp_unslash( $_POST['phone'] ?? '' ) );
+			$received_case_id = sanitize_text_field( wp_unslash( $_POST['case_id'] ?? '' ) );
 			$procedure_id = absint( $_POST['procedure_id'] ?? 0 );
-			$id_type = sanitize_text_field( $_POST['id_type'] ?? '' );
+			$id_type = sanitize_text_field( wp_unslash( $_POST['id_type'] ?? '' ) );
 
 			// Handle both WordPress post IDs and BRAG book API case IDs
 			$case_procedure_id = '';
@@ -579,6 +586,7 @@ final class Favorites_Handler {
 
 			// Debug logging for favorites troubleshooting
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( sprintf(
 					'BRAG book Favorites Debug - Add: received_case_id=%s, wp_post_id=%d, case_procedure_id=%s, procedure_id=%d',
 					$received_case_id,
@@ -716,7 +724,7 @@ final class Favorites_Handler {
 		if ( $case_procedure_id_int === 0 ) {
 			throw new \Exception( sprintf(
 				'Invalid case procedure ID: "%s" is not a valid numeric ID.',
-				$case_procedure_id
+				esc_html( $case_procedure_id )
 			) );
 		}
 
@@ -731,6 +739,7 @@ final class Favorites_Handler {
 
 		// Debug logging for API request
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( sprintf(
 				'BRAG book Favorites API - Add Request: websitePropertyId=%d, caseProcedureId=%d, procedureId=%d, email=%s',
 				$website_property_id,
@@ -757,12 +766,12 @@ final class Favorites_Handler {
 		} catch ( \Exception $e ) {
 			throw $e;
 		} catch ( \Throwable $e ) {
-			throw new \Exception( "HTTP request failed: " . $e->getMessage() );
+			throw new \Exception( 'HTTP request failed: ' . esc_html( $e->getMessage() ) );
 		}
 
 		// Handle WordPress HTTP errors
 		if ( is_wp_error( $response ) ) {
-			throw new \Exception( 'HTTP request failed: ' . $response->get_error_message() );
+			throw new \Exception( 'HTTP request failed: ' . esc_html( $response->get_error_message() ) );
 		}
 
 		// Get response details
@@ -773,7 +782,7 @@ final class Favorites_Handler {
 		$data = json_decode( $response_body, true );
 
 		if ( json_last_error() !== JSON_ERROR_NONE ) {
-			throw new \Exception( 'Invalid JSON response: ' . json_last_error_msg() );
+			throw new \Exception( 'Invalid JSON response: ' . esc_html( json_last_error_msg() ) );
 		}
 
 		// Check if successful (either 200/201 status or success=true in response)
@@ -788,23 +797,25 @@ final class Favorites_Handler {
 			// Map API error messages to user-friendly messages
 			switch ( strtolower( $api_message ) ) {
 				case 'case not found':
-					throw new \Exception( __( 'This case is not available for favoriting. This may be due to a configuration issue with your API credentials or website property settings. Please contact support.', 'brag-book-gallery' ) );
+					throw new \Exception( esc_html( __( 'This case is not available for favoriting. This may be due to a configuration issue with your API credentials or website property settings. Please contact support.', 'brag-book-gallery' ) ) );
 				case 'invalid api token':
 				case 'unauthorized':
-					throw new \Exception( __( 'API configuration error. Please contact support.', 'brag-book-gallery' ) );
+					throw new \Exception( esc_html( __( 'API configuration error. Please contact support.', 'brag-book-gallery' ) ) );
 				default:
-					throw new \Exception( sprintf(
+					throw new \Exception( esc_html( sprintf(
+						/* translators: %s: error message */
 						__( 'Unable to save favorite: %s', 'brag-book-gallery' ),
 						$api_message
-					) );
+					) ) );
 			}
 		}
 
 		// Generic error for non-200 status without a message
-		throw new \Exception( sprintf(
+		throw new \Exception( esc_html( sprintf(
+			/* translators: %d: HTTP status code */
 			__( 'API request failed with status %d. Please try again.', 'brag-book-gallery' ),
 			$response_code
-		) );
+		) ) );
 	}
 
 	/**
@@ -818,17 +829,17 @@ final class Favorites_Handler {
 	public static function ajax_remove_favorite(): void {
 		try {
 			// Verify nonce for security
-			if ( ! wp_verify_nonce( $_POST['nonce'] ?? '', 'brag_book_gallery_nonce' ) ) {
+			if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ?? '' ) ), 'brag_book_gallery_nonce' ) ) {
 				wp_send_json_error( [
 					'message' => __( 'Security verification failed. Please try again.', 'brag-book-gallery' ),
 				] );
 			}
 
 			// Validate required fields
-			$email   = sanitize_email( $_POST['email'] ?? '' );
-			$received_case_id = sanitize_text_field( $_POST['case_id'] ?? '' );
+			$email   = sanitize_email( wp_unslash( $_POST['email'] ?? '' ) );
+			$received_case_id = sanitize_text_field( wp_unslash( $_POST['case_id'] ?? '' ) );
 			$procedure_id = absint( $_POST['procedure_id'] ?? 0 );
-			$id_type = sanitize_text_field( $_POST['id_type'] ?? '' );
+			$id_type = sanitize_text_field( wp_unslash( $_POST['id_type'] ?? '' ) );
 
 			if ( empty( $email ) || ! is_email( $email ) ) {
 				wp_send_json_error( [
@@ -895,6 +906,7 @@ final class Favorites_Handler {
 
 			// Debug logging for favorites troubleshooting
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( sprintf(
 					'BRAGBook Favorites Debug - Remove: received_case_id=%s, wp_post_id=%d, case_procedure_id=%s, procedure_id=%d, email=%s',
 					$received_case_id,
@@ -915,6 +927,7 @@ final class Favorites_Handler {
 			if ( empty( $procedure_id ) ) {
 				// Log warning but allow remove to proceed — API can identify by caseProcedureId + email
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( 'BRAGBook Gallery: procedure_id empty for remove favorite, caseProcedureId=' . $case_procedure_id );
 				}
 				$procedure_id = 0;
@@ -965,7 +978,7 @@ final class Favorites_Handler {
 		if ( $case_procedure_id_int === 0 ) {
 			throw new \Exception( sprintf(
 				'Invalid case procedure ID: "%s" is not a valid numeric ID.',
-				$case_procedure_id
+				esc_html( $case_procedure_id )
 			) );
 		}
 
@@ -978,6 +991,7 @@ final class Favorites_Handler {
 
 		// Debug logging for API request
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( sprintf(
 				'BRAGBook Favorites API - Remove Request: websitePropertyId=%d, caseProcedureId=%d, procedureId=%d, email=%s',
 				$website_property_id,
@@ -1004,12 +1018,12 @@ final class Favorites_Handler {
 		} catch ( \Exception $e ) {
 			throw $e;
 		} catch ( \Throwable $e ) {
-			throw new \Exception( "HTTP request failed: " . $e->getMessage() );
+			throw new \Exception( 'HTTP request failed: ' . esc_html( $e->getMessage() ) );
 		}
 
 		// Handle WordPress HTTP errors
 		if ( is_wp_error( $response ) ) {
-			throw new \Exception( 'HTTP request failed: ' . $response->get_error_message() );
+			throw new \Exception( 'HTTP request failed: ' . esc_html( $response->get_error_message() ) );
 		}
 
 		// Get response details
@@ -1018,6 +1032,7 @@ final class Favorites_Handler {
 
 		// Debug logging for API response
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( sprintf(
 				'BRAGBook Favorites API - Remove Response: status=%d, body=%s',
 				$response_code,
@@ -1029,7 +1044,7 @@ final class Favorites_Handler {
 		$data = json_decode( $response_body, true );
 
 		if ( json_last_error() !== JSON_ERROR_NONE ) {
-			throw new \Exception( 'Invalid JSON response: ' . json_last_error_msg() );
+			throw new \Exception( 'Invalid JSON response: ' . esc_html( json_last_error_msg() ) );
 		}
 
 		// Check if successful
@@ -1039,26 +1054,29 @@ final class Favorites_Handler {
 
 		// Handle specific API errors with user-friendly messages
 		if ( isset( $data['message'] ) ) {
-			throw new \Exception( sprintf(
+			throw new \Exception( esc_html( sprintf(
+				/* translators: %s: error message */
 				__( 'Unable to remove favorite: %s', 'brag-book-gallery' ),
 				$data['message']
-			) );
+			) ) );
 		}
 
 		// Check for error field in response
 		if ( isset( $data['error'] ) ) {
-			throw new \Exception( sprintf(
+			throw new \Exception( esc_html( sprintf(
+				/* translators: %s: error message */
 				__( 'Unable to remove favorite: %s', 'brag-book-gallery' ),
 				is_string( $data['error'] ) ? $data['error'] : wp_json_encode( $data['error'] )
-			) );
+			) ) );
 		}
 
 		// Generic error for non-200 status without a message - include response body for debugging
-		throw new \Exception( sprintf(
-			__( 'API request failed with status %d: %s', 'brag-book-gallery' ),
+		throw new \Exception( esc_html( sprintf(
+			/* translators: %1$d: HTTP status code, %2$s: error message */
+			__( 'API request failed with status %1$d: %2$s', 'brag-book-gallery' ),
 			$response_code,
 			substr( $response_body, 0, 200 )
-		) );
+		) ) );
 	}
 
 	/**
@@ -1071,14 +1089,14 @@ final class Favorites_Handler {
 	 */
 	public static function ajax_lookup_favorites(): void {
 		// Verify nonce for security
-		if ( ! wp_verify_nonce( $_POST['nonce'] ?? '', 'brag_book_gallery_nonce' ) ) {
+		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ?? '' ) ), 'brag_book_gallery_nonce' ) ) {
 			wp_send_json_error( [
 				'message' => __( 'Security verification failed. Please try again.', 'brag-book-gallery' ),
 			] );
 		}
 
 		// Validate email
-		$email = sanitize_email( $_POST['email'] ?? '' );
+		$email = sanitize_email( wp_unslash( $_POST['email'] ?? '' ) );
 
 		if ( empty( $email ) || ! is_email( $email ) ) {
 			wp_send_json_error( [
@@ -1137,28 +1155,37 @@ final class Favorites_Handler {
 	 */
 	public static function ajax_load_favorites_grid(): void {
 		// Verify nonce for security
-		if ( ! wp_verify_nonce( $_POST['nonce'] ?? '', 'brag_book_gallery_nonce' ) ) {
+		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ?? '' ) ), 'brag_book_gallery_nonce' ) ) {
 			wp_send_json_error( [
 				'message' => __( 'Security verification failed. Please try again.', 'brag-book-gallery' ),
 			] );
 		}
 
 		// Get favorites data from request - can be either full case objects or just post IDs
-		$favorites_data = $_POST['favorites'] ?? [];
-		if ( ! is_array( $favorites_data ) ) {
-			$favorites_data = json_decode( stripslashes( $favorites_data ), true ) ?: [];
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- JSON data decoded and validated after unslashing
+		$favorites_raw = wp_unslash( $_POST['favorites'] ?? [] );
+		if ( ! is_array( $favorites_raw ) ) {
+			$favorites_data = json_decode( $favorites_raw, true ) ?: [];
+		} else {
+			$favorites_data = $favorites_raw;
 		}
 
 		// Check for post_ids parameter (WordPress post IDs from localStorage)
-		$post_ids = $_POST['post_ids'] ?? [];
-		if ( ! is_array( $post_ids ) ) {
-			$post_ids = json_decode( stripslashes( $post_ids ), true ) ?: [];
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- JSON data decoded and validated after unslashing
+		$post_ids_raw = wp_unslash( $_POST['post_ids'] ?? [] );
+		if ( ! is_array( $post_ids_raw ) ) {
+			$post_ids = json_decode( $post_ids_raw, true ) ?: [];
+		} else {
+			$post_ids = $post_ids_raw;
 		}
 
 		// Get user info from request
-		$user_info = $_POST['userInfo'] ?? [];
-		if ( ! is_array( $user_info ) ) {
-			$user_info = json_decode( stripslashes( $user_info ), true ) ?: [];
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- JSON data decoded and validated after unslashing
+		$user_info_raw = wp_unslash( $_POST['userInfo'] ?? [] );
+		if ( ! is_array( $user_info_raw ) ) {
+			$user_info = json_decode( $user_info_raw, true ) ?: [];
+		} else {
+			$user_info = $user_info_raw;
 		}
 
 		// Get grid configuration
@@ -1296,7 +1323,10 @@ final class Favorites_Handler {
 		?>
 		<div class="brag-book-gallery-favorites-grid" data-columns="<?php echo esc_attr( $columns ); ?>">
 			<?php foreach ( $favorites_data as $case_data ) : ?>
-				<?php echo self::render_favorites_case_card( $case_data ); ?>
+				<?php
+					// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Output is escaped in render_favorites_case_card().
+					echo self::render_favorites_case_card( $case_data );
+					?>
 			<?php endforeach; ?>
 		</div>
 		<?php
@@ -1404,7 +1434,10 @@ final class Favorites_Handler {
 
 		ob_start();
 		?>
-		<article class="brag-book-gallery-case-card brag-book-gallery-case-card--v3 brag-book-gallery-favorites-card" <?php echo implode( ' ', $data_attrs ); ?>>
+		<article class="brag-book-gallery-case-card brag-book-gallery-case-card--v3 brag-book-gallery-favorites-card" <?php
+			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Data attributes are escaped individually with esc_attr() above.
+			echo implode( ' ', $data_attrs );
+			?>>
 			<div class="brag-book-gallery-case-images single-image">
 				<div class="brag-book-gallery-image-container">
 					<div class="brag-book-gallery-skeleton-loader" style="display: none;"></div>
@@ -1543,6 +1576,7 @@ final class Favorites_Handler {
 
 		// Debug logging
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( sprintf(
 				'BRAGBook Favorites API - List Request: URL=%s, websitePropertyId=%d, email=%s',
 				$api_url,
@@ -1564,7 +1598,7 @@ final class Favorites_Handler {
 
 		// Handle WordPress HTTP errors
 		if ( is_wp_error( $response ) ) {
-			throw new \Exception( 'HTTP request failed: ' . $response->get_error_message() );
+			throw new \Exception( 'HTTP request failed: ' . esc_html( $response->get_error_message() ) );
 		}
 
 		// Get response details
@@ -1573,14 +1607,14 @@ final class Favorites_Handler {
 
 		// Check HTTP status
 		if ( $response_code !== 200 ) {
-			throw new \Exception( "API returned HTTP {$response_code}. Response: {$response_body}" );
+			throw new \Exception( 'API returned HTTP ' . esc_html( $response_code ) . '. Response: ' . esc_html( substr( $response_body, 0, 200 ) ) );
 		}
 
 		// Parse JSON response
 		$data = json_decode( $response_body, true );
 
 		if ( json_last_error() !== JSON_ERROR_NONE ) {
-			throw new \Exception( 'Invalid JSON response: ' . json_last_error_msg() );
+			throw new \Exception( 'Invalid JSON response: ' . esc_html( json_last_error_msg() ) );
 		}
 
 		// The API returns data in { success: true, data: { favorites: [...] } } format
@@ -1589,6 +1623,7 @@ final class Favorites_Handler {
 
 		// Debug logging for response
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( sprintf(
 				'BRAGBook Favorites API - List Response: success=%s, has_favorites=%s, raw_response=%s',
 				isset( $data['success'] ) ? ( $data['success'] ? 'true' : 'false' ) : 'not set',
@@ -1642,6 +1677,7 @@ final class Favorites_Handler {
 
 		// Debug logging for extracted user info
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( sprintf(
 				'BRAGBook Favorites API - Extracted user info: email=%s, name=%s, phone=%s, favorites_count=%d',
 				$user_info['email'] ?? 'empty',
@@ -1655,6 +1691,7 @@ final class Favorites_Handler {
 		if ( empty( $user_info['email'] ) || empty( $user_info['name'] ) || empty( $user_info['phone'] ) ) {
 			// Log the reason for failure
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAGBook Favorites API - User info incomplete, returning false' );
 			}
 			return false;
@@ -1671,13 +1708,13 @@ final class Favorites_Handler {
 	 */
 	public static function ajax_get_case_by_api_id(): void {
 		// Verify nonce for security
-		if ( ! wp_verify_nonce( $_POST['nonce'] ?? '', 'brag_book_gallery_nonce' ) ) {
+		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ?? '' ) ), 'brag_book_gallery_nonce' ) ) {
 			wp_send_json_error( [
 				'message' => __( 'Security verification failed.', 'brag-book-gallery' ),
 			] );
 		}
 
-		$api_case_id = sanitize_text_field( $_POST['api_case_id'] ?? '' );
+		$api_case_id = sanitize_text_field( wp_unslash( $_POST['api_case_id'] ?? '' ) );
 
 		if ( empty( $api_case_id ) ) {
 			wp_send_json_error( [
@@ -1793,6 +1830,7 @@ final class Favorites_Handler {
 	 * @since 3.0.0
 	 */
 	public static function ajax_test(): void {
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAGBook: ajax_test endpoint called' );
 
 		wp_send_json_success( [

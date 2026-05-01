@@ -70,19 +70,6 @@ class Assets {
 	private const ASSET_VERSION = '3.3.0';
 
 	/**
-	 * CDN URLs for external dependencies with fallback support
-	 *
-	 * @since 3.0.0
-	 * @var array<string, string>
-	 */
-	private const CDN_URLS = [
-		'jquery'    => 'https://code.jquery.com/jquery-3.7.1.min.js',
-		'jquery_ui' => 'https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css',
-		'slick_css' => 'https://cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick.css',
-		'slick_js'  => 'https://cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick.min.js',
-	];
-
-	/**
 	 * Cache TTL constants for performance optimization
 	 *
 	 * @since 3.0.0
@@ -100,7 +87,6 @@ class Assets {
 	 */
 	private const CRITICAL_ASSETS = [
 		'brag-book-gallery-style',
-		'jquery',
 	];
 
 	/**
@@ -163,10 +149,6 @@ class Assets {
 			add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_frontend_assets' ], 10 );
 			add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_admin_assets' ], 10 );
 
-			// jQuery management for compatibility
-			add_action( 'wp_enqueue_scripts', [ $this, 'maybe_override_jquery' ], 1 );
-			add_action( 'admin_enqueue_scripts', [ $this, 'maybe_override_jquery' ], 1 );
-
 			// Performance optimization hooks
 			add_action( 'wp_head', [ $this, 'preload_critical_assets' ], 5 );
 			add_filter( 'script_loader_tag', [ $this, 'optimize_script_loading' ], 10, 3 );
@@ -179,36 +161,6 @@ class Assets {
 		} catch ( Exception $e ) {
 			do_action( 'qm/debug', 'Failed to register asset hooks: ' . $e->getMessage() );
 			throw $e;
-		}
-	}
-
-	/**
-	 * Maybe override WordPress jQuery with CDN version (VIP compliant)
-	 *
-	 * Intelligently overrides jQuery with CDN version when appropriate,
-	 * with comprehensive error handling and VIP compliance.
-	 *
-	 * @return void
-	 * @since 3.0.0
-	 */
-	public function maybe_override_jquery(): void {
-		try {
-			// VIP-compliant CDN jQuery configuration (disabled by default)
-			$use_cdn_jquery = apply_filters( 'brag_book_gallery_use_cdn_jquery', false );
-
-			if ( ! $use_cdn_jquery ) {
-				do_action( 'qm/debug', 'CDN jQuery override disabled by filter' );
-				return;
-			}
-
-			// Enhanced jQuery override with fallback
-			if ( ! is_admin() && ! $this->is_jquery_already_overridden() ) {
-				$this->register_cdn_jquery();
-				do_action( 'qm/debug', 'CDN jQuery registered successfully' );
-			}
-		} catch ( Exception $e ) {
-			do_action( 'qm/debug', 'jQuery override failed: ' . $e->getMessage() );
-			// Continue with WordPress default jQuery
 		}
 	}
 
@@ -300,9 +252,6 @@ class Assets {
 				throw new Exception( 'Failed to enqueue main stylesheet' );
 			}
 
-			// External dependencies with fallback
-			$this->enqueue_external_styles();
-
 			// Allow themes to add custom styles
 			do_action( 'brag_book_gallery_frontend_styles_enqueued' );
 			do_action( 'qm/debug', 'Frontend styles enqueued successfully' );
@@ -324,11 +273,7 @@ class Assets {
 		wp_enqueue_script(
 			handle: 'brag-book-gallery-script',
 			src: Setup::get_asset_url( 'assets/js/brag-book-gallery.js' ),
-			deps: array(
-				'jquery',
-				'brag-book-gallery-slick',
-				'jquery-ui-accordion'
-			),
+			deps: array(),
 			ver: $this->get_asset_version(),
 			args: true
 		);
@@ -360,14 +305,6 @@ class Assets {
 			deps: array(),
 			ver: $this->get_asset_version()
 		);
-
-		// jQuery UI styles for admin accordion.
-		wp_enqueue_style(
-			handle: 'jquery-ui-css',
-			src: self::CDN_URLS['jquery_ui'],
-			deps: array(),
-			ver: '1.12.1'
-		);
 	}
 
 	/**
@@ -379,20 +316,11 @@ class Assets {
 	private function enqueue_admin_scripts(): void {
 		$suffix = ( defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ) ? '' : '.min';
 
-		// Ensure jQuery is loaded.
-		wp_enqueue_script( handle: 'jquery' );
-
-		// jQuery UI Accordion.
-		wp_enqueue_script( handle: 'jquery-ui-accordion' );
-
 		// Admin main script
 		wp_enqueue_script(
 			handle: 'brag-book-gallery-admin-script',
 			src: Setup::get_asset_url( 'assets/js/brag-book-gallery-admin' . $suffix . '.js' ),
-			deps: array(
-				'jquery',
-				'jquery-ui-accordion'
-			),
+			deps: array(),
 			ver: $this->get_asset_version(),
 			args: true
 		);
@@ -600,7 +528,7 @@ class Assets {
 
 			// Get current page path with null safety
 			$request_uri = $_SERVER['REQUEST_URI'] ?? '';
-			$current_path = trim( parse_url( $request_uri, PHP_URL_PATH ) ?: '', '/' );
+			$current_path = trim( wp_parse_url( $request_uri, PHP_URL_PATH ) ?: '', '/' );
 
 			// Check if current path matches any gallery slug using PHP 8.2 features
 			$is_gallery_page = match ( true ) {
@@ -713,9 +641,7 @@ class Assets {
 	public function optimize_script_loading( string $tag, string $handle, string $src ): string {
 
 		// Scripts that should be deferred.
-		$defer_scripts = array(
-			'brag-book-gallery-slick',
-		);
+		$defer_scripts = array();
 
 		// Scripts that can be async.
 		$async_scripts = array();
@@ -767,59 +693,6 @@ class Assets {
 		$this->performance_metrics['init_time'] = microtime( true );
 		$this->memory_cache = [];
 		$this->loading_errors = [];
-	}
-
-	/**
-	 * Check if jQuery is already overridden
-	 *
-	 * @since 3.0.0
-	 * @return bool True if already overridden.
-	 */
-	private function is_jquery_already_overridden(): bool {
-		global $wp_scripts;
-		return isset( $wp_scripts->registered['jquery'] ) &&
-		       str_contains( $wp_scripts->registered['jquery']->src ?? '', 'jquery.com' );
-	}
-
-	/**
-	 * Register CDN jQuery with fallback
-	 *
-	 * @since 3.0.0
-	 * @return void
-	 */
-	private function register_cdn_jquery(): void {
-		wp_deregister_script( 'jquery' );
-		wp_register_script(
-			'jquery',
-			self::CDN_URLS['jquery'],
-			[],
-			'3.7.1',
-			true
-		);
-	}
-
-	/**
-	 * Enqueue external stylesheets with fallback
-	 *
-	 * @since 3.0.0
-	 * @return void
-	 */
-	private function enqueue_external_styles(): void {
-		// Slick carousel styles
-		wp_enqueue_style(
-			'brag-book-gallery-slick',
-			self::CDN_URLS['slick_css'],
-			[],
-			'1.8.1'
-		);
-
-		// jQuery UI styles (for accordion)
-		wp_enqueue_style(
-			'jquery-ui-css',
-			self::CDN_URLS['jquery_ui'],
-			[],
-			'1.12.1'
-		);
 	}
 
 	/**

@@ -325,7 +325,7 @@ final class Debug_Factory_Reset {
 			if ( is_array( $files ) ) {
 				foreach ( $files as $file ) {
 					if ( is_file( $file ) ) {
-						unlink( $file );
+						wp_delete_file( $file );
 					}
 				}
 			}
@@ -360,16 +360,18 @@ final class Debug_Factory_Reset {
 	 * @return void Outputs script tag
 	 */
 	private function render_javascript(): void {
-		?>
-		<script>
-			// Ensure nonce is available globally for admin script
-			if (typeof brag_book_gallery_admin === 'undefined') {
-				window.brag_book_gallery_admin = {
-					ajaxurl: '<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>',
-					nonce: '<?php echo esc_js( wp_create_nonce( 'brag_book_gallery_admin' ) ); ?>'
-				};
-			}
-		</script>
-		<?php
+		$config = wp_json_encode( array(
+			'ajaxurl' => admin_url( 'admin-ajax.php' ),
+			'nonce'   => wp_create_nonce( 'brag_book_gallery_admin' ),
+		) );
+		$inline_script = sprintf(
+			'if(typeof brag_book_gallery_admin==="undefined"){window.brag_book_gallery_admin=%s;}',
+			$config
+		);
+		if ( ! wp_script_is( 'brag-book-gallery-factory-reset', 'registered' ) ) {
+			wp_register_script( 'brag-book-gallery-factory-reset', '', array(), '4.4.0', true );
+		}
+		wp_enqueue_script( 'brag-book-gallery-factory-reset' );
+		wp_add_inline_script( 'brag-book-gallery-factory-reset', $inline_script );
 	}
 }

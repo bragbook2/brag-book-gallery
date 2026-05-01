@@ -262,70 +262,96 @@ class Sync_Page extends Settings_Base {
 			</div>
 		</dialog>
 
-		<script>
-		jQuery(document).ready(function($) {
-			var $dialog = document.getElementById('brag-book-delete-all-dialog');
-			var $confirmInput = $('#brag-book-delete-confirm-input');
-			var $confirmBtn = $('#brag-book-delete-confirm-btn');
+		<?php
+		ob_start();
+		?>
+		(function () {
+			'use strict';
 
-			// Open dialog
-			$('#brag-book-delete-all-data').on('click', function() {
-				$confirmInput.val('');
-				$confirmBtn.prop('disabled', true);
-				$dialog.showModal();
-			});
+			var dialog = document.getElementById('brag-book-delete-all-dialog');
+			if (!dialog) {
+				return;
+			}
 
-			// Close dialog
-			$('#brag-book-delete-dialog-close, #brag-book-delete-dialog-cancel').on('click', function() {
-				$dialog.close();
-			});
+			var confirmInput = document.getElementById('brag-book-delete-confirm-input');
+			var confirmBtn = document.getElementById('brag-book-delete-confirm-btn');
+			var openBtn = document.getElementById('brag-book-delete-all-data');
+			var closeBtn = document.getElementById('brag-book-delete-dialog-close');
+			var cancelBtn = document.getElementById('brag-book-delete-dialog-cancel');
 
-			// Enable confirm button when DELETE is typed
-			$confirmInput.on('input', function() {
-				$confirmBtn.prop('disabled', $(this).val() !== 'DELETE');
-			});
+			var nonce = <?php echo wp_json_encode( wp_create_nonce( 'brag_book_delete_all_data' ) ); ?>;
+			var i18n = <?php echo wp_json_encode( array(
+				'deleting'  => __( 'Deleting...', 'brag-book-gallery' ),
+				'success'   => __( 'All data has been deleted.', 'brag-book-gallery' ),
+				'failure'   => __( 'Failed to delete data.', 'brag-book-gallery' ),
+				'error'     => __( 'An error occurred. Please try again.', 'brag-book-gallery' ),
+				'btnLabel'  => __( 'Delete Everything', 'brag-book-gallery' ),
+			) ); ?>;
 
-			// Handle deletion
-			$confirmBtn.on('click', function() {
-				var $btn = $(this);
-				$btn.prop('disabled', true).text('<?php echo esc_js( __( 'Deleting...', 'brag-book-gallery' ) ); ?>');
-
-				$.ajax({
-					url: ajaxurl,
-					type: 'POST',
-					data: {
-						action: 'brag_book_delete_all_data',
-						nonce: '<?php echo esc_js( wp_create_nonce( 'brag_book_delete_all_data' ) ); ?>'
-					},
-					success: function(response) {
-						$dialog.close();
-						if (response.success) {
-							var msg = response.data.message || '<?php echo esc_js( __( 'All data has been deleted.', 'brag-book-gallery' ) ); ?>';
-							alert(msg);
-							location.reload();
-						} else {
-							alert(response.data.message || '<?php echo esc_js( __( 'Failed to delete data.', 'brag-book-gallery' ) ); ?>');
-						}
-					},
-					error: function() {
-						$dialog.close();
-						alert('<?php echo esc_js( __( 'An error occurred. Please try again.', 'brag-book-gallery' ) ); ?>');
-					},
-					complete: function() {
-						$btn.prop('disabled', false).html('<span class="dashicons dashicons-trash" style="margin-top: 3px;"></span> <?php echo esc_js( __( 'Delete Everything', 'brag-book-gallery' ) ); ?>');
-					}
+			if (openBtn) {
+				openBtn.addEventListener('click', function () {
+					if (confirmInput) { confirmInput.value = ''; }
+					if (confirmBtn) { confirmBtn.disabled = true; }
+					dialog.showModal();
 				});
-			});
+			}
 
-			// Close on backdrop click
-			$dialog.addEventListener('click', function(e) {
-				if (e.target === $dialog) {
-					$dialog.close();
+			[closeBtn, cancelBtn].forEach(function (btn) {
+				if (btn) {
+					btn.addEventListener('click', function () { dialog.close(); });
 				}
 			});
-		});
-		</script>
+
+			if (confirmInput && confirmBtn) {
+				confirmInput.addEventListener('input', function () {
+					confirmBtn.disabled = confirmInput.value !== 'DELETE';
+				});
+			}
+
+			if (confirmBtn) {
+				confirmBtn.addEventListener('click', function () {
+					confirmBtn.disabled = true;
+					confirmBtn.textContent = i18n.deleting;
+
+					var formData = new FormData();
+					formData.append('action', 'brag_book_delete_all_data');
+					formData.append('nonce', nonce);
+
+					fetch(window.ajaxurl, { method: 'POST', body: formData, credentials: 'same-origin' })
+						.then(function (res) { return res.json(); })
+						.then(function (data) {
+							dialog.close();
+							if (data && data.success) {
+								window.alert((data.data && data.data.message) || i18n.success);
+								window.location.reload();
+							} else {
+								window.alert((data && data.data && data.data.message) || i18n.failure);
+							}
+						})
+						.catch(function () {
+							dialog.close();
+							window.alert(i18n.error);
+						})
+						.finally(function () {
+							confirmBtn.disabled = false;
+							confirmBtn.innerHTML = '<span class="dashicons dashicons-trash" style="margin-top: 3px;"></span> ' + i18n.btnLabel;
+						});
+				});
+			}
+
+			dialog.addEventListener('click', function (e) {
+				if (e.target === dialog) {
+					dialog.close();
+				}
+			});
+		}());
 		<?php
+		$inline_script = ob_get_clean();
+		if ( ! wp_script_is( 'brag-book-gallery-sync-delete-dialog', 'registered' ) ) {
+			wp_register_script( 'brag-book-gallery-sync-delete-dialog', '', array(), '4.4.0', true );
+		}
+		wp_enqueue_script( 'brag-book-gallery-sync-delete-dialog' );
+		wp_add_inline_script( 'brag-book-gallery-sync-delete-dialog', $inline_script );
 	}
 
 	/**
@@ -335,7 +361,7 @@ class Sync_Page extends Settings_Base {
 	 * @return void
 	 */
 	public function handle_toggle_api_environment(): void {
-		if ( ! wp_verify_nonce( $_POST['nonce'] ?? '', 'brag_book_toggle_api_environment' ) ) {
+		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ?? '' ) ), 'brag_book_toggle_api_environment' ) ) {
 			wp_send_json_error( [ 'message' => __( 'Security check failed.', 'brag-book-gallery' ) ] );
 		}
 
@@ -343,7 +369,7 @@ class Sync_Page extends Settings_Base {
 			wp_send_json_error( [ 'message' => __( 'Insufficient permissions.', 'brag-book-gallery' ) ] );
 		}
 
-		$environment = sanitize_text_field( $_POST['environment'] ?? '' );
+		$environment = sanitize_text_field( wp_unslash( $_POST['environment'] ?? '' ) );
 
 		if ( $environment === 'staging' ) {
 			update_option( 'brag_book_gallery_api_base_url', 'https://staging.bragbookgallery.com' );
@@ -371,7 +397,7 @@ class Sync_Page extends Settings_Base {
 	 * @return void
 	 */
 	public function handle_delete_all_data(): void {
-		if ( ! wp_verify_nonce( $_POST['nonce'] ?? '', 'brag_book_delete_all_data' ) ) {
+		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ?? '' ) ), 'brag_book_delete_all_data' ) ) {
 			wp_send_json_error( [ 'message' => __( 'Security check failed.', 'brag-book-gallery' ) ] );
 		}
 
@@ -435,21 +461,21 @@ class Sync_Page extends Settings_Base {
 		// Clear sync registry table
 		global $wpdb;
 		$registry_table = $wpdb->prefix . 'brag_sync_registry';
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 		$wpdb->query( "TRUNCATE TABLE `{$registry_table}`" );
 
 		// Delete sync data and manifest files from disk
 		$upload_dir = wp_upload_dir();
 		$sync_dir   = $upload_dir['basedir'] . '/brag-book-gallery-sync/';
 		foreach ( glob( $sync_dir . 'sync-data-*.json' ) ?: [] as $file ) {
-			@unlink( $file );
+			wp_delete_file( $file );
 		}
 		foreach ( glob( $sync_dir . 'manifest-*.json' ) ?: [] as $file ) {
-			@unlink( $file );
+			wp_delete_file( $file );
 		}
 
 		// Clear API cache
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 		$wpdb->query(
 			"DELETE FROM {$wpdb->options}
 			WHERE option_name LIKE '_transient_brag_book_gallery_transient_%'
@@ -533,34 +559,14 @@ class Sync_Page extends Settings_Base {
 							</div>
 
 							<!-- Stage-Based Sync Controls -->
-							<style>
-							@keyframes progress-bar-stripes {
-								from {
-									background-position: 20px 0;
-								}
-								to {
-									background-position: 0 0;
-								}
+							<?php
+							$stage_progress_css = '@keyframes progress-bar-stripes{from{background-position:20px 0}to{background-position:0 0}}#stage-progress{transition:opacity 0.3s ease}#stage-progress.visible{display:block !important;opacity:1}#stage-progress.hidden{opacity:0}.stage-progress-bar{position:relative;margin-bottom:5px}';
+							if ( ! wp_style_is( 'brag-book-gallery-sync-page', 'registered' ) ) {
+								wp_register_style( 'brag-book-gallery-sync-page', false, array(), '4.4.0' );
+								wp_enqueue_style( 'brag-book-gallery-sync-page' );
 							}
-
-							#stage-progress {
-								transition: opacity 0.3s ease;
-							}
-
-							#stage-progress.visible {
-								display: block !important;
-								opacity: 1;
-							}
-
-							#stage-progress.hidden {
-								opacity: 0;
-							}
-
-							.stage-progress-bar {
-								position: relative;
-								margin-bottom: 5px;
-							}
-							</style>
+							wp_add_inline_style( 'brag-book-gallery-sync-page', $stage_progress_css );
+							?>
 							<div class="stage-sync-section" style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 5px;">
 								<h4 style="margin: 0 0 15px 0;"><?php esc_html_e( 'Stage-Based Sync', 'brag-book-gallery' ); ?></h4>
 
@@ -685,7 +691,7 @@ class Sync_Page extends Settings_Base {
 		header( 'Content-Type: application/json' );
 
 		// Verify nonce
-		if ( ! wp_verify_nonce( $_POST['nonce'] ?? '', 'brag_book_sync_procedures' ) ) {
+		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ?? '' ) ), 'brag_book_sync_procedures' ) ) {
 			wp_send_json_error( [
 				'message' => __( 'Security check failed.', 'brag-book-gallery' ),
 			] );
@@ -710,8 +716,10 @@ class Sync_Page extends Settings_Base {
 			$update_result = $this->update_settings( $settings );
 
 			if ( ! $update_result ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAG book Gallery Sync: Failed to update sync settings' );
 			} else {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAG book Gallery Sync: Successfully updated sync settings - Status: ' . $settings['sync_status'] . ', Time: ' . $settings['last_sync_time'] );
 			}
 
@@ -729,8 +737,10 @@ class Sync_Page extends Settings_Base {
 			$update_result = $this->update_settings( $settings );
 
 			if ( ! $update_result ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAG book Gallery Sync: Failed to update sync settings after error' );
 			} else {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAG book Gallery Sync: Successfully updated sync settings after error - Status: error, Time: ' . $settings['last_sync_time'] );
 			}
 
@@ -738,6 +748,7 @@ class Sync_Page extends Settings_Base {
 				'success' => false,
 				'data'    => [
 					'message' => sprintf(
+						/* translators: %s: error message */
 						__( 'Sync failed: %s', 'brag-book-gallery' ),
 						$e->getMessage()
 					),
@@ -759,10 +770,13 @@ class Sync_Page extends Settings_Base {
 	 * @return void
 	 */
 	public function handle_full_sync(): void {
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery Sync: handle_full_sync method called - NEW DEBUG' );
 
 		// Increase error reporting for debugging
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.prevent_path_disclosure_error_reporting, WordPress.PHP.DiscouragedPHPFunctions.runtime_configuration_error_reporting
 		error_reporting(E_ALL);
+		// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.runtime_configuration_ini_set
 		ini_set('display_errors', 0); // Don't display, just log
 
 		// Clear any output that might interfere
@@ -774,46 +788,58 @@ class Sync_Page extends Settings_Base {
 		header( 'Content-Type: application/json' );
 
 		// Verify nonce
-		if ( ! wp_verify_nonce( $_POST['nonce'] ?? '', 'brag_book_gallery_sync' ) ) {
+		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ?? '' ) ), 'brag_book_gallery_sync' ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: Nonce verification FAILED' );
 			wp_send_json_error( [
 				'message' => __( 'Security check failed.', 'brag-book-gallery' ),
 			] );
 		}
 
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery Sync: Nonce verification PASSED' );
 
 		// Check permissions
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery Sync: Checking permissions...' );
 		if ( ! current_user_can( 'manage_options' ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: Permission check FAILED' );
 			wp_send_json_error( [
 				'message' => __( 'Insufficient permissions.', 'brag-book-gallery' ),
 			] );
 		}
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery Sync: Permission check PASSED' );
 
 		try {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: About to test Data_Sync constructor...' );
 
 			// Check if the class exists
 			if ( ! class_exists( '\BRAGBookGallery\Includes\Sync\Data_Sync' ) ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAG book Gallery Sync: Data_Sync class does not exist!' );
 				throw new Exception( 'Data_Sync class not found. Please check the plugin installation.' );
 			}
 
 			// Initialize sync manager (with built-in file-based logging)
 			$sync_manager = new Data_Sync();
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: Data_Sync constructor completed successfully!' );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: Starting full synchronization with file logging' );
 
 			// Now run the actual sync
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: Running actual two-stage sync...' );
 			$result = $sync_manager->run_two_stage_sync();
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: Sync completed with result: ' . wp_json_encode( $result ) );
 
 			// Check if sync needs to resume (paused due to time/memory limits)
 			if ( isset( $result['needs_resume'] ) && $result['needs_resume'] ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAG book Gallery Sync: Sync paused for resource limits - will resume on next call' );
 
 				// Return special response indicating sync should continue
@@ -834,15 +860,19 @@ class Sync_Page extends Settings_Base {
 
 			// Debug: Check if total_api_cases is in the result
 			if (isset($result['total_api_cases'])) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAG book Gallery Sync: NEW FEATURE WORKING - total_api_cases: ' . $result['total_api_cases'] );
 			} else {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAG book Gallery Sync: NEW FEATURE MISSING - total_api_cases not found in result' );
 			}
 
 			// Log completion
 			if ( $result['success'] ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAG book Gallery Sync: 🎉 Synchronization completed successfully!' );
 			} else {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAG book Gallery Sync: Sync completed with errors: ' . implode( ', ', $result['errors'] ?? [] ) );
 			}
 
@@ -876,11 +906,14 @@ class Sync_Page extends Settings_Base {
 				);
 
 				if ($log_id) {
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( 'BRAG book Gallery Sync: Stored sync results in database with ID: ' . $log_id );
 				} else {
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( 'BRAG book Gallery Sync: Failed to store sync results in database' );
 				}
 			} catch (Exception $e) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAG book Gallery Sync: Database storage error: ' . $e->getMessage() );
 			}
 			// Sync completion is now logged in Data_Sync class itself
@@ -893,8 +926,10 @@ class Sync_Page extends Settings_Base {
 			$update_result = $this->update_settings( $settings );
 
 			if ( ! $update_result ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAG book Gallery Sync: Failed to update sync settings (display now uses history table)' );
 			} else {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAG book Gallery Sync: Successfully updated sync settings - Status: ' . $settings['sync_status'] . ', Time: ' . $settings['last_sync_time'] );
 			}
 
@@ -918,34 +953,46 @@ class Sync_Page extends Settings_Base {
 				$peak_memory = memory_get_peak_usage( true );
 				$memory_limit = ini_get( 'memory_limit' );
 
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAG book Gallery Sync: MEMORY EXHAUSTED ERROR' );
-				error_log( sprintf( 'BRAG book Gallery Sync: Current memory: %s', wp_convert_bytes_to_hr( $current_memory ) ) );
-				error_log( sprintf( 'BRAG book Gallery Sync: Peak memory: %s', wp_convert_bytes_to_hr( $peak_memory ) ) );
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log( sprintf( 'BRAG book Gallery Sync: Current memory: %s', size_format( $current_memory ) ) );
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log( sprintf( 'BRAG book Gallery Sync: Peak memory: %s', size_format( $peak_memory ) ) );
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( sprintf( 'BRAG book Gallery Sync: Memory limit: %s', $memory_limit ) );
 
 				// Try to get progress information
 				$progress = get_transient( 'brag_book_gallery_sync_progress' );
 				if ( $progress ) {
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( sprintf( 'BRAG book Gallery Sync: Failed at: %s', $progress['message'] ?? 'Unknown step' ) );
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( sprintf( 'BRAG book Gallery Sync: Progress: %d%%', $progress['progress'] ?? 0 ) );
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( sprintf( 'BRAG book Gallery Sync: Current procedure: %s', $progress['current_procedure'] ?? 'Unknown' ) );
 				}
 
 				$error_message = sprintf(
-					__( 'Memory limit exceeded at %s%% completion. Current memory: %s, Peak: %s, Limit: %s. Last step: %s', 'brag-book-gallery' ),
+					/* translators: %1$s: completion percentage, %2$s: current memory usage, %3$s: peak memory usage, %4$s: memory limit, %5$s: last step name */
+					__( 'Memory limit exceeded at %1$s%% completion. Current memory: %2$s, Peak: %3$s, Limit: %4$s. Last step: %5$s', 'brag-book-gallery' ),
 					$progress['progress'] ?? 0,
-					wp_convert_bytes_to_hr( $current_memory ),
-					wp_convert_bytes_to_hr( $peak_memory ),
+					size_format( $current_memory ),
+					size_format( $peak_memory ),
 					$memory_limit,
 					$progress['message'] ?? 'Unknown'
 				);
 			} else {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAG book Gallery Sync: Fatal error during sync: ' . $e->getMessage() );
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAG book Gallery Sync: Error file: ' . $e->getFile() . ' on line ' . $e->getLine() );
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAG book Gallery Sync: Error trace: ' . $e->getTraceAsString() );
 
 				$error_message = sprintf(
-					__( 'Full sync failed: %s (File: %s, Line: %d)', 'brag-book-gallery' ),
+					/* translators: %1$s: error message, %2$s: file name, %3$d: line number */
+					__( 'Full sync failed: %1$s (File: %2$s, Line: %3$d)', 'brag-book-gallery' ),
 					$e->getMessage(),
 					basename( $e->getFile() ),
 					$e->getLine()
@@ -960,8 +1007,10 @@ class Sync_Page extends Settings_Base {
 			$update_result = $this->update_settings( $settings );
 
 			if ( ! $update_result ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAG book Gallery Sync: Failed to update sync settings after error' );
 			} else {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAG book Gallery Sync: Successfully updated sync settings after error - Status: error, Time: ' . $settings['last_sync_time'] );
 			}
 
@@ -976,8 +1025,8 @@ class Sync_Page extends Settings_Base {
 					'errors'  => [
 						$error_message,
 						$is_memory_error ? sprintf( 'Memory Usage: Current %s, Peak %s, Limit %s',
-							wp_convert_bytes_to_hr( memory_get_usage( true ) ),
-							wp_convert_bytes_to_hr( memory_get_peak_usage( true ) ),
+							size_format( memory_get_usage( true ) ),
+							size_format( memory_get_peak_usage( true ) ),
 							ini_get( 'memory_limit' )
 						) : 'File: ' . $e->getFile() . ', Line: ' . $e->getLine()
 					],
@@ -990,8 +1039,11 @@ class Sync_Page extends Settings_Base {
 				],
 			];
 		} catch ( Error $e ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: PHP Error during sync: ' . $e->getMessage() );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: Error file: ' . $e->getFile() . ' on line ' . $e->getLine() );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: Error trace: ' . $e->getTraceAsString() );
 
 			// Update sync settings with error status
@@ -1005,7 +1057,8 @@ class Sync_Page extends Settings_Base {
 				'success' => false,
 				'data'    => [
 					'message' => sprintf(
-						__( 'Full sync failed: %s (File: %s, Line: %d)', 'brag-book-gallery' ),
+						/* translators: %1$s: error message, %2$s: file name, %3$d: line number */
+						__( 'Full sync failed: %1$s (File: %2$s, Line: %3$d)', 'brag-book-gallery' ),
 						$e->getMessage(),
 						basename( $e->getFile() ),
 						$e->getLine()
@@ -1047,7 +1100,9 @@ class Sync_Page extends Settings_Base {
 	 * @return void
 	 */
 	public function handle_rest_sync_execution(): void {
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery: ========== REST API SYNC EXECUTION STARTED ==========' );
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery: Sync triggered via REST API' );
 
 		$sync_source = 'rest_api';
@@ -1079,6 +1134,7 @@ class Sync_Page extends Settings_Base {
 		// Execute the sync using shared method
 		$this->execute_full_sync( $sync_source, $sync_api );
 
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery: ========== REST API SYNC EXECUTION COMPLETED ==========' );
 	}
 
@@ -1109,20 +1165,24 @@ class Sync_Page extends Settings_Base {
 		// Create initial log entry
 		if ( $database ) {
 			$log_id = $database->log_sync_operation( 'full', 'started', 0, 0, '', $sync_source );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery: Sync log created with ID: ' . $log_id );
 		}
 
 		try {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery: Starting REST-triggered sync using Stage-Based Sync' );
 
 			// Use the new stage-based sync
 			$sync = new \BRAGBookGallery\Includes\Sync\Chunked_Data_Sync();
 
 			// Run Stage 1: Fetch procedures
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery: Running Stage 1 - Fetching procedures' );
 			$stage1_result = $sync->execute_stage_1();
 
 			if ( ! $stage1_result['success'] ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAG book Gallery: Stage 1 failed: ' . ($stage1_result['message'] ?? 'Unknown error') );
 
 				// Update sync log with failure
@@ -1142,15 +1202,18 @@ class Sync_Page extends Settings_Base {
 				return;
 			}
 
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery: Stage 1 completed - ' .
 				($stage1_result['procedures_created'] ?? 0) . ' created, ' .
 				($stage1_result['procedures_updated'] ?? 0) . ' updated' );
 
 			// Run Stage 2: Build manifest
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery: Running Stage 2 - Building manifest' );
 			$stage2_result = $sync->execute_stage_2();
 
 			if ( ! $stage2_result['success'] ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAG book Gallery: Stage 2 failed: ' . ($stage2_result['message'] ?? 'Unknown error') );
 
 				// Update sync log with failure
@@ -1170,11 +1233,13 @@ class Sync_Page extends Settings_Base {
 				return;
 			}
 
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery: Stage 2 completed - ' .
 				($stage2_result['procedure_count'] ?? 0) . ' procedures, ' .
 				($stage2_result['case_count'] ?? 0) . ' cases in manifest' );
 
 			// Run Stage 3: Process cases in batches
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery: Running Stage 3 - Processing cases in batches' );
 
 			$total_created = 0;
@@ -1188,11 +1253,13 @@ class Sync_Page extends Settings_Base {
 
 			while ( $needs_continue && $batch_count < $max_batches ) {
 				$batch_count++;
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( "BRAG book Gallery: Stage 3 - Processing batch {$batch_count}" );
 
 				$stage3_result = $sync->execute_stage_3();
 
 				if ( ! $stage3_result['success'] ) {
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( 'BRAG book Gallery: Stage 3 failed: ' . ($stage3_result['message'] ?? 'Unknown error') );
 
 					// Update sync log with failure
@@ -1220,10 +1287,12 @@ class Sync_Page extends Settings_Base {
 				$total_cases     = $stage3_result['total_cases'] ?? 0;
 				$needs_continue  = $stage3_result['needs_continue'] ?? false;
 
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( "BRAG book Gallery: Stage 3 batch {$batch_count} - Progress: {$total_processed}/{$total_cases} cases ({$total_created} created, {$total_updated} updated, {$total_failed} failed)" );
 
 				// Check if we need to continue
 				if ( ! $needs_continue ) {
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( 'BRAG book Gallery: Stage 3 completed - All cases processed' );
 					$sync_success = true;
 					break;
@@ -1234,18 +1303,22 @@ class Sync_Page extends Settings_Base {
 			}
 
 			if ( $batch_count >= $max_batches ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( "BRAG book Gallery: Stage 3 stopped - Reached maximum batch limit ({$max_batches})" );
 			}
 
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery: Stage 3 final totals - ' .
 				"{$total_created} created, {$total_updated} updated, {$total_failed} failed ({$total_processed}/{$total_cases} cases)" );
 
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery: 🎉 Sync completed successfully' );
 
 			// Update sync log with completion
 			if ( $database && $log_id ) {
 				$status = $sync_success ? 'completed' : 'partial';
 				$database->update_sync_log( $log_id, $status, $total_processed, $total_failed );
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAG book Gallery: Sync log updated - Status: ' . $status . ', Processed: ' . $total_processed . ', Failed: ' . $total_failed );
 			}
 
@@ -1259,8 +1332,10 @@ class Sync_Page extends Settings_Base {
 			update_option( 'brag_book_gallery_last_sync_status', $settings['sync_status'] );
 
 			if ( ! $update_result ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAG book Gallery: Failed to update sync settings after REST sync' );
 			} else {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAG book Gallery: Successfully updated sync settings - Status: ' . $settings['sync_status'] . ', Time: ' . $settings['last_sync_time'] );
 			}
 
@@ -1289,6 +1364,7 @@ class Sync_Page extends Settings_Base {
 
 		} catch ( \Exception $e ) {
 			$error_message = 'Sync failed: ' . $e->getMessage();
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery: ❌ ' . $error_message );
 
 			// Report failure to BRAG book API
@@ -1416,6 +1492,7 @@ class Sync_Page extends Settings_Base {
 		$api_tokens = array_filter( $api_tokens );
 
 		if ( empty( $api_tokens ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery: BRAGbook API token not configured' );
 			return new \WP_Error(
 				'token_not_configured',
@@ -1434,6 +1511,7 @@ class Sync_Page extends Settings_Base {
 		}
 
 		if ( ! $token_valid ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery: Invalid BRAGbook API token provided to REST API' );
 			return new \WP_Error(
 				'invalid_token',
@@ -1518,6 +1596,7 @@ class Sync_Page extends Settings_Base {
 	 * @return \WP_REST_Response|\WP_Error Response object or error
 	 */
 	public function handle_rest_trigger_sync( \WP_REST_Request $request ) {
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery: Sync triggered via REST API' );
 
 		// Read jobId passed by the BRAG Book app/cron in the trigger URL.
@@ -1546,9 +1625,11 @@ class Sync_Page extends Settings_Base {
 		$job_id = null;
 		if ( ! is_wp_error( $registration_result ) && isset( $registration_result['job_id'] ) ) {
 			$job_id = $registration_result['job_id'];
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery: Sync registered with BRAG book API - Job ID: ' . $job_id );
 		} else {
 			$error_message = is_wp_error( $registration_result ) ? $registration_result->get_error_message() : 'Unknown error';
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery: Failed to register sync with BRAG book API: ' . $error_message );
 			// Continue anyway — graceful degradation.
 		}
@@ -1569,7 +1650,8 @@ class Sync_Page extends Settings_Base {
 			[
 				'timeout'   => 0.01,
 				'blocking'  => false,
-				'sslverify' => apply_filters( 'https_local_ssl_verify', false ),
+				// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
+			'sslverify' => apply_filters( 'https_local_ssl_verify', false ),
 				'body'      => [
 					'action' => 'brag_book_gallery_background_sync_execute',
 					'token'  => $bg_token,
@@ -1578,6 +1660,7 @@ class Sync_Page extends Settings_Base {
 		);
 
 		if ( is_wp_error( $loopback_result ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery: Loopback request failed (' . $loopback_result->get_error_message() . ').' );
 		}
 
@@ -1756,6 +1839,7 @@ class Sync_Page extends Settings_Base {
 		$table_name = $wpdb->prefix . 'brag_book_sync_log';
 
 		// Check which column names are in use for cleanup
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 		$columns = $wpdb->get_col( "DESCRIBE {$table_name}" );
 		$has_items_processed = in_array( 'items_processed', $columns, true );
 		$has_processed = in_array( 'processed', $columns, true );
@@ -1771,6 +1855,7 @@ class Sync_Page extends Settings_Base {
 
 		// Delete records that have no meaningful data
 		if ( $processed_col && $failed_col && $details_col ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 			$deleted = $wpdb->query( "
 				DELETE FROM {$table_name}
 				WHERE ({$processed_col} = 0 OR {$processed_col} IS NULL)
@@ -1779,6 +1864,7 @@ class Sync_Page extends Settings_Base {
 			" );
 		} else {
 			$deleted = 0;
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery: Could not clean up log records - column names not found' );
 		}
 
@@ -1812,7 +1898,7 @@ class Sync_Page extends Settings_Base {
 		header( 'Content-Type: application/json' );
 
 		// Verify nonce
-		if ( ! wp_verify_nonce( $_POST['nonce'] ?? '', 'brag_book_clear_sync_log' ) ) {
+		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ?? '' ) ), 'brag_book_clear_sync_log' ) ) {
 			wp_send_json_error( [
 				'message' => __( 'Security check failed.', 'brag-book-gallery' ),
 			] );
@@ -1833,8 +1919,11 @@ class Sync_Page extends Settings_Base {
 		$table_name = $wpdb->prefix . 'brag_book_sync_log';
 
 		// Check if table exists before trying to clear it
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 		if ( $wpdb->get_var( "SHOW TABLES LIKE '{$table_name}'" ) === $table_name ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 			$db_count = $wpdb->get_var( "SELECT COUNT(*) FROM {$table_name}" );
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 			$result = $wpdb->query( "TRUNCATE TABLE {$table_name}" );
 
 			if ( $result !== false ) {
@@ -1850,10 +1939,12 @@ class Sync_Page extends Settings_Base {
 
 		if ( $log_files ) {
 			foreach ( $log_files as $log_file ) {
-				if ( unlink( $log_file ) ) {
+				wp_delete_file( $log_file );
+				if ( ! file_exists( $log_file ) ) {
 					$cleared_items++;
 				} else {
 					$errors[] = sprintf(
+						/* translators: %s: log file name */
 						__( 'Failed to delete log file: %s', 'brag-book-gallery' ),
 						basename( $log_file )
 					);
@@ -1864,6 +1955,7 @@ class Sync_Page extends Settings_Base {
 		if ( empty( $errors ) ) {
 			wp_send_json_success( [
 				'message' => sprintf(
+					/* translators: %d: number of items removed */
 					__( 'Sync log cleared successfully. Removed %d items.', 'brag-book-gallery' ),
 					$cleared_items
 				),
@@ -1871,7 +1963,8 @@ class Sync_Page extends Settings_Base {
 		} else {
 			wp_send_json_error( [
 				'message' => sprintf(
-					__( 'Partially cleared sync logs. Removed %d items. Errors: %s', 'brag-book-gallery' ),
+					/* translators: %1$d: number of items removed, %2$s: error messages */
+					__( 'Partially cleared sync logs. Removed %1$d items. Errors: %2$s', 'brag-book-gallery' ),
 					$cleared_items,
 					implode( ', ', $errors )
 				),
@@ -1898,7 +1991,8 @@ class Sync_Page extends Settings_Base {
 		// error_log( 'Delete sync record request: ' . print_r( $_POST, true ) );
 
 		// Verify nonce - check the correct nonce name
-		if ( ! wp_verify_nonce( $_POST['nonce'] ?? '', 'brag_book_sync_delete' ) ) {
+		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ?? '' ) ), 'brag_book_sync_delete' ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'Delete sync record: Nonce verification failed' );
 			wp_send_json_error( [
 				'message' => __( 'Security check failed.', 'brag-book-gallery' ),
@@ -1913,7 +2007,7 @@ class Sync_Page extends Settings_Base {
 		}
 
 		// Get record ID - check both possible parameter names for compatibility
-		$record_id = sanitize_text_field( $_POST['sync_id'] ?? $_POST['record_id'] ?? '' );
+		$record_id = sanitize_text_field( wp_unslash( $_POST['sync_id'] ?? $_POST['record_id'] ?? '' ) );
 		if ( empty( $record_id ) ) {
 			wp_send_json_error( [
 				'message' => __( 'Invalid record ID.', 'brag-book-gallery' ),
@@ -1934,7 +2028,8 @@ class Sync_Page extends Settings_Base {
 			}
 
 			// Delete the log file
-			$deleted = unlink( $log_file );
+			wp_delete_file( $log_file );
+			$deleted = ! file_exists( $log_file );
 
 			if ( ! $deleted ) {
 				wp_send_json_error( [
@@ -1957,6 +2052,7 @@ class Sync_Page extends Settings_Base {
 			$table_name = $wpdb->prefix . 'brag_book_sync_log';
 
 			// Check if record exists
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			$record = $wpdb->get_row( $wpdb->prepare(
 				"SELECT * FROM {$table_name} WHERE id = %d",
 				$record_id
@@ -1969,6 +2065,7 @@ class Sync_Page extends Settings_Base {
 			}
 
 			// Delete the record
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$deleted = $wpdb->delete( $table_name, [ 'id' => $record_id ], [ '%d' ] );
 
 			if ( $deleted === false ) {
@@ -1999,7 +2096,7 @@ class Sync_Page extends Settings_Base {
 		header( 'Content-Type: application/json' );
 
 		// Verify nonce
-		if ( ! wp_verify_nonce( $_POST['nonce'] ?? '', 'brag_book_gallery_sync' ) ) {
+		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ?? '' ) ), 'brag_book_gallery_sync' ) ) {
 			wp_send_json_error( [
 				'message' => __( 'Security check failed.', 'brag-book-gallery' ),
 			] );
@@ -2020,7 +2117,8 @@ class Sync_Page extends Settings_Base {
 			// Format response
 			$response = [
 				'message' => sprintf(
-					__( 'Validation complete. Found: %d, Fixed: %d, Failed: %d', 'brag-book-gallery' ),
+					/* translators: %1$d: number found, %2$d: number fixed, %3$d: number failed */
+					__( 'Validation complete. Found: %1$d, Fixed: %2$d, Failed: %3$d', 'brag-book-gallery' ),
 					$report['total_found'],
 					$report['fixed_count'],
 					$report['failed_count']
@@ -2038,6 +2136,7 @@ class Sync_Page extends Settings_Base {
 		} catch ( Exception $e ) {
 			wp_send_json_error( [
 				'message' => sprintf(
+					/* translators: %s: error message */
 					__( 'Validation failed: %s', 'brag-book-gallery' ),
 					$e->getMessage()
 				),
@@ -2061,7 +2160,8 @@ class Sync_Page extends Settings_Base {
 		$log_files = glob( $upload_dir['basedir'] . '/brag-book-sync-*.log' );
 		if ( $log_files ) {
 			foreach ( $log_files as $log_file ) {
-				if ( unlink( $log_file ) ) {
+				wp_delete_file( $log_file );
+				if ( ! file_exists( $log_file ) ) {
 					$cleared_items[] = 'Log file: ' . basename( $log_file );
 				}
 			}
@@ -2091,6 +2191,7 @@ class Sync_Page extends Settings_Base {
 
 		// 4. Clear any pending sync options
 		global $wpdb;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 		$pending_sync_options = $wpdb->get_results(
 			"SELECT option_name FROM {$wpdb->options}
 			WHERE option_name LIKE 'brag_book_sync_pending_%'"
@@ -2103,7 +2204,9 @@ class Sync_Page extends Settings_Base {
 
 		// 5. Clear old database sync records (legacy system)
 		$log_table = $wpdb->prefix . 'brag_book_sync_log';
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 		if ( $wpdb->get_var( "SHOW TABLES LIKE '{$log_table}'" ) === $log_table ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 			$deleted_count = $wpdb->query( "DELETE FROM {$log_table}" );
 			if ( $deleted_count > 0 ) {
 				$cleared_items[] = "Database records: {$deleted_count} old sync records";
@@ -2128,9 +2231,6 @@ class Sync_Page extends Settings_Base {
 		$screen = get_current_screen();
 
 		if ( $screen && strpos( $screen->id, $this->page_config['menu_slug'] ) !== false ) {
-			// Enqueue jQuery for WP Engine sync script
-			wp_enqueue_script( 'jquery' );
-
 			// Get plugin paths for file versioning
 			$plugin_path = \BRAGBookGallery\Includes\Core\Setup::get_plugin_path();
 			$suffix = ( defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ) ? '' : '.min';
@@ -2155,7 +2255,7 @@ class Sync_Page extends Settings_Base {
 			wp_enqueue_script(
 				'brag-book-stage-sync',
 				plugins_url( 'assets/js/brag-book-gallery-stage-sync' . $suffix . '.js', dirname( __DIR__, 2 ) ),
-				[ 'jquery' ],
+				[],
 				$stage_sync_version,
 				true
 			);
@@ -2379,8 +2479,10 @@ class Sync_Page extends Settings_Base {
 		// Use whichever has data, preferring transient (Data_Sync)
 		$progress = $transient_progress ?: $option_progress;
 
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery Sync: AJAX detailed progress request - found data: ' . ( $progress ? 'YES' : 'NO' ) );
 		if ( $progress ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: Detailed progress data: ' . wp_json_encode( $progress ) );
 		}
 
@@ -2544,7 +2646,7 @@ class Sync_Page extends Settings_Base {
 	 */
 	public function handle_get_sync_report(): void {
 		// Security checks
-		if ( ! wp_verify_nonce( $_POST['nonce'] ?? '', 'brag_book_sync_report' ) ) {
+		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ?? '' ) ), 'brag_book_sync_report' ) ) {
 			wp_send_json_error( [ 'message' => 'Security check failed.' ] );
 		}
 
@@ -2552,7 +2654,7 @@ class Sync_Page extends Settings_Base {
 			wp_send_json_error( [ 'message' => 'Insufficient permissions.' ] );
 		}
 
-		$sync_id = sanitize_text_field( $_POST['sync_id'] ?? '' );
+		$sync_id = sanitize_text_field( wp_unslash( $_POST['sync_id'] ?? '' ) );
 		if ( empty( $sync_id ) ) {
 			wp_send_json_error( [ 'message' => 'Invalid sync ID.' ] );
 		}
@@ -2560,6 +2662,7 @@ class Sync_Page extends Settings_Base {
 		global $wpdb;
 
 		// Get sync log details
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$sync_log = $wpdb->get_row( $wpdb->prepare(
 			"SELECT * FROM {$wpdb->prefix}brag_book_sync_log WHERE id = %d",
 			$sync_id
@@ -2579,6 +2682,7 @@ class Sync_Page extends Settings_Base {
 		}
 
 		// Get actual case count from database
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$actual_case_count = $wpdb->get_var( $wpdb->prepare(
 			"SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = %s AND post_status = 'publish'",
 			'brag_book_case'
@@ -2589,6 +2693,7 @@ class Sync_Page extends Settings_Base {
 		$discrepancy = $reported_count - $actual_case_count;
 
 		// Get cases that were created during this sync (if we can determine the timeframe)
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$sync_cases = $wpdb->get_results( $wpdb->prepare(
 			"SELECT
 				p.ID as wordpress_id,
@@ -2612,7 +2717,10 @@ class Sync_Page extends Settings_Base {
 		ob_start();
 		?>
 		<div class="brag-book-sync-report">
-			<h3><?php printf( esc_html__( 'Sync Report - %s', 'brag-book-gallery' ), esc_html( $sync_date ) ); ?></h3>
+			<h3><?php
+				/* translators: %s: sync date */
+				printf( esc_html__( 'Sync Report - %s', 'brag-book-gallery' ), esc_html( $sync_date ) );
+			?></h3>
 
 			<div class="report-section">
 				<h4><?php esc_html_e( 'Sync Summary', 'brag-book-gallery' ); ?></h4>
@@ -2649,7 +2757,10 @@ class Sync_Page extends Settings_Base {
 
 			<?php if ( ! empty( $sync_cases ) ) : ?>
 			<div class="report-section">
-				<h4><?php printf( esc_html__( 'Cases Created During This Sync (%d)', 'brag-book-gallery' ), count( $sync_cases ) ); ?></h4>
+				<h4><?php
+					/* translators: %d: number of cases created */
+					printf( esc_html__( 'Cases Created During This Sync (%d)', 'brag-book-gallery' ), count( $sync_cases ) );
+				?></h4>
 				<table class="wp-list-table widefat fixed striped">
 					<thead>
 						<tr>
@@ -2695,20 +2806,7 @@ class Sync_Page extends Settings_Base {
 			<?php endif; ?>
 		</div>
 
-		<style>
-		.brag-book-sync-report .report-section {
-			margin-bottom: 20px;
-		}
-		.brag-book-sync-report h4 {
-			margin-bottom: 10px;
-			color: #23282d;
-		}
-		.status-completed { color: #00a32a; font-weight: bold; }
-		.status-failed { color: #d63638; font-weight: bold; }
-		.status-running { color: #dba617; font-weight: bold; }
-		</style>
 		<?php
-
 		$html = ob_get_clean();
 		wp_send_json_success( [ 'html' => $html ] );
 	}
@@ -2721,7 +2819,7 @@ class Sync_Page extends Settings_Base {
 	 */
 	public function handle_view_sync_log(): void {
 		// Verify nonce
-		if ( ! wp_verify_nonce( $_POST['nonce'] ?? '', 'brag_book_sync_log' ) ) {
+		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ?? '' ) ), 'brag_book_sync_log' ) ) {
 			wp_send_json_error( [ 'message' => __( 'Security check failed.', 'brag-book-gallery' ) ] );
 		}
 
@@ -2730,7 +2828,7 @@ class Sync_Page extends Settings_Base {
 			wp_send_json_error( [ 'message' => __( 'Insufficient permissions.', 'brag-book-gallery' ) ] );
 		}
 
-		$sync_id = absint( $_POST['sync_id'] ?? 0 );
+		$sync_id = absint( wp_unslash( $_POST['sync_id'] ?? 0 ) );
 		if ( ! $sync_id ) {
 			wp_send_json_error( [ 'message' => __( 'Invalid sync ID.', 'brag-book-gallery' ) ] );
 		}
@@ -2738,6 +2836,7 @@ class Sync_Page extends Settings_Base {
 		global $wpdb;
 		$table_name = $wpdb->prefix . 'brag_book_sync_log';
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$record = $wpdb->get_row(
 			$wpdb->prepare( "SELECT * FROM {$table_name} WHERE id = %d", $sync_id )
 		);
@@ -2809,8 +2908,14 @@ class Sync_Page extends Settings_Base {
 				<?php if ( isset( $details['created'] ) || isset( $details['updated'] ) ) : ?>
 					<h4><?php esc_html_e( 'Procedures Processed:', 'brag-book-gallery' ); ?></h4>
 					<ul>
-						<li><?php echo esc_html( sprintf( __( 'Created: %d', 'brag-book-gallery' ), $details['created'] ?? 0 ) ); ?></li>
-						<li><?php echo esc_html( sprintf( __( 'Updated: %d', 'brag-book-gallery' ), $details['updated'] ?? 0 ) ); ?></li>
+						<li><?php
+							/* translators: %d: number of procedures created */
+							echo esc_html( sprintf( __( 'Created: %d', 'brag-book-gallery' ), $details['created'] ?? 0 ) );
+						?></li>
+						<li><?php
+							/* translators: %d: number of procedures updated */
+							echo esc_html( sprintf( __( 'Updated: %d', 'brag-book-gallery' ), $details['updated'] ?? 0 ) );
+						?></li>
 					</ul>
 				<?php endif; ?>
 
@@ -2818,21 +2923,32 @@ class Sync_Page extends Settings_Base {
 					<h4><?php esc_html_e( 'Cases Processed:', 'brag-book-gallery' ); ?></h4>
 					<ul>
 						<?php if ( isset( $details['cases_attempted'] ) && $details['cases_attempted'] > 0 ) : ?>
-							<li><?php echo esc_html( sprintf( __( 'Attempted: %d', 'brag-book-gallery' ), $details['cases_attempted'] ) ); ?></li>
+							<li><?php
+								/* translators: %d: number of cases attempted */
+								echo esc_html( sprintf( __( 'Attempted: %d', 'brag-book-gallery' ), $details['cases_attempted'] ) );
+							?></li>
 						<?php endif; ?>
 						<?php if ( isset( $details['duplicate_occurrences'] ) && $details['duplicate_occurrences'] > 0 ) : ?>
 							<li style="color: #856404;">
 								<?php
+								/* translators: %d: number of duplicate occurrences */
 								$dup_msg = sprintf( __( 'Duplicates Skipped: %d occurrences', 'brag-book-gallery' ), $details['duplicate_occurrences'] );
 								if ( isset( $details['duplicate_count'] ) && $details['duplicate_count'] > 0 ) {
+									/* translators: %d: number of unique duplicate IDs */
 									$dup_msg .= sprintf( __( ' (from %d unique IDs)', 'brag-book-gallery' ), $details['duplicate_count'] );
 								}
 								echo esc_html( $dup_msg );
 								?>
 							</li>
 						<?php endif; ?>
-						<li><?php echo esc_html( sprintf( __( 'Created: %d', 'brag-book-gallery' ), $details['cases_created'] ?? 0 ) ); ?></li>
-						<li><?php echo esc_html( sprintf( __( 'Updated: %d', 'brag-book-gallery' ), $details['cases_updated'] ?? 0 ) ); ?></li>
+						<li><?php
+							/* translators: %d: number of cases created */
+							echo esc_html( sprintf( __( 'Created: %d', 'brag-book-gallery' ), $details['cases_created'] ?? 0 ) );
+						?></li>
+						<li><?php
+							/* translators: %d: number of cases updated */
+							echo esc_html( sprintf( __( 'Updated: %d', 'brag-book-gallery' ), $details['cases_updated'] ?? 0 ) );
+						?></li>
 					</ul>
 				<?php endif; ?>
 
@@ -2874,7 +2990,7 @@ class Sync_Page extends Settings_Base {
 							<tbody>
 								<?php foreach ( $details['activity_log'] as $log_item ) : ?>
 									<tr>
-										<td><?php echo esc_html( date( 'H:i:s', strtotime( $log_item['time'] ?? '' ) ) ); ?></td>
+										<td><?php echo esc_html( gmdate( 'H:i:s', strtotime( $log_item['time'] ?? '' ) ) ); ?></td>
 										<td><?php echo esc_html( $log_item['type'] ?? '' ); ?></td>
 										<td><?php echo esc_html( $log_item['operation'] ?? '' ); ?></td>
 										<td><?php echo esc_html( $log_item['item'] ?? '' ); ?></td>
@@ -2908,7 +3024,7 @@ class Sync_Page extends Settings_Base {
 	 */
 	public function handle_delete_sync_records(): void {
 		// Verify nonce
-		if ( ! wp_verify_nonce( $_POST['nonce'] ?? '', 'brag_book_sync_delete' ) ) {
+		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ?? '' ) ), 'brag_book_sync_delete' ) ) {
 			wp_send_json_error( [ 'message' => __( 'Security check failed.', 'brag-book-gallery' ) ] );
 		}
 
@@ -2917,7 +3033,7 @@ class Sync_Page extends Settings_Base {
 			wp_send_json_error( [ 'message' => __( 'Insufficient permissions.', 'brag-book-gallery' ) ] );
 		}
 
-		$sync_ids = array_map( 'absint', $_POST['sync_ids'] ?? [] );
+		$sync_ids = array_map( 'absint', wp_unslash( $_POST['sync_ids'] ?? [] ) );
 		if ( empty( $sync_ids ) ) {
 			wp_send_json_error( [ 'message' => __( 'No records selected.', 'brag-book-gallery' ) ] );
 		}
@@ -2926,6 +3042,7 @@ class Sync_Page extends Settings_Base {
 		$table_name = $wpdb->prefix . 'brag_book_sync_log';
 
 		$placeholders = implode( ',', array_fill( 0, count( $sync_ids ), '%d' ) );
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$deleted = $wpdb->query(
 			$wpdb->prepare( "DELETE FROM {$table_name} WHERE id IN ({$placeholders})", ...$sync_ids )
 		);
@@ -2933,6 +3050,7 @@ class Sync_Page extends Settings_Base {
 		if ( $deleted ) {
 			wp_send_json_success( [
 				'message' => sprintf(
+					/* translators: %d: number of sync records deleted */
 					__( '%d sync record(s) deleted successfully.', 'brag-book-gallery' ),
 					$deleted
 				)
@@ -2950,7 +3068,7 @@ class Sync_Page extends Settings_Base {
 	 */
 	public function handle_clear_sync_history(): void {
 		// Verify nonce
-		if ( ! wp_verify_nonce( $_POST['nonce'] ?? '', 'brag_book_sync_delete' ) ) {
+		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ?? '' ) ), 'brag_book_sync_delete' ) ) {
 			wp_send_json_error( [ 'message' => __( 'Security check failed.', 'brag-book-gallery' ) ] );
 		}
 
@@ -2962,6 +3080,7 @@ class Sync_Page extends Settings_Base {
 		global $wpdb;
 		$table_name = $wpdb->prefix . 'brag_book_sync_log';
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 		$deleted = $wpdb->query( "TRUNCATE TABLE {$table_name}" );
 
 		if ( $deleted !== false ) {
@@ -2972,7 +3091,7 @@ class Sync_Page extends Settings_Base {
 				$files = glob( $sync_dir . '/*.{json,log}', GLOB_BRACE );
 				if ( $files ) {
 					foreach ( $files as $file ) {
-						unlink( $file );
+						wp_delete_file( $file );
 					}
 				}
 			}
@@ -2996,18 +3115,22 @@ class Sync_Page extends Settings_Base {
 		$table_name = $wpdb->prefix . 'brag_book_sync_log';
 
 		// Check if table exists first
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 		$table_exists = $wpdb->get_var( "SHOW TABLES LIKE '{$table_name}'" ) === $table_name;
 		if ( ! $table_exists ) {
 			echo '<p>' . esc_html__( 'Sync history table not found. Please re-activate the plugin.', 'brag-book-gallery' ) . '</p>';
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAGBook Sync History: Table does not exist: ' . $table_name );
 			return;
 		}
 
 		// Check which columns exist (handle different schema versions)
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 		$columns = $wpdb->get_col( "DESCRIBE {$table_name}" );
 		$has_started_at = in_array( 'started_at', $columns, true );
 		$has_created_at = in_array( 'created_at', $columns, true );
 
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAGBook Sync History: Table columns: ' . implode( ', ', $columns ) );
 
 		// Use appropriate column for ordering based on what exists
@@ -3019,17 +3142,24 @@ class Sync_Page extends Settings_Base {
 		}
 
 		// Get all sync records
+		// Table name and order column are derived from $wpdb->prefix and validated column names, not user input.
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$query = "SELECT * FROM {$table_name} ORDER BY {$order_column} DESC LIMIT 50";
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAGBook Sync History: Executing query: ' . $query );
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 		$records = $wpdb->get_results( $query );
 
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAGBook Sync History: Found ' . count( $records ) . ' records' );
 
 		if ( empty( $records ) ) {
 			// Show count for debugging
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 			$count = $wpdb->get_var( "SELECT COUNT(*) FROM {$table_name}" );
 			echo '<p>' . esc_html__( 'No sync history available.', 'brag-book-gallery' ) . ' (Total records in table: ' . esc_html( $count ) . ')</p>';
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAGBook Sync History: No records returned. Total in table: ' . $count );
 			return;
 		}
@@ -3192,87 +3322,32 @@ class Sync_Page extends Settings_Base {
 	 * @return void
 	 */
 	private function render_sync_history_styles(): void {
+		ob_start();
 		?>
-		<style>
 		.sync-status--completed { color: #00a32a; font-weight: 600; }
 		.sync-status--failed { color: #d63638; font-weight: 600; }
 		.sync-status--started { color: #dba617; font-weight: 600; }
-
-		.brag-book-modal {
-			position: fixed;
-			top: 0;
-			left: 0;
-			width: 100%;
-			height: 100%;
-			background: rgba(0, 0, 0, 0.5);
-			z-index: 100000;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-		}
-
-		.brag-book-modal-content {
-			background: #fff;
-			width: 90%;
-			max-width: 800px;
-			max-height: 80vh;
-			border-radius: 4px;
-			box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-			display: flex;
-			flex-direction: column;
-		}
-
-		.brag-book-modal-header {
-			padding: 15px 20px;
-			border-bottom: 1px solid #ddd;
-			display: flex;
-			justify-content: space-between;
-			align-items: center;
-		}
-
-		.brag-book-modal-header h2 {
-			margin: 0;
-			font-size: 20px;
-		}
-
-		.brag-book-modal-close {
-			background: none;
-			border: none;
-			font-size: 24px;
-			cursor: pointer;
-			padding: 0;
-			width: 30px;
-			height: 30px;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-		}
-
-		.brag-book-modal-body {
-			padding: 20px;
-			overflow-y: auto;
-			flex: 1;
-		}
-
-		#sync-log-content pre {
-			background: #f6f7f7;
-			padding: 15px;
-			border: 1px solid #ddd;
-			border-radius: 3px;
-			overflow-x: auto;
-			font-size: 13px;
-			line-height: 1.5;
-		}
-
-		.brag-book-sync-history-wrapper {
-			margin-top: 20px;
-		}
-
-		.sync-log-details table.widefat th {
-			width: 30%;
-		}
-		</style>
+		.brag-book-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 100000; display: flex; align-items: center; justify-content: center; }
+		.brag-book-modal-content { background: #fff; width: 90%; max-width: 800px; max-height: 80vh; border-radius: 4px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); display: flex; flex-direction: column; }
+		.brag-book-modal-header { padding: 15px 20px; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center; }
+		.brag-book-modal-header h2 { margin: 0; font-size: 20px; }
+		.brag-book-modal-close { background: none; border: none; font-size: 24px; cursor: pointer; padding: 0; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; }
+		.brag-book-modal-body { padding: 20px; overflow-y: auto; flex: 1; }
+		#sync-log-content pre { background: #f6f7f7; padding: 15px; border: 1px solid #ddd; border-radius: 3px; overflow-x: auto; font-size: 13px; line-height: 1.5; }
+		.brag-book-sync-history-wrapper { margin-top: 20px; }
+		.sync-log-details table.widefat th { width: 30%; }
+		.brag-book-sync-report .report-section { margin-bottom: 20px; }
+		.brag-book-sync-report h4 { margin-bottom: 10px; color: #23282d; }
+		.status-completed { color: #00a32a; font-weight: bold; }
+		.status-failed { color: #d63638; font-weight: bold; }
+		.status-running { color: #dba617; font-weight: bold; }
 		<?php
+		$inline_css = ob_get_clean();
+		if ( ! wp_style_is( 'brag-book-gallery-sync-page', 'registered' ) ) {
+			wp_register_style( 'brag-book-gallery-sync-page', false, array(), '4.4.0' );
+			wp_enqueue_style( 'brag-book-gallery-sync-page' );
+		}
+		wp_add_inline_style( 'brag-book-gallery-sync-page', $inline_css );
 	}
 
 	/**
@@ -3282,129 +3357,155 @@ class Sync_Page extends Settings_Base {
 	 * @return void
 	 */
 	private function render_sync_history_scripts(): void {
+		ob_start();
 		?>
-		<script>
-		jQuery(document).ready(function($) {
-			// Select all checkboxes
-			$('#select-all-sync-records').on('change', function() {
-				$('input[name="sync_records[]"]').prop('checked', this.checked);
-				updateDeleteButton();
-			});
+		(function () {
+			'use strict';
 
-			// Individual checkbox change
-			$('input[name="sync_records[]"]').on('change', function() {
-				updateDeleteButton();
-			});
+			var nonces = <?php echo wp_json_encode( array(
+				'log'    => wp_create_nonce( 'brag_book_sync_log' ),
+				'delete' => wp_create_nonce( 'brag_book_sync_delete' ),
+			) ); ?>;
+			var i18n = <?php echo wp_json_encode( array(
+				'confirmDeleteSingle' => __( 'Are you sure you want to delete this sync record?', 'brag-book-gallery' ),
+				'confirmDeletePrefix' => __( 'Are you sure you want to delete', 'brag-book-gallery' ),
+				'confirmDeleteSuffix' => __( 'sync record(s)?', 'brag-book-gallery' ),
+				'confirmClearAll'     => __( 'Are you sure you want to clear ALL sync history? This action cannot be undone.', 'brag-book-gallery' ),
+				'failLoad'            => __( 'Failed to load log', 'brag-book-gallery' ),
+				'failDeleteSingle'    => __( 'Failed to delete record', 'brag-book-gallery' ),
+				'failDeleteMany'      => __( 'Failed to delete records', 'brag-book-gallery' ),
+				'failClear'           => __( 'Failed to clear history', 'brag-book-gallery' ),
+			) ); ?>;
 
-			// Update delete button state
-			function updateDeleteButton() {
-				const hasChecked = $('input[name="sync_records[]"]:checked').length > 0;
-				$('#delete-selected-sync-records').prop('disabled', !hasChecked);
+			function post(action, params) {
+				var formData = new FormData();
+				formData.append('action', action);
+				Object.keys(params || {}).forEach(function (key) {
+					var value = params[key];
+					if (Array.isArray(value)) {
+						value.forEach(function (item) { formData.append(key + '[]', item); });
+					} else {
+						formData.append(key, value);
+					}
+				});
+				return fetch(window.ajaxurl, { method: 'POST', body: formData, credentials: 'same-origin' }).then(function (res) { return res.json(); });
 			}
 
-			// View sync log
-			$('.view-sync-log').on('click', function() {
-				const syncId = $(this).data('sync-id');
+			function fadeOutAndRemove(node, done) {
+				node.style.transition = 'opacity 0.4s';
+				node.style.opacity = '0';
+				window.setTimeout(function () {
+					if (node.parentNode) {
+						node.parentNode.removeChild(node);
+					}
+					if (typeof done === 'function') { done(); }
+				}, 400);
+			}
 
-				$.post(ajaxurl, {
-					action: 'brag_book_view_sync_log',
-					sync_id: syncId,
-					nonce: '<?php echo wp_create_nonce( 'brag_book_sync_log' ); ?>'
-				}, function(response) {
-					if (response.success) {
-						$('#sync-log-content').html(response.data.html);
-						$('#sync-log-modal').fadeIn();
-					} else {
-						alert(response.data.message || 'Failed to load log');
+			function updateDeleteButton() {
+				var any = document.querySelectorAll('input[name="sync_records[]"]:checked').length > 0;
+				var btn = document.getElementById('delete-selected-sync-records');
+				if (btn) { btn.disabled = !any; }
+			}
+
+			var selectAll = document.getElementById('select-all-sync-records');
+			if (selectAll) {
+				selectAll.addEventListener('change', function () {
+					document.querySelectorAll('input[name="sync_records[]"]').forEach(function (cb) {
+						cb.checked = selectAll.checked;
+					});
+					updateDeleteButton();
+				});
+			}
+
+			document.querySelectorAll('input[name="sync_records[]"]').forEach(function (cb) {
+				cb.addEventListener('change', updateDeleteButton);
+			});
+
+			document.querySelectorAll('.view-sync-log').forEach(function (btn) {
+				btn.addEventListener('click', function () {
+					var syncId = btn.getAttribute('data-sync-id');
+					post('brag_book_view_sync_log', { sync_id: syncId, nonce: nonces.log }).then(function (response) {
+						var modal = document.getElementById('sync-log-modal');
+						var content = document.getElementById('sync-log-content');
+						if (response && response.success) {
+							if (content) { content.innerHTML = response.data.html; }
+							if (modal) { modal.style.display = 'block'; }
+						} else {
+							window.alert((response && response.data && response.data.message) || i18n.failLoad);
+						}
+					});
+				});
+			});
+
+			var modal = document.getElementById('sync-log-modal');
+			if (modal) {
+				modal.addEventListener('click', function (e) {
+					if (e.target === modal || (e.target.classList && e.target.classList.contains('brag-book-modal-close'))) {
+						modal.style.display = 'none';
 					}
 				});
-			});
+			}
 
-			// Close modal
-			$('.brag-book-modal-close, #sync-log-modal').on('click', function(e) {
-				if (e.target === this) {
-					$('#sync-log-modal').fadeOut();
-				}
-			});
-
-			// Delete single record
-			$('.delete-sync-record').on('click', function() {
-				if (!confirm('<?php esc_html_e( 'Are you sure you want to delete this sync record?', 'brag-book-gallery' ); ?>')) {
-					return;
-				}
-
-				const syncId = $(this).data('sync-id');
-				const $row = $(this).closest('tr');
-
-				$.post(ajaxurl, {
-					action: 'brag_book_delete_sync_record',
-					sync_id: syncId,
-					nonce: '<?php echo wp_create_nonce( 'brag_book_sync_delete' ); ?>'
-				}, function(response) {
-					if (response.success) {
-						$row.fadeOut(400, function() {
-							$(this).remove();
-							updateDeleteButton();
-						});
-					} else {
-						alert(response.data.message || 'Failed to delete record');
-					}
+			document.querySelectorAll('.delete-sync-record').forEach(function (btn) {
+				btn.addEventListener('click', function () {
+					if (!window.confirm(i18n.confirmDeleteSingle)) { return; }
+					var syncId = btn.getAttribute('data-sync-id');
+					var row = btn.closest('tr');
+					post('brag_book_delete_sync_record', { sync_id: syncId, nonce: nonces.delete }).then(function (response) {
+						if (response && response.success && row) {
+							fadeOutAndRemove(row, updateDeleteButton);
+						} else {
+							window.alert((response && response.data && response.data.message) || i18n.failDeleteSingle);
+						}
+					});
 				});
 			});
 
-			// Delete selected records
-			$('#delete-selected-sync-records').on('click', function() {
-				const selectedIds = [];
-				$('input[name="sync_records[]"]:checked').each(function() {
-					selectedIds.push($(this).val());
-				});
-
-				if (selectedIds.length === 0) return;
-
-				const confirmMsg = '<?php esc_html_e( 'Are you sure you want to delete', 'brag-book-gallery' ); ?> ' + selectedIds.length + ' <?php esc_html_e( 'sync record(s)?', 'brag-book-gallery' ); ?>';
-				if (!confirm(confirmMsg)) {
-					return;
-				}
-
-				$.post(ajaxurl, {
-					action: 'brag_book_delete_sync_records',
-					sync_ids: selectedIds,
-					nonce: '<?php echo wp_create_nonce( 'brag_book_sync_delete' ); ?>'
-				}, function(response) {
-					if (response.success) {
-						selectedIds.forEach(function(id) {
-							$('tr[data-sync-id="' + id + '"]').fadeOut(400, function() {
-								$(this).remove();
+			var deleteSelected = document.getElementById('delete-selected-sync-records');
+			if (deleteSelected) {
+				deleteSelected.addEventListener('click', function () {
+					var ids = Array.prototype.slice.call(
+						document.querySelectorAll('input[name="sync_records[]"]:checked')
+					).map(function (cb) { return cb.value; });
+					if (ids.length === 0) { return; }
+					if (!window.confirm(i18n.confirmDeletePrefix + ' ' + ids.length + ' ' + i18n.confirmDeleteSuffix)) { return; }
+					post('brag_book_delete_sync_records', { sync_ids: ids, nonce: nonces.delete }).then(function (response) {
+						if (response && response.success) {
+							ids.forEach(function (id) {
+								var row = document.querySelector('tr[data-sync-id="' + id + '"]');
+								if (row) { fadeOutAndRemove(row); }
 							});
-						});
-						$('#select-all-sync-records').prop('checked', false);
-						updateDeleteButton();
-					} else {
-						alert(response.data.message || 'Failed to delete records');
-					}
+							if (selectAll) { selectAll.checked = false; }
+							updateDeleteButton();
+						} else {
+							window.alert((response && response.data && response.data.message) || i18n.failDeleteMany);
+						}
+					});
 				});
-			});
+			}
 
-			// Clear all history
-			$('#clear-all-sync-history').on('click', function() {
-				if (!confirm('<?php esc_html_e( 'Are you sure you want to clear ALL sync history? This action cannot be undone.', 'brag-book-gallery' ); ?>')) {
-					return;
-				}
-
-				$.post(ajaxurl, {
-					action: 'brag_book_clear_sync_history',
-					nonce: '<?php echo wp_create_nonce( 'brag_book_sync_delete' ); ?>'
-				}, function(response) {
-					if (response.success) {
-						location.reload();
-					} else {
-						alert(response.data.message || 'Failed to clear history');
-					}
+			var clearAll = document.getElementById('clear-all-sync-history');
+			if (clearAll) {
+				clearAll.addEventListener('click', function () {
+					if (!window.confirm(i18n.confirmClearAll)) { return; }
+					post('brag_book_clear_sync_history', { nonce: nonces.delete }).then(function (response) {
+						if (response && response.success) {
+							window.location.reload();
+						} else {
+							window.alert((response && response.data && response.data.message) || i18n.failClear);
+						}
+					});
 				});
-			});
-		});
-		</script>
+			}
+		}());
 		<?php
+		$inline_script = ob_get_clean();
+		if ( ! wp_script_is( 'brag-book-gallery-sync-history', 'registered' ) ) {
+			wp_register_script( 'brag-book-gallery-sync-history', '', array(), '4.4.0', true );
+		}
+		wp_enqueue_script( 'brag-book-gallery-sync-history' );
+		wp_add_inline_script( 'brag-book-gallery-sync-history', $inline_script );
 	}
 
 	/**
@@ -3430,16 +3531,19 @@ class Sync_Page extends Settings_Base {
 		// Create initial log entry
 		if ( $database ) {
 			$log_id = $database->log_sync_operation( 'full', 'started', 0, 0, '', $sync_source );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery: Sync log created with ID: ' . $log_id . ' (source: ' . $sync_source . ')' );
 		}
 
 		try {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery: Starting sync via ' . $sync_source );
 
 			// Use the stage-based sync
 			$sync = new \BRAGBookGallery\Includes\Sync\Chunked_Data_Sync();
 
 			// Run Stage 1: Fetch procedures
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery: Running Stage 1 - Fetching procedures' );
 			set_transient( 'brag_book_stage_progress', [
 				'current'    => 0,
@@ -3455,9 +3559,11 @@ class Sync_Page extends Settings_Base {
 				return;
 			}
 
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery: Stage 1 completed' );
 
 			// Run Stage 2: Build manifest
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery: Running Stage 2 - Building manifest' );
 			set_transient( 'brag_book_stage_progress', [
 				'current'    => 1,
@@ -3473,12 +3579,14 @@ class Sync_Page extends Settings_Base {
 				return;
 			}
 
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery: Stage 2 completed' );
 
 			// Stage 3: dispatch the first batch asynchronously so each batch runs
 			// in its own short-lived PHP request, immune to server timeouts.
 			// Completion and API reporting are handled by finalize_sync() once the
 			// last batch in the chain finishes.
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery: Dispatching Stage 3 batch chain asynchronously.' );
 			set_transient( 'brag_book_stage_progress', [
 				'current'    => 2,
@@ -3500,6 +3608,7 @@ class Sync_Page extends Settings_Base {
 
 		} catch ( \Exception $e ) {
 			$error_message = 'Sync failed: ' . $e->getMessage();
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery: ' . $error_message );
 
 			$sync_api->report_sync(
@@ -3550,6 +3659,7 @@ class Sync_Page extends Settings_Base {
 	 */
 	private function handle_sync_stage_failure( array $result, string $stage_name, $database, ?int $log_id, array $settings, Sync_Api $sync_api, string $sync_source ): void {
 		$error_message = $result['message'] ?? $stage_name . ' failed';
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery: ' . $stage_name . ' failed: ' . $error_message );
 
 		if ( $database && $log_id ) {

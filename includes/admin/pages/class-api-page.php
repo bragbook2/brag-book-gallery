@@ -138,6 +138,7 @@ class API_Page extends Settings_Base {
 		$this->menu_title = esc_html__( 'API', 'brag-book-gallery' );
 
 		// Process form submission if data was posted
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce is verified inside $this->save().
 		if ( isset( $_POST['submit'] ) || isset( $_POST['brag_book_gallery_api_form_submitted'] ) ) {
 			$this->save();
 		}
@@ -342,15 +343,9 @@ class API_Page extends Settings_Base {
 			</div>
 		</dialog>
 
-		<script type="module">
-		/**
-		 * BRAG book Gallery API Settings JavaScript
-		 *
-		 * Handles API connection management, validation, and dynamic form interactions
-		 * using modern ES6+ JavaScript following WordPress VIP coding standards.
-		 *
-		 * @since 3.0.0
-		 */
+		<?php
+		ob_start();
+		?>
 		(() => {
 			'use strict';
 
@@ -618,7 +613,7 @@ class API_Page extends Settings_Base {
 					// Create form data
 					const formData = new FormData();
 					formData.append('action', 'brag_book_gallery_remove_api_connection');
-					formData.append('nonce', '<?php echo wp_create_nonce( 'brag_book_gallery_settings_nonce' ); ?>');
+					formData.append('nonce', '<?php echo esc_attr( wp_create_nonce( 'brag_book_gallery_settings_nonce' ) ); ?>');
 					formData.append('index', index);
 
 					const response = await fetch(ajaxurl, {
@@ -698,7 +693,7 @@ class API_Page extends Settings_Base {
 					// Create form data
 					const formData = new FormData();
 					formData.append('action', 'brag_book_gallery_validate_api');
-					formData.append('nonce', '<?php echo wp_create_nonce( 'brag_book_gallery_settings_nonce' ); ?>');
+					formData.append('nonce', '<?php echo esc_attr( wp_create_nonce( 'brag_book_gallery_settings_nonce' ) ); ?>');
 					formData.append('api_token', apiToken);
 					formData.append('website_property_id', propertyId);
 					formData.append('index', index);
@@ -812,9 +807,14 @@ class API_Page extends Settings_Base {
 				initializeEventListeners();
 			}
 		})();
-		</script>
-
 		<?php
+		$inline_script = ob_get_clean();
+		if ( ! wp_script_is( 'brag-book-gallery-api-settings', 'registered' ) ) {
+			wp_register_script( 'brag-book-gallery-api-settings', '', array(), '4.4.0', true );
+		}
+		wp_enqueue_script( 'brag-book-gallery-api-settings' );
+		wp_add_inline_script( 'brag-book-gallery-api-settings', $inline_script );
+
 		$this->render_footer();
 	}
 
@@ -858,20 +858,25 @@ class API_Page extends Settings_Base {
 		$website_property_ids = array();
 
 		// Check if we received any form data
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified via save_settings() above.
 		if ( ! isset( $_POST['brag_book_gallery_api_token'] ) ) {
 			$this->add_notice( __( 'No API token data received. Please ensure JavaScript is enabled.', 'brag-book-gallery' ), 'error' );
 		}
 
 		// Process API token array if provided
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified via save_settings() above.
 		if ( isset( $_POST['brag_book_gallery_api_token'] ) && is_array( $_POST['brag_book_gallery_api_token'] ) ) {
-			foreach ( $_POST['brag_book_gallery_api_token'] as $index => $token ) {
+			// phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Nonce verified above; each value is sanitized inside the loop.
+			foreach ( wp_unslash( $_POST['brag_book_gallery_api_token'] ) as $index => $token ) {
 				$token = sanitize_text_field( $token );
 				if ( ! empty( $token ) ) {
 					$api_tokens[] = $token;
 
 					// Save corresponding property ID, maintaining array pairing
+					// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified via save_settings() above.
 					if ( isset( $_POST['brag_book_gallery_website_property_id'][ $index ] ) ) {
-						$website_property_ids[] = sanitize_text_field( $_POST['brag_book_gallery_website_property_id'][ $index ] );
+						// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified via save_settings() above.
+						$website_property_ids[] = sanitize_text_field( wp_unslash( $_POST['brag_book_gallery_website_property_id'][ $index ] ) );
 					} else {
 						$website_property_ids[] = '';
 					}
@@ -881,6 +886,7 @@ class API_Page extends Settings_Base {
 
 		// Log what we're about to save for debugging
 		if ( ! empty( $api_tokens ) ) {
+			/* translators: %d: number of API connections being saved */
 			$this->add_notice( sprintf( __( 'Saving %d API connection(s).', 'brag-book-gallery' ), count( $api_tokens ) ), 'info' );
 		} else {
 			$this->add_notice( __( 'No API tokens to save (all fields were empty).', 'brag-book-gallery' ), 'warning' );
@@ -894,7 +900,9 @@ class API_Page extends Settings_Base {
 		update_option( 'brag_book_gallery_website_property_id', $website_property_ids );
 
 		// Process and validate connection settings
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified via save_settings() above.
 		if ( isset( $_POST['api_timeout'] ) ) {
+			// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified via save_settings() above.
 			$timeout = absint( $_POST['api_timeout'] );
 			// Ensure timeout is within reasonable bounds (5-120 seconds)
 			$timeout = max( 5, min( 120, $timeout ) );
@@ -902,11 +910,14 @@ class API_Page extends Settings_Base {
 		}
 
 		// Normalize caching setting to string boolean
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified via save_settings() above.
 		$enable_caching = isset( $_POST['enable_caching'] ) && $_POST['enable_caching'] === 'yes' ? 'yes' : 'no';
 		update_option( 'brag_book_gallery_enable_caching', $enable_caching );
 
 		// Process cache duration with bounds checking
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified via save_settings() above.
 		if ( isset( $_POST['cache_duration'] ) ) {
+			// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified via save_settings() above.
 			$duration = absint( $_POST['cache_duration'] );
 			// Ensure duration is within reasonable bounds (60 seconds to 24 hours)
 			$duration = max( 60, min( 86400, $duration ) );
@@ -931,11 +942,14 @@ class API_Page extends Settings_Base {
 		}
 
 		// Log to file for debugging (since we can't easily check WP_DEBUG in this environment)
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery: AJAX validate_api called' );
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery: POST data keys: ' . implode( ', ', array_keys( $_POST ) ) );
 
 		// Verify nonce - check manually first for debugging
 		if ( ! isset( $_POST['nonce'] ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery: No nonce in POST data' );
 			wp_send_json_error( __( 'Missing security nonce.', 'brag-book-gallery' ) );
 			return;
@@ -943,6 +957,7 @@ class API_Page extends Settings_Base {
 
 		$nonce = sanitize_text_field( wp_unslash( $_POST['nonce'] ) );
 		if ( ! wp_verify_nonce( $nonce, 'brag_book_gallery_settings_nonce' ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery: Nonce verification failed' );
 			wp_send_json_error( __( 'Security check failed.', 'brag-book-gallery' ) );
 			return;
@@ -950,19 +965,22 @@ class API_Page extends Settings_Base {
 
 		// Check capability
 		if ( ! current_user_can( 'manage_options' ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery: User capability check failed' );
 			wp_send_json_error( __( 'You do not have permission to perform this action.', 'brag-book-gallery' ) );
 			return;
 		}
 
-		$api_token          = sanitize_text_field( $_POST['api_token'] ?? '' );
-		$website_property_id = sanitize_text_field( $_POST['website_property_id'] ?? $_POST['websiteproperty_id'] ?? '' );
+		$api_token          = sanitize_text_field( wp_unslash( $_POST['api_token'] ?? '' ) );
+		$website_property_id = sanitize_text_field( wp_unslash( $_POST['website_property_id'] ?? $_POST['websiteproperty_id'] ?? '' ) );
 		$index              = isset( $_POST['index'] ) ? intval( $_POST['index'] ) : 0;
 
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( "BRAG book Gallery: Processing API token (length: " . strlen( $api_token ) . ") and property ID: {$website_property_id}" );
 
 		// Validate inputs
 		if ( empty( $api_token ) || empty( $website_property_id ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery: Missing API token or property ID' );
 			wp_send_json_error( __( 'API token and Website Property ID are required.', 'brag-book-gallery' ) );
 			return;
@@ -970,14 +988,17 @@ class API_Page extends Settings_Base {
 
 		try {
 			$validation = $this->validate_api_credentials( $api_token, $website_property_id );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery: Validation completed' );
 		} catch ( Exception $e ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery: Exception in validate_api_credentials: ' . $e->getMessage() );
 			wp_send_json_error( __( 'Validation failed due to an error.', 'brag-book-gallery' ) );
 			return;
 		}
 
 		if ( $validation['valid'] ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery: Validation successful, saving credentials' );
 
 			// Save the validated credentials
@@ -1010,6 +1031,7 @@ class API_Page extends Settings_Base {
 			update_option( 'brag_book_gallery_website_property_id', $saved_property_ids );
 			update_option( 'brag_book_gallery_account_info', $saved_account_info );
 
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery: Sending success response' );
 			wp_send_json_success( array(
 				'valid'        => true,
@@ -1017,6 +1039,7 @@ class API_Page extends Settings_Base {
 				'account_info' => $validation['account_info'] ?? null,
 			) );
 		} else {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery: Validation failed: ' . $validation['message'] );
 			wp_send_json_error( $validation['message'] );
 		}
@@ -1031,6 +1054,7 @@ class API_Page extends Settings_Base {
 	public function handle_remove_api_connection(): void {
 		$this->verify_ajax_request();
 
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified via verify_ajax_request() above.
 		$index = isset( $_POST['index'] ) ? intval( $_POST['index'] ) : -1;
 
 		if ( $index < 0 ) {
@@ -1123,7 +1147,8 @@ class API_Page extends Settings_Base {
 		// Use the correct nonce action for this handler
 		$this->verify_ajax_request( 'brag_book_gallery_check_slug' );
 
-		$slug = sanitize_text_field( $_POST['slug'] ?? '' );
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified via verify_ajax_request() above.
+		$slug = sanitize_text_field( wp_unslash( $_POST['slug'] ?? '' ) );
 
 		if ( empty( $slug ) ) {
 			wp_send_json_error( __( 'Slug is required.', 'brag-book-gallery' ) );
@@ -1242,14 +1267,17 @@ class API_Page extends Settings_Base {
 	public function handle_generate_page(): void {
 		// Set time limit to prevent timeouts on managed hosts like WP Engine
 		if ( ! wp_doing_cron() ) {
+			// phpcs:ignore Squiz.PHP.DiscouragedFunctions.Discouraged
 			@set_time_limit( 60 );
 		}
 
 		// Use the correct nonce action for this handler
 		$this->verify_ajax_request( 'brag_book_gallery_generate_page' );
 
-		$slug  = sanitize_text_field( $_POST['slug'] ?? '' );
-		$title = sanitize_text_field( $_POST['title'] ?? '' );
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified via verify_ajax_request() above.
+		$slug  = sanitize_text_field( wp_unslash( $_POST['slug'] ?? '' ) );
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified via verify_ajax_request() above.
+		$title = sanitize_text_field( wp_unslash( $_POST['title'] ?? '' ) );
 
 		if ( empty( $slug ) || empty( $title ) ) {
 			wp_send_json_error( __( 'Slug and title are required.', 'brag-book-gallery' ) );
@@ -1272,6 +1300,7 @@ class API_Page extends Settings_Base {
 
 			if ( is_wp_error( $page_id ) ) {
 				wp_send_json_error( sprintf(
+					/* translators: %s: error message from page creation failure */
 					__( 'Failed to create page: %s', 'brag-book-gallery' ),
 					$page_id->get_error_message()
 				) );
@@ -1301,6 +1330,7 @@ class API_Page extends Settings_Base {
 
 			if ( ! $update_result && get_option( 'brag_book_gallery_page_slug' ) !== $slug ) {
 				// If option couldn't be updated, still proceed but log warning
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( "BRAGBook Gallery: Could not update gallery page slug option to '$slug'" );
 
 				// Fallback: update option directly
@@ -1354,6 +1384,7 @@ class API_Page extends Settings_Base {
 
 		} catch ( Exception $e ) {
 			wp_send_json_error( sprintf(
+				/* translators: %s: exception error message */
 				__( 'Unexpected error creating page: %s', 'brag-book-gallery' ),
 				$e->getMessage()
 			) );
@@ -1372,7 +1403,8 @@ class API_Page extends Settings_Base {
 	public function handle_check_favorites_page(): void {
 		$this->verify_ajax_request( 'brag_book_gallery_check_favorites_page' );
 
-		$gallery_slug = sanitize_text_field( $_POST['gallery_slug'] ?? '' );
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified via verify_ajax_request() above.
+		$gallery_slug = sanitize_text_field( wp_unslash( $_POST['gallery_slug'] ?? '' ) );
 
 		if ( empty( $gallery_slug ) ) {
 			wp_send_json_error( __( 'Gallery slug is required.', 'brag-book-gallery' ) );
@@ -1435,12 +1467,14 @@ class API_Page extends Settings_Base {
 	public function handle_generate_favorites_page(): void {
 		// Set time limit to prevent timeouts on managed hosts
 		if ( ! wp_doing_cron() ) {
+			// phpcs:ignore Squiz.PHP.DiscouragedFunctions.Discouraged
 			@set_time_limit( 60 );
 		}
 
 		$this->verify_ajax_request( 'brag_book_gallery_generate_favorites_page' );
 
-		$gallery_slug = sanitize_text_field( $_POST['gallery_slug'] ?? '' );
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified via verify_ajax_request() above.
+		$gallery_slug = sanitize_text_field( wp_unslash( $_POST['gallery_slug'] ?? '' ) );
 
 		if ( empty( $gallery_slug ) ) {
 			wp_send_json_error( __( 'Gallery slug is required.', 'brag-book-gallery' ) );
@@ -1473,6 +1507,7 @@ class API_Page extends Settings_Base {
 
 			if ( is_wp_error( $page_id ) ) {
 				wp_send_json_error( sprintf(
+					/* translators: %s: error message from page creation failure */
 					__( 'Failed to create page: %s', 'brag-book-gallery' ),
 					$page_id->get_error_message()
 				) );
@@ -1499,6 +1534,7 @@ class API_Page extends Settings_Base {
 
 		} catch ( Exception $e ) {
 			wp_send_json_error( sprintf(
+				/* translators: %s: exception error message */
 				__( 'Unexpected error creating page: %s', 'brag-book-gallery' ),
 				$e->getMessage()
 			) );
@@ -1514,7 +1550,8 @@ class API_Page extends Settings_Base {
 	public function handle_remove_row(): void {
 		$this->verify_ajax_request();
 
-		$remove_id = sanitize_text_field( $_POST['remove_id'] ?? '' );
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified via verify_ajax_request() above.
+		$remove_id = sanitize_text_field( wp_unslash( $_POST['remove_id'] ?? '' ) );
 
 		if ( empty( $remove_id ) ) {
 			wp_send_json_error( __( 'Invalid row ID.', 'brag-book-gallery' ) );
@@ -1577,6 +1614,7 @@ class API_Page extends Settings_Base {
 		if ( is_wp_error( $response ) ) {
 			return [
 				'valid'   => false,
+				/* translators: %s: error message from failed API connection */
 				'message' => sprintf( __( 'API connection failed: %s', 'brag-book-gallery' ), $response->get_error_message() ),
 			];
 		}

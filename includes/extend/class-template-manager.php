@@ -12,6 +12,10 @@
 
 namespace BRAGBookGallery\Includes\Extend;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 /**
  * Template Manager class
  *
@@ -43,41 +47,50 @@ class Template_Manager {
 		// Add filter to make block templates discoverable
 		add_filter( 'get_block_file_template', [ $this, 'get_block_file_template' ], 10, 3 );
 
-		// Remove duplicate h1.page-title on procedure taxonomy pages
-		add_action( 'template_redirect', [ $this, 'buffer_procedure_output' ] );
+		// Suppress duplicate archive titles on procedure taxonomy pages.
+		add_filter( 'get_the_archive_title', [ $this, 'suppress_procedure_archive_title' ] );
+		add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_procedure_title_styles' ] );
 	}
 
 	/**
-	 * Start output buffering on procedure taxonomy pages to remove duplicate h1
+	 * Suppress the archive title on procedure taxonomy pages
 	 *
-	 * Themes often render their own <h1 class="page-title"> on taxonomy archives,
-	 * causing a duplicate heading alongside the plugin's own procedure title.
-	 * This buffers the output and strips the theme's h1.page-title via regex.
+	 * Themes that render their own h1 via get_the_archive_title() would
+	 * duplicate the plugin's procedure heading. Returning an empty string
+	 * here is the WordPress-native way to suppress that.
+	 *
+	 * @since 4.3.3
+	 * @param string $title Archive title.
+	 * @return string Empty string on procedure taxonomy archives, original title otherwise.
+	 */
+	public function suppress_procedure_archive_title( string $title ): string {
+		if ( is_tax( Taxonomies::TAXONOMY_PROCEDURES ) ) {
+			return '';
+		}
+		return $title;
+	}
+
+	/**
+	 * Hide theme-rendered h1.page-title on procedure taxonomy pages
+	 *
+	 * Some themes hard-code <h1 class="page-title"> in templates and bypass
+	 * the get_the_archive_title filter. A scoped style rule hides those
+	 * without resorting to full-page output buffering.
 	 *
 	 * @since 4.3.3
 	 * @return void
 	 */
-	public function buffer_procedure_output(): void {
+	public function enqueue_procedure_title_styles(): void {
 		if ( ! is_tax( Taxonomies::TAXONOMY_PROCEDURES ) ) {
 			return;
 		}
-
-		ob_start( [ $this, 'remove_duplicate_page_title' ] );
-	}
-
-	/**
-	 * Remove the h1.page-title element from buffered output
-	 *
-	 * @since 4.3.3
-	 * @param string $html The buffered HTML output.
-	 * @return string Modified HTML with the duplicate h1 removed.
-	 */
-	public function remove_duplicate_page_title( string $html ): string {
-		return preg_replace(
-			'/<h1\b[^>]*\bclass="[^"]*\bpage-title\b[^"]*"[^>]*>.*?<\/h1>/is',
-			'',
-			$html,
-			1
+		if ( ! wp_style_is( 'brag-book-gallery-procedure-title', 'registered' ) ) {
+			wp_register_style( 'brag-book-gallery-procedure-title', false, array(), '4.4.0' );
+		}
+		wp_enqueue_style( 'brag-book-gallery-procedure-title' );
+		wp_add_inline_style(
+			'brag-book-gallery-procedure-title',
+			'body.tax-' . Taxonomies::TAXONOMY_PROCEDURES . ' h1.page-title{display:none}'
 		);
 	}
 

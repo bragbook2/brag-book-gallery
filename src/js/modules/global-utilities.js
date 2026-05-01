@@ -542,6 +542,13 @@ window.generateFilterHTML = function(container, filterData) {
 			.replace(/>/g, '&gt;');
 	};
 
+	// Slug-safe id segment for input/label pairing — strips quotes, punctuation,
+	// whitespace so values like 5'4" - 5'7" don't break the id attribute.
+	const toIdSlug = (text) => String(text)
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-+|-+$/g, '');
+
 	// Build filter HTML
 	let html = '';
 
@@ -556,7 +563,7 @@ window.generateFilterHTML = function(container, filterData) {
 		html += '</summary>';
 		html += '<ul class="brag-book-gallery-filter-options">';
 		Array.from(filterData.age).sort().forEach(value => {
-			const id = `procedure-filter-age-${value.replace(/\s+/g, '-')}`;
+			const id = `procedure-filter-age-${toIdSlug(value)}`;
 			html += `<li class="brag-book-gallery-filter-option">
 				<input type="checkbox" id="${id}" value="${escapeAttr(value)}" data-filter-type="age">
 				<label for="${id}">${escapeAttr(value)}</label>
@@ -577,7 +584,7 @@ window.generateFilterHTML = function(container, filterData) {
 		html += '</summary>';
 		html += '<ul class="brag-book-gallery-filter-options">';
 		Array.from(filterData.gender).sort().forEach(value => {
-			const id = `procedure-filter-gender-${value}`;
+			const id = `procedure-filter-gender-${toIdSlug(value)}`;
 			const displayValue = value.charAt(0).toUpperCase() + value.slice(1);
 			html += `<li class="brag-book-gallery-filter-option">
 				<input type="checkbox" id="${id}" value="${escapeAttr(value)}" data-filter-type="gender">
@@ -599,7 +606,7 @@ window.generateFilterHTML = function(container, filterData) {
 		html += '</summary>';
 		html += '<ul class="brag-book-gallery-filter-options">';
 		Array.from(filterData.ethnicity).sort().forEach(value => {
-			const id = `procedure-filter-ethnicity-${value.replace(/\s+/g, '-')}`;
+			const id = `procedure-filter-ethnicity-${toIdSlug(value)}`;
 			const displayValue = value.charAt(0).toUpperCase() + value.slice(1);
 			html += `<li class="brag-book-gallery-filter-option">
 				<input type="checkbox" id="${id}" value="${escapeAttr(value)}" data-filter-type="ethnicity">
@@ -621,7 +628,7 @@ window.generateFilterHTML = function(container, filterData) {
 		html += '</summary>';
 		html += '<ul class="brag-book-gallery-filter-options">';
 		Array.from(filterData.height).sort().forEach(value => {
-			const id = `procedure-filter-height-${value.replace(/\s+/g, '-')}`;
+			const id = `procedure-filter-height-${toIdSlug(value)}`;
 			html += `<li class="brag-book-gallery-filter-option">
 				<input type="checkbox" id="${id}" value="${escapeAttr(value)}" data-filter-type="height">
 				<label for="${id}">${escapeAttr(value)}</label>
@@ -642,7 +649,7 @@ window.generateFilterHTML = function(container, filterData) {
 		html += '</summary>';
 		html += '<ul class="brag-book-gallery-filter-options">';
 		Array.from(filterData.weight).sort().forEach(value => {
-			const id = `procedure-filter-weight-${value.replace(/\s+/g, '-')}`;
+			const id = `procedure-filter-weight-${toIdSlug(value)}`;
 			html += `<li class="brag-book-gallery-filter-option">
 				<input type="checkbox" id="${id}" value="${escapeAttr(value)}" data-filter-type="weight">
 				<label for="${id}">${escapeAttr(value)}</label>
@@ -669,7 +676,7 @@ window.generateFilterHTML = function(container, filterData) {
 				html += '<ul class="brag-book-gallery-filter-options">';
 
 				Array.from(values).sort().forEach(value => {
-					const id = `procedure-filter-${filterType}-${value.replace(/\s+/g, '-').toLowerCase()}`;
+					const id = `procedure-filter-${toIdSlug(filterType)}-${toIdSlug(value)}`;
 					const lowerValue = value.toLowerCase();
 					html += `<li class="brag-book-gallery-filter-option">
 						<input type="checkbox" id="${id}" value="${escapeAttr(lowerValue)}" data-filter-type="${escapeAttr(filterType)}">

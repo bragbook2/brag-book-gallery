@@ -54,14 +54,14 @@ class API_Test_Page extends Settings_Base {
 	 */
 	public function handle_api_test(): void {
 		// Verify nonce
-		if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( $_POST['nonce'], 'brag_book_api_test' ) ) {
+		if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'brag_book_api_test' ) ) {
 			wp_send_json_error( 'Invalid nonce' );
 			return;
 		}
 
 		// Get request parameters
-		$endpoint = sanitize_text_field( $_POST['endpoint'] ?? '' );
-		$body = isset( $_POST['body'] ) ? json_decode( stripslashes( $_POST['body'] ), true ) : null;
+		$endpoint = sanitize_text_field( wp_unslash( $_POST['endpoint'] ?? '' ) );
+		$body = isset( $_POST['body'] ) ? json_decode( sanitize_text_field( wp_unslash( $_POST['body'] ) ), true ) : null;
 
 		// Get API configuration
 		$api_tokens = get_option( 'brag_book_gallery_api_token', array() );
@@ -149,7 +149,7 @@ class API_Test_Page extends Settings_Base {
 
 				case 'cases-v2':
 					// For GET requests, parameters come from the URL
-					$url_parts = wp_parse_url( sanitize_text_field( $_POST['url'] ?? '' ) );
+					$url_parts = wp_parse_url( esc_url_raw( wp_unslash( $_POST['url'] ?? '' ) ) );
 					parse_str( $url_parts['query'] ?? '', $query_params );
 
 					$procedure_id = intval( $query_params['procedureId'] ?? 0 );
@@ -178,11 +178,11 @@ class API_Test_Page extends Settings_Base {
 
 				case 'single-case-v2':
 					// For GET requests, parameters come from the URL
-					$url_parts = wp_parse_url( sanitize_text_field( $_POST['url'] ?? '' ) );
+					$url_parts = wp_parse_url( esc_url_raw( wp_unslash( $_POST['url'] ?? '' ) ) );
 					parse_str( $url_parts['query'] ?? '', $query_params );
 
 					// Case ID comes from the URL path
-					preg_match( '/\/cases\/(\d+)/', sanitize_text_field( $_POST['url'] ?? '' ), $matches );
+					preg_match( '/\/cases\/(\d+)/', esc_url_raw( wp_unslash( $_POST['url'] ?? '' ) ), $matches );
 					$case_id = intval( $matches[1] ?? 0 );
 
 					if ( $case_id <= 0 ) {
@@ -234,7 +234,9 @@ class API_Test_Page extends Settings_Base {
 		} catch ( \Exception $e ) {
 			// Log detailed error information
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'API Test Error: ' . $e->getMessage() );
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'API Test Endpoint: ' . $endpoint );
 			}
 
@@ -299,7 +301,8 @@ class API_Test_Page extends Settings_Base {
 								<li>
 									<?php
 									echo esc_html( sprintf(
-										__( 'Connection %d: Token %s... | Property ID: %s', 'brag-book-gallery' ),
+										/* translators: %1$d: connection number, %2$s: token preview (first 10 characters), %3$s: website property ID */
+										__( 'Connection %1$d: Token %2$s... | Property ID: %3$s', 'brag-book-gallery' ),
 										$index + 1,
 										substr( $token, 0, 10 ),
 										$website_property_ids[$index] ?? 'N/A'
@@ -616,7 +619,9 @@ class API_Test_Page extends Settings_Base {
 			<?php endif; ?>
 		</div>
 
-		<style>
+		<?php
+		ob_start();
+		?>
 		.api-test-config {
 			background: var(--slate-100);
 			border: 1px solid var(--slate-200);
@@ -727,16 +732,23 @@ class API_Test_Page extends Settings_Base {
 			display: inline-block;
 			margin-left: 5px;
 		}
-		</style>
+		<?php
+		$inline_css = ob_get_clean();
+		if ( ! wp_style_is( 'brag-book-gallery-api-test', 'registered' ) ) {
+			wp_register_style( 'brag-book-gallery-api-test', false, array(), '4.4.0' );
+			wp_enqueue_style( 'brag-book-gallery-api-test' );
+		}
+		wp_add_inline_style( 'brag-book-gallery-api-test', $inline_css );
 
-		<script>
+		ob_start();
+		?>
 		document.addEventListener('DOMContentLoaded', function() {
 			// Get all API tokens and property IDs as arrays
 			const apiTokens = <?php echo wp_json_encode( array_values( array_filter( $api_tokens ) ) ); ?>;
 			const websitePropertyIds = <?php echo wp_json_encode( array_values( array_filter( array_map( 'intval', $website_property_ids ) ) ) ); ?>;
 			const baseUrl = '<?php echo esc_js( get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' ) ); ?>';
-			const ajaxUrl = '<?php echo admin_url( 'admin-ajax.php' ); ?>';
-			const nonce = '<?php echo wp_create_nonce( 'brag_book_api_test' ); ?>';
+			const ajaxUrl = '<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>';
+			const nonce = '<?php echo esc_attr( wp_create_nonce( 'brag_book_api_test' ) ); ?>';
 
 			// Debug log the tokens and IDs
 			console.log('API Tokens:', apiTokens);
@@ -1221,9 +1233,14 @@ class API_Test_Page extends Settings_Base {
 				});
 			}
 		});
-		</script>
-
 		<?php
+		$inline_script = ob_get_clean();
+		if ( ! wp_script_is( 'brag-book-gallery-api-test-script', 'registered' ) ) {
+			wp_register_script( 'brag-book-gallery-api-test-script', '', array(), '4.4.0', true );
+		}
+		wp_enqueue_script( 'brag-book-gallery-api-test-script' );
+		wp_add_inline_script( 'brag-book-gallery-api-test-script', $inline_script );
+
 		$this->render_footer();
 	}
 }

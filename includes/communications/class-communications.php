@@ -18,6 +18,10 @@ declare( strict_types=1 );
 
 namespace BRAGBookGallery\Includes\Communications;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 use BRAGBookGallery\Includes\Core\None;
 use BRAGBookGallery\Includes\Core\Trait_Api;
 use BRAGBookGallery\Includes\Core\Trait_Tools;
@@ -385,6 +389,7 @@ class Communications {
 		if ( is_wp_error( $post_id ) ) {
 			// Log the error for debugging.
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 				do_action( 'qm/debug', 'Communications post creation failed', [
 					'error' => $post_id->get_error_message(),
 					'data'  => $post_data,
@@ -528,6 +533,7 @@ class Communications {
 		if ( ! is_wp_error( $config ) ) {
 			// Log API attempt for debugging.
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 				do_action( 'qm/debug', 'API configuration found, attempting to send communications to BRAG book API' );
 			}
 
@@ -547,27 +553,32 @@ class Communications {
 			try {
 				if ( $gallery_context['is_combined'] ) {
 					if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+						// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 						do_action( 'qm/debug', 'Sending to combined gallery API' );
 					}
 					$this->send_to_combined_gallery_api( $submission_data, $config );
 				} else {
 					if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+						// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 						do_action( 'qm/debug', 'Sending to single gallery API', [ 'index' => $gallery_context['index'] ] );
 					}
 					$this->send_to_single_gallery_api( $submission_data, $config, $gallery_context['index'] );
 				}
 
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+					// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 					do_action( 'qm/debug', 'Communications successfully sent to BRAG book API' );
 				}
 			} catch ( \Exception $e ) {
 				// Log API error but don't fail the submission.
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+					// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 					do_action( 'qm/debug', 'BRAG book API submission failed', [ 'error' => $e->getMessage() ] );
 				}
 			}
 		} else {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 				do_action( 'qm/debug', 'No API configuration found, skipping API submission' );
 			}
 		}
@@ -591,6 +602,7 @@ class Communications {
 	private function validate_form_data(): array|WP_Error {
 		// Check for missing required fields.
 		foreach ( self::REQUIRED_FIELDS as $field ) {
+			// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified in calling method.
 			if ( empty( $_POST[ $field ] ) ) {
 				return $this->handle_error(
 					'missing_field',
@@ -637,9 +649,13 @@ class Communications {
 	 */
 	private function sanitize_form_data(): array {
 		return [
+			// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified in calling method.
 			'name'        => isset( $_POST['name'] ) ? sanitize_text_field( wp_unslash( $_POST['name'] ) ) : '',
+			// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified in calling method.
 			'email'       => isset( $_POST['email'] ) ? sanitize_email( wp_unslash( $_POST['email'] ) ) : '',
+			// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified in calling method.
 			'phone'       => isset( $_POST['phone'] ) ? sanitize_text_field( wp_unslash( $_POST['phone'] ) ) : '',
+			// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified in calling method.
 			'description' => isset( $_POST['description'] ) ? sanitize_textarea_field( wp_unslash( $_POST['description'] ) ) : '',
 		];
 	}
@@ -706,6 +722,7 @@ class Communications {
 	private function handle_error( string $error_code, string $error_message, array $context = [], string $severity = 'error' ): WP_Error {
 		// Log error with context for debugging.
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 			do_action( 'qm/debug', "Communications {$severity}", [
 				'code'    => $error_code,
 				'message' => $error_message,
@@ -737,7 +754,7 @@ class Communications {
 	 */
 	private function validate_http_request( array $allowed_methods = [ 'POST' ], int $max_size = 1048576 ): true|WP_Error {
 		// Validate request method.
-		$request_method = $_SERVER['REQUEST_METHOD'] ?? '';
+		$request_method = isset( $_SERVER['REQUEST_METHOD'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) : '';
 		if ( ! in_array( $request_method, $allowed_methods, true ) ) {
 			return $this->handle_error(
 				'invalid_request_method',
@@ -752,7 +769,7 @@ class Communications {
 		}
 
 		// Check request size.
-		$content_length = (int) ( $_SERVER['CONTENT_LENGTH'] ?? 0 );
+		$content_length = isset( $_SERVER['CONTENT_LENGTH'] ) ? (int) sanitize_text_field( wp_unslash( $_SERVER['CONTENT_LENGTH'] ) ) : 0;
 		if ( $content_length > $max_size ) {
 			return $this->handle_error(
 				'request_too_large',
@@ -1017,8 +1034,11 @@ class Communications {
 
 		// Debug logging only in development.
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 			do_action( 'qm/debug', 'Getting API configuration' );
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 			do_action( 'qm/debug', 'API tokens retrieved', $api_tokens );
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 			do_action( 'qm/debug', 'Website property IDs retrieved', $website_property_ids );
 		}
 
@@ -1032,6 +1052,7 @@ class Communications {
 
 		if ( 'valid' !== $config_status ) {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 				do_action( 'qm/debug', 'Configuration check failed', [ 'status' => $config_status ] );
 			}
 
@@ -1182,7 +1203,9 @@ class Communications {
 
 		// Log the API request for debugging (only in debug mode).
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 			do_action( 'qm/debug', 'Sending communications to v2 API', [ 'url' => $url ] );
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 			do_action( 'qm/debug', 'Request params', $query_params );
 		}
 
@@ -1202,9 +1225,10 @@ class Communications {
 		// Handle WP_Error responses.
 		if ( is_wp_error( $response ) ) {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 				do_action( 'qm/debug', 'API request failed', [ 'error' => $response->get_error_message() ] );
 			}
-			throw new \Exception( 'API Error: ' . $response->get_error_message() );
+			throw new \Exception( 'API Error: ' . esc_html( $response->get_error_message() ) );
 		}
 
 		// Get response code and body.
@@ -1212,6 +1236,7 @@ class Communications {
 		$body          = wp_remote_retrieve_body( $response );
 
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 			do_action( 'qm/debug', 'API response', [ 'code' => $response_code, 'body' => $body ] );
 		}
 
@@ -1223,14 +1248,14 @@ class Communications {
 		};
 
 		if ( ! $status_valid ) {
-			throw new \Exception( 'API returned status code: ' . $response_code . ' - ' . $body );
+			throw new \Exception( 'API returned status code: ' . esc_html( $response_code ) . ' - ' . esc_html( $body ) );
 		}
 
 		// Parse response body.
 		$response_data = json_decode( $body, true );
 
 		if ( json_last_error() !== JSON_ERROR_NONE ) {
-			throw new \Exception( 'Invalid API response format: ' . $body );
+			throw new \Exception( 'Invalid API response format: ' . esc_html( $body ) );
 		}
 
 		// Check for API errors in response.
@@ -1238,7 +1263,7 @@ class Communications {
 			 ( isset( $response_data['success'] ) && false === $response_data['success'] ) ) {
 			$error_msg = isset( $response_data['message'] ) ? $response_data['message'] :
 						( isset( $response_data['error'] ) ? $response_data['error'] : 'API submission failed' );
-			throw new \Exception( 'API submission was not successful: ' . $error_msg );
+			throw new \Exception( 'API submission was not successful: ' . esc_html( $error_msg ) );
 		}
 	}
 
@@ -1605,8 +1630,8 @@ class Communications {
 		$html .= sprintf(
 			'<li class="selected">%s</li>',
 			sprintf(
-				/* translators: %d: Number of communications items */
 				esc_html(
+					/* translators: %d: Number of communications items */
 					_n(
 						'%d item',
 						'%d items',
@@ -1820,9 +1845,8 @@ class Communications {
 	 * @return void
 	 */
 	private function render_admin_scripts( string $nonce, string $delete_nonce ): void {
+		ob_start();
 		?>
-		<script type="text/javascript">
-		/* <![CDATA[ */
 		document.addEventListener( 'DOMContentLoaded', function() {
 			const ajaxurl = <?php echo wp_json_encode( admin_url( 'admin-ajax.php' ) ); ?>;
 			const nonce = <?php echo wp_json_encode( $nonce ); ?>;
@@ -2109,9 +2133,13 @@ class Communications {
 				}
 			} );
 		} );
-		/* ]]> */
-		</script>
 		<?php
+		$inline_script = ob_get_clean();
+		if ( ! wp_script_is( 'brag-book-gallery-communications', 'registered' ) ) {
+			wp_register_script( 'brag-book-gallery-communications', '', array(), '4.4.0', true );
+		}
+		wp_enqueue_script( 'brag-book-gallery-communications' );
+		wp_add_inline_script( 'brag-book-gallery-communications', $inline_script );
 	}
 
 	/**

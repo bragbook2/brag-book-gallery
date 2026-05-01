@@ -206,7 +206,7 @@ final class Sitemap {
 	 * @return void
 	 */
 	public function check_sitemap_request(): void {
-		$request_uri = $_SERVER['REQUEST_URI'] ?? '';
+		$request_uri = sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ?? '' ) );
 		$sitemap_path = '/' . $this->sitemap_filename;
 
 		// Check if this is a sitemap request
@@ -292,8 +292,8 @@ final class Sitemap {
 
 		$sitemap_content = $this->get_sitemap_content();
 
-		// Clean the buffer again in case get_sitemap_content produced output
-		ob_clean();
+		// Discard any errant output and close the buffer in the same scope.
+		ob_end_clean();
 
 		if ( empty( $sitemap_content ) ) {
 			status_header( 404 );
@@ -313,6 +313,7 @@ final class Sitemap {
 		header( 'Expires: ' . gmdate( 'D, d M Y H:i:s', time() + $cache_time ) . ' GMT' );
 
 		// Output sitemap and exit
+		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- XML sitemap content is pre-escaped
 		echo $sitemap_content;
 		exit;
 	}
@@ -931,6 +932,7 @@ final class Sitemap {
 		];
 
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( sprintf(
 				'BRAG book Sitemap Error [%s]: %s - Context: %s',
 				$error_id,
@@ -952,6 +954,7 @@ final class Sitemap {
 	 */
 	private function log_warning( string $message, array $context = [] ): void {
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( sprintf(
 				'BRAG book Sitemap Warning: %s - Context: %s',
 				$message,

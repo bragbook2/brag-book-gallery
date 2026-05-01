@@ -131,6 +131,7 @@ final class System_Info {
 
 			// Set maximum execution time for info generation
 			if ( ! ini_get( 'safe_mode' ) ) {
+				// phpcs:ignore Squiz.PHP.DiscouragedFunctions.Discouraged
 				@set_time_limit( self::MAX_EXECUTION_TIME );
 			}
 
@@ -174,7 +175,9 @@ final class System_Info {
 			</details>
 		</div>
 
-			<script>
+			<?php
+			ob_start();
+			?>
 			document.addEventListener('DOMContentLoaded', function() {
 				/**
 				 * Modern fade-in effect with ES5 compatibility.
@@ -300,8 +303,13 @@ final class System_Info {
 					});
 				}
 			});
-			</script>
 			<?php
+			$inline_script = ob_get_clean();
+			if ( ! wp_script_is( 'brag-book-gallery-system-info', 'registered' ) ) {
+				wp_register_script( 'brag-book-gallery-system-info', '', array(), '4.4.0', true );
+			}
+			wp_enqueue_script( 'brag-book-gallery-system-info' );
+			wp_add_inline_script( 'brag-book-gallery-system-info', $inline_script );
 
 			$this->metrics['render_time'] = microtime( true ) - $start_time;
 			$this->maybe_log_performance();
@@ -558,13 +566,13 @@ final class System_Info {
 	private function get_server_info(): string {
 		try {
 			$info = [];
-			$info[] = 'Server Software: ' . ( $_SERVER['SERVER_SOFTWARE'] ?? 'N/A' );
-			$info[] = 'Server Protocol: ' . ( $_SERVER['SERVER_PROTOCOL'] ?? 'N/A' );
-			$info[] = 'Server Name: ' . ( $_SERVER['SERVER_NAME'] ?? 'N/A' );
-			$info[] = 'Server Port: ' . ( $_SERVER['SERVER_PORT'] ?? 'N/A' );
-			$info[] = 'Document Root: ' . ( $_SERVER['DOCUMENT_ROOT'] ?? 'N/A' );
+			$info[] = 'Server Software: ' . sanitize_text_field( wp_unslash( $_SERVER['SERVER_SOFTWARE'] ?? 'N/A' ) );
+			$info[] = 'Server Protocol: ' . sanitize_text_field( wp_unslash( $_SERVER['SERVER_PROTOCOL'] ?? 'N/A' ) );
+			$info[] = 'Server Name: ' . sanitize_text_field( wp_unslash( $_SERVER['SERVER_NAME'] ?? 'N/A' ) );
+			$info[] = 'Server Port: ' . sanitize_text_field( wp_unslash( $_SERVER['SERVER_PORT'] ?? 'N/A' ) );
+			$info[] = 'Document Root: ' . sanitize_text_field( wp_unslash( $_SERVER['DOCUMENT_ROOT'] ?? 'N/A' ) );
 			$info[] = 'HTTPS: ' . ( ! empty( $_SERVER['HTTPS'] ) && $_SERVER['HTTPS'] !== 'off' ? 'Yes' : 'No' );
-			$info[] = 'Server Time: ' . date( 'Y-m-d H:i:s' );
+			$info[] = 'Server Time: ' . gmdate( 'Y-m-d H:i:s' );
 			$info[] = 'Max Execution Time: ' . ini_get( 'max_execution_time' ) . ' seconds';
 			$info[] = 'Max Input Time: ' . ini_get( 'max_input_time' ) . ' seconds';
 			$info[] = 'Max Input Vars: ' . ini_get( 'max_input_vars' );
@@ -600,6 +608,7 @@ final class System_Info {
 			$info[] = 'Upload Max Filesize: ' . ini_get( 'upload_max_filesize' );
 			$info[] = 'Post Max Size: ' . ini_get( 'post_max_size' );
 			$info[] = 'Display Errors: ' . ( ini_get( 'display_errors' ) ? 'On' : 'Off' );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.prevent_path_disclosure_error_reporting
 			$info[] = 'Error Reporting: ' . error_reporting();
 			$info[] = 'GD Library: ' . ( extension_loaded( 'gd' ) ? 'Enabled' : 'Disabled' );
 			$info[] = 'Imagick: ' . ( extension_loaded( 'imagick' ) ? 'Enabled' : 'Disabled' );
@@ -644,10 +653,12 @@ final class System_Info {
 			$info[] = 'Table Prefix: ' . $wpdb->prefix;
 
 			// MySQL Version
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$mysql_version = $wpdb->get_var( 'SELECT VERSION()' );
 			$info[] = 'MySQL Version: ' . ( $mysql_version ?: 'N/A' );
 
 			// Database size estimate
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
 			$table_count = $wpdb->get_var( "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '" . DB_NAME . "'" );
 			$info[] = 'Total Tables: ' . ( $table_count ?: 'N/A' );
 
@@ -740,7 +751,7 @@ final class System_Info {
 					'%s v%s by %s [%s]',
 					$plugin_data['Name'],
 					$plugin_data['Version'] ?: 'N/A',
-					strip_tags( (string) ( $plugin_data['Author'] ?: 'Unknown' ) ),
+					wp_strip_all_tags( (string) ( $plugin_data['Author'] ?: 'Unknown' ) ),
 					$status
 				);
 			}
@@ -833,7 +844,7 @@ final class System_Info {
 	 */
 	private function get_browser_info(): string {
 		try {
-			$user_agent = $_SERVER['HTTP_USER_AGENT'] ?? 'N/A';
+			$user_agent = sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ?? 'N/A' ) );
 
 			$info = [];
 			$info[] = 'User Agent: ' . substr( $user_agent, 0, 200 ); // Limit length for security
@@ -847,7 +858,7 @@ final class System_Info {
 			$info[] = 'Operating System: ' . $os;
 
 			// Client IP (partially redacted for privacy)
-			$client_ip = $_SERVER['REMOTE_ADDR'] ?? 'N/A';
+			$client_ip = sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ?? 'N/A' ) );
 			if ( $client_ip !== 'N/A' ) {
 				// Redact last octet for privacy
 				$ip_parts = explode( '.', $client_ip );
@@ -859,8 +870,8 @@ final class System_Info {
 			$info[] = 'Client IP: ' . $client_ip;
 
 			// Additional client info
-			$info[] = 'Accept Language: ' . ( $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? 'N/A' );
-			$info[] = 'DNT Header: ' . ( isset( $_SERVER['HTTP_DNT'] ) ? $_SERVER['HTTP_DNT'] : 'Not Set' );
+			$info[] = 'Accept Language: ' . sanitize_text_field( wp_unslash( $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? 'N/A' ) );
+			$info[] = 'DNT Header: ' . ( isset( $_SERVER['HTTP_DNT'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_DNT'] ) ) : 'Not Set' );
 
 			return implode( "\n", $info );
 
@@ -1102,6 +1113,7 @@ final class System_Info {
 	 */
 	private function handle_error( Exception $e, string $context ): void {
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( sprintf(
 				'BRAG book Gallery System Info Error in %s: %s',
 				$context,
@@ -1121,6 +1133,7 @@ final class System_Info {
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG && ! empty( $this->metrics ) ) {
 			$total_time = array_sum( $this->metrics );
 			if ( $total_time > 1.0 ) { // Log if operations take more than 1 second
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( sprintf(
 					'BRAG book Gallery System Info Performance: %s',
 					wp_json_encode( $this->metrics )

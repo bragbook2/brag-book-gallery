@@ -11,6 +11,12 @@
 
 namespace BRAGBookGallery\Includes\Extend;
 
+use BRAGBookGallery\Includes\Core\Setup;
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 /**
  * Taxonomies class
  *
@@ -237,7 +243,21 @@ class Taxonomies {
 				if ( in_array( $screen->taxonomy, $supported_taxonomies, true ) ) {
 					// Enqueue WordPress media scripts
 					wp_enqueue_media();
-					wp_enqueue_script( 'jquery' );
+
+					wp_enqueue_style(
+						'brag-book-gallery-taxonomies-admin',
+						Setup::get_asset_url( 'assets/css/admin/taxonomies.css' ),
+						array(),
+						'4.4.0'
+					);
+
+					wp_enqueue_script(
+						'brag-book-gallery-taxonomies-media',
+						Setup::get_asset_url( 'assets/js/admin/taxonomies-media.js' ),
+						array( 'media-views' ),
+						'4.4.0',
+						true
+					);
 				}
 			}
 		}
@@ -287,10 +307,24 @@ class Taxonomies {
 		<div class="form-field">
 			<label for="banner_image"><?php esc_html_e( 'Banner Image', 'brag-book-gallery' ); ?></label>
 			<input type="hidden" id="banner_image" name="banner_image" value="" />
-			<button type="button" class="button" id="upload_banner_image_button">
+			<button type="button"
+			        class="button"
+			        data-bb-media-upload
+			        data-target-input="#banner_image"
+			        data-target-preview="#banner_image_preview"
+			        data-remove-button="#remove_banner_image_button"
+			        data-frame-title="<?php esc_attr_e( 'Choose Banner Image', 'brag-book-gallery' ); ?>"
+			        data-frame-button-text="<?php esc_attr_e( 'Choose Image', 'brag-book-gallery' ); ?>"
+			        data-preview-style="max-width:200px;height:auto;">
 				<?php esc_html_e( 'Choose Banner Image', 'brag-book-gallery' ); ?>
 			</button>
-			<button type="button" class="button" id="remove_banner_image_button" style="display:none;">
+			<button type="button"
+			        class="button"
+			        id="remove_banner_image_button"
+			        data-bb-media-remove
+			        data-target-input="#banner_image"
+			        data-target-preview="#banner_image_preview"
+			        style="display:none;">
 				<?php esc_html_e( 'Remove Image', 'brag-book-gallery' ); ?>
 			</button>
 			<div id="banner_image_preview" style="margin-top: 10px;"></div>
@@ -303,103 +337,6 @@ class Taxonomies {
 			<p class="description"><?php esc_html_e( 'Additional details and information about this procedure for the gallery display. Supports shortcodes.', 'brag-book-gallery' ); ?></p>
 		</div>
 
-		<style>
-		.procedure-nudity-toggle {
-			display: flex;
-			align-items: center;
-			gap: 12px;
-			margin: 0;
-		}
-
-		.toggle-switch {
-			position: relative;
-			display: inline-block;
-			width: 50px;
-			height: 24px;
-			margin: 0;
-			flex-shrink: 0;
-		}
-
-		.toggle-switch input {
-			opacity: 0;
-			width: 0;
-			height: 0;
-		}
-
-		.toggle-slider {
-			position: absolute;
-			cursor: pointer;
-			top: 0;
-			left: 0;
-			right: 0;
-			bottom: 0;
-			background-color: #ccc;
-			transition: .4s;
-			border-radius: 24px;
-		}
-
-		.toggle-slider:before {
-			position: absolute;
-			content: "";
-			height: 18px;
-			width: 18px;
-			left: 3px;
-			bottom: 3px;
-			background-color: white;
-			transition: .4s;
-			border-radius: 50%;
-		}
-
-		input:checked + .toggle-slider {
-			background-color: #2196F3;
-		}
-
-		input:focus + .toggle-slider {
-			box-shadow: 0 0 1px #2196F3;
-		}
-
-		input:checked + .toggle-slider:before {
-			transform: translateX(26px);
-		}
-
-		.toggle-label {
-			font-size: 13px;
-			color: #666;
-		}
-		</style>
-
-		<script>
-		jQuery(document).ready(function($) {
-			var mediaUploader;
-
-			$('#upload_banner_image_button').click(function(e) {
-				e.preventDefault();
-				if (mediaUploader) {
-					mediaUploader.open();
-					return;
-				}
-				mediaUploader = wp.media.frames.file_frame = wp.media({
-					title: 'Choose Banner Image',
-					button: {
-						text: 'Choose Image'
-					}, multiple: false });
-				mediaUploader.on('select', function() {
-					var attachment = mediaUploader.state().get('selection').first().toJSON();
-					$('#banner_image').val(attachment.id);
-					$('#banner_image_preview').html('<img src="' + attachment.url + '" style="max-width: 200px; height: auto;" />');
-					$('#remove_banner_image_button').show();
-				});
-				mediaUploader.open();
-			});
-
-			$('#remove_banner_image_button').click(function(e) {
-				e.preventDefault();
-				$('#banner_image').val('');
-				$('#banner_image_preview').html('');
-				$(this).hide();
-			});
-		});
-		</script>
 		<?php
 	}
 
@@ -475,10 +412,24 @@ class Taxonomies {
 			</th>
 			<td>
 				<input type="hidden" id="banner_image" name="banner_image" value="<?php echo esc_attr( $banner_image_id ); ?>" />
-				<button type="button" class="button" id="upload_banner_image_button">
+				<button type="button"
+				        class="button"
+				        data-bb-media-upload
+				        data-target-input="#banner_image"
+				        data-target-preview="#banner_image_preview"
+				        data-remove-button="#remove_banner_image_button"
+				        data-frame-title="<?php esc_attr_e( 'Choose Banner Image', 'brag-book-gallery' ); ?>"
+				        data-frame-button-text="<?php esc_attr_e( 'Choose Image', 'brag-book-gallery' ); ?>"
+				        data-preview-style="max-width:200px;height:auto;">
 					<?php esc_html_e( 'Choose Banner Image', 'brag-book-gallery' ); ?>
 				</button>
-				<button type="button" class="button" id="remove_banner_image_button" style="<?php echo empty( $banner_image_id ) ? 'display:none;' : ''; ?>">
+				<button type="button"
+				        class="button"
+				        id="remove_banner_image_button"
+				        data-bb-media-remove
+				        data-target-input="#banner_image"
+				        data-target-preview="#banner_image_preview"
+				        style="<?php echo empty( $banner_image_id ) ? 'display:none;' : ''; ?>">
 					<?php esc_html_e( 'Remove Image', 'brag-book-gallery' ); ?>
 				</button>
 				<div id="banner_image_preview" style="margin-top: 10px;">
@@ -549,103 +500,6 @@ class Taxonomies {
 			</td>
 		</tr>
 
-		<style>
-		.procedure-nudity-toggle {
-			display: flex;
-			align-items: center;
-			gap: 12px;
-			margin: 0;
-		}
-
-		.toggle-switch {
-			position: relative;
-			display: inline-block;
-			width: 50px;
-			height: 24px;
-			margin: 0;
-			flex-shrink: 0;
-		}
-
-		.toggle-switch input {
-			opacity: 0;
-			width: 0;
-			height: 0;
-		}
-
-		.toggle-slider {
-			position: absolute;
-			cursor: pointer;
-			top: 0;
-			left: 0;
-			right: 0;
-			bottom: 0;
-			background-color: #ccc;
-			transition: .4s;
-			border-radius: 24px;
-		}
-
-		.toggle-slider:before {
-			position: absolute;
-			content: "";
-			height: 18px;
-			width: 18px;
-			left: 3px;
-			bottom: 3px;
-			background-color: white;
-			transition: .4s;
-			border-radius: 50%;
-		}
-
-		input:checked + .toggle-slider {
-			background-color: #2196F3;
-		}
-
-		input:focus + .toggle-slider {
-			box-shadow: 0 0 1px #2196F3;
-		}
-
-		input:checked + .toggle-slider:before {
-			transform: translateX(26px);
-		}
-
-		.toggle-label {
-			font-size: 13px;
-			color: #666;
-		}
-		</style>
-
-		<script>
-		jQuery(document).ready(function($) {
-			var mediaUploader;
-
-			$('#upload_banner_image_button').click(function(e) {
-				e.preventDefault();
-				if (mediaUploader) {
-					mediaUploader.open();
-					return;
-				}
-				mediaUploader = wp.media.frames.file_frame = wp.media({
-					title: 'Choose Banner Image',
-					button: {
-						text: 'Choose Image'
-					}, multiple: false });
-				mediaUploader.on('select', function() {
-					var attachment = mediaUploader.state().get('selection').first().toJSON();
-					$('#banner_image').val(attachment.id);
-					$('#banner_image_preview').html('<img src="' + attachment.url + '" style="max-width: 200px; height: auto;" />');
-					$('#remove_banner_image_button').show();
-				});
-				mediaUploader.open();
-			});
-
-			$('#remove_banner_image_button').click(function(e) {
-				e.preventDefault();
-				$('#banner_image').val('');
-				$('#banner_image_preview').html('');
-				$(this).hide();
-			});
-		});
-		</script>
 		<?php
 	}
 
@@ -913,50 +767,29 @@ class Taxonomies {
 		<div class="form-field">
 			<label for="doctor_profile_photo"><?php esc_html_e( 'Profile Photo', 'brag-book-gallery' ); ?></label>
 			<input type="hidden" id="doctor_profile_photo" name="doctor_profile_photo" value="" />
-			<button type="button" class="button" id="upload_doctor_photo_button">
+			<button type="button"
+			        class="button"
+			        data-bb-media-upload
+			        data-target-input="#doctor_profile_photo"
+			        data-target-preview="#doctor_photo_preview"
+			        data-remove-button="#remove_doctor_photo_button"
+			        data-frame-title="<?php esc_attr_e( 'Choose Profile Photo', 'brag-book-gallery' ); ?>"
+			        data-frame-button-text="<?php esc_attr_e( 'Choose Photo', 'brag-book-gallery' ); ?>"
+			        data-preview-style="max-width:150px;height:auto;border-radius:50%;">
 				<?php esc_html_e( 'Choose Profile Photo', 'brag-book-gallery' ); ?>
 			</button>
-			<button type="button" class="button" id="remove_doctor_photo_button" style="display:none;">
+			<button type="button"
+			        class="button"
+			        id="remove_doctor_photo_button"
+			        data-bb-media-remove
+			        data-target-input="#doctor_profile_photo"
+			        data-target-preview="#doctor_photo_preview"
+			        style="display:none;">
 				<?php esc_html_e( 'Remove Photo', 'brag-book-gallery' ); ?>
 			</button>
 			<div id="doctor_photo_preview" style="margin-top: 10px;"></div>
 			<p class="description"><?php esc_html_e( 'Profile photo for this doctor', 'brag-book-gallery' ); ?></p>
 		</div>
-
-		<script>
-		jQuery(document).ready(function($) {
-			var doctorMediaUploader;
-
-			$('#upload_doctor_photo_button').click(function(e) {
-				e.preventDefault();
-				if (doctorMediaUploader) {
-					doctorMediaUploader.open();
-					return;
-				}
-				doctorMediaUploader = wp.media.frames.file_frame = wp.media({
-					title: '<?php echo esc_js( __( 'Choose Profile Photo', 'brag-book-gallery' ) ); ?>',
-					button: {
-						text: '<?php echo esc_js( __( 'Choose Photo', 'brag-book-gallery' ) ); ?>'
-					},
-					multiple: false
-				});
-				doctorMediaUploader.on('select', function() {
-					var attachment = doctorMediaUploader.state().get('selection').first().toJSON();
-					$('#doctor_profile_photo').val(attachment.id);
-					$('#doctor_photo_preview').html('<img src="' + attachment.url + '" style="max-width: 150px; height: auto; border-radius: 50%;" />');
-					$('#remove_doctor_photo_button').show();
-				});
-				doctorMediaUploader.open();
-			});
-
-			$('#remove_doctor_photo_button').click(function(e) {
-				e.preventDefault();
-				$('#doctor_profile_photo').val('');
-				$('#doctor_photo_preview').html('');
-				$(this).hide();
-			});
-		});
-		</script>
 		<?php
 	}
 
@@ -1037,10 +870,24 @@ class Taxonomies {
 			</th>
 			<td>
 				<input type="hidden" id="doctor_profile_photo" name="doctor_profile_photo" value="<?php echo esc_attr( $profile_photo ); ?>" />
-				<button type="button" class="button" id="upload_doctor_photo_button">
+				<button type="button"
+				        class="button"
+				        data-bb-media-upload
+				        data-target-input="#doctor_profile_photo"
+				        data-target-preview="#doctor_photo_preview"
+				        data-remove-button="#remove_doctor_photo_button"
+				        data-frame-title="<?php esc_attr_e( 'Choose Profile Photo', 'brag-book-gallery' ); ?>"
+				        data-frame-button-text="<?php esc_attr_e( 'Choose Photo', 'brag-book-gallery' ); ?>"
+				        data-preview-style="max-width:150px;height:auto;border-radius:50%;">
 					<?php esc_html_e( 'Choose Profile Photo', 'brag-book-gallery' ); ?>
 				</button>
-				<button type="button" class="button" id="remove_doctor_photo_button" style="<?php echo empty( $profile_photo ) ? 'display:none;' : ''; ?>">
+				<button type="button"
+				        class="button"
+				        id="remove_doctor_photo_button"
+				        data-bb-media-remove
+				        data-target-input="#doctor_profile_photo"
+				        data-target-preview="#doctor_photo_preview"
+				        style="<?php echo empty( $profile_photo ) ? 'display:none;' : ''; ?>">
 					<?php esc_html_e( 'Remove Photo', 'brag-book-gallery' ); ?>
 				</button>
 				<div id="doctor_photo_preview" style="margin-top: 10px;">
@@ -1058,41 +905,6 @@ class Taxonomies {
 				<p class="description"><?php esc_html_e( 'Profile photo for this doctor', 'brag-book-gallery' ); ?></p>
 			</td>
 		</tr>
-
-		<script>
-		jQuery(document).ready(function($) {
-			var doctorMediaUploader;
-
-			$('#upload_doctor_photo_button').click(function(e) {
-				e.preventDefault();
-				if (doctorMediaUploader) {
-					doctorMediaUploader.open();
-					return;
-				}
-				doctorMediaUploader = wp.media.frames.file_frame = wp.media({
-					title: '<?php echo esc_js( __( 'Choose Profile Photo', 'brag-book-gallery' ) ); ?>',
-					button: {
-						text: '<?php echo esc_js( __( 'Choose Photo', 'brag-book-gallery' ) ); ?>'
-					},
-					multiple: false
-				});
-				doctorMediaUploader.on('select', function() {
-					var attachment = doctorMediaUploader.state().get('selection').first().toJSON();
-					$('#doctor_profile_photo').val(attachment.id);
-					$('#doctor_photo_preview').html('<img src="' + attachment.url + '" style="max-width: 150px; height: auto; border-radius: 50%;" />');
-					$('#remove_doctor_photo_button').show();
-				});
-				doctorMediaUploader.open();
-			});
-
-			$('#remove_doctor_photo_button').click(function(e) {
-				e.preventDefault();
-				$('#doctor_profile_photo').val('');
-				$('#doctor_photo_preview').html('');
-				$(this).hide();
-			});
-		});
-		</script>
 		<?php
 	}
 

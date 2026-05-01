@@ -18,7 +18,7 @@ declare( strict_types=1 );
 
 namespace BRAGBookGallery\Includes\Extend;
 
-// Exit if accessed directly.
+use BRAGBookGallery\Includes\Core\Setup;
 use WP_Post;
 
 if ( ! defined( 'WPINC' ) ) {
@@ -74,6 +74,11 @@ class Post_Types {
 		add_action(
 			'save_post',
 			array( $this, 'save_case_meta' )
+		);
+
+		add_action(
+			'admin_enqueue_scripts',
+			array( $this, 'enqueue_case_meta_assets' )
 		);
 
 		add_filter(
@@ -742,384 +747,43 @@ class Post_Types {
 			</div>
 		</div>
 
-		<style>
-			/* Meta Box Global Styles - Modern Admin Design */
-			.brag-book-case-meta {
-				background: #fff;
-				border: 1px solid #c3c4c7;
-				border-radius: 8px;
-				overflow: hidden;
-				box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-			}
 
-			.brag-book-case-meta .form-table {
-				margin: 0;
-				border-collapse: separate;
-				border-spacing: 0;
-				width: 100%;
-			}
-
-			.brag-book-case-meta .form-table th {
-				background: #f6f7f7;
-				border-bottom: 1px solid #c3c4c7;
-				border-right: 1px solid #c3c4c7;
-				padding: 16px 20px;
-				font-weight: 500;
-				font-size: 13px;
-				color: #2c3338;
-				width: 220px;
-				vertical-align: top;
-			}
-
-			.brag-book-case-meta .form-table td {
-				background: #fff;
-				border-bottom: 1px solid #c3c4c7;
-				padding: 16px 20px;
-				vertical-align: top;
-			}
-
-			.brag-book-case-meta .form-table tr:last-child th,
-			.brag-book-case-meta .form-table tr:last-child td {
-				border-bottom: none;
-			}
-
-			/* Modern input styling matching admin settings */
-			.brag-book-case-meta input[type="text"],
-			.brag-book-case-meta input[type="url"],
-			.brag-book-case-meta input[type="number"],
-			.brag-book-case-meta input[type="date"],
-			.brag-book-case-meta select,
-			.brag-book-case-meta textarea {
-				border: 1px solid #8c8f94;
-				border-radius: 6px;
-				padding: 8px 12px;
-				font-size: 14px;
-				line-height: 1.4;
-				transition: all 0.2s ease;
-				background: white;
-				width: 100%;
-				max-width: 500px;
-			}
-
-			.brag-book-case-meta input[type="text"]:hover,
-			.brag-book-case-meta input[type="url"]:hover,
-			.brag-book-case-meta input[type="number"]:hover,
-			.brag-book-case-meta input[type="date"]:hover,
-			.brag-book-case-meta select:hover,
-			.brag-book-case-meta textarea:hover {
-				border-color: #646970;
-			}
-
-			.brag-book-case-meta input[type="text"]:focus,
-			.brag-book-case-meta input[type="url"]:focus,
-			.brag-book-case-meta input[type="number"]:focus,
-			.brag-book-case-meta input[type="date"]:focus,
-			.brag-book-case-meta select:focus,
-			.brag-book-case-meta textarea:focus {
-				outline: 2px solid #2271b1;
-				outline-offset: -1px;
-				border-color: #2271b1;
-				box-shadow: none;
-			}
-
-			.brag-book-case-meta .description {
-				color: #646970;
-				font-size: 13px;
-				margin-top: 8px;
-				line-height: 1.4;
-			}
-
-			.brag-book-case-meta label {
-				font-weight: 500;
-				color: #1d2327;
-			}
-
-			/* Toggle styling for post meta - matches admin settings exactly */
-			.brag-book-case-meta-toggles {
-				display: flex;
-				flex-direction: column;
-				gap: 16px;
-			}
-
-			.brag-book-case-meta .brag-book-gallery-toggle-wrapper {
-				display: flex;
-				align-items: center;
-				gap: 12px;
-			}
-
-			.brag-book-case-meta .brag-book-gallery-toggle {
-				position: relative;
-				display: inline-block;
-				width: 44px;
-				height: 24px;
-				cursor: pointer;
-				user-select: none;
-			}
-
-			.brag-book-case-meta .brag-book-gallery-toggle input[type="checkbox"] {
-				position: absolute;
-				opacity: 0;
-				pointer-events: none;
-				width: 100%;
-				height: 100%;
-				margin: 0;
-			}
-
-			.brag-book-case-meta .brag-book-gallery-toggle input[type="checkbox"]:checked + .brag-book-gallery-toggle-slider {
-				background-color: #2271b1;
-			}
-
-			.brag-book-case-meta .brag-book-gallery-toggle input[type="checkbox"]:checked + .brag-book-gallery-toggle-slider::before {
-				transform: translateX(20px);
-			}
-
-			.brag-book-case-meta .brag-book-gallery-toggle input[type="checkbox"]:focus-visible + .brag-book-gallery-toggle-slider {
-				outline: 2px solid #2271b1;
-				outline-offset: 2px;
-			}
-
-			.brag-book-case-meta .brag-book-gallery-toggle-slider {
-				position: relative;
-				display: block;
-				width: 100%;
-				height: 100%;
-				background-color: #ccc;
-				border-radius: 12px;
-				transition: background-color 0.2s ease;
-			}
-
-			.brag-book-case-meta .brag-book-gallery-toggle-slider::before {
-				content: '';
-				position: absolute;
-				top: 2px;
-				left: 2px;
-				width: 20px;
-				height: 20px;
-				background-color: white;
-				border-radius: 50%;
-				transition: transform 0.2s ease;
-				box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-			}
-
-			.brag-book-case-meta .brag-book-gallery-toggle-label {
-				font-weight: 500;
-				color: #2c3338;
-				margin: 0;
-			}
-
-			/* Tabbed Interface */
-			.brag-book-api-data-tabs {
-				background: #fff;
-				border: 1px solid #e1e1e1;
-				border-radius: 8px;
-				overflow: hidden;
-			}
-
-			.brag-book-api-data-tabs .nav-tab-wrapper {
-				background: #f6f7f7;
-				border-bottom: 1px solid #e1e1e1;
-				margin: 0;
-				padding: 0;
-				display: flex;
-			}
-
-			.brag-book-api-data-tabs .nav-tab {
-				background: transparent;
-				border: none;
-				border-bottom: 3px solid transparent;
-				border-radius: 0;
-				margin: 0;
-				padding: 16px 24px;
-				font-weight: 500;
-				color: #50575e;
-				transition: all 0.2s ease;
-				cursor: pointer;
-				text-decoration: none;
-			}
-
-			.brag-book-api-data-tabs .nav-tab:hover {
-				background: #f0f0f1;
-				color: #1d2327;
-			}
-
-			.brag-book-api-data-tabs .nav-tab.nav-tab-active {
-				background: #fff;
-				color: #2271b1;
-				border-bottom-color: #2271b1;
-			}
-
-			.brag-book-api-data-tabs .tab-content {
-				display: none;
-				padding: 0;
-			}
-
-			.brag-book-api-data-tabs .tab-content.active {
-				display: block;
-			}
-
-			.image-url-set-header h5 {
-				margin: 0;
-				font-size: 15px;
-				font-weight: 600;
-				color: #1d2327;
-				display: flex;
-				align-items: center;
-			}
-
-			.image-url-set-header .remove-image-set {
-				color: #d63638;
-				text-decoration: none;
-				font-size: 13px;
-				font-weight: 500;
-				padding: 6px 12px;
-				border-radius: 4px;
-				transition: all 0.2s ease;
-				border: 1px solid transparent;
-			}
-
-			.image-url-set-header .remove-image-set:hover {
-				background: #d63638;
-				color: #fff;
-				border-color: #d63638;
-			}
-
-			.image-url-set .form-table {
-				margin: 0;
-				background: #fff;
-				border-radius: 0 0 10px 10px;
-			}
-
-			.image-url-set .form-table th {
-				background: #fafbfc;
-				width: 240px;
-				font-weight: 500;
-				font-size: 13px;
-			}
-
-			.image-url-set .form-table td {
-				background: #fff;
-			}
-
-			.image-url-repeater-controls {
-				padding: 20px 0 0 0;
-				border-top: 2px solid #f0f0f1;
-				text-align: center;
-			}
-
-			.image-url-repeater-controls .button {
-				background: #2271b1;
-				border-color: #2271b1;
-				color: #fff;
-				border-radius: 6px;
-				padding: 12px 24px;
-				font-weight: 500;
-				text-shadow: none;
-				box-shadow: none;
-				transition: all 0.2s ease;
-			}
-
-			.image-url-repeater-controls .button:hover:not(:disabled) {
-				background: #135e96;
-				border-color: #135e96;
-				transform: translateY(-1px);
-				box-shadow: 0 4px 12px rgba(34, 113, 177, 0.3);
-			}
-
-			.image-url-repeater-controls .button:disabled {
-				background: #c3c4c7;
-				border-color: #c3c4c7;
-				cursor: not-allowed;
-			}
-
-			.image-url-repeater-controls .description {
-				display: block;
-				margin-top: 12px;
-				color: #646970;
-				font-style: normal;
-				font-size: 13px;
-			}
-
-			.brag-book-section-header h4 {
-				margin: 0;
-				font-size: 15px;
-				font-weight: 600;
-				color: #1d2327;
-			}
-
-			.brag-book-info-box h4 {
-				margin: 0 0 8px 0;
-				color: #0073aa;
-				font-size: 14px;
-			}
-
-			.brag-book-info-box p {
-				margin: 0;
-				color: #0073aa;
-				font-size: 13px;
-			}
-
-			/* Responsive Design */
-			@media (max-width: 782px) {
-				.brag-book-case-meta .form-table th {
-					width: auto;
-					display: block;
-					padding: 12px 16px 4px;
-					border-right: none;
-					border-bottom: none;
-				}
-
-				.brag-book-case-meta .form-table td {
-					display: block;
-					padding: 0 16px 16px;
-					border-bottom: 1px solid #e9ecef;
-				}
-
-				.brag-book-api-data-tabs .nav-tab-wrapper {
-					flex-wrap: wrap;
-				}
-
-				.brag-book-api-data-tabs .nav-tab {
-					flex: 1;
-					text-align: center;
-					min-width: 120px;
-				}
-
-				.image-url-set-header {
-					flex-direction: column;
-					gap: 12px;
-					text-align: center;
-				}
-
-				.image-url-repeater {
-					padding: 16px;
-				}
-			}
-		</style>
-
-		<script>
-			document.addEventListener( 'DOMContentLoaded', () => {
-				const navTabs = document.querySelectorAll( '.nav-tab' );
-
-				navTabs.forEach( tab => {
-					tab.addEventListener( 'click', ( e ) => {
-						e.preventDefault();
-						const target = tab.getAttribute( 'href' );
-
-						// Remove active class from all tabs and content
-						document.querySelectorAll( '.nav-tab' ).forEach( t => t.classList.remove( 'nav-tab-active' ) );
-						document.querySelectorAll( '.tab-content' ).forEach( c => c.classList.remove( 'active' ) );
-
-						// Add active class to clicked tab and corresponding content
-						tab.classList.add( 'nav-tab-active' );
-						const targetElement = document.querySelector( target );
-						if ( targetElement ) {
-							targetElement.classList.add( 'active' );
-						}
-					} );
-				} );
-			} );
-		</script>
 		<?php
+	}
+
+	/**
+	 * Enqueue case meta box CSS and tab-switching script
+	 *
+	 * Loads only on the brag_book_cases post edit screen.
+	 *
+	 * @since 4.4.0
+	 * @param string $hook_suffix Current admin page hook suffix.
+	 * @return void
+	 */
+	public function enqueue_case_meta_assets( string $hook_suffix ): void {
+		if ( 'post.php' !== $hook_suffix && 'post-new.php' !== $hook_suffix ) {
+			return;
+		}
+
+		$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+		if ( ! $screen || self::POST_TYPE_CASES !== $screen->post_type ) {
+			return;
+		}
+
+		wp_enqueue_style(
+			'brag-book-gallery-case-meta',
+			Setup::get_asset_url( 'assets/css/admin/case-meta.css' ),
+			array(),
+			'4.4.0'
+		);
+
+		wp_enqueue_script(
+			'brag-book-gallery-case-meta-tabs',
+			Setup::get_asset_url( 'assets/js/admin/case-meta-tabs.js' ),
+			array(),
+			'4.4.0',
+			true
+		);
 	}
 
 	/**

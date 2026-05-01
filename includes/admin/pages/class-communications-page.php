@@ -102,7 +102,8 @@ class Communications_Page extends Settings_Base {
 		$this->menu_title = __( 'Communications', 'brag-book-gallery' );
 
 		// Check which view to display
-		$current_view = isset( $_GET['view'] ) ? sanitize_text_field( $_GET['view'] ) : 'entries';
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$current_view = isset( $_GET['view'] ) ? sanitize_text_field( wp_unslash( $_GET['view'] ) ) : 'entries';
 
 		$this->render_header();
 		?>
@@ -115,7 +116,9 @@ class Communications_Page extends Settings_Base {
 			</div>
 		</div>
 
-		<script>
+		<?php
+		ob_start();
+		?>
 		document.addEventListener('DOMContentLoaded', function() {
 			// Tab switching functionality
 			const tabLinks = document.querySelectorAll('.brag-book-gallery-side-tabs a');
@@ -156,9 +159,14 @@ class Communications_Page extends Settings_Base {
 				defaultPanel.classList.add('active');
 			}
 		});
-		</script>
-
 		<?php
+		$inline_script = ob_get_clean();
+		if ( ! wp_script_is( 'brag-book-gallery-comm-tabs', 'registered' ) ) {
+			wp_register_script( 'brag-book-gallery-comm-tabs', '', array(), '4.4.0', true );
+		}
+		wp_enqueue_script( 'brag-book-gallery-comm-tabs' );
+		wp_add_inline_script( 'brag-book-gallery-comm-tabs', $inline_script );
+
 		$this->render_footer();
 	}
 
@@ -288,7 +296,9 @@ class Communications_Page extends Settings_Base {
 			</div>
 		</dialog>
 
-		<script type="text/javascript">
+		<?php
+		ob_start();
+		?>
 		document.addEventListener( 'DOMContentLoaded', () => {
 			const ajaxurl = <?php echo wp_json_encode( admin_url( 'admin-ajax.php' ) ); ?>;
 			const nonce = <?php echo wp_json_encode( $nonce ); ?>;
@@ -403,8 +413,13 @@ class Communications_Page extends Settings_Base {
 				}
 			};
 		});
-		</script>
 		<?php
+		$inline_script = ob_get_clean();
+		if ( ! wp_script_is( 'brag-book-gallery-comm-pagination', 'registered' ) ) {
+			wp_register_script( 'brag-book-gallery-comm-pagination', '', array(), '4.4.0', true );
+		}
+		wp_enqueue_script( 'brag-book-gallery-comm-pagination' );
+		wp_add_inline_script( 'brag-book-gallery-comm-pagination', $inline_script );
 	}
 
 
@@ -438,22 +453,22 @@ class Communications_Page extends Settings_Base {
 		// Get last 30 days data for chart
 		$chart_data = [];
 		for ( $i = 29; $i >= 0; $i-- ) {
-			$date = date( 'Y-m-d', strtotime( "-{$i} days" ) );
+			$date = gmdate( 'Y-m-d', strtotime( "-{$i} days" ) );
 			$args = array(
 				'post_type' => 'form-entries',
 				'post_status' => 'publish',
 				'date_query' => array(
 					array(
-						'year' => date( 'Y', strtotime( $date ) ),
-						'month' => date( 'n', strtotime( $date ) ),
-						'day' => date( 'j', strtotime( $date ) ),
+						'year' => gmdate( 'Y', strtotime( $date ) ),
+						'month' => gmdate( 'n', strtotime( $date ) ),
+						'day' => gmdate( 'j', strtotime( $date ) ),
 					),
 				),
 				'posts_per_page' => -1,
 			);
 			$query = new \WP_Query( $args );
 			$chart_data[] = array(
-				'date' => date( 'M j', strtotime( $date ) ),
+				'date' => gmdate( 'M j', strtotime( $date ) ),
 				'count' => $query->found_posts
 			);
 			wp_reset_postdata();
@@ -462,21 +477,21 @@ class Communications_Page extends Settings_Base {
 		// Get monthly data for the year
 		$monthly_data = [];
 		for ( $i = 11; $i >= 0; $i-- ) {
-			$date = date( 'Y-m', strtotime( "-{$i} months" ) );
+			$date = gmdate( 'Y-m', strtotime( "-{$i} months" ) );
 			$args = array(
 				'post_type' => 'form-entries',
 				'post_status' => 'publish',
 				'date_query' => array(
 					array(
-						'year' => date( 'Y', strtotime( $date ) ),
-						'month' => date( 'n', strtotime( $date ) ),
+						'year' => gmdate( 'Y', strtotime( $date ) ),
+						'month' => gmdate( 'n', strtotime( $date ) ),
 					),
 				),
 				'posts_per_page' => -1,
 			);
 			$query = new \WP_Query( $args );
 			$monthly_data[] = array(
-				'month' => date( 'M', strtotime( $date ) ),
+				'month' => gmdate( 'M', strtotime( $date ) ),
 				'count' => $query->found_posts
 			);
 			wp_reset_postdata();
@@ -566,9 +581,16 @@ class Communications_Page extends Settings_Base {
 			</div>
 		</div>
 
-		<!-- Chart.js CDN -->
-		<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-		<script>
+		<?php
+		wp_enqueue_script(
+			'brag-book-gallery-chartjs',
+			plugins_url( 'assets/js/vendor/chart.min.js', dirname( __DIR__, 2 ) . '/brag-book-gallery.php' ),
+			[],
+			'4.4.8',
+			true
+		);
+		ob_start();
+		?>
 		document.addEventListener('DOMContentLoaded', function() {
 			// Daily chart data
 			const dailyData = <?php echo json_encode( $chart_data ); ?>;
@@ -645,8 +667,9 @@ class Communications_Page extends Settings_Base {
 				});
 			}
 		});
-		</script>
 		<?php
+		$inline_script = ob_get_clean();
+		wp_add_inline_script( 'brag-book-gallery-chartjs', $inline_script );
 	}
 
 	/**
@@ -682,19 +705,20 @@ class Communications_Page extends Settings_Base {
 				<span class="description"><?php esc_html_e( 'Download all consultation entries as a JSON file.', 'brag-book-gallery' ); ?></span>
 			</p>
 
-			<script type="text/javascript">
-			document.addEventListener('DOMContentLoaded', function() {
-				// CSV Export
-				document.getElementById('export-csv')?.addEventListener('click', function() {
-					window.location.href = '<?php echo esc_url( admin_url( 'admin-ajax.php?action=export_consultations&format=csv&nonce=' . wp_create_nonce( 'export_consultations' ) ) ); ?>';
-				});
-
-				// JSON Export
-				document.getElementById('export-json')?.addEventListener('click', function() {
-					window.location.href = '<?php echo esc_url( admin_url( 'admin-ajax.php?action=export_consultations&format=json&nonce=' . wp_create_nonce( 'export_consultations' ) ) ); ?>';
-				});
-			});
-			</script>
+			<?php
+			$csv_url  = esc_url( admin_url( 'admin-ajax.php?action=export_consultations&format=csv&nonce=' . wp_create_nonce( 'export_consultations' ) ) );
+			$json_url = esc_url( admin_url( 'admin-ajax.php?action=export_consultations&format=json&nonce=' . wp_create_nonce( 'export_consultations' ) ) );
+			$export_script = sprintf(
+				'document.addEventListener("DOMContentLoaded",function(){var c=document.getElementById("export-csv");if(c){c.addEventListener("click",function(){window.location.href=%s;});}var j=document.getElementById("export-json");if(j){j.addEventListener("click",function(){window.location.href=%s;});}});',
+				wp_json_encode( $csv_url ),
+				wp_json_encode( $json_url )
+			);
+			if ( ! wp_script_is( 'brag-book-gallery-comm-export', 'registered' ) ) {
+				wp_register_script( 'brag-book-gallery-comm-export', '', array(), '4.4.0', true );
+			}
+			wp_enqueue_script( 'brag-book-gallery-comm-export' );
+			wp_add_inline_script( 'brag-book-gallery-comm-export', $export_script );
+			?>
 		</div>
 		<?php
 	}

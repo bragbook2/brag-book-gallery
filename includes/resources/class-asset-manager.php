@@ -466,11 +466,15 @@ final class Asset_Manager {
 			'nonce'              => wp_create_nonce( 'brag_book_gallery_nonce' ),
 		);
 
-		// Add inline script to provide minimal configuration
+		// Register an empty handle solely to carry the inline configuration.
+		if ( ! wp_script_is( 'brag-book-gallery-config', 'registered' ) ) {
+			wp_register_script( 'brag-book-gallery-config', '', array(), null, true );
+		}
+		wp_enqueue_script( 'brag-book-gallery-config' );
 		wp_add_inline_script(
-			'jquery', // Use jQuery as dependency since it's likely already loaded
+			'brag-book-gallery-config',
 			'window.bragBookGalleryConfig = window.bragBookGalleryConfig || ' . wp_json_encode( $minimal_config ) . ';',
-			'after'
+			'before'
 		);
 	}
 

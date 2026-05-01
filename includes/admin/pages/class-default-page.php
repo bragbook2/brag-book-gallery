@@ -75,6 +75,7 @@ class Default_Page extends Settings_Base {
 		$this->menu_title = __( 'Default Settings', 'brag-book-gallery' );
 
 		// Handle form submission
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified in $this->save() via save_settings().
 		if ( isset( $_POST['submit'] ) ) {
 			$this->save();
 		}
@@ -299,7 +300,9 @@ class Default_Page extends Settings_Base {
 				</div>
 			</div>
 
-			<style>
+			<?php
+			ob_start();
+			?>
 			.character-count {
 				margin-top: 5px;
 				font-size: 13px;
@@ -382,9 +385,16 @@ class Default_Page extends Settings_Base {
 				opacity: 0.6;
 				cursor: not-allowed;
 			}
-			</style>
+			<?php
+			$inline_style = ob_get_clean();
+			if ( ! wp_style_is( 'brag-book-gallery-default-page', 'registered' ) ) {
+				wp_register_style( 'brag-book-gallery-default-page', false, array(), '4.4.0' );
+			}
+			wp_enqueue_style( 'brag-book-gallery-default-page' );
+			wp_add_inline_style( 'brag-book-gallery-default-page', $inline_style );
 
-			<script type="module">
+			ob_start();
+			?>
 			/**
 			 * BRAG book Gallery Default Settings
 			 *
@@ -499,7 +509,7 @@ class Default_Page extends Settings_Base {
 						const formData = new FormData();
 						formData.append('action', 'brag_book_gallery_check_slug');
 						formData.append('slug', slug);
-						formData.append('nonce', '<?php echo wp_create_nonce( 'brag_book_gallery_check_slug' ); ?>');
+						formData.append('nonce', '<?php echo esc_attr( wp_create_nonce( 'brag_book_gallery_check_slug' ) ); ?>');
 
 						// Create AbortController for timeout handling
 						const controller = new AbortController();
@@ -575,7 +585,7 @@ class Default_Page extends Settings_Base {
 						formData.append('action', 'brag_book_gallery_generate_page');
 						formData.append('slug', slug);
 						formData.append('title', title);
-						formData.append('nonce', '<?php echo wp_create_nonce( 'brag_book_gallery_generate_page' ); ?>');
+						formData.append('nonce', '<?php echo esc_attr( wp_create_nonce( 'brag_book_gallery_generate_page' ) ); ?>');
 
 						// Create AbortController for timeout handling (longer timeout for page generation)
 						const controller = new AbortController();
@@ -667,7 +677,14 @@ class Default_Page extends Settings_Base {
 					initializeEventListeners();
 				}
 			})();
-			</script>
+			<?php
+			$inline_script = ob_get_clean();
+			if ( ! wp_script_is( 'brag-book-gallery-default-settings', 'registered' ) ) {
+				wp_register_script( 'brag-book-gallery-default-settings', '', array(), '4.4.0', true );
+			}
+			wp_enqueue_script( 'brag-book-gallery-default-settings' );
+			wp_add_inline_script( 'brag-book-gallery-default-settings', $inline_script );
+			?>
 
 			<div class="brag-book-gallery-section">
 				<h2><?php esc_html_e( 'Performance Settings', 'brag-book-gallery' ); ?></h2>
@@ -751,7 +768,9 @@ class Default_Page extends Settings_Base {
 				</button>
 			</div>
 
-			<script>
+			<?php
+			ob_start();
+			?>
 			document.getElementById('clear-cache-btn').addEventListener('click', function() {
 				if (confirm('This will clear all cached gallery data. Continue?')) {
 					const button = this;
@@ -761,7 +780,7 @@ class Default_Page extends Settings_Base {
 					// Make AJAX request to clear cache
 					const formData = new FormData();
 					formData.append('action', 'brag_book_gallery_clear_cache');
-					formData.append('nonce', '<?php echo wp_create_nonce( 'brag_book_gallery_clear_cache' ); ?>');
+					formData.append('nonce', '<?php echo esc_attr( wp_create_nonce( 'brag_book_gallery_clear_cache' ) ); ?>');
 
 					fetch(ajaxurl, {
 						method: 'POST',
@@ -789,7 +808,14 @@ class Default_Page extends Settings_Base {
 					});
 				}
 			});
-			</script>
+			<?php
+			$inline_script = ob_get_clean();
+			if ( ! wp_script_is( 'brag-book-gallery-clear-cache', 'registered' ) ) {
+				wp_register_script( 'brag-book-gallery-clear-cache', '', array(), '4.4.0', true );
+			}
+			wp_enqueue_script( 'brag-book-gallery-clear-cache' );
+			wp_add_inline_script( 'brag-book-gallery-clear-cache', $inline_script );
+			?>
 		</form>
 		<?php
 		$this->render_footer();
@@ -807,9 +833,11 @@ class Default_Page extends Settings_Base {
 		}
 
 		// Save landing page text
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified in save_settings() above.
 		if ( isset( $_POST['brag_book_gallery_landing_page_text'] ) ) {
 			// Clean escaped quotes from WYSIWYG editor before saving
-			$landing_text = $_POST['brag_book_gallery_landing_page_text'];
+			// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified in save_settings() above.
+			$landing_text = wp_kses_post( wp_unslash( $_POST['brag_book_gallery_landing_page_text'] ) );
 			$landing_text = str_replace( '\"', '"', $landing_text );
 			$landing_text = str_replace( "\'", "'", $landing_text );
 			$landing_text = stripslashes( $landing_text );
@@ -820,8 +848,10 @@ class Default_Page extends Settings_Base {
 		}
 
 		// Save combined gallery settings and create page if needed
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified in save_settings() above.
 		if ( isset( $_POST['brag_book_gallery_page_slug'] ) ) {
-			$new_slug = sanitize_title( $_POST['brag_book_gallery_page_slug'] );
+			// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified in save_settings() above.
+			$new_slug = sanitize_title( wp_unslash( $_POST['brag_book_gallery_page_slug'] ) );
 
 			// Get existing slug from option
 			$old_slug = get_option( 'brag_book_gallery_page_slug', '' );
@@ -872,6 +902,7 @@ class Default_Page extends Settings_Base {
 
 						$this->add_notice(
 							sprintf(
+								/* translators: %s: gallery page slug */
 								__( 'Gallery page "%s" has been created successfully.', 'brag-book-gallery' ),
 								$new_slug
 							)
@@ -880,6 +911,7 @@ class Default_Page extends Settings_Base {
 				} else {
 					$this->add_notice(
 						sprintf(
+							/* translators: %s: gallery page slug */
 							__( 'A page with slug "%s" already exists. The gallery will use the existing page.', 'brag-book-gallery' ),
 							$new_slug
 						),
@@ -896,23 +928,32 @@ class Default_Page extends Settings_Base {
 			}
 		}
 
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified in save_settings() above.
 		if ( isset( $_POST['brag_book_gallery_seo_title'] ) ) {
-			update_option( 'brag_book_gallery_seo_page_title', sanitize_text_field( $_POST['brag_book_gallery_seo_title'] ) );
+			// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified in save_settings() above.
+			update_option( 'brag_book_gallery_seo_page_title', sanitize_text_field( wp_unslash( $_POST['brag_book_gallery_seo_title'] ) ) );
 		}
 
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified in save_settings() above.
 		if ( isset( $_POST['brag_book_gallery_seo_description'] ) ) {
-			update_option( 'brag_book_gallery_seo_page_description', sanitize_textarea_field( $_POST['brag_book_gallery_seo_description'] ) );
+			// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified in save_settings() above.
+			update_option( 'brag_book_gallery_seo_page_description', sanitize_textarea_field( wp_unslash( $_POST['brag_book_gallery_seo_description'] ) ) );
 		}
 
 		// Save performance settings
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified in save_settings() above.
 		if ( isset( $_POST['ajax_timeout'] ) ) {
+			// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified in save_settings() above.
 			update_option( 'brag_book_gallery_ajax_timeout', absint( $_POST['ajax_timeout'] ) );
 		}
 
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified in save_settings() above.
 		if ( isset( $_POST['cache_duration'] ) ) {
+			// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified in save_settings() above.
 			update_option( 'brag_book_gallery_cache_duration', absint( $_POST['cache_duration'] ) );
 		}
 
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified in save_settings() above.
 		$lazy_load = isset( $_POST['lazy_load'] ) && $_POST['lazy_load'] === 'yes' ? 'yes' : 'no';
 		update_option( 'brag_book_gallery_lazy_load', $lazy_load );
 

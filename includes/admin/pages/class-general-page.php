@@ -61,6 +61,8 @@ class General_Page extends Settings_Base {
 	protected function init(): void {
 		$this->page_slug  = 'brag-book-gallery-general';
 		// Don't translate here - translations happen in render method
+
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_code_editor_assets' ) );
 	}
 
 	public function render(): void {
@@ -68,13 +70,6 @@ class General_Page extends Settings_Base {
 		// Set localized page titles now that translation functions are available.
 		$this->page_title = esc_html__( 'General Settings', 'brag-book-gallery' );
 		$this->menu_title = esc_html__( 'General', 'brag-book-gallery' );
-
-		// Enqueue Monaco Editor for CSS editing.
-		add_action(
-			'admin_footer',
-			array( $this, 'enqueue_monaco_conditionally' ),
-			20
-		);
 
 		// Handle form submission.
 		if (
@@ -115,7 +110,9 @@ class General_Page extends Settings_Base {
 		</div>
 
 
-		<script>
+		<?php
+		ob_start();
+		?>
 		document.addEventListener('DOMContentLoaded', function() {
 			// Tab switching functionality
 			const tabLinks = document.querySelectorAll('.brag-book-gallery-side-tabs a');
@@ -149,53 +146,6 @@ class General_Page extends Settings_Base {
 				defaultPanel.classList.add('active');
 			}
 		});
-
-		// Trumbowyg WYSIWYG Editor initialization (Vanilla ES6)
-		(() => {
-			'use strict';
-
-			// Load Trumbowyg CSS
-			const trumbowygCSS = document.createElement('link');
-			trumbowygCSS.rel = 'stylesheet';
-			trumbowygCSS.href = 'https://cdn.jsdelivr.net/npm/trumbowyg@2.27.3/dist/ui/trumbowyg.min.css';
-			document.head.appendChild(trumbowygCSS);
-
-			// Load Trumbowyg JS
-			const trumbowygJS = document.createElement('script');
-			trumbowygJS.src = 'https://cdn.jsdelivr.net/npm/trumbowyg@2.27.3/dist/trumbowyg.min.js';
-			trumbowygJS.onload = () => {
-				console.log('BRAGBook: Trumbowyg loaded');
-
-				// Check if jQuery and Trumbowyg are available (Trumbowyg requires jQuery)
-				const $ = window.jQuery;
-				if (typeof $ !== 'undefined' && $.fn.trumbowyg) {
-					const editor = document.getElementById('brag_book_gallery_landing_page_text');
-
-					if (editor) {
-						$(editor).trumbowyg({
-							btns: [
-								['viewHTML'],
-								['undo', 'redo'],
-								['formatting'],
-								['strong', 'em', 'del'],
-								['link'],
-								['unorderedList', 'orderedList'],
-								['horizontalRule'],
-								['removeformat']
-							],
-							semantic: true,
-							autogrow: true,
-							removeformatPasted: true,
-							resetCss: true,
-							tagsToRemove: ['script', 'style']
-						});
-
-						console.log('BRAGBook: Trumbowyg initialized on landing page text');
-					}
-				}
-			};
-			document.head.appendChild(trumbowygJS);
-		})();
 
 		// Page slug functionality
 		(function() {
@@ -244,7 +194,7 @@ class General_Page extends Settings_Base {
 					const formData = new FormData();
 					formData.append('action', 'brag_book_gallery_check_slug');
 					formData.append('slug', slug);
-					formData.append('nonce', '<?php echo wp_create_nonce( 'brag_book_gallery_check_slug' ); ?>');
+					formData.append('nonce', '<?php echo esc_attr( wp_create_nonce( 'brag_book_gallery_check_slug' ) ); ?>');
 
 					// Create AbortController for timeout handling
 					const controller = new AbortController();
@@ -356,7 +306,7 @@ class General_Page extends Settings_Base {
 					formData.append('action', 'brag_book_gallery_generate_page');
 					formData.append('slug', slug);
 					formData.append('title', title);
-					formData.append('nonce', '<?php echo wp_create_nonce( 'brag_book_gallery_generate_page' ); ?>');
+					formData.append('nonce', '<?php echo esc_attr( wp_create_nonce( 'brag_book_gallery_generate_page' ) ); ?>');
 
 					// Create AbortController for timeout handling (longer timeout for page generation)
 					const controller = new AbortController();
@@ -483,7 +433,7 @@ class General_Page extends Settings_Base {
 					const formData = new FormData();
 					formData.append('action', 'brag_book_gallery_check_favorites_page');
 					formData.append('gallery_slug', gallerySlug);
-					formData.append('nonce', '<?php echo wp_create_nonce( 'brag_book_gallery_check_favorites_page' ); ?>');
+					formData.append('nonce', '<?php echo esc_attr( wp_create_nonce( 'brag_book_gallery_check_favorites_page' ) ); ?>');
 
 					const controller = new AbortController();
 					const timeoutId = setTimeout(() => controller.abort(), 15000);
@@ -569,7 +519,7 @@ class General_Page extends Settings_Base {
 					const formData = new FormData();
 					formData.append('action', 'brag_book_gallery_generate_favorites_page');
 					formData.append('gallery_slug', gallerySlug);
-					formData.append('nonce', '<?php echo wp_create_nonce( 'brag_book_gallery_generate_favorites_page' ); ?>');
+					formData.append('nonce', '<?php echo esc_attr( wp_create_nonce( 'brag_book_gallery_generate_favorites_page' ) ); ?>');
 
 					const controller = new AbortController();
 					const timeoutId = setTimeout(() => controller.abort(), 45000);
@@ -644,9 +594,14 @@ class General_Page extends Settings_Base {
 				initializeFavoritesEventListeners();
 			}
 		})();
-		</script>
-
 		<?php
+		$inline_script = ob_get_clean();
+		if ( ! wp_script_is( 'brag-book-gallery-general-page', 'registered' ) ) {
+			wp_register_script( 'brag-book-gallery-general-page', '', array(), '4.4.0', true );
+		}
+		wp_enqueue_script( 'brag-book-gallery-general-page' );
+		wp_add_inline_script( 'brag-book-gallery-general-page', $inline_script );
+
 		$this->render_footer();
 	}
 
@@ -883,15 +838,24 @@ class General_Page extends Settings_Base {
 						<?php esc_html_e( 'Landing Page Text', 'brag-book-gallery' ); ?>
 					</label>
 					<?php
-					$editor_content = wp_unslash( $landing_text );
+					wp_editor(
+						wp_unslash( $landing_text ),
+						'brag_book_gallery_landing_page_text',
+						array(
+							'textarea_name' => 'brag_book_gallery_landing_page_text',
+							'textarea_rows' => 10,
+							'media_buttons' => false,
+							'teeny'         => true,
+							'tinymce'       => array(
+								'toolbar1' => 'formatselect,bold,italic,strikethrough,bullist,numlist,blockquote,hr,link,unlink,undo,redo,removeformat',
+								'toolbar2' => '',
+							),
+							'quicktags'     => true,
+						)
+					);
 					?>
-					<div id="trumbowyg-editor-wrapper">
-						<textarea id="brag_book_gallery_landing_page_text"
-						          name="brag_book_gallery_landing_page_text"
-						          style="width: 100%;"><?php echo esc_textarea( $editor_content ); ?></textarea>
-					</div>
 					<p class="description">
-						<?php esc_html_e( 'Text displayed on the gallery landing page. Edit visually or switch to HTML view using the toolbar.', 'brag-book-gallery' ); ?>
+						<?php esc_html_e( 'Text displayed on the gallery landing page. Edit visually or switch to the Text tab for HTML.', 'brag-book-gallery' ); ?>
 					</p>
 				</div>
 			</div>
@@ -1301,7 +1265,9 @@ class General_Page extends Settings_Base {
 			</div>
 		</form>
 
-		<script>
+		<?php
+		ob_start();
+		?>
 		(function() {
 			'use strict';
 
@@ -1366,8 +1332,13 @@ class General_Page extends Settings_Base {
 				if (e.target === dialog) dialog.close();
 			});
 		})();
-		</script>
 		<?php
+		$inline_script = ob_get_clean();
+		if ( ! wp_script_is( 'brag-book-gallery-display-preview', 'registered' ) ) {
+			wp_register_script( 'brag-book-gallery-display-preview', '', array(), '4.4.0', true );
+		}
+		wp_enqueue_script( 'brag-book-gallery-display-preview' );
+		wp_add_inline_script( 'brag-book-gallery-display-preview', $inline_script );
 	}
 
 	/**
@@ -1658,26 +1629,22 @@ class General_Page extends Settings_Base {
 						</label>
 					</th>
 					<td>
-						<div id="monaco-editor-wrapper" style="margin-bottom: 10px;">
-							<div id="monaco-editor-container" style="height: 500px; border: 1px solid #dcdcde; border-radius: 4px;"></div>
-						</div>
 						<textarea id="brag_book_gallery_custom_css"
 						          name="brag_book_gallery_custom_css"
-						          style="display: none;"><?php echo esc_textarea( $custom_css ); ?></textarea>
-						<div class="monaco-editor-toolbar" style="margin-top: 10px; display: flex; align-items: center; gap: 10px;">
-							<button type="button" id="format-css" class="button button-secondary">
-								<?php esc_html_e( 'Format CSS', 'brag-book-gallery' ); ?>
-							</button>
+						          rows="20"
+						          class="brag-book-gallery-code-editor"
+						          style="width:100%;font-family:Consolas,Monaco,'Courier New',monospace;"><?php echo esc_textarea( $custom_css ); ?></textarea>
+						<div class="brag-book-gallery-code-editor__toolbar">
 							<button type="button" id="reset-css" class="button button-secondary">
 								<?php esc_html_e( 'Reset', 'brag-book-gallery' ); ?>
 							</button>
-							<span class="monaco-editor-status" style="margin-left: auto; color: #666; font-size: 12px;">
+							<span class="brag-book-gallery-code-editor__status">
 								<span id="css-line-count">0</span> <?php esc_html_e( 'lines', 'brag-book-gallery' ); ?> |
 								<span id="css-char-count">0</span> <?php esc_html_e( 'characters', 'brag-book-gallery' ); ?>
 							</span>
 						</div>
-						<p class="description" style="margin-top: 10px;">
-							<?php esc_html_e( 'Add custom CSS styles to customize your gallery appearance. Monaco Editor provides IntelliSense, syntax highlighting, and error checking.', 'brag-book-gallery' ); ?>
+						<p class="description">
+							<?php esc_html_e( 'Add custom CSS styles to customize your gallery appearance. Provides syntax highlighting and linting.', 'brag-book-gallery' ); ?>
 						</p>
 					</td>
 				</tr>
@@ -1690,8 +1657,9 @@ class General_Page extends Settings_Base {
 			</div>
 		</form>
 
-		<!-- Add JavaScript for SEO features and other functionality -->
-		<script>
+		<?php
+		ob_start();
+		?>
 		document.addEventListener('DOMContentLoaded', function() {
 			// SEO character counting functionality
 			const titleInput = document.getElementById('brag_book_gallery_seo_title');
@@ -1772,7 +1740,7 @@ class General_Page extends Settings_Base {
 						// Make AJAX request to clear cache
 						const formData = new FormData();
 						formData.append('action', 'brag_book_gallery_clear_cache');
-						formData.append('nonce', '<?php echo wp_create_nonce( 'brag_book_gallery_clear_cache' ); ?>');
+						formData.append('nonce', '<?php echo esc_attr( wp_create_nonce( 'brag_book_gallery_clear_cache' ) ); ?>');
 
 						fetch(ajaxurl, {
 							method: 'POST',
@@ -1802,12 +1770,14 @@ class General_Page extends Settings_Base {
 				});
 			}
 
-			// Monaco Editor initialization removed - now loaded conditionally via enqueue_monaco_conditionally()
-			// to prevent AMD/RequireJS conflicts with TinyMCE
-
 		});
-		</script>
 		<?php
+		$inline_script = ob_get_clean();
+		if ( ! wp_script_is( 'brag-book-gallery-css-tab', 'registered' ) ) {
+			wp_register_script( 'brag-book-gallery-css-tab', '', array(), '4.4.0', true );
+		}
+		wp_enqueue_script( 'brag-book-gallery-css-tab' );
+		wp_add_inline_script( 'brag-book-gallery-css-tab', $inline_script );
 	}
 
 	/**
@@ -2267,192 +2237,140 @@ class General_Page extends Settings_Base {
 	}
 
 	/**
-	 * Enqueue Monaco Editor conditionally to avoid AMD conflicts
+	 * Enqueue WordPress code editor (CodeMirror) for the Custom CSS tab
 	 *
-	 * Loads Monaco Editor dynamically only when Custom CSS tab becomes active.
-	 * This runs AFTER AMD protection has removed any existing AMD loaders,
-	 * so Monaco can safely add its own AMD loader for the editor.
+	 * Hooked on admin_enqueue_scripts. Only loads on the General Settings page.
 	 *
-	 * @since 3.3.2
+	 * @since 4.4.0
 	 * @return void
 	 */
-	public function enqueue_monaco_conditionally(): void {
-		?>
-		<script>
-		(function($) {
-			'use strict';
+	public function enqueue_code_editor_assets(): void {
+		$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+		if ( ! $screen || ! str_contains( (string) $screen->id, 'brag-book-gallery-general' ) ) {
+			return;
+		}
 
-			var monacoLoaded = false;
-			var monacoEditor = null;
-			var monacoRequire = null;
+		$settings = wp_enqueue_code_editor( array( 'type' => 'text/css' ) );
+		if ( false === $settings ) {
+			return;
+		}
 
-			// Function to load Monaco Editor
-			function loadMonaco() {
-				if (monacoLoaded) return;
-				monacoLoaded = true;
+		$reset_confirm = esc_html__( 'Are you sure you want to reset all custom CSS? This cannot be undone.', 'brag-book-gallery' );
 
-				console.log('BRAGBook: Loading Monaco Editor');
+		$init_script  = 'window.bragBookGalleryCodeEditorSettings = ' . wp_json_encode( $settings ) . ';';
+		$init_script .= 'window.bragBookGalleryCodeEditorI18n = ' . wp_json_encode( array( 'resetConfirm' => $reset_confirm ) ) . ';';
 
-				// Load Monaco loader script
-				var script = document.createElement('script');
-				script.src = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js';
-				script.onload = function() {
-					// Capture Monaco's require and define
-					monacoRequire = window.require;
-					var monacoDefine = window.define;
+		wp_add_inline_script( 'code-editor', $init_script, 'before' );
+		wp_add_inline_script( 'code-editor', $this->get_code_editor_init_js(), 'after' );
 
-					console.log('BRAGBook: Monaco loader loaded');
+		wp_add_inline_style( 'code-editor', $this->get_code_editor_inline_css() );
+	}
 
-					// Keep AMD available for Monaco but isolate it
-					// Monaco needs these to load its modules
+	/**
+	 * Vanilla JS that wires the WP code editor to the Custom CSS textarea
+	 *
+	 * Activates lazily when the Custom CSS tab is shown and keeps the underlying
+	 * textarea in sync so the form submission posts the latest value.
+	 *
+	 * @since 4.4.0
+	 * @return string JavaScript source.
+	 */
+	private function get_code_editor_init_js(): string {
+		return <<<'JS'
+(function () {
+	'use strict';
 
-					// Configure Monaco using its own require
-					monacoRequire.config({
-						paths: {
-							'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs'
-						}
-					});
+	var initialized = false;
+	var editorInstance = null;
 
-					// Initialize Monaco when loaded using its own require
-					monacoRequire(['vs/editor/editor.main'], function() {
-						// Monaco is now loaded, capture the monaco global
-						var monacoInstance = window.monaco;
+	function initEditor() {
+		if ( initialized ) {
+			return;
+		}
+		var textarea = document.getElementById( 'brag_book_gallery_custom_css' );
+		if ( ! textarea || ! window.wp || ! window.wp.codeEditor || ! window.bragBookGalleryCodeEditorSettings ) {
+			return;
+		}
 
-						var textarea = document.getElementById('brag_book_gallery_custom_css');
-						var formatBtn = document.getElementById('format-css');
-						var resetBtn = document.getElementById('reset-css');
-						var lineCountEl = document.getElementById('css-line-count');
-						var charCountEl = document.getElementById('css-char-count');
+		editorInstance = window.wp.codeEditor.initialize( textarea, window.bragBookGalleryCodeEditorSettings );
+		initialized = true;
 
-						// Use the existing container from the HTML
-						var container = document.getElementById('monaco-editor-container');
+		var lineEl = document.getElementById( 'css-line-count' );
+		var charEl = document.getElementById( 'css-char-count' );
+		var resetBtn = document.getElementById( 'reset-css' );
 
-						if (container && textarea && !monacoEditor && monacoInstance) {
-							console.log('BRAGBook: Initializing Monaco Editor');
-
-							monacoEditor = monacoInstance.editor.create(container, {
-								value: textarea.value,
-								language: 'css',
-								theme: 'vs',
-								automaticLayout: true,
-								minimap: { enabled: false },
-								scrollBeyondLastLine: false,
-								fontSize: 13,
-								lineNumbers: 'on',
-								wordWrap: 'on',
-								tabSize: 4,
-								insertSpaces: false,
-								fontFamily: 'Consolas, Monaco, "Courier New", monospace',
-								renderLineHighlight: 'line',
-								selectOnLineNumbers: true,
-								roundedSelection: false,
-								showUnused: true,
-								folding: true,
-								foldingHighlight: true
-							});
-
-							// Update statistics
-							var updateStats = function() {
-								var content = monacoEditor.getValue();
-								var lines = content.split('\n').length;
-								var chars = content.length;
-								if (lineCountEl) lineCountEl.textContent = lines;
-								if (charCountEl) charCountEl.textContent = chars;
-							};
-
-							// Sync Monaco content with textarea on change
-							monacoEditor.onDidChangeModelContent(function() {
-								textarea.value = monacoEditor.getValue();
-								updateStats();
-							});
-
-							// Format CSS button
-							if (formatBtn) {
-								formatBtn.addEventListener('click', function() {
-									monacoEditor.getAction('editor.action.formatDocument').run();
-								});
-							}
-
-							// Reset button
-							if (resetBtn) {
-								resetBtn.addEventListener('click', function() {
-									if (confirm('<?php esc_html_e( 'Are you sure you want to reset all custom CSS? This cannot be undone.', 'brag-book-gallery' ); ?>')) {
-										monacoEditor.setValue('');
-									}
-								});
-							}
-
-							// Initial stats update
-							updateStats();
-
-							// Focus editor for better UX
-							monacoEditor.focus();
-						}
-					});
-				};
-				document.head.appendChild(script);
+		var updateStats = function () {
+			if ( ! editorInstance || ! editorInstance.codemirror ) {
+				return;
 			}
-
-			// Function to dispose Monaco and clean up AMD
-			function disposeMonaco() {
-				if (monacoEditor) {
-					console.log('BRAGBook: Disposing Monaco Editor');
-
-					// Sync final content to textarea before disposing
-					var textarea = document.getElementById('brag_book_gallery_custom_css');
-					if (textarea && monacoEditor) {
-						textarea.value = monacoEditor.getValue();
-					}
-
-					// Dispose the editor
-					monacoEditor.dispose();
-					monacoEditor = null;
-
-					// Remove AMD loader to prevent TinyMCE conflicts
-					try {
-						if (typeof window.define === 'function' && window.define.amd) {
-							console.log('BRAGBook: Removing AMD loader after disposing Monaco');
-							delete window.define;
-							delete window.require;
-							delete window.monaco;
-						}
-					} catch (e) {
-						console.log('BRAGBook: Could not remove AMD (non-configurable)');
-					}
-
-					monacoLoaded = false;
-					monacoRequire = null;
-				}
+			var value = editorInstance.codemirror.getValue();
+			if ( lineEl ) {
+				lineEl.textContent = String( editorInstance.codemirror.lineCount() );
 			}
+			if ( charEl ) {
+				charEl.textContent = String( value.length );
+			}
+		};
 
-			// Load Monaco when Custom CSS tab is clicked
-			$(document).ready(function() {
-				// Check if we're on the General Settings page
-				if ($('#custom-css').length) {
-					var $tabLinks = $('.brag-book-gallery-side-tabs a');
+		if ( editorInstance && editorInstance.codemirror ) {
+			editorInstance.codemirror.on( 'change', function () {
+				textarea.value = editorInstance.codemirror.getValue();
+				updateStats();
+			} );
+			editorInstance.codemirror.refresh();
+			updateStats();
+		}
 
-					// Load Monaco when Custom CSS tab is clicked
-					$('a[href="#custom-css"]').on('click', function() {
-						console.log('BRAGBook: Custom CSS tab activated, loading Monaco');
-						setTimeout(loadMonaco, 100);
-					});
-
-					// Dispose Monaco when switching away from Custom CSS tab
-					$tabLinks.not('a[href="#custom-css"]').on('click', function() {
-						console.log('BRAGBook: Switching away from Custom CSS tab');
-						disposeMonaco();
-					});
-
-					// If Custom CSS tab is active on page load (e.g., from URL hash)
-					if (window.location.hash === '#custom-css') {
-						setTimeout(loadMonaco, 100);
-					}
+		if ( resetBtn ) {
+			resetBtn.addEventListener( 'click', function () {
+				var msg = ( window.bragBookGalleryCodeEditorI18n && window.bragBookGalleryCodeEditorI18n.resetConfirm ) || 'Reset?';
+				if ( window.confirm( msg ) && editorInstance && editorInstance.codemirror ) {
+					editorInstance.codemirror.setValue( '' );
+					textarea.value = '';
+					updateStats();
 				}
+			} );
+		}
+	}
 
-			});
-		})(jQuery);
-		</script>
-		<?php
+	function bind() {
+		var customCssPanel = document.getElementById( 'custom-css' );
+		if ( ! customCssPanel ) {
+			return;
+		}
+
+		var tabLinks = document.querySelectorAll( '.brag-book-gallery-side-tabs a' );
+		tabLinks.forEach( function ( link ) {
+			if ( link.getAttribute( 'href' ) === '#custom-css' ) {
+				link.addEventListener( 'click', function () {
+					window.setTimeout( initEditor, 50 );
+				} );
+			}
+		} );
+
+		if ( window.location.hash === '#custom-css' || customCssPanel.classList.contains( 'active' ) ) {
+			window.setTimeout( initEditor, 50 );
+		}
+	}
+
+	if ( document.readyState === 'loading' ) {
+		document.addEventListener( 'DOMContentLoaded', bind );
+	} else {
+		bind();
+	}
+}());
+JS;
+	}
+
+	/**
+	 * Inline CSS for the code editor toolbar
+	 *
+	 * @since 4.4.0
+	 * @return string CSS rules.
+	 */
+	private function get_code_editor_inline_css(): string {
+		return '.brag-book-gallery-code-editor__toolbar{margin-top:10px;display:flex;align-items:center;gap:10px}'
+			. '.brag-book-gallery-code-editor__status{margin-left:auto;color:#666;font-size:12px}';
 	}
 
 }

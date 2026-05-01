@@ -230,7 +230,7 @@ class Debug_Page extends Settings_Base {
 		}
 
 		// Handle log download
-		if ( isset( $_GET['download_log'] ) && isset( $_GET['nonce'] ) && wp_verify_nonce( $_GET['nonce'], 'download_log' ) ) {
+		if ( isset( $_GET['download_log'] ) && isset( $_GET['nonce'] ) && wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET['nonce'] ) ), 'download_log' ) ) {
 			$this->download_debug_log();
 		}
 
@@ -260,7 +260,9 @@ class Debug_Page extends Settings_Base {
 			</div>
 		</div>
 
-		<script>
+		<?php
+		ob_start();
+		?>
 			document.addEventListener('DOMContentLoaded', function() {
 				// Function to show a specific tab panel
 				function showTabPanel(targetId) {
@@ -330,9 +332,14 @@ class Debug_Page extends Settings_Base {
 				// Initialize the correct tab based on URL hash
 				initializeTabFromHash();
 			});
-		</script>
-
 		<?php
+		$inline_script = ob_get_clean();
+		if ( ! wp_script_is( 'brag-book-gallery-debug-tabs', 'registered' ) ) {
+			wp_register_script( 'brag-book-gallery-debug-tabs', '', array(), '4.4.0', true );
+		}
+		wp_enqueue_script( 'brag-book-gallery-debug-tabs' );
+		wp_add_inline_script( 'brag-book-gallery-debug-tabs', $inline_script );
+
 		$this->render_footer();
 	}
 
@@ -629,38 +636,20 @@ class Debug_Page extends Settings_Base {
 			</div>
 		</div>
 
-		<style>
-			.brag-book-gallery-debug-logs .log-file-info {
-				background: #f0f0f1;
-				padding: 15px;
-				margin: 15px 0;
-				border-left: 4px solid #2271b1;
-			}
-			.brag-book-gallery-debug-logs .log-file-info p {
-				margin: 5px 0;
-			}
-			.brag-book-gallery-debug-logs .log-file-actions {
-				margin: 15px 0;
-			}
-			.brag-book-gallery-debug-logs .log-file-actions .button {
-				margin-right: 10px;
-			}
-			.brag-book-gallery-debug-logs .log-file-contents {
-				margin-top: 15px;
-			}
-			.brag-book-gallery-debug-logs .log-file-contents label {
-				display: block;
-				margin-bottom: 5px;
-				font-weight: 600;
-			}
-		</style>
 		<?php
+		$debug_logs_css = '.brag-book-gallery-debug-logs .log-file-info{background:#f0f0f1;padding:15px;margin:15px 0;border-left:4px solid #2271b1}.brag-book-gallery-debug-logs .log-file-info p{margin:5px 0}.brag-book-gallery-debug-logs .log-file-actions{margin:15px 0}.brag-book-gallery-debug-logs .log-file-actions .button{margin-right:10px}.brag-book-gallery-debug-logs .log-file-contents{margin-top:15px}.brag-book-gallery-debug-logs .log-file-contents label{display:block;margin-bottom:5px;font-weight:600}';
+		if ( ! wp_style_is( 'brag-book-gallery-debug-page', 'registered' ) ) {
+			wp_register_style( 'brag-book-gallery-debug-page', false, array(), '4.4.0' );
+			wp_enqueue_style( 'brag-book-gallery-debug-page' );
+		}
+		wp_add_inline_style( 'brag-book-gallery-debug-page', $debug_logs_css );
 	}
 
 	private function render_database_info(): void {
 		global $wpdb;
 
 		// Get option sizes
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$options = $wpdb->get_results(
 			"SELECT option_name, LENGTH(option_value) as size
 			FROM {$wpdb->options}
@@ -723,13 +712,15 @@ class Debug_Page extends Settings_Base {
 		}
 
 		// Save logging settings
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified earlier in the calling method
 		$enable_logs = isset( $_POST['enable_logs'] ) && $_POST['enable_logs'] === 'yes' ? 'yes' : 'no';
 		update_option( 'brag_book_gallery_enable_logs', $enable_logs );
 
 		if ( isset( $_POST['log_level'] ) ) {
 			$valid_levels = array( 'error', 'warning', 'info', 'debug' );
-			$log_level = in_array( $_POST['log_level'], $valid_levels, true )
-				? $_POST['log_level']
+			$log_level_raw = sanitize_text_field( wp_unslash( $_POST['log_level'] ) );
+			$log_level = in_array( $log_level_raw, $valid_levels, true )
+				? $log_level_raw
 				: 'error';
 			update_option( 'brag_book_gallery_log_level', $log_level );
 		}
@@ -744,6 +735,7 @@ class Debug_Page extends Settings_Base {
 		}
 
 		global $wpdb;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$wpdb->query(
 			"DELETE FROM {$wpdb->options}
 			WHERE option_name LIKE '_transient_brag_book_gallery_%'
@@ -769,13 +761,13 @@ class Debug_Page extends Settings_Base {
 	}
 
 	private function save_log_settings(): void {
-		if ( ! isset( $_POST['debug_nonce'] ) || ! wp_verify_nonce( $_POST['debug_nonce'], 'brag_book_gallery_debug_action' ) ) {
+		if ( ! isset( $_POST['debug_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['debug_nonce'] ) ), 'brag_book_gallery_debug_action' ) ) {
 			$this->add_notice( __( 'Security check failed.', 'brag-book-gallery' ), 'error' );
 			return;
 		}
 
 		$enable_logs = isset( $_POST['enable_logs'] ) && $_POST['enable_logs'] === 'yes' ? 'yes' : 'no';
-		$log_level = isset( $_POST['log_level'] ) ? sanitize_text_field( $_POST['log_level'] ) : 'error';
+		$log_level = isset( $_POST['log_level'] ) ? sanitize_text_field( wp_unslash( $_POST['log_level'] ) ) : 'error';
 
 		// Validate log level
 		$valid_levels = array( 'error', 'warning', 'info', 'debug' );
@@ -790,7 +782,7 @@ class Debug_Page extends Settings_Base {
 	}
 
 	private function clear_debug_log(): void {
-		if ( ! isset( $_POST['debug_nonce'] ) || ! wp_verify_nonce( $_POST['debug_nonce'], 'brag_book_gallery_debug_action' ) ) {
+		if ( ! isset( $_POST['debug_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['debug_nonce'] ) ), 'brag_book_gallery_debug_action' ) ) {
 			$this->add_notice( __( 'Security check failed.', 'brag-book-gallery' ), 'error' );
 			return;
 		}
@@ -811,7 +803,7 @@ class Debug_Page extends Settings_Base {
 			wp_die( esc_html__( 'Log file not found or not readable.', 'brag-book-gallery' ) );
 		}
 
-		$filename = 'brag-book-gallery-debug-' . date( 'Y-m-d-H-i-s' ) . '.log';
+		$filename = 'brag-book-gallery-debug-' . gmdate( 'Y-m-d-H-i-s' ) . '.log';
 
 		header( 'Content-Type: text/plain' );
 		header( 'Content-Disposition: attachment; filename="' . $filename . '"' );
@@ -820,6 +812,7 @@ class Debug_Page extends Settings_Base {
 		header( 'Cache-Control: must-revalidate, post-check=0, pre-check=0' );
 		header( 'Expires: 0' );
 
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_readfile
 		readfile( $log_file );
 		exit;
 	}
@@ -861,7 +854,7 @@ class Debug_Page extends Settings_Base {
 
 		// Handle export.
 		if ( isset( $_POST['export_settings'] ) && isset( $_POST['debug_nonce'] ) ) {
-			if ( wp_verify_nonce( $_POST['debug_nonce'], 'brag_book_gallery_debug_action' ) && current_user_can( 'manage_options' ) ) {
+			if ( wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['debug_nonce'] ) ), 'brag_book_gallery_debug_action' ) && current_user_can( 'manage_options' ) ) {
 				$this->export_import->export_settings();
 				exit; // Stop execution after export.
 			}
@@ -869,7 +862,8 @@ class Debug_Page extends Settings_Base {
 
 		// Handle import.
 		if ( isset( $_POST['import_settings'] ) && isset( $_FILES['import_file'] ) && isset( $_POST['debug_nonce'] ) ) {
-			if ( wp_verify_nonce( $_POST['debug_nonce'], 'brag_book_gallery_debug_action' ) && current_user_can( 'manage_options' ) ) {
+			if ( wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['debug_nonce'] ) ), 'brag_book_gallery_debug_action' ) && current_user_can( 'manage_options' ) ) {
+				// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- File upload handled by WordPress
 				$result = $this->export_import->import_settings( $_FILES['import_file'] );
 				if ( true === $result ) {
 					$this->add_notice( __( 'Settings imported successfully.', 'brag-book-gallery' ) );
@@ -884,10 +878,14 @@ class Debug_Page extends Settings_Base {
 		$this->verify_ajax_request();
 
 		// Get and sanitize settings
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified in verify_ajax_request()
 		$debug_mode  = isset( $_POST['debug_mode'] ) && $_POST['debug_mode'] === '1';
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified in verify_ajax_request()
 		$api_logging = isset( $_POST['api_logging'] ) && $_POST['api_logging'] === '1';
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified in verify_ajax_request()
 		$wp_debug    = isset( $_POST['wp_debug'] ) && $_POST['wp_debug'] === '1';
-		$log_level   = sanitize_text_field( $_POST['log_level'] ?? 'error' );
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified in verify_ajax_request()
+		$log_level   = sanitize_text_field( wp_unslash( $_POST['log_level'] ?? 'error' ) );
 
 		// Validate log level
 		$valid_levels = [ 'error', 'warning', 'info', 'debug' ];
@@ -995,11 +993,12 @@ class Debug_Page extends Settings_Base {
 		$this->verify_ajax_request();
 
 		$system_info = $this->get_complete_system_info();
-		$filename = 'brag-book-gallery-system-info-' . date( 'Y-m-d-His' ) . '.txt';
+		$filename = 'brag-book-gallery-system-info-' . gmdate( 'Y-m-d-His' ) . '.txt';
 
 		header( 'Content-Type: text/plain' );
 		header( 'Content-Disposition: attachment; filename="' . $filename . '"' );
 		header( 'Content-Length: ' . strlen( $system_info ) );
+		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- System info is pre-escaped
 		echo $system_info;
 		exit;
 	}
@@ -1041,6 +1040,7 @@ class Debug_Page extends Settings_Base {
 			return [];
 		}
 
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen
 		$handle = fopen( $file, 'r' );
 		if ( ! $handle ) {
 			return [];
@@ -1062,6 +1062,7 @@ class Debug_Page extends Settings_Base {
 			$char = fgetc( $handle );
 		}
 
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
 		fclose( $handle );
 
 		// Reverse and join the content
@@ -1102,7 +1103,7 @@ class Debug_Page extends Settings_Base {
 		$info[] = '== Server Information ==';
 		$info[] = 'PHP Version: ' . phpversion();
 		$info[] = 'MySQL Version: ' . $wpdb->db_version();
-		$info[] = 'Server Software: ' . ( $_SERVER['SERVER_SOFTWARE'] ?? 'Unknown' );
+		$info[] = 'Server Software: ' . sanitize_text_field( wp_unslash( $_SERVER['SERVER_SOFTWARE'] ?? 'Unknown' ) );
 		$info[] = 'Max Execution Time: ' . ini_get( 'max_execution_time' );
 		$info[] = 'Memory Limit: ' . ini_get( 'memory_limit' );
 		$info[] = 'Upload Max Filesize: ' . ini_get( 'upload_max_filesize' );
@@ -1548,15 +1549,14 @@ class Debug_Page extends Settings_Base {
 	private function render_api_test_styles_and_scripts( array $api_tokens, array $website_property_ids ): void {
 		// Register the AJAX handler for API testing.
 		$this->register_ajax_action( 'brag_book_test_api', array( $this, 'handle_api_test' ) );
+		ob_start();
 		?>
-
-		<script>
 			document.addEventListener('DOMContentLoaded', function() {
 				// Get all API tokens and property IDs as arrays
 				const apiTokens = <?php echo wp_json_encode( array_values( array_filter( $api_tokens ) ) ); ?>;
 				const websitePropertyIds = <?php echo wp_json_encode( array_values( array_filter( array_map( 'intval', $website_property_ids ) ) ) ); ?>;
-				const ajaxUrl = '<?php echo admin_url( 'admin-ajax.php' ); ?>';
-				const nonce = '<?php echo wp_create_nonce( 'brag_book_api_test' ); ?>';
+				const ajaxUrl = '<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>';
+				const nonce = '<?php echo esc_attr( wp_create_nonce( 'brag_book_api_test' ) ); ?>';
 
 				// Check if we have valid tokens
 				if (!apiTokens || apiTokens.length === 0) {
@@ -2015,20 +2015,25 @@ class Debug_Page extends Settings_Base {
 					});
 				}
 			});
-		</script>
 		<?php
+		$inline_script = ob_get_clean();
+		if ( ! wp_script_is( 'brag-book-gallery-debug-api-test', 'registered' ) ) {
+			wp_register_script( 'brag-book-gallery-debug-api-test', '', array(), '4.4.0', true );
+		}
+		wp_enqueue_script( 'brag-book-gallery-debug-api-test' );
+		wp_add_inline_script( 'brag-book-gallery-debug-api-test', $inline_script );
 	}
 
 	public function handle_api_test(): void {
 		// Verify nonce
-		if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( $_POST['nonce'], 'brag_book_api_test' ) ) {
+		if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'brag_book_api_test' ) ) {
 			wp_send_json_error( 'Invalid nonce' );
 			return;
 		}
 
 		// Get request parameters
-		$endpoint = sanitize_text_field( $_POST['endpoint'] ?? '' );
-		$body = isset( $_POST['body'] ) ? json_decode( stripslashes( $_POST['body'] ), true ) : null;
+		$endpoint = sanitize_text_field( wp_unslash( $_POST['endpoint'] ?? '' ) );
+		$body = isset( $_POST['body'] ) ? json_decode( sanitize_text_field( wp_unslash( $_POST['body'] ) ), true ) : null;
 
 		// Get API configuration
 		$api_tokens = get_option( 'brag_book_gallery_api_token', array() );
@@ -2115,7 +2120,7 @@ class Debug_Page extends Settings_Base {
 
 				case 'cases-v2':
 					// For GET requests, parameters come from the URL
-					$url_parts = wp_parse_url( sanitize_text_field( $_POST['url'] ?? '' ) );
+					$url_parts = wp_parse_url( sanitize_text_field( wp_unslash( $_POST['url'] ?? '' ) ) );
 					parse_str( $url_parts['query'] ?? '', $query_params );
 
 					$procedure_id = intval( $query_params['procedureId'] ?? 0 );
@@ -2144,11 +2149,11 @@ class Debug_Page extends Settings_Base {
 
 				case 'single-case-v2':
 					// For GET requests, parameters come from the URL
-					$url_parts = wp_parse_url( sanitize_text_field( $_POST['url'] ?? '' ) );
+					$url_parts = wp_parse_url( sanitize_text_field( wp_unslash( $_POST['url'] ?? '' ) ) );
 					parse_str( $url_parts['query'] ?? '', $query_params );
 
 					// Case ID comes from the URL path
-					preg_match( '/\/cases\/(\d+)/', sanitize_text_field( $_POST['url'] ?? '' ), $matches );
+					preg_match( '/\/cases\/(\d+)/', sanitize_text_field( wp_unslash( $_POST['url'] ?? '' ) ), $matches );
 					$case_id = intval( $matches[1] ?? 0 );
 
 					if ( $case_id <= 0 ) {
@@ -2200,7 +2205,9 @@ class Debug_Page extends Settings_Base {
 		} catch ( \Exception $e ) {
 			// Log detailed error information
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'API Test Error: ' . $e->getMessage() );
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'API Test Endpoint: ' . $endpoint );
 			}
 

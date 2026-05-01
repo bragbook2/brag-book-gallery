@@ -144,7 +144,9 @@ class Gallery_Checker {
 			</div>
 		</div>
 
-		<script>
+		<?php
+		ob_start();
+		?>
 		document.addEventListener('DOMContentLoaded', () => {
 			// Helper function for AJAX requests using async/await
 			const ajaxPost = async (data) => {
@@ -180,7 +182,7 @@ class Gallery_Checker {
 
 				const response = await ajaxPost({
 					action: 'brag_book_gallery_debug_tool',
-					nonce: '<?php echo wp_create_nonce( 'brag_book_gallery_debug_tools' ); ?>',
+					nonce: '<?php echo esc_attr( wp_create_nonce( 'brag_book_gallery_debug_tools' ) ); ?>',
 					tool: 'gallery-checker',
 					tool_action: 'create_page'
 				});
@@ -209,7 +211,7 @@ class Gallery_Checker {
 
 				const response = await ajaxPost({
 					action: 'brag_book_gallery_debug_tool',
-					nonce: '<?php echo wp_create_nonce( 'brag_book_gallery_debug_tools' ); ?>',
+					nonce: '<?php echo esc_attr( wp_create_nonce( 'brag_book_gallery_debug_tools' ) ); ?>',
 					tool: 'gallery-checker',
 					tool_action: 'update_slug',
 					gallery_slug: newSlug
@@ -236,7 +238,7 @@ class Gallery_Checker {
 
 				const response = await ajaxPost({
 					action: 'brag_book_gallery_debug_tool',
-					nonce: '<?php echo wp_create_nonce( 'brag_book_gallery_debug_tools' ); ?>',
+					nonce: '<?php echo esc_attr( wp_create_nonce( 'brag_book_gallery_debug_tools' ) ); ?>',
 					tool: 'gallery-checker',
 					tool_action: 'show_rules'
 				});
@@ -251,8 +253,13 @@ class Gallery_Checker {
 				this.disabled = false;
 			});
 		});
-		</script>
 		<?php
+		$inline_script = ob_get_clean();
+		if ( ! wp_script_is( 'brag-book-gallery-gallery-checker', 'registered' ) ) {
+			wp_register_script( 'brag-book-gallery-gallery-checker', '', array(), '4.4.0', true );
+		}
+		wp_enqueue_script( 'brag-book-gallery-gallery-checker' );
+		wp_add_inline_script( 'brag-book-gallery-gallery-checker', $inline_script );
 	}
 
 	/**
@@ -273,6 +280,7 @@ class Gallery_Checker {
 			if ( ! $page && empty( $brag_book_gallery_page_slug ) ) {
 				global $wpdb;
 				$shortcode_pattern = '%[' . self::SHORTCODE_NAME . '%';
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 				$found_page = $wpdb->get_row(
 					$wpdb->prepare(
 						"SELECT ID, post_name, post_title, post_status, post_modified
@@ -452,6 +460,7 @@ class Gallery_Checker {
 		</div>
 		<?php
 		} catch ( Exception $e ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'Gallery Checker render_available_pages error: ' . $e->getMessage() );
 			// Continue with basic display
 		}
@@ -475,6 +484,7 @@ class Gallery_Checker {
 			// Fallback: If no slug configured, search for pages with shortcode
 			global $wpdb;
 			$shortcode_pattern = '%[' . self::SHORTCODE_NAME . '%';
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$found_page = $wpdb->get_row(
 				$wpdb->prepare(
 					"SELECT ID, post_name, post_title, post_status, post_modified
@@ -496,23 +506,27 @@ class Gallery_Checker {
 		}
 
 		if ( ! $brag_book_gallery_page_slug && ! $found_via_fallback ) {
+			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Output is escaped in the rendering method
 			echo '<p style="color: orange;">' . $this->get_warning_icon() . esc_html__( 'No gallery slug configured', 'brag-book-gallery' ) . '</p>';
 			return;
 		}
 
 		if ( $page ) {
+			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Output is escaped in the rendering method
 			echo '<p style="color: green;">' . $this->get_check_icon( true ) . sprintf(
 				/* translators: %1$s: page slug, %2$d: page ID, %3$s: page title */
 				esc_html__( 'Found page with slug "%1$s" (ID: %2$d, Title: %3$s)', 'brag-book-gallery' ),
 				esc_html( $brag_book_gallery_page_slug ),
-				$page->ID,
+				(int) $page->ID,
 				esc_html( $page->post_title )
 			) . '</p>';
 
 			// Check for shortcode
 			if ( str_contains( $page->post_content, '[' . self::SHORTCODE_NAME ) ) {
+				// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Output is escaped in the rendering method
 				echo '<p style="color: green;">' . $this->get_check_icon( true ) . esc_html__( 'Page contains [brag_book_gallery] shortcode', 'brag-book-gallery' ) . '</p>';
 			} else {
+				// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Output is escaped in the rendering method
 				echo '<p style="color: orange;">' . $this->get_warning_icon() . esc_html__( 'Page does NOT contain [brag_book_gallery] shortcode', 'brag-book-gallery' ) . '</p>';
 				echo '<p>' . esc_html__( 'You need to add the shortcode to this page for it to work.', 'brag-book-gallery' ) . '</p>';
 			}
@@ -525,10 +539,12 @@ class Gallery_Checker {
 
 			// Show warning if found via fallback
 			if ( $found_via_fallback ) {
+				// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Output is escaped in the rendering method
 				echo '<p style="color: orange;">' . $this->get_warning_icon() . esc_html__( 'Warning: This page was found automatically but is not properly configured in settings.', 'brag-book-gallery' ) . '</p>';
 				echo '<p>' . esc_html__( 'Use the "Update Gallery Slug" button below to configure this page properly.', 'brag-book-gallery' ) . '</p>';
 			}
 		} else {
+			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Output is escaped in the rendering method
 			echo '<p style="color: red;">' . $this->get_check_icon( false ) . sprintf(
 				/* translators: %s: gallery slug */
 				esc_html__( 'No page found with slug "%s"', 'brag-book-gallery' ),
@@ -558,6 +574,7 @@ class Gallery_Checker {
 			global $wpdb;
 
 			$shortcode_pattern = '%[' . self::SHORTCODE_NAME . '%';
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$pages = $wpdb->get_results(
 				$wpdb->prepare(
 					"SELECT ID, post_name, post_title, post_status, post_modified
@@ -645,6 +662,7 @@ class Gallery_Checker {
 		</div>
 		<?php
 		} catch ( Exception $e ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'Gallery Checker render_available_pages error: ' . $e->getMessage() );
 			// Continue with basic display
 		}
@@ -676,6 +694,7 @@ class Gallery_Checker {
 			};
 
 		} catch ( Exception $e ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'Gallery Checker execute error: ' . $e->getMessage() );
 			throw $e;
 		}
@@ -750,6 +769,7 @@ class Gallery_Checker {
 			);
 
 		} catch ( Exception $e ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'Gallery Checker create_gallery_page error: ' . $e->getMessage() );
 			return __( 'Failed to create gallery page', 'brag-book-gallery' );
 		}
