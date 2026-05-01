@@ -117,8 +117,73 @@ class Settings_Manager {
 		add_action( 'admin_menu', array( $this, 'initialize_settings_pages' ), 5 );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ) );
 
+		// Suppress third-party admin notices on BRAG book settings pages.
+		add_action( 'in_admin_header', array( $this, 'suppress_third_party_admin_notices' ), PHP_INT_MAX );
+
 		// Register AJAX handler for cache clearing.
 		add_action( 'wp_ajax_brag_book_clear_legacy_cache', array( 'BRAGBookGallery\Includes\Extend\Ajax_Handlers', 'ajax_clear_legacy_cache' ) );
+	}
+
+	/**
+	 * Suppress third-party admin notices on plugin settings pages
+	 *
+	 * Other plugins frequently inject promotional notices, review requests,
+	 * and update banners on every admin screen via the admin_notices hooks.
+	 * These crowd out the plugin's own UI and confuse users on the
+	 * BRAG book Gallery settings pages. Stripping all registered notice
+	 * actions on our own screens keeps the settings UI clean.
+	 *
+	 * Runs at PHP_INT_MAX so it executes after every plugin has registered
+	 * its notices but before WordPress fires the hooks in the admin header.
+	 * Only applies to BRAG book Gallery admin screens — every other admin
+	 * page in the dashboard remains untouched.
+	 *
+	 * @since 3.3.3
+	 * @return void
+	 */
+	public function suppress_third_party_admin_notices(): void {
+		if ( ! $this->is_plugin_admin_page() ) {
+			return;
+		}
+
+		remove_all_actions( 'admin_notices' );
+		remove_all_actions( 'all_admin_notices' );
+		remove_all_actions( 'user_admin_notices' );
+		remove_all_actions( 'network_admin_notices' );
+	}
+
+	/**
+	 * Determine whether the current admin screen belongs to this plugin
+	 *
+	 * Matches BRAG book Gallery settings pages, the plugin's custom post
+	 * type list/edit screens, and its taxonomy management screens.
+	 *
+	 * @since 3.3.3
+	 * @return bool True when on a plugin-owned admin screen.
+	 */
+	private function is_plugin_admin_page(): bool {
+		if ( ! function_exists( 'get_current_screen' ) ) {
+			return false;
+		}
+
+		$screen = get_current_screen();
+		if ( ! $screen instanceof \WP_Screen ) {
+			return false;
+		}
+
+		if ( str_contains( (string) $screen->id, 'brag-book-gallery' ) ) {
+			return true;
+		}
+
+		if ( 'brag_book_cases' === $screen->post_type ) {
+			return true;
+		}
+
+		if ( in_array( $screen->taxonomy, array( 'brag_book_procedures', 'brag_book_doctors' ), true ) ) {
+			return true;
+		}
+
+		return false;
 	}
 
 	/**
@@ -245,7 +310,7 @@ class Settings_Manager {
 			wp_enqueue_script(
 				'brag-book-gallery-admin',
 				$js_file,
-				array( 'jquery' ), // Depends on jQuery for DOM manipulation
+				array(),
 				'3.0.0',          // Version for cache busting
 				true              // Load in footer for better page performance
 			);

@@ -147,17 +147,32 @@ final class SEO_Manager {
 			],
 		];
 
-		$this->detect_active_seo_plugin();
 		$this->init_hooks();
 	}
 
 	/**
 	 * Initialize WordPress hooks
 	 *
+	 * Detection of the active SEO plugin and registration of its filters is
+	 * deferred to `plugins_loaded` priority 20. The plugin's main file runs
+	 * before alphabetically-later SEO plugins (e.g. seo-by-rank-math), so
+	 * `class_exists()` checks performed during construction would miss them
+	 * and cause both BRAG book and the SEO plugin to emit duplicate meta
+	 * description tags. Waiting until `plugins_loaded` guarantees every
+	 * plugin's main file — and therefore its main class — has been included.
+	 *
 	 * @return void
 	 * @since 3.0.0
 	 */
 	private function init_hooks(): void {
+
+		// Detect active SEO plugin and wire its filters once every plugin's
+		// main file has been included.
+		add_action(
+			'plugins_loaded',
+			array( $this, 'register_seo_plugin_integrations' ),
+			20
+		);
 
 		// Initialize SEO data on 'wp' action.
 		add_action(
@@ -185,8 +200,21 @@ final class SEO_Manager {
 			array( $this, 'modify_document_title' ),
 			10
 		);
+	}
 
-		// Hook into supported SEO plugins
+	/**
+	 * Detect active SEO plugin and register its integration filters
+	 *
+	 * Runs on `plugins_loaded` priority 20 so all plugin main files have been
+	 * loaded and SEO plugin classes (Yoast, AIOSEO, Rank Math) are visible to
+	 * `class_exists()`. Doing this in the constructor would race plugin load
+	 * order and produce duplicate meta description tags on gallery pages.
+	 *
+	 * @return void
+	 * @since 3.0.0
+	 */
+	public function register_seo_plugin_integrations(): void {
+		$this->detect_active_seo_plugin();
 		$this->register_seo_plugin_filters();
 	}
 
@@ -251,7 +279,7 @@ final class SEO_Manager {
 			$this->log_error( 'SEO data generation failed', [
 				'error' => $e->getMessage(),
 				'trace' => $e->getTraceAsString(),
-				'url'   => $_SERVER['REQUEST_URI'] ?? 'unknown',
+				'url'   => sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ?? 'unknown' ) ),
 			] );
 
 			// Provide fallback SEO data
@@ -306,7 +334,7 @@ final class SEO_Manager {
 	private function generate_seo_data(): array {
 
 		// Parse current URL with validation
-		$request_uri = $_SERVER['REQUEST_URI'] ?? '';
+		$request_uri = sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ?? '' ) );
 
 		// Validate and sanitize the request URI
 		if ( empty( $request_uri ) || ! $this->validate_url( home_url( $request_uri ) ) ) {
@@ -945,8 +973,8 @@ final class SEO_Manager {
 	 */
 	private function get_current_url(): string {
 		$scheme = is_ssl() ? 'https' : 'http';
-		$host   = $_SERVER['HTTP_HOST'] ?? '';
-		$uri    = $_SERVER['REQUEST_URI'] ?? '';
+		$host   = sanitize_text_field( wp_unslash( $_SERVER['HTTP_HOST'] ?? '' ) );
+		$uri    = sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ?? '' ) );
 
 		return $scheme . '://' . $host . $uri;
 	}
@@ -985,12 +1013,12 @@ final class SEO_Manager {
 
 		if ( ! empty( $this->seo_data['description'] ) ) {
 			$description = $this->sanitize_meta_content( $this->seo_data['description'], 'description' );
-			echo '<meta name="description" content="' . $description . '">' . "\n";
+			echo '<meta name="description" content="' . esc_attr( $description ) . '">' . "\n";
 		}
 
 		if ( ! empty( $this->seo_data['canonical_url'] ) ) {
 			$canonical_url = $this->sanitize_meta_content( $this->seo_data['canonical_url'], 'url' );
-			echo '<link rel="canonical" href="' . $canonical_url . '">' . "\n";
+			echo '<link rel="canonical" href="' . esc_url( $canonical_url ) . '">' . "\n";
 		}
 
 		// Open Graph tags with enhanced security
@@ -998,9 +1026,9 @@ final class SEO_Manager {
 		$og_description = $this->sanitize_meta_content( $this->seo_data['description'], 'description' );
 		$og_url = $this->sanitize_meta_content( $this->seo_data['canonical_url'], 'url' );
 
-		echo '<meta property="og:title" content="' . $og_title . '">' . "\n";
-		echo '<meta property="og:description" content="' . $og_description . '">' . "\n";
-		echo '<meta property="og:url" content="' . $og_url . '">' . "\n";
+		echo '<meta property="og:title" content="' . esc_attr( $og_title ) . '">' . "\n";
+		echo '<meta property="og:description" content="' . esc_attr( $og_description ) . '">' . "\n";
+		echo '<meta property="og:url" content="' . esc_url( $og_url ) . '">' . "\n";
 		echo '<meta property="og:type" content="website">' . "\n";
 	}
 
@@ -1269,6 +1297,7 @@ final class SEO_Manager {
 		// Log to WordPress error log if debugging is enabled
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 			try {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( sprintf(
 					'BRAGBook SEO Error [%s]: %s - Context: %s',
 					$error_id,
@@ -1276,6 +1305,7 @@ final class SEO_Manager {
 					wp_json_encode( $context, JSON_THROW_ON_ERROR )
 				) );
 			} catch ( \JsonException $e ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( sprintf(
 					'BRAGBook SEO Error [%s]: %s - Context encoding failed',
 					$error_id,
@@ -1296,7 +1326,7 @@ final class SEO_Manager {
 	 */
 	private function get_fallback_seo_data(): array {
 		$site_title = get_bloginfo( 'name' );
-		$current_url = home_url( $_SERVER['REQUEST_URI'] ?? '/' );
+		$current_url = home_url( sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ?? '/' ) ) );
 
 		return [
 			'title'          => (get_the_title() ?: 'Gallery') . ' - ' . $site_title,
@@ -1507,6 +1537,7 @@ final class SEO_Manager {
 		// Log unexpected data types for monitoring
 		$this->log_error( 'Unexpected data type encountered', [
 			'type' => gettype( $value ),
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_print_r
 			'value' => print_r( $value, true )
 		] );
 
@@ -1767,6 +1798,7 @@ final class SEO_Manager {
 
 		try {
 			// Delete expired transients related to the plugin
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$expired_transients = $wpdb->get_col( $wpdb->prepare(
 				"SELECT option_name FROM {$wpdb->options}
 				WHERE option_name LIKE %s
@@ -1902,7 +1934,7 @@ final class SEO_Manager {
 
 			// Pre-load basic SEO data
 			$this->get_cached_data(
-				'brag_book_seo_basic_' . $_SERVER['REQUEST_URI'] ?? '/',
+				'brag_book_seo_basic_' . sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ?? '/' ) ),
 				fn() => $this->generate_seo_data(),
 				self::CACHE_TTL_MEDIUM,
 				'warm_up'
