@@ -8519,11 +8519,35 @@ class BRAGbookGalleryApp {
   }
 
   /**
+   * Sync the case carousel slides container height to the active slide's
+   * image height so it animates between slides of varying aspect ratios.
+   */
+  syncCaseCarouselHeight(carousel) {
+    const slidesContainer = carousel.querySelector('.brag-book-gallery-carousel-slides');
+    if (!slidesContainer) return;
+    const pictures = slidesContainer.querySelectorAll('picture');
+    if (!pictures.length) return;
+    const containerWidth = slidesContainer.clientWidth;
+    if (containerWidth === 0) return;
+    const activeIndex = Math.round(slidesContainer.scrollLeft / containerWidth);
+    const activePicture = pictures[activeIndex] || pictures[0];
+    const img = activePicture.querySelector('img');
+    if (!img || !img.complete || img.naturalHeight === 0) return;
+    const height = img.getBoundingClientRect().height;
+    if (height > 0) {
+      slidesContainer.style.height = `${height}px`;
+    }
+  }
+
+  /**
    * Set up scroll listeners to update active carousel dot on scroll/swipe
+   * and sync the slides container height to the active image.
    */
   setupCaseCarouselScrollObserver() {
-    this.caseCarouselScrollHandlers = [];
+    this.caseCarouselScrollHandlers = this.caseCarouselScrollHandlers || [];
     document.querySelectorAll('.brag-book-gallery-case-carousel').forEach(carousel => {
+      // Skip carousels we've already wired up (idempotent for AJAX load-more)
+      if (carousel.dataset.heightSyncReady === 'true') return;
       const pagination = carousel.querySelector('.brag-book-gallery-case-carousel-pagination');
       if (!pagination) return;
 
@@ -8532,6 +8556,7 @@ class BRAGbookGalleryApp {
       if (!slidesContainer) return;
       const pictures = slidesContainer.querySelectorAll('picture');
       if (pictures.length < 2) return;
+      let syncTimer = null;
       const updateActiveDot = () => {
         const scrollLeft = slidesContainer.scrollLeft;
         const containerWidth = slidesContainer.clientWidth;
@@ -8544,6 +8569,12 @@ class BRAGbookGalleryApp {
           dot.classList.toggle('is-active', isActive);
           dot.setAttribute('aria-selected', isActive ? 'true' : 'false');
         });
+
+        // Debounce height sync until scroll settles to avoid mid-swipe jitter
+        clearTimeout(syncTimer);
+        syncTimer = setTimeout(() => {
+          this.syncCaseCarouselHeight(carousel);
+        }, 80);
       };
       slidesContainer.addEventListener('scroll', updateActiveDot, {
         passive: true
@@ -8552,7 +8583,37 @@ class BRAGbookGalleryApp {
         carousel: slidesContainer,
         handler: updateActiveDot
       });
+
+      // Initial sync + re-sync whenever each slide image finishes loading
+      pictures.forEach(picture => {
+        const img = picture.querySelector('img');
+        if (!img) return;
+        if (img.complete && img.naturalHeight > 0) {
+          this.syncCaseCarouselHeight(carousel);
+        } else {
+          img.addEventListener('load', () => {
+            this.syncCaseCarouselHeight(carousel);
+          }, {
+            once: true
+          });
+        }
+      });
+      carousel.dataset.heightSyncReady = 'true';
     });
+
+    // Window resize handler — attached once globally, re-syncs every carousel
+    if (!this.caseCarouselResizeAttached) {
+      let resizeTimer = null;
+      window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+          document.querySelectorAll('.brag-book-gallery-case-carousel').forEach(carousel => {
+            this.syncCaseCarouselHeight(carousel);
+          });
+        }, 100);
+      });
+      this.caseCarouselResizeAttached = true;
+    }
   }
 
   /**

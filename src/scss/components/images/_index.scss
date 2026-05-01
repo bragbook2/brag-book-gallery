@@ -223,6 +223,7 @@
 		// Scrollable anchor containing all slides
 		.brag-book-gallery-carousel-slides {
 			display: flex;
+			align-items: flex-start;
 			overflow-x: auto;
 			overflow-y: hidden;
 			scroll-snap-type: x mandatory;
@@ -231,6 +232,7 @@
 			-ms-overflow-style: none; // IE/Edge
 			gap: 0;
 			text-decoration: none;
+			transition: height 300ms ease;
 
 			&::-webkit-scrollbar {
 				display: none; // Chrome/Safari
