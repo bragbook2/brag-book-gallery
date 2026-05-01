@@ -19,6 +19,8 @@ declare( strict_types=1 );
 
 namespace BRAGBookGallery\Includes\Admin\Debug;
 
+use BRAGBookGallery\Includes\Extend\Taxonomies;
+
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -44,6 +46,32 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class Debug_Diagnostic_Tools {
 
 	/**
+	 * AJAX action for resetting child procedure order values.
+	 *
+	 * @since 4.4.7
+	 */
+	private const ACTION_RESET_PROCEDURE_ORDER = 'brag_book_gallery_reset_procedure_order';
+
+	/**
+	 * Nonce identifier for the procedure-order reset action.
+	 *
+	 * @since 4.4.7
+	 */
+	private const NONCE_RESET_PROCEDURE_ORDER = 'brag_book_gallery_reset_procedure_order';
+
+	/**
+	 * Constructor — wire up AJAX handlers.
+	 *
+	 * @since 4.4.7
+	 */
+	public function __construct() {
+		add_action(
+			'wp_ajax_' . self::ACTION_RESET_PROCEDURE_ORDER,
+			array( $this, 'handle_reset_procedure_order_ajax' )
+		);
+	}
+
+	/**
 	 * Render the diagnostic tools interface
 	 *
 	 * Displays available diagnostic tools with descriptions and controls.
@@ -65,6 +93,11 @@ final class Debug_Diagnostic_Tools {
 				<?php $this->render_database_tables_check(); ?>
 			</div>
 
+			<!-- Term Order Tools -->
+			<div class="diagnostic-section term-order-tools-section">
+				<?php $this->render_term_order_tools(); ?>
+			</div>
+
 			<!-- Gallery Checker Section -->
 			<div class="diagnostic-section gallery-checker-section">
 				<?php
@@ -74,6 +107,180 @@ final class Debug_Diagnostic_Tools {
 
 		</div>
 		<?php
+	}
+
+	/**
+	 * Render the procedure-order reset tool
+	 *
+	 * Outputs a button that clears `procedure_order` term meta for every
+	 * child term in the procedures taxonomy. Parent categories keep their
+	 * values because their order is API-driven and used by the sidebar/nav
+	 * sort. Children are intentionally unordered post-sync, so legacy values
+	 * left over from earlier sync builds can still skew sort behaviour —
+	 * this control wipes them in one pass.
+	 *
+	 * @since 4.4.7
+	 *
+	 * @return void Outputs HTML directly.
+	 */
+	private function render_term_order_tools(): void {
+		$nonce = wp_create_nonce( self::NONCE_RESET_PROCEDURE_ORDER );
+		?>
+		<h3><?php esc_html_e( 'Procedure Order', 'brag-book-gallery' ); ?></h3>
+		<p class="description">
+			<?php esc_html_e( 'Clears the order value on every child procedure term while leaving parent categories untouched. Use this if legacy order values are causing incorrect sorting.', 'brag-book-gallery' ); ?>
+		</p>
+		<p>
+			<button
+				type="button"
+				class="button button-secondary"
+				id="brag-book-reset-procedure-order"
+				data-nonce="<?php echo esc_attr( $nonce ); ?>"
+			>
+				<?php esc_html_e( 'Reset Order Numbers', 'brag-book-gallery' ); ?>
+			</button>
+		</p>
+		<div id="brag-book-reset-procedure-order-result" class="brag-book-reset-result" aria-live="polite"></div>
+		<script>
+			(function () {
+				const button = document.getElementById( 'brag-book-reset-procedure-order' );
+				if ( ! button ) {
+					return;
+				}
+
+				const resultEl = document.getElementById( 'brag-book-reset-procedure-order-result' );
+				const confirmText = <?php echo wp_json_encode( esc_html__( 'Clear procedure_order on all child procedure terms? Parent categories will not be changed.', 'brag-book-gallery' ) ); ?>;
+				const workingText = <?php echo wp_json_encode( esc_html__( 'Resetting child procedure order values…', 'brag-book-gallery' ) ); ?>;
+				const networkErrorText = <?php echo wp_json_encode( esc_html__( 'Network error — please try again.', 'brag-book-gallery' ) ); ?>;
+				const ajaxUrl = <?php echo wp_json_encode( admin_url( 'admin-ajax.php' ) ); ?>;
+				const action = <?php echo wp_json_encode( self::ACTION_RESET_PROCEDURE_ORDER ); ?>;
+
+				button.addEventListener( 'click', async function () {
+					if ( ! window.confirm( confirmText ) ) {
+						return;
+					}
+
+					button.disabled = true;
+					if ( resultEl ) {
+						resultEl.innerHTML = '<p>' + workingText + '</p>';
+					}
+
+					const body = new FormData();
+					body.append( 'action', action );
+					body.append( 'nonce', button.dataset.nonce );
+
+					try {
+						const response = await fetch( ajaxUrl, {
+							method: 'POST',
+							credentials: 'same-origin',
+							body: body,
+						} );
+						const json = await response.json();
+						if ( resultEl ) {
+							const noticeClass = json.success ? 'notice-success' : 'notice-error';
+							const message = ( json.data && json.data.message ) || json.data || '';
+							resultEl.innerHTML = '<div class="notice ' + noticeClass + ' inline"><p>' + message + '</p></div>';
+						}
+					} catch ( err ) {
+						if ( resultEl ) {
+							resultEl.innerHTML = '<div class="notice notice-error inline"><p>' + networkErrorText + '</p></div>';
+						}
+					} finally {
+						button.disabled = false;
+					}
+				} );
+			})();
+		</script>
+		<?php
+	}
+
+	/**
+	 * AJAX handler — clear `procedure_order` term meta for child terms only.
+	 *
+	 * @since 4.4.7
+	 *
+	 * @return void Sends a JSON response and exits.
+	 */
+	public function handle_reset_procedure_order_ajax(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error(
+				array( 'message' => __( 'You do not have permission to perform this action.', 'brag-book-gallery' ) ),
+				403
+			);
+		}
+
+		$nonce = isset( $_POST['nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['nonce'] ) ) : '';
+		if ( ! wp_verify_nonce( $nonce, self::NONCE_RESET_PROCEDURE_ORDER ) ) {
+			wp_send_json_error(
+				array( 'message' => __( 'Security check failed. Please reload the page and try again.', 'brag-book-gallery' ) ),
+				400
+			);
+		}
+
+		$cleared = $this->reset_child_procedure_order();
+
+		wp_send_json_success(
+			array(
+				'message' => sprintf(
+					/* translators: %d: number of child procedure terms updated. */
+					_n(
+						'Cleared procedure_order on %d child procedure term.',
+						'Cleared procedure_order on %d child procedure terms.',
+						$cleared,
+						'brag-book-gallery'
+					),
+					$cleared
+				),
+				'cleared' => $cleared,
+			)
+		);
+	}
+
+	/**
+	 * Delete `procedure_order` term meta from every child procedure term.
+	 *
+	 * Parents (top-level categories) keep their order — sync writes that value
+	 * and the sidebar/nav rely on it. Only terms with a non-zero `parent` are
+	 * touched.
+	 *
+	 * @since 4.4.7
+	 *
+	 * @return int Number of terms whose `procedure_order` meta was deleted.
+	 */
+	private function reset_child_procedure_order(): int {
+		$terms = get_terms(
+			array(
+				'taxonomy'   => Taxonomies::TAXONOMY_PROCEDURES,
+				'hide_empty' => false,
+				'fields'     => 'id=>parent',
+			)
+		);
+
+		if ( is_wp_error( $terms ) || ! is_array( $terms ) ) {
+			return 0;
+		}
+
+		$cleared = 0;
+		foreach ( $terms as $term_id => $parent_id ) {
+			if ( 0 === (int) $parent_id ) {
+				continue;
+			}
+
+			$term_id = (int) $term_id;
+			if ( $term_id <= 0 ) {
+				continue;
+			}
+
+			if ( '' === get_term_meta( $term_id, 'procedure_order', true ) ) {
+				continue;
+			}
+
+			if ( delete_term_meta( $term_id, 'procedure_order' ) ) {
+				++$cleared;
+			}
+		}
+
+		return $cleared;
 	}
 
 	/**

@@ -1049,37 +1049,48 @@ class FavoritesManager {
 
   /**
    * Remove a card from the favorites grid on the favorites page
+   *
+   * No-op on every other view (procedure pages, case detail, carousels,
+   * etc.). The favorites shortcode emits #brag-book-gallery-favorites and
+   * .brag-book-gallery-favorites-grid; we use those as the page marker so
+   * unfavoriting a case from a procedure page never strips it from view.
+   *
    * @param {string} caseId - The case ID to remove
    */
   removeCardFromFavoritesGrid(caseId) {
-    // Find the card element — caseId is the procedureCaseId (junction ID),
-    // stored in data-procedure-case-id on the card element
-    const card = document.querySelector(`.brag-book-gallery-case-card[data-procedure-case-id="${caseId}"], ` + `.brag-book-gallery-favorites-card[data-procedure-case-id="${caseId}"], ` + `.brag-book-gallery-case-card[data-post-id="${caseId}"], ` + `.brag-book-gallery-case-card[data-case-id="${caseId}"], ` + `.brag-book-gallery-favorites-card[data-post-id="${caseId}"], ` + `.brag-book-gallery-favorites-card[data-case-id="${caseId}"]`);
-    if (card) {
-      // Add fade-out animation
-      card.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-      card.style.opacity = '0';
-      card.style.transform = 'scale(0.9)';
-
-      // Remove from DOM after animation
-      setTimeout(() => {
-        card.remove();
-
-        // Check if favorites grid is now empty
-        const favoritesGrid = document.querySelector('.brag-book-gallery-favorites-grid, .brag-book-gallery-case-grid');
-        if (favoritesGrid && favoritesGrid.children.length === 0) {
-          // Show empty state
-          const emptyState = document.getElementById('favoritesEmpty');
-          const gridContainer = document.getElementById('favoritesGridContainer');
-          if (emptyState) {
-            emptyState.style.display = 'block';
-          }
-          if (favoritesGrid) {
-            favoritesGrid.style.display = 'none';
-          }
-        }
-      }, 300);
+    const favoritesPage = document.getElementById('brag-book-gallery-favorites');
+    const favoritesGrid = favoritesPage?.querySelector('.brag-book-gallery-favorites-grid');
+    if (!favoritesPage || !favoritesGrid) {
+      return;
     }
+
+    // Find the card element — caseId is the procedureCaseId (junction ID),
+    // stored in data-procedure-case-id on the card element. Scope the
+    // lookup to the favorites grid so we never touch cards rendered by
+    // other shortcodes that happen to share the same DOM.
+    const card = favoritesGrid.querySelector(`.brag-book-gallery-case-card[data-procedure-case-id="${caseId}"], ` + `.brag-book-gallery-favorites-card[data-procedure-case-id="${caseId}"], ` + `.brag-book-gallery-case-card[data-post-id="${caseId}"], ` + `.brag-book-gallery-case-card[data-case-id="${caseId}"], ` + `.brag-book-gallery-favorites-card[data-post-id="${caseId}"], ` + `.brag-book-gallery-favorites-card[data-case-id="${caseId}"]`);
+    if (!card) {
+      return;
+    }
+
+    // Add fade-out animation
+    card.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+    card.style.opacity = '0';
+    card.style.transform = 'scale(0.9)';
+
+    // Remove from DOM after animation
+    setTimeout(() => {
+      card.remove();
+
+      // Check if favorites grid is now empty
+      if (favoritesGrid.children.length === 0) {
+        const emptyState = document.getElementById('favoritesEmpty');
+        if (emptyState) {
+          emptyState.style.display = 'block';
+        }
+        favoritesGrid.style.display = 'none';
+      }
+    }, 300);
   }
 
   /**
