@@ -1,6 +1,6 @@
 {
 	"name": "brag-book-gallery",
-	"version": "4.4.6",
+	"version": "4.4.7-beta1",
 	"description": "BRAGBook Gallery WordPress Plugin",
 	"author": "Candace Crowe Design",
 	"license": "GPL-2.0-or-later",
@@ -104,5 +104,8 @@
 		"printWidth": 100,
 		"tabWidth": 4,
 		"useTabs": true
+	},
+	"dependencies": {
+		"chart.js": "^4.5.1"
 	}
 }

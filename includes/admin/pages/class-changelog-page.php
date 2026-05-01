@@ -93,6 +93,28 @@ class Changelog_Page extends Settings_Base {
 				</div>
 			</div>
 
+			<!-- Version 4.4.7-beta1 -->
+			<div class="brag-book-gallery-section">
+				<div class="brag-book-gallery-changelog-version">
+					<h3>
+						<span class="version-badge version-beta">v4.4.7-beta1</span>
+						<?php esc_html_e( 'May 1, 2026', 'brag-book-gallery' ); ?>
+					</h3>
+					<div class="brag-book-gallery-card">
+						<p><?php esc_html_e( 'Beta release: scopes procedure-detail filters to the current procedure taxonomy and fixes broken filter checkbox ids on values containing quotes.', 'brag-book-gallery' ); ?></p>
+						<h4><?php esc_html_e( '🐛 Fixed', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Filters: procedure-detail filters now scope to the current procedure taxonomy — multi-procedure cases no longer surface labels from unrelated procedures (e.g. Botox "Neuromodulator Types" no longer appears on Blepharoplasty pages)', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Filters: checkbox ids are now slug-safe so values containing quotes (e.g. height ranges like 5\'4" - 5\'7") no longer terminate the id attribute and break the input/label association', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '🔧 Changed', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Internal refactors across admin pages, debug tools, sync settings, post types, taxonomies, asset/resource managers, and shortcode handlers; new admin case-meta tabs and taxonomies media UI', 'brag-book-gallery' ); ?></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
 			<!-- Version 4.4.6 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">

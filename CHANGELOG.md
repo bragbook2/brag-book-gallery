@@ -4,6 +4,17 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.4.7-beta1] - 2026-05-01 (Beta Release)
+
+### Fixed
+- **Filters — procedure-detail filters now scoped to the current procedure**: On a procedure taxonomy archive (e.g. `/blepharoplasty/`), multi-procedure cases were emitting `data-procedure-detail-*` attributes for every procedure attached to the case, so the filter dropdown surfaced labels from unrelated procedures (e.g. Botox "Neuromodulator Types" appeared on the Blepharoplasty page). Card-level detail attributes are now restricted to the current term's API procedure id when on a `brag_book_procedures` archive; non-procedure contexts (cases grid, favorites) keep the prior behavior.
+- **Filters — checkbox ids no longer break on values containing quotes**: The dynamic filter HTML built ids by string-substituting raw values like `5'4" - 5'7"`, which terminated the `id` attribute at the first `"` and produced unparseable markup with non-matching `<label for>` references. Ids are now generated through a slug-safe transform (lowercase, non-alphanumerics collapsed to `-`), so input/label pairing works for height ranges and any future values containing punctuation.
+
+### Changed
+- Internal refactors across admin pages, debug tools, sync settings, post types, taxonomies, asset/resource managers, and shortcode handlers (cases, favorites, gallery, sidebar). New admin case-meta tabs and taxonomies media UI assets.
+
+---
+
 ## [4.4.6] - 2026-04-05
 
 ### Fixed

@@ -17,11 +17,12 @@
  * Plugin Name:       BRAG book Gallery
  * Plugin URI:        https://www.bragbookgallery.com/
  * Description:       BRAG book before and after gallery.
- * Version:           4.4.6
+ * Version:           4.4.7-beta1
  * Requires at Least: 6.8
+ * Tested up to:      6.9
  * Requires PHP:      8.2
- * Author:            Candace Crowe Design <bragbook@candacecrowe.com>
- * Author URI:        https://www.bragbookgallery.com/
+ * Author:            Candace Crowe Design <candace@candacecrowe.com>
+ * Author URI:        https://www.candacecrowe.com/
  * License:           GPL-2.0+
  * License URI:       http://www.gnu.org/licenses/gpl-2.0.txt
  * Text Domain:       brag-book-gallery
@@ -32,8 +33,8 @@ namespace BRAGBookGallery;
 use BRAGBookGallery\Includes\Core\Setup;
 use BRAGBookGallery\Includes\Core\Updater;
 
-if ( ! defined( constant_name: 'WPINC' ) ) {
-	die( 'Restricted Access' );
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
 }
 
 require_once 'includes/autoload.php';
