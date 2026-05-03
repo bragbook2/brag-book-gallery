@@ -130,8 +130,8 @@ class Dashboard_Page extends Settings_Base {
 					printf(
 						/* translators: 1: Number of completed steps, 2: Total number of steps */
 						esc_html__( '%1$d of %2$d steps completed', 'brag-book-gallery' ),
-						$setup_steps['completed'],
-						$setup_steps['total']
+						absint( $setup_steps['completed'] ),
+						absint( $setup_steps['total'] )
 					);
 					?>
 				</p>
@@ -320,6 +320,7 @@ class Dashboard_Page extends Settings_Base {
 						<?php
 						// Count pages with the shortcode
 						global $wpdb;
+						// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 						$pages_with_gallery = $wpdb->get_var(
 							"SELECT COUNT(*) FROM {$wpdb->posts}
 							WHERE post_content LIKE '%[brag_book_gallery%'
@@ -392,6 +393,7 @@ class Dashboard_Page extends Settings_Base {
 
 		// Step 2: Create Gallery Page
 		global $wpdb;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$pages_with_shortcode = $wpdb->get_var(
 			"SELECT COUNT(*) FROM {$wpdb->posts}
 			WHERE post_content LIKE '%[brag_book_gallery%'
@@ -440,6 +442,7 @@ class Dashboard_Page extends Settings_Base {
 	 */
 	protected function render_custom_notices(): void {
 		// Check if coming from a factory reset
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		if ( isset( $_GET['reset'] ) && 'success' === $_GET['reset'] ) {
 			?>
 			<div class="notice notice-success is-dismissible">

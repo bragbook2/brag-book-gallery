@@ -5,6 +5,10 @@
  * @package BRAGBookGallery
  */
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 use BRAGBookGallery\Includes\Extend\Shortcodes;
 
 /**

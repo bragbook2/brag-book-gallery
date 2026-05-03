@@ -322,6 +322,7 @@ final class Debug_Logs {
 		header( 'Content-Length: ' . filesize( $log_file ) );
 
 		// Output file contents.
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_readfile
 		readfile( $log_file );
 		exit;
 	}
@@ -344,6 +345,7 @@ final class Debug_Logs {
 			return [];
 		}
 
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen
 		$handle = fopen( $file, 'r' );
 		if ( ! $handle ) {
 			return [];
@@ -377,6 +379,7 @@ final class Debug_Logs {
 			}
 		}
 
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
 		fclose( $handle );
 
 		return $content;

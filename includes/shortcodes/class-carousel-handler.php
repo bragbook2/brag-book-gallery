@@ -544,13 +544,9 @@ final class Carousel_Handler {
 					// Get fresh cases for this specific procedure
 					$procedure_cases = self::get_cases_for_procedure( $procedure_slug, $config['procedure_id'], $limit );
 
-					// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- HTML is already escaped in method.
-					echo self::generate_carousel_items(
-						$procedure_cases,
-						$limit,
-						$procedure_slug,
-						$config
-					);
+					$carousel_html = self::generate_carousel_items( $procedure_cases, $limit, $procedure_slug, $config );
+					// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- HTML is escaped inside generate_carousel_items().
+					echo $carousel_html;
 					?>
 				</div>
 			</div>

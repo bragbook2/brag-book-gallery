@@ -150,14 +150,19 @@ class Data_Sync {
 					$this->database = $db;
 				}
 			} catch ( \Exception $e ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAG book Gallery Sync: Could not initialize database for registry: ' . $e->getMessage() );
 			}
 		} catch ( Exception $e ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: Constructor failed with exception: ' . $e->getMessage() );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: Exception trace: ' . $e->getTraceAsString() );
 			throw $e;
 		} catch ( Error $e ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: Constructor failed with error: ' . $e->getMessage() );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: Error trace: ' . $e->getTraceAsString() );
 			throw $e;
 		}
@@ -235,6 +240,7 @@ class Data_Sync {
 		// Check if there's an existing state to resume from
 		$existing_state = get_option( $this->sync_state_option, null );
 		if ( $existing_state && ! empty( $existing_state['session_id'] ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: Found existing sync state, attempting to resume...' );
 
 			return $this->resume_sync( $existing_state );
@@ -245,6 +251,7 @@ class Data_Sync {
 		// Register sync with BRAG book API
 		$registration_result = $this->register_sync_with_api();
 		if ( $registration_result ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: Registered with BRAG book API - Job ID: ' . ( $registration_result['job_id'] ?? 'unknown' ) );
 		}
 
@@ -266,10 +273,12 @@ class Data_Sync {
 
 		try {
 			// STAGE 1: Sync procedures from sidebar API
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: ===== STAGE 1: PROCEDURE SYNC =====' );
 			$stage1_result = $this->sync_procedures_stage1();
 
 			if ( ! $stage1_result['success'] ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAG book Gallery Sync: Stage 1 failed, aborting sync' );
 				$this->log_sync_error( 'Stage 1 (procedures) failed: ' . implode( ', ', $stage1_result['errors'] ) );
 
@@ -292,11 +301,13 @@ class Data_Sync {
 			if ( $include_cases ) {
 				// Get sidebar data file from stage 1 result
 				if ( empty( $stage1_result['sidebar_data_file'] ) || ! file_exists( $stage1_result['sidebar_data_file'] ) ) {
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( 'BRAG book Gallery Sync: ERROR - Sidebar data file not found from stage 1' );
 					throw new Exception( 'Sidebar data file not available for stage 2' );
 				}
 
 				// Read sidebar data from file
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAG book Gallery Sync: Loading sidebar data from file: ' . basename( $stage1_result['sidebar_data_file'] ) );
 				$sidebar_json = file_get_contents( $stage1_result['sidebar_data_file'] );
 				if ( $sidebar_json === false ) {
@@ -316,7 +327,8 @@ class Data_Sync {
 
 				// Clean up the sync file after successful completion
 				if ( ! empty( $stage1_result['sidebar_data_file'] ) && file_exists( $stage1_result['sidebar_data_file'] ) ) {
-					@unlink( $stage1_result['sidebar_data_file'] );
+					wp_delete_file( $stage1_result['sidebar_data_file'] );
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( 'BRAG book Gallery Sync: Cleaned up sync data file: ' . basename( $stage1_result['sidebar_data_file'] ) );
 				}
 
@@ -340,32 +352,45 @@ class Data_Sync {
 			$total_errors = count( $total_result['errors'] );
 			$success      = empty( $total_result['errors'] );
 
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: ===== FINAL SYNC SUMMARY =====' );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: Status: " . ( $success ? 'SUCCESS' : 'COMPLETED WITH ERRORS' ) );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: Procedures created: {$total_result['created']}" );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: Procedures updated: {$total_result['updated']}" );
 			if ( $include_cases ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( "BRAG book Gallery Sync: Cases created: {$total_result['cases_created']}" );
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( "BRAG book Gallery Sync: Cases updated: {$total_result['cases_updated']}" );
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( "BRAG book Gallery Sync: Total cases processed: {$total_result['total_cases_processed']}" );
 			}
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: Total errors: {$total_errors}" );
 
 			$total_warnings = count( $total_result['warnings'] ?? [] );
 			if ( $total_warnings > 0 ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( "BRAG book Gallery Sync: Total warnings: {$total_warnings}" );
 			}
 
 			if ( ! empty( $total_result['errors'] ) ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAG book Gallery Sync: Error details:' );
 				foreach ( $total_result['errors'] as $error ) {
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( 'BRAG book Gallery Sync: - ' . $error );
 				}
 			}
 
 			if ( ! empty( $total_result['warnings'] ) ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAG book Gallery Sync: Warning details:' );
 				foreach ( $total_result['warnings'] as $warning ) {
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( 'BRAG book Gallery Sync: - ' . $warning );
 				}
 			}
@@ -376,6 +401,7 @@ class Data_Sync {
 			// Clear sync state on successful completion
 			$this->clear_sync_state();
 
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: ===== SYNC COMPLETE =====' );
 
 			// Report sync status to BRAG book API
@@ -413,6 +439,7 @@ class Data_Sync {
 					$orphans = $orphan_manager->detect_orphans( $this->sync_session_id, $this->get_registry_api_token() );
 					if ( ! empty( $orphans ) ) {
 						$orphan_result = $orphan_manager->delete_orphaned_items( $orphans, $this->sync_session_id );
+						// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 						error_log( sprintf(
 							'BRAG book Gallery Sync: Auto-deleted %d orphaned items (%d errors)',
 							$orphan_result['deleted'],
@@ -420,6 +447,7 @@ class Data_Sync {
 						) );
 					}
 				} catch ( \Exception $e ) {
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( 'BRAG book Gallery Sync: Orphan cleanup failed: ' . $e->getMessage() );
 				}
 			}
@@ -430,7 +458,9 @@ class Data_Sync {
 			return $total_result;
 
 		} catch ( Exception $e ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: Sync failed with exception: ' . $e->getMessage() );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: Exception stack trace: ' . $e->getTraceAsString() );
 			$this->log_sync_error( $e->getMessage() );
 
@@ -445,7 +475,8 @@ class Data_Sync {
 
 			// Clean up any sync data files on error
 			if ( ! empty( $stage1_result['sidebar_data_file'] ) && file_exists( $stage1_result['sidebar_data_file'] ) ) {
-				@unlink( $stage1_result['sidebar_data_file'] );
+				wp_delete_file( $stage1_result['sidebar_data_file'] );
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAG book Gallery Sync: Cleaned up sync data file on error: ' . basename( $stage1_result['sidebar_data_file'] ) );
 			}
 
@@ -472,13 +503,16 @@ class Data_Sync {
 		$upload_dir = wp_upload_dir();
 		$sync_dir   = $upload_dir['basedir'] . '/brag-book-gallery-sync';
 
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery Sync: Sync data directory: ' . $sync_dir );
 
 		// Create directory if it doesn't exist
 		if ( ! file_exists( $sync_dir ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: Creating sync data directory: ' . $sync_dir );
 			$created = wp_mkdir_p( $sync_dir );
 			if ( ! $created ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAG book Gallery Sync: ERROR - Failed to create sync directory' );
 			}
 			// Add .htaccess to protect directory
@@ -503,7 +537,8 @@ class Data_Sync {
 		if ( $files ) {
 			foreach ( $files as $file ) {
 				if ( filemtime( $file ) < $max_age ) {
-					@unlink( $file );
+					wp_delete_file( $file );
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( 'BRAG book Gallery Sync: Cleaned up old sync file: ' . basename( $file ) );
 				}
 			}
@@ -515,6 +550,7 @@ class Data_Sync {
 			// Log initial memory usage
 			$initial_memory = memory_get_usage( true );
 			$initial_peak   = memory_get_peak_usage( true );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( sprintf(
 				'BRAG book Gallery Sync: [MEMORY] Starting procedures sync - Current: %s, Peak: %s',
 				size_format( $initial_memory ),
@@ -529,35 +565,42 @@ class Data_Sync {
 			$this->aggressive_memory_cleanup();
 
 			$memory_before_api = memory_get_usage( true );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( sprintf(
 				'BRAG book Gallery Sync: [MEMORY] Before API call - Current: %s (diff: %s)',
 				size_format( $memory_before_api ),
 				size_format( $memory_before_api - $initial_memory )
 			) );
 
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: Step 1 - Connecting to BRAGBook API...' );
 			$api_data = $this->fetch_api_data();
 
 			$memory_after_api = memory_get_usage( true );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( sprintf(
 				'BRAG book Gallery Sync: [MEMORY] After API call - Current: %s (diff: %s)',
 				size_format( $memory_after_api ),
 				size_format( $memory_after_api - $memory_before_api )
 			) );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: ✓ Successfully connected to API' );
 
 			// Save API data to file immediately to free memory
 			$sync_dir  = $this->get_sync_data_dir();
-			$sync_file = $sync_dir . '/sync-data-' . date( 'Y-m-d-His' ) . '-' . wp_generate_password( 8, false ) . '.json';
+			$sync_file = $sync_dir . '/sync-data-' . gmdate( 'Y-m-d-His' ) . '-' . wp_generate_password( 8, false ) . '.json';
 
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: Saving API data to file: ' . basename( $sync_file ) );
 			$bytes_written = file_put_contents( $sync_file, wp_json_encode( $api_data ) );
 
 			if ( $bytes_written === false ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAG book Gallery Sync: ERROR - Failed to save API data to file' );
 				throw new Exception( 'Failed to save API data to file' );
 			}
 
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( sprintf(
 				'BRAG book Gallery Sync: ✓ Saved %s of API data to file',
 				size_format( $bytes_written )
@@ -572,20 +615,24 @@ class Data_Sync {
 			gc_collect_cycles();
 
 			$memory_after_save = memory_get_usage( true );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( sprintf(
 				'BRAG book Gallery Sync: [MEMORY] After saving to file and cleanup - Current: %s (freed: %s)',
 				size_format( $memory_after_save ),
 				size_format( $memory_after_api - $memory_after_save )
 			) );
 
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: Step 2 - Analyzing API response...' );
 
 			if ( empty( $categories_data ) ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAG book Gallery Sync: ✗ No procedure data found in API response' );
-				throw new Exception( __( 'No data received from API', 'brag-book-gallery' ) );
+				throw new Exception( esc_html( __( 'No data received from API', 'brag-book-gallery' ) ) );
 			}
 
 			$total_categories = count( $categories_data );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: ✓ Found ' . $total_categories . ' procedure categories to process' );
 
 			$created_procedures = [];
@@ -593,6 +640,7 @@ class Data_Sync {
 			$errors             = [];
 			$category_count     = 0;
 
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: Step 3 - Processing procedure categories...' );
 
 			foreach ( $categories_data as $category_index => $category ) {
@@ -603,6 +651,7 @@ class Data_Sync {
 				$current_memory = memory_get_usage( true );
 				$current_real   = memory_get_usage( false );
 				$memory_limit   = $this->get_memory_limit_bytes();
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( sprintf(
 					'BRAG book Gallery Sync: [MEMORY-CAT] Category %d/%d "%s" - Reserved: %s, Real: %s (%.1f%% of limit)',
 					$category_count,
@@ -614,10 +663,12 @@ class Data_Sync {
 				) );
 
 				try {
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( "BRAG book Gallery Sync: Processing category {$category_count}/{$total_categories}: '{$category_name}'" );
 
 					// Count child procedures
 					$child_count = isset( $category['procedures'] ) ? count( $category['procedures'] ) : 0;
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( "BRAG book Gallery Sync: Category '{$category_name}' contains {$child_count} procedures" );
 
 					$result             = $this->process_category( $category, $category_index );
@@ -626,12 +677,14 @@ class Data_Sync {
 
 					$created_in_category = count( $result['created'] );
 					$updated_in_category = count( $result['updated'] );
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( "BRAG book Gallery Sync: ✓ Category '{$category_name}' processed - Created: {$created_in_category}, Updated: {$updated_in_category}" );
 
 					// Clean up memory after each category if memory usage is high
 					$current_memory = memory_get_usage( true );
 					$memory_limit   = $this->get_memory_limit_bytes();
 					if ( $current_memory > ( $memory_limit * 0.5 ) ) { // If using more than 50% of limit
+						// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 						error_log( sprintf(
 							'BRAG book Gallery Sync: [MEMORY] High memory usage detected (%s/%s), running cleanup',
 							size_format( $current_memory ),
@@ -639,6 +692,7 @@ class Data_Sync {
 						) );
 						$this->aggressive_memory_cleanup();
 						$memory_after_cleanup = memory_get_usage( true );
+						// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 						error_log( sprintf(
 							'BRAG book Gallery Sync: [MEMORY] After cleanup - Current: %s (freed: %s)',
 							size_format( $memory_after_cleanup ),
@@ -647,12 +701,14 @@ class Data_Sync {
 					}
 
 				} catch ( Exception $e ) {
-					$error_msg = sprintf(
-						__( 'Error processing category "%s": %s', 'brag-book-gallery' ),
+						$error_msg = sprintf(
+						/* translators: %1$s: category name, %2$s: error message */
+						__( 'Error processing category "%1$s": %2$s', 'brag-book-gallery' ),
 						$category_name,
 						$e->getMessage()
 					);
 					$errors[]  = $error_msg;
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( "BRAG book Gallery Sync: ✗ Failed to process category '{$category_name}': " . $e->getMessage() );
 				}
 			}
@@ -666,16 +722,23 @@ class Data_Sync {
 			$total_errors  = count( $errors );
 			$success       = empty( $errors );
 
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: Step 4 - Stage 1 completed' );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: Stage 1 Status: " . ( $success ? 'SUCCESS' : 'COMPLETED WITH ERRORS' ) );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: Categories processed: {$total_categories}" );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: Procedures created: {$total_created}" );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: Procedures updated: {$total_updated}" );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: Errors encountered: {$total_errors}" );
 
 			// Final memory report
 			$final_memory = memory_get_usage( true );
 			$final_peak   = memory_get_peak_usage( true );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( sprintf(
 				'BRAG book Gallery Sync: [MEMORY] Stage 1 complete - Current: %s, Peak: %s',
 				size_format( $final_memory ),
@@ -696,6 +759,7 @@ class Data_Sync {
 			];
 
 		} catch ( Exception $e ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: Stage 1 failed with exception: ' . $e->getMessage() );
 			throw $e;
 		}
@@ -711,6 +775,7 @@ class Data_Sync {
 	private function fetch_api_data(): array {
 		// Log memory at start of API call
 		$initial_memory = memory_get_usage( true );
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( sprintf(
 			'BRAG book Gallery Sync: [MEMORY] fetch_api_data() start - Current: %s',
 			size_format( $initial_memory )
@@ -718,13 +783,16 @@ class Data_Sync {
 
 		$endpoint = '/api/plugin/v2/terms';
 
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery Sync: Preparing API request to: ' . $endpoint );
 
 		// Get API tokens for authentication
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery Sync: Retrieving API credentials...' );
 		$mem_before_option = memory_get_usage( true );
 		$api_tokens        = get_option( 'brag_book_gallery_api_token', [] );
 		$mem_after_option  = memory_get_usage( true );
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( sprintf(
 			'BRAG book Gallery Sync: [MEMORY] After get_option() - Current: %s (diff: %s)',
 			size_format( $mem_after_option ),
@@ -732,8 +800,9 @@ class Data_Sync {
 		) );
 
 		if ( empty( $api_tokens ) || empty( $api_tokens[0] ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: ✗ No API tokens configured in settings' );
-			throw new Exception( __( 'No API tokens configured. Please configure API settings first.', 'brag-book-gallery' ) );
+			throw new Exception( esc_html( __( 'No API tokens configured. Please configure API settings first.', 'brag-book-gallery' ) ) );
 		}
 
 		// Filter out empty tokens
@@ -742,20 +811,25 @@ class Data_Sync {
 		} );
 
 		if ( empty( $valid_tokens ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: ✗ No valid API tokens found after filtering' );
-			throw new Exception( __( 'No valid API tokens found. Please configure API settings first.', 'brag-book-gallery' ) );
+			throw new Exception( esc_html( __( 'No valid API tokens found. Please configure API settings first.', 'brag-book-gallery' ) ) );
 		}
 
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery Sync: ✓ Found ' . count( $valid_tokens ) . ' valid API token(s)' );
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery Sync: Using primary token: ' . substr( $valid_tokens[0], 0, 10 ) . '...' );
 
 		// Build full URL for GET request
 		$api_base_url = $this->get_api_base_url();
 		$full_url     = $api_base_url . $endpoint;
 
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery Sync: Connecting to: ' . $full_url );
 
 		// Make GET request with Bearer token authentication
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery Sync: Sending GET request to BRAGBook API...' );
 		$start_time = microtime( true );
 
@@ -774,39 +848,51 @@ class Data_Sync {
 		if ( is_wp_error( $response ) ) {
 			$error_message = $response->get_error_message();
 			$error_code    = $response->get_error_code();
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: ✗ API request failed after {$request_time}ms (code: {$error_code}): {$error_message}" );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: Failed request URL: ' . $full_url );
-			throw new Exception( sprintf(
-				__( 'API request failed [%s]: %s', 'brag-book-gallery' ),
+			throw new Exception( esc_html( sprintf(
+				/* translators: %1$s: error code, %2$s: error message */
+				__( 'API request failed [%1$s]: %2$s', 'brag-book-gallery' ),
 				$error_code,
 				$error_message
-			) );
+			) ) );
 		}
 
 		$response_code = wp_remote_retrieve_response_code( $response );
 		$response_body = wp_remote_retrieve_body( $response );
 
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery Sync: ✓ API responded in ' . $request_time . 'ms with status: ' . $response_code );
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery Sync: Response size: ' . strlen( $response_body ) . ' bytes' );
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery Sync: Response preview: ' . substr( $response_body, 0, 150 ) . '...' );
 
 		// Check for HTML error pages (common cause of JSON parse errors)
 		if ( stripos( $response_body, '<html' ) !== false || stripos( $response_body, '<!DOCTYPE' ) !== false ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: WARNING - Response appears to be HTML instead of JSON' );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: Content-Type header: ' . wp_remote_retrieve_header( $response, 'content-type' ) );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: Full HTML response: ' . $response_body );
 		}
 
 		if ( $response_code !== 200 ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: API returned non-200 status: ' . $response_code );
-			throw new Exception( sprintf(
+			throw new Exception( esc_html( sprintf(
+				/* translators: %d: HTTP status code */
 				__( 'API returned error status %d', 'brag-book-gallery' ),
 				$response_code
-			) );
+			) ) );
 		}
 
 		// Log memory before JSON decode
 		$memory_before_decode = memory_get_usage( true );
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( sprintf(
 			'BRAG book Gallery Sync: [MEMORY] Before JSON decode - Current: %s, Response size: %s',
 			size_format( $memory_before_decode ),
@@ -821,6 +907,7 @@ class Data_Sync {
 		gc_collect_cycles();
 
 		$memory_after_decode = memory_get_usage( true );
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( sprintf(
 			'BRAG book Gallery Sync: [MEMORY] After JSON decode and cleanup - Current: %s (diff: %s)',
 			size_format( $memory_after_decode ),
@@ -828,26 +915,34 @@ class Data_Sync {
 		) );
 
 		if ( json_last_error() !== JSON_ERROR_NONE ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: JSON decode error: ' . json_last_error_msg() );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: Response body (first 500 chars): ' . substr( $response_body, 0, 500 ) );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: Response body length: ' . strlen( $response_body ) );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: Response content type: ' . wp_remote_retrieve_header( $response, 'content-type' ) );
-			throw new Exception( sprintf(
-				__( 'Invalid JSON response from API: %s. Response preview: %s', 'brag-book-gallery' ),
+			throw new Exception( esc_html( sprintf(
+				/* translators: %1$s: JSON error message, %2$s: response preview */
+				__( 'Invalid JSON response from API: %1$s. Response preview: %2$s', 'brag-book-gallery' ),
 				json_last_error_msg(),
 				substr( $response_body, 0, 100 )
-			) );
+			) ) );
 		}
 
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery Sync: API response data keys: ' . wp_json_encode( array_keys( $data ) ) );
 
 		if ( ! isset( $data['data']['terms'] ) || ! is_array( $data['data']['terms'] ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: API returned unexpected response structure. Keys: ' . wp_json_encode( array_keys( $data ) ) );
-			throw new Exception( __( 'API returned unexpected response structure (missing data.terms key)', 'brag-book-gallery' ) );
+			throw new Exception( esc_html( __( 'API returned unexpected response structure (missing data.terms key)', 'brag-book-gallery' ) ) );
 		}
 
 		// Final memory report for API call
 		$final_api_memory = memory_get_usage( true );
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( sprintf(
 			'BRAG book Gallery Sync: [MEMORY] fetch_api_data() complete - Current: %s (total diff: %s)',
 			size_format( $final_api_memory ),
@@ -894,6 +989,7 @@ class Data_Sync {
 					// Clear procedure data after processing
 					unset( $procedure );
 				} catch ( Exception $e ) {
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( sprintf(
 						'Error processing procedure "%s": %s',
 						$procedure['name'] ?? 'Unknown',
@@ -946,11 +1042,12 @@ class Data_Sync {
 			] );
 
 			if ( is_wp_error( $updated ) ) {
-				throw new Exception( sprintf(
-					__( 'Failed to update term "%s": %s', 'brag-book-gallery' ),
+				throw new Exception( esc_html( sprintf(
+					/* translators: %1$s: term name, %2$s: error message */
+					__( 'Failed to update term "%1$s": %2$s', 'brag-book-gallery' ),
 					$name,
 					$updated->get_error_message()
-				) );
+				) ) );
 			}
 
 			$created = false;
@@ -963,11 +1060,12 @@ class Data_Sync {
 			] );
 
 			if ( is_wp_error( $inserted ) ) {
-				throw new Exception( sprintf(
-					__( 'Failed to create term "%s": %s', 'brag-book-gallery' ),
+				throw new Exception( esc_html( sprintf(
+					/* translators: %1$s: term name, %2$s: error message */
+					__( 'Failed to create term "%1$s": %2$s', 'brag-book-gallery' ),
 					$name,
 					$inserted->get_error_message()
-				) );
+				) ) );
 			}
 
 			$term_id = $inserted['term_id'];
@@ -1090,6 +1188,7 @@ class Data_Sync {
 			$data['slug'] ?? sanitize_title( $data['name'] )
 		);
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$wpdb->insert(
 			$this->log_table,
 			[
@@ -1130,6 +1229,7 @@ class Data_Sync {
 	private function log_sync_start(): void {
 		global $wpdb;
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$wpdb->insert(
 			$this->log_table,
 			[
@@ -1165,8 +1265,10 @@ class Data_Sync {
 		global $wpdb;
 
 		// Calculate sync duration
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$start_time = $wpdb->get_var( $wpdb->prepare(
-			"SELECT MIN(created_at) FROM {$this->log_table} WHERE sync_session_id = %s",
+			'SELECT MIN(created_at) FROM %i WHERE sync_session_id = %s',
+			$this->log_table,
 			$this->sync_session_id
 		) );
 
@@ -1189,10 +1291,10 @@ class Data_Sync {
 		}
 
 		// Get all individual operations for this sync session to build a detailed log
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$operations = $wpdb->get_results( $wpdb->prepare(
-			"SELECT * FROM {$this->log_table}
-			WHERE sync_session_id = %s
-			ORDER BY created_at ASC",
+			'SELECT * FROM %i WHERE sync_session_id = %s ORDER BY created_at ASC',
+			$this->log_table,
 			$this->sync_session_id
 		) );
 
@@ -1236,6 +1338,7 @@ class Data_Sync {
 		$enhanced_result['cases_attempted'] = $cases_created + $cases_updated + $duplicate_occurrences;
 
 		// Insert single consolidated sync record
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$wpdb->insert(
 			$this->log_table,
 			[
@@ -1265,10 +1368,10 @@ class Data_Sync {
 		);
 
 		// Clean up individual operation logs - keep only the summary
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$wpdb->query( $wpdb->prepare(
-			"DELETE FROM {$this->log_table}
-			WHERE sync_session_id = %s
-			AND operation != 'complete'",
+			"DELETE FROM %i WHERE sync_session_id = %s AND operation != 'complete'",
+			$this->log_table,
 			$this->sync_session_id
 		) );
 
@@ -1287,6 +1390,7 @@ class Data_Sync {
 	private function log_sync_error( string $error_message ): void {
 		global $wpdb;
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$wpdb->insert(
 			$this->log_table,
 			[
@@ -1324,10 +1428,12 @@ class Data_Sync {
 	 * @since 3.0.0
 	 */
 	private function maybe_create_sync_table(): void {
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery Sync: Starting maybe_create_sync_table (HIPAA-compliant version)' );
 		global $wpdb;
 
 		$charset_collate = $wpdb->get_charset_collate();
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery Sync: Got charset collate: ' . $charset_collate );
 
 		$sql = "CREATE TABLE IF NOT EXISTS {$this->log_table} (
@@ -1355,9 +1461,11 @@ class Data_Sync {
 			KEY created_at (created_at)
 		) {$charset_collate};";
 
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery Sync: About to require upgrade.php and run dbDelta' );
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 		dbDelta( $sql );
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery Sync: dbDelta completed, HIPAA-compliant table creation finished' );
 
 		// Schedule log cleanup for HIPAA compliance
@@ -1396,16 +1504,19 @@ class Data_Sync {
 		global $wpdb;
 
 		// Delete logs older than 90 days
-		$cutoff_date = date( 'Y-m-d H:i:s', strtotime( '-90 days' ) );
+		$cutoff_date = gmdate( 'Y-m-d H:i:s', strtotime( '-90 days' ) );
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$deleted = $wpdb->query(
 			$wpdb->prepare(
-				"DELETE FROM {$this->log_table} WHERE created_at < %s",
+				'DELETE FROM %i WHERE created_at < %s',
+				$this->log_table,
 				$cutoff_date
 			)
 		);
 
 		if ( $deleted > 0 ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: HIPAA compliance cleanup - Deleted {$deleted} old log entries" );
 		}
 	}
@@ -1420,6 +1531,7 @@ class Data_Sync {
 	 */
 	private function sync_cases_stage2( array $sidebar_data ): array {
 		try {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: Starting case synchronization...' );
 
 			// Clear all memory before starting
@@ -1432,6 +1544,7 @@ class Data_Sync {
 
 			// Disable Query Monitor to save memory during sync
 			if ( class_exists( 'QueryMonitor' ) || class_exists( 'QM' ) ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAG book Gallery Sync: Disabling Query Monitor to conserve memory' );
 				// Remove all Query Monitor hooks
 				remove_all_actions( 'qm/collect' );
@@ -1453,10 +1566,12 @@ class Data_Sync {
 
 			// Memory optimization: Aggressively increase memory limit for sync operations
 			$original_memory_limit = ini_get( 'memory_limit' );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: Current memory limit: {$original_memory_limit}" );
 
 			// Don't try to increase memory - work within the configured limit
 			// This respects the server's memory configuration
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: Working within configured memory limit of {$original_memory_limit}" );
 
 			// Convert memory limit to bytes for monitoring
@@ -1470,10 +1585,13 @@ class Data_Sync {
 			$initial_memory_mb      = round( $initial_memory_usage / ( 1024 * 1024 ), 2 );
 			$initial_memory_percent = round( ( $initial_memory_usage / $memory_limit_bytes ) * 100, 1 );
 
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: Memory limit detected: {$memory_limit_mb} MB ({$memory_limit_bytes} bytes)" );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: Initial memory after cleanup: {$initial_memory_mb} MB ({$initial_memory_percent}% of limit)" );
 
 			// Log memory status for monitoring
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: Memory limit: {$memory_limit_mb} MB - Using optimized single-case processing" );
 
 			$created_cases   = 0;
@@ -1485,7 +1603,9 @@ class Data_Sync {
 
 			// Get all procedures from sidebar data (including their IDs)
 			$procedures = $this->extract_procedures_from_sidebar( $sidebar_data );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: Found ' . count( $procedures ) . ' procedures to process' );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: Procedure details: ' . wp_json_encode( $procedures ) );
 
 			// Calculate total expected cases for accurate progress tracking
@@ -1494,15 +1614,18 @@ class Data_Sync {
 			foreach ( $procedures as $procedure ) {
 				$baseline_expected_cases += $procedure['caseCount'];
 			}
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: Baseline expected cases from sidebar: ' . $baseline_expected_cases );
 
 			// Use dynamic case counting for more accurate progress
 			$total_expected_cases = $baseline_expected_cases; // Will be updated as we discover actual case counts
 
 			// Memory-based safety only - no artificial case limits
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: Processing all {$total_expected_cases} cases from API (no artificial limits)" );
 
 			if ( empty( $procedures ) ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAG book Gallery Sync: No procedures found in sidebar data' );
 
 				return [
@@ -1526,18 +1649,23 @@ class Data_Sync {
 				$procedure_ids  = $procedure['ids'] ?? [];
 				$case_count     = $procedure['caseCount'] ?? 0;
 
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( "BRAG book Gallery Sync: Extracted data for '{$procedure_name}' - IDs: " . wp_json_encode( $procedure_ids ) . ", case_count: {$case_count}" );
 
 				try {
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( "BRAG book Gallery Sync: Entering try block for procedure '{$procedure_name}'" );
 					// Monitor memory and time at procedure level
 					$procedure_start_time = microtime( true );
 					$current_memory       = memory_get_usage( true );
 					$peak_memory          = memory_get_peak_usage( true );
 
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( "BRAG book Gallery Sync: Processing procedure '{$procedure_name}' with " . count( $procedure_ids ) . " IDs [" . implode( ', ', $procedure_ids ) . "] (" . ( $procedure_index + 1 ) . "/" . count( $procedures ) . ")" );
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( "BRAG book Gallery Sync: Procedure '{$procedure_name}' has {$case_count} total cases" );
-					error_log( "BRAG book Gallery Sync: Current memory: " . wp_convert_bytes_to_hr( $current_memory ) . ", Peak: " . wp_convert_bytes_to_hr( $peak_memory ) );
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+					error_log( "BRAG book Gallery Sync: Current memory: " . size_format( $current_memory ) . ", Peak: " . size_format( $peak_memory ) );
 					$case_processing_log[] = "Processing procedure: {$procedure_name} (" . count( $procedure_ids ) . " IDs)";
 
 					// Calculate overall progress based on cases processed across all procedures
@@ -1548,7 +1676,9 @@ class Data_Sync {
 					// Calculate procedure progress (0% at start)
 					$procedure_percentage = ( $procedure_index / count( $procedures ) ) * 100;
 
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( "BRAG book Gallery Sync: Updating detailed progress for procedure start: {$procedure_name}" );
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( "BRAG book Gallery Sync: Overall: {$overall_percentage}%, Procedure: {$procedure_percentage}%, Cases processed: {$cases_processed_so_far}/{$total_expected_cases}" );
 
 					$this->update_detailed_progress( [
@@ -1564,40 +1694,49 @@ class Data_Sync {
 						'current_step'         => "Starting procedure: {$procedure_name} (0 of {$case_count} cases)",
 						'recent_cases'         => $recent_cases,
 					] );
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( "BRAG book Gallery Sync: ✓ Detailed progress updated" );
 
 					if ( $case_count <= 0 || empty( $procedure_ids ) ) {
+						// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 						error_log( "BRAG book Gallery Sync: Skipping procedure '{$procedure_name}' - no cases or IDs" );
 						continue;
 					}
 
 					// Check memory usage before processing procedure
 					if ( $current_memory > ( 400 * 1024 * 1024 ) ) { // 400MB threshold
-						error_log( "BRAG book Gallery Sync: ⚠ High memory usage detected: " . wp_convert_bytes_to_hr( $current_memory ) );
+						// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+						error_log( "BRAG book Gallery Sync: ⚠ High memory usage detected: " . size_format( $current_memory ) );
 					}
 
 					// Track cases processed for this procedure
 					$procedure_cases_processed = 0;
 
 					// Debug: Check if we have procedure IDs to process
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( "BRAG book Gallery Sync: About to process procedure IDs for '{$procedure_name}': " . wp_json_encode( $procedure_ids ) );
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( "BRAG book Gallery Sync: Number of procedure IDs: " . count( $procedure_ids ) );
 
 					if ( empty( $procedure_ids ) ) {
+						// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 						error_log( "BRAG book Gallery Sync: ✗ No procedure IDs found for '{$procedure_name}' - skipping" );
 						continue; // Skip to next procedure
 					}
 
 					// Process each individual procedure ID separately
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( "BRAG book Gallery Sync: Starting foreach loop for procedure IDs..." );
 					foreach ( $procedure_ids as $id_index => $procedure_id ) {
 						try {
 							$procedure_id_start = microtime( true );
+							// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 							error_log( "BRAG book Gallery Sync: Processing individual procedure ID {$procedure_id} (" . ( $id_index + 1 ) . "/" . count( $procedure_ids ) . ") from '{$procedure_name}'" );
 							$case_processing_log[] = "Processing procedure ID {$procedure_id} from {$procedure_name}";
 
 							// Check if we should continue based on time and memory limits
 							if ( ! $this->should_continue_processing() ) {
+								// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 								error_log( 'BRAG book Gallery Sync: Stopping sync - saving state for resume' );
 
 								// Save current state for resumption
@@ -1635,14 +1774,17 @@ class Data_Sync {
 							// Check if database connection is still alive
 							global $wpdb;
 							if ( ! $wpdb->check_connection() ) {
+								// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 								error_log( 'BRAG book Gallery Sync: ✗ Database connection lost, attempting to reconnect...' );
 								if ( ! $wpdb->check_connection( false ) ) {
 									throw new Exception( 'Database connection lost and could not reconnect' );
 								}
+								// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 								error_log( 'BRAG book Gallery Sync: ✓ Database connection restored' );
 							}
 
 							// Stream process cases to avoid loading all IDs into memory at once
+							// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 							error_log( "BRAG book Gallery Sync: Starting streaming case processing for procedure ID {$procedure_id}..." );
 
 							// No arrays to clean up anymore
@@ -1650,6 +1792,7 @@ class Data_Sync {
 							// Stream process cases one at a time for maximum memory efficiency
 							// This ensures the sync works on ALL systems regardless of memory
 							$batch_size = 1; // Always process one case at a time
+							// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 							error_log( 'BRAG book Gallery Sync: Using optimized single-case processing for memory efficiency' );
 							$page                      = 1;
 							$procedure_cases_processed = 0;
@@ -1660,10 +1803,12 @@ class Data_Sync {
 							$max_consecutive_issues    = 3; // Max consecutive problematic pages before stopping
 							// Don't track logged cases in array
 
+							// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 							error_log( "BRAG book Gallery Sync: Starting while loop for procedure ID {$procedure_id}, page {$page}, max pages: {$max_pages_per_procedure}" );
 							while ( $page <= $max_pages_per_procedure ) {
 								// Check if we should continue processing
 								if ( ! $this->should_continue_processing() ) {
+									// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 									error_log( 'BRAG book Gallery Sync: Stopping sync in batch loop - saving state' );
 
 									// Save current state
@@ -1694,17 +1839,21 @@ class Data_Sync {
 								// Fetch a page of case IDs for this procedure
 								try {
 									$fetch_start_time = microtime( true );
+									// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 									error_log( "BRAG book Gallery Sync: About to fetch case IDs for procedure ID {$procedure_id}, page {$page}, batch_size {$batch_size}" );
 									$case_batch     = $this->fetch_case_ids_paginated( $procedure_id, $page, $batch_size );
 									$fetch_end_time = microtime( true );
 									$fetch_duration = round( ( $fetch_end_time - $fetch_start_time ), 2 );
+									// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 									error_log( "BRAG book Gallery Sync: Fetch completed for procedure ID {$procedure_id}, page {$page} - got " . count( $case_batch ) . " case IDs in {$fetch_duration}s" );
 									if ( empty( $case_batch ) ) {
 										$empty_page_count ++;
+										// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 										error_log( "BRAG book Gallery Sync: Empty page {$page} for procedure ID {$procedure_id} (empty count: {$empty_page_count})" );
 
 										// Break after consecutive empty pages
 										if ( $empty_page_count >= $max_consecutive_issues ) {
+											// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 											error_log( "BRAG book Gallery Sync: Found {$empty_page_count} consecutive empty pages, ending procedure {$procedure_id}" );
 											break;
 										}
@@ -1720,10 +1869,12 @@ class Data_Sync {
 									$new_case_ids = array_diff( $case_batch, $processed_case_ids );
 									if ( empty( $new_case_ids ) ) {
 										$duplicate_page_count ++;
+										// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 										error_log( "BRAG book Gallery Sync: All cases in page {$page} are duplicates (count: {$duplicate_page_count})" );
 
 										// Break after too many consecutive duplicate pages
 										if ( $duplicate_page_count >= $max_consecutive_issues ) {
+											// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 											error_log( "BRAG book Gallery Sync: {$duplicate_page_count} consecutive duplicate pages, ending procedure {$procedure_id}" );
 											break;
 										}
@@ -1743,6 +1894,7 @@ class Data_Sync {
 
 									$batch_case_count = count( $case_batch );
 									$batch_start_time = microtime( true );
+									// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 									error_log( "BRAG book Gallery Sync: *** Processing BATCH {$page} for procedure '{$procedure_name}' ({$batch_case_count} cases) ***" );
 
 									// Process this batch of cases
@@ -1750,6 +1902,7 @@ class Data_Sync {
 
 									$batch_end_time = microtime( true );
 									$batch_duration = round( ( $batch_end_time - $batch_start_time ), 2 );
+									// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 									error_log( "BRAG book Gallery Sync: *** COMPLETED BATCH {$page} for procedure '{$procedure_name}' in {$batch_duration}s ***" );
 
 									// Process batch summary (no longer iterating over individual results)
@@ -1786,7 +1939,9 @@ class Data_Sync {
 									] );
 
 									// Log batch summary
+									// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 									error_log( "BRAG book Gallery Sync: === BATCH {$page} SUMMARY: {$batch_case_count} cases processed ({$batch_created} created, {$batch_updated} updated) ===" );
+									// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 									error_log( "BRAG book Gallery Sync: Procedure '{$procedure_name}' progress: {$procedure_cases_processed} cases total" );
 
 									// Clean up memory after each batch to prevent memory buildup
@@ -1799,6 +1954,7 @@ class Data_Sync {
 									$peak_mb           = round( $peak_memory / ( 1024 * 1024 ), 2 );
 
 									// Log memory status after each batch
+									// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 									error_log( sprintf(
 										"BRAG book Gallery Sync: Memory after batch %d - Current: %.2f MB (%.1f%%), Peak: %.2f MB (%.1f%%)",
 										$page,
@@ -1813,10 +1969,11 @@ class Data_Sync {
 									$cleanup_threshold = 20; // Universal aggressive cleanup threshold
 
 									if ( $memory_percentage > $cleanup_threshold ) {
+										// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 										error_log( sprintf( "BRAG book Gallery Sync: Memory at %.1f%% (%s / %s) - performing aggressive cleanup (threshold: %d%%)",
 											$memory_percentage,
-											wp_convert_bytes_to_hr( $current_memory ),
-											wp_convert_bytes_to_hr( $memory_limit ),
+											size_format( $current_memory ),
+											size_format( $memory_limit ),
 											$cleanup_threshold
 										) );
 
@@ -1833,16 +1990,18 @@ class Data_Sync {
 											$freed      = $current_memory - $new_memory;
 										}
 
+										// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 										error_log( sprintf( "BRAG book Gallery Sync: Memory freed: %s, now at %.1f%% (%s / %s)",
-											wp_convert_bytes_to_hr( max( 0, $freed ) ),
+											size_format( max( 0, $freed ) ),
 											( $new_memory / $memory_limit ) * 100,
-											wp_convert_bytes_to_hr( $new_memory ),
-											wp_convert_bytes_to_hr( $memory_limit )
+											size_format( $new_memory ),
+											size_format( $memory_limit )
 										) );
 
 										// If memory still critically high, save state and pause
 										$critical_threshold = $memory_limit_mb < 128 ? 40 : 45;
 										if ( ( $new_memory / $memory_limit ) * 100 > $critical_threshold ) {
+											// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 											error_log( sprintf( "BRAG book Gallery Sync: CRITICAL - Memory at %.1f%% after cleanup (critical threshold: %d%%). Considering pause.",
 												( $new_memory / $memory_limit ) * 100,
 												$critical_threshold
@@ -1850,6 +2009,7 @@ class Data_Sync {
 
 											// For very low memory systems, consider saving state
 											if ( $memory_limit_mb < 128 ) {
+												// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 												error_log( "BRAG book Gallery Sync: Low memory system - may need to save state and resume" );
 											}
 										}
@@ -1868,7 +2028,9 @@ class Data_Sync {
 										$recent_cases[] = "Processing {$procedure_name} - {$procedure_cases_processed} of {$actual_case_count} cases completed";
 									}
 
+									// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 									error_log( "BRAG book Gallery Sync: Forcing progress update - Overall: {$overall_percentage}%, Procedure: {$procedure_cases_processed}/{$actual_case_count}" );
+									// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 									error_log( "BRAG book Gallery Sync: Recent cases for display: " . wp_json_encode( $recent_cases ) );
 									$this->update_detailed_progress( [
 										'stage'                => 'cases',
@@ -1888,7 +2050,9 @@ class Data_Sync {
 								} catch ( Exception $e ) {
 									$error_msg = "Failed to process batch for procedure ID {$procedure_id}: " . $e->getMessage();
 									$errors[]  = $error_msg;
+									// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 									error_log( "BRAG book Gallery Sync: ✗ {$error_msg}" );
+									// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 									error_log( "BRAG book Gallery Sync: Exception trace: " . $e->getTraceAsString() );
 
 									// Still count failed cases for progress
@@ -1924,6 +2088,7 @@ class Data_Sync {
 							try {
 								$this->store_procedure_case_order_list( $procedure_id, $processed_case_ids );
 							} catch ( \Exception $e ) {
+								// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 								error_log( "BRAG book Gallery Sync: Failed to store case order for procedure {$procedure_id}: " . $e->getMessage() );
 								// Continue with sync even if case order storage fails
 							}
@@ -1933,20 +2098,25 @@ class Data_Sync {
 							$this->aggressive_memory_cleanup();
 							$memory_after_cleanup = memory_get_usage( true );
 							$memory_freed         = $memory_before_cleanup - $memory_after_cleanup;
-							error_log( "BRAG book Gallery Sync: Memory cleanup after case order update - Freed: " . wp_convert_bytes_to_hr( max( 0, $memory_freed ) ) );
+							// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+							error_log( "BRAG book Gallery Sync: Memory cleanup after case order update - Freed: " . size_format( max( 0, $memory_freed ) ) );
 
 							// Log procedure completion
+							// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 							error_log( "BRAG book Gallery Sync: Completed procedure '{$procedure_name}' with {$procedure_cases_processed} cases processed" );
 
+							// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 							error_log( "BRAG book Gallery Sync: Completed procedure ID {$procedure_id} - processed {$procedure_cases_processed} cases" );
 							$case_processing_log[] = "Completed procedure ID {$procedure_id} - processed {$procedure_cases_processed} cases";
 
 						} catch ( Exception $e ) {
 							$errors[] = "Failed to process procedure ID {$procedure_id}: " . $e->getMessage();
+							// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 							error_log( "BRAG book Gallery Sync: ✗ Failed to process procedure ID {$procedure_id}: " . $e->getMessage() );
 						}
 					}
 
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( "BRAG book Gallery Sync: Completed all IDs for procedure '{$procedure_name}'" );
 
 					// Clean up memory after each procedure's cases are completed
@@ -1954,18 +2124,25 @@ class Data_Sync {
 					$this->cleanup_memory_after_procedure();
 					$memory_after = memory_get_usage( true );
 					$memory_freed = $memory_before - $memory_after;
-					error_log( "BRAG book Gallery Sync: Memory cleanup after '{$procedure_name}' - Freed: " . wp_convert_bytes_to_hr( max( 0, $memory_freed ) ) );
-					error_log( "BRAG book Gallery Sync: Current memory usage: " . wp_convert_bytes_to_hr( $memory_after ) . ", Peak: " . wp_convert_bytes_to_hr( memory_get_peak_usage( true ) ) );
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+					error_log( "BRAG book Gallery Sync: Memory cleanup after '{$procedure_name}' - Freed: " . size_format( max( 0, $memory_freed ) ) );
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+					error_log( "BRAG book Gallery Sync: Current memory usage: " . size_format( $memory_after ) . ", Peak: " . size_format( memory_get_peak_usage( true ) ) );
 
 				} catch ( Exception $e ) {
 					$errors[] = "Failed to process procedure '{$procedure_name}': " . $e->getMessage();
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( "BRAG book Gallery Sync: ✗ Failed to process procedure '{$procedure_name}': " . $e->getMessage() );
 				}
 			}
 
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: Stage 2 completed' );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: Cases created: {$created_cases}" );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: Cases updated: {$updated_cases}" );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: Total processed: {$total_processed}" );
 			// No longer tracking unique cases in array
 
@@ -1975,16 +2152,21 @@ class Data_Sync {
 			$expected_total = $created_cases + $updated_cases;
 			$actual_total   = $total_processed;
 			if ( $expected_total > $actual_total ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( "BRAG book Gallery Sync: ⚠ COUNT MISMATCH! Created ({$created_cases}) + Updated ({$updated_cases}) = {$expected_total}, but unique cases processed = {$actual_total}" );
 				$warnings[] = "Case count mismatch: Created ({$created_cases}) + Updated ({$updated_cases}) = {$expected_total}, but unique cases processed = {$actual_total}";
 			} else {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( "BRAG book Gallery Sync: ✓ Case count verified: Created ({$created_cases}) + Updated ({$updated_cases}) = {$actual_total} unique cases" );
 			}
 
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: Errors: " . count( $errors ) );
 			if ( ! empty( $warnings ) ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( "BRAG book Gallery Sync: Warnings: " . count( $warnings ) );
 				foreach ( $warnings as $warning ) {
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( "BRAG book Gallery Sync: - {$warning}" );
 				}
 			}
@@ -2029,6 +2211,7 @@ class Data_Sync {
 			];
 
 		} catch ( Exception $e ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: Stage 2 failed with exception: ' . $e->getMessage() );
 
 			// No need to restore memory limit since we didn't change it
@@ -2055,25 +2238,32 @@ class Data_Sync {
 	private function extract_procedures_from_sidebar( array $sidebar_data ): array {
 		$procedures = [];
 
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery Sync: Sidebar data keys: ' . wp_json_encode( array_keys( $sidebar_data ) ) );
 
 		$terms = $sidebar_data['data']['terms'] ?? [];
 		if ( empty( $terms ) || ! is_array( $terms ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: No terms array found in sidebar data' );
 
 			return $procedures;
 		}
 
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery Sync: Found ' . count( $terms ) . ' categories in terms data' );
 
 		foreach ( $terms as $category_index => $category ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: Processing category {$category_index}: " . wp_json_encode( array_keys( $category ) ) );
 
 			if ( isset( $category['procedures'] ) && is_array( $category['procedures'] ) ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( "BRAG book Gallery Sync: Category {$category_index} has " . count( $category['procedures'] ) . ' procedures' );
 
 				foreach ( $category['procedures'] as $procedure_index => $procedure ) {
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( "BRAG book Gallery Sync: Processing procedure {$procedure_index}: " . wp_json_encode( array_keys( $procedure ) ) );
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( "BRAG book Gallery Sync: Procedure data: " . wp_json_encode( $procedure ) );
 
 					// Only include procedures that have an ID and case count
@@ -2087,13 +2277,16 @@ class Data_Sync {
 							'description' => $procedure['description'] ?? '',
 						];
 
+						// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 						error_log( "BRAG book Gallery Sync: Added procedure: " . wp_json_encode( $procedure_data ) );
 						$procedures[] = $procedure_data;
 					} else {
+						// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 						error_log( "BRAG book Gallery Sync: Skipped procedure - missing ID: " . wp_json_encode( $procedure ) );
 					}
 				}
 			} else {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( "BRAG book Gallery Sync: Category {$category_index} has no procedures array" );
 			}
 		}
@@ -2122,23 +2315,30 @@ class Data_Sync {
 	 * @since 3.0.0
 	 */
 	private function fetch_case_ids_paginated( int $procedure_id, int $page, int $per_page = 10 ): array {
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( "BRAG book Gallery Sync: fetch_case_ids_paginated() ENTRY - procedure_id: {$procedure_id}, page: {$page}" );
 		try {
 			// Use the existing count-based API but calculate the count number from page
 			$count = $page; // The API uses 'count' as page number
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: About to call fetch_case_ids_for_single_procedure_count() with procedure_id: {$procedure_id}, count: {$count}" );
 			$case_ids = $this->fetch_case_ids_for_single_procedure_count( $procedure_id, $count );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: fetch_case_ids_for_single_procedure_count() returned " . count( $case_ids ) . " case IDs" );
 
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: Procedure ID {$procedure_id} page {$page} - fetched " . count( $case_ids ) . " case IDs" );
 
 			return $case_ids ?: [];
 		} catch ( Exception $e ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: ✗ EXCEPTION in fetch_case_ids_paginated() - procedure {$procedure_id} page {$page}: " . $e->getMessage() );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: ✗ Exception trace: " . $e->getTraceAsString() );
 
 			return []; // Return empty array instead of throwing, let caller handle empty results
 		}
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( "BRAG book Gallery Sync: fetch_case_ids_paginated() EXIT - procedure_id: {$procedure_id}, page: {$page}" );
 	}
 
@@ -2147,19 +2347,23 @@ class Data_Sync {
 		$count          = 1;
 		$has_more_cases = true;
 
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( "BRAG book Gallery Sync: Starting to fetch all cases for procedure ID {$procedure_id}" );
 
 		while ( $has_more_cases ) {
 			try {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( "BRAG book Gallery Sync: Fetching with count {$count} for procedure ID {$procedure_id}" );
 				$case_ids = $this->fetch_case_ids_for_single_procedure_count( $procedure_id, $count );
 
 				if ( empty( $case_ids ) ) {
 					// No more cases, stop fetching
 					$has_more_cases = false;
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( "BRAG book Gallery Sync: No more cases found at count {$count} for procedure ID {$procedure_id}" );
 				} else {
 					$all_case_ids = array_merge( $all_case_ids, $case_ids );
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( "BRAG book Gallery Sync: Count {$count} returned " . count( $case_ids ) . " case IDs for procedure ID {$procedure_id}" );
 					$count ++;
 
@@ -2168,6 +2372,7 @@ class Data_Sync {
 				}
 
 			} catch ( Exception $e ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( "BRAG book Gallery Sync: ✗ Failed to fetch count {$count} for procedure ID {$procedure_id}: " . $e->getMessage() );
 				// Stop on error to prevent infinite loop
 				$has_more_cases = false;
@@ -2177,6 +2382,7 @@ class Data_Sync {
 
 		// Remove duplicates
 		$unique_case_ids = array_unique( $all_case_ids );
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( "BRAG book Gallery Sync: Procedure ID {$procedure_id} - total unique case IDs: " . count( $unique_case_ids ) );
 
 		return $unique_case_ids;
@@ -2198,9 +2404,10 @@ class Data_Sync {
 		$website_property_id = get_option( 'brag_book_gallery_website_property_id', [] )[0] ?? 0;
 
 		if ( empty( $api_token ) || $website_property_id <= 0 ) {
-			throw new Exception( __( 'Invalid API configuration', 'brag-book-gallery' ) );
+			throw new Exception( esc_html( __( 'Invalid API configuration', 'brag-book-gallery' ) ) );
 		}
 
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery Sync: Fetching procedure ' . $procedure_id . ' page ' . $page . ' (v2 API)' . ( $tablet ? ' (tablet mode)' : '' ) );
 
 		// Use Endpoints class for v2 API call
@@ -2218,16 +2425,18 @@ class Data_Sync {
 		);
 
 		if ( ! $response ) {
-			throw new Exception( sprintf(
-				__( 'API request failed for procedure %d page %d', 'brag-book-gallery' ),
+			throw new Exception( esc_html( sprintf(
+				/* translators: %1$d: procedure ID, %2$d: page number */
+				__( 'API request failed for procedure %1$d page %2$d', 'brag-book-gallery' ),
 				$procedure_id,
 				$page
-			) );
+			) ) );
 		}
 
 		// v2 API: Extract case IDs from response
 		$case_ids = [];
 		if ( isset( $response['data']['cases'] ) && is_array( $response['data']['cases'] ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: Found ' . count( $response['data']['cases'] ) . ' cases for procedure ' . $procedure_id . ' page ' . $page );
 			foreach ( $response['data']['cases'] as $case ) {
 				if ( isset( $case['id'] ) ) {
@@ -2235,9 +2444,11 @@ class Data_Sync {
 				}
 			}
 		} else {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: No cases found in v2 response for procedure ' . $procedure_id . ' page ' . $page );
 		}
 
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery Sync: Procedure ' . $procedure_id . ' page ' . $page . ' returned ' . count( $case_ids ) . ' case IDs' );
 
 		return $case_ids;
@@ -2262,7 +2473,7 @@ class Data_Sync {
 		$website_property_ids = get_option( 'brag_book_gallery_website_property_id', [] );
 
 		if ( empty( $api_tokens ) || empty( $api_tokens[0] ) ) {
-			throw new Exception( __( 'No API tokens configured', 'brag-book-gallery' ) );
+			throw new Exception( esc_html( __( 'No API tokens configured', 'brag-book-gallery' ) ) );
 		}
 
 		$valid_tokens = array_filter( $api_tokens, function ( $token ) {
@@ -2284,7 +2495,9 @@ class Data_Sync {
 			'procedureIds'       => $procedure_ids, // Filter by specific procedure IDs
 		];
 
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery Sync: Fetching procedures [' . implode( ', ', $procedure_ids ) . '] page ' . $page . ' (start: ' . $request_body['start'] . ', count: ' . $count . ')' );
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery Sync: Request body: ' . wp_json_encode( $request_body ) );
 
 		// Make POST request
@@ -2300,33 +2513,36 @@ class Data_Sync {
 		] );
 
 		if ( is_wp_error( $response ) ) {
-			throw new Exception( sprintf(
+			throw new Exception( esc_html( sprintf(
+				/* translators: %s: error message */
 				__( 'API request failed: %s', 'brag-book-gallery' ),
 				$response->get_error_message()
-			) );
+			) ) );
 		}
 
 		$response_code = wp_remote_retrieve_response_code( $response );
 		$response_body = wp_remote_retrieve_body( $response );
 
 		if ( $response_code !== 200 ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: API error response for procedures [' . implode( ', ', $procedure_ids ) . '] page ' . $page . ': ' . $response_body );
-			throw new Exception( sprintf(
-				__( 'API returned error status %d for procedures [%s] page %d', 'brag-book-gallery' ),
+			throw new Exception( esc_html( sprintf(
+				/* translators: %1$d: HTTP status code, %2$s: procedure IDs, %3$d: page number */
+				__( 'API returned error status %1$d for procedures [%2$s] page %3$d', 'brag-book-gallery' ),
 				$response_code,
 				implode( ', ', $procedure_ids ),
 				$page
-			) );
+			) ) );
 		}
 
 		$data = json_decode( $response_body, true );
 
 		if ( json_last_error() !== JSON_ERROR_NONE ) {
-			throw new Exception( __( 'Invalid JSON response from API', 'brag-book-gallery' ) );
+			throw new Exception( esc_html( __( 'Invalid JSON response from API', 'brag-book-gallery' ) ) );
 		}
 
 		if ( ! isset( $data['success'] ) || ! $data['success'] ) {
-			throw new Exception( __( 'API returned unsuccessful response', 'brag-book-gallery' ) );
+			throw new Exception( esc_html( __( 'API returned unsuccessful response', 'brag-book-gallery' ) ) );
 		}
 
 		// Extract case IDs from response
@@ -2339,6 +2555,7 @@ class Data_Sync {
 			}
 		}
 
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery Sync: Procedures [' . implode( ', ', $procedure_ids ) . '] page ' . $page . ' returned ' . count( $case_ids ) . ' case IDs' );
 
 		return $case_ids;
@@ -2387,6 +2604,7 @@ class Data_Sync {
 	private function process_case_batch( array $case_batch, string $procedure_name, int $procedure_id ): array {
 		try {
 			$batch_size = count( $case_batch );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: process_case_batch() starting with {$batch_size} cases from procedure '{$procedure_name}'" );
 
 			// Update progress: Starting API fetch
@@ -2399,12 +2617,14 @@ class Data_Sync {
 				try {
 					$case_details_results[ $case_id ] = $this->fetch_case_details( $case_id );
 				} catch ( Exception $e ) {
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( "BRAG book Gallery Sync: Failed to fetch case {$case_id}: " . $e->getMessage() );
 					$case_details_results[ $case_id ] = null;
 				}
 			}
 			$fetch_duration = round( microtime( true ) - $fetch_start_time, 2 );
 
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: API fetch completed in {$fetch_duration}s for {$batch_size} cases" );
 			$this->update_step_progress( "Case details fetched in {$fetch_duration}s, processing {$batch_size} cases..." );
 
@@ -2423,6 +2643,7 @@ class Data_Sync {
 					$case_data = $case_details_results[ $case_id ] ?? null;
 
 					if ( ! $case_data ) {
+						// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 						error_log( "BRAG book Gallery Sync: No data found for case {$case_id} in batch results" );
 						// Just log the skip, don't store in array
 						continue;
@@ -2430,6 +2651,7 @@ class Data_Sync {
 
 					// Check if this case should be skipped due to isForWebsite
 					if ( ! isset( $case_data['isForWebsite'] ) || ! $case_data['isForWebsite'] ) {
+						// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 						error_log( sprintf(
 							'BRAG book Gallery Sync: Skipping case %s - not approved for website (isForWebsite: %s)',
 							$case_id,
@@ -2439,6 +2661,7 @@ class Data_Sync {
 						// If this case exists in WordPress but is no longer approved for website, delete it
 						$existing_post = $this->find_existing_case_post( $case_id );
 						if ( $existing_post ) {
+							// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 							error_log( "BRAG book Gallery Sync: Deleting existing case {$case_id} (post ID: {$existing_post->ID}) - no longer approved for website" );
 							wp_delete_post( $existing_post->ID, true ); // true = force delete, skip trash
 						}
@@ -2504,6 +2727,7 @@ class Data_Sync {
 					$this->update_step_progress( "✓ Completed case {$case_id} ({$case_count}/{$total_cases}) from {$procedure_name}" );
 
 				} catch ( Exception $e ) {
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( "BRAG book Gallery Sync: ✗ Failed to process case {$case_id} in batch: " . $e->getMessage() );
 					$batch_results[] = [
 						'case_id' => $case_id,
@@ -2515,6 +2739,7 @@ class Data_Sync {
 				}
 			}
 
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: process_case_batch() completed {$batch_size} cases from procedure '{$procedure_name}'" );
 			$this->update_step_progress( "✓ Batch completed: {$batch_size} cases processed from {$procedure_name}" );
 
@@ -2526,7 +2751,9 @@ class Data_Sync {
 			];
 
 		} catch ( Exception $e ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: ✗ process_case_batch() failed critically: " . $e->getMessage() );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: Exception stack trace: " . $e->getTraceAsString() );
 			throw $e;
 		}
@@ -2541,6 +2768,7 @@ class Data_Sync {
 	 * @since 3.3.0
 	 */
 	private function fetch_single_case_details( int $case_id ): ?array {
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( "BRAG book Gallery Sync: Fetching single case {$case_id}" );
 
 		// Get API configuration
@@ -2548,6 +2776,7 @@ class Data_Sync {
 		$website_property_ids = get_option( 'brag_book_gallery_website_property_id', [] );
 
 		if ( empty( $api_tokens ) || empty( $api_tokens[0] ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: No API tokens configured" );
 
 			return null;
@@ -2579,6 +2808,7 @@ class Data_Sync {
 		] );
 
 		if ( is_wp_error( $response ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: Failed to fetch case {$case_id}: " . $response->get_error_message() );
 
 			return null;
@@ -2588,6 +2818,7 @@ class Data_Sync {
 		$response_body = wp_remote_retrieve_body( $response );
 
 		if ( $response_code !== 200 ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: HTTP {$response_code} for case {$case_id}" );
 
 			return null;
@@ -2600,12 +2831,14 @@ class Data_Sync {
 		unset( $response );
 
 		if ( json_last_error() !== JSON_ERROR_NONE ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: JSON error for case {$case_id}: " . json_last_error_msg() );
 
 			return null;
 		}
 
 		if ( ! isset( $data['success'] ) || ! $data['success'] || ! isset( $data['data'][0] ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: Invalid API response for case {$case_id}" );
 
 			return null;
@@ -2616,6 +2849,7 @@ class Data_Sync {
 		// Clear the full response
 		unset( $data );
 
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( "BRAG book Gallery Sync: Successfully fetched case {$case_id}" );
 
 		return $case_data;
@@ -2632,6 +2866,7 @@ class Data_Sync {
 	 */
 	private function fetch_case_details_batch( array $case_ids ): array {
 		$batch_size = count( $case_ids );
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( "BRAG book Gallery Sync: fetch_case_details_batch() starting for {$batch_size} cases: " . implode( ', ', $case_ids ) );
 
 		// Get API tokens and website property IDs
@@ -2639,8 +2874,9 @@ class Data_Sync {
 		$website_property_ids = get_option( 'brag_book_gallery_website_property_id', [] );
 
 		if ( empty( $api_tokens ) || empty( $api_tokens[0] ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: ✗ No API tokens configured for batch fetch" );
-			throw new Exception( __( 'No API tokens configured', 'brag-book-gallery' ) );
+			throw new Exception( esc_html( __( 'No API tokens configured', 'brag-book-gallery' ) ) );
 		}
 
 		$valid_tokens = array_filter( $api_tokens, function ( $token ) {
@@ -2660,6 +2896,7 @@ class Data_Sync {
 		];
 
 		// Prepare cURL multi handle for parallel requests
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_multi_init
 		$multi_handle = curl_multi_init();
 		$curl_handles = [];
 		$case_results = [];
@@ -2679,7 +2916,9 @@ class Data_Sync {
 				}
 			}
 
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_init
 			$ch = curl_init();
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_setopt_array
 			curl_setopt_array( $ch, [
 				CURLOPT_URL            => $full_url,
 				CURLOPT_RETURNTRANSFER => true,
@@ -2695,6 +2934,7 @@ class Data_Sync {
 				CURLOPT_FOLLOWLOCATION => true,
 			] );
 
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_multi_add_handle
 			curl_multi_add_handle( $multi_handle, $ch );
 			$curl_handles[ $case_id ] = $ch;
 		}
@@ -2703,25 +2943,34 @@ class Data_Sync {
 		$request_start = microtime( true );
 		$running       = null;
 		do {
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_multi_exec
 			curl_multi_exec( $multi_handle, $running );
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_multi_select
 			curl_multi_select( $multi_handle );
 		} while ( $running > 0 );
 		$request_duration = round( ( microtime( true ) - $request_start ) * 1000, 2 );
 
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( "BRAG book Gallery Sync: Parallel API requests for {$batch_size} cases completed in {$request_duration}ms" );
 
 		// Collect results from each handle
 		foreach ( $case_ids as $case_id ) {
 			$ch            = $curl_handles[ $case_id ];
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_multi_getcontent
 			$response_body = curl_multi_getcontent( $ch );
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_getinfo
 			$http_code     = curl_getinfo( $ch, CURLINFO_HTTP_CODE );
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_error
 			$curl_error    = curl_error( $ch );
 
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_multi_remove_handle
 			curl_multi_remove_handle( $multi_handle, $ch );
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_close
 			curl_close( $ch );
 
 			// Handle cURL errors
 			if ( ! empty( $curl_error ) ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( "BRAG book Gallery Sync: cURL error for case {$case_id}: {$curl_error}" );
 				$case_results[ $case_id ] = null;
 				continue;
@@ -2729,6 +2978,7 @@ class Data_Sync {
 
 			// Handle HTTP errors
 			if ( $http_code !== 200 ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( "BRAG book Gallery Sync: HTTP error {$http_code} for case {$case_id}: " . substr( $response_body, 0, 200 ) );
 				$case_results[ $case_id ] = null;
 				continue;
@@ -2737,8 +2987,11 @@ class Data_Sync {
 			// Parse JSON response
 			$data = json_decode( $response_body, true );
 			if ( json_last_error() !== JSON_ERROR_NONE ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( "BRAG book Gallery Sync: JSON decode error for case {$case_id}: " . json_last_error_msg() );
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( "BRAG book Gallery Sync: Case {$case_id} response body (first 500 chars): " . substr( $response_body, 0, 500 ) );
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( "BRAG book Gallery Sync: Case {$case_id} response body length: " . strlen( $response_body ) );
 				$case_results[ $case_id ] = null;
 				continue;
@@ -2746,24 +2999,29 @@ class Data_Sync {
 
 			// Validate API response structure
 			if ( ! isset( $data['success'] ) || ! $data['success'] ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( "BRAG book Gallery Sync: API returned unsuccessful response for case {$case_id}" );
 				$case_results[ $case_id ] = null;
 				continue;
 			}
 
 			if ( ! isset( $data['data'][0] ) ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( "BRAG book Gallery Sync: No case data found in API response for case {$case_id}" );
 				$case_results[ $case_id ] = null;
 				continue;
 			}
 
 			$case_results[ $case_id ] = $data['data'][0];
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: ✓ Successfully fetched case details for case {$case_id}" );
 		}
 
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.curl_curl_multi_close
 		curl_multi_close( $multi_handle );
 
 		$successful_fetches = count( array_filter( $case_results ) );
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( "BRAG book Gallery Sync: fetch_case_details_batch() completed - {$successful_fetches}/{$batch_size} successful fetches" );
 
 		return $case_results;
@@ -2796,6 +3054,7 @@ class Data_Sync {
 
 		if ( empty( $procedure_ids ) || ! is_array( $procedure_ids ) ) {
 			// Fallback to single case creation if no procedures found
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: No procedures found for case {$case_id}, creating single case" );
 			$single_result = $this->create_single_case_post( $case_id, $case_data, $existing_post );
 
@@ -2806,10 +3065,12 @@ class Data_Sync {
 		$strategy        = get_option( 'brag_book_gallery_multi_procedure_strategy', 'single_post' );
 		$procedure_count = count( $procedure_ids );
 
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( "BRAG book Gallery Sync: Case {$case_id} has {$procedure_count} procedures (IDs: " . implode( ', ', $procedure_ids ) . "), using strategy: {$strategy}" );
 
 		// If only one procedure, always use single post approach regardless of strategy
 		if ( $procedure_count === 1 ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: Single procedure case {$case_id}, creating single post" );
 			$single_result = $this->create_single_case_post( $case_id, $case_data, $existing_post );
 
@@ -2818,6 +3079,7 @@ class Data_Sync {
 
 		// Handle multi-procedure cases based on strategy
 		if ( $strategy === 'single_post' ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: Creating single post with multiple procedure taxonomies for case {$case_id}" );
 			$single_result = $this->create_single_case_post( $case_id, $case_data, $existing_post );
 
@@ -2825,6 +3087,7 @@ class Data_Sync {
 		}
 
 		// Default strategy: separate posts for each procedure
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( "BRAG book Gallery Sync: Creating separate posts for each procedure in case {$case_id}" );
 
 		// For each procedure, create a separate case post
@@ -2844,16 +3107,18 @@ class Data_Sync {
 
 				// Create or update the procedure-specific case post
 				if ( $is_update ) {
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( "BRAG book Gallery Sync: Updating existing procedure case {$procedure_case_id} (post ID: {$existing_procedure_post->ID})..." );
 					$post_id = $this->update_case_post( $existing_procedure_post->ID, $procedure_case_data );
 				} else {
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( "BRAG book Gallery Sync: Creating new procedure case post {$procedure_case_id}..." );
 					$post_id = $this->create_case_post( $procedure_case_data );
 				}
 
 				if ( ! $post_id || is_wp_error( $post_id ) ) {
 					$error_message = is_wp_error( $post_id ) ? $post_id->get_error_message() : 'Unknown error creating/updating post';
-					throw new Exception( "Failed to create/update post for procedure case {$procedure_case_id}: {$error_message}" );
+					throw new Exception( esc_html( "Failed to create/update post for procedure case {$procedure_case_id}: {$error_message}" ) );
 				}
 
 				// Save API data to meta fields (with procedure-specific data)
@@ -2883,9 +3148,11 @@ class Data_Sync {
 					'updated'          => $is_update,
 				];
 
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( "BRAG book Gallery Sync: ✓ Successfully processed procedure case {$procedure_case_id}" );
 
 			} catch ( Exception $e ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( "BRAG book Gallery Sync: ✗ Failed to process procedure case {$procedure_case_id}: " . $e->getMessage() );
 				$procedure_results[] = [
 					'case_id'          => $procedure_case_id ?? $case_id,
@@ -2901,6 +3168,7 @@ class Data_Sync {
 
 		// Clean up any old single case post if it exists (migration from old system)
 		if ( $existing_post && count( $procedure_ids ) > 1 ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: Cleaning up old single case post {$existing_post->ID} for multi-procedure case {$case_id}" );
 			wp_delete_post( $existing_post->ID, true );
 		}
@@ -2924,16 +3192,18 @@ class Data_Sync {
 
 		// Create or update case post
 		if ( $is_update ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: Updating existing case {$case_id} (post ID: {$existing_post->ID})..." );
 			$post_id = $this->update_case_post( $existing_post->ID, $case_data );
 		} else {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: Creating new case post for case {$case_id}..." );
 			$post_id = $this->create_case_post( $case_data );
 		}
 
 		if ( ! $post_id || is_wp_error( $post_id ) ) {
 			$error_message = is_wp_error( $post_id ) ? $post_id->get_error_message() : 'Unknown error creating/updating post';
-			throw new Exception( "Failed to create/update post for case {$case_id}: {$error_message}" );
+			throw new Exception( esc_html( "Failed to create/update post for case {$case_id}: {$error_message}" ) );
 		}
 
 		// Save API data to meta fields
@@ -3007,6 +3277,7 @@ class Data_Sync {
 	 * @since 3.0.0
 	 */
 	private function assign_single_procedure_taxonomy( int $post_id, int $procedure_id ): void {
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( "BRAG book Gallery Sync: assign_single_procedure_taxonomy() - Attempting to assign procedure ID {$procedure_id} to post {$post_id}" );
 
 		// Find the term that matches this procedure ID
@@ -3025,12 +3296,14 @@ class Data_Sync {
 		if ( ! empty( $terms ) && ! is_wp_error( $terms ) ) {
 			// Assign only this one procedure term
 			wp_set_post_terms( $post_id, [ $terms[0]->term_id ], Taxonomies::TAXONOMY_PROCEDURES );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: ✓ Assigned procedure term '{$terms[0]->name}' (ID: {$terms[0]->term_id}) to post {$post_id}" );
 
 			return;
 		}
 
 		// DEBUG: Log available procedure terms and their meta
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( "BRAG book Gallery Sync: DEBUG - Could not find procedure term for procedure ID {$procedure_id}" );
 		$all_terms = get_terms( [
 			'taxonomy'   => Taxonomies::TAXONOMY_PROCEDURES,
@@ -3038,9 +3311,11 @@ class Data_Sync {
 		] );
 
 		if ( ! empty( $all_terms ) && ! is_wp_error( $all_terms ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: DEBUG - Available procedure terms:" );
 			foreach ( array_slice( $all_terms, 0, 10 ) as $term ) { // Show first 10 terms
 				$stored_id = get_term_meta( $term->term_id, 'procedure_id', true );
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( "  - Term: '{$term->name}' (ID: {$term->term_id}, slug: {$term->slug}, stored procedure_id: {$stored_id})" );
 			}
 		}
@@ -3062,6 +3337,7 @@ class Data_Sync {
 				$api_data = get_term_meta( $term->term_id, 'api_data', true );
 				if ( is_array( $api_data ) && isset( $api_data['api_id'] ) && (int) $api_data['api_id'] === $procedure_id ) {
 					wp_set_post_terms( $post_id, [ $term->term_id ], Taxonomies::TAXONOMY_PROCEDURES );
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( "BRAG book Gallery Sync: ✓ Assigned procedure term '{$term->name}' (via api_data match) to post {$post_id}" );
 
 					return;
@@ -3070,6 +3346,7 @@ class Data_Sync {
 		}
 
 		// FALLBACK: If no matching procedure term found, assign to a default procedure
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( "BRAG book Gallery Sync: ✗ Could not find procedure term for procedure ID {$procedure_id}, assigning fallback" );
 		$this->assign_fallback_procedure( $post_id, $procedure_id );
 	}
@@ -3085,15 +3362,19 @@ class Data_Sync {
 	 */
 	private function process_single_case( int $case_id ): array {
 		try {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: process_single_case() starting for case {$case_id}" );
 
 			// Fetch case details from API
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: Fetching case details for case {$case_id}..." );
 			$case_data = $this->fetch_case_details( $case_id );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: ✓ Case details fetched for case {$case_id}" );
 
 			// First validation: Skip cases not approved for website use
 			if ( ! isset( $case_data['isForWebsite'] ) || ! $case_data['isForWebsite'] ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( sprintf(
 					'BRAG book Gallery Sync: Skipping case %s - not approved for website (isForWebsite: %s)',
 					$case_id,
@@ -3103,6 +3384,7 @@ class Data_Sync {
 				// If this case exists in WordPress but is no longer approved for website, delete it
 				$existing_post = $this->find_existing_case_post( $case_id );
 				if ( $existing_post ) {
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( "BRAG book Gallery Sync: Deleting existing case {$case_id} (post ID: {$existing_post->ID}) - no longer approved for website" );
 					wp_delete_post( $existing_post->ID, true ); // true = force delete, skip trash
 				}
@@ -3126,42 +3408,55 @@ class Data_Sync {
 			}
 
 			// Check if case already exists
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: Checking if case {$case_id} already exists..." );
 			$existing_post = $this->find_existing_case_post( $case_id );
 			$is_update     = ! empty( $existing_post );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: Case {$case_id} " . ( $is_update ? "exists (post ID: {$existing_post->ID})" : "does not exist" ) );
 
 			// Create or update case post
 			if ( $is_update ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( "BRAG book Gallery Sync: Updating existing case {$case_id} (post ID: {$existing_post->ID})..." );
 				$post_id = $this->update_case_post( $existing_post->ID, $case_data );
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( "BRAG book Gallery Sync: ✓ Case {$case_id} updated successfully" );
 			} else {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( "BRAG book Gallery Sync: Creating new case post for case {$case_id}..." );
 				$post_id = $this->create_case_post( $case_data );
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( "BRAG book Gallery Sync: ✓ Case {$case_id} created successfully with post ID: {$post_id}" );
 			}
 
 			if ( ! $post_id || is_wp_error( $post_id ) ) {
 				$error_message = is_wp_error( $post_id ) ? $post_id->get_error_message() : 'Unknown error creating/updating post';
-				throw new Exception( "Failed to create/update post for case {$case_id}: {$error_message}" );
+				throw new Exception( esc_html( "Failed to create/update post for case {$case_id}: {$error_message}" ) );
 			}
 
 			// Save API data to meta fields
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: Saving API data to meta fields for case {$case_id}..." );
 			\BRAGBookGallery\Includes\Extend\Post_Types::save_api_response_data( $post_id, $case_data );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: ✓ API data saved for case {$case_id}" );
 
 			// Assign taxonomies
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: Assigning taxonomies for case {$case_id}..." );
 			$this->assign_case_taxonomies( $post_id, $case_data );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: ✓ Taxonomies assigned for case {$case_id}" );
 
 			// Log the operation
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: Logging operation for case {$case_id}..." );
 			$this->log_case_operation( $post_id, $case_data, ! $is_update );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: ✓ Operation logged for case {$case_id}" );
 
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: process_single_case() completed successfully for case {$case_id}" );
 
 			// Memory cleanup: Clear case data to free memory
@@ -3176,7 +3471,9 @@ class Data_Sync {
 			];
 
 		} catch ( Exception $e ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: ✗ process_single_case() failed for case {$case_id}: " . $e->getMessage() );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: Exception stack trace: " . $e->getTraceAsString() );
 			throw $e;
 		}
@@ -3192,14 +3489,16 @@ class Data_Sync {
 	 * @since 3.0.0
 	 */
 	private function fetch_case_details( int $case_id ): array {
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( "BRAG book Gallery Sync: fetch_case_details() starting for case {$case_id} (v2 API)" );
 
 		$api_token           = get_option( 'brag_book_gallery_api_token', [] )[0] ?? '';
 		$website_property_id = get_option( 'brag_book_gallery_website_property_id', [] )[0] ?? 0;
 
 		if ( empty( $api_token ) || $website_property_id <= 0 ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: ✗ Invalid API configuration for case {$case_id}" );
-			throw new Exception( __( 'Invalid API configuration', 'brag-book-gallery' ) );
+			throw new Exception( esc_html( __( 'Invalid API configuration', 'brag-book-gallery' ) ) );
 		}
 
 		// Try to get procedure ID from existing case post if it exists
@@ -3224,13 +3523,16 @@ class Data_Sync {
 		);
 		$request_duration = round( ( microtime( true ) - $request_start ) * 1000, 2 );
 
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( "BRAG book Gallery Sync: API request for case {$case_id} completed in {$request_duration}ms" );
 
 		if ( ! $response || ! isset( $response['data']['case'] ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: ✗ No case data found in v2 API response for case {$case_id}" );
-			throw new Exception( __( 'No case data found in API response', 'brag-book-gallery' ) );
+			throw new Exception( esc_html( __( 'No case data found in API response', 'brag-book-gallery' ) ) );
 		}
 
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery Sync: Successfully fetched case details for case ' . $case_id );
 
 		// Normalize v2 data to v1 format
@@ -3250,20 +3552,30 @@ class Data_Sync {
 		$case_id = $v2_data['caseId'] ?? 'unknown';
 
 		// DEBUG: Log incoming v2 data structure
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( "=== DATA_SYNC NORMALIZATION DEBUG: Case {$case_id} ===" );
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( "V2 Data Keys: " . implode( ', ', array_keys( $v2_data ) ) );
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( "Has patientInfo: " . ( isset( $v2_data['patientInfo'] ) ? 'YES' : 'NO' ) );
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( "Has seoInfo: " . ( isset( $v2_data['seoInfo'] ) ? 'YES' : 'NO' ) );
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( "Has photoSets: " . ( isset( $v2_data['photoSets'] ) ? 'YES (' . count( $v2_data['photoSets'] ) . ' sets)' : 'NO' ) );
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( "Has postOp: " . ( isset( $v2_data['postOp'] ) ? 'YES' : 'NO' ) );
 		if ( isset( $v2_data['postOp'] ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log, WordPress.PHP.DevelopmentFunctions.error_log_print_r
 			error_log( "postOp data in v2: " . print_r( $v2_data['postOp'], true ) );
 		}
 
 		if ( isset( $v2_data['photoSets'][0]['images'] ) ) {
 			$first_images = $v2_data['photoSets'][0]['images'];
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "First photoSet image keys: " . implode( ', ', array_keys( $first_images ) ) );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "Before URL: " . ( $first_images['before']['url'] ?? 'MISSING' ) );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "After URL: " . ( $first_images['after']['url'] ?? 'MISSING' ) );
 		}
 
@@ -3342,22 +3654,33 @@ class Data_Sync {
 		}
 
 		// DEBUG: Log normalized output
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( "Normalized Data Keys: " . implode( ', ', array_keys( $normalized ) ) );
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( "Normalized age: " . ( $normalized['age'] ?? 'NULL' ) );
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( "Normalized gender: " . ( $normalized['gender'] ?? 'NULL' ) );
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( "Normalized photoSets count: " . ( isset( $normalized['photoSets'] ) ? count( $normalized['photoSets'] ) : '0' ) );
 		if ( isset( $normalized['photoSets'][0] ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "First normalized photoSet keys: " . implode( ', ', array_keys( $normalized['photoSets'][0] ) ) );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "Normalized beforeLocationUrl: " . ( $normalized['photoSets'][0]['beforeLocationUrl'] ?? 'MISSING' ) );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "Normalized afterLocationUrl1: " . ( $normalized['photoSets'][0]['afterLocationUrl1'] ?? 'MISSING' ) );
 		}
 		if ( isset( $normalized['caseDetails'][0] ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "Normalized seoPageTitle: " . ( $normalized['caseDetails'][0]['seoPageTitle'] ?? 'MISSING' ) );
 		}
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( "Normalized has postOp: " . ( isset( $normalized['postOp'] ) ? 'YES' : 'NO' ) );
 		if ( isset( $normalized['postOp'] ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log, WordPress.PHP.DevelopmentFunctions.error_log_print_r
 			error_log( "Normalized postOp data: " . print_r( $normalized['postOp'], true ) );
 		}
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( "=== END DATA_SYNC NORMALIZATION DEBUG ===" );
 
 		return $normalized;
@@ -3432,10 +3755,11 @@ class Data_Sync {
 		$post_id = wp_insert_post( $post_data, true );
 
 		if ( is_wp_error( $post_id ) ) {
-			throw new Exception( sprintf(
+			throw new Exception( esc_html( sprintf(
+				/* translators: %s: error message */
 				__( 'Failed to create case post: %s', 'brag-book-gallery' ),
 				$post_id->get_error_message()
-			) );
+			) ) );
 		}
 
 		// Register case in sync registry
@@ -3499,10 +3823,11 @@ class Data_Sync {
 		}
 
 		if ( is_wp_error( $result ) ) {
-			throw new Exception( sprintf(
+			throw new Exception( esc_html( sprintf(
+				/* translators: %s: error message */
 				__( 'Failed to update case post: %s', 'brag-book-gallery' ),
 				$result->get_error_message()
-			) );
+			) ) );
 		}
 
 		// Update sync timestamp
@@ -3537,6 +3862,7 @@ class Data_Sync {
 
 		// Clear any transients related to this procedure
 		global $wpdb;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_brag_book_%' AND option_name NOT LIKE '%sync%'" );
 
 		// Clear internal arrays that may be holding references
@@ -3565,6 +3891,7 @@ class Data_Sync {
 		// Log memory before cleanup
 		$memory_before      = memory_get_usage( true );
 		$real_memory_before = memory_get_usage( false );
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( sprintf(
 			'BRAG book Gallery Sync: [MEMORY-CLEANUP] Before cleanup - Reserved: %s, Real: %s',
 			size_format( $memory_before ),
@@ -3600,7 +3927,9 @@ class Data_Sync {
 		$wpdb->flush();
 
 		// Clear transients aggressively but preserve sync-related ones
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_%' AND option_name NOT LIKE '%sync_progress%' AND option_name NOT LIKE '%sync_start_time%' AND option_name NOT LIKE '%sync_state%' AND option_name NOT LIKE '%sync_activity%'" );
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_timeout_%' AND option_name NOT LIKE '%sync_progress%' AND option_name NOT LIKE '%sync_start_time%' AND option_name NOT LIKE '%sync_state%' AND option_name NOT LIKE '%sync_activity%'" );
 
 		// Clear any internal arrays
@@ -3628,6 +3957,7 @@ class Data_Sync {
 		if ( function_exists( 'gc_collect_cycles' ) ) {
 			$cycles_before = gc_collect_cycles();
 			$cycles_after  = gc_collect_cycles(); // Run twice for thorough cleanup
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( sprintf(
 				'BRAG book Gallery Sync: [MEMORY-CLEANUP] GC collected %d + %d cycles',
 				$cycles_before,
@@ -3640,6 +3970,7 @@ class Data_Sync {
 		$real_memory_after = memory_get_usage( false );
 		$memory_freed      = $memory_before - $memory_after;
 		$real_memory_freed = $real_memory_before - $real_memory_after;
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( sprintf(
 			'BRAG book Gallery Sync: [MEMORY-CLEANUP] After cleanup - Reserved: %s (freed: %s), Real: %s (freed: %s)',
 			size_format( $memory_after ),
@@ -3757,6 +4088,7 @@ class Data_Sync {
 
 			// Make sure it's not empty after sanitization
 			if ( ! empty( $slug ) ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAG book Gallery Sync: Using seoInfo.slug for case ' . $case_id . ': ' . $slug );
 
 				return $slug;
@@ -3765,6 +4097,7 @@ class Data_Sync {
 
 		// Fallback to case ID
 		$fallback_slug = (string) $case_id;
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery Sync: Using fallback slug for case ' . $case_id . ': ' . $fallback_slug );
 
 		return $fallback_slug;
@@ -3784,6 +4117,7 @@ class Data_Sync {
 
 		// If no procedure IDs provided, try to assign a fallback
 		if ( empty( $procedure_ids ) || ! is_array( $procedure_ids ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: ✗ No procedure IDs found for post {$post_id}, assigning fallback procedure" );
 			$this->assign_fallback_procedure( $post_id );
 
@@ -3805,15 +4139,18 @@ class Data_Sync {
 					$term_ids[] = $term->term_id;
 				}
 			} else {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( "BRAG book Gallery Sync: ✗ Could not find procedure term for procedure ID {$procedure_id} on post {$post_id}" );
 			}
 		}
 
 		if ( ! empty( $term_ids ) ) {
 			wp_set_object_terms( $post_id, $term_ids, \BRAGBookGallery\Includes\Extend\Taxonomies::TAXONOMY_PROCEDURES );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: ✓ Assigned " . count( $term_ids ) . " procedure terms to post {$post_id}" );
 		} else {
 			// FALLBACK: No matching procedure terms found, assign a default
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: ✗ No matching procedure terms found for post {$post_id}, assigning fallback" );
 			$this->assign_fallback_procedure( $post_id );
 		}
@@ -3837,6 +4174,7 @@ class Data_Sync {
 			$created_term = $this->create_missing_procedure_term( $original_procedure_id );
 			if ( $created_term ) {
 				wp_set_post_terms( $post_id, [ $created_term->term_id ], Taxonomies::TAXONOMY_PROCEDURES );
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( "BRAG book Gallery Sync: ✓ Created and assigned missing procedure term for ID {$original_procedure_id} to post {$post_id}" );
 
 				return;
@@ -3853,6 +4191,7 @@ class Data_Sync {
 
 		if ( ! empty( $fallback_terms ) && ! is_wp_error( $fallback_terms ) ) {
 			wp_set_post_terms( $post_id, [ $fallback_terms[0]->term_id ], Taxonomies::TAXONOMY_PROCEDURES );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: ✓ Assigned fallback procedure '{$fallback_terms[0]->name}' to post {$post_id}" );
 
 			return;
@@ -3870,6 +4209,7 @@ class Data_Sync {
 			update_term_meta( $fallback_term['term_id'], 'nudity', 'false' );
 
 			wp_set_post_terms( $post_id, [ $fallback_term['term_id'] ], Taxonomies::TAXONOMY_PROCEDURES );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: ✓ Created and assigned 'Other Procedures' fallback category to post {$post_id}" );
 
 			return;
@@ -3886,12 +4226,14 @@ class Data_Sync {
 
 		if ( ! empty( $any_terms ) && ! is_wp_error( $any_terms ) ) {
 			wp_set_post_terms( $post_id, [ $any_terms[0]->term_id ], Taxonomies::TAXONOMY_PROCEDURES );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: ✓ Assigned to most common procedure '{$any_terms[0]->name}' as last resort for post {$post_id}" );
 
 			return;
 		}
 
 		// If we get here, something is seriously wrong
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( "BRAG book Gallery Sync: ✗ CRITICAL: Could not assign any procedure to post {$post_id} - no procedures exist in taxonomy!" );
 	}
 
@@ -3925,6 +4267,7 @@ class Data_Sync {
 			] );
 
 			if ( is_wp_error( $result ) ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( "BRAG book Gallery Sync: ✗ Failed to create procedure term for ID {$procedure_id}: " . $result->get_error_message() );
 
 				return null;
@@ -3936,11 +4279,13 @@ class Data_Sync {
 			update_term_meta( $result['term_id'], 'member_id', '' );
 
 			$term = get_term( $result['term_id'] );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: ✓ Created missing procedure term '{$procedure_name}' for ID {$procedure_id}" );
 
 			return $term;
 
 		} catch ( Exception $e ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: ✗ Exception creating procedure term for ID {$procedure_id}: " . $e->getMessage() );
 
 			return null;
@@ -3958,6 +4303,7 @@ class Data_Sync {
 	 * @since 3.0.0
 	 */
 	public function validate_and_fix_unassigned_cases(): array {
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( "BRAG book Gallery Sync: Starting validation of cases without procedures..." );
 
 		// Find all case posts that don't have any procedure terms assigned
@@ -3977,6 +4323,7 @@ class Data_Sync {
 		$fixed_cases = [];
 		$total_found = $unassigned_posts->found_posts;
 
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( "BRAG book Gallery Sync: Found {$total_found} cases without procedure assignments" );
 
 		if ( $unassigned_posts->have_posts() ) {
@@ -4016,9 +4363,11 @@ class Data_Sync {
 						}
 					}
 
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( "BRAG book Gallery Sync: ✓ Fixed procedure assignment for post {$post_id}" );
 
 				} catch ( Exception $e ) {
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( "BRAG book Gallery Sync: ✗ Failed to fix procedure assignment for post {$post_id}: " . $e->getMessage() );
 					$fixed_cases[] = [
 						'post_id' => $post_id,
@@ -4039,6 +4388,7 @@ class Data_Sync {
 			'details'      => $fixed_cases,
 		];
 
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( "BRAG book Gallery Sync: Validation complete - Fixed: {$fixed_count}, Failed: {$failed_count}" );
 
 		return $report;
@@ -4060,33 +4410,33 @@ class Data_Sync {
 
 		echo "\n📊 Validation Results:\n";
 		echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-		echo "Total cases found without procedures: " . $report['total_found'] . "\n";
-		echo "Successfully fixed: " . $report['fixed_count'] . "\n";
-		echo "Failed to fix: " . $report['failed_count'] . "\n";
+		echo "Total cases found without procedures: " . (int) $report['total_found'] . "\n";
+		echo "Successfully fixed: " . (int) $report['fixed_count'] . "\n";
+		echo "Failed to fix: " . (int) $report['failed_count'] . "\n";
 
 		if ( ! empty( $report['details'] ) ) {
 			echo "\n📋 Detailed Results:\n";
 			echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
 
 			foreach ( $report['details'] as $case ) {
-				$post_id    = $case['post_id'];
+				$post_id    = (int) $case['post_id'];
 				$method     = $case['method'];
 				$post_title = get_the_title( $post_id ) ?: 'Untitled';
 
-				echo "Post ID {$post_id} ({$post_title}): ";
+				echo "Post ID " . esc_html( (string) $post_id ) . " (" . esc_html( $post_title ) . "): ";
 
 				switch ( $method ) {
 					case 'specific_procedure':
-						echo "✅ Fixed using specific procedure ID " . $case['procedure_id'];
+						echo "✅ Fixed using specific procedure ID " . (int) $case['procedure_id'];
 						break;
 					case 'stored_procedure_ids':
-						echo "✅ Fixed using stored procedure IDs: " . implode( ', ', $case['procedure_ids'] );
+						echo "✅ Fixed using stored procedure IDs: " . esc_html( implode( ', ', array_map( 'intval', $case['procedure_ids'] ) ) );
 						break;
 					case 'fallback':
 						echo "⚠️  Fixed using fallback procedure";
 						break;
 					case 'failed':
-						echo "❌ Failed: " . $case['error'];
+						echo "❌ Failed: " . esc_html( $case['error'] );
 						break;
 				}
 				echo "\n";
@@ -4131,6 +4481,7 @@ class Data_Sync {
 			$procedure_id
 		);
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$wpdb->insert(
 			$this->log_table,
 			[
@@ -4171,12 +4522,10 @@ class Data_Sync {
 	public function reverse_sync( string $session_id ): array {
 		global $wpdb;
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange
 		$operations = $wpdb->get_results( $wpdb->prepare(
-			"SELECT * FROM {$this->log_table}
-			 WHERE sync_session_id = %s
-			 AND operation IN ('create', 'update')
-			 AND status = 'success'
-			 ORDER BY id DESC",
+			"SELECT * FROM %i WHERE sync_session_id = %s AND operation IN ('create', 'update') AND status = 'success' ORDER BY id DESC",
+			$this->log_table,
 			$session_id
 		) );
 
@@ -4190,6 +4539,7 @@ class Data_Sync {
 					$result = wp_delete_post( $operation->wordpress_id, true );
 					if ( $result === false ) {
 						$errors[] = sprintf(
+							/* translators: %s: post identifier */
 							__( 'Failed to delete case post %s', 'brag-book-gallery' ),
 							$operation->name
 						);
@@ -4201,7 +4551,8 @@ class Data_Sync {
 					$result = wp_delete_term( $operation->wordpress_id, \BRAGBookGallery\Includes\Extend\Taxonomies::TAXONOMY_PROCEDURES );
 					if ( is_wp_error( $result ) ) {
 						$errors[] = sprintf(
-							__( 'Failed to delete term %s: %s', 'brag-book-gallery' ),
+							/* translators: %1$s: term name, %2$s: error message */
+							__( 'Failed to delete term %1$s: %2$s', 'brag-book-gallery' ),
 							$operation->name,
 							$result->get_error_message()
 						);
@@ -4267,11 +4618,13 @@ class Data_Sync {
 		wp_cache_delete( 'brag_book_gallery_detailed_progress', 'options' );
 
 		// Log the update result
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( "BRAG book Gallery Sync: update_option result: " . ( $update_result ? 'SUCCESS' : 'FAILED' ) );
 
 		// Verify the option was saved by reading it back
 		$saved_progress   = get_option( 'brag_book_gallery_detailed_progress', false );
 		$saved_updated_at = $saved_progress['updated_at'] ?? 'NOT_SET';
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( "BRAG book Gallery Sync: Verified saved updated_at: {$saved_updated_at}" );
 
 		$log_msg = "BRAG book Gallery Sync: Detailed Progress - Overall: {$progress['overall_percentage']}%, " .
@@ -4279,6 +4632,7 @@ class Data_Sync {
 		           "({$progress['procedure_progress']['percentage']}%), " .
 		           "Cases: {$progress['case_progress']['current']}/{$progress['case_progress']['total']} " .
 		           "({$progress['case_progress']['percentage']}%) - {$progress['current_step']}";
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( $log_msg );
 	}
 
@@ -4310,6 +4664,7 @@ class Data_Sync {
 		// Clear cache to ensure fresh data
 		wp_cache_delete( 'brag_book_gallery_detailed_progress', 'options' );
 
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( "BRAG book Gallery Sync: Step Update - {$step_message}" );
 	}
 
@@ -4344,6 +4699,7 @@ class Data_Sync {
 		// Store progress in WordPress option for AJAX polling
 		update_option( 'brag_book_gallery_case_progress', $progress, false );
 
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( "BRAG book Gallery Sync: Progress update - {$overall_percentage}% ({$processed}/{$total}): {$message}" );
 	}
 
@@ -4356,11 +4712,13 @@ class Data_Sync {
 	private function ensure_taxonomy_registered(): void {
 		// Check if taxonomy is already registered
 		if ( taxonomy_exists( \BRAGBookGallery\Includes\Extend\Taxonomies::TAXONOMY_PROCEDURES ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: ✓ Procedures taxonomy already registered' );
 
 			return;
 		}
 
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery Sync: Procedures taxonomy not found, forcing registration...' );
 
 		// Force taxonomy registration by creating a temporary Taxonomies instance
@@ -4373,6 +4731,7 @@ class Data_Sync {
 			throw new Exception( 'Failed to register procedures taxonomy. Cannot proceed with sync.' );
 		}
 
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery Sync: ✓ Procedures taxonomy registration forced successfully' );
 	}
 
@@ -4386,6 +4745,7 @@ class Data_Sync {
 	 * @since 3.3.0
 	 */
 	private function ensure_favorites_page_exists(): void {
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery Sync: Checking for My Favorites page...' );
 
 		// Get the gallery slug
@@ -4401,12 +4761,14 @@ class Data_Sync {
 		) );
 
 		if ( empty( $gallery_page ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: ✗ Gallery page not found with slug: ' . $gallery_slug );
 
 			return;
 		}
 
 		$gallery_page_id = $gallery_page[0]->ID;
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery Sync: Found gallery page (ID: ' . $gallery_page_id . ', slug: ' . $gallery_slug . ')' );
 
 		// Look for existing favorites page as child of gallery page
@@ -4425,6 +4787,7 @@ class Data_Sync {
 			// Trigger rewrite rules flush to ensure the page URL works
 			update_option( 'brag_book_gallery_flush_rewrite_rules', true );
 
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: ✓ My Favorites page already exists as child (ID: ' . $existing_page[0]->ID . ')' );
 
 			return;
@@ -4445,6 +4808,7 @@ class Data_Sync {
 			// Trigger rewrite rules flush to ensure the page URL works
 			update_option( 'brag_book_gallery_flush_rewrite_rules', true );
 
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: ✓ Found existing page with favorites shortcode, marked it as favorites page (ID: ' . $shortcode_page[0]->ID . ')' );
 
 			return;
@@ -4464,6 +4828,7 @@ class Data_Sync {
 		$page_id = wp_insert_post( $page_data );
 
 		if ( is_wp_error( $page_id ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: ✗ Failed to create My Favorites page: ' . $page_id->get_error_message() );
 
 			return;
@@ -4475,6 +4840,7 @@ class Data_Sync {
 		// Trigger rewrite rules flush to ensure the new page URL works
 		update_option( 'brag_book_gallery_flush_rewrite_rules', true );
 
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery Sync: ✓ Created My Favorites page successfully (ID: ' . $page_id . ')' );
 	}
 
@@ -4500,6 +4866,7 @@ class Data_Sync {
 		}
 
 		$this->sync_status_file = $sync_dir . '/sync-status.json';
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery Sync: Sync status file path: ' . $this->sync_status_file );
 	}
 
@@ -4513,8 +4880,10 @@ class Data_Sync {
 	private function init_sync_api(): void {
 		try {
 			$this->sync_api = new Sync_Api();
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: Sync API initialized' );
 		} catch ( \Exception $e ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: Failed to initialize Sync API: ' . $e->getMessage() );
 			$this->sync_api = null;
 			$this->enable_sync_reporting = false;
@@ -4557,11 +4926,15 @@ class Data_Sync {
 	 * @return array|null Registration result or null on failure.
 	 */
 	private function register_sync_with_api(): ?array {
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery Sync: register_sync_with_api() called' );
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery Sync: enable_sync_reporting = ' . ( $this->enable_sync_reporting ? 'true' : 'false' ) );
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery Sync: sync_api = ' . ( $this->sync_api ? 'initialized' : 'null' ) );
 
 		if ( ! $this->enable_sync_reporting || ! $this->sync_api ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: Skipping registration - sync reporting disabled or API not initialized' );
 			return null;
 		}
@@ -4573,14 +4946,17 @@ class Data_Sync {
 			delete_transient( 'brag_book_gallery_trigger_job_id' );
 		}
 
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery Sync: Calling sync_api->register_sync() with type: ' . $this->sync_type );
 		$result = $this->sync_api->register_sync( $this->sync_type, null, $trigger_job_id );
 
 		if ( is_wp_error( $result ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: Failed to register sync: ' . $result->get_error_message() );
 			return null;
 		}
 
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery Sync: Registration successful: ' . wp_json_encode( $result ) );
 		return $result;
 	}
@@ -4603,6 +4979,7 @@ class Data_Sync {
 		$result = $this->sync_api->report_sync( $status, $data );
 
 		if ( is_wp_error( $result ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: Failed to report sync status: ' . $result->get_error_message() );
 			return null;
 		}
@@ -4631,14 +5008,18 @@ class Data_Sync {
 				$bytes_written = file_put_contents( $this->sync_status_file, $json_data );
 
 				if ( $bytes_written === false ) {
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( 'BRAG book Gallery Sync: Failed to write sync status file' );
 				} else {
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( 'BRAG book Gallery Sync: Wrote ' . $bytes_written . ' bytes to sync status file' );
 				}
 			} else {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAG book Gallery Sync: Failed to encode progress data to JSON' );
 			}
 		} catch ( Exception $e ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: Error writing sync status file: ' . $e->getMessage() );
 		}
 	}
@@ -4672,7 +5053,8 @@ class Data_Sync {
 	 */
 	public function clear_sync_status_file(): void {
 		if ( file_exists( $this->sync_status_file ) ) {
-			unlink( $this->sync_status_file );
+			wp_delete_file( $this->sync_status_file );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: Cleared sync status file' );
 		}
 	}
@@ -4701,6 +5083,7 @@ class Data_Sync {
 			] );
 
 			if ( empty( $terms ) || is_wp_error( $terms ) ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( "BRAG book Gallery Sync: Warning - No procedure term found for procedure ID {$procedure_id}" );
 
 				return;
@@ -4709,6 +5092,7 @@ class Data_Sync {
 			$term = $terms[0];
 
 			if ( empty( $case_ids_in_order ) ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( "BRAG book Gallery Sync: No cases to store for procedure {$procedure_id}" );
 				// Clear any existing case order list
 				delete_term_meta( $term->term_id, 'brag_book_gallery_case_order_list' );
@@ -4719,9 +5103,12 @@ class Data_Sync {
 			// Store the case order list as term meta
 			update_term_meta( $term->term_id, 'brag_book_gallery_case_order_list', $case_ids_in_order );
 
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: ✓ Stored case order list for procedure {$procedure_id} (term: {$term->term_id}) - " . count( $case_ids_in_order ) . " cases" );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: First 5 cases in order: " . implode( ', ', array_slice( $case_ids_in_order, 0, 5 ) ) );
 		} catch ( \Exception $e ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: Error storing case order list for procedure {$procedure_id}: " . $e->getMessage() );
 		}
 	}
@@ -4753,6 +5140,7 @@ class Data_Sync {
 		// Get the case order list stored on the term
 		$case_ids_in_order = get_term_meta( $term->term_id, 'brag_book_gallery_case_order_list', true );
 		if ( ! is_array( $case_ids_in_order ) || empty( $case_ids_in_order ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery: No case order list found for procedure {$procedure_id} (term: {$term->term_id})" );
 
 			return [];
@@ -4786,6 +5174,7 @@ class Data_Sync {
 			}
 		}
 
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( "BRAG book Gallery: Retrieved " . count( $ordered_post_ids ) . " ordered post IDs for procedure {$procedure_id}" );
 
 		return $ordered_post_ids;
@@ -4801,6 +5190,7 @@ class Data_Sync {
 		// Check execution time
 		$elapsed_time = time() - $this->sync_start_time;
 		if ( $elapsed_time >= $this->max_execution_time ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: Execution time limit reached ({$elapsed_time}s >= {$this->max_execution_time}s)" );
 
 			return false;
@@ -4813,6 +5203,7 @@ class Data_Sync {
 			$memory_percent = ( $memory_usage / $memory_limit ) * 100;
 
 			if ( $memory_percent >= $this->max_memory_percent ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( "BRAG book Gallery Sync: Memory limit reached ({$memory_percent}% >= {$this->max_memory_percent}%)" );
 
 				return false;
@@ -4821,6 +5212,7 @@ class Data_Sync {
 
 		// Check for stop flag
 		if ( get_option( 'brag_book_gallery_sync_stop_flag', false ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: Stop flag detected' );
 
 			return false;
@@ -4843,6 +5235,7 @@ class Data_Sync {
 		$state['last_updated'] = current_time( 'mysql' );
 
 		update_option( $this->sync_state_option, $state, false );
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery Sync: Saved sync state for resumption' );
 	}
 
@@ -4855,6 +5248,7 @@ class Data_Sync {
 	private function clear_sync_state(): void {
 		delete_option( $this->sync_state_option );
 		delete_option( 'brag_book_gallery_sync_stop_flag' );
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery Sync: Cleared sync state' );
 	}
 
@@ -4906,6 +5300,7 @@ class Data_Sync {
 			if ( function_exists( 'gc_collect_cycles' ) ) {
 				gc_collect_cycles();
 			}
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: Cleaned up array from ' . $max_size . ' to ' . $keep_size . ' items' );
 		}
 	}
@@ -4948,6 +5343,7 @@ class Data_Sync {
 
 		// Check if taxonomy exists (it should be registered if enabled)
 		if ( ! taxonomy_exists( Taxonomies::TAXONOMY_DOCTORS ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Sync: Doctors taxonomy is enabled but not registered' );
 
 			return;
@@ -4957,6 +5353,7 @@ class Data_Sync {
 		$creator = $case_data['creator'] ?? null;
 
 		if ( empty( $creator ) || ! is_array( $creator ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: No creator data found for post {$post_id}" );
 
 			return;
@@ -4966,6 +5363,7 @@ class Data_Sync {
 		$member_id = $creator['id'] ?? null;
 
 		if ( empty( $member_id ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: No member ID found in creator data for post {$post_id}" );
 
 			return;
@@ -4975,6 +5373,7 @@ class Data_Sync {
 		$doctor_term = $this->create_or_update_doctor_term( $creator );
 
 		if ( ! $doctor_term ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: Failed to create/update doctor term for member {$member_id}" );
 
 			return;
@@ -4984,8 +5383,10 @@ class Data_Sync {
 		$result = wp_set_object_terms( $post_id, [ $doctor_term->term_id ], Taxonomies::TAXONOMY_DOCTORS );
 
 		if ( is_wp_error( $result ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: Failed to assign doctor term to post {$post_id}: " . $result->get_error_message() );
 		} else {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: ✓ Assigned doctor '{$doctor_term->name}' (term ID: {$doctor_term->term_id}) to post {$post_id}" );
 		}
 	}
@@ -5048,6 +5449,7 @@ class Data_Sync {
 					'name' => $doctor_name,
 					'slug' => sanitize_title( $doctor_name . '-' . $member_id ),
 				] );
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( "BRAG book Gallery Sync: Updated doctor term name to '{$doctor_name}' (term ID: {$term->term_id})" );
 			}
 
@@ -5082,6 +5484,7 @@ class Data_Sync {
 				if ( $term && ! is_wp_error( $term ) ) {
 					// Update meta for the existing term
 					$this->update_doctor_term_meta( $term->term_id, $first_name, $last_name, $suffix, $member_id, $profile_url );
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( "BRAG book Gallery Sync: Using existing doctor term '{$doctor_name}' (term ID: {$term->term_id})" );
 
 					$this->register_doctor_in_registry( $member_id, $term->term_id );
@@ -5090,6 +5493,7 @@ class Data_Sync {
 				}
 			}
 
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery Sync: Failed to create doctor term '{$doctor_name}': " . $result->get_error_message() );
 
 			return null;
@@ -5100,6 +5504,7 @@ class Data_Sync {
 		// Save term meta
 		$this->update_doctor_term_meta( $term_id, $first_name, $last_name, $suffix, $member_id, $profile_url );
 
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( "BRAG book Gallery Sync: ✓ Created new doctor term '{$doctor_name}' (term ID: {$term_id})" );
 
 		$this->register_doctor_in_registry( $member_id, $term_id );

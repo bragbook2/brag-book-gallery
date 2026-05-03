@@ -62,6 +62,7 @@ final class Debug_Database_Info {
 		global $wpdb;
 
 		// Get option sizes.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$options = $wpdb->get_results(
 			"SELECT option_name, LENGTH(option_value) as size
 			FROM {$wpdb->options}
@@ -130,6 +131,7 @@ final class Debug_Database_Info {
 	public function get_total_options_size(): int {
 		global $wpdb;
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$result = $wpdb->get_var(
 			"SELECT SUM(LENGTH(option_value)) as total_size
 			FROM {$wpdb->options}
@@ -151,6 +153,7 @@ final class Debug_Database_Info {
 	public function get_options_count(): int {
 		global $wpdb;
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$result = $wpdb->get_var(
 			"SELECT COUNT(*) as count
 			FROM {$wpdb->options}
@@ -174,13 +177,16 @@ final class Debug_Database_Info {
 	public function get_options_by_size( int $limit = 10 ): array {
 		global $wpdb;
 
+		$like_pattern = $wpdb->esc_like( 'brag_book_gallery_' ) . '%';
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$results = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT option_name, LENGTH(option_value) as size
 				FROM {$wpdb->options}
-				WHERE option_name LIKE 'brag_book_gallery_%'
+				WHERE option_name LIKE %s
 				ORDER BY size DESC
 				LIMIT %d",
+				$like_pattern,
 				$limit
 			)
 		);

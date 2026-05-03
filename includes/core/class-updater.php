@@ -13,6 +13,11 @@
 declare( strict_types=1 );
 
 namespace BRAGBookGallery\Includes\Core;
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 // Cache_Manager removed - using WordPress transients directly
 use WP_Error;
 

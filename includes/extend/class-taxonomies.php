@@ -515,7 +515,7 @@ class Taxonomies {
 	 */
 	public function save_procedure_meta( int $term_id ): void {
 		// Verify nonce
-		if ( ! isset( $_POST['procedure_meta_nonce'] ) || ! wp_verify_nonce( $_POST['procedure_meta_nonce'], 'save_procedure_meta' ) ) {
+		if ( ! isset( $_POST['procedure_meta_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['procedure_meta_nonce'] ) ), 'save_procedure_meta' ) ) {
 			return;
 		}
 
@@ -920,7 +920,7 @@ class Taxonomies {
 	 */
 	public function save_doctor_meta( int $term_id ): void {
 		// Verify nonce
-		if ( ! isset( $_POST['doctor_meta_nonce'] ) || ! wp_verify_nonce( $_POST['doctor_meta_nonce'], 'save_doctor_meta' ) ) {
+		if ( ! isset( $_POST['doctor_meta_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['doctor_meta_nonce'] ) ), 'save_doctor_meta' ) ) {
 			return;
 		}
 

@@ -178,7 +178,7 @@ class Communications_Page extends Settings_Base {
 	 */
 	private function render_consultation_side_tabs(): void {
 		// Get count of consultation entries for badge
-		$entries_count = wp_count_posts( 'form-entries' )->publish ?? 0;
+		$entries_count = wp_count_posts( 'brag_book_forms' )->publish ?? 0;
 		?>
 		<div class="brag-book-gallery-side-tabs">
 			<ul>
@@ -448,14 +448,14 @@ class Communications_Page extends Settings_Base {
 	 */
 	private function render_consultation_stats(): void {
 		// Get stats data
-		$total = wp_count_posts( 'form-entries' )->publish ?? 0;
+		$total = wp_count_posts( 'brag_book_forms' )->publish ?? 0;
 
 		// Get last 30 days data for chart
 		$chart_data = [];
 		for ( $i = 29; $i >= 0; $i-- ) {
 			$date = gmdate( 'Y-m-d', strtotime( "-{$i} days" ) );
 			$args = array(
-				'post_type' => 'form-entries',
+				'post_type' => 'brag_book_forms',
 				'post_status' => 'publish',
 				'date_query' => array(
 					array(
@@ -479,7 +479,7 @@ class Communications_Page extends Settings_Base {
 		for ( $i = 11; $i >= 0; $i-- ) {
 			$date = gmdate( 'Y-m', strtotime( "-{$i} months" ) );
 			$args = array(
-				'post_type' => 'form-entries',
+				'post_type' => 'brag_book_forms',
 				'post_status' => 'publish',
 				'date_query' => array(
 					array(
@@ -512,7 +512,7 @@ class Communications_Page extends Settings_Base {
 						<div class="stat-value">
 							<?php
 							$args = array(
-								'post_type' => 'form-entries',
+								'post_type' => 'brag_book_forms',
 								'post_status' => 'publish',
 								'date_query' => array(
 									array( 'after' => '30 days ago' ),
@@ -531,7 +531,7 @@ class Communications_Page extends Settings_Base {
 						<div class="stat-value">
 							<?php
 							$args = array(
-								'post_type' => 'form-entries',
+								'post_type' => 'brag_book_forms',
 								'post_status' => 'publish',
 								'date_query' => array(
 									array( 'after' => '7 days ago' ),
@@ -550,7 +550,7 @@ class Communications_Page extends Settings_Base {
 						<div class="stat-value">
 							<?php
 							$args = array(
-								'post_type' => 'form-entries',
+								'post_type' => 'brag_book_forms',
 								'post_status' => 'publish',
 								'date_query' => array(
 									array( 'after' => 'today' ),
@@ -593,8 +593,8 @@ class Communications_Page extends Settings_Base {
 		?>
 		document.addEventListener('DOMContentLoaded', function() {
 			// Daily chart data
-			const dailyData = <?php echo json_encode( $chart_data ); ?>;
-			const monthlyData = <?php echo json_encode( $monthly_data ); ?>;
+			const dailyData = <?php echo wp_json_encode( $chart_data ); ?>;
+			const monthlyData = <?php echo wp_json_encode( $monthly_data ); ?>;
 
 			// Daily Chart
 			const dailyCtx = document.getElementById('dailyChart')?.getContext('2d');

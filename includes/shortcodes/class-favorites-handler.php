@@ -1162,31 +1162,38 @@ final class Favorites_Handler {
 		}
 
 		// Get favorites data from request - can be either full case objects or just post IDs
-		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- JSON data decoded and validated after unslashing
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- JSON data sanitized after decoding via map_deep below
 		$favorites_raw = wp_unslash( $_POST['favorites'] ?? [] );
 		if ( ! is_array( $favorites_raw ) ) {
 			$favorites_data = json_decode( $favorites_raw, true ) ?: [];
 		} else {
 			$favorites_data = $favorites_raw;
 		}
+		$favorites_data = is_array( $favorites_data ) ? map_deep( $favorites_data, 'sanitize_text_field' ) : [];
 
 		// Check for post_ids parameter (WordPress post IDs from localStorage)
-		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- JSON data decoded and validated after unslashing
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- JSON data cast to int array via absint below
 		$post_ids_raw = wp_unslash( $_POST['post_ids'] ?? [] );
 		if ( ! is_array( $post_ids_raw ) ) {
 			$post_ids = json_decode( $post_ids_raw, true ) ?: [];
 		} else {
 			$post_ids = $post_ids_raw;
 		}
+		$post_ids = array_values( array_filter( array_map( 'absint', (array) $post_ids ) ) );
 
 		// Get user info from request
-		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- JSON data decoded and validated after unslashing
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- JSON data sanitized per-field below
 		$user_info_raw = wp_unslash( $_POST['userInfo'] ?? [] );
 		if ( ! is_array( $user_info_raw ) ) {
 			$user_info = json_decode( $user_info_raw, true ) ?: [];
 		} else {
 			$user_info = $user_info_raw;
 		}
+		$user_info = is_array( $user_info ) ? [
+			'name'  => isset( $user_info['name'] ) ? sanitize_text_field( $user_info['name'] ) : '',
+			'email' => isset( $user_info['email'] ) ? sanitize_email( $user_info['email'] ) : '',
+			'phone' => isset( $user_info['phone'] ) ? sanitize_text_field( $user_info['phone'] ) : '',
+		] : [];
 
 		// Get grid configuration
 		$default_columns = absint( get_option( 'brag_book_gallery_columns', 2 ) );

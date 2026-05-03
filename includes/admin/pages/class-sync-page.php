@@ -3006,7 +3006,7 @@ class Sync_Page extends Settings_Base {
 					</div>
 				<?php else : ?>
 					<h4><?php esc_html_e( 'Raw Details:', 'brag-book-gallery' ); ?></h4>
-					<pre style="background: #f8f9fa; padding: 10px; border: 1px solid #dee2e6; border-radius: 3px; max-height: 300px; overflow-y: auto;"><?php echo esc_html( json_encode( $details, JSON_PRETTY_PRINT ) ); ?></pre>
+					<pre style="background: #f8f9fa; padding: 10px; border: 1px solid #dee2e6; border-radius: 3px; max-height: 300px; overflow-y: auto;"><?php echo esc_html( wp_json_encode( $details, JSON_PRETTY_PRINT ) ); ?></pre>
 				<?php endif; ?>
 			<?php endif; ?>
 		</div>

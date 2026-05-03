@@ -181,10 +181,13 @@ final class Setup {
 			// Mark as initialized
 			$this->initialized = true;
 
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 			do_action( 'qm/debug', 'BRAG book Gallery Setup initialized successfully' );
 		} catch ( \Exception $e ) {
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 			do_action( 'qm/debug', sprintf( 'Setup initialization failed: %s', $e->getMessage() ) );
-			throw new \RuntimeException( 'Plugin initialization failed', 0, $e );
+			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- $e is the previous exception for chaining, not output.
+			throw new \RuntimeException( esc_html( $e->getMessage() ), 0, $e );
 		}
 	}
 
@@ -246,8 +249,10 @@ final class Setup {
 			// Get or create plugin instance
 			self::get_instance();
 
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 			do_action( 'qm/debug', sprintf( 'Plugin initialized from: %s', $plugin_file ) );
 		} catch ( \Exception $e ) {
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 			do_action( 'qm/debug', sprintf( 'Plugin initialization error: %s', $e->getMessage() ) );
 			wp_die(
 				esc_html( $e->getMessage() ),
@@ -376,6 +381,7 @@ final class Setup {
 		// Register view tracking AJAX handlers (ensure they're always available)
 		add_action( 'wp_ajax_brag_book_track_view', [ \BRAGBookGallery\Includes\Shortcodes\Gallery_Handler::class, 'ajax_track_view' ] );
 		add_action( 'wp_ajax_nopriv_brag_book_track_view', [ \BRAGBookGallery\Includes\Shortcodes\Gallery_Handler::class, 'ajax_track_view' ] );
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery: View tracking AJAX handlers registered' );
 
 		// Register procedures shortcode load more AJAX handler
@@ -402,8 +408,8 @@ final class Setup {
 		// Run one-time migration to fix array slug issues
 		$this->migrate_page_slug_option();
 
-		// Load plugin textdomain for translations.
-		$this->load_textdomain();
+		// Run one-time migration of legacy 'form-entries' post type to 'brag_book_forms'
+		$this->migrate_form_entries_post_type();
 
 		// Register custom post types if needed.
 		$this->register_post_types();
@@ -413,8 +419,10 @@ final class Setup {
 
 		// Initialize optimized sync AJAX handlers
 		if ( is_admin() ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery: Initializing Sync_Ajax_Handler' );
 			\BRAGBookGallery\Includes\Sync\Sync_Ajax_Handler::init();
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery: Sync_Ajax_Handler initialized' );
 		}
 
@@ -444,6 +452,11 @@ final class Setup {
 	 * @return void
 	 */
 	public function init_updater(): void {
+		// Updater class is stripped from WordPress.org distribution builds.
+		if ( ! class_exists( Updater::class ) ) {
+			return;
+		}
+
 		if ( ! isset( $this->services['updater'] ) ) {
 			$plugin_file = self::get_plugin_file();
 
@@ -603,37 +616,10 @@ final class Setup {
 	}
 
 	/**
-	 * Load plugin textdomain
-	 *
-	 * Loads translation files for internationalization.
-	 * Supports WordPress language packs and local translations.
-	 *
-	 * @since 3.0.0
-	 *
-	 * @return void
-	 */
-	private function load_textdomain(): void {
-		$loaded = load_plugin_textdomain(
-			'brag-book-gallery',
-			false,
-			dirname( plugin_basename( self::get_plugin_file() ) ) . '/languages'
-		);
-
-		/**
-		 * Fires after the plugin textdomain is loaded.
-		 *
-		 * @since 3.0.0
-		 *
-		 * @param bool $loaded Whether the textdomain was loaded successfully.
-		 */
-		do_action( 'brag_book_gallery_textdomain_loaded', $loaded );
-	}
-
-	/**
 	 * Register custom post types
 	 *
 	 * Registers any custom post types required by the plugin.
-	 * Currently registers the form-entries post type for consultations.
+	 * Currently registers the brag_book_forms post type for consultations.
 	 *
 	 * @since 3.0.0
 	 *
@@ -641,7 +627,7 @@ final class Setup {
 	 */
 	private function register_post_types(): void {
 
-		// Register form-entries post type for consultations.
+		// Register brag_book_forms post type for consultations.
 		$labels = array(
 			'name'               => esc_html__(
 				'Consultation Entries',
@@ -690,7 +676,7 @@ final class Setup {
 		);
 
 		register_post_type(
-			'form-entries',
+			'brag_book_forms',
 			array(
 				'labels'              => $labels,
 				'public'              => false,
@@ -945,6 +931,7 @@ final class Setup {
 			2
 		);
 
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 		do_action( 'qm/debug', 'LiteSpeed Cache exclusions configured' );
 	}
 
@@ -1116,17 +1103,21 @@ final class Setup {
 		$current_time = time();
 
 		// Delete expired transient options
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$wpdb->query(
 			$wpdb->prepare(
 				"DELETE FROM {$wpdb->options}
-				 WHERE option_name LIKE '_transient_timeout_%'
+				 WHERE option_name LIKE %s
 				 AND option_value < %d",
+				$wpdb->esc_like( '_transient_timeout_' ) . '%',
 				$current_time
 			)
 		);
 
 		// Delete orphaned transients (transients without timeouts)
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$wpdb->query(
+			// phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.LikeWildcardsInQuery
 			"DELETE FROM {$wpdb->options}
 			 WHERE option_name LIKE '_transient_%'
 			 AND option_name NOT LIKE '_transient_timeout_%'
@@ -1139,17 +1130,21 @@ final class Setup {
 		// For multisite, also clean site transients
 		if ( is_multisite() ) {
 			// Delete expired site transients
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$wpdb->query(
 				$wpdb->prepare(
 					"DELETE FROM {$wpdb->sitemeta}
-					 WHERE meta_key LIKE '_site_transient_timeout_%'
+					 WHERE meta_key LIKE %s
 					 AND meta_value < %d",
+					$wpdb->esc_like( '_site_transient_timeout_' ) . '%',
 					$current_time
 				)
 			);
 
 			// Delete orphaned site transients
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$wpdb->query(
+				// phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.LikeWildcardsInQuery
 				"DELETE FROM {$wpdb->sitemeta}
 				 WHERE meta_key LIKE '_site_transient_%'
 				 AND meta_key NOT LIKE '_site_transient_timeout_%'
@@ -1508,6 +1503,7 @@ final class Setup {
 			$old_version
 		);
 
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 		do_action( 'qm/debug', sprintf(
 			'Version upgrade triggered: %s -> %s',
 			$old_version,
@@ -1537,6 +1533,7 @@ final class Setup {
 			$slug = sanitize_text_field( (string) $slug );
 
 			if ( ! empty( $slug ) && str_contains( $current_url, $slug ) ) {
+				// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- LiteSpeed Cache integration hook
 				do_action( 'litespeed_control_set_nocache', 'bragbook gallery page' );
 				break;
 			}
@@ -1587,10 +1584,12 @@ final class Setup {
 
 			// Log for debugging
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAG book Gallery: Delayed rewrite rules flush completed' );
 			}
 		} catch ( Exception $e ) {
 			// Log error but don't break site
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery: Failed to flush rewrite rules - ' . $e->getMessage() );
 		}
 	}
@@ -1617,11 +1616,55 @@ final class Setup {
 		if ( is_array( $current_slug ) ) {
 			$string_slug = ! empty( $current_slug ) ? $current_slug[0] : 'gallery';
 			update_option( 'brag_book_gallery_page_slug', $string_slug );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAG book Gallery: Migrated page slug from array to string: '{$string_slug}'" );
 		}
 
 		// Mark migration as complete
 		update_option( 'brag_book_gallery_page_slug_migrated', true );
+	}
+
+	/**
+	 * Migrate legacy 'form-entries' post type to 'brag_book_forms'.
+	 *
+	 * The original post type slug 'form-entries' was renamed to satisfy
+	 * WordPress.org plugin directory prefix requirements. This migration
+	 * updates existing posts in place so historical consultation entries
+	 * remain accessible after the upgrade. Runs once, gated by an option flag.
+	 *
+	 * @since 3.3.2
+	 * @return void
+	 */
+	private function migrate_form_entries_post_type(): void {
+		if ( get_option( 'brag_book_gallery_form_post_type_migrated', false ) ) {
+			return;
+		}
+
+		global $wpdb;
+
+		$updated = $wpdb->update(
+			$wpdb->posts,
+			[ 'post_type' => 'brag_book_forms' ],
+			[ 'post_type' => 'form-entries' ],
+			[ '%s' ],
+			[ '%s' ]
+		);
+
+		if ( false === $updated ) {
+			// Database error — leave the flag unset so the migration retries on next init.
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			error_log( 'BRAG book Gallery: Failed to migrate form-entries post type. ' . $wpdb->last_error );
+			return;
+		}
+
+		if ( $updated > 0 ) {
+			wp_cache_delete( 'form-entries', 'counts' );
+			wp_cache_delete( 'brag_book_forms', 'counts' );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			error_log( "BRAG book Gallery: Migrated {$updated} 'form-entries' post(s) to 'brag_book_forms'." );
+		}
+
+		update_option( 'brag_book_gallery_form_post_type_migrated', true );
 	}
 
 	/**
@@ -1664,7 +1707,8 @@ final class Setup {
 
 			if ( empty( $api_tokens ) ) {
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-					error_log( 'BRAG book Gallery: API configuration missing for scheduled view tracking' );
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log( 'BRAG book Gallery: API configuration missing for scheduled view tracking' );
 				}
 				return;
 			}
@@ -1694,6 +1738,7 @@ final class Setup {
 			// Check for errors
 			if ( is_wp_error( $response ) ) {
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( 'BRAG book Gallery: Scheduled view tracking API error - ' . $response->get_error_message() );
 				}
 				return;
@@ -1704,17 +1749,20 @@ final class Setup {
 			if ( $response_code < 200 || $response_code >= 300 ) {
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 					$response_body = wp_remote_retrieve_body( $response );
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( "BRAG book Gallery: Scheduled view tracking API returned status {$response_code}: {$response_body}" );
 				}
 				return;
 			}
 
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( "BRAG book Gallery: Successfully tracked scheduled view for caseProcedureId {$case_procedure_id}" );
 			}
 
 		} catch ( \Exception $e ) {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAG book Gallery: Scheduled view tracking exception - ' . $e->getMessage() );
 			}
 		}

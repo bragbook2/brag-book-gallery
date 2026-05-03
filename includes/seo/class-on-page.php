@@ -26,6 +26,10 @@ declare( strict_types=1 );
 
 namespace BRAGBookGallery\Includes\SEO;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 use BRAGBookGallery\Includes\Core\Trait_Sanitizer;
 use BRAGBookGallery\Includes\Core\Trait_Tools;
 use BRAGBookGallery\Includes\REST\Endpoints;
@@ -137,9 +141,9 @@ class On_Page {
 	 */
 	public function get_current_url(): string {
 		// Use modern null coalescing operators and validation
-		$protocol    = ( ! empty( $_SERVER['HTTPS'] ) && $_SERVER['HTTPS'] !== 'off' ) ? 'https' : 'http';
-		$host        = $_SERVER['HTTP_HOST'] ?? '';
-		$request_uri = $_SERVER['REQUEST_URI'] ?? '';
+		$protocol    = ( ! empty( $_SERVER['HTTPS'] ) && sanitize_text_field( wp_unslash( $_SERVER['HTTPS'] ) ) !== 'off' ) ? 'https' : 'http';
+		$host        = sanitize_text_field( wp_unslash( $_SERVER['HTTP_HOST'] ?? '' ) );
+		$request_uri = sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ?? '' ) );
 
 		// Enhanced validation for security
 		if ( empty( $host ) || empty( $request_uri ) || ! $this->is_valid_host( $host ) ) {
@@ -222,20 +226,20 @@ class On_Page {
 			// Safely get and validate REQUEST_URI with fallback for WP Engine
 			$request_uri = '';
 			if ( isset( $_SERVER['REQUEST_URI'] ) ) {
-				$request_uri = $_SERVER['REQUEST_URI'];
+				$request_uri = sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) );
 			} elseif ( isset( $_SERVER['HTTP_X_ORIGINAL_URL'] ) ) {
 				// WP Engine sometimes uses this header
-				$request_uri = $_SERVER['HTTP_X_ORIGINAL_URL'];
+				$request_uri = sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_ORIGINAL_URL'] ) );
 			} elseif ( isset( $_SERVER['HTTP_X_REWRITE_URL'] ) ) {
 				// Another fallback for some hosting environments
-				$request_uri = $_SERVER['HTTP_X_REWRITE_URL'];
+				$request_uri = sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_REWRITE_URL'] ) );
 			}
 
 			// If still empty, try to construct from other variables
 			if ( empty( $request_uri ) && isset( $_SERVER['SCRIPT_NAME'] ) ) {
-				$request_uri = $_SERVER['SCRIPT_NAME'];
+				$request_uri = sanitize_text_field( wp_unslash( $_SERVER['SCRIPT_NAME'] ) );
 				if ( isset( $_SERVER['QUERY_STRING'] ) && ! empty( $_SERVER['QUERY_STRING'] ) ) {
-					$request_uri .= '?' . $_SERVER['QUERY_STRING'];
+					$request_uri .= '?' . sanitize_text_field( wp_unslash( $_SERVER['QUERY_STRING'] ) );
 				}
 			}
 
@@ -898,7 +902,7 @@ class On_Page {
 		// Enhanced security validation for description content
 		if ( ! empty( $description ) && $this->is_safe_description( $description ) ) {
 			$sanitized_description = esc_attr( wp_strip_all_tags( $description ) );
-			echo '<meta name="description" content="' . $sanitized_description . '">' . "\n";
+			echo '<meta name="description" content="' . esc_attr( $sanitized_description ) . '">' . "\n";
 		}
 	}
 
@@ -914,7 +918,7 @@ class On_Page {
 		// Enhanced security validation for canonical URL
 		if ( ! empty( $url ) && $this->is_safe_canonical_url( $url ) ) {
 			$sanitized_url = esc_url( $url );
-			echo '<link rel="canonical" href="' . $sanitized_url . '">' . "\n";
+			echo '<link rel="canonical" href="' . esc_url( $sanitized_url ) . '">' . "\n";
 		}
 	}
 
@@ -1193,7 +1197,7 @@ class On_Page {
 		// Safely get URL without triggering circular dependency
 		$safe_url = '';
 		try {
-			$safe_url = $_SERVER['REQUEST_URI'] ?? '';
+			$safe_url = sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ?? '' ) );
 		} catch ( Exception $e ) {
 			$safe_url = 'URL_PARSE_ERROR';
 		}
@@ -1210,6 +1214,7 @@ class On_Page {
 
 		// WordPress VIP compliant logging
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 			do_action( 'qm/debug', '[BRAG book SEO Validation Error] ' . $message );
 		}
 
@@ -1454,6 +1459,7 @@ class On_Page {
 
 		// WordPress VIP compliant performance logging
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 			do_action( 'qm/debug', sprintf(
 				'[BRAG book SEO Cache] %s: %s from %s (%.3fs)',
 				$data_type,

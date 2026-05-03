@@ -154,10 +154,13 @@ class Database {
 
 			$this->init();
 
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 			do_action( 'qm/debug', 'Database manager initialized successfully' );
 		} catch ( \Exception $e ) {
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 			do_action( 'qm/debug', sprintf( 'Database initialization failed: %s', $e->getMessage() ) );
-			throw new \RuntimeException( 'Database manager initialization failed', 0, $e );
+			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- $e is the previous exception for chaining, not output.
+			throw new \RuntimeException( esc_html( $e->getMessage() ), 0, $e );
 		}
 	}
 
@@ -197,6 +200,7 @@ class Database {
 
 			// Check if upgrade needed using semantic version comparison
 			if ( version_compare( $installed_version, self::CURRENT_DB_VERSION, '<' ) ) {
+				// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 				do_action( 'qm/debug', sprintf(
 					'Database upgrade needed: %s -> %s',
 					$installed_version,
@@ -219,6 +223,7 @@ class Database {
 				$this->create_tables();
 			}
 		} catch ( \Exception $e ) {
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 			do_action( 'qm/debug', sprintf( 'Database version check failed: %s', $e->getMessage() ) );
 		}
 	}
@@ -233,7 +238,9 @@ class Database {
 		$sync_log  = $this->table_prefix . 'sync_log';
 		$registry  = $this->get_sync_registry_table();
 
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 		return $this->wpdb->get_var( $this->wpdb->prepare( 'SHOW TABLES LIKE %s', $sync_log ) ) === $sync_log
+			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 			&& $this->wpdb->get_var( $this->wpdb->prepare( 'SHOW TABLES LIKE %s', $registry ) ) === $registry;
 	}
 
@@ -269,34 +276,44 @@ class Database {
 
 		// Check if table exists
 		if ( ! $this->table_exists( $table_name ) ) {
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 			do_action( 'qm/debug', 'Migration 1.2.0: Table does not exist, will be created fresh' );
 			return;
 		}
 
 		// Get existing columns
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$columns = $this->wpdb->get_col( "DESCRIBE {$table_name}" );
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
+		$columns = $this->wpdb->get_col( $this->wpdb->prepare( 'DESCRIBE %i', $table_name ) );
 
 		// Only modify sync_type if it exists
 		if ( in_array( 'sync_type', $columns, true ) ) {
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange
+			// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.NotPrepared
 			$this->wpdb->query(
-				"ALTER TABLE {$table_name}
-				MODIFY COLUMN sync_type ENUM('full', 'partial', 'single', 'stage_1', 'stage_2', 'stage_3') NOT NULL"
+				$this->wpdb->prepare(
+					"ALTER TABLE %i MODIFY COLUMN sync_type ENUM('full', 'partial', 'single', 'stage_1', 'stage_2', 'stage_3') NOT NULL",
+					$table_name
+				)
 			);
+			// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.NotPrepared
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 			do_action( 'qm/debug', 'Migration 1.2.0: Updated sync_type column' );
 		}
 
 		// Only modify sync_source if it exists
 		if ( in_array( 'sync_source', $columns, true ) ) {
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange
+			// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.NotPrepared
 			$this->wpdb->query(
-				"ALTER TABLE {$table_name}
-				MODIFY COLUMN sync_source ENUM('manual', 'automatic', 'cron', 'rest_api') NOT NULL DEFAULT 'manual'"
+				$this->wpdb->prepare(
+					"ALTER TABLE %i MODIFY COLUMN sync_source ENUM('manual', 'automatic', 'cron', 'rest_api') NOT NULL DEFAULT 'manual'",
+					$table_name
+				)
 			);
+			// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.NotPrepared
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 			do_action( 'qm/debug', 'Migration 1.2.0: Updated sync_source column' );
 		}
 
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 		do_action( 'qm/debug', 'Database migrated to version 1.2.0: Added new sync types and sources' );
 	}
 
@@ -318,10 +335,11 @@ class Database {
 
 		// Migrate existing case_map rows into sync_registry
 		if ( $this->table_exists( $old_table ) ) {
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
 			$existing_rows = $this->wpdb->get_results(
-				"SELECT * FROM {$old_table}" // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$this->wpdb->prepare( 'SELECT * FROM %i', $old_table )
 			);
+			// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
 
 			if ( ! empty( $existing_rows ) ) {
 				foreach ( $existing_rows as $row ) {
@@ -343,15 +361,18 @@ class Database {
 						[ '%s', '%d', '%d', '%s', '%s', '%d', '%d', '%s', '%s', '%s' ]
 					);
 				}
+				// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 				do_action( 'qm/debug', sprintf( 'Migration 1.3.0: Migrated %d rows from case_map to sync_registry', count( $existing_rows ) ) );
 			}
 
 			// Drop old table
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange
-			$this->wpdb->query( "DROP TABLE IF EXISTS `{$old_table}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.NotPrepared
+			$this->wpdb->query( $this->wpdb->prepare( 'DROP TABLE IF EXISTS %i', $old_table ) );
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 			do_action( 'qm/debug', 'Migration 1.3.0: Dropped old case_map table' );
 		}
 
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 		do_action( 'qm/debug', 'Database migrated to version 1.3.0: Unified sync registry created' );
 	}
 
@@ -390,6 +411,7 @@ class Database {
 
 		// Log any database errors using VIP-compliant debugging
 		if ( ! empty( $this->wpdb->last_error ) ) {
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 			do_action( 'qm/debug', sprintf(
 				'Error creating sync_log table: %s',
 				$this->wpdb->last_error
@@ -433,6 +455,7 @@ class Database {
 		dbDelta( $sql );
 
 		if ( ! empty( $this->wpdb->last_error ) ) {
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 			do_action( 'qm/debug', sprintf(
 				'Error creating sync_registry table: %s',
 				$this->wpdb->last_error
@@ -533,7 +556,8 @@ class Database {
 			}
 
 			// Remove sync_source if column doesn't exist (old schema compatibility)
-			$columns = $this->wpdb->get_col( "DESCRIBE {$table_name}" );
+			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			$columns = $this->wpdb->get_col( $this->wpdb->prepare( 'DESCRIBE %i', $table_name ) );
 			if ( ! in_array( 'sync_source', $columns, true ) ) {
 				unset( $data['sync_source'] );
 			}
@@ -554,6 +578,7 @@ class Database {
 			// Clear related caches on successful insertion
 			if ( false !== $result ) {
 				$insert_id = $this->wpdb->insert_id;
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'BRAGBook Database: Successfully logged sync operation with ID: ' . $insert_id . ', type: ' . $sync_type . ', source: ' . $sync_source );
 				$this->clear_sync_caches();
 				return $insert_id;
@@ -561,12 +586,16 @@ class Database {
 
 			// Log insert failure
 			$error_msg = 'Failed to insert sync log: ' . $this->wpdb->last_error;
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAGBook Database ERROR: ' . $error_msg );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log, WordPress.PHP.DevelopmentFunctions.error_log_print_r
 			error_log( 'BRAGBook Database: Data attempted: ' . print_r( $data, true ) );
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 			do_action( 'qm/debug', $error_msg );
 
 			return false;
 		} catch ( \Exception $e ) {
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 			do_action( 'qm/debug', sprintf( 'Sync logging error: %s', $e->getMessage() ) );
 			return false;
 		}
@@ -635,6 +664,7 @@ class Database {
 
 			return false !== $result;
 		} catch ( \Exception $e ) {
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 			do_action( 'qm/debug', sprintf( 'Sync log update error: %s', $e->getMessage() ) );
 			return false;
 		}
@@ -661,13 +691,15 @@ class Database {
 		$table_name = $this->get_sync_log_table();
 
 		// Prepare and execute query.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Custom table query
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.PreparedSQL.NotPrepared -- Custom table query
 		$results = $this->wpdb->get_results(
 			$this->wpdb->prepare(
-				"SELECT * FROM {$table_name} ORDER BY started_at DESC LIMIT %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				'SELECT * FROM %i ORDER BY started_at DESC LIMIT %d',
+				$table_name,
 				$limit
 			)
 		);
+		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.PreparedSQL.NotPrepared
 
 		// Ensure we return an array.
 		$results = is_array( $results ) ? $results : array();
@@ -738,14 +770,16 @@ class Database {
 		$table_name = $this->get_sync_registry_table();
 
 		// Query for post ID.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table query
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared -- Custom table query
 		$post_id = $this->wpdb->get_var(
 			$this->wpdb->prepare(
-				"SELECT wordpress_id FROM {$table_name} WHERE item_type = 'case' AND api_id = %d AND api_token = %s LIMIT 1", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"SELECT wordpress_id FROM %i WHERE item_type = 'case' AND api_id = %d AND api_token = %s LIMIT 1",
+				$table_name,
 				$api_case_id,
 				$api_token
 			)
 		);
+		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
 
 		if ( $post_id ) {
 			// Caching disabled
@@ -779,14 +813,16 @@ class Database {
 		$table_name = $this->get_sync_registry_table();
 
 		// Query for sync hash.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom table query
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared -- Custom table query
 		$sync_hash = $this->wpdb->get_var(
 			$this->wpdb->prepare(
-				"SELECT sync_hash FROM {$table_name} WHERE item_type = 'case' AND api_id = %d AND api_token = %s LIMIT 1", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"SELECT sync_hash FROM %i WHERE item_type = 'case' AND api_id = %d AND api_token = %s LIMIT 1",
+				$table_name,
 				$api_case_id,
 				$api_token
 			)
 		);
+		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
 
 		if ( $sync_hash ) {
 			// Caching disabled
@@ -835,10 +871,10 @@ class Database {
 
 		$procedure_id_val = $procedure_api_id ?? 0;
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
 		$result = $this->wpdb->query(
 			$this->wpdb->prepare(
-				"INSERT INTO {$table_name} (item_type, api_id, wordpress_id, wordpress_type, api_token, property_id, procedure_api_id, sync_hash, last_synced, last_sync_session)
+				"INSERT INTO %i (item_type, api_id, wordpress_id, wordpress_type, api_token, property_id, procedure_api_id, sync_hash, last_synced, last_sync_session)
 				VALUES (%s, %d, %d, %s, %s, %d, %d, %s, %s, %s)
 				ON DUPLICATE KEY UPDATE
 					wordpress_id = VALUES(wordpress_id),
@@ -846,7 +882,8 @@ class Database {
 					property_id = VALUES(property_id),
 					sync_hash = VALUES(sync_hash),
 					last_synced = VALUES(last_synced),
-					last_sync_session = VALUES(last_sync_session)", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+					last_sync_session = VALUES(last_sync_session)",
+				$table_name,
 				$item_type,
 				$api_id,
 				$wordpress_id,
@@ -859,6 +896,7 @@ class Database {
 				$sync_session_id
 			)
 		);
+		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
 
 		return false !== $result;
 	}
@@ -884,18 +922,19 @@ class Database {
 			return [];
 		}
 
-		$sql = "SELECT * FROM {$table_name} WHERE last_sync_session != %s AND api_token = %s"; // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$params = [ $current_session, $api_token ];
+		$sql    = 'SELECT * FROM %i WHERE last_sync_session != %s AND api_token = %s';
+		$params = [ $table_name, $current_session, $api_token ];
 
 		if ( $item_type ) {
 			$sql .= ' AND item_type = %s';
 			$params[] = $item_type;
 		}
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 		$results = $this->wpdb->get_results(
-			$this->wpdb->prepare( $sql, ...$params ) // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			$this->wpdb->prepare( $sql, ...$params ) // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- SQL built dynamically with %i placeholder
 		);
+		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 
 		return is_array( $results ) ? $results : [];
 	}
@@ -926,13 +965,15 @@ class Database {
 
 		$placeholders = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
 		$deleted = $this->wpdb->query(
 			$this->wpdb->prepare(
-				"DELETE FROM {$table_name} WHERE id IN ({$placeholders})", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"DELETE FROM %i WHERE id IN ({$placeholders})", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $placeholders is generated from array_fill with %d
+				$table_name,
 				...$ids
 			)
 		);
+		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
 
 		return absint( $deleted );
 	}
@@ -985,16 +1026,18 @@ class Database {
 		$table_name       = $this->get_sync_registry_table();
 		$procedure_id_val = $procedure_api_id ?? 0;
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
 		$result = $this->wpdb->get_row(
 			$this->wpdb->prepare(
-				"SELECT * FROM {$table_name} WHERE item_type = %s AND api_id = %d AND api_token = %s AND procedure_api_id = %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				'SELECT * FROM %i WHERE item_type = %s AND api_id = %d AND api_token = %s AND procedure_api_id = %d',
+				$table_name,
 				$item_type,
 				$api_id,
 				$api_token,
 				$procedure_id_val
 			)
 		);
+		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
 
 		return $result ?: null;
 	}
@@ -1009,10 +1052,11 @@ class Database {
 	public function get_registry_stats(): array {
 		$table_name = $this->get_sync_registry_table();
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
 		$results = $this->wpdb->get_results(
-			"SELECT item_type, COUNT(*) as count FROM {$table_name} GROUP BY item_type" // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$this->wpdb->prepare( 'SELECT item_type, COUNT(*) as count FROM %i GROUP BY item_type', $table_name )
 		);
+		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
 
 		$stats = [
 			'case'      => 0,
@@ -1053,14 +1097,16 @@ class Database {
 		$table_name = $this->get_sync_registry_table();
 
 		// Delete the mapping from the sync registry.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
 		$result = $this->wpdb->query(
 			$this->wpdb->prepare(
-				"DELETE FROM {$table_name} WHERE item_type = 'case' AND api_id = %d AND api_token = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"DELETE FROM %i WHERE item_type = 'case' AND api_id = %d AND api_token = %s",
+				$table_name,
 				$api_case_id,
 				$api_token
 			)
 		);
+		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
 
 		// Clear related caches.
 		$this->clear_case_cache( $api_case_id, $api_token );
@@ -1093,40 +1139,47 @@ class Database {
 		);
 
 		// Get total syncs.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Aggregation query
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared -- Aggregation query
 		$total_syncs = $this->wpdb->get_var(
-			"SELECT COUNT(*) FROM {$sync_log_table}" // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$this->wpdb->prepare( 'SELECT COUNT(*) FROM %i', $sync_log_table )
 		);
+		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
 
 		// Get successful syncs.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Aggregation query
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared -- Aggregation query
 		$successful_syncs = $this->wpdb->get_var(
 			$this->wpdb->prepare(
-				"SELECT COUNT(*) FROM {$sync_log_table} WHERE sync_status = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				'SELECT COUNT(*) FROM %i WHERE sync_status = %s',
+				$sync_log_table,
 				'completed'
 			)
 		);
+		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
 
 		// Get failed syncs.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Aggregation query
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared -- Aggregation query
 		$failed_syncs = $this->wpdb->get_var(
 			$this->wpdb->prepare(
-				"SELECT COUNT(*) FROM {$sync_log_table} WHERE sync_status = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				'SELECT COUNT(*) FROM %i WHERE sync_status = %s',
+				$sync_log_table,
 				'failed'
 			)
 		);
+		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
 
 		// Get total mapped cases.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Aggregation query
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared -- Aggregation query
 		$total_mapped_cases = $this->wpdb->get_var(
-			"SELECT COUNT(*) FROM {$sync_registry_table} WHERE item_type = 'case'" // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$this->wpdb->prepare( "SELECT COUNT(*) FROM %i WHERE item_type = 'case'", $sync_registry_table )
 		);
+		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
 
 		// Get last sync time.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Aggregation query
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared -- Aggregation query
 		$last_sync = $this->wpdb->get_var(
-			"SELECT MAX(started_at) FROM {$sync_log_table}" // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$this->wpdb->prepare( 'SELECT MAX(started_at) FROM %i', $sync_log_table )
 		);
+		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
 
 		// Build stats array.
 		$stats = array(
@@ -1164,13 +1217,15 @@ class Database {
 		$cutoff_date = gmdate( 'Y-m-d H:i:s', strtotime( "-{$days_to_keep} days" ) );
 
 		// Delete old logs.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Maintenance query
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared -- Maintenance query
 		$deleted = $this->wpdb->query(
 			$this->wpdb->prepare(
-				"DELETE FROM {$table_name} WHERE started_at < %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				'DELETE FROM %i WHERE started_at < %s',
+				$table_name,
 				$cutoff_date
 			)
 		);
+		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
 
 		// Caching disabled
 
@@ -1221,14 +1276,14 @@ class Database {
 		$sync_registry_table = $this->get_sync_registry_table();
 
 		// Drop tables using proper escaping.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- Uninstall routine
-		$this->wpdb->query( "DROP TABLE IF EXISTS `{$sync_log_table}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.NotPrepared -- Uninstall routine
+		$this->wpdb->query( $this->wpdb->prepare( 'DROP TABLE IF EXISTS %i', $sync_log_table ) );
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- Uninstall routine
-		$this->wpdb->query( "DROP TABLE IF EXISTS `{$case_map_table}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.NotPrepared -- Uninstall routine
+		$this->wpdb->query( $this->wpdb->prepare( 'DROP TABLE IF EXISTS %i', $case_map_table ) );
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- Uninstall routine
-		$this->wpdb->query( "DROP TABLE IF EXISTS `{$sync_registry_table}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.NotPrepared -- Uninstall routine
+		$this->wpdb->query( $this->wpdb->prepare( 'DROP TABLE IF EXISTS %i', $sync_registry_table ) );
 
 		// Remove database version option.
 		delete_option( self::DB_VERSION_OPTION );
@@ -1253,13 +1308,14 @@ class Database {
 			return false;
 		}
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Table existence check
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared -- Table existence check
 		$result = $this->wpdb->get_var(
 			$this->wpdb->prepare(
 				'SHOW TABLES LIKE %s',
 				$table_name
 			)
 		);
+		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared
 
 		return ! empty( $result );
 	}
@@ -1363,9 +1419,11 @@ class Database {
 			$deleted = $this->cleanup_old_sync_logs( 30 );
 
 			if ( $deleted > 0 ) {
+				// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 				do_action( 'qm/debug', sprintf( 'Cleaned up %d old sync logs', $deleted ) );
 			}
 		} catch ( \Exception $e ) {
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 			do_action( 'qm/debug', sprintf( 'Daily cleanup failed: %s', $e->getMessage() ) );
 		}
 	}

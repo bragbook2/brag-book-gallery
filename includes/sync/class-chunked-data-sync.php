@@ -98,7 +98,7 @@ class Chunked_Data_Sync {
 			$this->sync_session_id = uniqid( 'chunked_sync_', true );
 		}
 
-		$this->date_string = date( 'Y-m-d' );
+		$this->date_string = gmdate( 'Y-m-d' );
 		$this->init_sync_directory();
 
 		// Initialize database dependency
@@ -328,20 +328,20 @@ class Chunked_Data_Sync {
 		);
 
 		if ( is_wp_error( $response ) ) {
-			throw new Exception( 'API request failed: ' . $response->get_error_message() );
+			throw new Exception( 'API request failed: ' . esc_html( $response->get_error_message() ) );
 		}
 
 		$response_code = wp_remote_retrieve_response_code( $response );
 
 		if ( $response_code !== 200 ) {
-			throw new Exception( 'API returned error status: ' . $response_code );
+			throw new Exception( 'API returned error status: ' . esc_html( $response_code ) );
 		}
 
 		$response_body = wp_remote_retrieve_body( $response );
 		$data          = json_decode( $response_body, true );
 
 		if ( json_last_error() !== JSON_ERROR_NONE ) {
-			throw new Exception( 'Invalid JSON response: ' . json_last_error_msg() );
+			throw new Exception( 'Invalid JSON response: ' . esc_html( json_last_error_msg() ) );
 		}
 
 		if ( ! isset( $data['data']['terms'] ) || ! is_array( $data['data']['terms'] ) ) {
@@ -379,7 +379,7 @@ class Chunked_Data_Sync {
 
 		$data = json_decode( $json_content, true );
 		if ( json_last_error() !== JSON_ERROR_NONE ) {
-			throw new Exception( 'Invalid JSON in sync data file: ' . json_last_error_msg() );
+			throw new Exception( 'Invalid JSON in sync data file: ' . esc_html( json_last_error_msg() ) );
 		}
 
 		return $data;
@@ -492,7 +492,7 @@ class Chunked_Data_Sync {
 			] );
 
 			if ( is_wp_error( $inserted ) ) {
-				throw new Exception( 'Failed to create term: ' . $inserted->get_error_message() );
+				throw new Exception( 'Failed to create term: ' . esc_html( $inserted->get_error_message() ) );
 			}
 
 			$term_id = $inserted['term_id'];
@@ -662,6 +662,7 @@ class Chunked_Data_Sync {
 			foreach ( $procedure_ids as $procedure_id ) {
 				// Skip invalid procedure IDs (0, null, empty)
 				if ( empty( $procedure_id ) || $procedure_id === 0 || $procedure_id === '0' ) {
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_var_export
 					$this->debug_log( "Chunked Sync: Skipping invalid procedure ID: " . var_export( $procedure_id, true ) . " for procedure '{$procedure_name}'" );
 					continue;
 				}
@@ -864,7 +865,7 @@ class Chunked_Data_Sync {
 
 		$data = json_decode( $json_content, true );
 		if ( json_last_error() !== JSON_ERROR_NONE ) {
-			throw new Exception( 'Invalid JSON in manifest file: ' . json_last_error_msg() );
+			throw new Exception( 'Invalid JSON in manifest file: ' . esc_html( json_last_error_msg() ) );
 		}
 
 		return $data;
@@ -947,8 +948,8 @@ class Chunked_Data_Sync {
 		$this->debug_log( 'Chunked Sync: Starting Stage 3 - Process cases from manifest (batch size: ' . $batch_size . ')' );
 
 		// Increase memory limit and time limit for processing
-		@ini_set( 'memory_limit', '512M' );
-		@set_time_limit( 180 ); // 3 minutes per chunk
+		@ini_set( 'memory_limit', '512M' ); // phpcs:ignore Squiz.PHP.DiscouragedFunctions.Discouraged
+		@set_time_limit( 180 ); // 3 minutes per chunk // phpcs:ignore Squiz.PHP.DiscouragedFunctions.Discouraged
 
 		try {
 			// Check if manifest exists (required for Stage 3)
@@ -1109,6 +1110,7 @@ class Chunked_Data_Sync {
 	 */
 	private function debug_log( string $message ): void {
 		if ( get_option( 'brag_book_gallery_debug_mode' ) === 'yes' ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( $message );
 		}
 	}
@@ -1543,7 +1545,7 @@ class Chunked_Data_Sync {
 			$result    = wp_update_post( $post_data );
 			$this->debug_log( "Chunked Sync: wp_update_post result for procedure case {$procedure_case_id}: " . ( $result ? "success (ID: $result)" : "failed" ) );
 			if ( is_wp_error( $result ) ) {
-				throw new Exception( "Failed to update post: " . $result->get_error_message() );
+				throw new Exception( "Failed to update post: " . esc_html( $result->get_error_message() ) );
 			}
 			// Update sync timestamp and meta description
 			update_post_meta( $post_id, 'brag_book_gallery_synced_at', current_time( 'mysql' ) );
@@ -1569,7 +1571,7 @@ class Chunked_Data_Sync {
 			$post_id   = wp_insert_post( $post_data );
 			$this->debug_log( "Chunked Sync: wp_insert_post result for procedure case {$procedure_case_id}: " . ( is_wp_error( $post_id ) ? "error: " . $post_id->get_error_message() : "success (ID: $post_id)" ) );
 			if ( is_wp_error( $post_id ) ) {
-				throw new Exception( "Failed to create post: " . $post_id->get_error_message() );
+				throw new Exception( "Failed to create post: " . esc_html( $post_id->get_error_message() ) );
 			}
 			$created = true;
 		}

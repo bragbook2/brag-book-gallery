@@ -343,14 +343,19 @@ class Endpoints {
 			$website_property_ids = get_option( 'brag_book_gallery_website_property_id', [] );
 
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log, WordPress.PHP.DevelopmentFunctions.error_log_print_r
 				error_log( 'get_case_details: Retrieved API tokens: ' . print_r( $api_tokens, true ) );
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log, WordPress.PHP.DevelopmentFunctions.error_log_print_r
 				error_log( 'get_case_details: Retrieved website property IDs: ' . print_r( $website_property_ids, true ) );
 			}
 
 			if ( empty( $api_tokens[0] ) || empty( $website_property_ids[0] ) ) {
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( 'BRAG book Gallery: get_case_details - Missing API configuration' );
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( 'BRAG book Gallery: API tokens empty: ' . ( empty( $api_tokens[0] ) ? 'YES' : 'NO' ) );
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 					error_log( 'BRAG book Gallery: Website property IDs empty: ' . ( empty( $website_property_ids[0] ) ? 'YES' : 'NO' ) );
 				}
 				return null;
@@ -360,7 +365,9 @@ class Endpoints {
 			$website_property_id = intval( $website_property_ids[0] );
 
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'get_case_details: Using API token (first 10): ' . substr( $api_token, 0, 10 ) );
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				error_log( 'get_case_details: Using website property ID: ' . $website_property_id );
 			}
 
@@ -384,8 +391,11 @@ class Endpoints {
 		);
 
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 			do_action( 'qm/debug', 'BRAG book Gallery: Fetching case ' . $case_id . ' from: ' . $api_url );
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 			do_action( 'qm/debug', 'BRAG book Gallery: API Token length: ' . strlen( $api_token ) );
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 			do_action( 'qm/debug', 'BRAG book Gallery: Website Property ID: ' . $website_property_id );
 		}
 
@@ -402,6 +412,7 @@ class Endpoints {
 
 		if ( is_wp_error( $response ) ) {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 				do_action( 'qm/debug', 'BRAG book Gallery: API error for case ' . $case_id . ': ' . $response->get_error_message() );
 			}
 			return null;
@@ -410,7 +421,9 @@ class Endpoints {
 		$response_code = wp_remote_retrieve_response_code( $response );
 		if ( $response_code !== 200 ) {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 				do_action( 'qm/debug', 'BRAG book Gallery: API returned status ' . $response_code . ' for case ' . $case_id );
+				// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 				do_action( 'qm/debug', 'Response body: ' . wp_remote_retrieve_body( $response ) );
 			}
 			return null;
@@ -511,7 +524,7 @@ class Endpoints {
 				esc_html__(
 					'Input validation failed: ',
 					'brag-book-gallery'
-				) . implode( ', ', $validation_errors )
+				) . esc_html( implode( ', ', $validation_errors ) )
 			);
 		}
 
@@ -676,13 +689,20 @@ class Endpoints {
 
 		// Log the request details for debugging
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 			do_action( 'qm/debug', 'BRAG book Gallery: Case API Request Details:' );
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 			do_action( 'qm/debug', '  Endpoint: ' . $endpoint );
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 			do_action( 'qm/debug', '  Full URL: ' . Setup::get_api_url() . $endpoint );
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 			do_action( 'qm/debug', '  Token: ' . substr( $api_token, 0, 10 ) . '...' );
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 			do_action( 'qm/debug', '  Property ID: ' . $website_property_id );
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 			do_action( 'qm/debug', '  Case Number: ' . $case_number );
-			do_action( 'qm/debug', '  Procedure IDs: ' . json_encode( $procedure_ids ) );
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
+			do_action( 'qm/debug', '  Procedure IDs: ' . wp_json_encode( $procedure_ids ) );
 		}
 
 		// Try both request formats - first with arrays (like pagination endpoint)
@@ -708,6 +728,7 @@ class Endpoints {
 		// If first format failed, try with singular keys
 		if ( empty( $response ) ) {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 				do_action( 'qm/debug', 'First format failed, trying singular keys...' );
 			}
 
@@ -736,17 +757,23 @@ class Endpoints {
 
 		// Log the response for debugging
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 			do_action( 'qm/debug', 'BRAG book Gallery: Case API Response status: ' . ( ! empty( $data ) ? 'Has data' : 'Empty' ) );
 			if ( ! empty( $data ) ) {
+				// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 				do_action( 'qm/debug', '  Response keys: ' . implode( ', ', array_keys( $data ) ) );
 				if ( isset( $data['success'] ) ) {
+					// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 					do_action( 'qm/debug', '  Success flag: ' . ( $data['success'] ? 'true' : 'false' ) );
 				}
 				if ( isset( $data['data'] ) ) {
+					// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 					do_action( 'qm/debug', '  Data type: ' . gettype( $data['data'] ) );
 					if ( is_array( $data['data'] ) ) {
+						// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 						do_action( 'qm/debug', '  Data count: ' . count( $data['data'] ) );
 						if ( ! empty( $data['data'][0] ) && isset( $data['data'][0]['id'] ) ) {
+							// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 							do_action( 'qm/debug', '  First case ID: ' . $data['data'][0]['id'] );
 						}
 					}
@@ -770,6 +797,7 @@ class Endpoints {
 		if ( isset( $data['data'] ) && is_array( $data['data'] ) && ! empty( $data['data'] ) ) {
 			// Return the first case from data array even without success flag
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 				do_action( 'qm/debug', 'get_case_by_number: Found data array without success flag' );
 			}
 			return $data['data'][0];
@@ -901,7 +929,9 @@ class Endpoints {
 
 		// Debug logging
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 			do_action( 'qm/debug', 'API Request URL: ' . $url );
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 			do_action( 'qm/debug', 'API Request Body: ' . wp_json_encode( $body ) );
 		}
 
@@ -924,6 +954,7 @@ class Endpoints {
 			$response_body = wp_remote_retrieve_body( $response );
 			$this->log_error( sprintf( 'API request failed with status %d: %s', $response_code, $url ) );
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 				do_action( 'qm/debug', 'API Response Body: ' . substr( $response_body, 0, 500 ) );
 			}
 			return null;
@@ -934,6 +965,7 @@ class Endpoints {
 
 		// Debug log the response
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 			do_action( 'qm/debug', 'API Response: ' . $response_body );
 		}
 
@@ -1044,7 +1076,7 @@ class Endpoints {
 		// If we're in an AJAX context, throw exception instead of calling wp_send_json_error
 		// This allows the calling code to handle the error appropriately
 		if ( wp_doing_ajax() ) {
-			throw new \Exception( $user_message );
+			throw new \Exception( esc_html( $user_message ) );
 		} else {
 			$this->send_json_error( $user_message );
 		}
@@ -1167,6 +1199,7 @@ class Endpoints {
 	private function log_error( string $message ): void {
 
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 			do_action( 'qm/debug', '[BRAG book API] ' . $message );
 		}
 
@@ -2249,6 +2282,7 @@ class Endpoints {
 
 		// VIP-compliant logging
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 			do_action( 'qm/debug', sprintf(
 				'[BRAG book API Error] %s | Endpoint: %s | Message: %s',
 				$timestamp,
@@ -2284,6 +2318,7 @@ class Endpoints {
 
 		// Log performance in debug mode
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 			do_action( 'qm/debug', sprintf(
 				'[BRAG book API Performance] %s: %.3fs %s',
 				$endpoint,

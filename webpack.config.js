@@ -61,6 +61,9 @@ module.exports = (env, argv) => {
 			minimizer: [
 				new TerserPlugin({
 					terserOptions: {
+						compress: {
+							drop_console: true,
+						},
 						format: {
 							comments: false,
 						},

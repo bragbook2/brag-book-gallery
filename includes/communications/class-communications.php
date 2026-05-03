@@ -104,7 +104,7 @@ class Communications {
 	 * @since 3.0.0
 	 * @var string
 	 */
-	private const POST_TYPE = 'form-entries';
+	private const POST_TYPE = 'brag_book_forms';
 
 	/**
 	 * AJAX action for pagination
@@ -120,7 +120,7 @@ class Communications {
 	 * @since 3.0.0
 	 * @var string
 	 */
-	private const AJAX_SUBMISSION = 'handle_form_submission';
+	private const AJAX_SUBMISSION = 'brag_book_gallery_form_submission';
 
 	/**
 	 * AJAX action for deleting entries
@@ -128,7 +128,7 @@ class Communications {
 	 * @since 3.0.0
 	 * @var string
 	 */
-	private const AJAX_DELETE = 'delete_consultation_entry';
+	private const AJAX_DELETE = 'brag_book_gallery_delete_form_entry';
 
 	/**
 	 * Cache group for consultation data
@@ -209,8 +209,8 @@ class Communications {
 	 *
 	 * Registered AJAX Actions:
 	 * - consultation-pagination-load-posts: Handles paginated entry loading
-	 * - handle_form_submission: Processes communications form submissions
-	 * - delete_consultation_entry: Manages communications deletion (admin only)
+	 * - brag_book_gallery_form_submission: Processes communications form submissions
+	 * - brag_book_gallery_delete_form_entry: Manages communications deletion (admin only)
 	 *
 	 * Hook Strategy:
 	 * - Uses both authenticated (wp_ajax_) and non-authenticated (wp_ajax_nopriv_)
@@ -462,7 +462,7 @@ class Communications {
 	 * ```javascript
 	 * // Frontend JavaScript usage
 	 * const formData = new FormData();
-	 * formData.append('action', 'handle_form_submission');
+	 * formData.append('action', 'brag_book_gallery_form_submission');
 	 * formData.append('nonce', consultationNonce);
 	 * formData.append('name', 'John Doe');
 	 * formData.append('email', 'john@example.com');
@@ -1948,7 +1948,7 @@ class Communications {
 
 				try {
 					const formData = new FormData();
-					formData.append( 'action', 'delete_consultation_entry' );
+					formData.append( 'action', 'brag_book_gallery_delete_form_entry' );
 					formData.append( 'nonce', deleteNonce );
 					formData.append( 'post_id', postId );
 

@@ -335,7 +335,7 @@ abstract class Settings_Base {
 	protected function save_settings( string $nonce_action, string $nonce_field ): bool {
 
 		// Verify nonce to prevent CSRF attacks.
-		if ( ! isset( $_POST[ $nonce_field ] ) || ! wp_verify_nonce( $_POST[ $nonce_field ], $nonce_action ) ) {
+		if ( ! isset( $_POST[ $nonce_field ] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST[ $nonce_field ] ) ), $nonce_action ) ) {
 			return false;
 		}
 

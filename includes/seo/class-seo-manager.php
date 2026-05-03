@@ -1184,7 +1184,7 @@ final class SEO_Manager {
 			];
 		}
 
-		echo '<script type="application/ld+json">' . wp_json_encode( $structured_data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) . '</script>' . "\n";
+		echo '<script type="application/ld+json">' . wp_json_encode( $structured_data, JSON_UNESCAPED_UNICODE ) . '</script>' . "\n";
 	}
 
 	/**

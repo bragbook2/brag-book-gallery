@@ -4,7 +4,7 @@
 node_modules/
 src/
 tests/
-vendor/
+/vendor/
 TODO.md
 *.log
 *.map
@@ -104,6 +104,19 @@ yarn-error.log*
 scripts/
 build.sh
 release.sh
+case-report.php
+test-*.js
+
+# Playwright
+playwright.config.js
+playwright-report/
+test-results/
+.playwright-mcp/
+
+# Documentation files
+mapping.md
+settings.md
+brag-book-gallery-changelog.txt
 
 # Test coverage
 coverage/

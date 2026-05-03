@@ -1426,7 +1426,7 @@ class BRAGbookGalleryApp {
 
 			// Prepare the data for the API
 			const requestData = new URLSearchParams({
-				action: 'handle_form_submission',
+				action: 'brag_book_gallery_form_submission',
 				nonce: bragBookGalleryConfig.consultation_nonce || bragBookGalleryConfig.nonce,
 				name: data.name || '',
 				email: data.email || '',

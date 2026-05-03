@@ -865,7 +865,7 @@ class Sync_Ajax_Handler {
 					// Delete sync data JSON file (with date suffix)
 					$sync_data_file = $sync_dir . 'sync-data-' . $date_string . '.json';
 					if ( file_exists( $sync_data_file ) ) {
-						if ( @unlink( $sync_data_file ) ) {
+						if ( wp_delete_file( $sync_data_file ) ) {
 							$deleted_files[] = 'sync-data-' . $date_string . '.json';
 						} else {
 							$errors[] = 'Failed to delete sync-data-' . $date_string . '.json';
@@ -875,7 +875,7 @@ class Sync_Ajax_Handler {
 						$sync_data_files = glob( $sync_dir . 'sync-data-*.json' );
 						if ( ! empty( $sync_data_files ) ) {
 							foreach ( $sync_data_files as $sf ) {
-								if ( @unlink( $sf ) ) {
+								if ( wp_delete_file( $sf ) ) {
 									$deleted_files[] = basename( $sf );
 								} else {
 									$errors[] = 'Failed to delete ' . basename( $sf );
@@ -889,7 +889,7 @@ class Sync_Ajax_Handler {
 					// Delete manifest JSON file (with date suffix)
 					$manifest_file = $sync_dir . 'manifest-' . $date_string . '.json';
 					if ( file_exists( $manifest_file ) ) {
-						if ( @unlink( $manifest_file ) ) {
+						if ( wp_delete_file( $manifest_file ) ) {
 							$deleted_files[] = 'manifest-' . $date_string . '.json';
 						} else {
 							$errors[] = 'Failed to delete manifest-' . $date_string . '.json';
@@ -899,7 +899,7 @@ class Sync_Ajax_Handler {
 						$manifest_files = glob( $sync_dir . 'manifest-*.json' );
 						if ( ! empty( $manifest_files ) ) {
 							foreach ( $manifest_files as $mf ) {
-								if ( @unlink( $mf ) ) {
+								if ( wp_delete_file( $mf ) ) {
 									$deleted_files[] = basename( $mf );
 								} else {
 									$errors[] = 'Failed to delete ' . basename( $mf );
@@ -916,7 +916,7 @@ class Sync_Ajax_Handler {
 						$sync_data_files = glob( $sync_dir . 'sync-data-*.json' );
 						if ( ! empty( $sync_data_files ) ) {
 							foreach ( $sync_data_files as $sf ) {
-								if ( @unlink( $sf ) ) {
+								if ( wp_delete_file( $sf ) ) {
 									$deleted_files[] = basename( $sf );
 								} else {
 									$errors[] = 'Failed to delete ' . basename( $sf );
@@ -928,7 +928,7 @@ class Sync_Ajax_Handler {
 						$manifest_files = glob( $sync_dir . 'manifest-*.json' );
 						if ( ! empty( $manifest_files ) ) {
 							foreach ( $manifest_files as $mf ) {
-								if ( @unlink( $mf ) ) {
+								if ( wp_delete_file( $mf ) ) {
 									$deleted_files[] = basename( $mf );
 								} else {
 									$errors[] = 'Failed to delete ' . basename( $mf );
@@ -940,7 +940,7 @@ class Sync_Ajax_Handler {
 						$case_files = glob( $sync_dir . 'cases_*.json' );
 						if ( ! empty( $case_files ) ) {
 							foreach ( $case_files as $case_file ) {
-								if ( @unlink( $case_file ) ) {
+								if ( wp_delete_file( $case_file ) ) {
 									$deleted_files[] = basename( $case_file );
 								} else {
 									$errors[] = 'Failed to delete ' . basename( $case_file );

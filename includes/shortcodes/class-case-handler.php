@@ -12,6 +12,10 @@
 
 namespace BRAGBookGallery\Includes\Shortcodes;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 use BRAGBookGallery\Includes\Extend\Post_Types;
 use BRAGBookGallery\Includes\Extend\Taxonomies;
 use BRAGBookGallery\Includes\Core\Setup;
@@ -818,7 +822,7 @@ class Case_Handler {
 		}
 
 		// Generate the JSON-LD script tag
-		$schema_json = wp_json_encode( $schema_data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT );
+		$schema_json = wp_json_encode( $schema_data, JSON_PRETTY_PRINT );
 
 		return sprintf(
 			'<script type="application/ld+json">%s</script>',
@@ -1333,6 +1337,7 @@ class Case_Handler {
 			$html .= sprintf(
 				'<img src="%s" alt="%s" class="brag-book-gallery-case-image" loading="lazy">',
 				esc_url( $primary_image ),
+				/* translators: %s: case identifier */
 				esc_attr( sprintf( __( 'Case %s', 'brag-book-gallery' ), $case_id ) )
 			);
 
@@ -1360,6 +1365,7 @@ class Case_Handler {
 		$html .= sprintf(
 			'<summary class="brag-book-gallery-case-summary-header">%s<span class="brag-book-gallery-case-number">%s</span></summary>',
 			esc_html( $summary_text ),
+			/* translators: %s: case number */
 			esc_html( sprintf( __( 'Case #%s', 'brag-book-gallery' ), $case_id ) )
 		);
 

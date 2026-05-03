@@ -5,6 +5,10 @@
  * @package BRAGBookGallery
  */
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 use Yoast\PHPUnitPolyfills\TestCases\TestCase as BaseTestCase;
 
 /**
