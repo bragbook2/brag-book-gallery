@@ -4,7 +4,7 @@ Tags: gallery, before-after, medical, cosmetic, procedures
 Requires at least: 6.8
 Tested up to: 6.9
 Requires PHP: 8.2
-Stable tag: 4.4.6
+Stable tag: 4.5.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -92,6 +92,14 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 
 == Changelog ==
 
+= 4.5.0 =
+* Changed: Renamed internal post type `form-entries` to `brag_book_forms` for plugin namespace compliance; existing entries are migrated automatically on upgrade
+* Changed: Prefixed AJAX actions with `brag_book_gallery_` to avoid global naming collisions
+* Security: Removed `JSON_UNESCAPED_SLASHES` from inline JSON output to prevent script-tag breakout
+* Security: Hardened nonce verification by sanitizing inputs with `sanitize_text_field( wp_unslash() )`
+* Security: Sanitized JSON-decoded `$_POST` values in the favorites AJAX handler
+* Improved: Switched native `json_encode()` to `wp_json_encode()` across the plugin for safer escaping
+
 = 4.4.6 =
 * Fixed: Favorites empty state layout on dedicated favorites page
 * Fixed: Logged-in users always seeing empty favorites state when localStorage was empty
@@ -116,6 +124,9 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 * Improved: Removed artificial sync delays
 
 == Upgrade Notice ==
+
+= 4.5.0 =
+Security and naming-convention release. Internal post type renamed; existing form entries are migrated automatically. Recommended upgrade for all users.
 
 = 4.4.6 =
 Fixes favorites display issues and sync procedure ordering for child procedures.

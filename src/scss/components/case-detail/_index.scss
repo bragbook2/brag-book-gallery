@@ -85,6 +85,7 @@
 	gap: var(--wp--custom--brag-book-gallery--spacer--sm, 8px);
 	flex-direction: row;
 	overflow-x: auto;
+	align-items: center;
 	scroll-snap-type: x mandatory;
 	scroll-behavior: smooth;
 	flex: 1;

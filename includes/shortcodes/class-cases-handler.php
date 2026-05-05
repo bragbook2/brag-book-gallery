@@ -2441,24 +2441,37 @@ final class Cases_Handler {
 		$carousel_images = array();
 
 		if ( $case_image_carousel && ( 'v2' === $case_card_type || 'v3' === $case_card_type ) && $post_id ) {
-// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-
-			$high_res_urls = get_post_meta( $post_id, 'brag_book_gallery_case_high_res_url', true );
-
-			// Fallback to post-processed URLs if high-res URLs are not available
-			if ( empty( $high_res_urls ) ) {
-				$high_res_urls = get_post_meta( $post_id, 'brag_book_gallery_case_post_processed_url', true );
-			}
-
-			if ( ! empty( $high_res_urls ) ) {
-				// Split by newlines and semicolons to get individual URLs
-				$urls = preg_split( '/[\r\n;]+/', $high_res_urls, -1, PREG_SPLIT_NO_EMPTY );
-				foreach ( $urls as $url ) {
-					$url = trim( $url );
-					if ( ! empty( $url ) ) {
-						$carousel_images[] = $url;
-					}
+			// The sync writer (Post_Types::save_api_response_data) appends each photoSet's
+			// high-res and post-processed URLs in iteration order, but skips empty entries
+			// per field. That means the two lists are only index-aligned when every photoSet
+			// has BOTH a high-res and a post-processed URL. When the API only populates
+			// sideBySide.highDefinition for some photoSets, the high-res list is shorter
+			// and its indexes no longer line up with the post-processed list.
+			//
+			// Strategy: use the high-res list only when its length matches post-processed
+			// (every slot has a high-res variant). Otherwise the post-processed list is
+			// the only source where slot order is reliable.
+			$split_urls = static function ( $raw ): array {
+				if ( ! is_string( $raw ) || '' === $raw ) {
+					return array();
 				}
+				$parts = preg_split( '/[\r\n;]+/', $raw, -1, PREG_SPLIT_NO_EMPTY );
+				if ( ! is_array( $parts ) ) {
+					return array();
+				}
+				return array_values( array_filter( array_map( 'trim', $parts ) ) );
+			};
+
+			$high_res_list       = $split_urls( get_post_meta( $post_id, 'brag_book_gallery_case_high_res_url', true ) );
+			$post_processed_list = $split_urls( get_post_meta( $post_id, 'brag_book_gallery_case_post_processed_url', true ) );
+
+			if ( ! empty( $high_res_list ) && count( $high_res_list ) === count( $post_processed_list ) ) {
+				$carousel_images = $high_res_list;
+			} elseif ( ! empty( $post_processed_list ) ) {
+				$carousel_images = $post_processed_list;
+			} elseif ( ! empty( $high_res_list ) ) {
+				// No post-processed URLs at all — use whatever high-res we have.
+				$carousel_images = $high_res_list;
 			}
 		}
 
