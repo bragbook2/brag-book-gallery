@@ -871,15 +871,25 @@ class Post_Types {
 			}
 		}
 
-		// Handle Gutenberg image URL sets (JSON format)
-		if ( isset( $_POST['brag_book_gallery_image_url_sets'] ) ) {
-			$json_data      = sanitize_text_field( wp_unslash( $_POST['brag_book_gallery_image_url_sets'] ) );
-			$image_url_sets = json_decode( $json_data, true );
+		// Handle Gutenberg image URL sets (JSON format).
+		// Gated on the API Case Data nonce so unrelated save flows (Rank Math /
+		// Yoast / page-content updates) cannot trip this block and rewrite the
+		// stored signed-URL JSON. esc_url_raw is not perfectly byte-idempotent
+		// against long signed JWT URLs, so re-running it on every save produced
+		// "InvalidSignature" errors from Supabase / S3 the next time the image
+		// was fetched.
+		if (
+			isset( $_POST['case_api_data_nonce'] )
+			&& wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['case_api_data_nonce'] ) ), 'save_case_api_data' )
+			&& isset( $_POST['brag_book_gallery_image_url_sets'] )
+		) {
+			$json_data      = wp_unslash( $_POST['brag_book_gallery_image_url_sets'] );
+			$image_url_sets = is_string( $json_data ) ? json_decode( $json_data, true ) : null;
 
 			if ( is_array( $image_url_sets ) ) {
 				$sanitized_sets = array();
 
-				foreach ( $image_url_sets as $index => $url_set ) {
+				foreach ( $image_url_sets as $url_set ) {
 					if ( ! is_array( $url_set ) ) {
 						continue;
 					}
@@ -887,62 +897,98 @@ class Post_Types {
 					$sanitized_set = array();
 					$has_content   = false;
 
-					$url_fields = array(
+					$url_field_keys = array(
 						'before_url',
 						'after_url',
 						'post_processed_url',
 						'high_res_url',
 					);
 
-					foreach ( $url_fields as $url_field ) {
-						$url                      = isset( $url_set[ $url_field ] ) ? esc_url_raw( trim( $url_set[ $url_field ] ) ) : '';
-						$sanitized_set[ $url_field ] = $url;
-						if ( ! empty( $url ) ) {
+					foreach ( $url_field_keys as $url_field ) {
+						$raw                          = isset( $url_set[ $url_field ] ) && is_string( $url_set[ $url_field ] ) ? trim( $url_set[ $url_field ] ) : '';
+						$sanitized_set[ $url_field ] = $raw;
+						if ( '' !== $raw ) {
 							$has_content = true;
 						}
 					}
 
-					// Only save sets that have at least one URL
 					if ( $has_content ) {
 						$sanitized_sets[] = $sanitized_set;
 					}
 				}
 
-				// Save with new format
-				update_post_meta( $post_id, 'brag_book_gallery_image_url_sets', $sanitized_sets );
+				// Skip the write entirely when the submitted value matches what
+				// is already stored — eliminates accidental mutation from
+				// idempotent saves of an unchanged meta box.
+				$existing      = get_post_meta( $post_id, 'brag_book_gallery_image_url_sets', true );
+				$existing_json = is_array( $existing ) ? wp_json_encode( $existing ) : '';
+				$new_json      = wp_json_encode( $sanitized_sets );
+				if ( $existing_json !== $new_json ) {
+					update_post_meta( $post_id, 'brag_book_gallery_image_url_sets', $sanitized_sets );
+				}
 			}
 		}
 
-		// Handle new individual URL fields from meta boxes
+		// Handle new individual URL fields from meta boxes.
+		// Only re-process when the API Case Data meta box was actually submitted —
+		// otherwise other save flows (e.g. Rank Math / Yoast saving from their own
+		// editor sidebars, REST updates, etc.) can trigger an unrelated re-save that
+		// silently drops valid signed image URLs and breaks the case carousels.
 		$url_fields = array(
 			'brag_book_gallery_case_before_url',
 			'brag_book_gallery_case_after_url',
 			'brag_book_gallery_case_post_processed_url',
-			'brag_book_gallery_case_high_res_url'
+			'brag_book_gallery_case_high_res_url',
 		);
 
-		foreach ( $url_fields as $field ) {
-			if ( isset( $_POST[ $field ] ) ) {
-				$urls_input = sanitize_textarea_field( wp_unslash( $_POST[ $field ] ) );
+		if ( isset( $_POST['case_api_data_nonce'] ) && wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['case_api_data_nonce'] ) ), 'save_case_api_data' ) ) {
+			$split_urls = static function ( string $raw ): array {
+				$parts = preg_split( '/[\r\n;]+/', $raw, -1, PREG_SPLIT_NO_EMPTY );
+				if ( ! is_array( $parts ) ) {
+					return array();
+				}
+				$out = array();
+				foreach ( $parts as $part ) {
+					$trimmed = trim( $part );
+					if ( '' !== $trimmed ) {
+						$out[] = $trimmed;
+					}
+				}
+				return $out;
+			};
 
-				// Process the textarea input: split by lines and semicolons, trim, add semicolons
-				$lines           = explode( "\n", $urls_input );
+			foreach ( $url_fields as $field ) {
+				if ( ! isset( $_POST[ $field ] ) ) {
+					continue;
+				}
+
+				// Compare the submitted URL list against the currently stored list
+				// BEFORE running anything destructive. If the lists match (the user
+				// did not actually edit URLs), skip the write entirely — never call
+				// esc_url_raw on signed URLs, since it isn't perfectly byte-idempotent
+				// against long JWT query strings and re-running it can corrupt the
+				// signature, producing "InvalidSignature" errors at fetch time.
+				$submitted_raw = wp_unslash( $_POST[ $field ] );
+				$submitted_raw = is_string( $submitted_raw ) ? $submitted_raw : '';
+				$submitted_urls = $split_urls( $submitted_raw );
+
+				$stored_raw  = (string) get_post_meta( $post_id, $field, true );
+				$stored_urls = $split_urls( $stored_raw );
+
+				if ( $submitted_urls === $stored_urls ) {
+					continue;
+				}
+
+				// User actively changed the textarea — re-validate and write.
 				$processed_lines = array();
-
-				foreach ( $lines as $line ) {
-					// Split each line by semicolons to handle legacy format
-					$parts = explode( ';', $line );
-					foreach ( $parts as $part ) {
-						$clean_url = trim( $part );
-
-						if ( ! empty( $clean_url ) && filter_var( $clean_url, FILTER_VALIDATE_URL ) ) {
-							$processed_lines[] = esc_url_raw( $clean_url ) . ';';
-						}
+				foreach ( $submitted_urls as $candidate ) {
+					$safe_url = esc_url_raw( $candidate );
+					if ( '' !== $safe_url ) {
+						$processed_lines[] = $safe_url . ';';
 					}
 				}
 
-				$final_value = implode( "\n", $processed_lines );
-				update_post_meta( $post_id, $field, $final_value );
+				update_post_meta( $post_id, $field, implode( "\n", $processed_lines ) );
 			}
 		}
 
