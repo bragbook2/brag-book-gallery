@@ -93,6 +93,68 @@ class Changelog_Page extends Settings_Base {
 				</div>
 			</div>
 
+			<!-- Version 4.5.1 -->
+			<div class="brag-book-gallery-section">
+				<div class="brag-book-gallery-changelog-version">
+					<h3>
+						<span class="version-badge version-patch">v4.5.1</span>
+						<?php esc_html_e( 'May 5, 2026', 'brag-book-gallery' ); ?>
+					</h3>
+					<div class="brag-book-gallery-card">
+						<p><?php esc_html_e( 'Patch release. Fixes signed-URL corruption that caused Supabase / S3 InvalidSignature errors when saving cases or editing SEO meta descriptions, restores missing slides on cases that have a partial high-resolution image set, and adds managed meta descriptions for cases, procedure archives, and the main gallery page across all major SEO plugins.', 'brag-book-gallery' ); ?></p>
+						<h4><?php esc_html_e( '🐛 Fixed', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Image URLs: saving a case post (or editing its SEO description in Yoast / Rank Math / AIOSEO) no longer corrupts signed Supabase / S3 image URLs by stripping %XX percent-encoded sequences. WordPress\'s sanitize_text_field and sanitize_textarea_field strip every %XX octet from any string they touch, which silently rewrote stored URLs and broke their JWT signatures (causing InvalidSignature errors when fetching images).', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Carousel: case-card carousel now shows every slide when the API populates sideBySide.highDefinition for some photoSets but not all. The reader previously fell back from the high-res list to the post-processed list only when the high-res list was completely empty, so a partially-populated high-res field hid the full slide set. The reader now uses the high-res list only when its length matches the post-processed list and falls back to the post-processed list otherwise.', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Sync: removed an unreachable sanitize_textarea_field branch from the API field-mapping loop in Post_Types::save_api_response_data that would have corrupted URL meta if anyone wired a future API field to one of those keys.', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '✨ Added', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'SEO: managed meta descriptions for case posts, procedure taxonomy archives, and the main gallery page across Yoast, Rank Math, AIOSEO, SEOPress, and the WordPress default. A user-edited per-post or per-term value in the active SEO plugin always wins; the managed value only fills in when the SEO plugin would otherwise emit a generic auto-generated default.', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'SEO: single-case meta description hierarchy — brag_book_gallery_seo_page_description post meta, falling back to brag_book_gallery_notes.', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'SEO: procedure-archive meta description sourced from the procedure term\'s Gallery Details meta (brag_book_gallery_details).', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'SEO: main gallery page meta description synthesized from the synced post-type and taxonomy data (case count + top procedure names) instead of rendering the shortcode into the description; cached as a transient that invalidates on case save and procedure-term changes.', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '🛡 Hardened', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Case API meta box save handler — URL textareas (brag_book_gallery_case_*_url) and the Gutenberg brag_book_gallery_image_url_sets JSON are now both nonce-gated on case_api_data_nonce and short-circuit when the submitted value matches what is already stored, so unrelated save flows can no longer trigger an idempotent re-save that mutates URLs.', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '⚠ Action Required', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Re-sync any cases whose images were already corrupted by earlier saves. This release prevents further damage but does not restore values that were previously stripped from the database.', 'brag-book-gallery' ); ?></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
+			<!-- Version 4.5.0 -->
+			<div class="brag-book-gallery-section">
+				<div class="brag-book-gallery-changelog-version">
+					<h3>
+						<span class="version-badge version-minor">v4.5.0</span>
+						<?php esc_html_e( 'May 5, 2026', 'brag-book-gallery' ); ?>
+					</h3>
+					<div class="brag-book-gallery-card">
+						<p><?php esc_html_e( 'Security and naming-convention release addressing WordPress.org plugin directory review feedback. Internal post type renamed; existing form entries are migrated automatically.', 'brag-book-gallery' ); ?></p>
+						<h4><?php esc_html_e( '🔧 Changed', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Renamed internal post type form-entries to brag_book_forms for plugin namespace compliance; existing entries are migrated automatically on upgrade.', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Prefixed AJAX actions with brag_book_gallery_ to avoid global naming collisions.', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '🔒 Security', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Removed JSON_UNESCAPED_SLASHES from inline JSON output to prevent script-tag breakout.', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Hardened nonce verification by sanitizing inputs with sanitize_text_field( wp_unslash() ).', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Sanitized JSON-decoded $_POST values in the favorites AJAX handler.', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '⚡ Improved', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Switched native json_encode() to wp_json_encode() across the plugin for safer escaping.', 'brag-book-gallery' ); ?></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
 			<!-- Version 4.4.7-beta1 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">

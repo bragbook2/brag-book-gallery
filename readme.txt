@@ -4,7 +4,7 @@ Tags: gallery, before-after, medical, cosmetic, procedures
 Requires at least: 6.8
 Tested up to: 6.9
 Requires PHP: 8.2
-Stable tag: 4.5.0
+Stable tag: 4.5.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -92,6 +92,16 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 
 == Changelog ==
 
+= 4.5.1 =
+* Fixed: Saving a case post (or editing its SEO description in Yoast / Rank Math / AIOSEO) no longer corrupts signed Supabase / S3 image URLs by stripping `%XX` percent-encoded sequences. WordPress's `sanitize_text_field` and `sanitize_textarea_field` strip every `%XX` octet from any string they touch, which silently rewrote stored URLs and broke their JWT signatures (causing `InvalidSignature` errors when fetching images).
+* Fixed: Case-card carousel now shows every slide when the API populates `sideBySide.highDefinition` for some photoSets but not all. The reader previously fell back from the high-res list to the post-processed list only when the high-res list was completely empty, so a partially-populated high-res field hid the full slide set. The reader now uses the high-res list only when its length matches the post-processed list and falls back to the post-processed list otherwise.
+* Fixed: Removed an unreachable `sanitize_textarea_field` branch from the API field-mapping loop in `Post_Types::save_api_response_data` that would have corrupted URL meta if anyone wired a future API field to one of those keys.
+* Added: Managed meta descriptions for case posts, procedure taxonomy archives, and the main gallery page across Yoast, Rank Math, AIOSEO, SEOPress, and the WordPress default. A user-edited per-post or per-term value in the active SEO plugin always wins; the managed value only fills in when the SEO plugin would otherwise emit a generic auto-generated default.
+* Added: Single-case meta description hierarchy — `brag_book_gallery_seo_page_description` post meta, falling back to `brag_book_gallery_notes`.
+* Added: Procedure-archive meta description sourced from the procedure term's *Gallery Details* meta (`brag_book_gallery_details`).
+* Added: Main gallery page meta description synthesized from the synced post-type and taxonomy data (case count + top procedure names) instead of rendering the shortcode into the description; cached as a transient that invalidates on case save and procedure-term changes.
+* Hardened: Case API meta box save handler — URL textareas (`brag_book_gallery_case_*_url`) and the Gutenberg `brag_book_gallery_image_url_sets` JSON are now both nonce-gated on `case_api_data_nonce` and short-circuit when the submitted value matches what is already stored, so unrelated save flows can no longer trigger an idempotent re-save that mutates URLs.
+
 = 4.5.0 =
 * Changed: Renamed internal post type `form-entries` to `brag_book_forms` for plugin namespace compliance; existing entries are migrated automatically on upgrade
 * Changed: Prefixed AJAX actions with `brag_book_gallery_` to avoid global naming collisions
@@ -124,6 +134,9 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 * Improved: Removed artificial sync delays
 
 == Upgrade Notice ==
+
+= 4.5.1 =
+Fixes signed-URL corruption (Supabase / S3 `InvalidSignature` errors) when saving cases or editing SEO meta descriptions, restores missing slides on cases that have a partial high-resolution image set, and adds managed meta descriptions for cases, procedure archives, and the main gallery page across all major SEO plugins. Re-sync any cases whose images were already corrupted by earlier saves.
 
 = 4.5.0 =
 Security and naming-convention release. Internal post type renamed; existing form entries are migrated automatically. Recommended upgrade for all users.
