@@ -1248,22 +1248,16 @@ class Post_Types {
 					)
 				) {
 					$value = wp_kses_post( $value );
-				} elseif (
-					in_array(
-						$meta_key,
-						array(
-							'brag_book_gallery_case_before_url',
-							'brag_book_gallery_case_after_url',
-							'brag_book_gallery_case_post_processed_url',
-							'brag_book_gallery_case_high_res_url',
-						),
-						true
-					)
-				) {
-					$value = sanitize_textarea_field( $value );
 				} else {
 					$value = sanitize_text_field( $value );
 				}
+
+				// NOTE: image URL meta keys (case_before_url, case_after_url,
+				// case_post_processed_url, case_high_res_url) are intentionally
+				// NOT handled here. They are written separately in the photoSets
+				// loop below via esc_url_raw. WordPress's sanitize_textarea_field
+				// strips every %XX percent-encoded octet, which would corrupt
+				// signed URLs (e.g. Supabase) and break their JWT signature.
 
 				update_post_meta( $post_id, $meta_key, $value );
 			}
