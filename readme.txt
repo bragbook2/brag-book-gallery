@@ -4,7 +4,7 @@ Tags: gallery, before-after, medical, cosmetic, procedures
 Requires at least: 6.8
 Tested up to: 6.9
 Requires PHP: 8.2
-Stable tag: 4.5.1
+Stable tag: 4.6.0-beta1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -92,6 +92,20 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 
 == Changelog ==
 
+= 4.6.0-beta1 =
+* Performance: Production now serves minified CSS/JS through every shortcode handler — previously the unminified bundle was served, wasting ~265 KB per gallery page.
+* Performance: Frontend asset handles consolidated onto `brag-book-gallery-main` so multi-shortcode pages no longer double-load the same CSS/JS file.
+* Performance: JS code-splitting via dynamic `import()` — `FilterSystem`, `FavoritesManager`, `SearchAutocomplete`, and `ShareManager` are now lazy chunks that load only when their anchor element is on the page. Main bundle dropped from 190 KB to 133 KB.
+* Performance: New `brag-book-gallery-carousel.min.js` (~11 KB) ships only the carousel + utilities; the carousel shortcode handler picks this bundle when no other BRAGbook shortcode is on the page (homepage hero use case).
+* Performance: Main bundle now `defer`-loaded, keeping it off the critical path.
+* Performance: Gallery pages now emit `<link rel="preload">` for the minified CSS plus Poppins-Regular and Lato-Regular WOFF2 fonts, plus `preconnect`/`dns-prefetch` to the BRAGbook API origin.
+* Performance: Image CLS fixed via `aspect-ratio: 16 / 10` on `.brag-book-gallery-image-container` and `object-fit: cover` on carousel slide images.
+* Performance: All `<img>` rendered by shortcode handlers now carry `decoding="async"`; the case-detail hero image picks up `fetchpriority="high"` for LCP.
+* Performance: Removed the dead `localize_frontend_data()` blob (115 lines, 8 unreferenced SVG icon URLs) and stopped duplicating the `completeDataset` payload across two inline scripts.
+* Changed: Replaced wasteful single-source `<picture>` wrapper around carousel slide images with a flat `<img>` (the source URL was identical to the img URL).
+* Changed: `Asset_Manager::localize_gallery_script()` no longer accepts `$all_cases_data`; the dataset belongs to the inline `brag-book-gallery-dataset` script.
+* Build: Unminified bundle artifacts and expanded CSS are now excluded from the dist `.zip` via `.distignore` — production only ships `*.min.{js,css}`.
+
 = 4.5.1 =
 * Fixed: Saving a case post (or editing its SEO description in Yoast / Rank Math / AIOSEO) no longer corrupts signed Supabase / S3 image URLs by stripping `%XX` percent-encoded sequences. WordPress's `sanitize_text_field` and `sanitize_textarea_field` strip every `%XX` octet from any string they touch, which silently rewrote stored URLs and broke their JWT signatures (causing `InvalidSignature` errors when fetching images).
 * Fixed: Case-card carousel now shows every slide when the API populates `sideBySide.highDefinition` for some photoSets but not all. The reader previously fell back from the high-res list to the post-processed list only when the high-res list was completely empty, so a partially-populated high-res field hid the full slide set. The reader now uses the high-res list only when its length matches the post-processed list and falls back to the post-processed list otherwise.
@@ -134,6 +148,9 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 * Improved: Removed artificial sync delays
 
 == Upgrade Notice ==
+
+= 4.6.0-beta1 =
+Beta release focused on PageSpeed: minified bundles in production, deferred main script, lazy-loaded JS chunks, a new carousel-only bundle for homepage hero use, font/CSS preloads, API-origin preconnect, and image CLS fixes. Main JS bundle drops from 190 KB to 133 KB; carousel-only pages drop to ~11 KB. Test against your shortcodes before promoting to production.
 
 = 4.5.1 =
 Fixes signed-URL corruption (Supabase / S3 `InvalidSignature` errors) when saving cases or editing SEO meta descriptions, restores missing slides on cases that have a partial high-resolution image set, and adds managed meta descriptions for cases, procedure archives, and the main gallery page across all major SEO plugins. Re-sync any cases whose images were already corrupted by earlier saves.

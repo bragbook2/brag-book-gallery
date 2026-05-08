@@ -1,5 +1,31 @@
 === BRAGBook Gallery Changelog ===
 
+= 4.6.0-beta1 (2026-05-08) =
+
+Performance:
+* Production now loads minified CSS/JS through every shortcode handler and the asset registrar — previously the unminified bundle was served, wasting ~265 KB per gallery page
+* Consolidated frontend asset handles onto brag-book-gallery-main so pages with multiple shortcodes no longer double-load the same CSS/JS file
+* JS code-splitting: FilterSystem, FavoritesManager, SearchAutocomplete, and ShareManager are now lazy chunks (brag-book-gallery-{filter-system,favorites,search,share}.min.js); each loads only when its anchor element is on the page; main bundle dropped from 190 KB to 133 KB
+* New carousel-only bundle (brag-book-gallery-carousel.min.js, ~11 KB) ships only the Carousel class plus nudity/phone-format utilities; the carousel shortcode handler picks this bundle when no other BRAGbook shortcode is on the page (homepage hero use case)
+* Main bundle now deferred via script_loader_tag so it stays off the critical path
+* Gallery pages now emit preload for the minified CSS plus Poppins-Regular and Lato-Regular WOFF2 fonts, plus preconnect/dns-prefetch to the BRAGbook API origin
+* Image CLS eliminated by adding aspect-ratio: 16/10 to .brag-book-gallery-image-container (matches the existing skeleton); carousel slides use object-fit: cover so before/after photos no longer shift layout on load
+* All <img> output now carries decoding="async"; the case-detail hero picks up fetchpriority="high" for LCP
+* Removed the dead localize_frontend_data() blob (115 lines, 8 unreferenced SVG icon URLs) and stopped duplicating the completeDataset payload across two inline scripts
+* Replaced the wasteful single-source <picture> wrapper around carousel slide images with a flat <img>; the source URL was identical to the img URL so the wrapper added bytes without giving the browser any selection power
+
+Changed:
+* Asset_Manager::localize_gallery_script() no longer accepts $all_cases_data; the dead Asset_Manager::prepare_case_data() helper was removed at the same time
+* Asset_Manager::get_asset_suffix() is now public so shortcode handlers can share the SCRIPT_DEBUG-aware logic
+* Assets::get_asset_version() now keys the timestamp cache-bust on SCRIPT_DEBUG instead of WP_DEBUG, so staging sites with WP_DEBUG enabled still benefit from version-based browser caching
+
+Added:
+* New webpack entry carousel-frontend (src/js/carousel-frontend.js) that produces brag-book-gallery-carousel.min.js
+* webpack.config.js configures output.publicPath: 'auto' and a stable chunkFilename so dynamic-import chunks load from the correct URL regardless of where the plugin is installed
+
+Build:
+* Unminified bundle artifacts and expanded CSS are now excluded from the dist .zip via .distignore — production only ships *.min.{js,css}
+
 = 4.4.3 (2026-03-24) =
 
 Fixed:

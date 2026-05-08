@@ -4,6 +4,83 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.6.0-beta1] - 2026-05-08 (Beta Release)
+
+### Performance
+
+- **Production now serves minified assets**: every shortcode handler and the
+  asset registrar now load `*.min.css` / `*.min.js` in production via a shared
+  `SCRIPT_DEBUG`-aware suffix helper. Previously the frontend asset registrar
+  loaded the unminified bundle (~265 KB of unnecessary bytes per gallery page).
+- **Frontend handles consolidated**: every CSS/JS enqueue path now uses the
+  canonical `brag-book-gallery-main` handle. Pages with multiple shortcodes
+  (e.g. gallery + carousel + sidebar) no longer download the same CSS/JS file
+  twice under different handles.
+- **JS code-splitting via dynamic `import()`**: `FilterSystem`,
+  `FavoritesManager`, `SearchAutocomplete`, and `ShareManager` are now lazy
+  chunks (`brag-book-gallery-{filter-system,favorites,search,share}.min.js`).
+  Each chunk loads only when its anchor element is in the DOM, dropping the
+  main bundle from 190 KB to 133 KB.
+- **Carousel-only entry point**: a new `brag-book-gallery-carousel.min.js`
+  bundle (~11 KB) ships only the `Carousel` class plus nudity / phone-format
+  utilities. The carousel shortcode handler picks this bundle when no other
+  BRAGbook shortcode is on the page (typical homepage hero use case),
+  otherwise it falls back to the full bundle.
+- **Main script deferred**: the frontend bundle is now emitted with a `defer`
+  attribute via `script_loader_tag`, keeping it off the critical path.
+- **Resource hints**: gallery pages now emit `<link rel="preload">` for the
+  minified CSS, Poppins-Regular and Lato-Regular WOFF2 fonts, plus
+  `<link rel="preconnect" crossorigin>` and `<link rel="dns-prefetch">` to
+  the BRAGbook API origin, so the browser opens the connection before the
+  first XHR or image fetch.
+- **Image CLS fix**: `aspect-ratio: 16 / 10` (matching the existing skeleton)
+  now reserves space on `.brag-book-gallery-image-container`, and carousel
+  slide images use `object-fit: cover; height: 100%` so before/after photos
+  no longer cause layout shift on load.
+- **Image loading hints**: every `<img>` rendered by the shortcode handlers
+  now carries `decoding="async"`, and the case-detail hero image picks up
+  `fetchpriority="high"` so it's correctly flagged as the LCP candidate.
+- **Localized payload trimmed**: removed the unused 115-line
+  `localize_frontend_data()` blob (8 unreferenced SVG icon URLs, dead
+  `brag_book_gallery_plugin_data` object). Removed duplicate
+  `completeDataset` shipping — the case dataset is now emitted only via the
+  existing inline `brag-book-gallery-dataset` script instead of being
+  duplicated inside `bragBookGalleryConfig`.
+- **Wasteful `<picture>` wrapper removed**: carousel slide images previously
+  used `<picture><source srcset=… type="image/jpeg"><img></picture>` with the
+  source URL identical to the `<img>` URL — adding bytes without giving the
+  browser any selection power. Replaced with a flat `<img>` until the API
+  exposes WebP/AVIF or multiple sizes.
+
+### Changed
+
+- `Asset_Manager::localize_gallery_script()` no longer accepts an
+  `$all_cases_data` argument; the case dataset belongs to the inline
+  dataset script and was being shipped twice. The dead
+  `Asset_Manager::prepare_case_data()` helper was removed at the same time.
+- `Asset_Manager::get_asset_suffix()` is now public so shortcode handlers
+  can share the SCRIPT_DEBUG-aware logic.
+- `Assets::get_asset_version()` now keys the timestamp cache-bust on
+  `SCRIPT_DEBUG` instead of `WP_DEBUG`, so staging sites with `WP_DEBUG`
+  enabled still benefit from version-based browser caching.
+
+### Added
+
+- `assets/js/brag-book-gallery-carousel.min.js` — the new carousel-only
+  bundle entry, plus its source at `src/js/carousel-frontend.js`.
+- `webpack.config.js` now configures `output.publicPath: 'auto'` and a
+  stable `chunkFilename` so dynamic-import chunks load from the correct URL
+  regardless of where the plugin is installed.
+
+### Build
+
+- Unminified bundle artifacts (`brag-book-gallery.js`,
+  `brag-book-gallery-carousel.js`, the admin/sync variants, plus the
+  expanded `*.css` files) are now excluded from the dist `.zip` via
+  `.distignore`. Production only ships `*.min.{js,css}`.
+
+---
+
 ## [4.4.7-beta1] - 2026-05-01 (Beta Release)
 
 ### Fixed
