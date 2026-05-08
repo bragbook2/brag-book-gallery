@@ -1,0 +1,46 @@
+# BRAG book Gallery - Static asset caching
+#
+# Every asset in this directory is fingerprinted via the version query
+# string emitted by Asset_Manager::get_asset_version() (file mtime in dev,
+# the plugin VERSION constant in prod), so 1-year immutable caching is
+# safe. Without this header the upstream host (Apache or a CDN edge in
+# front of it) frequently defaults to a TTL in the 12-hour range, which
+# Lighthouse flags under "Use efficient cache lifetimes".
+
+<IfModule mod_headers.c>
+	<FilesMatch "\.(woff2|woff|ttf|eot|svg|js|css|png|jpe?g|gif|webp|avif|ico)$">
+		Header set Cache-Control "public, max-age=31536000, immutable"
+		Header unset Pragma
+	</FilesMatch>
+</IfModule>
+
+<IfModule mod_expires.c>
+	ExpiresActive On
+
+	ExpiresByType font/woff2                 "access plus 1 year"
+	ExpiresByType font/woff                  "access plus 1 year"
+	ExpiresByType application/font-woff2     "access plus 1 year"
+	ExpiresByType application/font-woff      "access plus 1 year"
+	ExpiresByType application/x-font-ttf     "access plus 1 year"
+	ExpiresByType application/vnd.ms-fontobject "access plus 1 year"
+
+	ExpiresByType image/svg+xml              "access plus 1 year"
+	ExpiresByType image/png                  "access plus 1 year"
+	ExpiresByType image/jpeg                 "access plus 1 year"
+	ExpiresByType image/gif                  "access plus 1 year"
+	ExpiresByType image/webp                 "access plus 1 year"
+	ExpiresByType image/avif                 "access plus 1 year"
+	ExpiresByType image/x-icon               "access plus 1 year"
+
+	ExpiresByType text/css                   "access plus 1 year"
+	ExpiresByType application/javascript     "access plus 1 year"
+	ExpiresByType text/javascript            "access plus 1 year"
+</IfModule>
+
+# Allow CORS for fonts so WOFF2 preloads work cross-origin when assets are
+# proxied through a CDN subdomain (e.g. a.bragbookgallery.com).
+<IfModule mod_headers.c>
+	<FilesMatch "\.(woff2|woff|ttf|eot)$">
+		Header set Access-Control-Allow-Origin "*"
+	</FilesMatch>
+</IfModule>

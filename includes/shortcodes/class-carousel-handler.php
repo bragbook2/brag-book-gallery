@@ -1166,7 +1166,8 @@ final class Carousel_Handler {
 			$slide_data,
 			$case_url,
 			$is_standalone,
-			$procedure_term_id
+			$procedure_term_id,
+			(int) $slide_index
 		);
 	}
 
@@ -1280,15 +1281,17 @@ final class Carousel_Handler {
 	 * @param string   $case_url      Case URL.
 	 * @param bool     $is_standalone Whether this is a standalone carousel (no action buttons).
 	 * @param int|null $procedure_id  Optional procedure term ID for referrer tracking.
+	 * @param int      $slide_index   Zero-based slide index. The first slide gets
+	 *                                LCP hints (eager + fetchpriority=high).
 	 *
 	 * @return string Complete slide HTML.
 	 */
-	private static function render_slide( array $photo_data, array $case_data, array $slide_data, string $case_url, bool $is_standalone = false, ?int $procedure_id = null ): string {
+	private static function render_slide( array $photo_data, array $case_data, array $slide_data, string $case_url, bool $is_standalone = false, ?int $procedure_id = null, int $slide_index = 0 ): string {
 		$slide_wrapper = self::render_slide_wrapper( $slide_data, $case_data, $procedure_id );
 		$nudity_warning = $photo_data['has_nudity'] ? HTML_Renderer::render_nudity_warning() : '';
 		$link_open = ! empty( $case_url ) ? self::render_slide_link_open( $case_url, $photo_data['alt_text'] ) : '';
 		$link_close = ! empty( $case_url ) ? '</a>' : '';
-		$image_element = self::render_slide_image( $photo_data );
+		$image_element = self::render_slide_image( $photo_data, 0 === $slide_index );
 
 		// Only render action buttons for non-standalone carousels
 		// Pass procedure ID (term ID) to get the API procedure ID for favorites
@@ -1413,10 +1416,13 @@ final class Carousel_Handler {
 	 * @since 3.0.0
 	 *
 	 * @param array $photo_data Photo data.
+	 * @param bool  $is_lcp     True for the first slide (eager + fetchpriority=high
+	 *                          so it's discoverable as the LCP candidate),
+	 *                          false for the rest (lazy).
 	 *
 	 * @return string Picture HTML.
 	 */
-	private static function render_slide_image( array $photo_data ): string {
+	private static function render_slide_image( array $photo_data, bool $is_lcp = false ): string {
 		// A <picture> with a single <source> pointing at the same URL as <img>
 		// adds bytes without giving the browser any selection power. Until the
 		// API exposes WebP/AVIF or multiple sizes, a plain <img> is correct.
@@ -1425,11 +1431,16 @@ final class Carousel_Handler {
 			$class .= ' brag-book-gallery-nudity-blur';
 		}
 
+		$loading_attrs = $is_lcp
+			? 'loading="eager" fetchpriority="high"'
+			: 'loading="lazy"';
+
 		return sprintf(
-			'<img src="%s" alt="%s" class="%s" loading="lazy" decoding="async">',
+			'<img src="%s" alt="%s" class="%s" %s decoding="async">',
 			esc_url( $photo_data['image_url'] ),
 			esc_attr( $photo_data['alt_text'] ),
-			esc_attr( $class )
+			esc_attr( $class ),
+			$loading_attrs
 		);
 	}
 

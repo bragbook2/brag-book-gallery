@@ -4,7 +4,7 @@ Tags: gallery, before-after, medical, cosmetic, procedures
 Requires at least: 6.8
 Tested up to: 6.9
 Requires PHP: 8.2
-Stable tag: 4.6.0-beta1
+Stable tag: 4.6.0-beta2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -92,6 +92,11 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 
 == Changelog ==
 
+= 4.6.0-beta2 =
+* Performance: Carousel LCP fix — first slide now renders with `loading="eager"` and `fetchpriority="high"`; other slides remain lazy. Closes Lighthouse's "LCP request discovery" gap on homepage hero carousels.
+* Performance: Shipped `assets/.htaccess` that sets `Cache-Control: public, max-age=31536000, immutable` on every static asset under the plugin's `assets/` directory. Filenames are version-busted, so 1-year immutable is safe. Resolves Lighthouse's "Use efficient cache lifetimes" diagnostic that previously flagged plugin assets at the host's default 12-hour TTL.
+* Performance: Same `.htaccess` allows `Access-Control-Allow-Origin: *` on font files so WOFF2 preloads work when assets are proxied through a CDN subdomain.
+
 = 4.6.0-beta1 =
 * Performance: Production now serves minified CSS/JS through every shortcode handler — previously the unminified bundle was served, wasting ~265 KB per gallery page.
 * Performance: Frontend asset handles consolidated onto `brag-book-gallery-main` so multi-shortcode pages no longer double-load the same CSS/JS file.
@@ -148,6 +153,9 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 * Improved: Removed artificial sync delays
 
 == Upgrade Notice ==
+
+= 4.6.0-beta2 =
+Builds on 4.6.0-beta1 with two Lighthouse fixes: the first carousel slide is now flagged as the LCP candidate (eager + fetchpriority="high"), and a shipped `assets/.htaccess` extends static-asset cache lifetimes from 12h to 1 year (immutable, safe because filenames are version-busted).
 
 = 4.6.0-beta1 =
 Beta release focused on PageSpeed: minified bundles in production, deferred main script, lazy-loaded JS chunks, a new carousel-only bundle for homepage hero use, font/CSS preloads, API-origin preconnect, and image CLS fixes. Main JS bundle drops from 190 KB to 133 KB; carousel-only pages drop to ~11 KB. Test against your shortcodes before promoting to production.

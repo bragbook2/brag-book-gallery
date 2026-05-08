@@ -4,6 +4,29 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.6.0-beta2] - 2026-05-08 (Beta Release)
+
+### Performance
+
+- **Carousel LCP fix**: the first slide of every carousel now renders with
+  `loading="eager"` and `fetchpriority="high"` (other slides keep
+  `loading="lazy"`). On homepage hero carousels the first image is the
+  Largest Contentful Paint candidate, so making it discoverable earlier
+  closes the "fetchpriority=high should be applied" gap that Lighthouse
+  flags under "LCP request discovery".
+- **Plugin asset cache lifetimes**: shipped `assets/.htaccess` that sets
+  `Cache-Control: public, max-age=31536000, immutable` on every static
+  asset under the plugin's `assets/` directory (CSS, JS, fonts, SVGs,
+  images). Filenames are already version-busted via
+  `Asset_Manager::get_asset_version()`, so 1-year immutable is safe.
+  Resolves Lighthouse's "Use efficient cache lifetimes" diagnostic, which
+  previously flagged plugin assets at the host's default 12-hour TTL.
+- The same `.htaccess` adds `Access-Control-Allow-Origin: *` for font
+  files so WOFF2 preloads still work when assets are proxied through a
+  CDN subdomain (e.g. `a.bragbookgallery.com`).
+
+---
+
 ## [4.6.0-beta1] - 2026-05-08 (Beta Release)
 
 ### Performance
