@@ -521,6 +521,50 @@ final class Favorites_Handler {
 	}
 
 	/**
+	 * Emit no-cache headers and bypass constants for user-specific responses.
+	 *
+	 * Why: favorites responses are scoped to a single user (by email). Without
+	 * explicit no-store/private directives, upstream caches that key on URL
+	 * alone (SiteGround Dynamic Cache, LiteSpeed, Cloudflare, Varnish, Nginx
+	 * FastCGI, WP Engine, WP Rocket, W3 Total Cache) can serve one user's
+	 * response to another. The standard `nocache_headers()` only emits
+	 * `no-cache, must-revalidate` — which permits CDN storage with
+	 * revalidation — so we add `no-store, private` plus vendor-specific
+	 * bypass headers and the DONOTCACHE* constants honored by page-cache
+	 * plugins.
+	 *
+	 * @since 3.3.3
+	 * @return void
+	 */
+	private static function send_no_cache_headers(): void {
+		if ( ! defined( 'DONOTCACHEPAGE' ) ) {
+			define( 'DONOTCACHEPAGE', true );
+		}
+		if ( ! defined( 'DONOTCACHEDB' ) ) {
+			define( 'DONOTCACHEDB', true );
+		}
+		if ( ! defined( 'DONOTCACHEOBJECT' ) ) {
+			define( 'DONOTCACHEOBJECT', true );
+		}
+
+		if ( headers_sent() ) {
+			return;
+		}
+
+		nocache_headers();
+
+		header( 'Cache-Control: no-store, no-cache, must-revalidate, private, max-age=0' );
+		header( 'Pragma: no-cache' );
+		header( 'Expires: 0' );
+		header( 'X-LiteSpeed-Cache-Control: no-cache, private, no-store' );
+		header( 'X-Accel-Expires: 0' );
+		header( 'Surrogate-Control: no-store' );
+		header( 'CDN-Cache-Control: no-store, private' );
+		header( 'Cloudflare-CDN-Cache-Control: no-store, private' );
+		header( 'Vercel-CDN-Cache-Control: no-store, private' );
+	}
+
+	/**
 	 * Handle AJAX request for adding favorites
 	 *
 	 * Processes the favorites form submission and saves user information and case to API.
@@ -529,6 +573,7 @@ final class Favorites_Handler {
 	 * @since 3.0.0
 	 */
 	public static function ajax_add_favorite(): void {
+		self::send_no_cache_headers();
 		try {
 
 			// Verify nonce for security
@@ -827,6 +872,7 @@ final class Favorites_Handler {
 	 * @since 3.3.2
 	 */
 	public static function ajax_remove_favorite(): void {
+		self::send_no_cache_headers();
 		try {
 			// Verify nonce for security
 			if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ?? '' ) ), 'brag_book_gallery_nonce' ) ) {
@@ -1088,6 +1134,8 @@ final class Favorites_Handler {
 	 * @since 3.0.0
 	 */
 	public static function ajax_lookup_favorites(): void {
+		self::send_no_cache_headers();
+
 		// Verify nonce for security
 		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ?? '' ) ), 'brag_book_gallery_nonce' ) ) {
 			wp_send_json_error( [
@@ -1154,6 +1202,8 @@ final class Favorites_Handler {
 	 * @since 3.0.0
 	 */
 	public static function ajax_load_favorites_grid(): void {
+		self::send_no_cache_headers();
+
 		// Verify nonce for security
 		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ?? '' ) ), 'brag_book_gallery_nonce' ) ) {
 			wp_send_json_error( [
