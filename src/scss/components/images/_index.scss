@@ -114,6 +114,11 @@
 .brag-book-gallery-image-container {
 	position: relative;
 	width: 100%;
+	// Match the skeleton aspect ratio so the container reserves space before
+	// images load — eliminates CLS when before/after photos pop in. Carousel
+	// slides and the single-image fallback both fill this container via
+	// object-fit, see rules below.
+	aspect-ratio: 16 / 10;
 	overflow: hidden;
 	border-top-right-radius: var(--wp--custom--brag-book-gallery--rounded,4px);
 	border-top-left-radius: var(--wp--custom--brag-book-gallery--rounded,4px);
@@ -246,8 +251,11 @@
 			scroll-snap-stop: always;
 
 			img {
+				// Fill the aspect-ratio'd container so layout stays stable
+				// regardless of the image's natural dimensions.
 				width: 100%;
-				height: auto;
+				height: 100%;
+				object-fit: cover;
 				display: block;
 			}
 		}

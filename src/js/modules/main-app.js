@@ -1,11 +1,12 @@
 import Dialog from './dialog.js';
-import FilterSystem from './filter-system.js';
 import MobileMenu from './mobile-menu.js';
-import FavoritesManager from './favorites-manager.js';
-import ShareManager from './share-manager.js';
-import SearchAutocomplete from './search-autocomplete.js';
 import { NudityWarningManager, PhoneFormatter } from './utilities.js';
 import { initGallerySelector } from './gallery-selector.js';
+
+// FilterSystem, FavoritesManager, SearchAutocomplete, and ShareManager are
+// loaded on demand inside their initialize* methods (see below). They're the
+// four heaviest modules (~3,500 LOC combined) and most pages don't use all of
+// them, so webpack splits them into separate chunks via dynamic import().
 
 /**
  * Main Application Controller
@@ -55,21 +56,21 @@ class BRAGbookGalleryApp {
 			this.initializeMobileMenu();
 			this.initializeCaseLinks();
 			this.initializeNudityWarning();
-			this.initializeShareManager();
-			this.initializeFavorites();
 			this.initializeCasePreloading();
 			this.initializeCaseCarouselPagination();
+			// Lazy-loaded modules: kick off in parallel and let them resolve
+			// independently — they only attach event listeners.
+			Promise.all([
+				this.initializeShareManager(),
+				this.initializeFavorites(),
+			]);
 			return;
 		}
 
-		// Initialize core components for normal gallery view
+		// Initialize synchronous (always-loaded) core components.
 		this.initializeDialogs();
-		this.initializeFilters();
 		this.initializeMobileMenu();
 		this.initializeGallerySelector();
-		this.initializeFavorites();
-		this.initializeSearch();
-		this.initializeShareManager();
 		this.initializeConsultationForm();
 		this.initializeCaseLinks();
 		this.initializeNudityWarning();
@@ -77,15 +78,22 @@ class BRAGbookGalleryApp {
 		this.initializeCaseCarouselPagination();
 		this.initializeProceduresLoadMore();
 
-		// Auto-activate favorites view if on favorites page
+		// Lazy-loaded heavy modules. Each initialize* method short-circuits
+		// when its anchor element isn't on the page, so the chunk fetch only
+		// happens when the feature is actually present.
+		await Promise.all([
+			this.initializeFilters(),
+			this.initializeFavorites(),
+			this.initializeSearch(),
+			this.initializeShareManager(),
+		]);
+
+		// Auto-activate favorites view if on favorites page (favorites manager
+		// is guaranteed to be ready here because we awaited above).
 		const galleryContent = document.getElementById('gallery-content');
 		if (galleryContent && galleryContent.dataset.favoritesPage === 'true') {
-			// Delay to ensure all components are initialized
-			setTimeout(() => {
-				this.showFavoritesOnly();
-			}, 100);
+			this.showFavoritesOnly();
 		}
-
 	}
 
 
@@ -113,31 +121,30 @@ class BRAGbookGalleryApp {
 	/**
 	 * Initialize the filter system for procedure and demographic filtering
 	 */
-	initializeFilters() {
+	async initializeFilters() {
 		const filterContainer = document.querySelector('.brag-book-gallery-nav');
+		if (!filterContainer) return;
 
-		// Configure filter mode (javascript vs navigation)
-		const mode = filterContainer?.dataset.filterMode || 'javascript';
+		const { default: FilterSystem } = await import(
+			/* webpackChunkName: "brag-book-gallery-filter-system" */
+			'./filter-system.js'
+		);
+
+		const mode = filterContainer.dataset.filterMode || 'javascript';
 
 		this.components.filterSystem = new FilterSystem(filterContainer, {
 			mode: mode,
-			baseUrl: '/gallery', // Customize as needed
+			baseUrl: '/gallery',
 			onFilterChange: (activeFilters) => {
 				this.applyFilters(activeFilters);
 			},
 			onNavigate: (url) => {
-				// Custom navigation handler if needed
 				window.location.href = url;
 			}
 		});
 
-		// Generate procedure filters from DOM case cards on page load
 		this.initializeProcedureFilters();
-
-		// Set up Clear All button
 		this.initializeClearAllButton();
-
-		// Initialize demographic filter badge integration
 		this.initializeDemographicFilterBadges();
 	}
 
@@ -309,36 +316,35 @@ class BRAGbookGalleryApp {
 	/**
 	 * Initialize favorites management system
 	 */
-	initializeFavorites() {
-		// Create favorites manager with count update callback
+	async initializeFavorites() {
+		const hasFavoritesUI = document.querySelector(
+			'.brag-book-gallery-favorite-button, .brag-book-gallery-my-favorites, [data-favorites-page]'
+		) || document.getElementById('gallery-content')?.dataset.favoritesPage === 'true';
+		if (!hasFavoritesUI) return;
+
+		const { default: FavoritesManager } = await import(
+			/* webpackChunkName: "brag-book-gallery-favorites" */
+			'./favorites-manager.js'
+		);
+
 		this.components.favoritesManager = new FavoritesManager({
 			onUpdate: (favorites) => {
-				// Update UI elements that display favorite counts
 				this.updateFavoritesCount(favorites.size);
 			}
 		});
 
-		// Initialize the count on page load
-		if (this.components.favoritesManager) {
-			const initialCount = this.components.favoritesManager.getFavorites().size;
-			this.updateFavoritesCount(initialCount);
+		const initialCount = this.components.favoritesManager.getFavorites().size;
+		this.updateFavoritesCount(initialCount);
+		this.updateFavoriteHeartStates();
 
-			// Update heart button states based on localStorage favorites
-			this.updateFavoriteHeartStates();
-		}
-
-		// Add click handler for My Favorites button
 		this.initializeFavoritesButton();
 
-		// Listen for favorites updates to refresh My Favorites page if it's active
-		window.addEventListener('favoritesUpdated', (event) => {
-			// Check if we're on the My Favorites page
+		window.addEventListener('favoritesUpdated', () => {
 			const currentPath = window.location.pathname;
 			const gallerySlug = window.bragBookGalleryConfig?.gallerySlug || 'before-after';
 			const favoritesPath = `/${gallerySlug}/myfavorites/`;
 
 			if (currentPath === favoritesPath || currentPath.includes('myfavorites')) {
-				// Small delay to ensure localStorage is updated
 				setTimeout(() => {
 					this.showFavoritesOnly();
 				}, 100);
@@ -426,20 +432,23 @@ class BRAGbookGalleryApp {
 	/**
 	 * Initialize search autocomplete components for desktop and mobile
 	 */
-	initializeSearch() {
-		// Find all search wrapper elements (supports multiple instances)
+	async initializeSearch() {
 		const searchWrappers = document.querySelectorAll('.brag-book-gallery-search-wrapper');
+		if (searchWrappers.length === 0) return;
+
+		const { default: SearchAutocomplete } = await import(
+			/* webpackChunkName: "brag-book-gallery-search" */
+			'./search-autocomplete.js'
+		);
+
 		this.components.searchAutocompletes = [];
 
 		searchWrappers.forEach((searchWrapper) => {
-			// Create search instance with configuration
 			const searchInstance = new SearchAutocomplete(searchWrapper, {
-				minChars: 1,          // Start searching after 1 character
-				debounceDelay: 200,   // 200ms delay for performance
-				maxResults: 10,       // Limit results shown
-				onSelect: (result) => {
-					// The checkbox is automatically checked by the SearchAutocomplete class
-				}
+				minChars: 1,
+				debounceDelay: 200,
+				maxResults: 10,
+				onSelect: () => {}
 			});
 			this.components.searchAutocompletes.push(searchInstance);
 		});
@@ -448,15 +457,17 @@ class BRAGbookGalleryApp {
 	/**
 	 * Initialize social sharing manager if sharing is enabled
 	 */
-	initializeShareManager() {
-		// Only initialize if sharing is enabled in configuration
-		if (typeof bragBookGalleryConfig !== 'undefined' &&
-		    bragBookGalleryConfig.enableSharing === 'yes') {
-			this.components.shareManager = new ShareManager({
-				onShare: (data) => {
-				}
-			});
-		}
+	async initializeShareManager() {
+		if (window.bragBookGalleryConfig?.enableSharing !== 'yes') return;
+
+		const { default: ShareManager } = await import(
+			/* webpackChunkName: "brag-book-gallery-share" */
+			'./share-manager.js'
+		);
+
+		this.components.shareManager = new ShareManager({
+			onShare: () => {}
+		});
 	}
 
 	initializeConsultationForm() {

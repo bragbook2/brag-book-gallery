@@ -2555,12 +2555,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
-	// Initialize filters after a brief delay to ensure DOM is ready
+	// Initialize filters after a brief delay to ensure DOM is ready.
+	// window.bragBookCompleteDataset is set by the inline script emitted from
+	// Gallery_Handler::render_gallery_html — no need for a fallback path.
 	setTimeout(function() {
-		// Ensure the complete dataset is available
-		if (!window.bragBookCompleteDataset && window.bragBookGalleryConfig && window.bragBookGalleryConfig.completeDataset) {
-			window.bragBookCompleteDataset = window.bragBookGalleryConfig.completeDataset;
-		}
 		initializeProcedureFilters();
 
 		// Case navigation is now handled with anchor links, no JavaScript needed

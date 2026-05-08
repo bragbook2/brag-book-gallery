@@ -102,7 +102,7 @@ final class Asset_Manager {
 	 *
 	 * @return string Asset suffix ('.min' or '').
 	 */
-	private static function get_asset_suffix(): string {
+	public static function get_asset_suffix(): string {
 		return ( defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ) ? '' : '.min';
 	}
 
@@ -231,17 +231,20 @@ final class Asset_Manager {
 	 * - Nonces are generated for AJAX security
 	 * - Input validation prevents malformed data injection
 	 *
+	 * The complete case dataset is NOT shipped here — it's emitted as a separate
+	 * inline <script> on the brag-book-gallery-dataset handle (see
+	 * Gallery_Handler::render_gallery_html). The JS in global-utilities.js reads
+	 * window.bragBookCompleteDataset directly, so duplicating it inside
+	 * bragBookGalleryConfig was pure bloat.
+	 *
 	 * @since 3.0.0
 	 *
-	 * @param array<string, mixed> $config         Gallery configuration settings.
-	 * @param array<string, mixed> $sidebar_data   Sidebar data for filters and navigation.
-	 * @param array<string, mixed> $all_cases_data Optional complete cases dataset.
+	 * @param array<string, mixed> $config       Gallery configuration settings.
+	 * @param array<string, mixed> $sidebar_data Sidebar data for filters and navigation.
 	 *
 	 * @return void
 	 */
-	public static function localize_gallery_script( array $config, array $sidebar_data, array $all_cases_data = [] ): void {
-		// Ensure all_cases_data is properly formatted
-		$all_cases_data = is_array( $all_cases_data ) ? $all_cases_data : [];
+	public static function localize_gallery_script( array $config, array $sidebar_data ): void {
 		$plugin_url = Setup::get_plugin_url();
 
 		// Get gallery slug from option with array handling.
@@ -305,16 +308,7 @@ final class Asset_Manager {
 			'enableSharing'       => sanitize_text_field( get_option( 'brag_book_gallery_enable_sharing', 'no' ) ),
 			'infiniteScroll'      => sanitize_text_field( get_option( 'brag_book_gallery_infinite_scroll', 'no' ) ),
 			'sidebarData'         => $sidebar_data,
-			'completeDataset'     => array(),
 		);
-
-		// Process complete dataset if provided.
-		if ( ! empty( $all_cases_data['data'] ) && is_array( $all_cases_data['data'] ) ) {
-			$localized_data['completeDataset'] = array_map(
-				array( __CLASS__, 'prepare_case_data' ),
-				$all_cases_data['data']
-			);
-		}
 
 		wp_localize_script(
 			'brag-book-gallery-main',
@@ -326,56 +320,6 @@ final class Asset_Manager {
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
 			error_log( 'BRAG book Debug: JavaScript configuration localized (API tokens secured server-side)' );
 		}
-	}
-
-	/**
-	 * Prepare individual case data for secure JavaScript localization
-	 *
-	 * Transforms and sanitizes raw API case data into a standardized format
-	 * suitable for JavaScript consumption. Handles both legacy and current
-	 * API response formats with proper fallback mechanisms.
-	 *
-	 * Data Normalization:
-	 * - Supports both direct field names and prefixed variants
-	 * - Sanitizes all string data to prevent XSS
-	 * - Provides consistent field naming for frontend
-	 * - Handles missing or null values gracefully
-	 *
-	 * @since 3.0.0
-	 *
-	 * @param array<string, mixed> $case Raw case data from API response.
-	 *
-	 * @return array<string, string> Normalized and sanitized case data.
-	 */
-	private static function prepare_case_data( array $case ): array {
-		// Define field mapping for legacy API compatibility
-		$field_mapping = [
-			'id'        => [ 'id' ],
-			'age'       => [ 'age', 'patientAge' ],
-			'gender'    => [ 'gender', 'patientGender' ],
-			'ethnicity' => [ 'ethnicity', 'patientEthnicity' ],
-			'height'    => [ 'height', 'patientHeight' ],
-			'weight'    => [ 'weight', 'patientWeight' ],
-		];
-
-		$normalized_data = [];
-
-		// Process each field with fallback support
-		foreach ( $field_mapping as $normalized_key => $possible_keys ) {
-			$value = '';
-
-			// Find the first available value from possible keys
-			foreach ( $possible_keys as $key ) {
-				if ( isset( $case[ $key ] ) && '' !== $case[ $key ] ) {
-					$value = (string) $case[ $key ];
-					break;
-				}
-			}
-
-			$normalized_data[ $normalized_key ] = sanitize_text_field( $value );
-		}
-
-		return $normalized_data;
 	}
 
 	/**
@@ -412,22 +356,24 @@ final class Asset_Manager {
 			'limit'             => absint( $config['limit'] ?? 10 ),
 		];
 
-		// Localize the script with validated data (using main gallery script)
-		wp_localize_script(
-			'brag-book-gallery-main',
-			'bragBookCarouselConfig',
-			$localized_data
-		);
+		// Pick whichever JS handle the carousel handler enqueued: the small
+		// carousel-only bundle when carousel is alone on the page, or the
+		// full bundle when other shortcodes need it too.
+		$handle = wp_script_is( 'brag-book-gallery-carousel', 'enqueued' )
+			? 'brag-book-gallery-carousel'
+			: 'brag-book-gallery-main';
+
+		wp_localize_script( $handle, 'bragBookCarouselConfig', $localized_data );
 
 		// Ensure bragBookGalleryConfig is available for view tracking on carousel-only pages
 		global $wp_scripts;
-		$already_localized = isset( $wp_scripts->registered['brag-book-gallery-main'] )
-			&& ! empty( $wp_scripts->registered['brag-book-gallery-main']->extra['data'] )
-			&& strpos( $wp_scripts->registered['brag-book-gallery-main']->extra['data'], 'bragBookGalleryConfig' ) !== false;
+		$already_localized = isset( $wp_scripts->registered[ $handle ] )
+			&& ! empty( $wp_scripts->registered[ $handle ]->extra['data'] )
+			&& strpos( $wp_scripts->registered[ $handle ]->extra['data'], 'bragBookGalleryConfig' ) !== false;
 
 		if ( ! $already_localized ) {
 			wp_localize_script(
-				'brag-book-gallery-main',
+				$handle,
 				'bragBookGalleryConfig',
 				[
 					'ajaxUrl' => esc_url_raw( admin_url( 'admin-ajax.php' ) ),

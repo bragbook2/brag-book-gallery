@@ -710,35 +710,93 @@ final class Carousel_Handler {
 	 * @return void
 	 */
 	private static function enqueue_carousel_assets(): void {
-		$plugin_url = Setup::get_plugin_url();
+		$plugin_url  = Setup::get_plugin_url();
 		$plugin_path = Setup::get_plugin_path();
+		$suffix      = Asset_Manager::get_asset_suffix();
 
 		// Enqueue gallery styles (shared with carousel).
 		if ( ! wp_style_is( 'brag-book-gallery-main', 'enqueued' ) ) {
+			$css_file = $plugin_path . 'assets/css/brag-book-gallery' . $suffix . '.css';
 			wp_enqueue_style(
 				'brag-book-gallery-main',
-				$plugin_url . 'assets/css/brag-book-gallery.css',
+				$plugin_url . 'assets/css/brag-book-gallery' . $suffix . '.css',
 				array(),
-				Asset_Manager::get_asset_version( $plugin_path . 'assets/css/brag-book-gallery.css' )
+				Asset_Manager::get_asset_version( $css_file )
 			);
 		}
 
 		// Add custom CSS using centralized Asset_Manager method (prevents duplication).
 		Asset_Manager::add_custom_css( 'brag-book-gallery-main' );
 
-		// Enqueue main gallery JavaScript (which includes carousel functionality).
-		if ( ! wp_script_is( 'brag-book-gallery-main', 'enqueued' ) ) {
-			$js_file = $plugin_path . 'assets/js/brag-book-gallery.js';
-			$js_version = Asset_Manager::get_asset_version( $js_file );
+		// If the full bundle is already in the queue (because the page is a
+		// real gallery page, or another shortcode on this page already
+		// enqueued it), don't double-load. The full bundle includes Carousel.
+		if ( wp_script_is( 'brag-book-gallery-main', 'enqueued' ) ||
+			wp_script_is( 'brag-book-gallery-main', 'registered' ) ) {
+			return;
+		}
 
+		// If another shortcode on this same post will need the full bundle,
+		// enqueue it now and let those handlers no-op when they run.
+		if ( self::page_needs_full_gallery_bundle() ) {
+			$js_file = $plugin_path . 'assets/js/brag-book-gallery' . $suffix . '.js';
 			wp_enqueue_script(
 				'brag-book-gallery-main',
-				$plugin_url . 'assets/js/brag-book-gallery.js',
+				$plugin_url . 'assets/js/brag-book-gallery' . $suffix . '.js',
 				array(),
-				$js_version,
+				Asset_Manager::get_asset_version( $js_file ),
 				true
 			);
+			return;
 		}
+
+		// Carousel is the only BRAGbook shortcode on this page — ship the
+		// minimal carousel-only bundle (~30 KB minified) instead of the full
+		// 136 KB main bundle.
+		$carousel_js_file = $plugin_path . 'assets/js/brag-book-gallery-carousel' . $suffix . '.js';
+		wp_enqueue_script(
+			'brag-book-gallery-carousel',
+			$plugin_url . 'assets/js/brag-book-gallery-carousel' . $suffix . '.js',
+			array(),
+			Asset_Manager::get_asset_version( $carousel_js_file ),
+			true
+		);
+	}
+
+	/**
+	 * Detect whether another BRAGbook shortcode on the current post will need
+	 * the full gallery bundle.
+	 *
+	 * Used by enqueue_carousel_assets() to decide between the small
+	 * carousel-only bundle and the full bundle. When no $post is available
+	 * (programmatic rendering, archives), we conservatively assume the full
+	 * bundle is needed.
+	 *
+	 * @since 4.5.2
+	 * @return bool True if another shortcode requires the full bundle.
+	 */
+	private static function page_needs_full_gallery_bundle(): bool {
+		global $post;
+
+		if ( ! $post instanceof \WP_Post ) {
+			return true;
+		}
+
+		$full_bundle_shortcodes = array(
+			'brag_book_gallery',
+			'brag_book_gallery_cases',
+			'brag_book_gallery_case',
+			'brag_book_gallery_favorites',
+			'brag_book_gallery_sidebar',
+		);
+
+		foreach ( $full_bundle_shortcodes as $shortcode ) {
+			if ( has_shortcode( $post->post_content, $shortcode ) ) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**
@@ -1359,14 +1417,19 @@ final class Carousel_Handler {
 	 * @return string Picture HTML.
 	 */
 	private static function render_slide_image( array $photo_data ): string {
-		$blur_class = $photo_data['has_nudity'] ? ' class="brag-book-gallery-nudity-blur"' : '';
+		// A <picture> with a single <source> pointing at the same URL as <img>
+		// adds bytes without giving the browser any selection power. Until the
+		// API exposes WebP/AVIF or multiple sizes, a plain <img> is correct.
+		$class = 'brag-book-gallery-carousel-image';
+		if ( $photo_data['has_nudity'] ) {
+			$class .= ' brag-book-gallery-nudity-blur';
+		}
 
 		return sprintf(
-			'<picture class="brag-book-gallery-carousel-image"><source srcset="%s" type="image/jpeg"><img src="%s" alt="%s" loading="lazy"%s></picture>',
-			esc_url( $photo_data['image_url'] ),
+			'<img src="%s" alt="%s" class="%s" loading="lazy" decoding="async">',
 			esc_url( $photo_data['image_url'] ),
 			esc_attr( $photo_data['alt_text'] ),
-			$blur_class
+			esc_attr( $class )
 		);
 	}
 

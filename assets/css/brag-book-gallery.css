@@ -472,7 +472,7 @@ body.brag-book-gallery-page:not(.disable-custom-font) .brag-book-gallery-favorit
   pointer-events: none;
   transition: var(--wp--custom--brag-book-gallery--transition);
 }
-.brag-book-gallery-carousel-item.brag-book-gallery-nudity-revealed .brag-book-gallery-carousel-image img {
+.brag-book-gallery-carousel-item.brag-book-gallery-nudity-revealed .brag-book-gallery-carousel-image {
   filter: none;
 }
 
@@ -623,13 +623,8 @@ body.brag-book-gallery-page:not(.disable-custom-font) .brag-book-gallery-favorit
   display: block;
   width: 100%;
   height: auto;
-  transition: var(--wp--custom--brag-book-gallery--transition);
-}
-.brag-book-gallery-carousel-image img {
-  width: 100%;
-  height: auto;
-  display: block;
   border-radius: var(--wp--custom--brag-book-gallery--rounded, 4px);
+  transition: var(--wp--custom--brag-book-gallery--transition);
 }
 
 .brag-book-gallery-case-card {
@@ -4096,6 +4091,7 @@ details[open] .brag-book-gallery-filter-dropdown__panel .brag-book-gallery-filte
 .brag-book-gallery-image-container {
   position: relative;
   width: 100%;
+  aspect-ratio: 16/10;
   overflow: hidden;
   border-top-right-radius: var(--wp--custom--brag-book-gallery--rounded, 4px);
   border-top-left-radius: var(--wp--custom--brag-book-gallery--rounded, 4px);
@@ -4222,7 +4218,8 @@ details[open] .brag-book-gallery-filter-dropdown__panel .brag-book-gallery-filte
 }
 .brag-book-gallery-image-container .brag-book-gallery-case-carousel .brag-book-gallery-picture img {
   width: 100%;
-  height: auto;
+  height: 100%;
+  object-fit: cover;
   display: block;
 }
 .brag-book-gallery-image-container .brag-book-gallery-case-carousel .brag-book-gallery-case-carousel-pagination {

@@ -18,6 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 use BRAGBookGallery\Includes\Extend\Taxonomies;
 use BRAGBookGallery\Includes\Core\Setup;
+use BRAGBookGallery\Includes\Resources\Asset_Manager;
 
 /**
  * Sidebar Handler class
@@ -71,19 +72,19 @@ class Sidebar_Handler {
 
 		// Enqueue the main gallery CSS and JS since our sidebar uses the same styles
 		$plugin_version = Setup::get_plugin_version();
+		$suffix         = Asset_Manager::get_asset_suffix();
 
-		// Enqueue CSS using Setup class asset URL method
+		// Reuse the canonical handle so duplicate enqueues from other shortcodes collapse.
 		wp_enqueue_style(
-			'brag-book-gallery',
-			Setup::get_asset_url( 'assets/css/brag-book-gallery.css' ),
+			'brag-book-gallery-main',
+			Setup::get_asset_url( 'assets/css/brag-book-gallery' . $suffix . '.css' ),
 			[],
 			$plugin_version
 		);
 
-		// Enqueue JavaScript using Setup class asset URL method
 		wp_enqueue_script(
-			'brag-book-gallery',
-			Setup::get_asset_url( 'assets/js/brag-book-gallery.js' ),
+			'brag-book-gallery-main',
+			Setup::get_asset_url( 'assets/js/brag-book-gallery' . $suffix . '.js' ),
 			[],
 			$plugin_version,
 			true
@@ -116,7 +117,7 @@ class Sidebar_Handler {
 		}
 
 		// Localize script with necessary data for AJAX and functionality
-		wp_localize_script( 'brag-book-gallery', 'bragBookGalleryConfig', [
+		wp_localize_script( 'brag-book-gallery-main', 'bragBookGalleryConfig', [
 			'ajaxUrl' => admin_url( 'admin-ajax.php' ),
 			'nonce'   => wp_create_nonce( 'brag_book_gallery_nonce' ),
 			'sidebarData' => $formatted_sidebar_data,

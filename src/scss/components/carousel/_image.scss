@@ -8,12 +8,6 @@
 	display: block;
 	width: 100%;
 	height: auto;
+	border-radius: var(--wp--custom--brag-book-gallery--rounded,4px);
 	transition: var(--wp--custom--brag-book-gallery--transition);
-
-	img {
-		width: 100%;
-		height: auto;
-		display: block;
-		border-radius: var(--wp--custom--brag-book-gallery--rounded,4px);
-	}
 }

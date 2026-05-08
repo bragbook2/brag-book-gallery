@@ -86,8 +86,20 @@ class Assets {
 	 * @var array<string>
 	 */
 	private const CRITICAL_ASSETS = [
-		'brag-book-gallery-style',
+		'brag-book-gallery-main',
 	];
+
+	/**
+	 * Get asset suffix based on SCRIPT_DEBUG.
+	 *
+	 * Mirrors Asset_Manager so production always serves minified bundles.
+	 *
+	 * @since 3.3.2
+	 * @return string '.min' in production, '' when SCRIPT_DEBUG is true.
+	 */
+	private function get_asset_suffix(): string {
+		return ( defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ) ? '' : '.min';
+	}
 
 	/**
 	 * Memory cache for performance optimization
@@ -183,10 +195,12 @@ class Assets {
 				return;
 			}
 
-			// Sequential asset loading with error handling
+			// Sequential asset loading with error handling. Note that the
+			// configuration object (bragBookGalleryConfig) is attached inside
+			// enqueue_frontend_scripts() and replaced with the full payload
+			// by Asset_Manager when a shortcode actually renders.
 			$this->enqueue_frontend_styles();
 			$this->enqueue_frontend_scripts();
-			$this->localize_frontend_data();
 
 			// Performance tracking
 			$this->performance_metrics['frontend_assets_load_time'] = microtime( true ) - $start_time;
@@ -240,10 +254,12 @@ class Assets {
 	 */
 	private function enqueue_frontend_styles(): void {
 		try {
+			$suffix = $this->get_asset_suffix();
+
 			// Main plugin styles with enhanced error handling
 			$main_css_result = wp_enqueue_style(
-				'brag-book-gallery-style',
-				Setup::get_asset_url( 'assets/css/brag-book-gallery.css' ),
+				'brag-book-gallery-main',
+				Setup::get_asset_url( 'assets/css/brag-book-gallery' . $suffix . '.css' ),
 				[],
 				$this->get_asset_version()
 			);
@@ -268,18 +284,20 @@ class Assets {
 	 * @since 3.0.0
 	 */
 	private function enqueue_frontend_scripts(): void {
+		$suffix = $this->get_asset_suffix();
 
-		// Main plugin script.
+		// Main plugin script. Shared handle with Asset_Manager so shortcode-driven
+		// enqueues collapse onto a single registration instead of double-loading.
 		wp_enqueue_script(
-			handle: 'brag-book-gallery-script',
-			src: Setup::get_asset_url( 'assets/js/brag-book-gallery.js' ),
+			handle: 'brag-book-gallery-main',
+			src: Setup::get_asset_url( 'assets/js/brag-book-gallery' . $suffix . '.js' ),
 			deps: array(),
 			ver: $this->get_asset_version(),
 			args: true
 		);
 
 		// Always localize script with AJAX data for forms and galleries
-		wp_localize_script( 'brag-book-gallery-script', 'bragBookGalleryConfig', [
+		wp_localize_script( 'brag-book-gallery-main', 'bragBookGalleryConfig', [
 			'ajaxUrl' => admin_url( 'admin-ajax.php' ),
 			'nonce'   => wp_create_nonce( 'brag_book_gallery_nonce' ),
 			'consultation_nonce' => wp_create_nonce( 'consultation_form_nonce' ),
@@ -323,130 +341,6 @@ class Assets {
 			deps: array(),
 			ver: $this->get_asset_version(),
 			args: true
-		);
-	}
-
-	/**
-	 * Localize frontend script data
-	 *
-	 * Passes PHP data to JavaScript for use in frontend scripts.
-	 *
-	 * @return void
-	 * @since 3.0.0
-	 */
-	private function localize_frontend_data(): void {
-
-		// Define asset URLs for reuse.
-		$icon_left_arrow      = Setup::get_asset_url( asset_path: 'assets/images/red-angle-left.svg' );
-		$icon_right_arrow     = Setup::get_asset_url( asset_path: 'assets/images/red-angle-right.svg' );
-		$icon_left_arrow_url  = Setup::get_asset_url( asset_path: 'assets/images/caret-left.svg' );
-		$icon_right_arrow_url = Setup::get_asset_url( asset_path: 'assets/images/caret-right.svg' );
-		$icon_heart_bordered  = Setup::get_asset_url( asset_path: 'assets/images/red-heart-outline.svg' );
-		$icon_heart_down      = Setup::get_asset_url( asset_path: 'assets/images/down-arrow.svg' );
-		$icon_heart_red       = Setup::get_asset_url( asset_path: 'assets/images/red-heart.svg' );
-		$icon_heart_running   = Setup::get_asset_url( asset_path: 'assets/images/running-heart.gif' );
-
-		// Get API configuration for current page if available
-		$api_tokens = get_option(
-			option: 'brag_book_gallery_api_token',
-			default_value: array()
-		);
-
-		$website_property_ids = get_option(
-			option: 'brag_book_gallery_website_property_id',
-			default_value: array()
-		);
-
-		$gallery_slugs = get_option(
-			option: 'brag_book_gallery_gallery_page_slug',
-			default_value: array()
-		);
-
-		// Get the current page slug
-		global $post;
-		$current_page_slug = $post ? $post->post_name : '';
-
-		// Find matching API configuration
-		$default_api_token           = '';
-		$default_website_property_id = '';
-		$default_procedure_ids       = [];
-
-		if ( is_array( $gallery_slugs ) && is_array( $api_tokens ) && is_array( $website_property_ids ) ) {
-			$index = array_search( $current_page_slug, $gallery_slugs );
-			if ( $index !== false ) {
-				$default_api_token           = $api_tokens[ $index ] ?? '';
-				$default_website_property_id = $website_property_ids[ $index ] ?? '';
-				// Get procedure IDs if available
-				$procedure_ids = get_option( 'brag_book_gallery_procedure_id', [] );
-				if ( is_array( $procedure_ids ) && isset( $procedure_ids[ $index ] ) ) {
-					$default_procedure_ids = explode( ',', $procedure_ids[ $index ] );
-				}
-			}
-
-			// If not found, try to use the first available configuration as fallback
-			if ( empty( $default_api_token ) && ! empty( $api_tokens ) ) {
-				$default_api_token           = $api_tokens[0] ?? '';
-				$default_website_property_id = $website_property_ids[0] ?? '';
-			}
-		}
-
-		// Get API endpoint
-		$api_endpoint = get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' );
-
-		$localized_data = array(
-			'ajaxurl'       => admin_url( path: 'admin-ajax.php' ),
-			'nonce'         => wp_create_nonce( action: 'brag_book_gallery_frontend' ),
-			'api_endpoint'  => esc_url_raw( $api_endpoint ),
-			'api_config'    => array(
-				'default_token'         => $default_api_token,
-				'default_property_id'   => $default_website_property_id,
-				'default_procedure_ids' => $default_procedure_ids,
-				'endpoint'              => esc_url_raw( $api_endpoint ),
-			),
-			'assets'        => array(
-				'leftArrow'     => $icon_left_arrow,
-				'rightArrow'    => $icon_right_arrow,
-				'leftArrowUrl'  => $icon_left_arrow_url,
-				'rightArrowUrl' => $icon_right_arrow_url,
-				'heartBordered' => $icon_heart_bordered,
-				'heartDown'     => $icon_heart_down,
-				'heartRed'      => $icon_heart_red,
-				'heartRunning'  => $icon_heart_running,
-			),
-			'i18n'          => array(
-				'loading' => esc_html__( 'Loading...', 'brag-book-gallery' ),
-				'error'   => esc_html__( 'An error occurred. Please try again.', 'brag-book-gallery' ),
-				'saved'   => esc_html__( 'Saved to favorites!', 'brag-book-gallery' ),
-				'removed' => esc_html__( 'Removed from favorites!', 'brag-book-gallery' ),
-			),
-			// Add legacy property names for backward compatibility
-			'leftArrow'     => $icon_left_arrow,
-			'rightArrow'    => $icon_right_arrow,
-			'leftArrowUrl'  => $icon_left_arrow_url,
-			'rightArrowUrl' => $icon_right_arrow_url,
-			'heartBordered' => $icon_heart_bordered,
-			'heartdown'     => $icon_heart_down,
-			// Note: lowercase 'd' for legacy compatibility
-			'heartRed'      => $icon_heart_red,
-			'heartRunning'  => $icon_heart_running,
-		);
-
-		/**
-		 * Filter frontend localized data
-		 *
-		 * @param array $localized_data Data to be passed to JavaScript
-		 *
-		 * @since 3.0.0
-		 */
-		$localized_data = apply_filters(
-			hook_name: 'brag_book_gallery_frontend_localized_data',
-			value: $localized_data
-		);
-
-		wp_localize_script(
-			handle: 'brag-book-gallery-script',
-			object_name: 'brag_book_gallery_plugin_data',
-			l10n: $localized_data
 		);
 	}
 
@@ -591,8 +485,9 @@ class Assets {
 	 */
 	private function get_asset_version(): string {
 
-		// Use timestamp in development for cache busting.
-		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+		// Use timestamp only when SCRIPT_DEBUG is on so staging sites with
+		// WP_DEBUG enabled still benefit from version-based caching.
+		if ( defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ) {
 			return (string) time();
 		}
 
@@ -615,11 +510,39 @@ class Assets {
 			return;
 		}
 
-		// Preload critical CSS
+		$suffix = $this->get_asset_suffix();
+
+		// Preload critical CSS using the same minified path the enqueue uses,
+		// otherwise the browser fetches both files.
 		echo sprintf(
 			'<link rel="preload" href="%s" as="style">',
-			esc_url( Setup::get_asset_url( 'assets/css/brag-book-gallery.css' ) )
+			esc_url( Setup::get_asset_url( 'assets/css/brag-book-gallery' . $suffix . '.css' ) )
 		);
+
+		// Preconnect to the BRAGbook API origin since every gallery page hits it
+		// for case data and image delivery.
+		$api_endpoint = (string) get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' );
+		$api_origin   = wp_parse_url( $api_endpoint, PHP_URL_SCHEME ) && wp_parse_url( $api_endpoint, PHP_URL_HOST )
+			? wp_parse_url( $api_endpoint, PHP_URL_SCHEME ) . '://' . wp_parse_url( $api_endpoint, PHP_URL_HOST )
+			: '';
+		if ( $api_origin !== '' ) {
+			printf(
+				'<link rel="preconnect" href="%1$s" crossorigin><link rel="dns-prefetch" href="%1$s">',
+				esc_url( $api_origin )
+			);
+		}
+
+		// Preload primary self-hosted fonts so they're discovered before CSS parses.
+		$fonts = [
+			'assets/fonts/poppins/Poppins-Regular.woff2',
+			'assets/fonts/lato/Lato-Regular.woff2',
+		];
+		foreach ( $fonts as $font_path ) {
+			printf(
+				'<link rel="preload" href="%s" as="font" type="font/woff2" crossorigin>',
+				esc_url( Setup::get_asset_url( $font_path ) )
+			);
+		}
 
 		// Preload critical fonts if any
 		do_action( hook_name: 'brag_book_gallery_preload_assets' );
@@ -640,18 +563,26 @@ class Assets {
 	 */
 	public function optimize_script_loading( string $tag, string $handle, string $src ): string {
 
-		// Scripts that should be deferred.
-		$defer_scripts = array();
+		// Scripts that should be deferred. The main bundle ships in the footer
+		// already; defer lets the browser parse it in parallel with HTML and
+		// keeps it out of the critical path.
+		$defer_scripts = array(
+			'brag-book-gallery-main',
+		);
 
 		// Scripts that can be async.
 		$async_scripts = array();
 
 		if ( in_array( $handle, $defer_scripts, true ) ) {
-			return str_replace( ' src', ' defer src', $tag );
+			if ( ! str_contains( $tag, ' defer' ) ) {
+				return str_replace( ' src', ' defer src', $tag );
+			}
 		}
 
 		if ( in_array( $handle, $async_scripts, true ) ) {
-			return str_replace( ' src', ' async src', $tag );
+			if ( ! str_contains( $tag, ' async' ) ) {
+				return str_replace( ' src', ' async src', $tag );
+			}
 		}
 
 		return $tag;

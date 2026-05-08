@@ -20,6 +20,7 @@ use BRAGBookGallery\Includes\Extend\Post_Types;
 use BRAGBookGallery\Includes\Extend\Taxonomies;
 use BRAGBookGallery\Includes\Core\Setup;
 use BRAGBookGallery\Includes\Core\Trait_Api;
+use BRAGBookGallery\Includes\Resources\Asset_Manager;
 
 /**
  * Single Case Handler class
@@ -78,11 +79,13 @@ class Case_Handler {
 
 		// Only enqueue CSS for styling - no JavaScript needed for WordPress post-based cases
 		$plugin_version = Setup::get_plugin_version();
+		$suffix         = Asset_Manager::get_asset_suffix();
 
-		// Enqueue CSS using Setup class asset URL method
+		// Enqueue CSS using Setup class asset URL method.
+		// Reuses the canonical handle so duplicate enqueues from other shortcodes collapse.
 		wp_enqueue_style(
-			'brag-book-gallery',
-			Setup::get_asset_url( 'assets/css/brag-book-gallery.css' ),
+			'brag-book-gallery-main',
+			Setup::get_asset_url( 'assets/css/brag-book-gallery' . $suffix . '.css' ),
 			[],
 			$plugin_version
 		);
@@ -657,7 +660,7 @@ class Case_Handler {
 		// Main image (first image) with microdata
 		if ( ! empty( $images[0] ) ) {
 			
-			$html .= '<img src="' . esc_url( $images[0] ) . '" alt="' . esc_attr( $base_alt ) . '" loading="eager" itemprop="image">';
+			$html .= '<img src="' . esc_url( $images[0] ) . '" alt="' . esc_attr( $base_alt ) . '" loading="eager" fetchpriority="high" decoding="async" itemprop="image">';
 			$html .= '<div class="brag-book-gallery-item-actions">';
 			// Use procedure case ID (junction ID) for favorites - fallback to post ID
 			$favorite_item_id = ! empty( $procedure_case_id ) ? $procedure_case_id : $wp_post_id;
@@ -690,7 +693,7 @@ class Case_Handler {
 				$active_class  = $index === 0 ? ' active' : '';
 				$thumbnail_alt = sprintf( '%s - Angle %d', $base_alt, $index + 1 );
 				$html .= '<div class="brag-book-gallery-thumbnail-item' . $active_class . '" data-image-index="' . $index . '" data-processed-url="' . esc_attr( $image_url ) . '">';
-				$html .= '<img src="' . esc_url( $image_url ) . '" alt="' . esc_attr( $thumbnail_alt ) . '" loading="lazy" itemprop="thumbnail">';
+				$html .= '<img src="' . esc_url( $image_url ) . '" alt="' . esc_attr( $thumbnail_alt ) . '" loading="lazy" decoding="async" itemprop="thumbnail">';
 				$html .= '</div>';
 			}
 
@@ -1335,7 +1338,7 @@ class Case_Handler {
 			);
 
 			$html .= sprintf(
-				'<img src="%s" alt="%s" class="brag-book-gallery-case-image" loading="lazy">',
+				'<img src="%s" alt="%s" class="brag-book-gallery-case-image" loading="lazy" decoding="async">',
 				esc_url( $primary_image ),
 				/* translators: %s: case identifier */
 				esc_attr( sprintf( __( 'Case %s', 'brag-book-gallery' ), $case_id ) )

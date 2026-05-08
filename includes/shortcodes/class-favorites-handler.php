@@ -148,8 +148,7 @@ final class Favorites_Handler {
 				'api_token' => $api_token,
 				'website_property_id' => $website_property_id,
 			],
-			[], // Empty sidebar data for favorites page
-			[]  // Empty cases data
+			[] // No sidebar data on the favorites page.
 		);
 
 		// Generate and return favorites HTML
@@ -1518,6 +1517,7 @@ final class Favorites_Handler {
 									<img src="<?php echo esc_url( $primary_image ); ?>"
 										 alt="<?php echo esc_attr( $image_alt ); ?>"
 										 loading="lazy"
+										 decoding="async"
 										 data-image-type="carousel"
 										 data-image-url="<?php echo esc_url( $primary_image ); ?>"
 										 onload="this.closest('.brag-book-gallery-image-container').querySelector('.brag-book-gallery-skeleton-loader').style.display='none';">

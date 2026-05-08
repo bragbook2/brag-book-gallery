@@ -735,2599 +735,6 @@ class Dialog {
 
 /***/ }),
 
-/***/ "./src/js/modules/favorites-manager.js":
-/*!*********************************************!*\
-  !*** ./src/js/modules/favorites-manager.js ***!
-  \*********************************************/
-/***/ (function(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
-
-__webpack_require__.r(__webpack_exports__);
-/* harmony import */ var _dialog_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./dialog.js */ "./src/js/modules/dialog.js");
-
-
-/**
- * Favorites Manager
- * Manages favorited items across the gallery
- */
-class FavoritesManager {
-  constructor(options = {}) {
-    this.favorites = new Set();
-    this.userInfo = null;
-    this.hasShownDialog = false;
-    this.options = {
-      storageKey: options.storageKey || 'brag-book-favorites',
-      userInfoKey: options.userInfoKey || 'brag-book-user-info',
-      persistToStorage: options.persistToStorage !== false,
-      onUpdate: options.onUpdate || (() => {}),
-      ...options
-    };
-    this.init();
-  }
-  init() {
-    this.favoritesDialog = new _dialog_js__WEBPACK_IMPORTED_MODULE_0__["default"]('favoritesDialog', {
-      onClose: () => {
-        // If user closes without submitting, remove the just-added favorite
-        if (!this.userInfo && this.lastAddedFavorite) {
-          this.removeFavorite(this.lastAddedFavorite);
-          this.lastAddedFavorite = null;
-        }
-      }
-    });
-    if (this.options.persistToStorage) {
-      this.loadFromStorage();
-      this.loadUserInfo();
-    }
-    this.setupEventListeners();
-    this.updateUI();
-  }
-  setupEventListeners() {
-    document.addEventListener('click', e => {
-      const button = e.target.closest('[data-favorited]');
-      if (button) {
-        e.preventDefault();
-        this.toggleFavorite(button);
-      }
-
-      // Handle close button for favorites dialog
-      if (e.target.closest('[data-action="close-favorites-dialog"]')) {
-        this.favoritesDialog.close();
-      }
-    });
-
-    // Handle favorites form submission - check both selectors for compatibility
-    const favoritesForm = document.querySelector('[data-form="favorites"], [data-form="favorites-email"]');
-    if (favoritesForm) {
-      favoritesForm.addEventListener('submit', e => {
-        e.preventDefault();
-        this.handleFavoritesFormSubmit(e.target);
-      });
-    }
-
-    // Handle favorites lookup form submission
-    const lookupForm = document.querySelector('.brag-book-gallery-favorites-lookup-form, #favorites-email-form');
-    if (lookupForm) {
-      lookupForm.addEventListener('submit', e => {
-        e.preventDefault();
-        this.handleFavoritesLookupSubmit(e.target);
-      });
-    }
-  }
-  toggleFavorite(button) {
-    let itemId = '';
-    let procedureId = '';
-    const isFavorited = button.dataset.favorited === 'true';
-
-    // Get case container (card or detail view)
-    const caseCard = button.closest('.brag-book-gallery-case-card');
-    const caseDetailView = button.closest('.brag-book-gallery-case-detail-view');
-    const carouselItem = button.closest('.brag-book-gallery-carousel-item');
-    const caseContainer = caseCard || caseDetailView || carouselItem;
-    if (caseContainer) {
-      // itemId must be the caseProcedureId (junction ID unique to each case-procedure combo)
-      // NEVER use currentProcedureId as itemId — it's shared across all cards on taxonomy pages
-      itemId = caseContainer.dataset.procedureCaseId || '';
-
-      // Fallback to the button's own data-item-id (set by PHP to the junction ID)
-      if (!itemId) {
-        itemId = button.dataset.itemId || '';
-        if (itemId) {
-          const matches = itemId.match(/(\d+)/);
-          if (matches) {
-            itemId = matches[1];
-          }
-        }
-      }
-
-      // procedureId is a separate value — the taxonomy/API procedure ID for the API call
-      procedureId = caseContainer.dataset.currentProcedureId || caseContainer.dataset.procedureId || (caseContainer.dataset.procedureIds ? caseContainer.dataset.procedureIds.split(',')[0] : '');
-    } else {
-      // No container found, use button's own data attributes
-      itemId = button.dataset.itemId || '';
-      if (itemId) {
-        const matches = itemId.match(/(\d+)/);
-        if (matches) {
-          itemId = matches[1];
-        }
-      }
-    }
-
-    // Fallback to active nav link for procedureId only (never for itemId)
-    if (!procedureId) {
-      const activeNavLink = document.querySelector('.brag-book-gallery-nav-link.brag-book-gallery-active');
-      procedureId = activeNavLink?.dataset.procedureId || '';
-    }
-
-    // Update hidden case ID field if it exists
-    this.updateHiddenCaseIdField(itemId);
-    // Update hidden procedure ID field if it exists
-    this.updateHiddenProcedureIdField(procedureId);
-
-    // If removing favorite, just remove it
-    if (isFavorited) {
-      this.removeFavorite(itemId, button, procedureId);
-      return;
-    }
-
-    // If no item ID, can't add favorite
-    if (!itemId) {
-      console.error('No item ID found on button:', button);
-      return;
-    }
-
-    // Check for user info in localStorage if we don't have it
-    if (!this.userInfo || !this.userInfo.email) {
-      this.loadUserInfo();
-    }
-
-    // If we have user info, submit to API directly
-    if (this.userInfo && this.userInfo.email) {
-      // Add to local favorites first
-      this.addFavorite(itemId, button);
-      // Submit to API
-      this.submitFavoriteToAPI(itemId, procedureId);
-    } else {
-      // No user info - show dialog to collect it
-      this.lastAddedFavorite = itemId;
-      this.lastAddedProcedureId = procedureId;
-      this.lastAddedButton = button;
-      // Add the favorite first so it shows in the dialog
-      this.addFavorite(itemId, button);
-      this.favoritesDialog.open();
-      this.hasShownDialog = true;
-    }
-  }
-
-  /**
-   * Update the hidden case ID field in the favorites form
-   * @param {string} caseId - The case ID to set
-   */
-  updateHiddenCaseIdField(caseId) {
-    const hiddenField = document.querySelector('input[name="fav-case-id"]');
-    if (hiddenField && caseId) {
-      hiddenField.value = caseId;
-    }
-  }
-
-  /**
-   * Update the hidden procedure ID field in the favorites form
-   * @param {string} procedureId - The procedure ID to set
-   */
-  updateHiddenProcedureIdField(procedureId) {
-    const hiddenField = document.querySelector('input[name="fav-procedure-id"]');
-    if (hiddenField && procedureId) {
-      hiddenField.value = procedureId;
-    }
-  }
-  addFavorite(itemId, button) {
-    // Update the clicked button
-    if (button) {
-      button.dataset.favorited = 'true';
-    }
-
-    // Also update any other buttons for the same item
-    const allButtons = document.querySelectorAll(`[data-item-id="${itemId}"], [data-case-id="${itemId}"]`);
-    allButtons.forEach(btn => {
-      if (btn.dataset.favorited !== undefined) {
-        btn.dataset.favorited = 'true';
-      }
-    });
-
-    // Add to internal favorites collection
-    this.favorites.add(itemId);
-
-    // Persist to localStorage if enabled
-    if (this.options.persistToStorage) {
-      this.saveToStorage();
-    }
-    this.updateUI();
-    this.options.onUpdate(this.favorites);
-
-    // Dispatch custom event for other components
-    window.dispatchEvent(new CustomEvent('favoritesUpdated', {
-      detail: {
-        favorites: this.favorites
-      }
-    }));
-  }
-
-  /**
-   * Remove an item from favorites and update UI
-   * @param {string} itemId - The ID of the item to unfavorite
-   * @param {HTMLElement} button - The button that was clicked (optional)
-   * @param {string} procedureId - The procedure ID (optional)
-   */
-  removeFavorite(itemId, button, procedureId = '') {
-    // Update button states - find all relevant buttons if none provided
-    if (!button) {
-      const buttons = document.querySelectorAll(`[data-item-id="${itemId}"][data-favorited="true"], [data-case-id="${itemId}"][data-favorited="true"]`);
-      buttons.forEach(btn => {
-        btn.dataset.favorited = 'false';
-      });
-    } else {
-      // Update the specific button and find related buttons
-      button.dataset.favorited = 'false';
-      const otherButtons = document.querySelectorAll(`[data-item-id="${itemId}"], [data-case-id="${itemId}"]`);
-      otherButtons.forEach(btn => {
-        if (btn !== button && btn.dataset.favorited !== undefined) {
-          btn.dataset.favorited = 'false';
-        }
-      });
-    }
-
-    // Remove from internal favorites collection
-    this.favorites.delete(itemId);
-
-    // Persist changes to localStorage if enabled
-    if (this.options.persistToStorage) {
-      this.saveToStorage();
-    }
-
-    // Update UI and notify listeners
-    this.updateUI();
-    this.options.onUpdate(this.favorites);
-
-    // Dispatch global event for other components
-    window.dispatchEvent(new CustomEvent('favoritesUpdated', {
-      detail: {
-        favorites: this.favorites
-      }
-    }));
-
-    // If user is logged in, also remove from API
-    if (this.userInfo && this.userInfo.email) {
-      this.removeFavoriteFromAPI(itemId, procedureId);
-    }
-  }
-
-  /**
-   * Remove a favorite from the BRAGBook API
-   * @param {string} caseId - The case procedure ID to remove from favorites
-   * @param {string} procedureId - The procedure ID
-   */
-  removeFavoriteFromAPI(caseId, procedureId = '') {
-    // Use WordPress AJAX for secure API communication
-    const formData = new FormData();
-    formData.append('action', 'brag_book_remove_favorite');
-    formData.append('nonce', window.bragBookGalleryConfig?.nonce || '');
-    formData.append('case_id', caseId);
-    formData.append('procedure_id', procedureId);
-    formData.append('id_type', 'caseProcedureId');
-    formData.append('email', this.userInfo.email || '');
-
-    // Submit via WordPress AJAX (API tokens handled securely on server)
-    fetch(window.bragBookGalleryConfig?.ajaxUrl || '/wp-admin/admin-ajax.php', {
-      method: 'POST',
-      body: formData
-    }).then(response => {
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      return response.json();
-    }).then(response => {
-      if (response.success) {
-        // Show success notification
-        this.showSuccessNotification('Removed from favorites!');
-
-        // Remove the card from the favorites grid on the favorites page
-        this.removeCardFromFavoritesGrid(caseId);
-      } else {
-        // Show error notification
-        console.error('Failed to remove favorite:', response.data?.message);
-        this.showErrorNotification(response.data?.message || 'Failed to remove favorite. Please try again.');
-
-        // Restore the favorite state since API call failed
-        this.restoreFavoriteState(caseId);
-      }
-    }).catch(error => {
-      console.error('Error removing favorite:', error);
-      this.showErrorNotification('Error removing favorite. Please try again.');
-
-      // Restore the favorite state since API call failed
-      this.restoreFavoriteState(caseId);
-    });
-  }
-
-  /**
-   * Remove a card from the favorites grid on the favorites page
-   *
-   * No-op on every other view (procedure pages, case detail, carousels,
-   * etc.). The favorites shortcode emits #brag-book-gallery-favorites and
-   * .brag-book-gallery-favorites-grid; we use those as the page marker so
-   * unfavoriting a case from a procedure page never strips it from view.
-   *
-   * @param {string} caseId - The case ID to remove
-   */
-  removeCardFromFavoritesGrid(caseId) {
-    const favoritesPage = document.getElementById('brag-book-gallery-favorites');
-    const favoritesGrid = favoritesPage?.querySelector('.brag-book-gallery-favorites-grid');
-    if (!favoritesPage || !favoritesGrid) {
-      return;
-    }
-
-    // Find the card element — caseId is the procedureCaseId (junction ID),
-    // stored in data-procedure-case-id on the card element. Scope the
-    // lookup to the favorites grid so we never touch cards rendered by
-    // other shortcodes that happen to share the same DOM.
-    const card = favoritesGrid.querySelector(`.brag-book-gallery-case-card[data-procedure-case-id="${caseId}"], ` + `.brag-book-gallery-favorites-card[data-procedure-case-id="${caseId}"], ` + `.brag-book-gallery-case-card[data-post-id="${caseId}"], ` + `.brag-book-gallery-case-card[data-case-id="${caseId}"], ` + `.brag-book-gallery-favorites-card[data-post-id="${caseId}"], ` + `.brag-book-gallery-favorites-card[data-case-id="${caseId}"]`);
-    if (!card) {
-      return;
-    }
-
-    // Add fade-out animation
-    card.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-    card.style.opacity = '0';
-    card.style.transform = 'scale(0.9)';
-
-    // Remove from DOM after animation
-    setTimeout(() => {
-      card.remove();
-
-      // Check if favorites grid is now empty
-      if (favoritesGrid.children.length === 0) {
-        const emptyState = document.getElementById('favoritesEmpty');
-        if (emptyState) {
-          emptyState.style.display = 'block';
-        }
-        favoritesGrid.style.display = 'none';
-      }
-    }, 300);
-  }
-
-  /**
-   * Restore favorite state when API call fails
-   * @param {string} caseId - The case ID to restore
-   */
-  restoreFavoriteState(caseId) {
-    // Re-add to internal favorites
-    this.favorites.add(caseId);
-
-    // Save to storage
-    if (this.options.persistToStorage) {
-      this.saveToStorage();
-    }
-
-    // Update all buttons back to favorited state
-    const buttons = document.querySelectorAll(`[data-item-id="${caseId}"], [data-case-id="${caseId}"], ` + `.brag-book-gallery-case-card[data-post-id="${caseId}"] [data-favorited], ` + `.brag-book-gallery-case-card[data-case-id="${caseId}"] [data-favorited]`);
-    buttons.forEach(btn => {
-      if (btn.dataset.favorited !== undefined) {
-        btn.dataset.favorited = 'true';
-      }
-    });
-
-    // Update UI
-    this.updateUI();
-  }
-
-  /**
-   * Submit a favorite directly to the BRAGBook API (for users with existing info)
-   * @param {string} caseId - The case procedure ID to add to favorites
-   * @param {string} procedureId - The procedure ID
-   */
-  submitFavoriteToAPI(caseId, procedureId = '') {
-    // Use WordPress AJAX for secure API communication
-    const formData = new FormData();
-    formData.append('action', 'brag_book_add_favorite');
-    formData.append('nonce', window.bragBookGalleryConfig?.nonce || '');
-    formData.append('case_id', caseId);
-    formData.append('procedure_id', procedureId);
-    formData.append('id_type', 'caseProcedureId');
-    formData.append('email', this.userInfo.email || '');
-    formData.append('phone', this.userInfo.phone || '');
-    formData.append('name', this.userInfo.name || '');
-
-    // Submit via WordPress AJAX (API tokens handled securely on server)
-    fetch(window.bragBookGalleryConfig?.ajaxUrl || '/wp-admin/admin-ajax.php', {
-      method: 'POST',
-      body: formData
-    }).then(response => {
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      return response.json();
-    }).then(response => {
-      if (response.success) {
-        // Show success notification
-        this.showSuccessNotification('Added to favorites!');
-      } else {
-        // Show error notification and undo local state only (don't call API remove)
-        console.error('Failed to save favorite:', response.data?.message);
-        this.undoLocalFavorite(caseId);
-        this.showErrorNotification('Failed to save favorite. Please try again.');
-      }
-    }).catch(error => {
-      console.error('Error submitting favorite:', error);
-      // Undo local state only (don't call API remove — item was never added)
-      this.undoLocalFavorite(caseId);
-      this.showErrorNotification('Error saving favorite. Please try again.');
-    });
-  }
-
-  /**
-   * Undo a local favorite without calling the API remove endpoint.
-   * Used when an add API call fails — the item was never added to the API.
-   * @param {string} itemId - The item ID to remove locally
-   */
-  undoLocalFavorite(itemId) {
-    // Update button states
-    const buttons = document.querySelectorAll(`[data-item-id="${itemId}"][data-favorited="true"]`);
-    buttons.forEach(btn => {
-      btn.dataset.favorited = 'false';
-    });
-
-    // Remove from internal favorites collection
-    this.favorites.delete(itemId);
-
-    // Persist changes to localStorage
-    if (this.options.persistToStorage) {
-      this.saveToStorage();
-    }
-
-    // Update UI
-    this.updateUI();
-    this.options.onUpdate(this.favorites);
-    window.dispatchEvent(new CustomEvent('favoritesUpdated', {
-      detail: {
-        favorites: this.favorites
-      }
-    }));
-  }
-
-  /**
-   * Handle submission of the user info form in the favorites dialog
-   * @param {HTMLFormElement} form - The form element that was submitted
-   */
-  handleFavoritesFormSubmit(form) {
-    const formData = new FormData(form);
-
-    // Get case ID from hidden field first, then fallback to other methods
-    let caseId = formData.get('fav-case-id') || this.lastAddedFavorite;
-    // Get procedure ID from hidden field first, then fallback to stored value
-    let procedureId = formData.get('fav-procedure-id') || this.lastAddedProcedureId || '';
-    if (!caseId) {
-      // Try to find the case ID from the current page context
-      // Prioritize WordPress post ID over API case ID
-      const articleElement = document.querySelector('.brag-book-gallery-case-card');
-      if (articleElement) {
-        caseId = articleElement.dataset.postId || articleElement.dataset.caseId;
-        // Also try to get procedure ID if not already set
-        if (!procedureId) {
-          procedureId = articleElement.dataset.currentProcedureId || (articleElement.dataset.procedureIds ? articleElement.dataset.procedureIds.split(',')[0] : '');
-        }
-      }
-    }
-
-    // Fallback to active nav link for procedure ID
-    if (!procedureId) {
-      const activeNavLink = document.querySelector('.brag-book-gallery-nav-link.brag-book-gallery-active');
-      procedureId = activeNavLink?.dataset.procedureId || '';
-    }
-    if (!caseId) {
-      // If still no case ID, show error
-      this.showDetailedFormError(form, {
-        title: 'Case Identification Error',
-        message: 'Unable to determine which case to favorite.',
-        details: ['This usually happens when the page hasn\'t fully loaded', 'Try refreshing the page and clicking the favorite button again']
-      });
-      return;
-    }
-
-    // Get form field values
-    const email = formData.get('fav-email') || '';
-    const name = formData.get('fav-name') || '';
-    const phone = formData.get('fav-phone') || '';
-
-    // Validate fields individually and collect errors
-    const validationErrors = [];
-    if (!name) validationErrors.push('Name is required');
-    if (!email) validationErrors.push('Email is required');else if (!this.isValidEmail(email)) validationErrors.push('Email address is not valid');
-    if (!phone) validationErrors.push('Phone number is required');
-    if (validationErrors.length > 0) {
-      this.showDetailedFormError(form, {
-        title: 'Form Validation Error',
-        message: 'Please correct the following issues:',
-        details: validationErrors
-      });
-      return;
-    }
-
-    // Show loading state in form
-    const submitButton = form.querySelector('button[type="submit"]');
-    const originalText = submitButton ? submitButton.textContent : '';
-    if (submitButton) {
-      submitButton.disabled = true;
-      submitButton.textContent = 'Submitting...';
-    }
-
-    // Clear any previous error messages
-    const existingError = form.querySelector('.brag-book-gallery-form-error');
-    const existingSuccess = form.querySelector('.brag-book-gallery-form-success');
-    if (existingError) existingError.remove();
-    if (existingSuccess) existingSuccess.remove();
-
-    // Prepare WordPress AJAX request
-    formData.append('action', 'brag_book_add_favorite');
-    formData.append('nonce', window.bragBookGalleryConfig?.nonce || '');
-    formData.append('case_id', caseId);
-    formData.append('procedure_id', procedureId);
-    formData.append('id_type', 'caseProcedureId');
-    formData.append('email', email);
-    formData.append('phone', phone);
-    formData.append('name', name);
-
-    // Submit via WordPress AJAX (API tokens handled securely on server)
-    fetch(window.bragBookGalleryConfig?.ajaxUrl || '/wp-admin/admin-ajax.php', {
-      method: 'POST',
-      body: formData
-    }).then(response => {
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      return response.json();
-    }).then(response => {
-      if (response.success) {
-        // Save user info locally
-        const userInfo = {
-          email,
-          name,
-          phone
-        };
-        this.userInfo = userInfo;
-
-        // Save to localStorage for future sessions
-        try {
-          localStorage.setItem(this.options.userInfoKey, JSON.stringify(userInfo));
-        } catch (e) {
-          console.error('Failed to save user info to localStorage:', e);
-        }
-
-        // Show success message in form
-        const successDiv = document.createElement('div');
-        successDiv.className = 'brag-book-gallery-form-success';
-        successDiv.textContent = response.data.message || 'Your information has been saved. Keep adding favorites!';
-        form.appendChild(successDiv);
-
-        // Close dialog after a short delay
-        setTimeout(() => {
-          this.favoritesDialog.close();
-          // Clear the form
-          form.reset();
-          if (successDiv) successDiv.remove();
-        }, 2000);
-
-        // Show success notification
-        this.showSuccessNotification(response.data.message || 'Your information has been saved. Keep adding favorites!');
-
-        // Clear pending favorite
-        this.lastAddedFavorite = null;
-        this.lastAddedButton = null;
-      } else {
-        // Parse and show detailed error
-        this.parseAndShowDetailedError(form, response, 'save');
-
-        // Undo local state only (item was never added to API)
-        if (this.lastAddedFavorite) {
-          this.undoLocalFavorite(this.lastAddedFavorite);
-        }
-      }
-    }).catch(error => {
-      console.error('Error submitting favorites form:', error);
-
-      // Show detailed network error
-      this.showDetailedFormError(form, {
-        title: 'Connection Error',
-        message: 'Unable to communicate with the server.',
-        details: ['Check your internet connection', 'The server may be temporarily unavailable', `Technical details: ${error.message}`]
-      });
-
-      // Undo local state only (item was never added to API)
-      if (this.lastAddedFavorite) {
-        this.undoLocalFavorite(this.lastAddedFavorite);
-      }
-    }).finally(() => {
-      // Reset button state
-      if (submitButton) {
-        submitButton.disabled = false;
-        submitButton.textContent = originalText;
-      }
-    });
-  }
-
-  /**
-   * Handle submission of the favorites lookup form
-   * @param {HTMLFormElement} form - The lookup form element that was submitted
-   */
-  handleFavoritesLookupSubmit(form) {
-    const formData = new FormData(form);
-    const email = formData.get('email');
-    if (!email) {
-      this.showLookupError(form, 'Please enter an email address.');
-      return;
-    }
-
-    // Show loading state
-    const submitButton = form.querySelector('button[type="submit"]');
-    const originalText = submitButton ? submitButton.textContent : '';
-    if (submitButton) {
-      submitButton.disabled = true;
-      submitButton.textContent = 'Checking...';
-    }
-
-    // Clear any previous error messages
-    this.clearLookupMessages(form);
-
-    // First check localStorage for matching email
-    const storedUserInfo = this.getUserInfo();
-    if (storedUserInfo && storedUserInfo.email === email) {
-      // Email matches localStorage, show favorites
-      this.showLookupSuccess(form, email);
-      return;
-    }
-
-    // If not found in localStorage, check with server
-    // Add action and nonce for WordPress AJAX
-    formData.append('action', 'brag_book_lookup_favorites');
-    formData.append('nonce', window.bragBookGalleryConfig?.nonce || '');
-
-    // Submit via AJAX
-    fetch(window.bragBookGalleryConfig?.ajaxUrl || '/wp-admin/admin-ajax.php', {
-      method: 'POST',
-      body: formData
-    }).then(response => {
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      return response.json();
-    }).then(response => {
-      if (response.success) {
-        // Email found, validate and save user data
-        if (response.data && response.data.user) {
-          const user = response.data.user;
-          const favoritesData = response.data.favorites || {};
-
-          // Only create user info if we have essential data (email at minimum)
-          if (user.email && user.name && user.phone) {
-            const userInfo = {
-              email: user.email,
-              name: user.name,
-              first_name: user.first_name || '',
-              last_name: user.last_name || '',
-              phone: user.phone,
-              id: user.id
-            };
-
-            // Save user info to localStorage only if all essential fields are present
-            localStorage.setItem('brag-book-user-info', JSON.stringify(userInfo));
-            this.userInfo = userInfo;
-
-            // Save favorites data if available — use junction IDs from caseProcedures
-            if (favoritesData.cases_data && Object.keys(favoritesData.cases_data).length > 0) {
-              // Extract junction IDs (caseProcedures[0].id) — these match
-              // data-procedure-case-id on cards and are used for add/remove calls
-              const favoriteIds = Object.values(favoritesData.cases_data).map(c => {
-                if (c.caseProcedures && c.caseProcedures.length > 0) {
-                  return String(c.caseProcedures[0].id);
-                }
-                return String(c.id || '');
-              }).filter(Boolean);
-
-              // Replace localStorage — API is authoritative
-              localStorage.setItem('brag-book-favorites', JSON.stringify(favoriteIds));
-
-              // Update internal favorites
-              this.favorites = new Set(favoriteIds);
-
-              // Update UI to reflect loaded favorites
-              this.updateAllButtonStates();
-            }
-            this.showLookupSuccess(form, email, userInfo, favoritesData);
-          } else {
-            // User found but incomplete data - don't create localStorage entries
-            this.showLookupError(form, 'Account found but missing required information. Please contact support.');
-          }
-        } else {
-          // No user data returned, but success - this shouldn't happen
-          this.showLookupError(form, 'Account found but no details available. Please contact support.');
-        }
-      } else {
-        // Email not found, show error
-        this.showLookupError(form, response.data?.message || 'We were unable to locate account details for this email address.');
-      }
-    }).catch(error => {
-      console.error('Error looking up favorites:', error);
-      this.showLookupError(form, 'An error occurred while looking up your favorites. Please try again.');
-    }).finally(() => {
-      // Reset button state
-      if (submitButton) {
-        submitButton.disabled = false;
-        submitButton.textContent = originalText;
-      }
-    });
-  }
-
-  /**
-   * Show lookup success and redirect to favorites view
-   */
-  showLookupSuccess(form, email, userData = null, favoritesData = null) {
-    // Only save user data if we have complete information
-    if (userData && userData.email && userData.name && userData.phone) {
-      this.userInfo = userData;
-      this.saveUserInfo();
-    } else {
-      // Check if we have valid user info in localStorage
-      const storedUserInfo = this.getUserInfo();
-      if (storedUserInfo && storedUserInfo.email && storedUserInfo.name && storedUserInfo.phone) {
-        this.userInfo = storedUserInfo;
-      } else {
-        // No valid user info - don't proceed
-        this.showLookupError(form, 'Unable to load complete account information. Please try again or contact support.');
-        return;
-      }
-    }
-
-    // Update favorites count display
-    if (favoritesData && favoritesData.total_count > 0) {
-      this.updateUI();
-    }
-
-    // Show success message
-    const successDiv = document.createElement('div');
-    successDiv.className = 'brag-book-gallery-form-success';
-    const favCount = favoritesData?.total_count || 0;
-    successDiv.textContent = `Account found! Loading ${favCount} favorite${favCount !== 1 ? 's' : ''}...`;
-    form.appendChild(successDiv);
-
-    // Redirect to favorites view after a short delay
-    setTimeout(() => {
-      if (window.bragBookGalleryApp && typeof window.bragBookGalleryApp.initializeFavoritesPage === 'function') {
-        window.bragBookGalleryApp.initializeFavoritesPage();
-      }
-    }, 1000);
-  }
-
-  /**
-   * Show lookup error message
-   */
-  showLookupError(form, message) {
-    const errorDiv = document.createElement('div');
-    errorDiv.className = 'brag-book-gallery-form-error';
-    errorDiv.textContent = message;
-    form.appendChild(errorDiv);
-  }
-
-  /**
-   * Clear lookup messages
-   */
-  clearLookupMessages(form) {
-    const existingError = form.querySelector('.brag-book-gallery-form-error');
-    const existingSuccess = form.querySelector('.brag-book-gallery-form-success');
-    if (existingError) existingError.remove();
-    if (existingSuccess) existingSuccess.remove();
-  }
-
-  /**
-   * Show error message in form
-   */
-  showFormError(form, message) {
-    // Clear existing messages
-    this.clearLookupMessages(form);
-
-    // Show error message in form
-    const errorDiv = document.createElement('div');
-    errorDiv.className = 'brag-book-gallery-form-error';
-    errorDiv.textContent = message;
-    form.appendChild(errorDiv);
-
-    // Reset button state if needed
-    const submitButton = form.querySelector('button[type="submit"]');
-    if (submitButton) {
-      submitButton.disabled = false;
-    }
-  }
-
-  /**
-   * Show detailed error message in form with structured information
-   * @param {HTMLFormElement} form - The form element
-   * @param {Object} errorInfo - Error information object
-   * @param {string} errorInfo.title - Error title
-   * @param {string} errorInfo.message - Main error message
-   * @param {Array<string>} errorInfo.details - Array of detail strings
-   */
-  showDetailedFormError(form, errorInfo) {
-    // Clear existing messages
-    this.clearLookupMessages(form);
-
-    // Create error container
-    const errorDiv = document.createElement('div');
-    errorDiv.className = 'brag-book-gallery-form-error brag-book-gallery-form-error--detailed';
-
-    // Add title if provided
-    if (errorInfo.title) {
-      const titleElement = document.createElement('strong');
-      titleElement.className = 'brag-book-gallery-form-error__title';
-      titleElement.textContent = errorInfo.title;
-      errorDiv.appendChild(titleElement);
-    }
-
-    // Add main message
-    if (errorInfo.message) {
-      const messageElement = document.createElement('p');
-      messageElement.className = 'brag-book-gallery-form-error__message';
-      messageElement.textContent = errorInfo.message;
-      errorDiv.appendChild(messageElement);
-    }
-
-    // Add details list if provided
-    if (errorInfo.details && errorInfo.details.length > 0) {
-      const detailsList = document.createElement('ul');
-      detailsList.className = 'brag-book-gallery-form-error__details';
-      errorInfo.details.forEach(detail => {
-        const listItem = document.createElement('li');
-        listItem.textContent = detail;
-        detailsList.appendChild(listItem);
-      });
-      errorDiv.appendChild(detailsList);
-    }
-    form.appendChild(errorDiv);
-
-    // Reset button state if needed
-    const submitButton = form.querySelector('button[type="submit"]');
-    if (submitButton) {
-      submitButton.disabled = false;
-    }
-  }
-
-  /**
-   * Parse server error response and show detailed error
-   * @param {HTMLFormElement} form - The form element
-   * @param {Object} response - Server response object
-   * @param {string} action - Action being performed ('save', 'lookup', etc.)
-   */
-  parseAndShowDetailedError(form, response, action = 'save') {
-    const errorMessage = response.data?.message || response.message || 'Unknown error occurred';
-
-    // Categorize error types and provide helpful context
-    let errorInfo = {
-      title: 'Error',
-      message: errorMessage,
-      details: []
-    };
-
-    // Check for specific error patterns and enhance the message
-    const lowerMessage = errorMessage.toLowerCase();
-    if (lowerMessage.includes('security') || lowerMessage.includes('verification')) {
-      errorInfo.title = 'Security Verification Failed';
-      errorInfo.details = ['Your session may have expired', 'Try refreshing the page and submitting again', 'If the problem persists, clear your browser cache'];
-    } else if (lowerMessage.includes('required fields') || lowerMessage.includes('fill in')) {
-      errorInfo.title = 'Form Validation Error';
-      errorInfo.details = ['All fields (Name, Email, Phone) are required', 'Make sure no fields are left empty'];
-    } else if (lowerMessage.includes('valid email')) {
-      errorInfo.title = 'Invalid Email Address';
-      errorInfo.details = ['Please enter a valid email address', 'Example: yourname@example.com'];
-    } else if (lowerMessage.includes('case not found') || lowerMessage.includes('not available')) {
-      errorInfo.title = 'Case Not Available';
-      errorInfo.details = ['This case may have been removed or is no longer available', 'The case might not be properly synced', 'Contact support if you believe this is an error'];
-    } else if (lowerMessage.includes('api') && (lowerMessage.includes('token') || lowerMessage.includes('configuration'))) {
-      errorInfo.title = 'API Configuration Error';
-      errorInfo.message = 'There is a problem with the site\'s API configuration.';
-      errorInfo.details = ['This is not an issue with your submission', 'Please contact the site administrator', 'Technical detail: API authentication failed'];
-    } else if (lowerMessage.includes('http') || lowerMessage.includes('status')) {
-      errorInfo.title = 'Server Communication Error';
-      errorInfo.details = ['The server returned an unexpected response', 'This may be a temporary issue', 'Try again in a few moments', `Technical detail: ${errorMessage}`];
-    } else if (lowerMessage.includes('timeout') || lowerMessage.includes('network')) {
-      errorInfo.title = 'Network Error';
-      errorInfo.details = ['Unable to reach the server', 'Check your internet connection', 'The server may be experiencing high traffic'];
-    } else {
-      // Generic error - provide the message and general troubleshooting
-      errorInfo.title = `Failed to ${action === 'save' ? 'Save Favorite' : 'Lookup Favorites'}`;
-      errorInfo.details = ['If this problem continues, try:', '• Refreshing the page', '• Clearing your browser cache', '• Trying again in a few minutes', '• Contacting support if the issue persists'];
-    }
-    this.showDetailedFormError(form, errorInfo);
-  }
-
-  /**
-   * Validate email address format
-   * @param {string} email - Email address to validate
-   * @returns {boolean} - Whether the email is valid
-   */
-  isValidEmail(email) {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  }
-
-  /**
-   * Display a success notification to the user
-   * @param {string} message - The message to display
-   */
-  showSuccessNotification(message) {
-    this.showNotification(message, 'success');
-  }
-
-  /**
-   * Display an error notification to the user
-   * @param {string} message - The message to display
-   */
-  showErrorNotification(message) {
-    this.showNotification(message, 'error');
-  }
-
-  /**
-   * Display a notification to the user
-   * @param {string} message - The message to display
-   * @param {string} type - The type of notification (success or error)
-   */
-  showNotification(message, type = 'success') {
-    // Get or create notification element
-    let notification = document.getElementById('favoritesNotification');
-    if (!notification) {
-      notification = document.createElement('div');
-      notification.id = 'favoritesNotification';
-      notification.className = 'brag-book-gallery-favorites-notification';
-      document.body.appendChild(notification);
-    }
-
-    // Update message, type, and show
-    notification.textContent = message;
-    notification.classList.remove('success', 'error');
-    notification.classList.add('active', type);
-
-    // Hide after 3 seconds (or 5 for errors)
-    const hideDelay = type === 'error' ? 5000 : 3000;
-    setTimeout(() => {
-      notification.classList.remove('active', 'success', 'error');
-    }, hideDelay);
-  }
-  updateFavoritesDisplay() {
-    const grid = document.getElementById('favorites-grid');
-    const emptyMessage = document.getElementById('favorites-empty');
-    if (!grid || !emptyMessage) return;
-
-    // Clear existing items
-    grid.innerHTML = '';
-    if (this.favorites.size === 0) {
-      grid.style.display = 'none';
-      emptyMessage.style.display = 'block';
-    } else {
-      grid.style.display = 'grid';
-      emptyMessage.style.display = 'none';
-
-      // Add each favorite to the grid
-      this.favorites.forEach(itemId => {
-        // Find the original image
-        const originalItem = document.querySelector(`[data-item-id="${itemId}"]`);
-        if (!originalItem) return;
-        const carouselItem = originalItem.closest('.brag-book-gallery-carousel-item');
-        if (!carouselItem) return;
-        const img = carouselItem.querySelector('img');
-        if (!img) return;
-
-        // Create favorite item
-        const favoriteItem = document.createElement('div');
-        favoriteItem.className = 'brag-book-gallery-favorites-item';
-        favoriteItem.dataset.itemId = itemId;
-
-        // Clone and add image
-        const imgClone = img.cloneNode(true);
-        favoriteItem.appendChild(imgClone);
-
-        // Add remove button
-        const removeBtn = document.createElement('button');
-        removeBtn.className = 'brag-book-gallery-favorites-item-remove';
-        removeBtn.innerHTML = '×';
-        removeBtn.title = 'Remove from favorites';
-        removeBtn.onclick = e => {
-          e.stopPropagation();
-          this.removeFavorite(itemId);
-        };
-        favoriteItem.appendChild(removeBtn);
-        grid.appendChild(favoriteItem);
-      });
-    }
-  }
-
-  /**
-   * Update all UI elements that display favorites information
-   */
-  updateUI() {
-    // Update favorites count displays throughout the page
-    const countElements = document.querySelectorAll('[data-favorites-count]');
-    const count = this.favorites.size;
-    countElements.forEach(countElement => {
-      // Check format: text format ("N favorites"), tiles (N), or default "(N)"
-      const format = countElement.dataset.favoritesFormat;
-      if (format === 'text') {
-        countElement.textContent = `${count} favorite${count !== 1 ? 's' : ''}`;
-      } else {
-        const isTilesView = countElement.closest('.brag-book-gallery-favorites-link--tiles');
-        countElement.textContent = isTilesView ? count : `(${count})`;
-      }
-    });
-
-    // Update all favorite button states (including dynamically loaded ones)
-    this.updateAllButtonStates();
-
-    // Update favorites grid in sidebar
-    this.updateFavoritesDisplay();
-  }
-
-  /**
-   * Update all favorite button states to reflect current favorites
-   * This handles dynamically loaded content like carousels
-   */
-  updateAllButtonStates() {
-    // Get all favorite buttons on the page
-    const allButtons = document.querySelectorAll('[data-favorited]');
-    allButtons.forEach(button => {
-      let itemId = '';
-
-      // Use ONLY procedureCaseId from parent container — never currentProcedureId
-      // (currentProcedureId is shared across all cards on taxonomy pages)
-      const caseCard = button.closest('.brag-book-gallery-case-card, .brag-book-gallery-carousel-item, .brag-book-gallery-case-detail-view');
-      if (caseCard) {
-        itemId = caseCard.dataset.procedureCaseId || '';
-      }
-
-      // Fallback to button's own data-item-id (set by PHP to the junction ID)
-      if (!itemId) {
-        itemId = button.dataset.itemId || '';
-        if (itemId) {
-          const matches = itemId.match(/(\d+)/);
-          if (matches) {
-            itemId = matches[1];
-          }
-        }
-      }
-
-      // Update button state based on whether item is favorited
-      if (itemId && this.favorites.has(itemId)) {
-        button.dataset.favorited = 'true';
-      } else if (itemId) {
-        button.dataset.favorited = 'false';
-      }
-    });
-  }
-
-  /**
-   * Load favorites from localStorage and update button states
-   */
-  loadFromStorage() {
-    try {
-      const stored = localStorage.getItem(this.options.storageKey);
-      if (stored) {
-        const items = JSON.parse(stored);
-        this.favorites = new Set(items);
-
-        // Update UI to reflect loaded favorites
-        items.forEach(itemId => {
-          // Find all buttons for this item and mark as favorited
-          const buttons = document.querySelectorAll(`[data-item-id="${itemId}"], [data-case-id="${itemId}"]`);
-          buttons.forEach(button => {
-            if (button.dataset.favorited !== undefined) {
-              button.dataset.favorited = 'true';
-            }
-          });
-        });
-      }
-    } catch (e) {
-      console.error('Failed to load favorites from storage:', e);
-    }
-  }
-
-  /**
-   * Save favorites to localStorage
-   */
-  saveToStorage() {
-    try {
-      localStorage.setItem(this.options.storageKey, JSON.stringify([...this.favorites]));
-    } catch (e) {
-      console.error('Failed to save favorites to storage:', e);
-    }
-  }
-
-  /**
-   * Load user information from localStorage
-   */
-  loadUserInfo() {
-    try {
-      const stored = localStorage.getItem(this.options.userInfoKey);
-      if (stored) {
-        this.userInfo = JSON.parse(stored);
-        this.hasShownDialog = true; // Skip dialog if we already have user info
-      }
-    } catch (e) {
-      console.error('Failed to load user info from storage:', e);
-    }
-  }
-
-  /**
-   * Save user information to localStorage
-   */
-  saveUserInfo() {
-    // Only save if we have complete user information
-    if (!this.userInfo || !this.userInfo.email || !this.userInfo.name || !this.userInfo.phone) {
-      console.warn('Cannot save incomplete user info to localStorage:', this.userInfo);
-      return;
-    }
-    try {
-      localStorage.setItem(this.options.userInfoKey, JSON.stringify(this.userInfo));
-    } catch (e) {
-      console.error('Failed to save user info to storage:', e);
-    }
-  }
-
-  /**
-   * Get the current favorites set
-   * @returns {Set<string>} Set of favorited item IDs
-   */
-  getFavorites() {
-    return this.favorites;
-  }
-
-  /**
-   * Clear all favorites and update UI
-   */
-  clear() {
-    this.favorites.clear();
-    if (this.options.persistToStorage) {
-      this.saveToStorage();
-    }
-    this.updateUI();
-  }
-
-  /**
-   * Get user information from storage
-   * @returns {Object|null} User information or null if not set
-   */
-  getUserInfo() {
-    if (this.userInfo) {
-      return this.userInfo;
-    }
-
-    // Try to get from localStorage
-    try {
-      const stored = localStorage.getItem(this.options.userInfoKey);
-      if (stored) {
-        this.userInfo = JSON.parse(stored);
-        return this.userInfo;
-      }
-    } catch (e) {
-      console.error('Failed to retrieve user info from localStorage:', e);
-    }
-    return null;
-  }
-
-  /**
-   * Refresh event listeners for favorite buttons
-   * Useful after dynamically adding content
-   */
-  refreshEventListeners() {
-    // Re-scan for favorite buttons and set up event listeners
-    const favoriteButtons = document.querySelectorAll('.brag-book-gallery-favorite-button');
-    favoriteButtons.forEach(button => {
-      // Remove existing listeners to avoid duplicates
-      button.removeEventListener('click', this.handleFavoriteClick);
-
-      // Add new listener
-      button.addEventListener('click', e => {
-        e.preventDefault();
-        e.stopPropagation();
-        this.toggleFavorite(button);
-      });
-    });
-  }
-}
-/* harmony default export */ __webpack_exports__["default"] = (FavoritesManager);
-
-/***/ }),
-
-/***/ "./src/js/modules/filter-system.js":
-/*!*****************************************!*\
-  !*** ./src/js/modules/filter-system.js ***!
-  \*****************************************/
-/***/ (function(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
-
-__webpack_require__.r(__webpack_exports__);
-/**
- * Filter System Component
- * Manages expandable filter groups with URL routing
- * Handles procedure filtering, browser history, and AJAX content loading
- * Supports both JavaScript-based filtering and URL navigation modes
- */
-class FilterSystem {
-  /**
-   * Initialize the filter system
-   * @param {HTMLElement} container - The filter container element
-   * @param {Object} options - Configuration options
-   * @param {string} options.mode - Filter mode: 'javascript' or 'navigation' (default: 'javascript')
-   * @param {string} options.baseUrl - Base URL for navigation (default: '/gallery')
-   * @param {boolean} options.closeOthersOnOpen - Close other filters when opening one (default: true)
-   * @param {Function} options.onFilterChange - Callback when filters change
-   * @param {Function} options.onNavigate - Callback for URL navigation
-   */
-  constructor(container, options = {}) {
-    // Core DOM elements and data structures
-    this.container = container;
-    this.filterHeaders = container?.querySelectorAll('.brag-book-gallery-nav-button');
-    this.activeFilters = new Map(); // Currently active filters
-    this.categories = new Map(); // Available filter categories
-    this.procedures = new Map(); // Available procedures by category
-
-    // Store original SEO data for restoration when clearing filters
-    this.originalTitle = document.title;
-    this.originalDescription = document.querySelector('meta[name="description"]')?.content || '';
-
-    // Configuration options with defaults
-    this.options = {
-      mode: options.mode || 'javascript',
-      // Filter mode
-      baseUrl: options.baseUrl || '/gallery',
-      // Base URL for navigation
-      closeOthersOnOpen: options.closeOthersOnOpen === true,
-      // Accordion behavior - disabled by default
-      onFilterChange: options.onFilterChange || (() => {}),
-      // Filter change callback
-      onNavigate: options.onNavigate || (url => {
-        window.location.href = url;
-      }),
-      // Navigation callback
-      ...options
-    };
-
-    // Initialize only if container exists
-    if (this.container) {
-      this.init();
-    }
-  }
-
-  /**
-   * Initialize the filter system - index filters, set up events, and load initial state
-   */
-  init() {
-    // Build internal filter index for fast lookups
-    this.indexFilters();
-
-    // Set up all event handlers
-    this.setupEventListeners();
-
-    // Load any existing filter state from URL
-    this.loadStateFromUrl();
-  }
-
-  /**
-   * Build an index of all available filters for fast lookups
-   */
-  indexFilters() {
-    // Find all category groups in the filter container
-    const categoryGroups = this.container?.querySelectorAll('[data-category]');
-
-    // Process each category group
-    categoryGroups?.forEach(group => {
-      const category = group.dataset.category;
-      // Create category entry if it doesn't exist
-      if (!this.categories.has(category)) {
-        this.categories.set(category, {
-          name: category,
-          procedures: new Set(),
-          element: group
-        });
-      }
-
-      // Index all procedure links within this category
-      const filterLinks = group.querySelectorAll('.brag-book-gallery-nav-link');
-      filterLinks.forEach(link => {
-        const procedure = link.dataset.procedure;
-        const category = link.dataset.category;
-
-        // Create procedure data if both procedure and category exist
-        if (procedure && category) {
-          const procedureData = {
-            id: procedure,
-            category: category,
-            count: parseInt(link.dataset.procedureCount || '0'),
-            element: link.parentElement,
-            link: link
-          };
-
-          // Store procedure data with composite key
-          this.procedures.set(`${category}:${procedure}`, procedureData);
-          this.categories.get(category).procedures.add(procedure);
-        }
-      });
-    });
-  }
-
-  /**
-   * Set up all event listeners for filter interactions and browser navigation
-   */
-  setupEventListeners() {
-    // No event listeners needed - nav links now function as normal anchor links
-    // This allows WordPress taxonomy pages to load naturally
-  }
-
-  // Filter toggle methods removed - native details/summary elements handle this automatically
-
-  /**
-   * Handle click on a procedure filter link
-   * @param {HTMLElement} link - The filter link that was clicked
-   */
-  handleFilterClick(link) {
-    // Extract filter data from the clicked link
-    const category = link.dataset.category;
-    const procedure = link.dataset.procedure;
-    const procedureIds = link.dataset.procedureIds;
-    const count = parseInt(link.dataset.procedureCount || '0');
-    const hasNudity = link.dataset.nudity === 'true'; // Content warning flag
-
-    // Clear all active filters first
-    this.activeFilters.clear();
-
-    // Remove active class from all links
-    this.container?.querySelectorAll('.brag-book-gallery-nav-link').forEach(filterLink => {
-      filterLink.classList.remove('brag-book-gallery-active');
-    });
-
-    // Add active class to clicked link and its parent item
-    link.classList.add('brag-book-gallery-active');
-    const filterItem = link.closest('.brag-book-gallery-nav-list-submenu__item');
-    if (filterItem) {
-      filterItem.classList.add('brag-book-gallery-active');
-    }
-
-    // Store in active filters
-    this.activeFilters.set(`${category}:${procedure}`, {
-      category: category,
-      procedure: procedure,
-      procedureIds: procedureIds,
-      count: count,
-      hasNudity: hasNudity // Store nudity flag
-    });
-
-    // Badge updates handled by demographic filters only
-    // this.updateFilterBadges();
-
-    // Get the base URL from the gallery wrapper data attribute
-    const galleryWrapper = document.querySelector('.brag-book-gallery-wrapper');
-    let basePath = galleryWrapper?.dataset.baseUrl || window.location.pathname;
-
-    // If no base URL in data attribute, try to extract from current path
-    if (!galleryWrapper?.dataset.baseUrl && basePath.match(/\/[^\/]+\/?$/)) {
-      // Remove the existing filter segment (just procedure now)
-      basePath = basePath.replace(/\/[^\/]+\/?$/, '');
-    }
-
-    // Create URL appending to current path: /before-after/procedure/ (no category)
-    const filterUrl = `${basePath}/${procedure}/`.replace(/\/+/g, '/');
-
-    // Update browser URL
-    window.history.pushState({
-      category,
-      procedure,
-      procedureIds,
-      basePath,
-      hasNudity
-    }, '', filterUrl);
-
-    // Load filtered content via AJAX
-    this.loadFilteredContent(category, procedure, procedureIds, hasNudity);
-
-    // Note: Nudity warnings are now handled at render time based on data-nudity attribute
-  }
-  navigateToFilteredPage() {
-    // For anchor links, this method is mostly obsolete since clicking the link navigates directly
-    // But keeping it for compatibility if needed
-    if (this.activeFilters.size > 0) {
-      const filter = Array.from(this.activeFilters.values())[0];
-      const url = `/${filter.procedure}`; // Procedure only, no category
-      this.options.onNavigate(url);
-    } else {
-      this.options.onNavigate(this.options.baseUrl);
-    }
-  }
-  updateUrlState() {
-    // Update URL without reloading (for JS mode)
-    if (window.history && window.history.replaceState) {
-      const params = new URLSearchParams();
-
-      // Group filters by category
-      const filtersByCategory = new Map();
-      this.activeFilters.forEach(filter => {
-        if (!filtersByCategory.has(filter.category)) {
-          filtersByCategory.set(filter.category, []);
-        }
-        filtersByCategory.get(filter.category).push(filter.procedure);
-      });
-
-      // Add to URL params
-      filtersByCategory.forEach((procedures, category) => {
-        params.append(category, procedures.join(','));
-      });
-      const newUrl = params.toString() ? `?${params.toString()}` : window.location.pathname;
-      window.history.replaceState({}, '', newUrl);
-    }
-  }
-  reactivateFilter(category, procedure) {
-    // Clear all active filters first
-    this.activeFilters.clear();
-
-    // Remove active class from all links
-    this.container?.querySelectorAll('.brag-book-gallery-nav-link').forEach(filterLink => {
-      filterLink.classList.remove('brag-book-gallery-active');
-    });
-
-    // Find and activate the matching filter link (match by procedure primarily)
-    const filterLink = document.querySelector(`.brag-book-gallery-nav-link[data-procedure="${procedure}"]`);
-    if (filterLink) {
-      filterLink.classList.add('brag-book-gallery-active');
-
-      // Store in active filters
-      this.activeFilters.set(`${category}:${procedure}`, {
-        category: category,
-        procedure: procedure,
-        procedureIds: filterLink.dataset.procedureIds,
-        count: parseInt(filterLink.dataset.procedureCount || '0')
-      });
-
-      // Badge updates handled by demographic filters only
-      // this.updateFilterBadges();
-    }
-  }
-  loadStateFromUrl() {
-    const galleryWrapper = document.querySelector('.brag-book-gallery-wrapper');
-    const basePath = galleryWrapper?.dataset.baseUrl || '';
-
-    // First check if there's an initial procedure filter from the server
-    const initialProcedure = galleryWrapper?.dataset.initialProcedure;
-    if (initialProcedure) {
-      // The server has passed us an initial procedure filter
-      // Find the filter link to get category and procedure IDs
-      const filterLink = document.querySelector(`.brag-book-gallery-nav-link[data-procedure="${initialProcedure}"]`);
-      if (filterLink) {
-        const category = filterLink.dataset.category || '';
-        const hasNudity = filterLink.dataset.nudity === 'true';
-        // Use reactivateFilter to set the active state
-        this.reactivateFilter(category, initialProcedure);
-        // Load the filtered content
-        this.loadFilteredContent(category, initialProcedure, filterLink.dataset.procedureIds, hasNudity);
-        return; // Exit early since we've applied the filter
-      }
-    }
-
-    // Otherwise, check the URL path for filter information
-    const path = window.location.pathname;
-
-    // Remove base path to get just the filter part
-    let filterPath = path;
-    if (basePath && path.startsWith(basePath)) {
-      filterPath = path.substring(basePath.length);
-    }
-
-    // Check for case detail URL pattern: /procedure-slug/case-id/
-    const caseMatches = filterPath.match(/^\/([^\/]+)\/(\d+)\/?$/);
-    if (caseMatches) {
-      const [, procedureSlug, caseId] = caseMatches;
-      // This pattern is now handled by the initialCase check above
-      // when the server passes the data via data attributes
-      return;
-    }
-
-    // Match just procedure (single segment)
-    const matches = filterPath.match(/^\/([^\/]+)\/?$/);
-    if (matches) {
-      const [, procedure] = matches;
-
-      // Find the filter link to get category and procedure IDs
-      const filterLink = document.querySelector(`.brag-book-gallery-nav-link[data-procedure="${procedure}"]`);
-      if (filterLink) {
-        const category = filterLink.dataset.category || '';
-        const hasNudity = filterLink.dataset.nudity === 'true';
-        // Use reactivateFilter to set the active state
-        this.reactivateFilter(category, procedure);
-        // Load the filtered content
-        this.loadFilteredContent(category, procedure, filterLink.dataset.procedureIds, hasNudity);
-      }
-    }
-  }
-  getActiveFilters() {
-    return this.activeFilters;
-  }
-  getFiltersByCategory(category) {
-    const filters = [];
-    this.activeFilters.forEach(filter => {
-      if (filter.category === category) {
-        filters.push(filter);
-      }
-    });
-    return filters;
-  }
-  getFiltersByProcedure(procedure) {
-    const filters = [];
-    this.activeFilters.forEach(filter => {
-      if (filter.procedure === procedure) {
-        filters.push(filter);
-      }
-    });
-    return filters;
-  }
-  clearCategory(category) {
-    // Clear filter in a category
-    const toRemove = [];
-    this.activeFilters.forEach((filter, key) => {
-      if (filter.category === category) {
-        toRemove.push(key);
-      }
-    });
-    toRemove.forEach(key => {
-      const procedureData = this.procedures.get(key);
-      if (procedureData && procedureData.link) {
-        procedureData.link.classList.remove('brag-book-gallery-active');
-      }
-    });
-
-    // Clear from active filters
-    toRemove.forEach(key => this.activeFilters.delete(key));
-  }
-  clearAll() {
-    // Clear all active filters
-    const filterLinks = this.container?.querySelectorAll('.brag-book-gallery-nav-link');
-    filterLinks?.forEach(link => {
-      link.classList.remove('brag-book-gallery-active');
-    });
-    this.activeFilters.clear();
-
-    // Reset URL to base
-    window.history.pushState({}, '', window.location.pathname);
-  }
-  setMode(mode) {
-    this.options.mode = mode;
-  }
-
-  /**
-   * Load filtered gallery content via direct API (optimized) with AJAX fallback
-   * @param {string} category - The filter category
-   * @param {string} procedure - The procedure slug
-   * @param {string} procedureIds - Comma-separated procedure IDs
-   * @param {boolean} hasNudity - Whether content has nudity warning
-   */
-  loadFilteredContent(category, procedure, procedureIds, hasNudity = false) {
-    const galleryContent = document.getElementById('gallery-content');
-    if (!galleryContent) return;
-
-    // Show loading state
-    galleryContent.innerHTML = '<div class="brag-book-gallery-loading">Loading filtered results...</div>';
-
-    // Get the proper procedure display name from the active link
-    let procedureName = procedure;
-    const activeLink = document.querySelector(`.brag-book-gallery-nav-link[data-procedure="${procedure}"]`);
-    if (activeLink) {
-      const label = activeLink.querySelector('.brag-book-gallery-filter-option-label');
-      if (label) {
-        procedureName = label.textContent.trim();
-      }
-    }
-
-    // Try direct API first (optimized), then fallback to AJAX
-    this.loadFilteredContentDirectly(procedure, procedureIds, hasNudity, procedureName).then(result => {
-      if (result.success) {
-        // Direct API succeeded
-        this.updateGalleryContent(result.html);
-
-        // Update page title and meta description if SEO data is provided
-        if (result.seo) {
-          if (result.seo.title) {
-            document.title = result.seo.title;
-          }
-          if (result.seo.description) {
-            let metaDescription = document.querySelector('meta[name="description"]');
-            if (!metaDescription) {
-              metaDescription = document.createElement('meta');
-              metaDescription.name = 'description';
-              document.head.appendChild(metaDescription);
-            }
-            metaDescription.content = result.seo.description;
-          }
-        }
-
-        // Carousels removed - no reinitialization needed
-
-        // Regenerate procedure filters after content loads
-        setTimeout(function () {
-          regenerateProcedureFilters();
-        }, 100);
-
-        // Load more buttons are handled by global onclick handlers, no rebinding needed
-
-        // Update URL if it's a procedure filter
-        if (category === 'procedure' && procedure) {
-          this.updateUrlForProcedure(procedure);
-        }
-
-        // Scroll to top of content
-        galleryContent.scrollIntoView({
-          behavior: 'smooth',
-          block: 'start'
-        });
-
-        // Badge updates handled by demographic filters only
-        // this.updateFilterBadges();
-      } else {
-        // Direct API failed, fallback to AJAX
-        this.loadFilteredContentViaAjax(category, procedure, procedureIds, hasNudity, procedureName, galleryContent);
-      }
-    }).catch(error => {
-      this.loadFilteredContentViaAjax(category, procedure, procedureIds, hasNudity, procedureName, galleryContent);
-    });
-  }
-
-  /**
-   * Load filtered gallery content directly from API (optimized method)
-   * @param {string} procedure - The procedure slug
-   * @param {string} procedureIds - Comma-separated procedure IDs
-   * @param {boolean} hasNudity - Whether content has nudity warning
-   * @param {string} procedureName - Display name for SEO
-   * @returns {Promise} Promise that resolves with result object
-   */
-  async loadFilteredContentDirectly(procedure, procedureIds, hasNudity, procedureName) {
-    try {
-      // Get API configuration
-      const apiToken = window.bragBookGalleryConfig?.apiToken || '';
-      const websitePropertyId = window.bragBookGalleryConfig?.websitePropertyId || '';
-      const ajaxUrl = window.bragBookGalleryConfig?.ajaxUrl || '/wp-admin/admin-ajax.php';
-      const nonce = window.bragBookGalleryConfig?.nonce || '';
-      if (!apiToken || !websitePropertyId || !ajaxUrl || !nonce) {
-        return {
-          success: false,
-          error: 'Missing API configuration'
-        };
-      }
-
-      // Build API request body similar to PHP implementation
-      const requestBody = {
-        apiTokens: [apiToken],
-        websitePropertyIds: [parseInt(websitePropertyId)],
-        count: 1
-      };
-
-      // Add procedure IDs if provided
-      if (procedureIds) {
-        const procedureIdsArray = procedureIds.split(',').map(id => parseInt(id)).filter(id => !isNaN(id));
-        if (procedureIdsArray.length > 0) {
-          requestBody.procedureIds = procedureIdsArray;
-        }
-      }
-
-      // Fetch all pages like the PHP implementation using CORS-safe proxy
-      let allCases = [];
-      let page = 1;
-      const maxPages = 20;
-      while (page <= maxPages) {
-        requestBody.count = page;
-
-        // Use WordPress AJAX proxy to avoid CORS issues
-        const formData = new FormData();
-        formData.append('action', 'brag_book_api_proxy');
-        formData.append('nonce', nonce);
-        formData.append('endpoint', '/api/plugin/combine/cases');
-        formData.append('method', 'POST');
-        formData.append('body', JSON.stringify(requestBody));
-        formData.append('timeout', '8');
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-
-        const response = await fetch(ajaxUrl, {
-          method: 'POST',
-          body: formData,
-          signal: controller.signal
-        });
-        clearTimeout(timeoutId);
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const result = await response.json();
-        if (!result.success || !result.data || !result.data.data) {
-          throw new Error(result.data?.message || 'API proxy request failed');
-        }
-        const pageData = result.data.data;
-        if (pageData && pageData.data && Array.isArray(pageData.data) && pageData.data.length > 0) {
-          allCases = allCases.concat(pageData.data);
-
-          // If we got less than 10 cases, we've reached the end
-          if (pageData.data.length < 10) {
-            break;
-          }
-          page++;
-        } else {
-          break;
-        }
-      }
-
-      // Generate HTML on frontend (similar to PHP implementation)
-      const html = this.generateFilteredGalleryHTML(allCases, procedureName, procedure, procedureIds);
-
-      // Generate SEO data
-      const seo = this.generateSEOData(procedureName);
-      return {
-        success: true,
-        html: html,
-        totalCount: allCases.length,
-        procedureName: procedureName,
-        seo: seo
-      };
-    } catch (error) {
-      console.error('Direct API error:', error);
-      return {
-        success: false,
-        error: error.message
-      };
-    }
-  }
-
-  /**
-   * Fallback method using original AJAX approach
-   * @param {string} category - The filter category
-   * @param {string} procedure - The procedure slug
-   * @param {string} procedureIds - Comma-separated procedure IDs
-   * @param {boolean} hasNudity - Whether content has nudity warning
-   * @param {string} procedureName - Display name for SEO
-   * @param {HTMLElement} galleryContent - Gallery content container
-   */
-  loadFilteredContentViaAjax(category, procedure, procedureIds, hasNudity, procedureName, galleryContent) {
-    // Get AJAX configuration
-    const ajaxUrl = window.bragBookGalleryConfig?.ajaxUrl || '/wp-admin/admin-ajax.php';
-    const nonce = window.bragBookGalleryConfig?.nonce || '';
-
-    // Prepare request data
-    const formData = new FormData();
-    formData.append('action', 'brag_book_gallery_load_filtered_gallery');
-    formData.append('nonce', nonce);
-    formData.append('procedure_name', procedureName);
-    formData.append('procedure_slug', procedure);
-    formData.append('procedure_ids', procedureIds || '');
-    formData.append('procedure_id', procedureIds?.split(',')[0] || '');
-    formData.append('has_nudity', hasNudity ? '1' : '0');
-
-    // Make AJAX request
-    fetch(ajaxUrl, {
-      method: 'POST',
-      body: formData
-    }).then(response => response.json()).then(result => {
-      if (result.success && result.data?.html) {
-        this.updateGalleryContent(result.data.html);
-
-        // Update page title and meta description if SEO data is provided
-        if (result.data.seo) {
-          if (result.data.seo.title) {
-            document.title = result.data.seo.title;
-          }
-          if (result.data.seo.description) {
-            let metaDescription = document.querySelector('meta[name="description"]');
-            if (!metaDescription) {
-              metaDescription = document.createElement('meta');
-              metaDescription.name = 'description';
-              document.head.appendChild(metaDescription);
-            }
-            metaDescription.content = result.data.seo.description;
-          }
-        }
-
-        // Carousels removed - no reinitialization needed
-
-        // Regenerate procedure filters after content loads
-        setTimeout(function () {
-          regenerateProcedureFilters();
-        }, 100);
-
-        // Load more buttons are handled by global onclick handlers, no rebinding needed
-
-        // Update URL if it's a procedure filter
-        if (category === 'procedure' && procedure) {
-          this.updateUrlForProcedure(procedure);
-        }
-
-        // Scroll to top of content
-        galleryContent.scrollIntoView({
-          behavior: 'smooth',
-          block: 'start'
-        });
-
-        // Badge updates handled by demographic filters only
-        // this.updateFilterBadges();
-      } else {
-        galleryContent.innerHTML = '<div class="brag-book-gallery-error">No results found for the selected filter.</div>';
-      }
-    }).catch(error => {
-      console.error('AJAX fallback error:', error);
-      galleryContent.innerHTML = '<div class="brag-book-gallery-error">Failed to load filtered content. Please try again.</div>';
-    });
-  }
-
-  /**
-   * Generate HTML for filtered gallery results (frontend version of PHP implementation)
-   * @param {Array} cases - Array of case data from API
-   * @param {string} procedureName - Display name for procedure
-   * @param {string} procedure - Procedure slug
-   * @param {string} procedureIds - Comma-separated procedure IDs
-   * @returns {string} Generated HTML
-   */
-  generateFilteredGalleryHTML(cases, procedureName, procedure, procedureIds) {
-    // Set pagination parameters
-    const itemsPerPage = 10;
-
-    // Store all cases in global cache for pagination
-    if (typeof allCasesData !== 'undefined') {
-      allCasesData = cases;
-      currentDisplayedCases = Math.min(itemsPerPage, cases.length);
-    }
-
-    // Transform case data to match what HTML rendering expects
-    const transformedCases = cases.map(caseData => {
-      const transformedCase = {
-        ...caseData
-      };
-
-      // Extract main image from photoSets
-      transformedCase.mainImageUrl = '';
-      if (caseData.photoSets && Array.isArray(caseData.photoSets) && caseData.photoSets.length > 0) {
-        const firstPhotoset = caseData.photoSets[0];
-        transformedCase.mainImageUrl = firstPhotoset.postProcessedImageLocation || firstPhotoset.beforeLocationUrl || firstPhotoset.afterLocationUrl1 || '';
-      }
-
-      // Extract procedure title
-      transformedCase.procedureTitle = 'Unknown Procedure';
-      if (caseData.procedures && Array.isArray(caseData.procedures) && caseData.procedures.length > 0) {
-        transformedCase.procedureTitle = caseData.procedures[0].name || 'Unknown Procedure';
-      }
-      return transformedCase;
-    }).filter(caseData => caseData.mainImageUrl || caseData.id);
-
-    // Start building HTML - create the complete structure matching PHP
-    let html = '';
-
-    // Main title (matching PHP structure)
-    const displayName = this.formatProcedureDisplayName(procedureName);
-    html += `<h1 class="brag-book-gallery-content-title"><strong>${this.escapeHtml(displayName)}</strong> Before &amp; After Gallery</h1>`;
-
-    // Complete controls section matching PHP structure
-    html += '<div class="brag-book-gallery-controls">';
-    html += '<div class="brag-book-gallery-controls-left">';
-
-    // Filter dropdown section
-    html += '<details class="brag-book-gallery-filter-dropdown" id="procedure-filters-details" data-initialized="true">';
-    html += '<summary class="brag-book-gallery-filter-dropdown__toggle">';
-    html += '<svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="currentColor">';
-    html += '<path d="M400-240v-80h160v80H400ZM240-440v-80h480v80H240ZM120-640v-80h720v80H120Z"></path>';
-    html += '</svg>';
-    html += '<span>Filters</span>';
-    html += '</summary>';
-    html += '<div class="brag-book-gallery-filter-dropdown__panel">';
-    html += '<div class="brag-book-gallery-filter-content">';
-    html += '<div class="brag-book-gallery-filter-section">';
-    html += '<div id="brag-book-gallery-filters">';
-
-    // Generate filter sections based on available data
-    html += this.generateProcedureFilterSections(transformedCases);
-    html += '</div>'; // Close brag-book-gallery-filters
-    html += '</div>'; // Close filter-section
-    html += '</div>'; // Close filter-content
-    html += '<div class="brag-book-gallery-filter-actions">';
-    html += '<button class="brag-book-gallery-button brag-book-gallery-button--apply" onclick="applyProcedureFilters()">Apply Filters</button>';
-    html += '<button class="brag-book-gallery-button brag-book-gallery-button--clear" onclick="clearProcedureFilters()">Clear All</button>';
-    html += '</div>';
-    html += '</div>'; // Close filter-dropdown__panel
-    html += '</details>';
-
-    // Active filters section (will be populated when demographic filters are applied)
-    html += '<div class="brag-book-gallery-active-filters" style="display: none;"></div>';
-    html += '</div>'; // Close controls-left
-
-    // Grid selector section
-    html += '<div class="brag-book-gallery-grid-selector">';
-    html += '<span class="brag-book-gallery-grid-label">View:</span>';
-    html += '<div class="brag-book-gallery-grid-buttons">';
-    html += '<button class="brag-book-gallery-grid-btn" data-columns="2" onclick="updateGridLayout(2)" aria-label="View in 2 columns">';
-    html += '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">';
-    html += '<rect x="1" y="1" width="6" height="6"></rect><rect x="9" y="1" width="6" height="6"></rect>';
-    html += '<rect x="1" y="9" width="6" height="6"></rect><rect x="9" y="9" width="6" height="6"></rect>';
-    html += '</svg>';
-    html += '<span class="sr-only">2 Columns</span>';
-    html += '</button>';
-    html += '<button class="brag-book-gallery-grid-btn active" data-columns="3" onclick="updateGridLayout(3)" aria-label="View in 3 columns">';
-    html += '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">';
-    html += '<rect x="1" y="1" width="4" height="4"></rect><rect x="6" y="1" width="4" height="4"></rect><rect x="11" y="1" width="4" height="4"></rect>';
-    html += '<rect x="1" y="6" width="4" height="4"></rect><rect x="6" y="6" width="4" height="4"></rect><rect x="11" y="6" width="4" height="4"></rect>';
-    html += '<rect x="1" y="11" width="4" height="4"></rect><rect x="6" y="11" width="4" height="4"></rect><rect x="11" y="11" width="4" height="4"></rect>';
-    html += '</svg>';
-    html += '<span class="sr-only">3 Columns</span>';
-    html += '</button>';
-    html += '</div>';
-    html += '</div>';
-    html += '</div>'; // Close controls
-
-    // Main content sections (matching PHP structure)
-    html += '<div class="brag-book-gallery-sections" id="gallery-sections">';
-
-    // Filtered results section
-    html += '<div class="brag-book-gallery-section" aria-label="Filtered Gallery Results">';
-
-    // Add filter results message for filtered content
-    const totalCases = transformedCases.length;
-    const displayedCases = Math.min(itemsPerPage, totalCases);
-    html += `<div class="brag-book-gallery-filter-results" style="display: block;">Filter applied: Showing ${displayedCases} of ${totalCases} matching procedure${totalCases !== 1 ? 's' : ''}</div>`;
-
-    // Add filter badges container
-    html += '<div class="brag-book-gallery-filter-badges" data-action="filter-badges"></div>';
-
-    // Add cases container structure (matching PHP exactly)
-    html += '<div class="brag-book-gallery-case-grid masonry-layout" data-columns="3">';
-
-    // Only display the first 10 cases initially for pagination
-    const casesToDisplay = transformedCases.slice(0, itemsPerPage);
-    casesToDisplay.forEach(caseData => {
-      html += this.generateCaseHTML(caseData);
-    });
-    html += '</div>'; // Close case grid
-
-    // Add Load More button if there are more cases than displayed
-    if (transformedCases.length > itemsPerPage) {
-      html += '<div class="brag-book-gallery-load-more-container">';
-      html += `<button type="button" class="brag-book-gallery-button brag-book-gallery-button--load-more" `;
-      html += `data-procedure-name="${this.escapeHtml(procedureName)}" `;
-      html += `data-start-page="2" data-procedure-ids="${this.escapeHtml(procedureIds)}" `;
-      html += `onclick="loadMoreCasesFromCache(this)">Load More</button>`;
-      html += '</div>';
-    }
-    html += '</div>'; // Close section
-    html += '</div>'; // Close sections
-
-    return html;
-  }
-
-  /**
-   * Update the gallery content area with filtered results
-   * Replaces the main content while preserving sidebar and structure
-   */
-  updateGalleryContent(html) {
-    const galleryContent = document.getElementById('gallery-content');
-    if (galleryContent) {
-      // Replace only the main content area, preserving the overall structure
-      galleryContent.innerHTML = html;
-
-      // Hide any filter results messages since this is procedure navigation, not demographic filtering
-      const filterResults = galleryContent.querySelector('.brag-book-gallery-filter-results');
-      if (filterResults) {
-        filterResults.style.display = 'none';
-      }
-
-      // Set up event listeners for the new filter checkboxes
-      this.setupFilterEventListeners();
-
-      // Scroll to gallery wrapper after loading filtered content
-      this.scrollToGalleryWrapper();
-
-      // Note: Nudity warnings are now handled at render time based on data-nudity attribute
-    }
-  }
-
-  /**
-   * Set up event listeners for filter checkboxes
-   */
-  setupFilterEventListeners() {
-    const filterCheckboxes = document.querySelectorAll('.brag-book-gallery-filter-option input[type="checkbox"]');
-
-    // Clean up any existing procedure badges first
-    const activeFiltersSection = document.querySelector('.brag-book-gallery-active-filters');
-    if (activeFiltersSection) {
-      activeFiltersSection.style.display = 'none';
-      activeFiltersSection.innerHTML = '';
-    }
-    filterCheckboxes.forEach(checkbox => {
-      // Remove any existing event listeners to avoid duplicates
-      checkbox.removeEventListener('change', this.handleFilterChange);
-
-      // Add the event listener
-      checkbox.addEventListener('change', this.handleFilterChange.bind(this));
-    });
-  }
-
-  /**
-   * Handle filter checkbox change events
-   */
-  handleFilterChange(event) {
-    if (typeof window.applyProcedureFilters === 'function') {
-      window.applyProcedureFilters();
-    } else {
-      console.error('window.applyProcedureFilters is not available');
-    }
-  }
-
-  /**
-   * Generate HTML for a single case (matches PHP structure exactly)
-   * @param {Object} caseData - Case data from API
-   * @returns {string} Generated HTML for case
-   */
-  generateCaseHTML(caseData) {
-    const caseId = caseData.id || '';
-    const procedureTitle = caseData.procedureTitle || 'Unknown Procedure';
-
-    // Prepare data attributes for filtering (matching PHP prepare_case_data_attributes)
-    let dataAttrs = 'data-card="true"';
-    dataAttrs += ` data-case-id="${this.escapeHtml(caseId)}"`;
-    if (caseData.age) {
-      dataAttrs += ` data-age="${this.escapeHtml(caseData.age)}"`;
-    }
-    if (caseData.gender) {
-      dataAttrs += ` data-gender="${this.escapeHtml(caseData.gender.toLowerCase())}"`;
-    }
-    if (caseData.ethnicity) {
-      dataAttrs += ` data-ethnicity="${this.escapeHtml(caseData.ethnicity.toLowerCase())}"`;
-    }
-
-    // Get procedure IDs
-    const procedureIds = caseData.procedureIds ? caseData.procedureIds.join(',') : '';
-    if (procedureIds) {
-      dataAttrs += ` data-procedure-ids="${this.escapeHtml(procedureIds)}"`;
-    }
-
-    // Get current procedure context from active nav link
-    const activeProcedureLink = document.querySelector('.brag-book-gallery-nav-link.brag-book-gallery-active');
-    const currentProcedureId = activeProcedureLink?.dataset.procedureId || '';
-    const currentTermId = activeProcedureLink?.dataset.termId || '';
-    if (currentProcedureId) {
-      dataAttrs += ` data-current-procedure-id="${this.escapeHtml(currentProcedureId)}"`;
-    }
-    if (currentTermId) {
-      dataAttrs += ` data-current-term-id="${this.escapeHtml(currentTermId)}"`;
-    }
-
-    // Build case URL (matching PHP structure)
-    const gallerySlug = window.bragBookGalleryConfig?.gallerySlug || 'gallery';
-    const procedureSlug = this.extractProcedureSlugFromUrl() || 'case';
-    const seoSuffix = caseData.caseDetails && caseData.caseDetails[0] && caseData.caseDetails[0].seoSuffixUrl || caseId;
-    const caseUrl = `/${gallerySlug}/${procedureSlug}/${seoSuffix}/`;
-
-    // Get image URL (matching PHP logic)
-    let imageUrl = '';
-    if (caseData.photoSets && Array.isArray(caseData.photoSets) && caseData.photoSets.length > 0) {
-      const firstPhoto = caseData.photoSets[0];
-      imageUrl = firstPhoto.postProcessedImageLocation || firstPhoto.afterLocationUrl1 || firstPhoto.beforeLocationUrl || firstPhoto.afterPhoto || firstPhoto.beforePhoto || '';
-    }
-
-    // Start building HTML (matching PHP structure exactly)
-    let html = `<article class="brag-book-gallery-case-card" ${dataAttrs}>`;
-
-    // Case images section (matching PHP structure)
-    html += '<div class="brag-book-gallery-case-images single-image">';
-    html += '<div class="brag-book-gallery-image-container">';
-
-    // Skeleton loader
-    html += '<div class="brag-book-gallery-skeleton-loader" style="display: none;"></div>';
-
-    // Favorites button (matching PHP structure)
-    // Use current procedure ID for favorites, fallback to first procedure ID, then case ID
-    const favoriteItemId = currentProcedureId || procedureIds.split(',')[0] || caseId;
-    html += '<div class="brag-book-gallery-item-actions">';
-    html += `<button class="brag-book-gallery-favorite-button" data-favorited="false" data-item-id="${this.escapeHtml(favoriteItemId)}" aria-label="Add to favorites">`;
-    html += '<svg fill="rgba(255, 255, 255, 0.5)" stroke="white" stroke-width="2" viewBox="0 0 24 24">';
-    html += '<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>';
-    html += '</svg>';
-    html += '</button>';
-    html += '</div>';
-
-    // Case link with image (matching PHP structure)
-    html += `<a href="${this.escapeHtml(caseUrl)}" class="brag-book-gallery-case-card-link" data-case-id="${this.escapeHtml(caseId)}" data-procedure-ids="${this.escapeHtml(procedureIds)}">`;
-    if (imageUrl) {
-      html += '<picture class="brag-book-gallery-picture">';
-      html += `<img src="${this.escapeHtml(imageUrl)}" alt="Before and after ${this.escapeHtml(procedureTitle)} case ${this.escapeHtml(caseId)}" loading="lazy" data-image-type="single" data-image-url="${this.escapeHtml(imageUrl)}" onload="this.closest('.brag-book-gallery-image-container').querySelector('.brag-book-gallery-skeleton-loader').style.display='none';">`;
-      html += '</picture>';
-    }
-    html += '</a>'; // Close case link
-
-    // Add nudity warning only if the active procedure has data-nudity="true"
-    const activeLink = document.querySelector('.brag-book-gallery-nav-link.brag-book-gallery-active');
-    const shouldAddNudityWarning = activeLink && activeLink.dataset.nudity === 'true';
-    if (shouldAddNudityWarning) {
-      html += '<div class="brag-book-gallery-nudity-warning">';
-      html += '<div class="brag-book-gallery-nudity-warning-content">';
-      html += '<p class="brag-book-gallery-nudity-warning-title">Nudity Warning</p>';
-      html += '<p class="brag-book-gallery-nudity-warning-caption">This procedure may contain nudity or sensitive content. Click to proceed if you wish to view.</p>';
-      html += '<button class="brag-book-gallery-nudity-warning-button" type="button">Proceed</button>';
-      html += '</div>';
-      html += '</div>';
-    }
-    html += '</div>'; // Close image-container
-    html += '</div>'; // Close case-images
-
-    // Case details section (matching PHP structure)
-    html += '<details class="brag-book-gallery-case-card-details">';
-    html += '<summary class="brag-book-gallery-case-card-summary">';
-
-    // Summary info
-    html += '<div class="brag-book-gallery-case-card-summary-info">';
-    html += `<span class="brag-book-gallery-case-card-summary-info__name">${this.escapeHtml(procedureTitle)}</span>`;
-    html += `<span class="brag-book-gallery-case-card-summary-info__case-number">Case #${this.escapeHtml(caseId)}</span>`;
-    html += '</div>';
-
-    // Summary details
-    html += '<div class="brag-book-gallery-case-card-summary-details">';
-    html += '<p class="brag-book-gallery-case-card-summary-details__more">';
-    html += '<strong>More Details</strong>';
-    html += '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor">';
-    html += '<path d="M444-288h72v-156h156v-72H516v-156h-72v156H288v72h156v156Zm36.28 192Q401-96 331-126t-122.5-82.5Q156-261 126-330.96t-30-149.5Q96-560 126-629.5q30-69.5 82.5-122T330.96-834q69.96-30 149.5-30t149.04 30q69.5 30 122 82.5T834-629.28q30 69.73 30 149Q864-401 834-331t-82.5 122.5Q699-156 629.28-126q-69.73 30-149 30Z"></path>';
-    html += '</svg>';
-    html += '</p>';
-    html += '</div>';
-    html += '</summary>';
-
-    // Details content
-    html += '<div class="brag-book-gallery-case-card-details-content">';
-    html += '<p class="brag-book-gallery-case-card-details-content__title">Procedures Performed:</p>';
-    html += '<ul class="brag-book-gallery-case-card-procedures-list">';
-
-    // Generate procedure list
-    if (caseData.procedures && Array.isArray(caseData.procedures) && caseData.procedures.length > 0) {
-      caseData.procedures.forEach(procedure => {
-        html += `<li class="brag-book-gallery-case-card-procedures-list__item">${this.escapeHtml(procedure.name || 'Unknown Procedure')}</li>`;
-      });
-    } else {
-      html += `<li class="brag-book-gallery-case-card-procedures-list__item">${this.escapeHtml(procedureTitle)}</li>`;
-    }
-    html += '</ul>';
-    html += '</div>'; // Close details-content
-    html += '</details>'; // Close details
-    html += '</article>'; // Close article
-
-    return html;
-  }
-
-  /**
-   * Extract procedure slug from current URL
-   */
-  extractProcedureSlugFromUrl() {
-    const pathSegments = window.location.pathname.split('/').filter(s => s);
-    const gallerySlug = window.bragBookGalleryConfig?.gallerySlug || 'gallery';
-
-    // Find gallery slug position and get the next segment as procedure slug
-    const galleryIndex = pathSegments.indexOf(gallerySlug.replace(/^\/+/, ''));
-    if (galleryIndex >= 0 && galleryIndex + 1 < pathSegments.length) {
-      const procedureSlug = pathSegments[galleryIndex + 1];
-      // Make sure it's not a case ID (numeric)
-      if (!/^\d+$/.test(procedureSlug)) {
-        return procedureSlug;
-      }
-    }
-    return null;
-  }
-
-  /**
-   * Generate procedure filters from DOM case cards
-   * Reads data attributes from case cards already on the page
-   */
-  generateFiltersFromDOMCards() {
-    // Find all case cards on the page
-    const caseCards = document.querySelectorAll('.brag-book-gallery-case-card');
-    if (caseCards.length === 0) {
-      return '';
-    }
-
-    // Collect filter data from case card data attributes
-    const filterData = {
-      age: new Set(),
-      gender: new Set(),
-      ethnicity: new Set(),
-      height: new Set(),
-      weight: new Set(),
-      procedureDetails: new Map() // Map of detail name -> Set of values
-    };
-
-    // Extract filter values from data attributes
-    caseCards.forEach(card => {
-      // Age
-      const age = card.dataset.age;
-      if (age) {
-        const ageNum = parseInt(age);
-        if (ageNum >= 18 && ageNum < 25) filterData.age.add('18-24');else if (ageNum >= 25 && ageNum < 35) filterData.age.add('25-34');else if (ageNum >= 35 && ageNum < 45) filterData.age.add('35-44');else if (ageNum >= 45 && ageNum < 55) filterData.age.add('45-54');else if (ageNum >= 55 && ageNum < 65) filterData.age.add('55-64');else if (ageNum >= 65) filterData.age.add('65+');
-      }
-
-      // Gender
-      const gender = card.dataset.gender;
-      if (gender) {
-        filterData.gender.add(gender.toLowerCase());
-      }
-
-      // Ethnicity
-      const ethnicity = card.dataset.ethnicity;
-      if (ethnicity) {
-        filterData.ethnicity.add(ethnicity);
-      }
-
-      // Height
-      const height = card.dataset.height;
-      if (height) {
-        const heightNum = parseFloat(height);
-        if (heightNum < 60) filterData.height.add('Under 5\'0"');else if (heightNum >= 60 && heightNum < 64) filterData.height.add('5\'0" - 5\'3"');else if (heightNum >= 64 && heightNum < 68) filterData.height.add('5\'4" - 5\'7"');else if (heightNum >= 68 && heightNum < 72) filterData.height.add('5\'8" - 5\'11"');else if (heightNum >= 72) filterData.height.add('6\'0" and above');
-      }
-
-      // Weight
-      const weight = card.dataset.weight;
-      if (weight) {
-        const weightNum = parseFloat(weight);
-        if (weightNum < 120) filterData.weight.add('Under 120 lbs');else if (weightNum >= 120 && weightNum < 150) filterData.weight.add('120-149 lbs');else if (weightNum >= 150 && weightNum < 180) filterData.weight.add('150-179 lbs');else if (weightNum >= 180 && weightNum < 210) filterData.weight.add('180-209 lbs');else if (weightNum >= 210) filterData.weight.add('210+ lbs');
-      }
-
-      // Procedure Details - extract all data-procedure-detail-* attributes
-      const datasetKeys = Object.keys(card.dataset);
-      datasetKeys.forEach(key => {
-        if (key.startsWith('procedureDetail')) {
-          // Convert camelCase to readable label (e.g., procedureDetailImplantType -> Implant Type)
-          const labelKey = key.replace('procedureDetail', '');
-          const label = labelKey.replace(/([A-Z])/g, ' $1').trim();
-          const value = card.dataset[key];
-          if (value) {
-            // Handle comma-separated values (for array fields)
-            const values = value.split(',').map(v => v.trim()).filter(v => v);
-            values.forEach(v => {
-              if (!filterData.procedureDetails.has(label)) {
-                filterData.procedureDetails.set(label, new Set());
-              }
-              // Capitalize first letter of each word for display
-              const displayValue = v.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-              filterData.procedureDetails.get(label).add(displayValue);
-            });
-          }
-        }
-      });
-    });
-
-    // Generate HTML for filter sections
-    let html = '';
-
-    // Age filter
-    if (filterData.age.size > 0) {
-      html += this.generateFilterSection('Age', 'age', Array.from(filterData.age).sort());
-    }
-
-    // Gender filter
-    if (filterData.gender.size > 0) {
-      const genderOptions = Array.from(filterData.gender).map(g => g === 'male' ? 'Male' : g === 'female' ? 'Female' : g);
-      html += this.generateFilterSection('Gender', 'gender', genderOptions);
-    }
-
-    // Ethnicity filter
-    if (filterData.ethnicity.size > 0) {
-      html += this.generateFilterSection('Ethnicity', 'ethnicity', Array.from(filterData.ethnicity).sort());
-    }
-
-    // Height filter
-    if (filterData.height.size > 0) {
-      html += this.generateFilterSection('Height', 'height', Array.from(filterData.height));
-    }
-
-    // Weight filter
-    if (filterData.weight.size > 0) {
-      html += this.generateFilterSection('Weight', 'weight', Array.from(filterData.weight));
-    }
-
-    // Procedure Details filters
-    if (filterData.procedureDetails.size > 0) {
-      filterData.procedureDetails.forEach((values, label) => {
-        if (values.size > 0) {
-          // Convert label to attribute name for filter type
-          const filterType = 'procedure_detail_' + label.toLowerCase().replace(/\s+/g, '_');
-          html += this.generateFilterSection(label, filterType, Array.from(values).sort());
-        }
-      });
-    }
-    return html;
-  }
-
-  /**
-   * Generate procedure filter sections based on case data
-   * Creates the filter dropdowns matching PHP structure exactly
-   */
-  generateProcedureFilterSections(cases) {
-    // Collect filter data from cases
-    const filterData = {
-      age: new Set(),
-      gender: new Set(),
-      ethnicity: new Set(),
-      height: new Set(),
-      weight: new Set(),
-      procedureDetails: new Map() // Map of detail name -> Set of values
-    };
-
-    // Extract filter values from case data
-    cases.forEach(caseData => {
-      if (caseData.age) {
-        const age = parseInt(caseData.age);
-        if (age >= 18 && age < 25) filterData.age.add('18-24');else if (age >= 25 && age < 35) filterData.age.add('25-34');else if (age >= 35 && age < 45) filterData.age.add('35-44');else if (age >= 45 && age < 55) filterData.age.add('45-54');else if (age >= 55 && age < 65) filterData.age.add('55-64');else if (age >= 65) filterData.age.add('65+');
-      }
-      if (caseData.gender) {
-        filterData.gender.add(caseData.gender.toLowerCase());
-      }
-      if (caseData.ethnicity) {
-        filterData.ethnicity.add(caseData.ethnicity);
-      }
-      if (caseData.height) {
-        const height = parseFloat(caseData.height);
-        if (height < 60) filterData.height.add('Under 5\'0"');else if (height >= 60 && height < 64) filterData.height.add('5\'0" - 5\'3"');else if (height >= 64 && height < 68) filterData.height.add('5\'4" - 5\'7"');else if (height >= 68 && height < 72) filterData.height.add('5\'8" - 5\'11"');else if (height >= 72) filterData.height.add('6\'0" and above');
-      }
-      if (caseData.weight) {
-        const weight = parseFloat(caseData.weight);
-        if (weight < 120) filterData.weight.add('Under 120 lbs');else if (weight >= 120 && weight < 150) filterData.weight.add('120-149 lbs');else if (weight >= 150 && weight < 180) filterData.weight.add('150-179 lbs');else if (weight >= 180 && weight < 210) filterData.weight.add('180-209 lbs');else if (weight >= 210) filterData.weight.add('210+ lbs');
-      }
-    });
-
-    // Extract procedure details from rendered DOM cards (since API data may not include them)
-    const caseCards = document.querySelectorAll('.brag-book-gallery-case-card');
-    caseCards.forEach(card => {
-      const datasetKeys = Object.keys(card.dataset);
-      datasetKeys.forEach(key => {
-        if (key.startsWith('procedureDetail')) {
-          // Convert camelCase to readable label (e.g., procedureDetailImplantType -> Implant Type)
-          const labelKey = key.replace('procedureDetail', '');
-          const label = labelKey.replace(/([A-Z])/g, ' $1').trim();
-          const value = card.dataset[key];
-          if (value) {
-            // Handle comma-separated values (for array fields)
-            const values = value.split(',').map(v => v.trim()).filter(v => v);
-            values.forEach(v => {
-              if (!filterData.procedureDetails.has(label)) {
-                filterData.procedureDetails.set(label, new Set());
-              }
-              // Capitalize first letter of each word for display
-              const displayValue = v.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-              filterData.procedureDetails.get(label).add(displayValue);
-            });
-          }
-        }
-      });
-    });
-
-    // Generate HTML for filter sections
-    let html = '';
-
-    // Age filter
-    if (filterData.age.size > 0) {
-      html += this.generateFilterSection('Age', 'age', Array.from(filterData.age).sort());
-    }
-
-    // Gender filter
-    if (filterData.gender.size > 0) {
-      const genderOptions = Array.from(filterData.gender).map(g => g === 'male' ? 'Male' : g === 'female' ? 'Female' : g);
-      html += this.generateFilterSection('Gender', 'gender', genderOptions);
-    }
-
-    // Ethnicity filter
-    if (filterData.ethnicity.size > 0) {
-      html += this.generateFilterSection('Ethnicity', 'ethnicity', Array.from(filterData.ethnicity).sort());
-    }
-
-    // Height filter
-    if (filterData.height.size > 0) {
-      html += this.generateFilterSection('Height', 'height', Array.from(filterData.height));
-    }
-
-    // Weight filter
-    if (filterData.weight.size > 0) {
-      html += this.generateFilterSection('Weight', 'weight', Array.from(filterData.weight));
-    }
-
-    // Procedure Details filters
-    if (filterData.procedureDetails.size > 0) {
-      filterData.procedureDetails.forEach((values, label) => {
-        if (values.size > 0) {
-          // Convert label to attribute name for filter type
-          const filterType = 'procedure_detail_' + label.toLowerCase().replace(/\s+/g, '_');
-          html += this.generateFilterSection(label, filterType, Array.from(values).sort());
-        }
-      });
-    }
-    return html;
-  }
-
-  /**
-   * Generate individual filter section HTML
-   */
-  generateFilterSection(title, type, options) {
-    let html = '<details class="brag-book-gallery-filter">';
-    html += '<summary class="brag-book-gallery-filter-label">';
-    html += `<span class="brag-book-gallery-filter-label__name">${this.escapeHtml(title)}</span>`;
-    html += '<svg class="brag-book-gallery-filter-label__arrow" width="16" height="16" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">';
-    html += '<path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>';
-    html += '</svg>';
-    html += '</summary>';
-    html += '<ul class="brag-book-gallery-filter-options">';
-    options.forEach(option => {
-      const id = `procedure-filter-${type}-${option.replace(/[^a-zA-Z0-9]/g, '-')}`;
-      // Only convert to lowercase for gender and ethnicity filters
-      const value = type === 'gender' || type === 'ethnicity' ? option.toLowerCase() : option;
-      html += '<li class="brag-book-gallery-filter-option">';
-      html += `<input type="checkbox" id="${id}" value="${this.escapeHtml(value)}" data-filter-type="${type}">`;
-      html += `<label for="${id}">${this.escapeHtml(option)}</label>`;
-      html += '</li>';
-    });
-    html += '</ul>';
-    html += '</details>';
-    return html;
-  }
-
-  /**
-   * Generate SEO data for filtered gallery
-   * @param {string} procedureName - Display name for procedure
-   * @returns {Object} SEO data object
-   */
-  generateSEOData(procedureName) {
-    const seo = {};
-    if (procedureName) {
-      const displayName = this.formatProcedureDisplayName(procedureName);
-      const siteName = document.title.split(' | ').pop() || 'BRAGBook Gallery';
-      seo.title = `${displayName} Before & After Gallery | ${siteName}`;
-      seo.description = `View before and after photos of ${displayName} procedures. Browse our gallery to see real patient results.`;
-    }
-    return seo;
-  }
-
-  /**
-   * Format procedure display name (capitalize words, etc.)
-   * @param {string} name - Raw procedure name
-   * @returns {string} Formatted display name
-   */
-  formatProcedureDisplayName(name) {
-    if (!name) return '';
-    return name.split(/[\s-_]+/).map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
-  }
-
-  /**
-   * Escape HTML characters for safe output
-   * @param {string} text - Text to escape
-   * @returns {string} Escaped text
-   */
-  escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    // Also escape quotes for use in HTML attributes
-    return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-  }
-
-  /**
-   * Update filter badges display based on active filters
-   * DISABLED: Only demographic filters should create badges now
-   */
-  updateFilterBadges() {
-    // This method is disabled - only demographic filters create badges now
-    // All badge management is handled by the global updateFilterBadges() function
-    return;
-  }
-
-  /**
-   * Create a filter badge element
-   */
-  createFilterBadge(category, procedure, filterKey) {
-    const badge = document.createElement('div');
-    badge.className = 'brag-book-gallery-filter-badge';
-    badge.setAttribute('data-filter-key', filterKey);
-
-    // Format the display text based on category
-    let displayText = '';
-    switch (category) {
-      case 'age':
-        displayText = `Age: ${procedure}`;
-        break;
-      case 'gender':
-        displayText = `Gender: ${procedure}`;
-        break;
-      case 'ethnicity':
-        displayText = `Ethnicity: ${procedure}`;
-        break;
-      case 'procedure':
-        displayText = procedure;
-        break;
-      default:
-        displayText = `${category}: ${procedure}`;
-    }
-    badge.innerHTML = `
-			<span class="brag-book-gallery-badge-text">${displayText}</span>
-			<button class="brag-book-gallery-badge-remove" aria-label="Remove ${displayText} filter">
-				<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
-					<path d="M13 1L1 13M1 1l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-				</svg>
-			</button>
-		`;
-
-    // Add click handler to remove button
-    const removeButton = badge.querySelector('.brag-book-gallery-badge-remove');
-    removeButton.addEventListener('click', e => {
-      e.preventDefault();
-      this.removeFilterBadge(filterKey);
-    });
-    return badge;
-  }
-
-  /**
-   * Remove a specific filter badge
-   */
-  removeFilterBadge(filterKey) {
-    // Remove from active filters
-    const filter = this.activeFilters.get(filterKey);
-    if (filter) {
-      this.activeFilters.delete(filterKey);
-
-      // Remove active class from the corresponding filter link
-      const filterLink = document.querySelector(`[data-category="${filter.category}"][data-procedure="${filter.procedure}"]`);
-      if (filterLink) {
-        filterLink.classList.remove('brag-book-gallery-active');
-      }
-
-      // Badge updates handled by demographic filters only
-      // this.updateFilterBadges();
-
-      // Trigger filter change event
-      this.options.onFilterChange(this.activeFilters);
-    }
-  }
-
-  /**
-   * Clear all active filters
-   */
-  clearAllFilters() {
-    // Remove active classes from all filter links
-    const filterLinks = this.container?.querySelectorAll('.brag-book-gallery-nav-list-submenu-link');
-    filterLinks?.forEach(link => {
-      link.classList.remove('brag-book-gallery-active');
-    });
-
-    // Clear active filters
-    this.activeFilters.clear();
-
-    // Badge updates handled by demographic filters only
-    // this.updateFilterBadges();
-
-    // Trigger filter change event
-    this.options.onFilterChange(this.activeFilters);
-
-    // Reset URL to base
-    window.history.pushState({}, '', window.location.pathname);
-  }
-
-  /**
-   * Scroll to gallery wrapper for better user experience
-   * Accounts for websites with hero sections that may hide the gallery
-   */
-  scrollToGalleryWrapper() {
-    const wrapper = document.querySelector('.brag-book-gallery-wrapper');
-    if (wrapper) {
-      // Use smooth scrolling with some offset for better UX
-      const offsetTop = wrapper.getBoundingClientRect().top + window.pageYOffset - 20;
-      window.scrollTo({
-        top: offsetTop,
-        behavior: 'smooth'
-      });
-    }
-  }
-}
-/* harmony default export */ __webpack_exports__["default"] = (FilterSystem);
-
-/***/ }),
-
 /***/ "./src/js/modules/gallery-selector.js":
 /*!********************************************!*\
   !*** ./src/js/modules/gallery-selector.js ***!
@@ -5863,12 +3270,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function () {
-  // Initialize filters after a brief delay to ensure DOM is ready
+  // Initialize filters after a brief delay to ensure DOM is ready.
+  // window.bragBookCompleteDataset is set by the inline script emitted from
+  // Gallery_Handler::render_gallery_html — no need for a fallback path.
   setTimeout(function () {
-    // Ensure the complete dataset is available
-    if (!window.bragBookCompleteDataset && window.bragBookGalleryConfig && window.bragBookGalleryConfig.completeDataset) {
-      window.bragBookCompleteDataset = window.bragBookGalleryConfig.completeDataset;
-    }
     initializeProcedureFilters();
 
     // Case navigation is now handled with anchor links, no JavaScript needed
@@ -5973,21 +3378,18 @@ document.addEventListener('click', function (e) {
 
 __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _dialog_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./dialog.js */ "./src/js/modules/dialog.js");
-/* harmony import */ var _filter_system_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./filter-system.js */ "./src/js/modules/filter-system.js");
-/* harmony import */ var _mobile_menu_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./mobile-menu.js */ "./src/js/modules/mobile-menu.js");
-/* harmony import */ var _favorites_manager_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./favorites-manager.js */ "./src/js/modules/favorites-manager.js");
-/* harmony import */ var _share_manager_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./share-manager.js */ "./src/js/modules/share-manager.js");
-/* harmony import */ var _search_autocomplete_js__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./search-autocomplete.js */ "./src/js/modules/search-autocomplete.js");
-/* harmony import */ var _utilities_js__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./utilities.js */ "./src/js/modules/utilities.js");
-/* harmony import */ var _gallery_selector_js__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./gallery-selector.js */ "./src/js/modules/gallery-selector.js");
+/* harmony import */ var _mobile_menu_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./mobile-menu.js */ "./src/js/modules/mobile-menu.js");
+/* harmony import */ var _utilities_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./utilities.js */ "./src/js/modules/utilities.js");
+/* harmony import */ var _gallery_selector_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./gallery-selector.js */ "./src/js/modules/gallery-selector.js");
 
 
 
 
 
-
-
-
+// FilterSystem, FavoritesManager, SearchAutocomplete, and ShareManager are
+// loaded on demand inside their initialize* methods (see below). They're the
+// four heaviest modules (~3,500 LOC combined) and most pages don't use all of
+// them, so webpack splits them into separate chunks via dynamic import().
 
 /**
  * Main Application Controller
@@ -6035,21 +3437,18 @@ class BRAGbookGalleryApp {
       this.initializeMobileMenu();
       this.initializeCaseLinks();
       this.initializeNudityWarning();
-      this.initializeShareManager();
-      this.initializeFavorites();
       this.initializeCasePreloading();
       this.initializeCaseCarouselPagination();
+      // Lazy-loaded modules: kick off in parallel and let them resolve
+      // independently — they only attach event listeners.
+      Promise.all([this.initializeShareManager(), this.initializeFavorites()]);
       return;
     }
 
-    // Initialize core components for normal gallery view
+    // Initialize synchronous (always-loaded) core components.
     this.initializeDialogs();
-    this.initializeFilters();
     this.initializeMobileMenu();
     this.initializeGallerySelector();
-    this.initializeFavorites();
-    this.initializeSearch();
-    this.initializeShareManager();
     this.initializeConsultationForm();
     this.initializeCaseLinks();
     this.initializeNudityWarning();
@@ -6057,13 +3456,16 @@ class BRAGbookGalleryApp {
     this.initializeCaseCarouselPagination();
     this.initializeProceduresLoadMore();
 
-    // Auto-activate favorites view if on favorites page
+    // Lazy-loaded heavy modules. Each initialize* method short-circuits
+    // when its anchor element isn't on the page, so the chunk fetch only
+    // happens when the feature is actually present.
+    await Promise.all([this.initializeFilters(), this.initializeFavorites(), this.initializeSearch(), this.initializeShareManager()]);
+
+    // Auto-activate favorites view if on favorites page (favorites manager
+    // is guaranteed to be ready here because we awaited above).
     const galleryContent = document.getElementById('gallery-content');
     if (galleryContent && galleryContent.dataset.favoritesPage === 'true') {
-      // Delay to ensure all components are initialized
-      setTimeout(() => {
-        this.showFavoritesOnly();
-      }, 100);
+      this.showFavoritesOnly();
     }
   }
 
@@ -6091,31 +3493,25 @@ class BRAGbookGalleryApp {
   /**
    * Initialize the filter system for procedure and demographic filtering
    */
-  initializeFilters() {
+  async initializeFilters() {
     const filterContainer = document.querySelector('.brag-book-gallery-nav');
-
-    // Configure filter mode (javascript vs navigation)
-    const mode = filterContainer?.dataset.filterMode || 'javascript';
-    this.components.filterSystem = new _filter_system_js__WEBPACK_IMPORTED_MODULE_1__["default"](filterContainer, {
+    if (!filterContainer) return;
+    const {
+      default: FilterSystem
+    } = await __webpack_require__.e(/*! import() | brag-book-gallery-filter-system */ "brag-book-gallery-filter-system").then(__webpack_require__.bind(__webpack_require__, /*! ./filter-system.js */ "./src/js/modules/filter-system.js"));
+    const mode = filterContainer.dataset.filterMode || 'javascript';
+    this.components.filterSystem = new FilterSystem(filterContainer, {
       mode: mode,
       baseUrl: '/gallery',
-      // Customize as needed
       onFilterChange: activeFilters => {
         this.applyFilters(activeFilters);
       },
       onNavigate: url => {
-        // Custom navigation handler if needed
         window.location.href = url;
       }
     });
-
-    // Generate procedure filters from DOM case cards on page load
     this.initializeProcedureFilters();
-
-    // Set up Clear All button
     this.initializeClearAllButton();
-
-    // Initialize demographic filter badge integration
     this.initializeDemographicFilterBadges();
   }
 
@@ -6254,48 +3650,39 @@ class BRAGbookGalleryApp {
    * Initialize mobile navigation menu
    */
   initializeMobileMenu() {
-    this.components.mobileMenu = new _mobile_menu_js__WEBPACK_IMPORTED_MODULE_2__["default"]();
+    this.components.mobileMenu = new _mobile_menu_js__WEBPACK_IMPORTED_MODULE_1__["default"]();
   }
 
   /**
    * Initialize gallery selector navigation for tiles view
    */
   initializeGallerySelector() {
-    (0,_gallery_selector_js__WEBPACK_IMPORTED_MODULE_7__.initGallerySelector)();
+    (0,_gallery_selector_js__WEBPACK_IMPORTED_MODULE_3__.initGallerySelector)();
   }
 
   /**
    * Initialize favorites management system
    */
-  initializeFavorites() {
-    // Create favorites manager with count update callback
-    this.components.favoritesManager = new _favorites_manager_js__WEBPACK_IMPORTED_MODULE_3__["default"]({
+  async initializeFavorites() {
+    const hasFavoritesUI = document.querySelector('.brag-book-gallery-favorite-button, .brag-book-gallery-my-favorites, [data-favorites-page]') || document.getElementById('gallery-content')?.dataset.favoritesPage === 'true';
+    if (!hasFavoritesUI) return;
+    const {
+      default: FavoritesManager
+    } = await __webpack_require__.e(/*! import() | brag-book-gallery-favorites */ "brag-book-gallery-favorites").then(__webpack_require__.bind(__webpack_require__, /*! ./favorites-manager.js */ "./src/js/modules/favorites-manager.js"));
+    this.components.favoritesManager = new FavoritesManager({
       onUpdate: favorites => {
-        // Update UI elements that display favorite counts
         this.updateFavoritesCount(favorites.size);
       }
     });
-
-    // Initialize the count on page load
-    if (this.components.favoritesManager) {
-      const initialCount = this.components.favoritesManager.getFavorites().size;
-      this.updateFavoritesCount(initialCount);
-
-      // Update heart button states based on localStorage favorites
-      this.updateFavoriteHeartStates();
-    }
-
-    // Add click handler for My Favorites button
+    const initialCount = this.components.favoritesManager.getFavorites().size;
+    this.updateFavoritesCount(initialCount);
+    this.updateFavoriteHeartStates();
     this.initializeFavoritesButton();
-
-    // Listen for favorites updates to refresh My Favorites page if it's active
-    window.addEventListener('favoritesUpdated', event => {
-      // Check if we're on the My Favorites page
+    window.addEventListener('favoritesUpdated', () => {
       const currentPath = window.location.pathname;
       const gallerySlug = window.bragBookGalleryConfig?.gallerySlug || 'before-after';
       const favoritesPath = `/${gallerySlug}/myfavorites/`;
       if (currentPath === favoritesPath || currentPath.includes('myfavorites')) {
-        // Small delay to ensure localStorage is updated
         setTimeout(() => {
           this.showFavoritesOnly();
         }, 100);
@@ -6374,22 +3761,19 @@ class BRAGbookGalleryApp {
   /**
    * Initialize search autocomplete components for desktop and mobile
    */
-  initializeSearch() {
-    // Find all search wrapper elements (supports multiple instances)
+  async initializeSearch() {
     const searchWrappers = document.querySelectorAll('.brag-book-gallery-search-wrapper');
+    if (searchWrappers.length === 0) return;
+    const {
+      default: SearchAutocomplete
+    } = await __webpack_require__.e(/*! import() | brag-book-gallery-search */ "brag-book-gallery-search").then(__webpack_require__.bind(__webpack_require__, /*! ./search-autocomplete.js */ "./src/js/modules/search-autocomplete.js"));
     this.components.searchAutocompletes = [];
     searchWrappers.forEach(searchWrapper => {
-      // Create search instance with configuration
-      const searchInstance = new _search_autocomplete_js__WEBPACK_IMPORTED_MODULE_5__["default"](searchWrapper, {
+      const searchInstance = new SearchAutocomplete(searchWrapper, {
         minChars: 1,
-        // Start searching after 1 character
         debounceDelay: 200,
-        // 200ms delay for performance
         maxResults: 10,
-        // Limit results shown
-        onSelect: result => {
-          // The checkbox is automatically checked by the SearchAutocomplete class
-        }
+        onSelect: () => {}
       });
       this.components.searchAutocompletes.push(searchInstance);
     });
@@ -6398,13 +3782,14 @@ class BRAGbookGalleryApp {
   /**
    * Initialize social sharing manager if sharing is enabled
    */
-  initializeShareManager() {
-    // Only initialize if sharing is enabled in configuration
-    if (typeof bragBookGalleryConfig !== 'undefined' && bragBookGalleryConfig.enableSharing === 'yes') {
-      this.components.shareManager = new _share_manager_js__WEBPACK_IMPORTED_MODULE_4__["default"]({
-        onShare: data => {}
-      });
-    }
+  async initializeShareManager() {
+    if (window.bragBookGalleryConfig?.enableSharing !== 'yes') return;
+    const {
+      default: ShareManager
+    } = await __webpack_require__.e(/*! import() | brag-book-gallery-share */ "brag-book-gallery-share").then(__webpack_require__.bind(__webpack_require__, /*! ./share-manager.js */ "./src/js/modules/share-manager.js"));
+    this.components.shareManager = new ShareManager({
+      onShare: () => {}
+    });
   }
   initializeConsultationForm() {
     const form = document.querySelector('[data-form="consultation"]');
@@ -8465,7 +5850,7 @@ class BRAGbookGalleryApp {
    * Initialize nudity warning management
    */
   initializeNudityWarning() {
-    this.components.nudityWarningManager = new _utilities_js__WEBPACK_IMPORTED_MODULE_6__.NudityWarningManager();
+    this.components.nudityWarningManager = new _utilities_js__WEBPACK_IMPORTED_MODULE_2__.NudityWarningManager();
   }
 
   /**
@@ -10566,663 +7951,6 @@ class MobileMenu {
 
 /***/ }),
 
-/***/ "./src/js/modules/search-autocomplete.js":
-/*!***********************************************!*\
-  !*** ./src/js/modules/search-autocomplete.js ***!
-  \***********************************************/
-/***/ (function(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
-
-__webpack_require__.r(__webpack_exports__);
-/**
- * Search Autocomplete Component
- * Provides searchable dropdown for procedures
- */
-class SearchAutocomplete {
-  constructor(wrapper, options = {}) {
-    this.wrapper = wrapper;
-    this.input = wrapper.querySelector('.brag-book-gallery-search-input');
-    this.dropdown = wrapper.querySelector('.brag-book-gallery-search-dropdown');
-    this.searchIcon = wrapper.querySelector('.brag-book-gallery-search-icon');
-    this.options = {
-      minChars: options.minChars || 1,
-      debounceDelay: options.debounceDelay || 200,
-      maxResults: options.maxResults || 10,
-      onSelect: options.onSelect || (() => {}),
-      ...options
-    };
-    this.procedures = [];
-    this.filteredResults = [];
-    this.selectedIndex = -1;
-    this.isOpen = false;
-    this.debounceTimer = null;
-    if (this.input && this.dropdown) {
-      this.init();
-    }
-  }
-  init() {
-    this.collectProcedures();
-    this.setupEventListeners();
-  }
-  collectProcedures() {
-    // Collect all procedures from rendered sidebar DOM, tiles view, or category nav
-    const procedureMap = new Map();
-    const sidebarNav = document.querySelector('.brag-book-gallery-nav');
-    const tilesNav = document.querySelector('.brag-book-gallery-tiles-view');
-    const categoryNav = document.querySelector('.brag-book-gallery-category-nav');
-
-    // Check if we have any navigation source
-    if (!sidebarNav && !tilesNav && !categoryNav) {
-      console.warn('BRAGBook Gallery: No navigation found for search autocomplete');
-      this.procedures = [];
-      return;
-    }
-
-    // Extract procedures from sidebar navigation
-    if (sidebarNav) {
-      const procedureLinks = sidebarNav.querySelectorAll('.brag-book-gallery-nav-link[data-procedure-slug]');
-      procedureLinks.forEach(link => {
-        const procedureSlug = link.getAttribute('data-procedure-slug');
-        const procedureId = link.getAttribute('data-procedure-id');
-        const category = link.getAttribute('data-category');
-        const nudity = link.getAttribute('data-nudity') === 'true';
-        const url = link.href;
-
-        // Extract name and count from link text
-        const linkText = link.textContent.trim();
-        const countMatch = linkText.match(/\((\d+)\)$/);
-        const count = countMatch ? parseInt(countMatch[1], 10) : 0;
-        const name = linkText.replace(/\s*\(\d+\)$/, '').trim();
-
-        // Get category name from the parent details element
-        const categoryDetails = link.closest('details[data-category]');
-        const categoryName = categoryDetails ? categoryDetails.querySelector('.brag-book-gallery-nav-button__label span')?.textContent?.trim() || category : category;
-        if (procedureSlug && name) {
-          // Create unique key combining category and procedure slug
-          const key = `${category}:${procedureSlug}`;
-          if (!procedureMap.has(key)) {
-            procedureMap.set(key, {
-              id: procedureSlug,
-              procedureId: procedureId,
-              name: name,
-              category: categoryName,
-              categorySlug: category,
-              count: count,
-              searchText: name.toLowerCase(),
-              url: url,
-              nudity: nudity,
-              fullName: `${name} (${count})`
-            });
-          }
-        }
-      });
-    }
-
-    // Extract procedures from tiles view or category navigation
-    const procedureLinkSource = tilesNav || categoryNav;
-    if (procedureLinkSource) {
-      const procedureLinks = procedureLinkSource.querySelectorAll('.brag-book-gallery-procedure-link');
-      procedureLinks.forEach(link => {
-        const url = link.href;
-        // Extract procedure slug from URL
-        const urlParts = url.split('/');
-        const procedureSlug = urlParts[urlParts.length - 2] || '';
-
-        // Extract name and count from link text
-        const nameSpan = link.querySelector('.brag-book-gallery-procedure-name');
-        const countSpan = link.querySelector('.brag-book-gallery-procedure-count');
-        if (!nameSpan) return;
-        const name = nameSpan.textContent.trim();
-        const countText = countSpan ? countSpan.textContent.trim() : '';
-        const countMatch = countText.match(/\((\d+)\)/);
-        const count = countMatch ? parseInt(countMatch[1], 10) : 0;
-
-        // Get category from the parent panel
-        const panel = link.closest('.brag-book-gallery-subcategory-panel');
-        const categoryId = panel ? panel.getAttribute('data-category-id') : '';
-
-        // Find the category button to get the category name
-        const categoryButton = categoryId ? document.querySelector(`.brag-book-gallery-category-link[data-category-id="${categoryId}"]`) : null;
-        const categoryName = categoryButton ? categoryButton.querySelector('.brag-book-gallery-category-name')?.textContent?.replace(/\s*\(\d+\)$/, '').trim() || '' : '';
-        if (procedureSlug && name) {
-          // Create unique key
-          const key = `${categoryId}:${procedureSlug}`;
-          if (!procedureMap.has(key)) {
-            procedureMap.set(key, {
-              id: procedureSlug,
-              procedureId: '',
-              name: name,
-              category: categoryName,
-              categorySlug: categoryId,
-              count: count,
-              searchText: name.toLowerCase(),
-              url: url,
-              nudity: false,
-              fullName: `${name} (${count})`
-            });
-          }
-        }
-      });
-    }
-    this.procedures = Array.from(procedureMap.values());
-
-    // Debug: Log first few procedures to verify data structure
-    if (this.procedures.length > 0) {
-      console.log('BRAGBook Gallery: First 3 procedures:', this.procedures.slice(0, 3));
-    } else {
-      console.warn('BRAGBook Gallery: No procedures loaded from sidebar DOM');
-    }
-  }
-  setupEventListeners() {
-    // Input events
-    this.input.addEventListener('input', e => this.handleInput(e));
-    this.input.addEventListener('focus', () => this.handleFocus());
-    this.input.addEventListener('blur', e => this.handleBlur(e));
-
-    // Keyboard navigation
-    this.input.addEventListener('keydown', e => this.handleKeydown(e));
-
-    // Click outside to close
-    document.addEventListener('click', e => {
-      if (!this.wrapper.contains(e.target)) {
-        this.close();
-      }
-    });
-
-    // Dropdown item clicks
-    this.dropdown.addEventListener('click', e => {
-      const item = e.target.closest('.brag-book-gallery-search-item');
-      if (item) {
-        this.selectItem(item);
-      }
-    });
-  }
-  handleInput(e) {
-    const query = e.target.value.trim();
-
-    // Clear previous timer
-    if (this.debounceTimer) {
-      clearTimeout(this.debounceTimer);
-    }
-
-    // Debounce the search
-    this.debounceTimer = setTimeout(() => {
-      if (query.length >= this.options.minChars) {
-        this.search(query);
-      } else {
-        this.close();
-      }
-    }, this.options.debounceDelay);
-  }
-  handleFocus() {
-    const query = this.input.value.trim();
-    if (query.length >= this.options.minChars) {
-      this.search(query);
-    }
-  }
-  handleBlur(e) {
-    // Delay close to allow click events on dropdown items
-    setTimeout(() => {
-      if (!this.wrapper.contains(document.activeElement)) {
-        this.close();
-      }
-    }, 200);
-  }
-  handleKeydown(e) {
-    if (!this.isOpen) {
-      if (e.key === 'ArrowDown' && this.input.value.trim().length >= this.options.minChars) {
-        e.preventDefault();
-        this.search(this.input.value.trim());
-      }
-      return;
-    }
-    switch (e.key) {
-      case 'ArrowDown':
-        e.preventDefault();
-        this.moveSelection(1);
-        break;
-      case 'ArrowUp':
-        e.preventDefault();
-        this.moveSelection(-1);
-        break;
-      case 'Enter':
-        e.preventDefault();
-        if (this.selectedIndex >= 0) {
-          const selectedItem = this.dropdown.querySelector(`[data-index="${this.selectedIndex}"]`);
-          if (selectedItem) {
-            this.selectItem(selectedItem);
-          }
-        }
-        break;
-      case 'Escape':
-        this.close();
-        this.input.blur();
-        break;
-    }
-  }
-  search(query) {
-    const normalizedQuery = query.toLowerCase();
-
-    // Filter procedures
-    this.filteredResults = this.procedures.filter(proc => {
-      return proc.searchText.includes(normalizedQuery) || proc.category.includes(normalizedQuery);
-    }).slice(0, this.options.maxResults);
-
-    // Sort by relevance (exact match first, then starts with, then contains)
-    this.filteredResults.sort((a, b) => {
-      const aExact = a.searchText === normalizedQuery;
-      const bExact = b.searchText === normalizedQuery;
-      if (aExact && !bExact) return -1;
-      if (!aExact && bExact) return 1;
-      const aStarts = a.searchText.startsWith(normalizedQuery);
-      const bStarts = b.searchText.startsWith(normalizedQuery);
-      if (aStarts && !bStarts) return -1;
-      if (!aStarts && bStarts) return 1;
-      return 0;
-    });
-    this.renderResults(query);
-    this.open();
-  }
-  renderResults(query) {
-    if (this.filteredResults.length === 0) {
-      this.dropdown.innerHTML = `
-                <div class="brag-book-gallery-search-no-results">
-                    No procedures found for "${this.escapeHtml(query)}"
-                </div>
-            `;
-      return;
-    }
-    const html = this.filteredResults.map((proc, index) => {
-      const highlightedName = this.highlightMatch(proc.name, query);
-      const caseText = proc.count === 1 ? 'case' : 'cases';
-      return `
-                <div class="brag-book-gallery-search-item"
-                     role="option"
-                     data-index="${index}"
-                     data-procedure="${proc.id}"
-                     data-category="${proc.categorySlug}"
-                     aria-selected="${index === this.selectedIndex}">
-                    <div class="brag-book-gallery-search-item-content">
-                        <span class="brag-book-gallery-search-item-name">${highlightedName}</span>
-                        <span class="brag-book-gallery-search-item-count">${proc.count} ${caseText}</span>
-                    </div>
-                    <span class="brag-book-gallery-search-item-category">${proc.category}</span>
-                </div>
-            `;
-    }).join('');
-    this.dropdown.innerHTML = html;
-    this.selectedIndex = -1;
-  }
-  highlightMatch(text, query) {
-    const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const regex = new RegExp(`(${escapedQuery})`, 'gi');
-    return text.replace(regex, '<mark>$1</mark>');
-  }
-  escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-  }
-  moveSelection(direction) {
-    const items = this.dropdown.querySelectorAll('.brag-book-gallery-search-item');
-    if (items.length === 0) return;
-
-    // Update selected index
-    this.selectedIndex += direction;
-
-    // Wrap around
-    if (this.selectedIndex < 0) {
-      this.selectedIndex = items.length - 1;
-    } else if (this.selectedIndex >= items.length) {
-      this.selectedIndex = 0;
-    }
-
-    // Update aria-selected and scroll into view
-    items.forEach((item, index) => {
-      const isSelected = index === this.selectedIndex;
-      item.setAttribute('aria-selected', isSelected);
-      if (isSelected) {
-        item.scrollIntoView({
-          block: 'nearest',
-          behavior: 'smooth'
-        });
-      }
-    });
-  }
-  selectItem(item) {
-    const procedure = item.dataset.procedure;
-    const category = item.dataset.category;
-    const nameElement = item.querySelector('.brag-book-gallery-search-item-name');
-    const name = nameElement ? nameElement.textContent.replace(/<mark>/g, '').replace(/<\/mark>/g, '') : '';
-
-    // Update input value
-    this.input.value = name;
-
-    // Close dropdown
-    this.close();
-
-    // Find the corresponding procedure data from our loaded procedures
-    const procedureData = this.procedures.find(proc => proc.id === procedure && (proc.categorySlug === category || proc.category === category));
-
-    // Trigger callback with full procedure data
-    this.options.onSelect({
-      procedure,
-      category,
-      name,
-      url: procedureData?.url || '',
-      data: procedureData
-    });
-
-    // Navigate using the URL from sidebar data
-    if (procedureData && procedureData.url) {
-      window.location.href = procedureData.url;
-    } else {
-      // Fallback: try to find corresponding filter link
-      const filterLink = document.querySelector(`.brag-book-gallery-nav-link[data-procedure="${procedure}"]`);
-      if (filterLink && filterLink.href) {
-        window.location.href = filterLink.href;
-      } else {
-        console.warn(`BRAGBook Gallery: No URL found for procedure ${procedure} in category ${category}`);
-      }
-    }
-  }
-  open() {
-    if (this.isOpen) return;
-    this.isOpen = true;
-    this.dropdown.classList.add('active');
-    this.wrapper.classList.add('active');
-    this.input.setAttribute('aria-expanded', 'true');
-  }
-  close() {
-    if (!this.isOpen) return;
-    this.isOpen = false;
-    this.dropdown.classList.remove('active');
-    this.wrapper.classList.remove('active');
-    this.input.setAttribute('aria-expanded', 'false');
-    this.selectedIndex = -1;
-  }
-
-  /**
-   * Refresh procedures data from sidebar
-   * Call this if sidebar data is updated dynamically
-   */
-  refresh() {
-    this.collectProcedures();
-  }
-}
-/* harmony default export */ __webpack_exports__["default"] = (SearchAutocomplete);
-
-/***/ }),
-
-/***/ "./src/js/modules/share-manager.js":
-/*!*****************************************!*\
-  !*** ./src/js/modules/share-manager.js ***!
-  \*****************************************/
-/***/ (function(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
-
-__webpack_require__.r(__webpack_exports__);
-/**
- * Share Manager Component
- * Handles sharing functionality for carousel images
- */
-class ShareManager {
-  constructor(options = {}) {
-    this.options = {
-      shareMenuId: options.shareMenuId || 'shareMenu',
-      onShare: options.onShare || (() => {}),
-      ...options
-    };
-    this.shareMenu = document.getElementById(this.options.shareMenuId);
-    this.activeButton = null;
-    this.activeItem = null;
-    this.init();
-  }
-  init() {
-    this.setupEventListeners();
-    this.createShareMenu();
-  }
-  createShareMenu() {
-    // Share menus will be created per button, not globally
-    // This method is kept for compatibility but doesn't create a global menu
-  }
-  setupEventListeners() {
-    // Listen for share button clicks (delegated)
-    document.addEventListener('click', e => {
-      const shareButton = e.target.closest('.brag-book-gallery-share-button');
-      if (shareButton) {
-        e.preventDefault();
-        e.stopPropagation();
-        this.toggleShareDropdown(shareButton);
-      }
-
-      // Handle dropdown item clicks
-      const dropdownItem = e.target.closest('.brag-book-gallery-share-dropdown-item');
-      if (dropdownItem) {
-        e.preventDefault();
-        const shareType = dropdownItem.dataset.shareType;
-        if (shareType) {
-          this.handleShare(shareType);
-          this.hideShareDropdown();
-        }
-      }
-
-      // Close dropdown when clicking outside
-      const activeDropdowns = document.querySelectorAll('.brag-book-gallery-share-dropdown.active');
-      activeDropdowns.forEach(dropdown => {
-        if (!dropdown.contains(e.target) && !e.target.closest('.brag-book-gallery-share-button')) {
-          dropdown.classList.remove('active');
-          const button = dropdown.closest('.brag-book-gallery-share-button');
-          if (button) {
-            button.classList.remove('active');
-          }
-        }
-      });
-    });
-
-    // Close on escape
-    document.addEventListener('keydown', e => {
-      if (e.key === 'Escape') {
-        const activeDropdowns = document.querySelectorAll('.brag-book-gallery-share-dropdown.active');
-        activeDropdowns.forEach(dropdown => {
-          dropdown.classList.remove('active');
-          const button = dropdown.closest('.brag-book-gallery-share-button');
-          if (button) {
-            button.classList.remove('active');
-          }
-        });
-      }
-    });
-  }
-  toggleShareDropdown(button) {
-    if (this.activeButton === button && this.shareMenu?.classList.contains('active')) {
-      this.hideShareDropdown();
-    } else {
-      this.showShareDropdown(button);
-    }
-  }
-  showShareDropdown(button) {
-    // Get the carousel item (slide)
-    this.activeItem = button.closest('.brag-book-gallery-carousel-item');
-    this.activeButton = button;
-
-    // Check if button already has a dropdown
-    let dropdown = button.querySelector('.brag-book-gallery-share-dropdown');
-
-    // Create dropdown if it doesn't exist
-    if (!dropdown) {
-      const menuHtml = `
-                <div class="brag-book-gallery-share-dropdown" role="menu">
-                    <button class="brag-book-gallery-share-dropdown-item" data-share-type="link" role="menuitem">Copy Link</button>
-                    <button class="brag-book-gallery-share-dropdown-item" data-share-type="email" role="menuitem">Email</button>
-                    <button class="brag-book-gallery-share-dropdown-item" data-share-type="facebook" role="menuitem">Facebook</button>
-                    <button class="brag-book-gallery-share-dropdown-item" data-share-type="twitter" role="menuitem">Twitter</button>
-                    <button class="brag-book-gallery-share-dropdown-item" data-share-type="pinterest" role="menuitem">Pinterest</button>
-                    <button class="brag-book-gallery-share-dropdown-item" data-share-type="whatsapp" role="menuitem">WhatsApp</button>
-                </div>
-            `;
-      button.insertAdjacentHTML('beforeend', menuHtml);
-      dropdown = button.querySelector('.brag-book-gallery-share-dropdown');
-    }
-    this.shareMenu = dropdown;
-
-    // Add active class to button
-    button.classList.add('active');
-
-    // Show dropdown (positioned via CSS)
-    this.shareMenu.classList.add('active');
-  }
-  hideShareDropdown() {
-    if (!this.shareMenu) return;
-
-    // Remove active class from button
-    if (this.activeButton) {
-      this.activeButton.classList.remove('active');
-    }
-    this.shareMenu.classList.remove('active');
-    this.activeButton = null;
-    this.activeItem = null;
-  }
-  handleShare(type) {
-    if (!this.activeItem) return;
-
-    // Get image data
-    const img = this.activeItem.querySelector('img');
-    const imageUrl = img?.src || '';
-    const imageAlt = img?.alt || 'Medical procedure result';
-    const slideId = this.activeItem.dataset.slide || '';
-
-    // Build share URL (use current page URL with slide anchor)
-    const baseUrl = window.location.origin + window.location.pathname;
-    const shareUrl = `${baseUrl}#${slideId}`;
-    const shareText = `Check out this ${imageAlt}`;
-    switch (type) {
-      case 'link':
-        this.copyToClipboard(shareUrl);
-        break;
-      case 'email':
-        this.shareViaEmail(shareUrl, shareText);
-        break;
-      case 'facebook':
-        this.shareViaFacebook(shareUrl);
-        break;
-      case 'twitter':
-        this.shareViaTwitter(shareUrl, shareText);
-        break;
-      case 'pinterest':
-        this.shareViaPinterest(shareUrl, imageUrl, shareText);
-        break;
-      case 'whatsapp':
-        this.shareViaWhatsApp(shareUrl, shareText);
-        break;
-    }
-
-    // Dropdown is already hidden after selection
-
-    // Callback
-    this.options.onShare({
-      type,
-      url: shareUrl,
-      text: shareText
-    });
-  }
-  copyToClipboard(text) {
-    if (navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard.writeText(text).then(() => {
-        this.showNotification('Link copied to clipboard!');
-      }).catch(() => {
-        this.fallbackCopyToClipboard(text);
-      });
-    } else {
-      this.fallbackCopyToClipboard(text);
-    }
-  }
-  fallbackCopyToClipboard(text) {
-    const textArea = document.createElement('textarea');
-    textArea.value = text;
-    textArea.style.position = 'fixed';
-    textArea.style.left = '-999999px';
-    document.body.appendChild(textArea);
-    textArea.focus();
-    textArea.select();
-    try {
-      document.execCommand('copy');
-      this.showNotification('Link copied to clipboard!');
-    } catch (err) {
-      this.showNotification('Failed to copy link');
-    }
-    document.body.removeChild(textArea);
-  }
-  shareViaEmail(url, text) {
-    const subject = encodeURIComponent('Check out this medical procedure result');
-    const body = encodeURIComponent(`${text}\n\n${url}`);
-    window.location.href = `mailto:?subject=${subject}&body=${body}`;
-  }
-  shareViaFacebook(url) {
-    const shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
-    this.openShareWindow(shareUrl, 'facebook');
-  }
-  shareViaTwitter(url, text) {
-    const shareUrl = `https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`;
-    this.openShareWindow(shareUrl, 'twitter');
-  }
-  shareViaPinterest(url, imageUrl, text) {
-    const shareUrl = `https://pinterest.com/pin/create/button/?url=${encodeURIComponent(url)}&media=${encodeURIComponent(imageUrl)}&description=${encodeURIComponent(text)}`;
-    this.openShareWindow(shareUrl, 'pinterest');
-  }
-  shareViaWhatsApp(url, text) {
-    const shareUrl = `https://wa.me/?text=${encodeURIComponent(`${text} ${url}`)}`;
-    this.openShareWindow(shareUrl, 'whatsapp');
-  }
-  openShareWindow(url, platform) {
-    const width = 600;
-    const height = 400;
-    const left = (window.innerWidth - width) / 2;
-    const top = (window.innerHeight - height) / 2;
-    window.open(url, `share-${platform}`, `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no,scrollbars=yes,resizable=yes`);
-  }
-  showNotification(message) {
-    // Create notification element if it doesn't exist
-    let notification = document.getElementById('shareNotification');
-    if (!notification) {
-      notification = document.createElement('div');
-      notification.id = 'shareNotification';
-      notification.className = 'brag-book-gallery-share-notification';
-      document.body.appendChild(notification);
-    }
-
-    // Update message and show
-    notification.textContent = message;
-    notification.classList.add('active');
-
-    // Hide after 3 seconds
-    setTimeout(() => {
-      notification.classList.remove('active');
-    }, 3000);
-  }
-
-  // Web Share API support (for mobile)
-  async shareNative(data) {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: data.title || 'Medical Procedure Result',
-          text: data.text,
-          url: data.url
-        });
-        return true;
-      } catch (err) {
-        if (err.name !== 'AbortError') {
-          console.error('Share failed:', err);
-        }
-        return false;
-      }
-    }
-    return false;
-  }
-}
-/* harmony default export */ __webpack_exports__["default"] = (ShareManager);
-
-/***/ }),
-
 /***/ "./src/js/modules/utilities.js":
 /*!*************************************!*\
   !*** ./src/js/modules/utilities.js ***!
@@ -11429,6 +8157,9 @@ class PhoneFormatter {
 /******/ 		return module.exports;
 /******/ 	}
 /******/ 	
+/******/ 	// expose the modules object (__webpack_modules__)
+/******/ 	__webpack_require__.m = __webpack_modules__;
+/******/ 	
 /************************************************************************/
 /******/ 	/* webpack/runtime/define property getters */
 /******/ 	!function() {
@@ -11442,9 +8173,93 @@ class PhoneFormatter {
 /******/ 		};
 /******/ 	}();
 /******/ 	
+/******/ 	/* webpack/runtime/ensure chunk */
+/******/ 	!function() {
+/******/ 		__webpack_require__.f = {};
+/******/ 		// This file contains only the entry chunk.
+/******/ 		// The chunk loading function for additional chunks
+/******/ 		__webpack_require__.e = function(chunkId) {
+/******/ 			return Promise.all(Object.keys(__webpack_require__.f).reduce(function(promises, key) {
+/******/ 				__webpack_require__.f[key](chunkId, promises);
+/******/ 				return promises;
+/******/ 			}, []));
+/******/ 		};
+/******/ 	}();
+/******/ 	
+/******/ 	/* webpack/runtime/get javascript chunk filename */
+/******/ 	!function() {
+/******/ 		// This function allow to reference async chunks
+/******/ 		__webpack_require__.u = function(chunkId) {
+/******/ 			// return url for filenames not based on template
+/******/ 			if (chunkId === "brag-book-gallery-filter-system") return "brag-book-gallery-filter-system.js";
+/******/ 			if (chunkId === "brag-book-gallery-favorites") return "brag-book-gallery-favorites.js";
+/******/ 			if (chunkId === "brag-book-gallery-search") return "brag-book-gallery-search.js";
+/******/ 			if (chunkId === "brag-book-gallery-share") return "brag-book-gallery-share.js";
+/******/ 			// return url for filenames based on template
+/******/ 			return undefined;
+/******/ 		};
+/******/ 	}();
+/******/ 	
+/******/ 	/* webpack/runtime/global */
+/******/ 	!function() {
+/******/ 		__webpack_require__.g = (function() {
+/******/ 			if (typeof globalThis === 'object') return globalThis;
+/******/ 			try {
+/******/ 				return this || new Function('return this')();
+/******/ 			} catch (e) {
+/******/ 				if (typeof window === 'object') return window;
+/******/ 			}
+/******/ 		})();
+/******/ 	}();
+/******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */
 /******/ 	!function() {
 /******/ 		__webpack_require__.o = function(obj, prop) { return Object.prototype.hasOwnProperty.call(obj, prop); }
+/******/ 	}();
+/******/ 	
+/******/ 	/* webpack/runtime/load script */
+/******/ 	!function() {
+/******/ 		var inProgress = {};
+/******/ 		var dataWebpackPrefix = "brag-book-gallery:";
+/******/ 		// loadScript function to load a script via script tag
+/******/ 		__webpack_require__.l = function(url, done, key, chunkId) {
+/******/ 			if(inProgress[url]) { inProgress[url].push(done); return; }
+/******/ 			var script, needAttach;
+/******/ 			if(key !== undefined) {
+/******/ 				var scripts = document.getElementsByTagName("script");
+/******/ 				for(var i = 0; i < scripts.length; i++) {
+/******/ 					var s = scripts[i];
+/******/ 					if(s.getAttribute("src") == url || s.getAttribute("data-webpack") == dataWebpackPrefix + key) { script = s; break; }
+/******/ 				}
+/******/ 			}
+/******/ 			if(!script) {
+/******/ 				needAttach = true;
+/******/ 				script = document.createElement('script');
+/******/ 		
+/******/ 				script.charset = 'utf-8';
+/******/ 				if (__webpack_require__.nc) {
+/******/ 					script.setAttribute("nonce", __webpack_require__.nc);
+/******/ 				}
+/******/ 				script.setAttribute("data-webpack", dataWebpackPrefix + key);
+/******/ 		
+/******/ 				script.src = url;
+/******/ 			}
+/******/ 			inProgress[url] = [done];
+/******/ 			var onScriptComplete = function(prev, event) {
+/******/ 				// avoid mem leaks in IE.
+/******/ 				script.onerror = script.onload = null;
+/******/ 				clearTimeout(timeout);
+/******/ 				var doneFns = inProgress[url];
+/******/ 				delete inProgress[url];
+/******/ 				script.parentNode && script.parentNode.removeChild(script);
+/******/ 				doneFns && doneFns.forEach(function(fn) { return fn(event); });
+/******/ 				if(prev) return prev(event);
+/******/ 			}
+/******/ 			var timeout = setTimeout(onScriptComplete.bind(null, undefined, { type: 'timeout', target: script }), 120000);
+/******/ 			script.onerror = onScriptComplete.bind(null, script.onerror);
+/******/ 			script.onload = onScriptComplete.bind(null, script.onload);
+/******/ 			needAttach && document.head.appendChild(script);
+/******/ 		};
 /******/ 	}();
 /******/ 	
 /******/ 	/* webpack/runtime/make namespace object */
@@ -11458,6 +8273,121 @@ class PhoneFormatter {
 /******/ 		};
 /******/ 	}();
 /******/ 	
+/******/ 	/* webpack/runtime/publicPath */
+/******/ 	!function() {
+/******/ 		var scriptUrl;
+/******/ 		if (__webpack_require__.g.importScripts) scriptUrl = __webpack_require__.g.location + "";
+/******/ 		var document = __webpack_require__.g.document;
+/******/ 		if (!scriptUrl && document) {
+/******/ 			if (document.currentScript && document.currentScript.tagName.toUpperCase() === 'SCRIPT')
+/******/ 				scriptUrl = document.currentScript.src;
+/******/ 			if (!scriptUrl) {
+/******/ 				var scripts = document.getElementsByTagName("script");
+/******/ 				if(scripts.length) {
+/******/ 					var i = scripts.length - 1;
+/******/ 					while (i > -1 && (!scriptUrl || !/^http(s?):/.test(scriptUrl))) scriptUrl = scripts[i--].src;
+/******/ 				}
+/******/ 			}
+/******/ 		}
+/******/ 		// When supporting browsers where an automatic publicPath is not supported you must specify an output.publicPath manually via configuration
+/******/ 		// or pass an empty string ("") and set the __webpack_public_path__ variable from your code to use your own logic.
+/******/ 		if (!scriptUrl) throw new Error("Automatic publicPath is not supported in this browser");
+/******/ 		scriptUrl = scriptUrl.replace(/^blob:/, "").replace(/#.*$/, "").replace(/\?.*$/, "").replace(/\/[^\/]+$/, "/");
+/******/ 		__webpack_require__.p = scriptUrl;
+/******/ 	}();
+/******/ 	
+/******/ 	/* webpack/runtime/jsonp chunk loading */
+/******/ 	!function() {
+/******/ 		// no baseURI
+/******/ 		
+/******/ 		// object to store loaded and loading chunks
+/******/ 		// undefined = chunk not loaded, null = chunk preloaded/prefetched
+/******/ 		// [resolve, reject, Promise] = chunk loading, 0 = chunk loaded
+/******/ 		var installedChunks = {
+/******/ 			"frontend": 0
+/******/ 		};
+/******/ 		
+/******/ 		__webpack_require__.f.j = function(chunkId, promises) {
+/******/ 				// JSONP chunk loading for javascript
+/******/ 				var installedChunkData = __webpack_require__.o(installedChunks, chunkId) ? installedChunks[chunkId] : undefined;
+/******/ 				if(installedChunkData !== 0) { // 0 means "already installed".
+/******/ 		
+/******/ 					// a Promise means "currently loading".
+/******/ 					if(installedChunkData) {
+/******/ 						promises.push(installedChunkData[2]);
+/******/ 					} else {
+/******/ 						if(true) { // all chunks have JS
+/******/ 							// setup Promise in chunk cache
+/******/ 							var promise = new Promise(function(resolve, reject) { installedChunkData = installedChunks[chunkId] = [resolve, reject]; });
+/******/ 							promises.push(installedChunkData[2] = promise);
+/******/ 		
+/******/ 							// start chunk loading
+/******/ 							var url = __webpack_require__.p + __webpack_require__.u(chunkId);
+/******/ 							// create error before stack unwound to get useful stacktrace later
+/******/ 							var error = new Error();
+/******/ 							var loadingEnded = function(event) {
+/******/ 								if(__webpack_require__.o(installedChunks, chunkId)) {
+/******/ 									installedChunkData = installedChunks[chunkId];
+/******/ 									if(installedChunkData !== 0) installedChunks[chunkId] = undefined;
+/******/ 									if(installedChunkData) {
+/******/ 										var errorType = event && (event.type === 'load' ? 'missing' : event.type);
+/******/ 										var realSrc = event && event.target && event.target.src;
+/******/ 										error.message = 'Loading chunk ' + chunkId + ' failed.\n(' + errorType + ': ' + realSrc + ')';
+/******/ 										error.name = 'ChunkLoadError';
+/******/ 										error.type = errorType;
+/******/ 										error.request = realSrc;
+/******/ 										installedChunkData[1](error);
+/******/ 									}
+/******/ 								}
+/******/ 							};
+/******/ 							__webpack_require__.l(url, loadingEnded, "chunk-" + chunkId, chunkId);
+/******/ 						}
+/******/ 					}
+/******/ 				}
+/******/ 		};
+/******/ 		
+/******/ 		// no prefetching
+/******/ 		
+/******/ 		// no preloaded
+/******/ 		
+/******/ 		// no HMR
+/******/ 		
+/******/ 		// no HMR manifest
+/******/ 		
+/******/ 		// no on chunks loaded
+/******/ 		
+/******/ 		// install a JSONP callback for chunk loading
+/******/ 		var webpackJsonpCallback = function(parentChunkLoadingFunction, data) {
+/******/ 			var chunkIds = data[0];
+/******/ 			var moreModules = data[1];
+/******/ 			var runtime = data[2];
+/******/ 			// add "moreModules" to the modules object,
+/******/ 			// then flag all "chunkIds" as loaded and fire callback
+/******/ 			var moduleId, chunkId, i = 0;
+/******/ 			if(chunkIds.some(function(id) { return installedChunks[id] !== 0; })) {
+/******/ 				for(moduleId in moreModules) {
+/******/ 					if(__webpack_require__.o(moreModules, moduleId)) {
+/******/ 						__webpack_require__.m[moduleId] = moreModules[moduleId];
+/******/ 					}
+/******/ 				}
+/******/ 				if(runtime) var result = runtime(__webpack_require__);
+/******/ 			}
+/******/ 			if(parentChunkLoadingFunction) parentChunkLoadingFunction(data);
+/******/ 			for(;i < chunkIds.length; i++) {
+/******/ 				chunkId = chunkIds[i];
+/******/ 				if(__webpack_require__.o(installedChunks, chunkId) && installedChunks[chunkId]) {
+/******/ 					installedChunks[chunkId][0]();
+/******/ 				}
+/******/ 				installedChunks[chunkId] = 0;
+/******/ 			}
+/******/ 		
+/******/ 		}
+/******/ 		
+/******/ 		var chunkLoadingGlobal = self["webpackChunkbrag_book_gallery"] = self["webpackChunkbrag_book_gallery"] || [];
+/******/ 		chunkLoadingGlobal.forEach(webpackJsonpCallback.bind(null, 0));
+/******/ 		chunkLoadingGlobal.push = webpackJsonpCallback.bind(null, chunkLoadingGlobal.push.bind(chunkLoadingGlobal));
+/******/ 	}();
+/******/ 	
 /************************************************************************/
 var __webpack_exports__ = {};
 // This entry needs to be wrapped in an IIFE because it needs to be isolated against other modules in the chunk.
@@ -11466,55 +8396,17 @@ var __webpack_exports__ = {};
   !*** ./src/js/frontend.js ***!
   \****************************/
 __webpack_require__.r(__webpack_exports__);
-/* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   BRAGbookGalleryApp: function() { return /* reexport safe */ _modules_main_app_js__WEBPACK_IMPORTED_MODULE_0__["default"]; },
-/* harmony export */   Carousel: function() { return /* reexport safe */ _modules_carousel_js__WEBPACK_IMPORTED_MODULE_1__["default"]; },
-/* harmony export */   Dialog: function() { return /* reexport safe */ _modules_dialog_js__WEBPACK_IMPORTED_MODULE_2__["default"]; },
-/* harmony export */   FavoritesManager: function() { return /* reexport safe */ _modules_favorites_manager_js__WEBPACK_IMPORTED_MODULE_5__["default"]; },
-/* harmony export */   FilterSystem: function() { return /* reexport safe */ _modules_filter_system_js__WEBPACK_IMPORTED_MODULE_3__["default"]; },
-/* harmony export */   MobileMenu: function() { return /* reexport safe */ _modules_mobile_menu_js__WEBPACK_IMPORTED_MODULE_4__["default"]; },
-/* harmony export */   NudityWarningManager: function() { return /* reexport safe */ _modules_utilities_js__WEBPACK_IMPORTED_MODULE_8__.NudityWarningManager; },
-/* harmony export */   PhoneFormatter: function() { return /* reexport safe */ _modules_utilities_js__WEBPACK_IMPORTED_MODULE_8__.PhoneFormatter; },
-/* harmony export */   SearchAutocomplete: function() { return /* reexport safe */ _modules_search_autocomplete_js__WEBPACK_IMPORTED_MODULE_7__["default"]; },
-/* harmony export */   ShareManager: function() { return /* reexport safe */ _modules_share_manager_js__WEBPACK_IMPORTED_MODULE_6__["default"]; }
-/* harmony export */ });
-/* harmony import */ var _modules_main_app_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./modules/main-app.js */ "./src/js/modules/main-app.js");
-/* harmony import */ var _modules_carousel_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./modules/carousel.js */ "./src/js/modules/carousel.js");
-/* harmony import */ var _modules_dialog_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./modules/dialog.js */ "./src/js/modules/dialog.js");
-/* harmony import */ var _modules_filter_system_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./modules/filter-system.js */ "./src/js/modules/filter-system.js");
-/* harmony import */ var _modules_mobile_menu_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./modules/mobile-menu.js */ "./src/js/modules/mobile-menu.js");
-/* harmony import */ var _modules_favorites_manager_js__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./modules/favorites-manager.js */ "./src/js/modules/favorites-manager.js");
-/* harmony import */ var _modules_share_manager_js__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./modules/share-manager.js */ "./src/js/modules/share-manager.js");
-/* harmony import */ var _modules_search_autocomplete_js__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./modules/search-autocomplete.js */ "./src/js/modules/search-autocomplete.js");
-/* harmony import */ var _modules_utilities_js__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ./modules/utilities.js */ "./src/js/modules/utilities.js");
-/* harmony import */ var _modules_global_utilities_js__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ./modules/global-utilities.js */ "./src/js/modules/global-utilities.js");
+/* harmony import */ var _modules_global_utilities_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./modules/global-utilities.js */ "./src/js/modules/global-utilities.js");
 /**
  * BRAG book Gallery - Main Entry Point
  *
- * This file serves as the main entry point for the BRAG book Gallery application.
- * It imports and initializes all components in the correct order.
+ * Importing global-utilities triggers DOMContentLoaded bootstrapping, which
+ * in turn instantiates BRAGbookGalleryApp. The heavy modules (FilterSystem,
+ * FavoritesManager, SearchAutocomplete, ShareManager) are loaded on demand
+ * via dynamic import() inside main-app.js, so they don't sit in the main
+ * bundle.
  */
 
-// Import all components and utilities
-
-
-
-
-
-
-
-
-
-
-// Import global utilities (this will execute the initialization code)
-
-
-// Make components available on window for global access
-
-// Export all components for external use if needed
-
-
-// Initialize the main application (this happens automatically when global-utilities.js is imported)
 }();
 /******/ })()
 ;

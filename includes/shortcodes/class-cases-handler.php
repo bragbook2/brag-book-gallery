@@ -254,26 +254,26 @@ final class Cases_Handler {
 
 		// Enqueue the main gallery CSS and JS since our cases use the same styles
 		$plugin_version = Setup::get_plugin_version();
+		$suffix         = Asset_Manager::get_asset_suffix();
 
-		// Enqueue CSS using Setup class asset URL method
+		// Reuse the canonical handle so duplicate enqueues from other shortcodes collapse.
 		wp_enqueue_style(
-			'brag-book-gallery',
-			Setup::get_asset_url( 'assets/css/brag-book-gallery.css' ),
+			'brag-book-gallery-main',
+			Setup::get_asset_url( 'assets/css/brag-book-gallery' . $suffix . '.css' ),
 			[],
 			$plugin_version
 		);
 
-		// Enqueue JavaScript using Setup class asset URL method
 		wp_enqueue_script(
-			'brag-book-gallery',
-			Setup::get_asset_url( 'assets/js/brag-book-gallery.js' ),
+			'brag-book-gallery-main',
+			Setup::get_asset_url( 'assets/js/brag-book-gallery' . $suffix . '.js' ),
 			[],
 			$plugin_version,
 			true
 		);
 
 		// Localize script with necessary data for AJAX and functionality
-		wp_localize_script( 'brag-book-gallery', 'bragBookGalleryConfig', [
+		wp_localize_script( 'brag-book-gallery-main', 'bragBookGalleryConfig', [
 			'ajaxUrl' => admin_url( 'admin-ajax.php' ),
 			'nonce'   => wp_create_nonce( 'brag_book_gallery_nonce' ),
 		] );
@@ -424,14 +424,15 @@ final class Cases_Handler {
 			$sidebar_data = Data_Fetcher::get_sidebar_data( $api_tokens[0], $website_property_ids[0] );
 		}
 
-		// Localize script with necessary data for filters
+		// Localize script with necessary data for filters. The case dataset is
+		// emitted as a separate inline script (see Gallery_Handler) so we don't
+		// duplicate it here.
 		Asset_Manager::localize_gallery_script(
 			[
 				'api_token'           => $atts['api_token'],
 				'website_property_id' => $atts['website_property_id'],
 			],
-			$sidebar_data,
-			$cases_data
+			$sidebar_data
 		);
 
 		// Render cases grid using WordPress posts instead of API data.
@@ -2516,6 +2517,7 @@ final class Cases_Handler {
 												<img src="<?php echo esc_url( $carousel_url ); ?>"
 													 alt="<?php echo esc_attr( $image_alt ); ?><?php echo count( $carousel_images ) > 1 ? ' - Angle ' . ( (int) $index + 1 ) : ''; ?>"
 													 loading="<?php echo 0 === $index ? 'eager' : 'lazy'; ?>"
+													 decoding="async"
 													 data-image-type="carousel"
 													 data-image-url="<?php echo esc_url( $carousel_url ); ?>"
 													 onload="if(<?php echo (int) $index; ?>===0){this.closest('.brag-book-gallery-image-container').querySelector('.brag-book-gallery-skeleton-loader').style.display='none';}"
@@ -2549,6 +2551,7 @@ final class Cases_Handler {
 									<img src="<?php echo esc_url( $image_url ); ?>"
 										 alt="<?php echo esc_attr( $image_alt ); ?>"
 										 loading="eager"
+										 decoding="async"
 										 data-image-type="single"
 										 data-image-url="<?php echo esc_url( $image_url ); ?>"
 										 onload="this.closest('.brag-book-gallery-image-container').querySelector('.brag-book-gallery-skeleton-loader').style.display='none';"
@@ -2572,6 +2575,7 @@ final class Cases_Handler {
 										<img src="<?php echo esc_url( $image_url ); ?>"
 											 alt="<?php echo esc_attr( $image_alt ); ?>"
 											 loading="eager"
+											 decoding="async"
 											 data-image-type="single"
 											 data-image-url="<?php echo esc_url( $image_url ); ?>"
 											 onload="this.closest('.brag-book-gallery-image-container').querySelector('.brag-book-gallery-skeleton-loader').style.display='none';"

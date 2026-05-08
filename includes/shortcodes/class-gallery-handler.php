@@ -338,11 +338,7 @@ final class Gallery_Handler {
 		Asset_Manager::enqueue_gallery_assets();
 
 		// Localize script with minimal configuration for forms
-		Asset_Manager::localize_gallery_script(
-			[],
-			[],
-			[]
-		);
+		Asset_Manager::localize_gallery_script( [], [] );
 
 		// Ensure consultation form configuration is available
 		Asset_Manager::ensure_consultation_form_config();
@@ -644,11 +640,7 @@ final class Gallery_Handler {
 		Asset_Manager::enqueue_gallery_assets();
 
 		// Localize script with minimal configuration for forms
-		Asset_Manager::localize_gallery_script(
-			[],
-			[],
-			[]
-		);
+		Asset_Manager::localize_gallery_script( [], [] );
 
 		// Ensure consultation form configuration is available
 		Asset_Manager::ensure_consultation_form_config();
@@ -718,11 +710,7 @@ final class Gallery_Handler {
 		Asset_Manager::enqueue_gallery_assets();
 
 		// Localize script with minimal configuration for forms
-		Asset_Manager::localize_gallery_script(
-			[],
-			[],
-			[]
-		);
+		Asset_Manager::localize_gallery_script( [], [] );
 
 		// Ensure consultation form configuration is available
 		Asset_Manager::ensure_consultation_form_config();
@@ -1103,8 +1091,7 @@ final class Gallery_Handler {
 				'api_token'           => $api_token,
 				'website_property_id' => $website_property_id,
 			],
-			[], // Empty sidebar data for now - will be populated by JavaScript
-			[]  // Empty cases data - will be populated by JavaScript
+			[] // Sidebar data is populated by JavaScript at runtime.
 		);
 
 		// Ensure consultation form configuration is available
@@ -2073,7 +2060,8 @@ final class Gallery_Handler {
 									<img
 										src="<?php echo esc_url( $image['url'] ?? '' ); ?>"
 										alt="Before - Case <?php echo esc_attr( $case_id ); ?>"
-										loading="lazy">
+										loading="lazy"
+										decoding="async">
 								<?php endforeach; ?>
 							</div>
 						</div>
@@ -2087,7 +2075,8 @@ final class Gallery_Handler {
 									<img
 										src="<?php echo esc_url( $image['url'] ?? '' ); ?>"
 										alt="After - Case <?php echo esc_attr( $case_id ); ?>"
-										loading="lazy">
+										loading="lazy"
+										decoding="async">
 								<?php endforeach; ?>
 							</div>
 						</div>
@@ -2725,11 +2714,7 @@ final class Gallery_Handler {
 		Asset_Manager::enqueue_gallery_assets();
 
 		// Localize script with minimal configuration for forms
-		Asset_Manager::localize_gallery_script(
-			[],
-			[],
-			[]
-		);
+		Asset_Manager::localize_gallery_script( [], [] );
 
 		// Ensure consultation form configuration is available
 		Asset_Manager::ensure_consultation_form_config();

@@ -12,6 +12,7 @@ module.exports = (env, argv) => {
 		cache: false,
 		entry: {
 			frontend: './src/js/frontend.js',
+			'carousel-frontend': './src/js/carousel-frontend.js',
 			admin: './src/js/admin.js',
 			'sync-admin': './src/js/sync-admin.js',
 			'stage-sync': './src/js/stage-sync.js'
@@ -22,6 +23,7 @@ module.exports = (env, argv) => {
 				// Map entry names to desired output filenames
 				const nameMap = {
 					frontend: 'brag-book-gallery.js',
+					'carousel-frontend': 'brag-book-gallery-carousel.js',
 					admin: 'brag-book-gallery-admin.js',
 					'sync-admin': 'brag-book-gallery-sync-admin.js',
 					'stage-sync': 'brag-book-gallery-stage-sync.js'
@@ -29,7 +31,18 @@ module.exports = (env, argv) => {
 				const baseName = nameMap[pathData.chunk.name] || '[name].js';
 				// Add .min suffix for production builds
 				return isProduction ? baseName.replace('.js', '.min.js') : baseName;
-			}
+			},
+			// Async chunks (dynamic imports in main-app.js) get stable names so
+			// they cache well across deploys. Names come from the
+			// webpackChunkName magic comment at each import() site.
+			chunkFilename: (pathData) => {
+				const name = pathData.chunk.name || `chunk-${pathData.chunk.id}`;
+				return isProduction ? `${name}.min.js` : `${name}.js`;
+			},
+			// 'auto' lets webpack derive the chunk URL from document.currentScript
+			// at runtime, so chunks load correctly regardless of where the plugin
+			// is installed.
+			publicPath: 'auto',
 		},
 		module: {
 			rules: [
