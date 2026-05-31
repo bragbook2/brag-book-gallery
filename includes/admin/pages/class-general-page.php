@@ -687,6 +687,7 @@ class General_Page extends Settings_Base {
 		$enable_favorites    = (bool) get_option( 'brag_book_gallery_enable_favorites', true );
 		$enable_consultation = (bool) get_option( 'brag_book_gallery_enable_consultation', true );
 		$show_doctor         = (bool) get_option( 'brag_book_gallery_show_doctor', false );
+		$enable_powered_by   = (bool) get_option( 'brag_book_gallery_enable_powered_by', false );
 
 		// Property ID validation.
 		$website_property_ids = (array) get_option( 'brag_book_gallery_website_property_id', array() );
@@ -1254,6 +1255,27 @@ class General_Page extends Settings_Base {
 					</div>
 					<p class="description">
 						<?php esc_html_e( 'When enabled, the "Ready for the next step?" text, "Request a Consultation" button, and consultation dialog will be shown. When disabled, all consultation elements are hidden.', 'brag-book-gallery' ); ?>
+					</p>
+				</div>
+
+				<!-- Powered By Toggle -->
+				<div class="display-settings-option">
+					<div class="brag-book-gallery-toggle-wrapper">
+						<label class="brag-book-gallery-toggle">
+							<input type="hidden" name="brag_book_gallery_enable_powered_by" value="0" />
+							<input type="checkbox"
+							       id="brag_book_gallery_enable_powered_by"
+							       name="brag_book_gallery_enable_powered_by"
+							       value="1"
+							       <?php checked( $enable_powered_by, true ); ?> />
+							<span class="brag-book-gallery-toggle-slider"></span>
+						</label>
+						<span class="brag-book-gallery-toggle-label">
+							<?php esc_html_e( 'Display a "Powered by BRAG book Gallery" link in the gallery', 'brag-book-gallery' ); ?>
+						</span>
+					</div>
+					<p class="description">
+						<?php esc_html_e( 'When enabled, a "Powered by BRAG book Gallery" attribution link is shown in the gallery sidebar. Disabled by default.', 'brag-book-gallery' ); ?>
 					</p>
 				</div>
 			</div>
@@ -2140,6 +2162,7 @@ class General_Page extends Settings_Base {
 			'brag_book_gallery_enable_favorites',
 			'brag_book_gallery_enable_consultation',
 			'brag_book_gallery_show_doctor',
+			'brag_book_gallery_enable_powered_by',
 		);
 
 		foreach ( $features as $feature ) {

@@ -36,6 +36,7 @@ function brag_book_gallery_delete_options() {
 		'brag_book_gallery_items_per_page',
 		'brag_book_gallery_columns',
 		'brag_book_gallery_enable_favorites',
+		'brag_book_gallery_enable_powered_by',
 		'brag_book_gallery_enable_sharing',
 		'brag_book_gallery_enable_nudity_warning',
 		'brag_book_gallery_enable_lightbox',

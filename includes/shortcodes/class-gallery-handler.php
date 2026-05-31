@@ -1302,14 +1302,16 @@ final class Gallery_Handler {
 							<?php esc_html_e( 'Request a Consultation', 'brag-book-gallery' ); ?>
 						</button>
 					<?php endif; ?>
-					<div class="brag-book-gallery-powered-by">
-						<?php esc_html_e( 'Powered by', 'brag-book-gallery' ); ?>
-						<a href="https://bragbookgallery.com/"
-						   class="brag-book-gallery-powered-by-link"
-						>
-							<?php esc_html_e( 'BRAG book Gallery', 'brag-book-gallery' ); ?>
-						</a>
-					</div>
+					<?php if ( (bool) get_option( 'brag_book_gallery_enable_powered_by', false ) ) : ?>
+						<div class="brag-book-gallery-powered-by">
+							<?php esc_html_e( 'Powered by', 'brag-book-gallery' ); ?>
+							<a href="https://bragbookgallery.com/"
+							   class="brag-book-gallery-powered-by-link"
+							>
+								<?php esc_html_e( 'BRAG book Gallery', 'brag-book-gallery' ); ?>
+							</a>
+						</div>
+					<?php endif; ?>
 				</div>
 
 				<div class="brag-book-gallery-main-content" role="region"
