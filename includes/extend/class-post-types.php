@@ -261,6 +261,10 @@ class Post_Types {
 		$doctor_suffix        = get_post_meta( $post->ID, 'brag_book_gallery_doctor_suffix', true );
 		$member_id            = get_post_meta( $post->ID, 'brag_book_gallery_member_id', true );
 
+		// Status flags.
+		$featured        = get_post_meta( $post->ID, 'brag_book_gallery_featured', true );
+		$top_performing  = get_post_meta( $post->ID, 'brag_book_gallery_top_performing', true );
+
 		// Patient Info.
 		$age         = get_post_meta( $post->ID, 'brag_book_gallery_patient_age', true );
 		$gender      = get_post_meta( $post->ID, 'brag_book_gallery_gender', true );
@@ -319,6 +323,32 @@ class Post_Types {
 					<div id="api-basic" class="tab-content active">
 						<h4><?php esc_html_e( 'Basic Information', 'brag-book-gallery' ); ?></h4>
 						<table class="form-table">
+						<tr>
+							<th scope="row">
+								<label for="brag_book_gallery_featured"><?php esc_html_e( 'Featured', 'brag-book-gallery' ); ?></label>
+							</th>
+							<td>
+								<input type="checkbox" id="brag_book_gallery_featured"
+									   name="brag_book_gallery_featured"
+									   value="1"
+									   <?php checked( $featured, '1' ); ?>/>
+								<label for="brag_book_gallery_featured"><?php esc_html_e( 'Mark this case as featured', 'brag-book-gallery' ); ?></label>
+								<p class="description"><?php esc_html_e( 'Flags this case as featured.', 'brag-book-gallery' ); ?></p>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row">
+								<label for="brag_book_gallery_top_performing"><?php esc_html_e( 'Top Performing', 'brag-book-gallery' ); ?></label>
+							</th>
+							<td>
+								<input type="checkbox" id="brag_book_gallery_top_performing"
+									   name="brag_book_gallery_top_performing"
+									   value="1"
+									   <?php checked( $top_performing, '1' ); ?>/>
+								<label for="brag_book_gallery_top_performing"><?php esc_html_e( 'Mark this case as top performing', 'brag-book-gallery' ); ?></label>
+								<p class="description"><?php esc_html_e( 'Flags this case as top performing.', 'brag-book-gallery' ); ?></p>
+							</td>
+						</tr>
 						<tr>
 							<th scope="row">
 								<label
@@ -1024,6 +1054,8 @@ class Post_Types {
 			// Handle checkboxes separately (they may not be present in $_POST if unchecked)
 			$checkbox_fields = array(
 				'brag_book_gallery_postop_revision_surgery',
+				'brag_book_gallery_featured',
+				'brag_book_gallery_top_performing',
 			);
 
 			foreach ( $checkbox_fields as $field ) {
