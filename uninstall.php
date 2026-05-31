@@ -158,6 +158,45 @@ function brag_book_gallery_clear_cron() {
 	wp_clear_scheduled_hook( 'brag_book_gallery_auto_sync' );
 }
 
+/**
+ * Remove the plugin's custom permalink rewrite rules.
+ *
+ * The plugin injects rewrite rules built on the gallery slug — the
+ * `brag_book_cases` post type and `brag_book_procedures` taxonomy both use
+ * it — plus a `/myfavorites` endpoint and the XML sitemap rule. WordPress
+ * persists the resolved rules in the `rewrite_rules` option.
+ *
+ * During uninstall the plugin is not loaded, so its post types, taxonomies
+ * and custom `add_rewrite_rule()` calls are never registered. A
+ * `flush_rewrite_rules()` call in this context cannot dependably regenerate
+ * a clean rule set, which left the plugin's rules baked into the option and
+ * caused sitewide 404s after the plugin was deleted.
+ *
+ * Deleting the `rewrite_rules` option forces WordPress to rebuild the rules
+ * from scratch — without the plugin's rules — on the next front-end request.
+ * The rewrite-flush flag options are removed alongside it so no stale state
+ * survives a later reinstall.
+ *
+ * @since 4.6.0
+ */
+function brag_book_gallery_clean_rewrite_rules() {
+
+	// Drop the cached rewrite rules so WordPress rebuilds them cleanly.
+	delete_option( 'rewrite_rules' );
+
+	// Remove the flags that gate the plugin's rewrite-rule flushing.
+	$rewrite_flags = array(
+		'brag_book_gallery_flush_rewrite_rules',
+		'brag_book_gallery_case_url_structure_updated',
+		'brag_book_gallery_favorites_rewrite_fixed',
+		'brag_book_taxonomy_version',
+	);
+
+	foreach ( $rewrite_flags as $flag ) {
+		delete_option( $flag );
+	}
+}
+
 // Execute cleanup.
 brag_book_gallery_delete_options();
 brag_book_gallery_delete_transients();
@@ -166,5 +205,6 @@ brag_book_gallery_delete_terms();
 brag_book_gallery_drop_tables();
 brag_book_gallery_clear_cron();
 
-// Flush rewrite rules after removing custom post types and taxonomies.
-flush_rewrite_rules();
+// Remove the plugin's custom rewrite rules so WordPress rebuilds a clean
+// rule set, preventing stale gallery rules from causing sitewide 404s.
+brag_book_gallery_clean_rewrite_rules();
