@@ -32,6 +32,7 @@ use BRAGBookGallery\Includes\Extend\Post_Types;
 use BRAGBookGallery\Includes\Extend\Taxonomies;
 use BRAGBookGallery\Includes\Extend\Template_Manager;
 use BRAGBookGallery\Includes\Resources\Assets;
+use BRAGBookGallery\Includes\SEO\Adjacent_Links;
 use BRAGBookGallery\Includes\SEO\Content_Meta_Description;
 use BRAGBookGallery\Includes\SEO\On_Page;
 use BRAGBookGallery\Includes\SEO\Sitemap;
@@ -347,6 +348,7 @@ final class Setup {
 		$this->services['sitemap'] = new Sitemap();
 		$this->services['on_page_seo'] = new On_Page();
 		$this->services['content_meta_description'] = new Content_Meta_Description();
+		$this->services['adjacent_links'] = new Adjacent_Links();
 
 		// Initialize communications handler.
 		$this->services['communications'] = new Communications();
