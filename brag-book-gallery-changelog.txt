@@ -1,5 +1,18 @@
 === BRAGBook Gallery Changelog ===
 
+= 4.6.0-beta3 (2026-06-01) =
+
+Fixed:
+* SEO rel next/prev - Yoast SEO and Rank Math no longer emit bogus rel="next"/rel="prev" links (e.g. /gallery/breast-augmentation/page/2/) on gallery pages, procedure archives, and single-case views; the gallery renders its full result set on one page via JS/AJAX so those paginated URLs do not exist. Suppression is scoped to BRAG book gallery contexts only, using each plugin's documented disable filter (wpseo_disable_adjacent_rel_links and rank_math/frontend/disable_adjacent_rel_links)
+* Uninstall now removes the plugin's custom permalink rewrite rules (the gallery-slug post type and taxonomy rules, the /myfavorites endpoint, and the sitemap rule) by clearing the rewrite_rules option so WordPress rebuilds a clean rule set on the next request; previously these stale rules remained after deletion and caused sitewide 404 errors
+
+Added:
+* "Powered by BRAG book Gallery" display option in Display & Gallery Settings, disabled by default; when enabled an attribution link is shown in the gallery sidebar
+* "Featured" and "Top Performing" true/false toggles on case posts (API Case Data -> Basic Info); both save through the case_api_data nonce-guarded handler so API syncs do not reset them
+
+Changed:
+* Removed default padding on the shared gallery button base so button sizing is driven explicitly by each variant
+
 = 4.6.0-beta2 (2026-05-08) =
 
 Performance:

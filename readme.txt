@@ -4,7 +4,7 @@ Tags: gallery, before-after, medical, cosmetic, procedures
 Requires at least: 6.8
 Tested up to: 6.9
 Requires PHP: 8.2
-Stable tag: 4.6.0-beta2
+Stable tag: 4.6.0-beta3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -92,6 +92,13 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 
 == Changelog ==
 
+= 4.6.0-beta3 =
+* Fixed: Yoast SEO and Rank Math no longer emit bogus `rel="next"` / `rel="prev"` pagination links (e.g. `/gallery/breast-augmentation/page/2/`) on gallery pages, procedure archives, and single-case views. The gallery renders its full result set on one page via JS/AJAX, so those paginated URLs do not exist; suppression is scoped to BRAG book gallery contexts only via each plugin's documented disable filter.
+* Fixed: Uninstalling the plugin now removes its custom permalink rewrite rules (the gallery-slug post type and taxonomy rules, the `/myfavorites` endpoint, and the sitemap rule) by clearing the `rewrite_rules` option so WordPress rebuilds cleanly. Previously these stale rules remained after deletion and caused sitewide 404 errors.
+* Added: New "Powered by BRAG book Gallery" display option in Display & Gallery Settings. Disabled by default; when enabled, an attribution link is shown in the gallery sidebar.
+* Added: "Featured" and "Top Performing" true/false toggles on case posts (API Case Data → Basic Info). Both save through the `case_api_data` nonce-guarded handler, so API syncs do not reset them.
+* Changed: Removed default padding on the shared gallery button base so button sizing is driven explicitly by each variant.
+
 = 4.6.0-beta2 =
 * Performance: Carousel LCP fix — first slide now renders with `loading="eager"` and `fetchpriority="high"`; other slides remain lazy. Closes Lighthouse's "LCP request discovery" gap on homepage hero carousels.
 * Performance: Shipped `assets/.htaccess` that sets `Cache-Control: public, max-age=31536000, immutable` on every static asset under the plugin's `assets/` directory. Filenames are version-busted, so 1-year immutable is safe. Resolves Lighthouse's "Use efficient cache lifetimes" diagnostic that previously flagged plugin assets at the host's default 12-hour TTL.
@@ -153,6 +160,9 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 * Improved: Removed artificial sync delays
 
 == Upgrade Notice ==
+
+= 4.6.0-beta3 =
+Adds Featured / Top Performing case toggles and an optional "Powered by" link, fixes bogus SEO rel=next/prev pagination links on gallery views, and removes stale rewrite rules on uninstall to prevent sitewide 404s.
 
 = 4.6.0-beta2 =
 Builds on 4.6.0-beta1 with two Lighthouse fixes: the first carousel slide is now flagged as the LCP candidate (eager + fetchpriority="high"), and a shipped `assets/.htaccess` extends static-asset cache lifetimes from 12h to 1 year (immutable, safe because filenames are version-busted).
