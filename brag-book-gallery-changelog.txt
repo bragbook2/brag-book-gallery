@@ -1,5 +1,10 @@
 === BRAGBook Gallery Changelog ===
 
+= 4.6.0-beta4 (2026-06-01) =
+
+Fixed:
+* Nudity warning on short overlays - the title/caption/button previously stacked and overlapped, becoming unreadable on cards with very short heights; the content now lays out side by side when the overlay is too short (height-based CSS container query, container-type: size on the overlay) and reverts to the stacked layout once the overlay is tall enough
+
 = 4.6.0-beta3 (2026-06-01) =
 
 Fixed:

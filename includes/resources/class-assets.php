@@ -67,7 +67,7 @@ class Assets {
 	 * @since 3.0.0
 	 * @var string
 	 */
-	private const ASSET_VERSION = '4.6.0-beta3';
+	private const ASSET_VERSION = '4.6.0-beta4';
 
 	/**
 	 * Cache TTL constants for performance optimization

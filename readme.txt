@@ -4,7 +4,7 @@ Tags: gallery, before-after, medical, cosmetic, procedures
 Requires at least: 6.8
 Tested up to: 6.9
 Requires PHP: 8.2
-Stable tag: 4.6.0-beta3
+Stable tag: 4.6.0-beta4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -92,6 +92,9 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 
 == Changelog ==
 
+= 4.6.0-beta4 =
+* Fixed: On short case overlays the nudity warning's title, caption, and button no longer stack and overlap unreadably. The content now switches to a side-by-side layout when the overlay is too short — implemented with a height-based CSS container query — and reverts to the stacked layout once there is enough vertical room.
+
 = 4.6.0-beta3 =
 * Fixed: Yoast SEO and Rank Math no longer emit bogus `rel="next"` / `rel="prev"` pagination links (e.g. `/gallery/breast-augmentation/page/2/`) on gallery pages, procedure archives, and single-case views. The gallery renders its full result set on one page via JS/AJAX, so those paginated URLs do not exist; suppression is scoped to BRAG book gallery contexts only via each plugin's documented disable filter.
 * Fixed: Uninstalling the plugin now removes its custom permalink rewrite rules (the gallery-slug post type and taxonomy rules, the `/myfavorites` endpoint, and the sitemap rule) by clearing the `rewrite_rules` option so WordPress rebuilds cleanly. Previously these stale rules remained after deletion and caused sitewide 404 errors.
@@ -160,6 +163,9 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 * Improved: Removed artificial sync delays
 
 == Upgrade Notice ==
+
+= 4.6.0-beta4 =
+Fixes the nudity warning overlapping itself on short case overlays by switching to a side-by-side layout when vertical space is tight.
 
 = 4.6.0-beta3 =
 Adds Featured / Top Performing case toggles and an optional "Powered by" link, fixes bogus SEO rel=next/prev pagination links on gallery views, and removes stale rewrite rules on uninstall to prevent sitewide 404s.
