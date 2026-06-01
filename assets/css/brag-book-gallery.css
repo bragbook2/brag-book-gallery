@@ -314,6 +314,7 @@ body.brag-book-gallery-page:not(.disable-custom-font) .brag-book-gallery-favorit
   border-radius: var(--wp--custom--brag-book-gallery--rounded-full);
   font-size: var(--wp--custom--brag-book-gallery--text-sm);
   font-weight: var(--wp--custom--brag-book-gallery--font-weight--semibold);
+  padding: 0 !important;
   cursor: pointer;
   transition: var(--wp--custom--brag-book-gallery--transition);
   position: relative;
@@ -4758,6 +4759,8 @@ body.brag-book-gallery-hide-filter-counts .brag-book-gallery-nav-count {
   border-radius: var(--wp--custom--brag-book-gallery--rounded, 4px);
   pointer-events: all;
   cursor: default;
+  container-type: size;
+  container-name: nudity-warning;
 }
 .brag-book-gallery-nudity-warning-content {
   display: flex;
@@ -4801,6 +4804,17 @@ body.brag-book-gallery-hide-filter-counts .brag-book-gallery-nav-count {
 .brag-book-gallery-nudity-warning-blur {
   filter: blur(20px);
   transition: filter 0.5s ease;
+}
+@container nudity-warning (max-height: 220px) {
+  .brag-book-gallery-nudity-warning-content {
+    flex-direction: row;
+    flex-wrap: wrap;
+    column-gap: var(--wp--custom--brag-book-gallery--spacer--md, 12px);
+    row-gap: var(--wp--custom--brag-book-gallery--spacer--xs, 4px);
+  }
+  .brag-book-gallery-nudity-warning-caption {
+    margin-bottom: 0;
+  }
 }
 
 .brag-book-gallery-powered-by {

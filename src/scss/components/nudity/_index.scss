@@ -26,6 +26,13 @@
 	pointer-events: all;
 	cursor: default;
 
+	// Establish a size container so the content can respond to the available
+	// HEIGHT of the overlay. The overlay is absolutely positioned to fill its
+	// card, so its height is determinate (it never derives from its content),
+	// which is what makes `container-type: size` safe here.
+	container-type: size;
+	container-name: nudity-warning;
+
 	&-content {
 		display: flex;
 		flex-direction: column;
@@ -73,6 +80,24 @@
 	&-blur {
 		filter: blur(20px);
 		transition: filter .5s ease
+	}
+
+	// When the overlay is too short for the stacked title/caption/button to
+	// fit without clipping or overlapping, lay the content out side by side
+	// instead. Once the overlay is tall enough the query stops matching and
+	// the default stacked (column) layout returns.
+	@container nudity-warning (max-height: 220px) {
+		&-content {
+			flex-direction: row;
+			flex-wrap: wrap;
+			column-gap: var(--wp--custom--brag-book-gallery--spacer--md,12px);
+			row-gap: var(--wp--custom--brag-book-gallery--spacer--xs,4px);
+		}
+
+		// Drop the large stacked-layout spacing that pushes the button down.
+		&-caption {
+			margin-bottom: 0;
+		}
 	}
 }
 
