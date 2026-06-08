@@ -93,6 +93,30 @@ class Changelog_Page extends Settings_Base {
 				</div>
 			</div>
 
+			<!-- Version 4.6.0-beta9 -->
+			<div class="brag-book-gallery-section">
+				<div class="brag-book-gallery-changelog-version">
+					<h3>
+						<span class="version-badge version-beta">v4.6.0-beta9</span>
+						<?php esc_html_e( 'June 8, 2026', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Beta Release', 'brag-book-gallery' ); ?>
+					</h3>
+					<div class="brag-book-gallery-card">
+						<p><?php esc_html_e( 'Find a Provider dialog overhaul: larger layout, numbered results, and map pins.', 'brag-book-gallery' ); ?></p>
+						<h4><?php esc_html_e( '🔄 Changed', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'The Find a Provider dialog is now 80% of the viewport height and at least 1280px wide on desktop, and full-screen on mobile. Padding was removed from the header and inner content so the map fills the dialog edge-to-edge.', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Result cards are now equal size and numbered by distance (1–10, nearest first), with the list capped at the ten closest practices.', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'The "use my location" target icon is vertically centered within the search input, and the radius selector uses a custom SVG arrow.', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '✨ Added', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'A Reset button in the search bar that clears the search, your-location pin, and radius filter and restores the full list.', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'The map now shows a numbered pin for each result that matches its card number; clicking a pin opens an info window with the practice name, address, phone, website, and providers, and highlights the matching card.', 'brag-book-gallery' ); ?></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
 			<!-- Version 4.6.0-beta8 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">

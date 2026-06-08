@@ -2,20 +2,24 @@
  * BRAG book Gallery — Find a Provider locator.
  *
  * Store-locator modal: a geo-based list of practices/providers with a Google
- * map. Hand-written vanilla JS (not part of the webpack bundle) enqueued by
- * Provider_Finder. Reads config from window.bragBookProviderFinder.
+ * map. Built as a webpack entry (brag-book-gallery-provider-finder). Reads
+ * config from window.bragBookProviderFinder.
  *
  * @since 4.6.0
  */
 (function () {
 	'use strict';
 
+	var MAX_RESULTS = 10;
+
 	var config = window.bragBookProviderFinder || {};
 	var dialog = null;
 	var map = null;
 	var geocoder = null;
+	var infoWindow = null;
 	var markers = [];
 	var practices = [];
+	var currentOrdered = [];
 	var loaded = false;
 	var originMarker = null;
 	var lastOrigin = null;
@@ -78,8 +82,235 @@
 		return div.innerHTML;
 	}
 
+	function practiceAddress(p) {
+		if (p.address) {
+			return p.address;
+		}
+		return [[p.city, p.state].filter(Boolean).join(', '), p.zip].filter(Boolean).join(' ');
+	}
+
 	/**
-	 * Fetch practices once, then render the list and markers.
+	 * Compute the displayed list: filter by radius + sort by distance when an
+	 * origin is set, capped at MAX_RESULTS (numbered 1–10).
+	 */
+	function getOrdered(origin) {
+		var ordered = practices.slice();
+		if (origin) {
+			var radius = getRadius();
+			ordered.forEach(function (p) {
+				p._distance = (p.lat != null && p.lng != null)
+					? distanceMiles(origin, { lat: p.lat, lng: p.lng })
+					: Number.POSITIVE_INFINITY;
+			});
+			ordered = ordered
+				.filter(function (p) { return p._distance <= radius; })
+				.sort(function (a, b) { return a._distance - b._distance; });
+		}
+		return ordered.slice(0, MAX_RESULTS);
+	}
+
+	function providersHtml(p) {
+		if (!Array.isArray(p.providers) || !p.providers.length) {
+			return '';
+		}
+		var html = '<ul class="brag-book-gallery-provider-finder-providers">';
+		p.providers.forEach(function (prov) {
+			var avatar = prov.image
+				? '<img src="' + escapeHtml(prov.image) + '" alt="" width="24" height="24" />'
+				: '<span class="brag-book-gallery-provider-finder-avatar--placeholder"></span>';
+			html += '<li>' + avatar + '<span>' + escapeHtml(prov.name) + '</span></li>';
+		});
+		return html + '</ul>';
+	}
+
+	function metaHtml(p) {
+		var meta = '';
+		if (p.phone) {
+			meta += '<a class="brag-book-gallery-provider-finder-phone" href="tel:' + escapeHtml(p.phone) + '">' + escapeHtml(p.phone) + '</a>';
+		}
+		if (p.website) {
+			meta += '<a class="brag-book-gallery-provider-finder-website" href="' + escapeHtml(p.website) + '" target="_blank" rel="noopener">Website</a>';
+		}
+		if (Array.isArray(p.accreditations) && p.accreditations.length) {
+			meta += '<span class="brag-book-gallery-provider-finder-accred">' + escapeHtml(p.accreditations.join(', ')) + '</span>';
+		}
+		return meta ? '<div class="brag-book-gallery-provider-finder-meta">' + meta + '</div>' : '';
+	}
+
+	/**
+	 * Render the numbered practice cards.
+	 */
+	function renderList(ordered, origin) {
+		var listEl = document.getElementById('bbProviderFinderList');
+		if (!listEl) {
+			return;
+		}
+
+		if (!ordered.length) {
+			var emptyMsg = origin
+				? 'No practices within ' + getRadius() + ' miles.'
+				: 'No practices found.';
+			listEl.innerHTML = '<p class="brag-book-gallery-provider-finder-empty">' + emptyMsg + '</p>';
+			return;
+		}
+
+		var html = '';
+		ordered.forEach(function (p, i) {
+			var address = practiceAddress(p);
+			var distance = (origin && isFinite(p._distance))
+				? '<span class="brag-book-gallery-provider-finder-distance">' + p._distance.toFixed(1) + ' mi</span>'
+				: '';
+
+			html += '<button type="button" class="brag-book-gallery-provider-finder-item" data-practice-id="' + p.id + '">'
+				+ '<span class="brag-book-gallery-provider-finder-rank">' + (i + 1) + '</span>'
+				+ '<span class="brag-book-gallery-provider-finder-item-body">'
+				+ '<span class="brag-book-gallery-provider-finder-item-head">'
+				+ '<span class="brag-book-gallery-provider-finder-name">' + escapeHtml(p.name) + '</span>'
+				+ distance
+				+ '</span>'
+				+ (address ? '<span class="brag-book-gallery-provider-finder-address">' + escapeHtml(address) + '</span>' : '')
+				+ metaHtml(p)
+				+ providersHtml(p)
+				+ '</span>'
+				+ '</button>';
+		});
+
+		listEl.innerHTML = html;
+	}
+
+	/**
+	 * Info window content shown when a pin is clicked.
+	 */
+	function infoWindowHtml(p, index) {
+		var address = practiceAddress(p);
+		var html = '<div class="brag-book-gallery-provider-finder-infowindow">'
+			+ '<strong>' + (index + 1) + '. ' + escapeHtml(p.name) + '</strong>';
+		if (address) {
+			html += '<div>' + escapeHtml(address) + '</div>';
+		}
+		if (p.phone) {
+			html += '<div><a href="tel:' + escapeHtml(p.phone) + '">' + escapeHtml(p.phone) + '</a></div>';
+		}
+		if (p.website) {
+			html += '<div><a href="' + escapeHtml(p.website) + '" target="_blank" rel="noopener">Website</a></div>';
+		}
+		if (Array.isArray(p.providers) && p.providers.length) {
+			html += '<div>' + escapeHtml(p.providers.map(function (pr) { return pr.name; }).join(', ')) + '</div>';
+		}
+		return html + '</div>';
+	}
+
+	function clearMarkers() {
+		markers.forEach(function (m) { m.setMap(null); });
+		markers = [];
+	}
+
+	/**
+	 * Render numbered pins matching the card order; clicking a pin opens its
+	 * details and highlights the card.
+	 */
+	function renderMarkers(ordered) {
+		if (!map) {
+			return;
+		}
+		if (!infoWindow) {
+			infoWindow = new google.maps.InfoWindow();
+		}
+
+		clearMarkers();
+		var bounds = new google.maps.LatLngBounds();
+		var placed = 0;
+
+		ordered.forEach(function (p, i) {
+			if (p.lat == null || p.lng == null) {
+				return;
+			}
+			var position = { lat: p.lat, lng: p.lng };
+			var marker = new google.maps.Marker({
+				position: position,
+				map: map,
+				title: p.name,
+				label: { text: String(i + 1), color: '#ffffff', fontWeight: '700', fontSize: '12px' }
+			});
+			marker._practiceId = p.id;
+			marker.addListener('click', function () {
+				infoWindow.setContent(infoWindowHtml(p, i));
+				infoWindow.open(map, marker);
+				focusPractice(p.id, false);
+			});
+			markers.push(marker);
+			bounds.extend(position);
+			placed++;
+		});
+
+		if (placed > 0) {
+			map.fitBounds(bounds);
+			if (placed === 1) {
+				map.setZoom(12);
+			}
+		}
+	}
+
+	/**
+	 * Highlight a practice in the list and (optionally) pan the map to it.
+	 */
+	function focusPractice(id, pan) {
+		document.querySelectorAll('.brag-book-gallery-provider-finder-item').forEach(function (item) {
+			var active = parseInt(item.dataset.practiceId, 10) === id;
+			item.classList.toggle('is-active', active);
+			if (active) {
+				item.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+			}
+		});
+
+		var marker = markers.find(function (m) { return m._practiceId === id; });
+		if (map && marker) {
+			if (pan) {
+				map.panTo(marker.getPosition());
+				map.setZoom(Math.max(map.getZoom(), 12));
+			}
+			if (infoWindow) {
+				var p = currentOrdered.find(function (pr) { return pr.id === id; });
+				var idx = currentOrdered.indexOf(p);
+				if (p) {
+					infoWindow.setContent(infoWindowHtml(p, idx));
+					infoWindow.open(map, marker);
+				}
+			}
+		}
+	}
+
+	/**
+	 * Refresh both the list and the pins for the current origin/radius.
+	 */
+	function refresh(origin) {
+		currentOrdered = getOrdered(origin);
+		renderList(currentOrdered, origin);
+		renderMarkers(currentOrdered);
+	}
+
+	/**
+	 * Initialise the map, then render the pins for the current list.
+	 */
+	function initMap() {
+		var mapEl = document.getElementById('bbProviderFinderMap');
+		if (!mapEl) {
+			return;
+		}
+
+		geocoder = new google.maps.Geocoder();
+		map = new google.maps.Map(mapEl, {
+			zoom: 4,
+			center: { lat: 39.5, lng: -98.35 },
+			mapTypeControl: false,
+			streetViewControl: false
+		});
+
+		renderMarkers(currentOrdered);
+	}
+
+	/**
+	 * Fetch practices once, then render the list and pins.
 	 */
 	function loadPractices() {
 		if (loaded) {
@@ -106,7 +337,8 @@
 					return;
 				}
 				practices = json.data.practices;
-				renderList(practices, null);
+				currentOrdered = getOrdered(null);
+				renderList(currentOrdered, null);
 				if (config.hasMap) {
 					whenGoogleReady(initMap);
 				}
@@ -119,161 +351,11 @@
 	}
 
 	/**
-	 * Build the practice list. When an origin is supplied, sort by distance.
-	 */
-	function renderList(items, origin) {
-		var listEl = document.getElementById('bbProviderFinderList');
-		if (!listEl) {
-			return;
-		}
-
-		var ordered = items.slice();
-		var radius = getRadius();
-		if (origin) {
-			ordered.forEach(function (p) {
-				p._distance = (p.lat != null && p.lng != null)
-					? distanceMiles(origin, { lat: p.lat, lng: p.lng })
-					: Number.POSITIVE_INFINITY;
-			});
-			ordered = ordered.filter(function (p) { return p._distance <= radius; });
-			ordered.sort(function (a, b) { return a._distance - b._distance; });
-		}
-
-		if (!ordered.length) {
-			var emptyMsg = origin
-				? 'No practices within ' + radius + ' miles.'
-				: 'No practices found.';
-			listEl.innerHTML = '<p class="brag-book-gallery-provider-finder-empty">' + emptyMsg + '</p>';
-			return;
-		}
-
-		var html = '';
-		ordered.forEach(function (p) {
-			var addressParts = [p.address];
-			if (!p.address) {
-				addressParts = [
-					[p.city, p.state].filter(Boolean).join(', '),
-					p.zip
-				].filter(Boolean);
-			}
-			var address = addressParts.filter(Boolean).join(' ');
-
-			var providersHtml = '';
-			if (Array.isArray(p.providers) && p.providers.length) {
-				providersHtml = '<ul class="brag-book-gallery-provider-finder-providers">';
-				p.providers.forEach(function (prov) {
-					var avatar = prov.image
-						? '<img src="' + escapeHtml(prov.image) + '" alt="" width="24" height="24" />'
-						: '<span class="brag-book-gallery-provider-finder-avatar--placeholder"></span>';
-					providersHtml += '<li>' + avatar + '<span>' + escapeHtml(prov.name) + '</span></li>';
-				});
-				providersHtml += '</ul>';
-			}
-
-			var distanceHtml = (origin && isFinite(p._distance))
-				? '<span class="brag-book-gallery-provider-finder-distance">' + p._distance.toFixed(1) + ' mi</span>'
-				: '';
-
-			var meta = '';
-			if (p.phone) {
-				meta += '<a class="brag-book-gallery-provider-finder-phone" href="tel:' + escapeHtml(p.phone) + '">' + escapeHtml(p.phone) + '</a>';
-			}
-			if (p.website) {
-				meta += '<a class="brag-book-gallery-provider-finder-website" href="' + escapeHtml(p.website) + '" target="_blank" rel="noopener">Website</a>';
-			}
-			if (Array.isArray(p.accreditations) && p.accreditations.length) {
-				meta += '<span class="brag-book-gallery-provider-finder-accred">' + escapeHtml(p.accreditations.join(', ')) + '</span>';
-			}
-
-			html += '<button type="button" class="brag-book-gallery-provider-finder-item" data-practice-id="' + p.id + '">'
-				+ '<div class="brag-book-gallery-provider-finder-item-head">'
-				+ '<span class="brag-book-gallery-provider-finder-name">' + escapeHtml(p.name) + '</span>'
-				+ distanceHtml
-				+ '</div>'
-				+ (address ? '<span class="brag-book-gallery-provider-finder-address">' + escapeHtml(address) + '</span>' : '')
-				+ (meta ? '<div class="brag-book-gallery-provider-finder-meta">' + meta + '</div>' : '')
-				+ providersHtml
-				+ '</button>';
-		});
-
-		listEl.innerHTML = html;
-	}
-
-	/**
-	 * Initialise the map and a marker per geocoded practice.
-	 */
-	function initMap() {
-		var mapEl = document.getElementById('bbProviderFinderMap');
-		if (!mapEl) {
-			return;
-		}
-
-		geocoder = new google.maps.Geocoder();
-		map = new google.maps.Map(mapEl, {
-			zoom: 4,
-			center: { lat: 39.5, lng: -98.35 },
-			mapTypeControl: false,
-			streetViewControl: false
-		});
-
-		clearMarkers();
-		var bounds = new google.maps.LatLngBounds();
-		var placed = 0;
-
-		practices.forEach(function (p) {
-			if (p.lat == null || p.lng == null) {
-				return;
-			}
-			var position = { lat: p.lat, lng: p.lng };
-			var marker = new google.maps.Marker({ position: position, map: map, title: p.name });
-			marker._practiceId = p.id;
-			marker.addListener('click', function () { focusPractice(p.id, false); });
-			markers.push(marker);
-			bounds.extend(position);
-			placed++;
-		});
-
-		if (placed > 0) {
-			map.fitBounds(bounds);
-			if (placed === 1) {
-				map.setZoom(12);
-			}
-		}
-	}
-
-	function clearMarkers() {
-		markers.forEach(function (m) { m.setMap(null); });
-		markers = [];
-	}
-
-	/**
-	 * Highlight a practice in the list and (optionally) pan the map to it.
-	 */
-	function focusPractice(id, pan) {
-		var items = document.querySelectorAll('.brag-book-gallery-provider-finder-item');
-		items.forEach(function (item) {
-			var active = parseInt(item.dataset.practiceId, 10) === id;
-			item.classList.toggle('is-active', active);
-			if (active) {
-				item.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-			}
-		});
-
-		if (pan && map) {
-			var marker = markers.find(function (m) { return m._practiceId === id; });
-			if (marker) {
-				map.panTo(marker.getPosition());
-				map.setZoom(Math.max(map.getZoom(), 12));
-			}
-		}
-	}
-
-	/**
-	 * Recenter from a {lat,lng} origin: drop an origin marker and re-sort.
+	 * Recenter from a {lat,lng} origin: drop an origin marker and re-rank.
 	 */
 	function applyOrigin(origin) {
 		lastOrigin = origin;
-		renderList(practices, origin);
+		refresh(origin);
 		if (!map) {
 			return;
 		}
@@ -291,19 +373,15 @@
 				fillOpacity: 1,
 				strokeColor: '#ffffff',
 				strokeWeight: 2
-			}
+			},
+			zIndex: 999
 		});
-		map.panTo(origin);
-		map.setZoom(9);
 	}
 
 	function handleSearch() {
 		var input = document.getElementById('bbProviderFinderSearch');
 		var query = input ? input.value.trim() : '';
-		if (!query) {
-			return;
-		}
-		if (!config.hasMap) {
+		if (!query || !config.hasMap) {
 			return;
 		}
 		whenGoogleReady(function () {
@@ -325,13 +403,32 @@
 		}
 		navigator.geolocation.getCurrentPosition(function (pos) {
 			var origin = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-			lastOrigin = origin;
 			if (config.hasMap) {
 				whenGoogleReady(function () { applyOrigin(origin); });
 			} else {
-				renderList(practices, origin);
+				lastOrigin = origin;
+				refresh(origin);
 			}
 		});
+	}
+
+	/**
+	 * Reset the search: clear the input/origin and show all practices again.
+	 */
+	function handleReset() {
+		var input = document.getElementById('bbProviderFinderSearch');
+		if (input) {
+			input.value = '';
+		}
+		lastOrigin = null;
+		if (originMarker) {
+			originMarker.setMap(null);
+			originMarker = null;
+		}
+		if (infoWindow) {
+			infoWindow.close();
+		}
+		refresh(null);
 	}
 
 	function openDialog() {
@@ -348,6 +445,7 @@
 		if (map) {
 			whenGoogleReady(function () {
 				google.maps.event.trigger(map, 'resize');
+				renderMarkers(currentOrdered);
 			});
 		}
 	}
@@ -382,6 +480,9 @@
 			} else if (e.target.closest('[data-action="provider-finder-locate"]')) {
 				e.preventDefault();
 				handleLocate();
+			} else if (e.target.closest('[data-action="provider-finder-reset"]')) {
+				e.preventDefault();
+				handleReset();
 			} else {
 				var item = e.target.closest('.brag-book-gallery-provider-finder-item');
 				if (item) {
@@ -397,7 +498,6 @@
 			}
 		});
 
-		// Enter in the search field triggers a search.
 		var searchInput = document.getElementById('bbProviderFinderSearch');
 		if (searchInput) {
 			searchInput.addEventListener('keydown', function (e) {
@@ -412,9 +512,7 @@
 		var radiusSelect = document.getElementById('bbProviderFinderRadius');
 		if (radiusSelect) {
 			radiusSelect.addEventListener('change', function () {
-				if (lastOrigin) {
-					renderList(practices, lastOrigin);
-				}
+				refresh(lastOrigin);
 			});
 		}
 	}

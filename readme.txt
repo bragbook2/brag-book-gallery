@@ -4,7 +4,7 @@ Tags: gallery, before-after, medical, cosmetic, procedures
 Requires at least: 6.8
 Tested up to: 6.9
 Requires PHP: 8.2
-Stable tag: 4.6.0-beta8
+Stable tag: 4.6.0-beta9
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -91,6 +91,13 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 4. Sync management interface
 
 == Changelog ==
+
+= 4.6.0-beta9 =
+* Changed: The "Find a Provider" dialog is now 80% of the viewport height and at least 1280px wide on desktop, and goes full-screen on mobile. Padding was removed from the header and inner content so the map fills the dialog edge-to-edge.
+* Added: A Reset button in the search bar that clears the search, your-location pin, and radius filter and restores the full list.
+* Changed: Result cards are now equal size and numbered by distance (1–10, nearest first), with the list capped at the ten closest practices.
+* Added: The map now shows a numbered pin for each result that matches its card number; clicking a pin opens an info window with the practice name, address, phone, website, and providers, and highlights the matching card.
+* Changed: The "use my location" target icon is vertically centered within the search input, and the radius selector uses a custom SVG arrow.
 
 = 4.6.0-beta8 =
 * Changed: Sync Stage 4 now actively looks up each provider's practices (by provider id, via `/api/plugin/v2/practices`) and creates the practice posts with their post meta — previously it only reported counts. It runs as a visible step within Stage 3 and Full Sync, and the sync highlights Stage 4 on completion when Providers and Practices are enabled (otherwise it ends on Stage 3).

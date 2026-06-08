@@ -194,6 +194,7 @@ class Provider_Finder {
 						<option value="100"><?php esc_html_e( '100 miles', 'brag-book-gallery' ); ?></option>
 					</select>
 					<button type="button" class="brag-book-gallery-button" data-action="provider-finder-search"><?php esc_html_e( 'Search', 'brag-book-gallery' ); ?></button>
+					<button type="button" class="brag-book-gallery-button brag-book-gallery-provider-finder-reset" data-action="provider-finder-reset"><?php esc_html_e( 'Reset', 'brag-book-gallery' ); ?></button>
 				</div>
 				<div class="brag-book-gallery-provider-finder-body">
 					<div class="brag-book-gallery-provider-finder-list" id="bbProviderFinderList" aria-live="polite"></div>
