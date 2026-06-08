@@ -4,7 +4,7 @@ Tags: gallery, before-after, medical, cosmetic, procedures
 Requires at least: 6.8
 Tested up to: 6.9
 Requires PHP: 8.2
-Stable tag: 4.6.0-beta7
+Stable tag: 4.6.0-beta8
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -91,6 +91,14 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 4. Sync management interface
 
 == Changelog ==
+
+= 4.6.0-beta8 =
+* Changed: Sync Stage 4 now actively looks up each provider's practices (by provider id, via `/api/plugin/v2/practices`) and creates the practice posts with their post meta — previously it only reported counts. It runs as a visible step within Stage 3 and Full Sync, and the sync highlights Stage 4 on completion when Providers and Practices are enabled (otherwise it ends on Stage 3).
+* Added: A `provider_id` term meta on provider terms (the API providers[].id, used as the providerID for the practices lookup), shown below Member ID in the provider editor.
+* Changed: The "Find a Provider" button now appears in the tiles/alternative view's filter bar, between the Favorites and Request Consultation buttons.
+* Changed: The "Display image processing disclaimer" option now defaults to off.
+* Fixed: Testing the `/api/plugin/v2/practices` endpoint on the Debug page no longer returns "Unsupported endpoint" (a duplicate legacy API-test handler was missing the case).
+* Fixed: The sync progress bar now hides after Stage 4 finishes when run on its own.
 
 = 4.6.0-beta7 =
 * Fixed: The "Find a Provider" locator script is now bundled into the release build. In 4.6.0-beta6 the build's clean step removed the hand-written script, so the locator dialog did nothing; it is now a proper build entry and ships correctly. Contains all 4.6.0-beta6 changes.

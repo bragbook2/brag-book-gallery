@@ -1327,11 +1327,6 @@ final class Gallery_Handler {
 							<?php esc_html_e( 'Request a Consultation', 'brag-book-gallery' ); ?>
 						</button>
 					<?php endif; ?>
-					<?php
-					// Find a Provider trigger (next to the consultation button).
-					// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- markup escaped within render_button().
-					echo \BRAGBookGallery\Includes\Extend\Provider_Finder::render_button( 'controls' );
-					?>
 					<?php if ( (bool) get_option( 'brag_book_gallery_enable_powered_by', false ) ) : ?>
 						<div class="brag-book-gallery-powered-by">
 							<?php esc_html_e( 'Powered by', 'brag-book-gallery' ); ?>
@@ -2705,6 +2700,12 @@ final class Gallery_Handler {
 						<span class="brag-book-gallery-favorites-link-count" data-favorites-count>0</span>
 					</a>
 				<?php endif; ?>
+
+				<!-- Find a Provider (between favorites and consultation) -->
+				<?php
+				// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- markup escaped within render_button().
+				echo \BRAGBookGallery\Includes\Extend\Provider_Finder::render_button( 'title' );
+				?>
 
 				<!-- Request Consultation Button -->
 				<?php if ( \BRAGBookGallery\Includes\Core\Settings_Helper::is_consultation_enabled() ) : ?>

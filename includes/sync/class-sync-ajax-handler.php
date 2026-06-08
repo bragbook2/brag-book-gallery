@@ -730,22 +730,23 @@ class Sync_Ajax_Handler {
 			wp_send_json_error( 'Providers and Practices must both be enabled.' );
 		}
 
-		$database = new \BRAGBookGallery\Includes\Data\Database();
-		$stats    = $database->get_registry_stats();
+		if ( session_status() === PHP_SESSION_ACTIVE ) {
+			session_write_close();
+		}
 
-		$providers = isset( $stats['provider'] ) ? absint( $stats['provider'] ) : 0;
-		$practices = isset( $stats['practice'] ) ? absint( $stats['practice'] ) : 0;
+		// Fetch each provider's practices from /v2/practices and create them.
+		$sync   = new \BRAGBookGallery\Includes\Sync\Chunked_Data_Sync();
+		$result = $sync->execute_stage_4();
+
+		if ( empty( $result['success'] ) ) {
+			wp_send_json_error( $result['message'] ?? 'Stage 4 failed' );
+		}
 
 		wp_send_json_success(
 			[
-				'providers_created' => $providers,
-				'practices_created' => $practices,
-				'message'           => sprintf(
-					/* translators: 1: providers count, 2: practices count */
-					__( 'Stage 4 complete: %1$d providers and %2$d practices.', 'brag-book-gallery' ),
-					$providers,
-					$practices
-				),
+				'providers_created' => $result['providers_processed'] ?? 0,
+				'practices_created' => $result['practices_created'] ?? 0,
+				'message'           => $result['message'] ?? '',
 			]
 		);
 	}

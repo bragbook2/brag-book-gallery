@@ -116,7 +116,11 @@ class StageSyncManager {
 			this.stage3Btn.addEventListener('click', () => this.executeStage3());
 		}
 		if (this.stage4Btn) {
-			this.stage4Btn.addEventListener('click', () => this.executeStage4());
+			this.stage4Btn.addEventListener('click', async () => {
+				await this.executeStage4();
+				await this.checkFileStatus();
+				setTimeout(() => this.fadeOut(this.stageProgress), 2500);
+			});
 		}
 		if (this.fullSyncBtn) {
 			this.fullSyncBtn.addEventListener('click', () => this.executeFullSync());
@@ -259,6 +263,10 @@ class StageSyncManager {
 			this.stage3Btn.classList.remove('button-primary');
 			this.stage3Btn.classList.add('button');
 		}
+		if (this.stage4Btn) {
+			this.stage4Btn.classList.remove('button-primary');
+			this.stage4Btn.classList.add('button');
+		}
 
 		// Determine which stage should be active (black)
 		if (!fileStatus.sync_data.exists) {
@@ -296,12 +304,21 @@ class StageSyncManager {
 				this.stage2Btn.disabled = false;
 				this.stage2Btn.title = 'Build case ID manifest';
 			}
-			// Stage 3 should be active (black) and enabled since both files exist
 			if (this.stage3Btn) {
-				this.stage3Btn.classList.remove('button');
-				this.stage3Btn.classList.add('button-primary');
 				this.stage3Btn.disabled = false;
 				this.stage3Btn.title = 'Process cases from manifest';
+			}
+
+			if (this.stage4Btn) {
+				// Providers & Practices enabled: Stage 4 is the final/current stage.
+				this.stage4Btn.classList.remove('button');
+				this.stage4Btn.classList.add('button-primary');
+				this.stage4Btn.disabled = false;
+				this.stage4Btn.title = 'Look up and create provider practices';
+			} else if (this.stage3Btn) {
+				// No Stage 4: Stage 3 is the final/current stage.
+				this.stage3Btn.classList.remove('button');
+				this.stage3Btn.classList.add('button-primary');
 			}
 		}
 	}
@@ -580,11 +597,7 @@ class StageSyncManager {
 		}
 
 		// All batches complete
-		this.showProgress('Stage 3 completed', 100);
-
 		const message = `Stage 3 completed: ${totalCreated} created, ${totalUpdated} updated${totalFailed > 0 ? `, ${totalFailed} failed` : ''} (${totalProcessed}/${totalCases} processed)`;
-
-		this.showNotice('success', message);
 
 		// Refresh file status to show Stage 3 status
 		await this.checkFileStatus();
@@ -592,10 +605,15 @@ class StageSyncManager {
 		// Auto-detect orphans after Stage 3 completes
 		await this.detectOrphans();
 
-		// Report providers & practices (Stage 4) when the feature is enabled.
+		// Stage 4: look up each provider's practices and create them.
+		// Runs as a visible step before Stage 3 is marked complete.
 		if (this.stage4Btn) {
 			await this.executeStage4();
+		} else {
+			this.showProgress('Stage 3 completed', 100);
 		}
+
+		this.showNotice('success', message);
 
 		// Hide progress after 2 seconds
 		setTimeout(() => {
@@ -604,13 +622,19 @@ class StageSyncManager {
 	}
 
 	/**
-	 * Execute Stage 4: report synced provider and practice counts.
+	 * Execute Stage 4: look up each provider's practices and create them.
+	 * Drives the progress bar so it is visible within Stage 3 / Full Sync.
 	 */
 	async executeStage4() {
-		const response = await this.makeAjaxRequest('brag_book_sync_stage_4');
+		this.showProgress('Stage 4: Looking up provider practices…', 95);
+		const response = await this.makeAjaxRequest('brag_book_sync_stage_4', {}, 120000);
 		if (response && response.success && response.data) {
 			this.displayStage4Status(response.data);
+			this.showProgress(response.data.message || 'Stage 4 completed', 100);
+		} else {
+			this.showProgress('Stage 4 failed', 100);
 		}
+		return response;
 	}
 
 	/**
@@ -785,17 +809,18 @@ class StageSyncManager {
 				total_cases: total,
 			});
 
-			this.showProgress('Full Sync completed', 100);
-			const finalMessage = `Full Sync complete — ${created} created, ${updated} updated${failed > 0 ? `, ${failed} failed` : ''} (${processed}/${total} cases)`;
-			this.showNotice('success', finalMessage);
-
 			await this.checkFileStatus();
 			await this.detectOrphans();
 
-			// Report providers & practices (Stage 4) when the feature is enabled.
+			// Stage 4: look up each provider's practices and create them.
+			// Runs as a visible step before the sync is marked complete.
 			if (this.stage4Btn) {
 				await this.executeStage4();
 			}
+
+			this.showProgress('Full Sync completed', 100);
+			const finalMessage = `Full Sync complete — ${created} created, ${updated} updated${failed > 0 ? `, ${failed} failed` : ''} (${processed}/${total} cases)`;
+			this.showNotice('success', finalMessage);
 
 			setTimeout(() => this.fadeOut(this.stageProgress), 3000);
 

@@ -93,6 +93,34 @@ class Changelog_Page extends Settings_Base {
 				</div>
 			</div>
 
+			<!-- Version 4.6.0-beta8 -->
+			<div class="brag-book-gallery-section">
+				<div class="brag-book-gallery-changelog-version">
+					<h3>
+						<span class="version-badge version-beta">v4.6.0-beta8</span>
+						<?php esc_html_e( 'June 8, 2026', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Beta Release', 'brag-book-gallery' ); ?>
+					</h3>
+					<div class="brag-book-gallery-card">
+						<p><?php esc_html_e( 'Sync Stage 4 now creates practices, plus Find a Provider and disclaimer refinements.', 'brag-book-gallery' ); ?></p>
+						<h4><?php esc_html_e( '🔄 Changed', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Sync Stage 4 now actively looks up each provider\'s practices (by provider id, via /api/plugin/v2/practices) and creates the practice posts with their post meta — previously it only reported counts. It runs as a visible step in Stage 3 and Full Sync, and the sync highlights Stage 4 on completion when Providers and Practices are enabled (otherwise it ends on Stage 3).', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'The Find a Provider button now appears in the tiles/alternative view filter bar, between the Favorites and Request Consultation buttons.', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'The Display image processing disclaimer option now defaults to off.', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '✨ Added', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'A provider_id term meta on provider terms (the API providers[].id used for the practices lookup), shown below Member ID in the provider editor.', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '🐛 Fixed', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Testing the /api/plugin/v2/practices endpoint on the Debug page no longer returns "Unsupported endpoint" (a duplicate legacy API-test handler was missing the case).', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'The sync progress bar now hides after Stage 4 finishes when run on its own.', 'brag-book-gallery' ); ?></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
 			<!-- Version 4.6.0-beta7 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">

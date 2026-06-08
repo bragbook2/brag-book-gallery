@@ -202,6 +202,21 @@ class API_Test_Page extends Settings_Base {
 					$response_body = wp_json_encode( $result );
 					break;
 
+				case 'practices-v2':
+					// Provider ID comes from the URL query string. The endpoint
+					// authenticates with the Bearer token only (no websitePropertyId).
+					$url_parts = wp_parse_url( esc_url_raw( wp_unslash( $_POST['url'] ?? '' ) ) );
+					parse_str( $url_parts['query'] ?? '', $query_params );
+
+					$provider_id = intval( $query_params['providerID'] ?? 0 );
+					if ( $provider_id <= 0 ) {
+						throw new \Exception( 'Valid Provider ID is required for the v2 practices endpoint' );
+					}
+
+					$result        = $endpoints->get_practices_v2( $api_tokens[0], $provider_id );
+					$response_body = wp_json_encode( $result );
+					break;
+
 				default:
 					throw new \Exception( 'Unsupported endpoint: ' . $endpoint );
 			}

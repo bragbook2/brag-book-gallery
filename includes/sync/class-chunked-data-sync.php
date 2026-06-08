@@ -1948,6 +1948,10 @@ class Chunked_Data_Sync {
 		$image_url  = isset( $provider_data['imageUrl'] ) ? esc_url_raw( (string) $provider_data['imageUrl'] ) : '';
 		$position   = absint( $provider_data['position'] ?? 0 );
 
+		// TEMP DIAGNOSTIC: reveal the exact provider object the sync receives so we
+		// can confirm whether the detail endpoint includes imageUrl. Debug-gated.
+		$this->debug_log( 'Chunked Sync: provider object for member ' . $member_id . ' keys=[' . implode( ',', array_keys( $provider_data ) ) . '] imageUrl=' . ( isset( $provider_data['imageUrl'] ) ? (string) $provider_data['imageUrl'] : '(absent)' ) );
+
 		// Display name: the API-provided full name wins (it already includes
 		// credentials), otherwise build from first + last, otherwise fall back.
 		$provider_name = $api_name;
@@ -2108,6 +2112,82 @@ class Chunked_Data_Sync {
 		if ( ! empty( $data['image_url'] ) ) {
 			update_term_meta( $term_id, 'provider_image_url', $data['image_url'] );
 		}
+	}
+
+	/**
+	 * Stage 4: fetch and create practices for every synced provider.
+	 *
+	 * Iterates the provider terms, takes each provider's API id, looks up its
+	 * practices on /api/plugin/v2/practices, and upserts the practice posts.
+	 * This is the dedicated practices step run from the Sync page.
+	 *
+	 * @since 4.6.0
+	 *
+	 * @return array Result with success flag, counts, and a message.
+	 */
+	public function execute_stage_4(): array {
+		if ( ! get_option( 'brag_book_gallery_enable_providers', false )
+			|| ! get_option( 'brag_book_gallery_enable_practices', false ) ) {
+			return [
+				'success' => false,
+				'message' => __( 'Providers and Practices must both be enabled.', 'brag-book-gallery' ),
+			];
+		}
+
+		if ( empty( $this->get_api_token() ) ) {
+			return [
+				'success' => false,
+				'message' => __( 'No API token configured.', 'brag-book-gallery' ),
+			];
+		}
+
+		$terms = get_terms( [
+			'taxonomy'   => Taxonomies::TAXONOMY_PROVIDERS,
+			'hide_empty' => false,
+		] );
+
+		if ( is_wp_error( $terms ) || empty( $terms ) ) {
+			return [
+				'success'             => true,
+				'providers_processed' => 0,
+				'practices_created'   => 0,
+				'message'             => __( 'No providers found. Run Stage 3 (Process Cases) first so providers exist.', 'brag-book-gallery' ),
+			];
+		}
+
+		$before    = (int) ( wp_count_posts( Post_Types::POST_TYPE_PRACTICES )->publish ?? 0 );
+		$processed = 0;
+
+		foreach ( $terms as $term ) {
+			// Prefer provider_id, fall back to the legacy provider_member_id.
+			$provider_id = absint( get_term_meta( $term->term_id, 'provider_id', true ) );
+			if ( $provider_id <= 0 ) {
+				$provider_id = absint( get_term_meta( $term->term_id, 'provider_member_id', true ) );
+			}
+
+			if ( $provider_id > 0 ) {
+				$this->maybe_sync_provider_practices( $provider_id, $term->term_id );
+				$processed++;
+			}
+		}
+
+		$after = (int) ( wp_count_posts( Post_Types::POST_TYPE_PRACTICES )->publish ?? 0 );
+
+		$this->debug_log( "Chunked Sync: Stage 4 processed {$processed} providers; practices total {$after} (was {$before})." );
+
+		return [
+			'success'             => true,
+			'providers_processed' => $processed,
+			'practices_created'   => $after,
+			'practices_new'       => max( 0, $after - $before ),
+			'message'             => sprintf(
+				/* translators: 1: providers processed, 2: total practices, 3: new practices */
+				__( 'Stage 4 complete: looked up practices for %1$d providers; %2$d practices (%3$d new).', 'brag-book-gallery' ),
+				$processed,
+				$after,
+				max( 0, $after - $before )
+			),
+		];
 	}
 
 	/**
