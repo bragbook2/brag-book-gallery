@@ -305,6 +305,26 @@ final class Gallery_Handler {
 	}
 
 	/**
+	 * Render the image processing disclaimer shown at the bottom of gallery views.
+	 *
+	 * Output is controlled by the `brag_book_gallery_enable_disclaimer` option,
+	 * which defaults to enabled.
+	 *
+	 * @return string Disclaimer HTML, or an empty string when disabled.
+	 * @since 3.3.2
+	 */
+	private static function render_disclaimer(): string {
+		if ( ! (bool) get_option( 'brag_book_gallery_enable_disclaimer', true ) ) {
+			return '';
+		}
+
+		return sprintf(
+			'<div class="brag-book-gallery-disclaimer"><p class="brag-book-gallery-disclaimer__text">%s</p></div>',
+			esc_html__( 'Gallery photos may include smart device processing, AI processing or standard image enhancements. These edits are applied to image quality only and are not intended to alter patient outcomes.', 'brag-book-gallery' )
+		);
+	}
+
+	/**
 	 * Handle procedures shortcode
 	 *
 	 * Displays cases in a tiles grid layout using WP_Query with lazy loading.
@@ -496,13 +516,10 @@ final class Gallery_Handler {
 				</div>
 			<?php endif; ?>
 
-			<?php if ( (bool) get_option( 'brag_book_gallery_enable_disclaimer', true ) ) : ?>
-				<div class="brag-book-gallery-disclaimer">
-					<p class="brag-book-gallery-disclaimer__text">
-						<?php esc_html_e( 'Gallery photos may include smart device processing, AI processing or standard image enhancements. These edits are applied to image quality only and are not intended to alter patient outcomes.', 'brag-book-gallery' ); ?>
-					</p>
-				</div>
-			<?php endif; ?>
+			<?php
+			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Markup is escaped within render_disclaimer().
+			echo self::render_disclaimer();
+			?>
 		</div>
 		<?php
 		return ob_get_clean();
@@ -1614,6 +1631,9 @@ final class Gallery_Handler {
 							</div>
 						</div>
 						<?php
+						// Image processing disclaimer, shown directly under the procedure cards.
+						// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Markup is escaped within render_disclaimer().
+						echo self::render_disclaimer();
 					} else {
 						// Show default gallery content
 						$default_landing_text = '<h2>Go ahead, browse our before & afters... visualize your possibilities.</h2>' . "\n" .
