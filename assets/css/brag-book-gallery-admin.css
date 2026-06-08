@@ -8515,6 +8515,7 @@ body.wp-admin #wpfooter {
 .brag-book-gallery-admin-wrap .stage-button {
   flex: 1;
   min-width: 130px;
+  line-height: 2;
   justify-content: flex-start;
   gap: var(--space-2-5, 0.625rem);
   padding: var(--space-2-5, 0.625rem) var(--space-4, 1rem);
@@ -8534,7 +8535,7 @@ body.wp-admin #wpfooter {
   opacity: 0.5;
   cursor: not-allowed;
 }
-.brag-book-gallery-admin-wrap .stage-button.stage-button--1 .stage-btn-number, .brag-book-gallery-admin-wrap .stage-button.stage-button--2 .stage-btn-number, .brag-book-gallery-admin-wrap .stage-button.stage-button--3 .stage-btn-number {
+.brag-book-gallery-admin-wrap .stage-button.stage-button--1 .stage-btn-number, .brag-book-gallery-admin-wrap .stage-button.stage-button--2 .stage-btn-number, .brag-book-gallery-admin-wrap .stage-button.stage-button--3 .stage-btn-number, .brag-book-gallery-admin-wrap .stage-button.stage-button--4 .stage-btn-number {
   background: var(--slate-200, #e2e8f0);
   color: var(--slate-600, #475569);
 }

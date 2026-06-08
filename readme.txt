@@ -4,7 +4,7 @@ Tags: gallery, before-after, medical, cosmetic, procedures
 Requires at least: 6.8
 Tested up to: 6.9
 Requires PHP: 8.2
-Stable tag: 4.6.0-beta5
+Stable tag: 4.6.0-beta6
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -92,10 +92,20 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 
 == Changelog ==
 
+= 4.6.0-beta6 =
+* Added: Practices are now synced as a new internal `brag_book_practices` custom post type, associated with providers. During sync each provider's practices are fetched from `/api/plugin/v2/practices` (by provider id) and upserted, with name, address, geo coordinates, phone, website, on-site surgical-suite flag, and accreditations stored as editable post meta on the practice (populated from the API, adjustable in the admin between syncs). Each practice is linked to its providers through the `brag_book_providers` taxonomy — the provider term (which carries the provider id) is assigned to the practice post — so providers connect to both cases and practices. Practices are an internal data feed (not publicly queryable); orphaned practices are pruned on sync like other synced records.
+* Added: "Enable Providers" and "Enable Practices" toggles on the General settings page (both off by default). Enable Providers gates the providers taxonomy and provider syncing; Enable Practices gates the practices sync and requires Providers to be enabled.
+* Added: The Cases list table shows a mini provider avatar next to each provider in the Providers column (API image, then a manually-uploaded photo, then a placeholder).
+* Added: Provider images are now captured during sync. The provider `imageUrl` from the `/api/plugin/v2/practices` response is saved to the provider term so it appears on the provider, the cases list, and the front end.
+* Added: "Find a Provider" store-locator modal (shown when Providers and Practices are enabled). It lists practices with their providers and plots them on a Google map, with a ZIP/city lookup, a "use my location" target icon, and a radius selector (5/10/25/50/100 miles) that filters results by distance. Adds a Google Maps API Key field on the General settings page (required for the map; needs the Maps JavaScript and Geocoding APIs).
+* Added: Sync — a Stage 4: Providers & Practices step (shown when both features are enabled) that reports, and highlights, how many providers and practices the sync holds. It runs automatically after Stage 3 / Full Sync.
+* Fixed: The gallery 2/3-column view buttons now reflect the saved Columns setting on load. Previously the JavaScript hardcoded the 3-column button as active and defaulted the grid to 3 columns, ignoring the setting (a saved per-visitor preference still wins).
+* Added: API test on the Debug page now includes the `/api/plugin/v2/practices` endpoint (with a Provider ID input); removed the retired `/api/plugin/combine/cases`, `/api/plugin/combine/filters`, `/api/plugin/sitemap`, and `/api/plugin/combine/cases/{id}` tests.
+
 = 4.6.0-beta5 =
 * Changed: Renamed the "Doctors" taxonomy to "Providers" (registered as `brag_book_providers`) throughout the plugin — admin menu, case displays, term/post meta, the display toggle, and sync. The terminology is more universal for related medical staff. Existing synced data (provider terms, their photos and meta, case associations, and sync-registry rows) is migrated automatically on upgrade, so no re-sync is required.
 * Changed: The provider taxonomy is now available to every account. Previously it was restricted to a single website property ID.
-* Changed: Provider sync now reads the v2 `providers` array (a case can have multiple providers) instead of the deprecated single `creator` object. Each provider is stored as a term with its API ID (`provider_member_id`, for reuse against /v2/providers), name, bio, image URL, and position. The case stores the ordered provider ID list in `brag_book_gallery_provider_ids`. All assigned providers render on the case detail and cards, ordered by the API position, with the API-supplied photo preferred over a manual upload.
+* Changed: Provider sync now reads the v2 `providers` array (a case can have multiple providers) instead of the deprecated single `creator` object. Each provider is stored as a term with its API ID (`provider_member_id`, for reuse against /v2/practices), name, bio, image URL, and position. The case stores the ordered provider ID list in `brag_book_gallery_provider_ids`. All assigned providers render on the case detail and cards, ordered by the API position, with the API-supplied photo preferred over a manual upload.
 * Added: `featured` and `topPerforming` from the API are mapped to the `brag_book_gallery_featured` and `brag_book_gallery_top_performing` case post meta during sync.
 
 = 4.6.0-beta4 =

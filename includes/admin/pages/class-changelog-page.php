@@ -93,6 +93,35 @@ class Changelog_Page extends Settings_Base {
 				</div>
 			</div>
 
+			<!-- Version 4.6.0-beta6 -->
+			<div class="brag-book-gallery-section">
+				<div class="brag-book-gallery-changelog-version">
+					<h3>
+						<span class="version-badge version-beta">v4.6.0-beta6</span>
+						<?php esc_html_e( 'June 8, 2026', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Beta Release', 'brag-book-gallery' ); ?>
+					</h3>
+					<div class="brag-book-gallery-card">
+						<p><?php esc_html_e( 'Adds practices (clinics/locations) as a new data type associated with providers.', 'brag-book-gallery' ); ?></p>
+						<h4><?php esc_html_e( '✨ Added', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Practices: a new internal brag_book_practices custom post type associated with providers. During sync each provider\'s practices are fetched from /api/plugin/v2/practices (by provider id) and upserted, with name, address, geo coordinates, phone, website, on-site surgical-suite flag, and accreditations stored as editable post meta (populated from the API, adjustable in the admin between syncs).', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Provider/practice linking: each practice is linked to its providers through the brag_book_providers taxonomy. The provider term (which carries the provider id) is assigned to the practice post, so providers connect to both cases and practices.', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Practices are an internal data feed (not publicly queryable); orphaned practices are pruned on sync like other synced records.', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Enable Providers and Enable Practices toggles on the General settings page (both off by default). Enable Providers gates the providers taxonomy and provider syncing; Enable Practices gates the practices sync and requires Providers to be enabled.', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'The Cases list table shows a mini provider avatar next to each provider in the Providers column (API image, then a manually-uploaded photo, then a placeholder).', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Provider images are captured during sync: the provider imageUrl from the /api/plugin/v2/practices response is saved to the provider term.', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Find a Provider: a store-locator modal (shown when Providers and Practices are enabled) that lists practices with their providers and plots them on a Google map, with a ZIP/city lookup, a "use my location" target icon, and a 5/10/25/50/100-mile radius filter. Adds a Google Maps API Key field on the General settings page (required for the map).', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Sync: a Stage 4 (Providers & Practices) step, shown when both features are enabled, reports and highlights how many providers and practices the sync holds; it runs automatically after Stage 3 / Full Sync.', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'API test (Debug page): added the /api/plugin/v2/practices endpoint; removed the retired /api/plugin/combine/cases, /api/plugin/combine/filters, /api/plugin/sitemap, and /api/plugin/combine/cases/{id} tests.', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '🐛 Fixed', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Gallery column view buttons now reflect the saved Columns setting on load. The JavaScript previously hardcoded the 3-column button as active and defaulted the grid to 3 columns; a saved per-visitor preference still wins.', 'brag-book-gallery' ); ?></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
 			<!-- Version 4.6.0-beta5 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">
@@ -106,7 +135,7 @@ class Changelog_Page extends Settings_Base {
 						<ul>
 							<li><?php esc_html_e( 'Providers Taxonomy: the brag_book_doctors taxonomy is now registered as brag_book_providers. Admin menu, case displays, term and post meta, the display toggle, and sync all use "provider" terminology.', 'brag-book-gallery' ); ?></li>
 							<li><?php esc_html_e( 'Universal Availability: the providers taxonomy is now enabled for all accounts. It was previously restricted to a single website property ID.', 'brag-book-gallery' ); ?></li>
-							<li><?php esc_html_e( 'Provider Sync: now reads the v2 providers array (a case can have multiple providers) instead of the deprecated single creator object. Each provider is stored as a term with its API ID (provider_member_id, reusable against /v2/providers), name, bio, image URL, and position. The case stores the ordered provider ID list in brag_book_gallery_provider_ids. All providers render on the case detail and cards, ordered by position, with the API photo preferred over a manual upload.', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Provider Sync: now reads the v2 providers array (a case can have multiple providers) instead of the deprecated single creator object. Each provider is stored as a term with its API ID (provider_member_id, reusable against /v2/practices), name, bio, image URL, and position. The case stores the ordered provider ID list in brag_book_gallery_provider_ids. All providers render on the case detail and cards, ordered by position, with the API photo preferred over a manual upload.', 'brag-book-gallery' ); ?></li>
 						</ul>
 						<h4><?php esc_html_e( '✨ Added', 'brag-book-gallery' ); ?></h4>
 						<ul>

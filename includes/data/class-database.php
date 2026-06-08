@@ -1061,7 +1061,8 @@ class Database {
 		$stats = [
 			'case'      => 0,
 			'procedure' => 0,
-			'provider'    => 0,
+			'provider'  => 0,
+			'practice'  => 0,
 			'total'     => 0,
 		];
 

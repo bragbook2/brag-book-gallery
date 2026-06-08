@@ -46,6 +46,7 @@ class Sync_Ajax_Handler {
 		add_action( 'wp_ajax_brag_book_sync_stage_1', [ self::class, 'handle_stage_1' ] );
 		add_action( 'wp_ajax_brag_book_sync_stage_2', [ self::class, 'handle_stage_2' ] );
 		add_action( 'wp_ajax_brag_book_sync_stage_3', [ self::class, 'handle_stage_3' ] );
+		add_action( 'wp_ajax_brag_book_sync_stage_4', [ self::class, 'handle_stage_4' ] );
 		add_action( 'wp_ajax_brag_book_sync_check_files', [ self::class, 'handle_check_files' ] );
 		add_action( 'wp_ajax_brag_book_sync_get_manifest_preview', [ self::class, 'handle_get_manifest_preview' ] );
 		add_action( 'wp_ajax_brag_book_sync_get_progress', [ self::class, 'handle_get_progress' ] );
@@ -703,6 +704,50 @@ class Sync_Ajax_Handler {
 				'stage'   => 3,
 			] );
 		}
+	}
+
+	/**
+	 * Handle Stage 4: report provider and practice counts.
+	 *
+	 * Providers and practices are created during Stage 3 (per case). Stage 4 is a
+	 * summary step, shown only when both features are enabled, that reports how
+	 * many providers and practices the sync registry holds.
+	 *
+	 * @return void
+	 * @since 4.6.0
+	 */
+	public static function handle_stage_4(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( 'Insufficient permissions' );
+		}
+
+		if ( ! check_ajax_referer( 'brag_book_gallery_sync', 'nonce', false ) ) {
+			wp_send_json_error( 'Invalid nonce' );
+		}
+
+		if ( ! get_option( 'brag_book_gallery_enable_providers', false )
+			|| ! get_option( 'brag_book_gallery_enable_practices', false ) ) {
+			wp_send_json_error( 'Providers and Practices must both be enabled.' );
+		}
+
+		$database = new \BRAGBookGallery\Includes\Data\Database();
+		$stats    = $database->get_registry_stats();
+
+		$providers = isset( $stats['provider'] ) ? absint( $stats['provider'] ) : 0;
+		$practices = isset( $stats['practice'] ) ? absint( $stats['practice'] ) : 0;
+
+		wp_send_json_success(
+			[
+				'providers_created' => $providers,
+				'practices_created' => $practices,
+				'message'           => sprintf(
+					/* translators: 1: providers count, 2: practices count */
+					__( 'Stage 4 complete: %1$d providers and %2$d practices.', 'brag-book-gallery' ),
+					$providers,
+					$practices
+				),
+			]
+		);
 	}
 
 	/**

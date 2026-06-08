@@ -392,6 +392,9 @@ final class Setup {
 		add_action( 'wp_ajax_brag_book_load_more_procedures', [ \BRAGBookGallery\Includes\Shortcodes\Gallery_Handler::class, 'ajax_load_more_procedures' ] );
 		add_action( 'wp_ajax_nopriv_brag_book_load_more_procedures', [ \BRAGBookGallery\Includes\Shortcodes\Gallery_Handler::class, 'ajax_load_more_procedures' ] );
 
+		// Register the Find a Provider locator (AJAX + asset enqueue).
+		\BRAGBookGallery\Includes\Extend\Provider_Finder::register();
+
 		// Initialize carousel shortcodes
 		add_shortcode( 'brag_book_carousel', [ \BRAGBookGallery\Includes\Shortcodes\Carousel_Handler::class, 'handle' ] );
 		add_shortcode( 'bragbook_carousel_shortcode', [ \BRAGBookGallery\Includes\Shortcodes\Carousel_Handler::class, 'handle_legacy' ] );

@@ -680,6 +680,7 @@ class StageSyncManager {
     this.stage1Btn = document.getElementById('stage-1-btn');
     this.stage2Btn = document.getElementById('stage-2-btn');
     this.stage3Btn = document.getElementById('stage-3-btn');
+    this.stage4Btn = document.getElementById('stage-4-btn');
     this.tabletToggle = document.getElementById('sync-tablet-toggle');
     this.fullSyncBtn = document.getElementById('full-sync-btn');
     this.stopSyncBtn = document.getElementById('stop-sync-btn');
@@ -700,6 +701,8 @@ class StageSyncManager {
     this.stage1StatusContent = document.getElementById('stage1-status-content');
     this.stage3Status = document.getElementById('stage3-status');
     this.stage3StatusContent = document.getElementById('stage3-status-content');
+    this.stage4Status = document.getElementById('stage4-status');
+    this.stage4StatusContent = document.getElementById('stage4-status-content');
 
     // Orphan detection elements
     this.orphanPanel = document.getElementById('orphan-detection-panel');
@@ -761,6 +764,9 @@ class StageSyncManager {
     }
     if (this.stage3Btn) {
       this.stage3Btn.addEventListener('click', () => this.executeStage3());
+    }
+    if (this.stage4Btn) {
+      this.stage4Btn.addEventListener('click', () => this.executeStage4());
     }
     if (this.fullSyncBtn) {
       this.fullSyncBtn.addEventListener('click', () => this.executeFullSync());
@@ -1203,10 +1209,38 @@ class StageSyncManager {
     // Auto-detect orphans after Stage 3 completes
     await this.detectOrphans();
 
+    // Report providers & practices (Stage 4) when the feature is enabled.
+    if (this.stage4Btn) {
+      await this.executeStage4();
+    }
+
     // Hide progress after 2 seconds
     setTimeout(() => {
       this.fadeOut(this.stageProgress);
     }, 2000);
+  }
+
+  /**
+   * Execute Stage 4: report synced provider and practice counts.
+   */
+  async executeStage4() {
+    const response = await this.makeAjaxRequest('brag_book_sync_stage_4');
+    if (response && response.success && response.data) {
+      this.displayStage4Status(response.data);
+    }
+  }
+
+  /**
+   * Render the Stage 4 status panel with highlighted counts.
+   */
+  displayStage4Status(data) {
+    if (!this.stage4Status || !this.stage4StatusContent) {
+      return;
+    }
+    const providers = data.providers_created || 0;
+    const practices = data.practices_created || 0;
+    this.stage4StatusContent.innerHTML = '<div style="display:flex; gap:32px; align-items:center;">' + '<div><span style="font-size:24px; font-weight:700; color:#CC0000;">' + providers + '</span> ' + '<span style="font-weight:600;">Providers</span></div>' + '<div><span style="font-size:24px; font-weight:700; color:#CC0000;">' + practices + '</span> ' + '<span style="font-weight:600;">Practices</span></div>' + '</div>';
+    this.stage4Status.style.display = 'block';
   }
 
   /**
@@ -1349,6 +1383,11 @@ class StageSyncManager {
       this.showNotice('success', finalMessage);
       await this.checkFileStatus();
       await this.detectOrphans();
+
+      // Report providers & practices (Stage 4) when the feature is enabled.
+      if (this.stage4Btn) {
+        await this.executeStage4();
+      }
       setTimeout(() => this.fadeOut(this.stageProgress), 3000);
     } catch (error) {
       if (this.currentProgressInterval) {

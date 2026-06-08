@@ -141,6 +141,7 @@ class Endpoints {
 		'validate_token'      => '/api/plugin/v2/validation/token',
 		'cases_v2'            => '/api/plugin/v2/cases',
 		'case_detail_v2'      => '/api/plugin/v2/cases/%s',
+		'practices_v2'        => '/api/plugin/v2/practices',
 		'favorites_add_v2'    => '/api/plugin/v2/leads/favorites/add',
 		'favorites_remove_v2' => '/api/plugin/v2/leads/favorites/remove',
 		'favorites_list_v2'   => '/api/plugin/v2/leads/favorites/list',
@@ -1892,6 +1893,63 @@ class Endpoints {
 
 		if ( json_last_error() !== JSON_ERROR_NONE ) {
 			$this->log_error( 'Invalid JSON response from v2 case detail API: ' . json_last_error_msg() );
+			return null;
+		}
+
+		return $data;
+	}
+
+	/**
+	 * Get a provider's practices using the v2 practices endpoint
+	 *
+	 * Returns the practices (clinics/locations) associated with a provider.
+	 * This endpoint authenticates with the Bearer token only and does not
+	 * require a website property ID.
+	 *
+	 * @since 4.6.0
+	 *
+	 * @param string $api_token   API token for authentication.
+	 * @param int    $provider_id The provider's API ID (sent as providerID).
+	 *
+	 * @return array|null Decoded response (with data.practices) or null on failure.
+	 */
+	public function get_practices_v2( string $api_token, int $provider_id ): ?array {
+		// Validate inputs.
+		if ( empty( $api_token ) || $provider_id <= 0 ) {
+			$this->log_error( 'API token and provider ID are required for the v2 practices endpoint' );
+			return null;
+		}
+
+		$url      = self::API_ENDPOINTS['practices_v2'] . '?' . http_build_query( array( 'providerID' => $provider_id ) );
+		$full_url = Setup::get_api_url() . $url;
+
+		// Make GET request with Bearer token authentication.
+		$response = wp_remote_get( $full_url, array(
+			'timeout' => self::API_TIMEOUT,
+			'headers' => array(
+				'Authorization' => 'Bearer ' . $api_token,
+				'Accept'        => 'application/json',
+				'User-Agent'    => 'BRAG book Gallery Plugin/4.6.0',
+			),
+		) );
+
+		if ( is_wp_error( $response ) ) {
+			$this->log_error( 'v2 practices API request failed: ' . $response->get_error_message() );
+			return null;
+		}
+
+		$response_code = wp_remote_retrieve_response_code( $response );
+		$response_body = wp_remote_retrieve_body( $response );
+
+		if ( 200 !== $response_code ) {
+			$this->log_error( sprintf( 'v2 practices API returned status %d', $response_code ) );
+			return null;
+		}
+
+		$data = json_decode( $response_body, true );
+
+		if ( json_last_error() !== JSON_ERROR_NONE ) {
+			$this->log_error( 'Invalid JSON response from v2 practices API: ' . json_last_error_msg() );
 			return null;
 		}
 

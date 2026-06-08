@@ -1895,13 +1895,13 @@ class Case_Handler {
 	/**
 	 * Check if providers taxonomy is enabled
 	 *
-	 * The providers taxonomy is enabled for all accounts.
+	 * The providers taxonomy is enabled via the Enable Providers setting.
 	 *
 	 * @since 3.3.3
 	 * @return bool True if providers taxonomy should be enabled.
 	 */
 	private function is_providers_taxonomy_enabled(): bool {
-		return true;
+		return (bool) get_option( 'brag_book_gallery_enable_providers', false );
 	}
 
 	/**

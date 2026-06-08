@@ -276,6 +276,7 @@ final class Cases_Handler {
 		wp_localize_script( 'brag-book-gallery-main', 'bragBookGalleryConfig', [
 			'ajaxUrl' => admin_url( 'admin-ajax.php' ),
 			'nonce'   => wp_create_nonce( 'brag_book_gallery_nonce' ),
+			'columns' => absint( get_option( 'brag_book_gallery_columns', 2 ) ),
 		] );
 	}
 
@@ -3022,13 +3023,13 @@ final class Cases_Handler {
 	/**
 	 * Check if providers taxonomy is enabled
 	 *
-	 * The providers taxonomy is enabled for all accounts.
+	 * The providers taxonomy is enabled via the Enable Providers setting.
 	 *
 	 * @return bool True if providers taxonomy should be enabled.
 	 * @since 3.3.3
 	 */
 	private static function is_providers_taxonomy_enabled(): bool {
-		return true;
+		return (bool) get_option( 'brag_book_gallery_enable_providers', false );
 	}
 
 	/**

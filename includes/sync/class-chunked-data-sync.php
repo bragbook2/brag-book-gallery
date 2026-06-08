@@ -87,6 +87,13 @@ class Chunked_Data_Sync {
 	private ?\BRAGBookGallery\Includes\REST\Endpoints $endpoints_instance = null;
 
 	/**
+	 * Provider IDs whose practices have already been fetched this run
+	 *
+	 * @var array<int, bool>
+	 */
+	private array $practices_synced_for_providers = array();
+
+	/**
 	 * Constructor
 	 */
 	public function __construct() {
@@ -1840,13 +1847,13 @@ class Chunked_Data_Sync {
 	/**
 	 * Check if providers taxonomy is enabled
 	 *
-	 * The providers taxonomy is enabled for all accounts.
+	 * The providers taxonomy is enabled via the Enable Providers setting.
 	 *
 	 * @return bool True if providers taxonomy should be enabled.
 	 * @since 3.3.3
 	 */
 	private function is_providers_taxonomy_enabled(): bool {
-		return true;
+		return (bool) get_option( 'brag_book_gallery_enable_providers', false );
 	}
 
 	/**
@@ -1895,6 +1902,7 @@ class Chunked_Data_Sync {
 
 			if ( $provider_term ) {
 				$term_ids[] = $provider_term->term_id;
+				$this->maybe_sync_provider_practices( absint( $provider['id'] ), $provider_term->term_id );
 			}
 		}
 
@@ -1919,7 +1927,7 @@ class Chunked_Data_Sync {
 	 *
 	 * Finds existing term by provider ID or creates a new one. The provider ID
 	 * is stored as `provider_member_id` term meta so it can be reused against the
-	 * /v2/providers endpoint.
+	 * /v2/practices endpoint.
 	 *
 	 * @param array $provider_data A single provider object from the API `providers` array.
 	 *
@@ -2072,7 +2080,7 @@ class Chunked_Data_Sync {
 	 * Update provider term meta fields
 	 *
 	 * Writes the fields supplied by the v2 `providers` payload. `provider_member_id`
-	 * stores the provider's API ID for reuse against /v2/providers. The legacy
+	 * stores the provider's API ID for reuse against /v2/practices. The legacy
 	 * `provider_suffix`, `provider_profile_url`, and the manually-uploaded
 	 * `provider_profile_photo` are intentionally left untouched so manual values
 	 * survive re-syncs.
@@ -2084,7 +2092,10 @@ class Chunked_Data_Sync {
 	 * @since 3.3.3
 	 */
 	private function update_provider_term_meta( int $term_id, array $data ): void {
-		update_term_meta( $term_id, 'provider_member_id', absint( $data['member_id'] ?? 0 ) );
+		$provider_id = absint( $data['member_id'] ?? 0 );
+		update_term_meta( $term_id, 'provider_member_id', $provider_id );
+		// The provider's API id (providers[].id) — used as providerID for the practices endpoint.
+		update_term_meta( $term_id, 'provider_id', $provider_id );
 		update_term_meta( $term_id, 'provider_first_name', $data['first_name'] ?? '' );
 		update_term_meta( $term_id, 'provider_last_name', $data['last_name'] ?? '' );
 		update_term_meta( $term_id, 'provider_position', absint( $data['position'] ?? 0 ) );
@@ -2096,6 +2107,236 @@ class Chunked_Data_Sync {
 		}
 		if ( ! empty( $data['image_url'] ) ) {
 			update_term_meta( $term_id, 'provider_image_url', $data['image_url'] );
+		}
+	}
+
+	/**
+	 * Fetch and sync the practices associated with a provider
+	 *
+	 * Calls /api/plugin/v2/practices for the provider once per run, upserts a
+	 * practice post per returned practice, and links the provider term to its
+	 * practice API IDs.
+	 *
+	 * @since 4.6.0
+	 *
+	 * @param int $provider_id      The provider's API ID.
+	 * @param int $provider_term_id The provider's WordPress term ID.
+	 *
+	 * @return void
+	 */
+	private function maybe_sync_provider_practices( int $provider_id, int $provider_term_id ): void {
+		if ( $provider_id <= 0 ) {
+			return;
+		}
+
+		// Practices syncing is opt-in via the General settings page.
+		if ( ! get_option( 'brag_book_gallery_enable_practices', false ) ) {
+			return;
+		}
+
+		// Fetch each provider's practices only once per run.
+		if ( isset( $this->practices_synced_for_providers[ $provider_id ] ) ) {
+			return;
+		}
+		$this->practices_synced_for_providers[ $provider_id ] = true;
+
+		$api_token = $this->get_api_token();
+		if ( empty( $api_token ) || ! $this->endpoints_instance ) {
+			return;
+		}
+
+		$response = $this->endpoints_instance->get_practices_v2( $api_token, $provider_id );
+
+		if ( ! $response || ! isset( $response['data']['practices'] ) || ! is_array( $response['data']['practices'] ) ) {
+			return;
+		}
+
+		$practice_api_ids = array();
+		foreach ( $response['data']['practices'] as $practice ) {
+			if ( ! is_array( $practice ) || empty( $practice['id'] ) ) {
+				continue;
+			}
+
+			$post_id = $this->create_or_update_practice_post( $practice );
+			if ( $post_id > 0 ) {
+				$practice_api_ids[] = absint( $practice['id'] );
+			}
+		}
+
+		// Link the provider term to its practice API IDs.
+		update_term_meta( $provider_term_id, 'provider_practice_ids', implode( ',', $practice_api_ids ) );
+		$this->debug_log( 'Chunked Sync: Synced ' . count( $practice_api_ids ) . " practice(s) for provider {$provider_id}" );
+	}
+
+	/**
+	 * Create or update a practice post from API data
+	 *
+	 * Finds an existing practice by its API ID or creates a new one, then maps
+	 * the practice fields onto post meta and registers it for orphan cleanup.
+	 *
+	 * @since 4.6.0
+	 *
+	 * @param array $practice A single practice object from the API.
+	 *
+	 * @return int The practice post ID, or 0 on failure.
+	 */
+	private function create_or_update_practice_post( array $practice ): int {
+		$api_id = absint( $practice['id'] ?? 0 );
+		if ( $api_id <= 0 ) {
+			return 0;
+		}
+
+		$name = sanitize_text_field( $practice['name'] ?? '' );
+		if ( '' === $name ) {
+			$name = "Practice {$api_id}";
+		}
+
+		$existing = get_posts( array(
+			'post_type'      => Post_Types::POST_TYPE_PRACTICES,
+			'meta_key'       => 'brag_book_gallery_practice_api_id',
+			'meta_value'     => $api_id,
+			'posts_per_page' => 1,
+			'fields'         => 'ids',
+			'post_status'    => 'any',
+		) );
+
+		if ( ! empty( $existing ) ) {
+			$post_id = (int) $existing[0];
+			wp_update_post( array(
+				'ID'         => $post_id,
+				'post_title' => $name,
+			) );
+		} else {
+			$post_id = wp_insert_post( array(
+				'post_type'   => Post_Types::POST_TYPE_PRACTICES,
+				'post_title'  => $name,
+				'post_status' => 'publish',
+				'meta_input'  => array( 'brag_book_gallery_practice_api_id' => $api_id ),
+			) );
+
+			if ( is_wp_error( $post_id ) || ! $post_id ) {
+				return 0;
+			}
+			$post_id = (int) $post_id;
+		}
+
+		Post_Types::save_practice_api_data( $post_id, $practice );
+
+		// Link the practice to its providers via the providers taxonomy. The
+		// provider term carries the provider ID (provider_member_id term meta).
+		$provider_term_ids = array();
+		if ( isset( $practice['providers'] ) && is_array( $practice['providers'] ) ) {
+			foreach ( $practice['providers'] as $provider ) {
+				if ( ! is_array( $provider ) || empty( $provider['id'] ) ) {
+					continue;
+				}
+				$term = $this->find_or_create_provider_term_for_link( $provider );
+				if ( $term ) {
+					$provider_term_ids[] = $term->term_id;
+				}
+			}
+		}
+		wp_set_object_terms( $post_id, $provider_term_ids, Taxonomies::TAXONOMY_PROVIDERS );
+
+		$this->register_practice_in_registry( $api_id, $post_id );
+
+		return $post_id;
+	}
+
+	/**
+	 * Find an existing provider term, or create a minimal one for a practice link
+	 *
+	 * Used when assigning providers to a practice. Existing provider terms are
+	 * reused as-is so their richer synced meta is not overwritten by the
+	 * abbreviated provider object the practices payload supplies.
+	 *
+	 * @since 4.6.0
+	 *
+	 * @param array $provider_data A provider sub-object from a practice (id, name, imageUrl).
+	 *
+	 * @return \WP_Term|null The provider term, or null on failure.
+	 */
+	private function find_or_create_provider_term_for_link( array $provider_data ): ?\WP_Term {
+		$member_id = absint( $provider_data['id'] ?? 0 );
+		if ( $member_id <= 0 ) {
+			return null;
+		}
+
+		// Reuse an existing provider term without touching its meta.
+		$existing = get_terms( array(
+			'taxonomy'   => Taxonomies::TAXONOMY_PROVIDERS,
+			'hide_empty' => false,
+			'meta_query' => array(
+				array(
+					'key'   => 'provider_member_id',
+					'value' => $member_id,
+					'type'  => 'NUMERIC',
+				),
+			),
+			'number'     => 1,
+		) );
+		if ( ! empty( $existing ) && ! is_wp_error( $existing ) ) {
+			$term = $existing[0];
+
+			// Capture the provider image supplied by the /v2/practices payload.
+			if ( ! empty( $provider_data['imageUrl'] ) ) {
+				update_term_meta( $term->term_id, 'provider_image_url', esc_url_raw( (string) $provider_data['imageUrl'] ) );
+			}
+
+			return $term;
+		}
+
+		// Otherwise create a minimal term from the practice's provider object.
+		$name = sanitize_text_field( $provider_data['name'] ?? '' );
+		if ( '' === $name ) {
+			$name = "Provider {$member_id}";
+		}
+
+		$result = wp_insert_term( $name, Taxonomies::TAXONOMY_PROVIDERS, array(
+			'slug' => sanitize_title( $name . '-' . $member_id ),
+		) );
+
+		if ( is_wp_error( $result ) ) {
+			if ( 'term_exists' === $result->get_error_code() ) {
+				$term = get_term( (int) $result->get_error_data( 'term_exists' ), Taxonomies::TAXONOMY_PROVIDERS );
+				return ( $term instanceof \WP_Term ) ? $term : null;
+			}
+			return null;
+		}
+
+		$term_id = (int) $result['term_id'];
+		update_term_meta( $term_id, 'provider_member_id', $member_id );
+		update_term_meta( $term_id, 'provider_id', $member_id );
+		if ( ! empty( $provider_data['imageUrl'] ) ) {
+			update_term_meta( $term_id, 'provider_image_url', esc_url_raw( (string) $provider_data['imageUrl'] ) );
+		}
+		$this->register_provider_in_registry( $member_id, $term_id );
+
+		$term = get_term( $term_id, Taxonomies::TAXONOMY_PROVIDERS );
+		return ( $term instanceof \WP_Term ) ? $term : null;
+	}
+
+	/**
+	 * Register a practice in the sync registry
+	 *
+	 * @since 4.6.0
+	 *
+	 * @param int $api_id  Practice API ID.
+	 * @param int $post_id WordPress practice post ID.
+	 *
+	 * @return void
+	 */
+	private function register_practice_in_registry( int $api_id, int $post_id ): void {
+		if ( $this->database && $api_id > 0 && $post_id > 0 ) {
+			$this->database->upsert_registry_item(
+				'practice',
+				$api_id,
+				$post_id,
+				'post',
+				$this->get_api_token(),
+				$this->get_property_id(),
+				$this->sync_session_id
+			);
 		}
 	}
 }

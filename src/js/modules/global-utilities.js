@@ -2527,25 +2527,23 @@ document.addEventListener('DOMContentLoaded', () => {
 		const isDesktop = window.innerWidth >= 1024;
 
 		if (isDesktop && !isTilesView) {
+			// Columns: saved preference, then the configured gallery setting, then 2.
 			const savedColumns = localStorage.getItem('brag-book-gallery-grid-columns');
-			if (savedColumns) {
-				const columns = parseInt(savedColumns);
-				grid.setAttribute('data-columns', columns);
+			const columns = parseInt(savedColumns)
+				|| parseInt(window.bragBookGalleryConfig?.columns)
+				|| 2;
+			grid.setAttribute('data-columns', columns);
 
-				// Update button states
-				const buttons = document.querySelectorAll('.brag-book-gallery-grid-btn');
-				buttons.forEach(btn => {
-					const btnCols = parseInt(btn.dataset.columns);
-					if (btnCols === columns) {
-						btn.classList.add('active');
-					} else {
-						btn.classList.remove('active');
-					}
-				});
-			} else {
-				// Default to 3 columns on desktop
-				grid.setAttribute('data-columns', '3');
-			}
+			// Update button states to match.
+			const buttons = document.querySelectorAll('.brag-book-gallery-grid-btn');
+			buttons.forEach(btn => {
+				const btnCols = parseInt(btn.dataset.columns);
+				if (btnCols === columns) {
+					btn.classList.add('active');
+				} else {
+					btn.classList.remove('active');
+				}
+			});
 		}
 	}
 

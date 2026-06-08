@@ -687,7 +687,11 @@ class General_Page extends Settings_Base {
 		$enable_favorites    = (bool) get_option( 'brag_book_gallery_enable_favorites', true );
 		$enable_consultation = (bool) get_option( 'brag_book_gallery_enable_consultation', true );
 		$show_provider         = (bool) get_option( 'brag_book_gallery_show_provider', false );
+		$enable_providers    = (bool) get_option( 'brag_book_gallery_enable_providers', false );
+		$enable_practices    = (bool) get_option( 'brag_book_gallery_enable_practices', false );
+		$google_maps_api_key = (string) get_option( 'brag_book_gallery_google_maps_api_key', '' );
 		$enable_powered_by   = (bool) get_option( 'brag_book_gallery_enable_powered_by', false );
+		$enable_disclaimer   = (bool) get_option( 'brag_book_gallery_enable_disclaimer', true );
 
 		// Current mode (default only)
 		$current_mode = 'default';
@@ -1047,6 +1051,64 @@ class General_Page extends Settings_Base {
 					</div>
 				</div>
 
+				<!-- Enable Providers Toggle -->
+				<div class="display-settings-option">
+					<div class="brag-book-gallery-toggle-wrapper">
+						<label class="brag-book-gallery-toggle">
+							<input type="hidden" name="brag_book_gallery_enable_providers" value="0" />
+							<input type="checkbox"
+							       id="brag_book_gallery_enable_providers"
+							       name="brag_book_gallery_enable_providers"
+							       value="1"
+							       <?php checked( $enable_providers, true ); ?> />
+							<span class="brag-book-gallery-toggle-slider"></span>
+						</label>
+						<span class="brag-book-gallery-toggle-label">
+							<?php esc_html_e( 'Enable Providers', 'brag-book-gallery' ); ?>
+						</span>
+					</div>
+					<p class="description">
+						<?php esc_html_e( 'When enabled, the Providers taxonomy is registered and providers are synced from the API and assigned to cases.', 'brag-book-gallery' ); ?>
+					</p>
+				</div>
+
+				<!-- Enable Practices Toggle -->
+				<div class="display-settings-option">
+					<div class="brag-book-gallery-toggle-wrapper">
+						<label class="brag-book-gallery-toggle">
+							<input type="hidden" name="brag_book_gallery_enable_practices" value="0" />
+							<input type="checkbox"
+							       id="brag_book_gallery_enable_practices"
+							       name="brag_book_gallery_enable_practices"
+							       value="1"
+							       <?php checked( $enable_practices, true ); ?> />
+							<span class="brag-book-gallery-toggle-slider"></span>
+						</label>
+						<span class="brag-book-gallery-toggle-label">
+							<?php esc_html_e( 'Enable Practices', 'brag-book-gallery' ); ?>
+						</span>
+					</div>
+					<p class="description">
+						<?php esc_html_e( 'When enabled, each provider\'s practices are synced from the API (requires Providers to be enabled).', 'brag-book-gallery' ); ?>
+					</p>
+				</div>
+
+				<!-- Google Maps API Key -->
+				<div class="display-settings-option">
+					<label class="display-settings-option__label" for="brag_book_gallery_google_maps_api_key">
+						<?php esc_html_e( 'Google Maps API Key', 'brag-book-gallery' ); ?>
+					</label>
+					<input type="text"
+					       id="brag_book_gallery_google_maps_api_key"
+					       name="brag_book_gallery_google_maps_api_key"
+					       value="<?php echo esc_attr( $google_maps_api_key ); ?>"
+					       class="regular-text"
+					       autocomplete="off" />
+					<p class="description">
+						<?php esc_html_e( 'Required for the "Find a Provider" locator map. Use a key with the Maps JavaScript API and Geocoding API enabled.', 'brag-book-gallery' ); ?>
+					</p>
+				</div>
+
 				<!-- Show Provider Toggle -->
 				<div class="display-settings-option">
 					<div class="brag-book-gallery-toggle-wrapper">
@@ -1065,6 +1127,27 @@ class General_Page extends Settings_Base {
 					</div>
 					<p class="description">
 						<?php esc_html_e( 'When enabled, provider details will be shown in case displays.', 'brag-book-gallery' ); ?>
+					</p>
+				</div>
+
+				<!-- Image Processing Disclaimer Toggle -->
+				<div class="display-settings-option">
+					<div class="brag-book-gallery-toggle-wrapper">
+						<label class="brag-book-gallery-toggle">
+							<input type="hidden" name="brag_book_gallery_enable_disclaimer" value="0" />
+							<input type="checkbox"
+							       id="brag_book_gallery_enable_disclaimer"
+							       name="brag_book_gallery_enable_disclaimer"
+							       value="1"
+							       <?php checked( $enable_disclaimer, true ); ?> />
+							<span class="brag-book-gallery-toggle-slider"></span>
+						</label>
+						<span class="brag-book-gallery-toggle-label">
+							<?php esc_html_e( 'Display image processing disclaimer', 'brag-book-gallery' ); ?>
+						</span>
+					</div>
+					<p class="description">
+						<?php esc_html_e( 'When enabled, a disclaimer about smart device, AI, and standard image enhancements is shown at the bottom of the procedures gallery.', 'brag-book-gallery' ); ?>
 					</p>
 				</div>
 
@@ -2033,6 +2116,12 @@ class General_Page extends Settings_Base {
 		$case_image_carousel = isset( $_POST['brag_book_gallery_case_image_carousel'] )
 							   && '1' === $_POST['brag_book_gallery_case_image_carousel'];
 		update_option( 'brag_book_gallery_case_image_carousel', $case_image_carousel );
+
+		// Google Maps API key (text) — used by the Find a Provider locator.
+		$google_maps_api_key = isset( $_POST['brag_book_gallery_google_maps_api_key'] )
+			? sanitize_text_field( wp_unslash( $_POST['brag_book_gallery_google_maps_api_key'] ) )
+			: '';
+		update_option( 'brag_book_gallery_google_maps_api_key', $google_maps_api_key );
 	}
 
 	/**
@@ -2156,7 +2245,10 @@ class General_Page extends Settings_Base {
 			'brag_book_gallery_enable_favorites',
 			'brag_book_gallery_enable_consultation',
 			'brag_book_gallery_show_provider',
+			'brag_book_gallery_enable_providers',
+			'brag_book_gallery_enable_practices',
 			'brag_book_gallery_enable_powered_by',
+			'brag_book_gallery_enable_disclaimer',
 		);
 
 		foreach ( $features as $feature ) {

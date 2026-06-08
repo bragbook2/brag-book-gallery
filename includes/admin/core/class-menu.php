@@ -570,6 +570,33 @@ class Menu {
 		);
 
 		/**
+		 * Practices Submenu
+		 *
+		 * Links to the post list for the 'brag_book_practices' post type.
+		 * Practices are synced clinic/location records associated with providers.
+		 *
+		 * Note: Empty callback because WordPress handles the post list screen
+		 * automatically when menu_slug points to an edit.php URL.
+		 *
+		 * @since 4.6.0
+		 */
+		$this->menu_config['submenus']['practices'] = array(
+			'parent_slug' => 'brag-book-gallery-settings',
+			'page_title'  => __(
+				'Practices Management',
+				'brag-book-gallery'
+			),
+			'menu_title'  => __(
+				'Practices',
+				'brag-book-gallery'
+			),
+			'capability'  => 'edit_posts',
+			'menu_slug'   => 'edit.php?post_type=brag_book_practices',
+			'callback'    => '', // Empty callback - WordPress core handles rendering.
+			'condition'   => (bool) get_option( 'brag_book_gallery_enable_practices', false ), // Visible when practices are enabled.
+		);
+
+		/**
 		 * Sync Settings Submenu
 		 *
 		 * Manages procedure synchronization settings and operations.
@@ -1101,7 +1128,7 @@ class Menu {
 	/**
 	 * Check if providers taxonomy is enabled
 	 *
-	 * The providers taxonomy is enabled for all accounts.
+	 * The providers taxonomy is enabled via the Enable Providers setting.
 	 * This mirrors the logic in the Taxonomies class.
 	 *
 	 * @since 3.3.3
@@ -1110,6 +1137,6 @@ class Menu {
 	 * @return bool True if providers taxonomy should be enabled.
 	 */
 	private function is_providers_taxonomy_enabled(): bool {
-		return true;
+		return (bool) get_option( 'brag_book_gallery_enable_providers', false );
 	}
 }

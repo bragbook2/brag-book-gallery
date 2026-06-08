@@ -3242,25 +3242,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const isTilesView = grid.classList.contains('brag-book-gallery-case-grid--tiles');
     const isDesktop = window.innerWidth >= 1024;
     if (isDesktop && !isTilesView) {
+      // Columns: saved preference, then the configured gallery setting, then 2.
       const savedColumns = localStorage.getItem('brag-book-gallery-grid-columns');
-      if (savedColumns) {
-        const columns = parseInt(savedColumns);
-        grid.setAttribute('data-columns', columns);
+      const columns = parseInt(savedColumns) || parseInt(window.bragBookGalleryConfig?.columns) || 2;
+      grid.setAttribute('data-columns', columns);
 
-        // Update button states
-        const buttons = document.querySelectorAll('.brag-book-gallery-grid-btn');
-        buttons.forEach(btn => {
-          const btnCols = parseInt(btn.dataset.columns);
-          if (btnCols === columns) {
-            btn.classList.add('active');
-          } else {
-            btn.classList.remove('active');
-          }
-        });
-      } else {
-        // Default to 3 columns on desktop
-        grid.setAttribute('data-columns', '3');
-      }
+      // Update button states to match.
+      const buttons = document.querySelectorAll('.brag-book-gallery-grid-btn');
+      buttons.forEach(btn => {
+        const btnCols = parseInt(btn.dataset.columns);
+        if (btnCols === columns) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
     }
   }
 
@@ -7537,6 +7533,9 @@ class BRAGbookGalleryApp {
     const favoritesCount = Object.keys(favoritesData.cases_data || {}).length;
     const userEmail = userInfo?.email || 'Unknown User';
 
+    // Default columns: saved preference, then configured setting, then 2.
+    const galleryColumns = parseInt(localStorage.getItem('brag-book-gallery-grid-columns')) || parseInt(window.bragBookGalleryConfig?.columns) || 2;
+
     // Create the user info HTML
     const userInfoHtml = `
 			<div class="brag-book-gallery-controls">
@@ -7552,7 +7551,7 @@ class BRAGbookGalleryApp {
 				<div class="brag-book-gallery-grid-selector">
 					<span class="brag-book-gallery-grid-label">View:</span>
 					<div class="brag-book-gallery-grid-buttons">
-						<button class="brag-book-gallery-grid-btn" data-columns="2" onclick="updateGridLayout(2)" aria-label="View in 2 columns">
+						<button class="brag-book-gallery-grid-btn${galleryColumns === 2 ? ' active' : ''}" data-columns="2" onclick="updateGridLayout(2)" aria-label="View in 2 columns">
 							<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><rect x="1" y="1" width="6" height="6"></rect>
 								<rect x="9" y="1" width="6" height="6"></rect>
 								<rect x="1" y="9" width="6" height="6"></rect>
@@ -7560,7 +7559,7 @@ class BRAGbookGalleryApp {
 							</svg>
 							<span class="sr-only">2 Columns</span>
 						</button>
-						<button class="brag-book-gallery-grid-btn active" data-columns="3" onclick="updateGridLayout(3)" aria-label="View in 3 columns">
+						<button class="brag-book-gallery-grid-btn${galleryColumns === 3 ? ' active' : ''}" data-columns="3" onclick="updateGridLayout(3)" aria-label="View in 3 columns">
 							<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
 								<rect x="1" y="1" width="4" height="4"></rect>
 								<rect x="6" y="1" width="4" height="4"></rect>

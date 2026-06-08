@@ -72,13 +72,13 @@ class Taxonomies {
 	/**
 	 * Check if providers taxonomy is enabled
 	 *
-	 * The providers taxonomy is enabled for all accounts.
+	 * The providers taxonomy is enabled via the Enable Providers setting.
 	 *
 	 * @since 3.3.3
 	 * @return bool True if providers taxonomy should be enabled.
 	 */
 	public function is_providers_taxonomy_enabled(): bool {
-		return true;
+		return (bool) get_option( 'brag_book_gallery_enable_providers', false );
 	}
 
 	/**
@@ -193,7 +193,8 @@ class Taxonomies {
 			'rewrite'            => false, // No URL rewrites needed.
 		];
 
-		register_taxonomy( self::TAXONOMY_PROVIDERS, [ 'brag_book_cases' ], $providers_args );
+		// Attached to both cases and practices so providers link to each.
+		register_taxonomy( self::TAXONOMY_PROVIDERS, [ 'brag_book_cases', 'brag_book_practices' ], $providers_args );
 	}
 
 	public function custom_procedure_term_link( $link, $term, $taxonomy ): ?string {
@@ -729,6 +730,12 @@ class Taxonomies {
 		</div>
 
 		<div class="form-field">
+			<label for="provider_id"><?php esc_html_e( 'Provider ID', 'brag-book-gallery' ); ?></label>
+			<input type="text" name="provider_id" id="provider_id" value="" />
+			<p class="description"><?php esc_html_e( 'Provider ID from the API (providers[].id). Used as providerID when fetching practice details.', 'brag-book-gallery' ); ?></p>
+		</div>
+
+		<div class="form-field">
 			<label for="provider_first_name"><?php esc_html_e( 'First Name', 'brag-book-gallery' ); ?></label>
 			<input type="text" name="provider_first_name" id="provider_first_name" value="" />
 			<p class="description"><?php esc_html_e( 'Provider\'s first name', 'brag-book-gallery' ); ?></p>
@@ -800,6 +807,7 @@ class Taxonomies {
 	public function edit_provider_meta_fields( \WP_Term $term ): void {
 		// Get existing values
 		$member_id     = get_term_meta( $term->term_id, 'provider_member_id', true );
+		$provider_id   = get_term_meta( $term->term_id, 'provider_id', true );
 		$first_name    = get_term_meta( $term->term_id, 'provider_first_name', true );
 		$last_name     = get_term_meta( $term->term_id, 'provider_last_name', true );
 		$bio           = get_term_meta( $term->term_id, 'provider_bio', true );
@@ -819,6 +827,17 @@ class Taxonomies {
 				<p class="description"><?php esc_html_e( 'Unique member ID from the BRAGBook API', 'brag-book-gallery' ); ?></p>
 			</td>
 		</tr>
+
+		<tr class="form-field">
+			<th scope="row">
+				<label for="provider_id"><?php esc_html_e( 'Provider ID', 'brag-book-gallery' ); ?></label>
+			</th>
+			<td>
+				<input type="text" name="provider_id" id="provider_id" value="<?php echo esc_attr( $provider_id ); ?>" />
+				<p class="description"><?php esc_html_e( 'Provider ID from the API (providers[].id). Used as providerID when fetching practice details.', 'brag-book-gallery' ); ?></p>
+			</td>
+		</tr>
+
 
 		<tr class="form-field">
 			<th scope="row">
@@ -952,6 +971,11 @@ class Taxonomies {
 		// Save member ID
 		if ( isset( $_POST['provider_member_id'] ) ) {
 			update_term_meta( $term_id, 'provider_member_id', sanitize_text_field( $_POST['provider_member_id'] ) );
+		}
+
+		// Save provider ID (providers[].id — used as providerID for the practices endpoint)
+		if ( isset( $_POST['provider_id'] ) ) {
+			update_term_meta( $term_id, 'provider_id', absint( $_POST['provider_id'] ) );
 		}
 
 		// Save first name

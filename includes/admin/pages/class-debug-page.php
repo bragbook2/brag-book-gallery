@@ -1376,17 +1376,6 @@ class Debug_Page extends Settings_Base {
 							</button>
 						</td>
 					</tr>
-					<!-- Cases (v1) -->
-					<tr class="brag-book-consultation-table-row">
-						<td class="brag-book-consultation-table-cell"><code>/api/plugin/combine/cases</code></td>
-						<td class="brag-book-consultation-table-cell"><span class="method-badge method-post">POST</span></td>
-						<td class="brag-book-consultation-table-cell"><?php esc_html_e( 'Get paginated case listings', 'brag-book-gallery' ); ?></td>
-						<td class="brag-book-consultation-table-cell">
-							<button class="button button-secondary test-endpoint-btn" data-endpoint="cases" data-method="POST" data-url="/api/plugin/combine/cases">
-								<?php esc_html_e( 'Test', 'brag-book-gallery' ); ?>
-							</button>
-						</td>
-					</tr>
 					<!-- Cases (v2) -->
 					<tr class="brag-book-consultation-table-row">
 						<td class="brag-book-consultation-table-cell"><code>/api/plugin/v2/cases/</code></td>
@@ -1405,17 +1394,6 @@ class Debug_Page extends Settings_Base {
 						<td class="brag-book-consultation-table-cell"><?php esc_html_e( 'Get carousel data (requires procedureId)', 'brag-book-gallery' ); ?></td>
 						<td class="brag-book-consultation-table-cell">
 							<button class="button button-secondary test-endpoint-btn" data-endpoint="carousel" data-method="GET" data-url="/api/plugin/carousel">
-								<?php esc_html_e( 'Test', 'brag-book-gallery' ); ?>
-							</button>
-						</td>
-					</tr>
-					<!-- Filters -->
-					<tr class="brag-book-consultation-table-row">
-						<td class="brag-book-consultation-table-cell"><code>/api/plugin/combine/filters</code></td>
-						<td class="brag-book-consultation-table-cell"><span class="method-badge method-post">POST</span></td>
-						<td class="brag-book-consultation-table-cell"><?php esc_html_e( 'Get available filter options', 'brag-book-gallery' ); ?></td>
-						<td class="brag-book-consultation-table-cell">
-							<button class="button button-secondary test-endpoint-btn" data-endpoint="filters" data-method="POST" data-url="/api/plugin/combine/filters">
 								<?php esc_html_e( 'Test', 'brag-book-gallery' ); ?>
 							</button>
 						</td>
@@ -1453,31 +1431,6 @@ class Debug_Page extends Settings_Base {
 							</button>
 						</td>
 					</tr>
-					<!-- Sitemap -->
-					<tr class="brag-book-consultation-table-row">
-						<td class="brag-book-consultation-table-cell"><code>/api/plugin/sitemap</code></td>
-						<td class="brag-book-consultation-table-cell"><span class="method-badge method-post">POST</span></td>
-						<td class="brag-book-consultation-table-cell"><?php esc_html_e( 'Generate sitemap data', 'brag-book-gallery' ); ?></td>
-						<td class="brag-book-consultation-table-cell">
-							<button class="button button-secondary test-endpoint-btn" data-endpoint="sitemap" data-method="POST" data-url="/api/plugin/sitemap">
-								<?php esc_html_e( 'Test', 'brag-book-gallery' ); ?>
-							</button>
-						</td>
-					</tr>
-					<!-- Single Case (v1) -->
-					<tr class="brag-book-consultation-table-row">
-						<td class="brag-book-consultation-table-cell"><code>/api/plugin/combine/cases/{id}</code></td>
-						<td class="brag-book-consultation-table-cell"><span class="method-badge method-post">POST</span></td>
-						<td class="brag-book-consultation-table-cell">
-							<?php esc_html_e( 'Get specific case details', 'brag-book-gallery' ); ?>
-							<input type="number" id="case-id-input" placeholder="Case ID" class="small-text">
-						</td>
-						<td class="brag-book-consultation-table-cell">
-							<button class="button button-secondary test-endpoint-btn" data-endpoint="single-case" data-method="POST" data-url="/api/plugin/combine/cases/" data-needs-id="true">
-								<?php esc_html_e( 'Test', 'brag-book-gallery' ); ?>
-							</button>
-						</td>
-					</tr>
 					<!-- Single Case (v2) -->
 					<tr class="brag-book-consultation-table-row">
 						<td class="brag-book-consultation-table-cell"><code>/api/plugin/v2/cases/{id}</code></td>
@@ -1488,6 +1441,20 @@ class Debug_Page extends Settings_Base {
 						</td>
 						<td class="brag-book-consultation-table-cell">
 							<button class="button button-secondary test-endpoint-btn" data-endpoint="single-case-v2" data-method="GET" data-url="/api/plugin/v2/cases/" data-needs-case-id-v2="true">
+								<?php esc_html_e( 'Test', 'brag-book-gallery' ); ?>
+							</button>
+						</td>
+					</tr>
+					<!-- Practices (v2) -->
+					<tr class="brag-book-consultation-table-row">
+						<td class="brag-book-consultation-table-cell"><code>/api/plugin/v2/practices</code></td>
+						<td class="brag-book-consultation-table-cell"><span class="method-badge method-get">GET</span></td>
+						<td class="brag-book-consultation-table-cell">
+							<?php esc_html_e( 'Get a provider\'s practices (v2 - requires providerID)', 'brag-book-gallery' ); ?>
+							<input type="number" id="provider-id-input" placeholder="Provider ID" class="small-text">
+						</td>
+						<td class="brag-book-consultation-table-cell">
+							<button class="button button-secondary test-endpoint-btn" data-endpoint="practices-v2" data-method="GET" data-url="/api/plugin/v2/practices" data-needs-provider-id="true">
 								<?php esc_html_e( 'Test', 'brag-book-gallery' ); ?>
 							</button>
 						</td>
@@ -1683,19 +1650,8 @@ class Debug_Page extends Settings_Base {
 						const method = this.dataset.method;
 						const baseUrl = getBaseUrl();
 						let url = baseUrl + this.dataset.url;
-						const needsId = this.dataset.needsId;
 						const needsCaseIdV2 = this.dataset.needsCaseIdV2;
-
-						// Check if case ID is needed (v1 endpoint)
-						if (needsId) {
-							const caseIdInput = document.getElementById('case-id-input');
-							const caseId = caseIdInput ? caseIdInput.value : '';
-							if (!caseId) {
-								alert('Please enter a Case ID');
-								return;
-							}
-							url += caseId;
-						}
+						const needsProviderId = this.dataset.needsProviderId;
 
 						// Check if case ID is needed (v2 endpoint)
 						if (needsCaseIdV2) {
@@ -1706,6 +1662,16 @@ class Debug_Page extends Settings_Base {
 								return;
 							}
 							url += caseId;
+						}
+
+						// Check if provider ID is needed (v2 providers endpoint)
+						if (needsProviderId) {
+							const providerIdInput = document.getElementById('provider-id-input');
+							const providerId = providerIdInput ? providerIdInput.value : '';
+							if (!providerId) {
+								alert('Please enter a Provider ID');
+								return;
+							}
 						}
 
 						// Disable button and show loading
@@ -1736,35 +1702,8 @@ class Debug_Page extends Settings_Base {
 								websitePropertyIds: websitePropertyIds
 							};
 
-							// Get optional parameters from inputs
-							const procedureInput = document.getElementById('test-procedure-id');
-							const memberInput = document.getElementById('test-member-id');
-							const testProcedureId = procedureInput ? (procedureInput.value || null) : null;
-							const testMemberId = memberInput ? (memberInput.value || null) : null;
-
 							// Add endpoint-specific parameters
 							switch(endpoint) {
-								case 'cases':
-									requestBody.count = 1;
-									if (testProcedureId) {
-										requestBody.procedureIds = [parseInt(testProcedureId)];
-									}
-									if (testMemberId) {
-										requestBody.memberId = parseInt(testMemberId);
-									}
-									break;
-
-								case 'single-case':
-									requestBody.procedureIds = [parseInt(testProcedureId || 6851)];
-									if (testMemberId) {
-										requestBody.memberId = parseInt(testMemberId);
-									}
-									break;
-
-								case 'filters':
-									requestBody.procedureIds = [parseInt(testProcedureId || 6851)];
-									break;
-
 								case 'consultations':
 									url += '?apiToken=' + encodeURIComponent(getApiToken()) +
 									       '&websitepropertyId=' + encodeURIComponent(getWebsitePropertyId());
@@ -1795,6 +1734,16 @@ class Debug_Page extends Settings_Base {
 								requestHeaders['Authorization'] = 'Bearer ' + token;
 								console.log('Token Validation GET Request URL:', url);
 								console.log('Token Validation will use Bearer auth with token:', token.substring(0, 10) + '...');
+							} else if (endpoint === 'practices-v2') {
+								// v2 practices endpoint uses Bearer auth with a providerID query param (no websitePropertyId).
+								const providerInput = document.getElementById('provider-id-input');
+								const params = new URLSearchParams({
+									providerID: providerInput ? providerInput.value : ''
+								});
+								url += '?' + params.toString();
+								const token = getApiToken();
+								requestHeaders['Authorization'] = 'Bearer ' + token;
+								console.log('v2 Providers GET Request URL:', url);
 							} else if (endpoint === 'cases-v2') {
 								// v2 cases endpoint uses Bearer auth with websitePropertyId and procedureId
 								const procedureInput = document.getElementById('test-procedure-id');
@@ -2059,10 +2008,6 @@ class Debug_Page extends Settings_Base {
 					$response_body = $endpoints->get_api_terms( $api_tokens[0] ?? '' );
 					break;
 
-				case 'cases':
-					$response_body = $endpoints->get_pagination_data( $body );
-					break;
-
 				case 'carousel':
 					$options = array(
 						'websitePropertyId' => $website_property_ids[0],
@@ -2073,25 +2018,9 @@ class Debug_Page extends Settings_Base {
 					$response_body = $endpoints->get_carousel_data( $api_tokens[0], $options );
 					break;
 
-				case 'filters':
-					$response_body = $endpoints->get_pagination_data( $body );
-					break;
-
 				case 'favorites-list':
 					$email = $body['email'] ?? 'test@example.com';
 					$response_body = $endpoints->get_favorite_list_data( $api_tokens, $website_property_ids, $email );
-					break;
-
-				case 'sitemap':
-					$response_body = $endpoints->get_sitemap_data( $api_tokens, $website_property_ids );
-					break;
-
-				case 'single-case':
-					$case_id = $body['caseId'] ?? '';
-					if ( empty( $case_id ) ) {
-						throw new \Exception( 'Case ID is required for single case endpoint' );
-					}
-					$response_body = $endpoints->get_case_details( (string) $case_id );
 					break;
 
 				case 'consultations':
@@ -2170,6 +2099,21 @@ class Debug_Page extends Settings_Base {
 						$procedure_id > 0 ? $procedure_id : null,
 						$member_id
 					);
+					$response_body = wp_json_encode( $result );
+					break;
+
+				case 'practices-v2':
+					// Provider ID comes from the URL query string. The endpoint
+					// authenticates with the Bearer token only (no websitePropertyId).
+					$url_parts = wp_parse_url( sanitize_text_field( wp_unslash( $_POST['url'] ?? '' ) ) );
+					parse_str( $url_parts['query'] ?? '', $query_params );
+
+					$provider_id = intval( $query_params['providerID'] ?? 0 );
+					if ( $provider_id <= 0 ) {
+						throw new \Exception( 'Valid Provider ID is required for the v2 practices endpoint' );
+					}
+
+					$result        = $endpoints->get_practices_v2( $api_tokens[0], $provider_id );
 					$response_body = wp_json_encode( $result );
 					break;
 

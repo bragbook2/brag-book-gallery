@@ -301,6 +301,7 @@ class Assets {
 			'ajaxUrl' => admin_url( 'admin-ajax.php' ),
 			'nonce'   => wp_create_nonce( 'brag_book_gallery_nonce' ),
 			'consultation_nonce' => wp_create_nonce( 'consultation_form_nonce' ),
+			'columns' => absint( get_option( 'brag_book_gallery_columns', 2 ) ),
 		] );
 
 		// Allow plugins/themes to add custom scripts.

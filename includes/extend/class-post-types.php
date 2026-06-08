@@ -51,6 +51,18 @@ class Post_Types {
 	public const POST_TYPE_CASES = 'brag_book_cases';
 
 	/**
+	 * Post type identifier for practices
+	 *
+	 * Practices are clinic/location entities associated with providers, synced
+	 * from the /api/plugin/v2/practices endpoint. Internal data feed only
+	 * (not publicly queryable).
+	 *
+	 * @since 4.6.0
+	 * @var string
+	 */
+	public const POST_TYPE_PRACTICES = 'brag_book_practices';
+
+	/**
 	 * Constructor - Register hooks
 	 *
 	 * @since 3.0.0
@@ -72,8 +84,30 @@ class Post_Types {
 		);
 
 		add_action(
+			'add_meta_boxes',
+			array( $this, 'add_practice_meta_boxes' )
+		);
+
+		add_action(
 			'save_post',
 			array( $this, 'save_case_meta' )
+		);
+
+		add_action(
+			'save_post',
+			array( $this, 'save_practice_meta' )
+		);
+
+		add_filter(
+			'manage_' . self::POST_TYPE_CASES . '_posts_columns',
+			array( $this, 'add_case_provider_column' )
+		);
+
+		add_action(
+			'manage_' . self::POST_TYPE_CASES . '_posts_custom_column',
+			array( $this, 'render_case_provider_column' ),
+			10,
+			2
 		);
 
 		add_action(
@@ -152,7 +186,12 @@ class Post_Types {
 				'with_front' => false,
 			),
 			'capability_type'    => 'post',
-			'has_archive'        => true,
+			// Disable the post type archive. The gallery is served by a real Page
+			// + the brag_book_procedures taxonomy archive + shortcode URL parsing,
+			// so the CPT archive is never rendered. Leaving it enabled made WordPress
+			// expose a pageable archive at the unresolved `%brag_book_procedures%`
+			// rewrite slug, which Yoast crawled as /page/N URLs that all 404.
+			'has_archive'        => false,
 			'hierarchical'       => false,
 			'menu_position'      => null,
 			'menu_icon'          => 'dashicons-camera-alt',
@@ -168,6 +207,393 @@ class Post_Types {
 		);
 
 		register_post_type( self::POST_TYPE_CASES, $cases_args );
+
+		$this->register_practices_post_type();
+	}
+
+	/**
+	 * Register the Practices post type
+	 *
+	 * Practices are clinic/location entities associated with providers and synced
+	 * from the API. They are an internal data feed: editable in the admin but not
+	 * publicly queryable and with no front-end archive or single URLs.
+	 *
+	 * @since 4.6.0
+	 * @return void
+	 */
+	private function register_practices_post_type(): void {
+		$practices_labels = array(
+			'name'               => _x( 'Practices', 'Post type general name', 'brag-book-gallery' ),
+			'singular_name'      => _x( 'Practice', 'Post type singular name', 'brag-book-gallery' ),
+			'menu_name'          => __( 'Practices', 'brag-book-gallery' ),
+			'name_admin_bar'     => _x( 'Practice', 'Add New on Toolbar', 'brag-book-gallery' ),
+			'add_new_item'       => __( 'Add New Practice', 'brag-book-gallery' ),
+			'new_item'           => __( 'New Practice', 'brag-book-gallery' ),
+			'edit_item'          => __( 'Edit Practice', 'brag-book-gallery' ),
+			'view_item'          => __( 'View Practice', 'brag-book-gallery' ),
+			'all_items'          => __( 'All Practices', 'brag-book-gallery' ),
+			'search_items'       => __( 'Search Practices', 'brag-book-gallery' ),
+			'not_found'          => __( 'No practices found.', 'brag-book-gallery' ),
+			'not_found_in_trash' => __( 'No practices found in Trash.', 'brag-book-gallery' ),
+		);
+
+		$practices_args = array(
+			'labels'             => $practices_labels,
+			'public'             => false,
+			'publicly_queryable' => false,
+			'show_ui'            => true,
+			'show_in_menu'       => false,
+			'show_in_admin_bar'  => false,
+			'show_in_nav_menus'  => false,
+			'query_var'          => false,
+			'rewrite'            => false,
+			'capability_type'    => 'post',
+			'has_archive'        => false,
+			'hierarchical'       => false,
+			'menu_icon'          => 'dashicons-location',
+			'supports'           => array( 'title' ),
+			'show_in_rest'       => false,
+		);
+
+		register_post_type( self::POST_TYPE_PRACTICES, $practices_args );
+	}
+
+	/**
+	 * Map a practice object from the API onto practice post meta
+	 *
+	 * Stores the structured practice fields (address, geo, contact,
+	 * accreditations) and the practice's associated provider API IDs.
+	 *
+	 * @since 4.6.0
+	 *
+	 * @param int   $post_id  The practice post ID.
+	 * @param array $practice A single practice object from /api/plugin/v2/practices.
+	 *
+	 * @return bool True on success, false if the post is not a practice.
+	 */
+	public static function save_practice_api_data( int $post_id, array $practice ): bool {
+		if ( get_post_type( $post_id ) !== self::POST_TYPE_PRACTICES ) {
+			return false;
+		}
+
+		// API id (dedupe key), primary flag, and position.
+		if ( isset( $practice['id'] ) ) {
+			update_post_meta( $post_id, 'brag_book_gallery_practice_api_id', absint( $practice['id'] ) );
+		}
+		update_post_meta( $post_id, 'brag_book_gallery_practice_is_primary', empty( $practice['isPrimary'] ) ? '0' : '1' );
+		update_post_meta( $post_id, 'brag_book_gallery_practice_position', absint( $practice['position'] ?? 0 ) );
+
+		// Contact details.
+		if ( isset( $practice['phone'] ) ) {
+			update_post_meta( $post_id, 'brag_book_gallery_practice_phone', sanitize_text_field( (string) $practice['phone'] ) );
+		}
+		if ( ! empty( $practice['websiteUrl'] ) ) {
+			update_post_meta( $post_id, 'brag_book_gallery_practice_website_url', esc_url_raw( (string) $practice['websiteUrl'] ) );
+		}
+		update_post_meta( $post_id, 'brag_book_gallery_practice_has_surgical_suite', empty( $practice['hasOnSiteSurgicalSuite'] ) ? '0' : '1' );
+
+		// Address.
+		if ( isset( $practice['address'] ) && is_array( $practice['address'] ) ) {
+			$address_map = array(
+				'street1'   => 'brag_book_gallery_practice_street1',
+				'street2'   => 'brag_book_gallery_practice_street2',
+				'city'      => 'brag_book_gallery_practice_city',
+				'state'     => 'brag_book_gallery_practice_state',
+				'zip'       => 'brag_book_gallery_practice_zip',
+				'formatted' => 'brag_book_gallery_practice_address',
+			);
+			foreach ( $address_map as $field => $meta_key ) {
+				if ( isset( $practice['address'][ $field ] ) ) {
+					update_post_meta( $post_id, $meta_key, sanitize_text_field( (string) $practice['address'][ $field ] ) );
+				}
+			}
+		}
+
+		// Geo coordinates.
+		if ( isset( $practice['geo'] ) && is_array( $practice['geo'] ) ) {
+			if ( isset( $practice['geo']['latitude'] ) ) {
+				update_post_meta( $post_id, 'brag_book_gallery_practice_latitude', (float) $practice['geo']['latitude'] );
+			}
+			if ( isset( $practice['geo']['longitude'] ) ) {
+				update_post_meta( $post_id, 'brag_book_gallery_practice_longitude', (float) $practice['geo']['longitude'] );
+			}
+			if ( isset( $practice['geo']['placeId'] ) ) {
+				update_post_meta( $post_id, 'brag_book_gallery_practice_place_id', sanitize_text_field( (string) $practice['geo']['placeId'] ) );
+			}
+		}
+
+		// Accreditations (array of short codes).
+		if ( isset( $practice['accreditations'] ) && is_array( $practice['accreditations'] ) ) {
+			$accreditations = array_values(
+				array_filter(
+					array_map(
+						static fn( $a ) => sanitize_text_field( (string) $a ),
+						$practice['accreditations']
+					)
+				)
+			);
+			update_post_meta( $post_id, 'brag_book_gallery_practice_accreditations', $accreditations );
+		}
+
+		// Associated provider API IDs (from the practice's own providers list).
+		if ( isset( $practice['providers'] ) && is_array( $practice['providers'] ) ) {
+			$provider_ids = array();
+			foreach ( $practice['providers'] as $provider ) {
+				if ( is_array( $provider ) && isset( $provider['id'] ) ) {
+					$provider_ids[] = absint( $provider['id'] );
+				}
+			}
+			update_post_meta( $post_id, 'brag_book_gallery_practice_provider_ids', implode( ',', $provider_ids ) );
+		}
+
+		return true;
+	}
+
+	/**
+	 * Register the read-only details meta box for practices
+	 *
+	 * @since 4.6.0
+	 * @return void
+	 */
+	public function add_practice_meta_boxes(): void {
+		add_meta_box(
+			'brag_book_gallery_practice_details',
+			__( 'Practice Details', 'brag-book-gallery' ),
+			array( $this, 'render_practice_details_meta_box' ),
+			self::POST_TYPE_PRACTICES,
+			'normal',
+			'high'
+		);
+	}
+
+	/**
+	 * Text post-meta fields rendered on the practice editor
+	 *
+	 * Maps the editable meta key to its translated label. Sync populates these
+	 * from the API; admins can adjust them between syncs.
+	 *
+	 * @since 4.6.0
+	 * @return array<string, string>
+	 */
+	private static function practice_text_fields(): array {
+		return array(
+			'brag_book_gallery_practice_street1'     => __( 'Street 1', 'brag-book-gallery' ),
+			'brag_book_gallery_practice_street2'     => __( 'Street 2', 'brag-book-gallery' ),
+			'brag_book_gallery_practice_city'        => __( 'City', 'brag-book-gallery' ),
+			'brag_book_gallery_practice_state'       => __( 'State', 'brag-book-gallery' ),
+			'brag_book_gallery_practice_zip'         => __( 'ZIP', 'brag-book-gallery' ),
+			'brag_book_gallery_practice_address'     => __( 'Formatted address', 'brag-book-gallery' ),
+			'brag_book_gallery_practice_phone'       => __( 'Phone', 'brag-book-gallery' ),
+			'brag_book_gallery_practice_website_url' => __( 'Website URL', 'brag-book-gallery' ),
+			'brag_book_gallery_practice_latitude'    => __( 'Latitude', 'brag-book-gallery' ),
+			'brag_book_gallery_practice_longitude'   => __( 'Longitude', 'brag-book-gallery' ),
+			'brag_book_gallery_practice_place_id'    => __( 'Google Place ID', 'brag-book-gallery' ),
+		);
+	}
+
+	/**
+	 * Render the editable practice details meta box
+	 *
+	 * Practice details are stored as post meta. Sync populates them from the API;
+	 * the fields remain editable in the admin between syncs.
+	 *
+	 * @since 4.6.0
+	 * @param \WP_Post $post The practice post.
+	 * @return void
+	 */
+	public function render_practice_details_meta_box( \WP_Post $post ): void {
+		wp_nonce_field( 'save_practice_meta', 'practice_meta_nonce' );
+
+		$api_id         = get_post_meta( $post->ID, 'brag_book_gallery_practice_api_id', true );
+		$is_primary     = get_post_meta( $post->ID, 'brag_book_gallery_practice_is_primary', true );
+		$position       = get_post_meta( $post->ID, 'brag_book_gallery_practice_position', true );
+		$surgical_suite = get_post_meta( $post->ID, 'brag_book_gallery_practice_has_surgical_suite', true );
+		$accreditations = get_post_meta( $post->ID, 'brag_book_gallery_practice_accreditations', true );
+		$accreditations = is_array( $accreditations ) ? implode( ', ', $accreditations ) : '';
+		?>
+		<table class="form-table" role="presentation">
+			<tbody>
+				<tr>
+					<th scope="row"><?php esc_html_e( 'Practice ID (API)', 'brag-book-gallery' ); ?></th>
+					<td>
+						<code><?php echo esc_html( '' === (string) $api_id ? '—' : (string) $api_id ); ?></code>
+						<p class="description"><?php esc_html_e( 'Read-only identifier from the API.', 'brag-book-gallery' ); ?></p>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="brag_book_gallery_practice_is_primary"><?php esc_html_e( 'Primary', 'brag-book-gallery' ); ?></label></th>
+					<td>
+						<input type="hidden" name="brag_book_gallery_practice_is_primary" value="0" />
+						<input type="checkbox" id="brag_book_gallery_practice_is_primary" name="brag_book_gallery_practice_is_primary" value="1" <?php checked( $is_primary, '1' ); ?> />
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="brag_book_gallery_practice_position"><?php esc_html_e( 'Position', 'brag-book-gallery' ); ?></label></th>
+					<td><input type="number" id="brag_book_gallery_practice_position" name="brag_book_gallery_practice_position" value="<?php echo esc_attr( $position ); ?>" class="small-text" /></td>
+				</tr>
+				<?php foreach ( self::practice_text_fields() as $meta_key => $label ) : ?>
+					<tr>
+						<th scope="row"><label for="<?php echo esc_attr( $meta_key ); ?>"><?php echo esc_html( $label ); ?></label></th>
+						<td><input type="text" id="<?php echo esc_attr( $meta_key ); ?>" name="<?php echo esc_attr( $meta_key ); ?>" value="<?php echo esc_attr( get_post_meta( $post->ID, $meta_key, true ) ); ?>" class="regular-text" /></td>
+					</tr>
+				<?php endforeach; ?>
+				<tr>
+					<th scope="row"><label for="brag_book_gallery_practice_has_surgical_suite"><?php esc_html_e( 'On-site surgical suite', 'brag-book-gallery' ); ?></label></th>
+					<td>
+						<input type="hidden" name="brag_book_gallery_practice_has_surgical_suite" value="0" />
+						<input type="checkbox" id="brag_book_gallery_practice_has_surgical_suite" name="brag_book_gallery_practice_has_surgical_suite" value="1" <?php checked( $surgical_suite, '1' ); ?> />
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="brag_book_gallery_practice_accreditations"><?php esc_html_e( 'Accreditations', 'brag-book-gallery' ); ?></label></th>
+					<td>
+						<input type="text" id="brag_book_gallery_practice_accreditations" name="brag_book_gallery_practice_accreditations" value="<?php echo esc_attr( $accreditations ); ?>" class="regular-text" />
+						<p class="description"><?php esc_html_e( 'Comma-separated list.', 'brag-book-gallery' ); ?></p>
+					</td>
+				</tr>
+			</tbody>
+		</table>
+		<p class="description"><?php esc_html_e( 'Linked providers are managed in the Providers box and are kept in sync from the API.', 'brag-book-gallery' ); ?></p>
+		<?php
+	}
+
+	/**
+	 * Save the editable practice meta fields
+	 *
+	 * @since 4.6.0
+	 * @param int $post_id The practice post ID.
+	 * @return void
+	 */
+	public function save_practice_meta( int $post_id ): void {
+		if ( ! isset( $_POST['practice_meta_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['practice_meta_nonce'] ) ), 'save_practice_meta' ) ) {
+			return;
+		}
+		if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
+			return;
+		}
+		if ( get_post_type( $post_id ) !== self::POST_TYPE_PRACTICES || ! current_user_can( 'edit_post', $post_id ) ) {
+			return;
+		}
+
+		// Text fields.
+		foreach ( array_keys( self::practice_text_fields() ) as $meta_key ) {
+			if ( isset( $_POST[ $meta_key ] ) ) {
+				update_post_meta( $post_id, $meta_key, sanitize_text_field( wp_unslash( $_POST[ $meta_key ] ) ) );
+			}
+		}
+
+		// Position (integer).
+		if ( isset( $_POST['brag_book_gallery_practice_position'] ) ) {
+			update_post_meta( $post_id, 'brag_book_gallery_practice_position', absint( wp_unslash( $_POST['brag_book_gallery_practice_position'] ) ) );
+		}
+
+		// Checkboxes (hidden input guarantees a value when unchecked).
+		update_post_meta( $post_id, 'brag_book_gallery_practice_is_primary', empty( $_POST['brag_book_gallery_practice_is_primary'] ) ? '0' : '1' );
+		update_post_meta( $post_id, 'brag_book_gallery_practice_has_surgical_suite', empty( $_POST['brag_book_gallery_practice_has_surgical_suite'] ) ? '0' : '1' );
+
+		// Accreditations (comma-separated to array).
+		if ( isset( $_POST['brag_book_gallery_practice_accreditations'] ) ) {
+			$raw            = sanitize_text_field( wp_unslash( $_POST['brag_book_gallery_practice_accreditations'] ) );
+			$accreditations = array_values( array_filter( array_map( 'trim', explode( ',', $raw ) ) ) );
+			update_post_meta( $post_id, 'brag_book_gallery_practice_accreditations', $accreditations );
+		}
+	}
+
+	/**
+	 * Replace the auto provider taxonomy column on the Cases list table
+	 *
+	 * WordPress renders the auto taxonomy column as plain term links and does not
+	 * allow filtering its content, so we swap in our own column (in the same
+	 * position) that renders a mini avatar per provider.
+	 *
+	 * @since 4.6.0
+	 * @param array $columns Existing list table columns.
+	 * @return array Modified columns.
+	 */
+	public function add_case_provider_column( array $columns ): array {
+		$auto_column = 'taxonomy-' . Taxonomies::TAXONOMY_PROVIDERS;
+		$rebuilt     = array();
+
+		foreach ( $columns as $key => $label ) {
+			if ( $auto_column === $key ) {
+				$rebuilt['brag_book_providers_avatars'] = __( 'Providers', 'brag-book-gallery' );
+				continue;
+			}
+			$rebuilt[ $key ] = $label;
+		}
+
+		// If the auto column was not present, append ours before the date column.
+		if ( ! isset( $rebuilt['brag_book_providers_avatars'] ) ) {
+			$rebuilt['brag_book_providers_avatars'] = __( 'Providers', 'brag-book-gallery' );
+		}
+
+		return $rebuilt;
+	}
+
+	/**
+	 * Render the providers column with a mini avatar per provider
+	 *
+	 * @since 4.6.0
+	 * @param string $column  The column key being rendered.
+	 * @param int    $post_id The case post ID.
+	 * @return void
+	 */
+	public function render_case_provider_column( string $column, int $post_id ): void {
+		if ( 'brag_book_providers_avatars' !== $column ) {
+			return;
+		}
+
+		$terms = wp_get_post_terms( $post_id, Taxonomies::TAXONOMY_PROVIDERS );
+		if ( empty( $terms ) || is_wp_error( $terms ) ) {
+			echo '&mdash;';
+			return;
+		}
+
+		echo '<div class="brag-book-gallery-admin-providers">';
+		foreach ( $terms as $term ) {
+			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- markup escaped within helper.
+			echo $this->get_provider_avatar_html( $term->term_id, $term->name );
+		}
+		echo '</div>';
+	}
+
+	/**
+	 * Build the mini-avatar + name markup for a single provider term
+	 *
+	 * Resolves the avatar with the API image winning: the synced
+	 * `provider_image_url`, then a manually-uploaded attachment, then a
+	 * placeholder icon.
+	 *
+	 * @since 4.6.0
+	 * @param int    $term_id The provider term ID.
+	 * @param string $name    The provider display name.
+	 * @return string Escaped HTML for one provider row.
+	 */
+	private function get_provider_avatar_html( int $term_id, string $name ): string {
+		$image_url     = get_term_meta( $term_id, 'provider_image_url', true );
+		$profile_photo = get_term_meta( $term_id, 'provider_profile_photo', true );
+
+		$src = '';
+		if ( ! empty( $image_url ) ) {
+			$src = (string) $image_url;
+		} elseif ( ! empty( $profile_photo ) ) {
+			$src = (string) ( wp_get_attachment_image_url( (int) $profile_photo, array( 48, 48 ) ) ?: '' );
+		}
+
+		if ( '' !== $src ) {
+			$avatar = sprintf(
+				'<img src="%s" alt="" width="24" height="24" style="width:24px;height:24px;border-radius:50%%;object-fit:cover;flex:0 0 auto;" />',
+				esc_url( $src )
+			);
+		} else {
+			$avatar = '<span class="dashicons dashicons-businessperson" style="width:24px;height:24px;font-size:24px;line-height:24px;color:#a7aaad;flex:0 0 auto;"></span>';
+		}
+
+		return sprintf(
+			'<div style="display:flex;align-items:center;gap:6px;margin:2px 0;">%s<span>%s</span></div>',
+			$avatar,
+			esc_html( $name )
+		);
 	}
 
 	/**
@@ -1314,7 +1740,7 @@ class Post_Types {
 		// Handle provider information. A case may carry multiple providers in the
 		// v2 `providers` array. The provider taxonomy (assigned during sync) is the
 		// canonical multi-value store; here we denormalize a few values onto the
-		// case post: the ordered list of provider API IDs (for /v2/providers
+		// case post: the ordered list of provider API IDs (for /v2/practices
 		// lookups and display ordering) and the primary provider for fallback
 		// display and member filtering.
 		if ( isset( $api_data['providers'] ) && is_array( $api_data['providers'] ) && ! empty( $api_data['providers'] ) ) {

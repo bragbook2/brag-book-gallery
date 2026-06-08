@@ -117,6 +117,14 @@ final class Sync_Manual_Controls {
 					<span class="stage-btn-label"><?php esc_html_e( 'Process Cases', 'brag-book-gallery' ); ?></span>
 				</span>
 			</button>
+			<?php if ( get_option( 'brag_book_gallery_enable_providers', false ) && get_option( 'brag_book_gallery_enable_practices', false ) ) : ?>
+				<button type="button" id="stage-4-btn" class="button stage-button stage-button--4" title="<?php esc_attr_e( 'Report synced providers and practices', 'brag-book-gallery' ); ?>">
+					<span class="stage-btn-number">4</span>
+					<span class="stage-btn-body">
+						<span class="stage-btn-label"><?php esc_html_e( 'Providers & Practices', 'brag-book-gallery' ); ?></span>
+					</span>
+				</button>
+			<?php endif; ?>
 		</div>
 		<?php
 	}
@@ -213,6 +221,17 @@ final class Sync_Manual_Controls {
 			</div>
 			<div id="stage3-status-content" class="stage-status-content"></div>
 		</div>
+
+			<?php if ( get_option( 'brag_book_gallery_enable_providers', false ) && get_option( 'brag_book_gallery_enable_practices', false ) ) : ?>
+				<!-- Stage 4 Status -->
+				<div id="stage4-status" class="stage-status-panel stage-status-panel--4" style="display: none;">
+					<div class="stage-status-panel-header">
+						<span class="stage-status-step">4</span>
+						<h5><?php esc_html_e( 'Stage 4 - Providers & Practices', 'brag-book-gallery' ); ?></h5>
+					</div>
+					<div id="stage4-status-content" class="stage-status-content"></div>
+				</div>
+			<?php endif; ?>
 
 		<!-- Orphan Detection Panel -->
 		<div id="orphan-detection-panel" class="stage-status-panel stage-status-panel--orphan" style="display: none;">

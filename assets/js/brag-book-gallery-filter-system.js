@@ -700,18 +700,22 @@ class FilterSystem {
     html += '<div class="brag-book-gallery-active-filters" style="display: none;"></div>';
     html += '</div>'; // Close controls-left
 
-    // Grid selector section
+    // Grid selector section. Default columns come from the saved layout
+    // preference, then the configured gallery columns setting, then 2.
+    const galleryColumns = parseInt(localStorage.getItem('brag-book-gallery-grid-columns')) || parseInt(window.bragBookGalleryConfig?.columns) || 2;
+    const col2Active = galleryColumns === 2 ? ' active' : '';
+    const col3Active = galleryColumns === 3 ? ' active' : '';
     html += '<div class="brag-book-gallery-grid-selector">';
     html += '<span class="brag-book-gallery-grid-label">View:</span>';
     html += '<div class="brag-book-gallery-grid-buttons">';
-    html += '<button class="brag-book-gallery-grid-btn" data-columns="2" onclick="updateGridLayout(2)" aria-label="View in 2 columns">';
+    html += '<button class="brag-book-gallery-grid-btn' + col2Active + '" data-columns="2" onclick="updateGridLayout(2)" aria-label="View in 2 columns">';
     html += '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">';
     html += '<rect x="1" y="1" width="6" height="6"></rect><rect x="9" y="1" width="6" height="6"></rect>';
     html += '<rect x="1" y="9" width="6" height="6"></rect><rect x="9" y="9" width="6" height="6"></rect>';
     html += '</svg>';
     html += '<span class="sr-only">2 Columns</span>';
     html += '</button>';
-    html += '<button class="brag-book-gallery-grid-btn active" data-columns="3" onclick="updateGridLayout(3)" aria-label="View in 3 columns">';
+    html += '<button class="brag-book-gallery-grid-btn' + col3Active + '" data-columns="3" onclick="updateGridLayout(3)" aria-label="View in 3 columns">';
     html += '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">';
     html += '<rect x="1" y="1" width="4" height="4"></rect><rect x="6" y="1" width="4" height="4"></rect><rect x="11" y="1" width="4" height="4"></rect>';
     html += '<rect x="1" y="6" width="4" height="4"></rect><rect x="6" y="6" width="4" height="4"></rect><rect x="11" y="6" width="4" height="4"></rect>';
@@ -738,7 +742,7 @@ class FilterSystem {
     html += '<div class="brag-book-gallery-filter-badges" data-action="filter-badges"></div>';
 
     // Add cases container structure (matching PHP exactly)
-    html += '<div class="brag-book-gallery-case-grid masonry-layout" data-columns="3">';
+    html += '<div class="brag-book-gallery-case-grid masonry-layout" data-columns="' + galleryColumns + '">';
 
     // Only display the first 10 cases initially for pagination
     const casesToDisplay = transformedCases.slice(0, itemsPerPage);
