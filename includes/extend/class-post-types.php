@@ -152,7 +152,12 @@ class Post_Types {
 				'with_front' => false,
 			),
 			'capability_type'    => 'post',
-			'has_archive'        => true,
+			// Disable the post type archive. The gallery is served by a real Page
+			// + the brag_book_procedures taxonomy archive + shortcode URL parsing,
+			// so the CPT archive is never rendered. Leaving it enabled made WordPress
+			// expose a pageable archive at the unresolved `%brag_book_procedures%`
+			// rewrite slug, which Yoast crawled as /page/N URLs that all 404.
+			'has_archive'        => false,
 			'hierarchical'       => false,
 			'menu_position'      => null,
 			'menu_icon'          => 'dashicons-camera-alt',
