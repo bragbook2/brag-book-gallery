@@ -256,9 +256,9 @@ class Post_Types {
 		$case_id              = get_post_meta( $post->ID, 'brag_book_gallery_case_id', true );
 		$procedure_ids        = get_post_meta( $post->ID, 'brag_book_gallery_procedure_ids', true );
 		$case_notes           = get_post_meta( $post->ID, 'brag_book_gallery_notes', true );
-		$doctor_name          = get_post_meta( $post->ID, 'brag_book_gallery_doctor_name', true );
-		$doctor_profile_url   = get_post_meta( $post->ID, 'brag_book_gallery_doctor_profile_url', true );
-		$doctor_suffix        = get_post_meta( $post->ID, 'brag_book_gallery_doctor_suffix', true );
+		$provider_name          = get_post_meta( $post->ID, 'brag_book_gallery_provider_name', true );
+		$provider_profile_url   = get_post_meta( $post->ID, 'brag_book_gallery_provider_profile_url', true );
+		$provider_suffix        = get_post_meta( $post->ID, 'brag_book_gallery_provider_suffix', true );
 		$member_id            = get_post_meta( $post->ID, 'brag_book_gallery_member_id', true );
 
 		// Status flags.
@@ -404,38 +404,38 @@ class Post_Types {
 							<tr>
 								<th scope="row">
 									<label
-										for="brag_book_gallery_doctor_name"><?php esc_html_e( 'Doctor Name', 'brag-book-gallery' ); ?></label>
+										for="brag_book_gallery_provider_name"><?php esc_html_e( 'Provider Name', 'brag-book-gallery' ); ?></label>
 								</th>
 								<td>
-									<input type="text" id="brag_book_gallery_doctor_name"
-										   name="brag_book_gallery_doctor_name"
-										   value="<?php echo esc_attr( $doctor_name ); ?>"
+									<input type="text" id="brag_book_gallery_provider_name"
+										   name="brag_book_gallery_provider_name"
+										   value="<?php echo esc_attr( $provider_name ); ?>"
 										   class="regular-text"/>
-									<p class="description"><?php esc_html_e( 'Name of the doctor who performed the procedure', 'brag-book-gallery' ); ?></p>
+									<p class="description"><?php esc_html_e( 'Name of the provider who performed the procedure', 'brag-book-gallery' ); ?></p>
 								</td>
 							</tr>
 							<tr>
 								<th scope="row">
 									<label
-										for="brag_book_gallery_doctor_profile_url"><?php esc_html_e( 'Doctor Profile URL', 'brag-book-gallery' ); ?></label>
+										for="brag_book_gallery_provider_profile_url"><?php esc_html_e( 'Provider Profile URL', 'brag-book-gallery' ); ?></label>
 								</th>
 								<td>
-									<input type="url" id="brag_book_gallery_doctor_profile_url"
-										   name="brag_book_gallery_doctor_profile_url"
-										   value="<?php echo esc_url( $doctor_profile_url ); ?>"
+									<input type="url" id="brag_book_gallery_provider_profile_url"
+										   name="brag_book_gallery_provider_profile_url"
+										   value="<?php echo esc_url( $provider_profile_url ); ?>"
 										   class="regular-text"/>
-									<p class="description"><?php esc_html_e( 'URL to the doctor\'s profile page', 'brag-book-gallery' ); ?></p>
+									<p class="description"><?php esc_html_e( 'URL to the provider\'s profile page', 'brag-book-gallery' ); ?></p>
 								</td>
 							</tr>
 							<tr>
 								<th scope="row">
 									<label
-										for="brag_book_gallery_doctor_suffix"><?php esc_html_e( 'Doctor Suffix', 'brag-book-gallery' ); ?></label>
+										for="brag_book_gallery_provider_suffix"><?php esc_html_e( 'Provider Suffix', 'brag-book-gallery' ); ?></label>
 								</th>
 								<td>
-									<input type="text" id="brag_book_gallery_doctor_suffix"
-										   name="brag_book_gallery_doctor_suffix"
-										   value="<?php echo esc_attr( $doctor_suffix ); ?>"
+									<input type="text" id="brag_book_gallery_provider_suffix"
+										   name="brag_book_gallery_provider_suffix"
+										   value="<?php echo esc_attr( $provider_suffix ); ?>"
 										   class="regular-text"/>
 									<p class="description"><?php esc_html_e( 'Professional suffix (e.g., MD, PhD, DDS)', 'brag-book-gallery' ); ?></p>
 								</td>
@@ -862,9 +862,9 @@ class Post_Types {
 			'brag_book_gallery_patient_age'            => 'absint',
 			'brag_book_gallery_gender'                 => 'sanitize_text_field',
 			'brag_book_gallery_notes'                  => 'sanitize_textarea_field',
-			'brag_book_gallery_doctor_name'            => 'sanitize_text_field',
-			'brag_book_gallery_doctor_profile_url'     => 'esc_url_raw',
-			'brag_book_gallery_doctor_suffix'          => 'sanitize_text_field',
+			'brag_book_gallery_provider_name'            => 'sanitize_text_field',
+			'brag_book_gallery_provider_profile_url'     => 'esc_url_raw',
+			'brag_book_gallery_provider_suffix'          => 'sanitize_text_field',
 			'brag_book_gallery_member_id'              => 'absint',
 
 			// API data
@@ -1180,7 +1180,7 @@ class Post_Types {
 	 * - PostOp data
 	 * - SEO metadata
 	 * - Photo sets and image URLs
-	 * - Doctor/creator information
+	 * - Provider/creator information
 	 *
 	 * @since 3.0.0
 	 * @since 3.3.2-beta10 Updated PHPDoc, removed debug error_log, improved sanitization
@@ -1235,6 +1235,10 @@ class Post_Types {
 			'description'       => 'brag_book_gallery_notes',
 			'createdAt'         => 'brag_book_gallery_created_at',
 			'updatedAt'         => 'brag_book_gallery_updated_at',
+
+			// Case flags (booleans normalized to '1'/'0' by the loop below).
+			'featured'          => 'brag_book_gallery_featured',
+			'topPerforming'     => 'brag_book_gallery_top_performing',
 		);
 
 		// Save basic fields
@@ -1307,43 +1311,56 @@ class Post_Types {
 			update_post_meta( $post_id, 'brag_book_gallery_category_ids', $category_ids );
 		}
 
-		// Handle creator/doctor information.
-		if ( isset( $api_data['creator'] ) && is_array( $api_data['creator'] ) ) {
-			$creator = $api_data['creator'];
+		// Handle provider information. A case may carry multiple providers in the
+		// v2 `providers` array. The provider taxonomy (assigned during sync) is the
+		// canonical multi-value store; here we denormalize a few values onto the
+		// case post: the ordered list of provider API IDs (for /v2/providers
+		// lookups and display ordering) and the primary provider for fallback
+		// display and member filtering.
+		if ( isset( $api_data['providers'] ) && is_array( $api_data['providers'] ) && ! empty( $api_data['providers'] ) ) {
+			$providers = $api_data['providers'];
 
-			// Map creator.id to member ID
-			if ( isset( $creator['id'] ) ) {
-				update_post_meta( $post_id, 'brag_book_gallery_member_id', absint( $creator['id'] ) );
-			}
-
-			// Map creator.profileLink to doctor profile URL
-			if ( isset( $creator['profileLink'] ) && ! empty( $creator['profileLink'] ) ) {
-				update_post_meta( $post_id, 'brag_book_gallery_doctor_profile_url', esc_url_raw( $creator['profileLink'] ) );
-			}
-
-			// Map creator.suffix to doctor suffix
-			if ( isset( $creator['suffix'] ) && ! empty( $creator['suffix'] ) ) {
-				update_post_meta( $post_id, 'brag_book_gallery_doctor_suffix', sanitize_text_field( $creator['suffix'] ) );
-			}
-
-			// Build doctor name from firstName + lastName + ', ' + suffix
-			$doctor_name_parts = array();
-			if ( isset( $creator['firstName'] ) && ! empty( $creator['firstName'] ) ) {
-				$doctor_name_parts[] = sanitize_text_field( $creator['firstName'] );
-			}
-			if ( isset( $creator['lastName'] ) && ! empty( $creator['lastName'] ) ) {
-				$doctor_name_parts[] = sanitize_text_field( $creator['lastName'] );
-			}
-
-			if ( ! empty( $doctor_name_parts ) ) {
-				$doctor_name = implode( ' ', $doctor_name_parts );
-
-				// Add suffix if present
-				if ( isset( $creator['suffix'] ) && ! empty( $creator['suffix'] ) ) {
-					$doctor_name .= ', ' . sanitize_text_field( $creator['suffix'] );
+			// Order by the API position field (lowest position is primary).
+			usort(
+				$providers,
+				static function ( $a, $b ) {
+					return ( (int) ( $a['position'] ?? 0 ) ) <=> ( (int) ( $b['position'] ?? 0 ) );
 				}
+			);
 
-				update_post_meta( $post_id, 'brag_book_gallery_doctor_name', $doctor_name );
+			// Ordered list of provider API IDs.
+			$provider_ids = array();
+			foreach ( $providers as $provider ) {
+				if ( is_array( $provider ) && isset( $provider['id'] ) ) {
+					$provider_ids[] = absint( $provider['id'] );
+				}
+			}
+			if ( ! empty( $provider_ids ) ) {
+				update_post_meta( $post_id, 'brag_book_gallery_provider_ids', implode( ',', $provider_ids ) );
+			}
+
+			// Denormalize the primary provider.
+			$primary = $providers[0];
+			if ( isset( $primary['id'] ) ) {
+				update_post_meta( $post_id, 'brag_book_gallery_member_id', absint( $primary['id'] ) );
+			}
+
+			$primary_name = isset( $primary['name'] ) ? sanitize_text_field( $primary['name'] ) : '';
+			if ( empty( $primary_name ) ) {
+				$primary_name = trim(
+					implode(
+						' ',
+						array_filter(
+							array(
+								isset( $primary['firstName'] ) ? sanitize_text_field( $primary['firstName'] ) : '',
+								isset( $primary['lastName'] ) ? sanitize_text_field( $primary['lastName'] ) : '',
+							)
+						)
+					)
+				);
+			}
+			if ( ! empty( $primary_name ) ) {
+				update_post_meta( $post_id, 'brag_book_gallery_provider_name', $primary_name );
 			}
 		}
 

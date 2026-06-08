@@ -4,7 +4,7 @@ Tags: gallery, before-after, medical, cosmetic, procedures
 Requires at least: 6.8
 Tested up to: 6.9
 Requires PHP: 8.2
-Stable tag: 4.6.0-beta4
+Stable tag: 4.6.0-beta5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -91,6 +91,12 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 4. Sync management interface
 
 == Changelog ==
+
+= 4.6.0-beta5 =
+* Changed: Renamed the "Doctors" taxonomy to "Providers" (registered as `brag_book_providers`) throughout the plugin — admin menu, case displays, term/post meta, the display toggle, and sync. The terminology is more universal for related medical staff. Existing synced data (provider terms, their photos and meta, case associations, and sync-registry rows) is migrated automatically on upgrade, so no re-sync is required.
+* Changed: The provider taxonomy is now available to every account. Previously it was restricted to a single website property ID.
+* Changed: Provider sync now reads the v2 `providers` array (a case can have multiple providers) instead of the deprecated single `creator` object. Each provider is stored as a term with its API ID (`provider_member_id`, for reuse against /v2/providers), name, bio, image URL, and position. The case stores the ordered provider ID list in `brag_book_gallery_provider_ids`. All assigned providers render on the case detail and cards, ordered by the API position, with the API-supplied photo preferred over a manual upload.
+* Added: `featured` and `topPerforming` from the API are mapped to the `brag_book_gallery_featured` and `brag_book_gallery_top_performing` case post meta during sync.
 
 = 4.6.0-beta4 =
 * Fixed: On short case overlays the nudity warning's title, caption, and button no longer stack and overlap unreadably. The content now switches to a side-by-side layout when the overlay is too short — implemented with a height-based CSS container query — and reverts to the stacked layout once there is enough vertical room.

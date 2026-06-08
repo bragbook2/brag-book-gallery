@@ -540,33 +540,33 @@ class Menu {
 		);
 
 		/**
-		 * Doctors Submenu
+		 * Providers Submenu
 		 *
-		 * Links to the taxonomy edit screen for 'brag_book_doctors'.
-		 * Provides interface for managing doctor/provider terms.
+		 * Links to the taxonomy edit screen for 'brag_book_providers'.
+		 * Provides interface for managing provider/provider terms.
 		 *
 		 * Note: Empty callback because WordPress handles taxonomy screens automatically
 		 * when menu_slug points to a taxonomy edit page.
 		 *
-		 * Visibility: Only shown when website property ID 111 is configured
+		 * Visibility: Shown for all accounts
 		 * Capability: manage_categories (allows administrators)
 		 *
 		 * @since 3.3.3
 		 */
-		$this->menu_config['submenus']['doctors'] = array(
+		$this->menu_config['submenus']['providers'] = array(
 			'parent_slug' => 'brag-book-gallery-settings',
 			'page_title'  => __(
-				'Doctors Management',
+				'Providers Management',
 				'brag-book-gallery'
 			),
 			'menu_title'  => __(
-				'Doctors',
+				'Providers',
 				'brag-book-gallery'
 			),
 			'capability'  => 'manage_categories',
-			'menu_slug'   => 'edit-tags.php?taxonomy=brag_book_doctors&post_type=brag_book_cases',
+			'menu_slug'   => 'edit-tags.php?taxonomy=brag_book_providers&post_type=brag_book_cases',
 			'callback'    => '', // Empty callback - WordPress core handles rendering.
-			'condition'   => $this->is_doctors_taxonomy_enabled(), // Only visible when property ID 111 is configured.
+			'condition'   => $this->is_providers_taxonomy_enabled(), // Visible for all accounts.
 		);
 
 		/**
@@ -1099,23 +1099,17 @@ class Menu {
 	}
 
 	/**
-	 * Check if doctors taxonomy is enabled
+	 * Check if providers taxonomy is enabled
 	 *
-	 * Doctors taxonomy is only enabled when website property ID 111 is configured.
+	 * The providers taxonomy is enabled for all accounts.
 	 * This mirrors the logic in the Taxonomies class.
 	 *
 	 * @since 3.3.3
 	 * @access private
 	 *
-	 * @return bool True if doctors taxonomy should be enabled.
+	 * @return bool True if providers taxonomy should be enabled.
 	 */
-	private function is_doctors_taxonomy_enabled(): bool {
-		$website_property_ids = get_option( 'brag_book_gallery_website_property_id', [] );
-
-		if ( ! is_array( $website_property_ids ) ) {
-			$website_property_ids = [ $website_property_ids ];
-		}
-
-		return in_array( 111, array_map( 'intval', $website_property_ids ), true );
+	private function is_providers_taxonomy_enabled(): bool {
+		return true;
 	}
 }

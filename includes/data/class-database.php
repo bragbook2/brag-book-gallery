@@ -321,7 +321,7 @@ class Database {
 	 * Migration to version 1.3.0
 	 *
 	 * Replaces wp_brag_case_map table with wp_brag_sync_registry
-	 * for unified sync tracking across procedures, cases, and doctors.
+	 * for unified sync tracking across procedures, cases, and providers.
 	 *
 	 * @since 4.3.3
 	 * @return void
@@ -423,7 +423,7 @@ class Database {
 	 * Create sync registry table
 	 *
 	 * Creates unified table for tracking API-to-WordPress item mappings
-	 * across procedures, cases, and doctors.
+	 * across procedures, cases, and providers.
 	 *
 	 * @since 4.3.3
 	 * @return void
@@ -840,7 +840,7 @@ class Database {
 	 *
 	 * @since 4.3.3
 	 *
-	 * @param string   $item_type        Item type: 'case', 'procedure', or 'doctor'.
+	 * @param string   $item_type        Item type: 'case', 'procedure', or 'provider'.
 	 * @param int      $api_id           API-side ID.
 	 * @param int      $wordpress_id     WordPress post ID or term ID.
 	 * @param string   $wordpress_type   'post' or 'term'.
@@ -1061,7 +1061,7 @@ class Database {
 		$stats = [
 			'case'      => 0,
 			'procedure' => 0,
-			'doctor'    => 0,
+			'provider'    => 0,
 			'total'     => 0,
 		];
 

@@ -80,8 +80,15 @@
 	}
 }
 
-// Doctor profile section (shown below title when property ID 111 is active)
-.brag-book-gallery-doctor-profile {
+// Provider profile section (shown below the case title). A case may have
+// multiple providers, stacked vertically.
+.brag-book-gallery-provider-profiles {
+	display: flex;
+	flex-direction: column;
+	gap: var(--wp--custom--brag-book-gallery--spacer--sm, 12px);
+}
+
+.brag-book-gallery-provider-profile {
 	display: flex;
 	align-items: center;
 	gap: var(--wp--custom--brag-book-gallery--spacer--sm, 12px);
@@ -91,11 +98,11 @@
 	}
 }
 
-.brag-book-gallery-doctor-photo {
+.brag-book-gallery-provider-photo {
 	flex-shrink: 0;
 }
 
-.brag-book-gallery-doctor-avatar {
+.brag-book-gallery-provider-avatar {
 	width: 48px;
 	height: 48px;
 	border-radius: 50%;
@@ -111,20 +118,20 @@
 	}
 }
 
-.brag-book-gallery-doctor-info {
+.brag-book-gallery-provider-info {
 	display: flex;
 	flex-direction: column;
 	gap: 2px;
 }
 
-.brag-book-gallery-doctor-name {
+.brag-book-gallery-provider-name {
 	font-size: var(--text-base, 1rem);
 	font-weight: var(--font-medium, 500);
 	color: var(--color-text-primary, #1f2937);
 	text-decoration: none;
 }
 
-a.brag-book-gallery-doctor-name {
+a.brag-book-gallery-provider-name {
 	color: var(--color-text-primary, #1f2937);
 	text-decoration: none;
 

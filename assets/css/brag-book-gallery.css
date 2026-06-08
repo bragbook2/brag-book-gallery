@@ -930,44 +930,50 @@ body.brag-book-gallery-page:not(.disable-custom-font) .brag-book-gallery-favorit
   }
 }
 
-.brag-book-gallery-case-doctor {
+.brag-book-gallery-case-providers {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wp--custom--brag-book-gallery--spacer--xs, 4px);
+}
+
+.brag-book-gallery-case-provider {
   display: flex;
   align-items: center;
   gap: var(--wp--custom--brag-book-gallery--spacer--sm, 8px);
 }
 
-.brag-book-gallery-case-doctor-avatar {
+.brag-book-gallery-case-provider-avatar {
   width: 32px;
   height: 32px;
   border-radius: 50%;
   object-fit: cover;
   flex-shrink: 0;
 }
-.brag-book-gallery-case-doctor-avatar--placeholder {
+.brag-book-gallery-case-provider-avatar--placeholder {
   display: flex;
   align-items: center;
   justify-content: center;
   background-color: var(--wp--custom--brag-book-gallery--color--light-gray, #e5e7eb);
   color: var(--wp--custom--brag-book-gallery--color--gray, #9ca3af);
 }
-.brag-book-gallery-case-doctor-avatar--placeholder svg {
+.brag-book-gallery-case-provider-avatar--placeholder svg {
   width: 16px;
   height: 16px;
 }
 
-.brag-book-gallery-case-doctor-name {
+.brag-book-gallery-case-provider-name {
   font-size: var(--wp--custom--brag-book-gallery--text-sm);
   font-weight: var(--wp--custom--brag-book-gallery--font-weight--medium, 500);
   line-height: 1.3;
 }
 
-.brag-book-gallery-case-card-overlay-info--doctor {
+.brag-book-gallery-case-card-overlay-info--provider {
   flex-direction: row;
   align-items: center;
   gap: var(--wp--custom--brag-book-gallery--spacer--sm, 8px);
 }
 
-.brag-book-gallery-case-card-overlay-doctor-avatar {
+.brag-book-gallery-case-card-overlay-provider-avatar {
   width: 40px;
   height: 40px;
   border-radius: 50%;
@@ -975,12 +981,12 @@ body.brag-book-gallery-page:not(.disable-custom-font) .brag-book-gallery-favorit
   flex-shrink: 0;
 }
 @media (hover: hover) and (pointer: fine) {
-  .brag-book-gallery-case-card-overlay-doctor-avatar {
+  .brag-book-gallery-case-card-overlay-provider-avatar {
     width: 48px;
     height: 48px;
   }
 }
-.brag-book-gallery-case-card-overlay-doctor-avatar--placeholder {
+.brag-book-gallery-case-card-overlay-provider-avatar--placeholder {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -988,35 +994,35 @@ body.brag-book-gallery-page:not(.disable-custom-font) .brag-book-gallery-favorit
   color: rgba(255, 255, 255, 0.6);
 }
 @media (hover: hover) and (pointer: fine) {
-  .brag-book-gallery-case-card-overlay-doctor-avatar--placeholder {
+  .brag-book-gallery-case-card-overlay-provider-avatar--placeholder {
     background-color: rgba(255, 255, 255, 0.2);
   }
 }
-.brag-book-gallery-case-card-overlay-doctor-avatar--placeholder svg {
+.brag-book-gallery-case-card-overlay-provider-avatar--placeholder svg {
   width: 20px;
   height: 20px;
 }
 @media (hover: hover) and (pointer: fine) {
-  .brag-book-gallery-case-card-overlay-doctor-avatar--placeholder svg {
+  .brag-book-gallery-case-card-overlay-provider-avatar--placeholder svg {
     width: 24px;
     height: 24px;
   }
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .brag-book-gallery-case-card--v3 .brag-book-gallery-case-card-overlay-doctor-avatar {
+  .brag-book-gallery-case-card--v3 .brag-book-gallery-case-card-overlay-provider-avatar {
     width: 40px;
     height: 40px;
   }
 }
 @media (hover: hover) and (pointer: fine) {
-  .brag-book-gallery-case-card--v3 .brag-book-gallery-case-card-overlay-doctor-avatar--placeholder {
+  .brag-book-gallery-case-card--v3 .brag-book-gallery-case-card-overlay-provider-avatar--placeholder {
     background-color: var(--wp--custom--brag-book-gallery--color--light-gray, #e5e7eb);
     color: var(--wp--custom--brag-book-gallery--color--gray, #9ca3af);
   }
 }
 @media (hover: hover) and (pointer: fine) {
-  .brag-book-gallery-case-card--v3 .brag-book-gallery-case-card-overlay-doctor-avatar--placeholder svg {
+  .brag-book-gallery-case-card--v3 .brag-book-gallery-case-card-overlay-provider-avatar--placeholder svg {
     width: 20px;
     height: 20px;
   }
@@ -1799,29 +1805,35 @@ details[open] .brag-book-gallery-gallery-selector__panel {
   font-weight: var(--font-normal);
 }
 
-.brag-book-gallery-doctor-profile {
+.brag-book-gallery-provider-profiles {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wp--custom--brag-book-gallery--spacer--sm, 12px);
+}
+
+.brag-book-gallery-provider-profile {
   display: flex;
   align-items: center;
   gap: var(--wp--custom--brag-book-gallery--spacer--sm, 12px);
 }
 @media (max-width: 768px) {
-  .brag-book-gallery-doctor-profile {
+  .brag-book-gallery-provider-profile {
     justify-content: center;
   }
 }
 
-.brag-book-gallery-doctor-photo {
+.brag-book-gallery-provider-photo {
   flex-shrink: 0;
 }
 
-.brag-book-gallery-doctor-avatar {
+.brag-book-gallery-provider-avatar {
   width: 48px;
   height: 48px;
   border-radius: 50%;
   object-fit: cover;
   border: 2px solid var(--wp--custom--brag-book-gallery--color--light-gray, #e5e7eb);
 }
-.brag-book-gallery-doctor-avatar--placeholder {
+.brag-book-gallery-provider-avatar--placeholder {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1829,24 +1841,24 @@ details[open] .brag-book-gallery-gallery-selector__panel {
   color: var(--wp--custom--brag-book-gallery--color--gray, #9ca3af);
 }
 
-.brag-book-gallery-doctor-info {
+.brag-book-gallery-provider-info {
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-.brag-book-gallery-doctor-name {
+.brag-book-gallery-provider-name {
   font-size: var(--text-base, 1rem);
   font-weight: var(--font-medium, 500);
   color: var(--color-text-primary, #1f2937);
   text-decoration: none;
 }
 
-a.brag-book-gallery-doctor-name {
+a.brag-book-gallery-provider-name {
   color: var(--color-text-primary, #1f2937);
   text-decoration: none;
 }
-a.brag-book-gallery-doctor-name:hover {
+a.brag-book-gallery-provider-name:hover {
   text-decoration: none;
 }
 

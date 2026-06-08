@@ -415,6 +415,9 @@ final class Setup {
 		// Run one-time migration of legacy 'form-entries' post type to 'brag_book_forms'
 		$this->migrate_form_entries_post_type();
 
+		// Run one-time migration renaming the legacy 'doctors' taxonomy/data to 'providers'
+		$this->migrate_doctors_to_providers();
+
 		// Register custom post types if needed.
 		$this->register_post_types();
 
@@ -1669,6 +1672,104 @@ final class Setup {
 		}
 
 		update_option( 'brag_book_gallery_form_post_type_migrated', true );
+	}
+
+	/**
+	 * Migrate legacy 'doctors' taxonomy and data to 'providers'.
+	 *
+	 * The plugin renamed its medical-staff concept from "doctors" to the more
+	 * universal "providers". This migration moves existing synced data in place
+	 * so terms, their meta, case associations, post meta, the display option,
+	 * and sync-registry rows survive the rename without a re-sync. Runs once,
+	 * gated by an option flag; every statement is also scoped by the old value
+	 * so it is naturally idempotent. The API input is unaffected — it sends a
+	 * neutral `creator` object, not a "doctor" field.
+	 *
+	 * @since 4.6.0
+	 * @return void
+	 */
+	private function migrate_doctors_to_providers(): void {
+		if ( get_option( 'brag_book_gallery_providers_migrated', false ) ) {
+			return;
+		}
+
+		global $wpdb;
+
+		// 1. Move the taxonomy itself. Term/object relationships key on
+		// term_taxonomy_id, which is unchanged, so case associations follow.
+		$wpdb->update(
+			$wpdb->term_taxonomy,
+			[ 'taxonomy' => 'brag_book_providers' ],
+			[ 'taxonomy' => 'brag_book_doctors' ],
+			[ '%s' ],
+			[ '%s' ]
+		);
+
+		// 2. Rename term meta keys on the provider terms.
+		$term_meta_map = [
+			'doctor_member_id'     => 'provider_member_id',
+			'doctor_first_name'    => 'provider_first_name',
+			'doctor_last_name'     => 'provider_last_name',
+			'doctor_suffix'        => 'provider_suffix',
+			'doctor_profile_url'   => 'provider_profile_url',
+			'doctor_profile_photo' => 'provider_profile_photo',
+		];
+		foreach ( $term_meta_map as $old_key => $new_key ) {
+			$wpdb->update(
+				$wpdb->termmeta,
+				[ 'meta_key' => $new_key ],
+				[ 'meta_key' => $old_key ],
+				[ '%s' ],
+				[ '%s' ]
+			);
+		}
+
+		// 3. Rename the denormalized per-case post meta keys.
+		$post_meta_map = [
+			'brag_book_gallery_doctor_name'        => 'brag_book_gallery_provider_name',
+			'brag_book_gallery_doctor_profile_url' => 'brag_book_gallery_provider_profile_url',
+			'brag_book_gallery_doctor_suffix'      => 'brag_book_gallery_provider_suffix',
+		];
+		foreach ( $post_meta_map as $old_key => $new_key ) {
+			$wpdb->update(
+				$wpdb->postmeta,
+				[ 'meta_key' => $new_key ],
+				[ 'meta_key' => $old_key ],
+				[ '%s' ],
+				[ '%s' ]
+			);
+		}
+
+		// 4. Rename the display option, preserving its stored value.
+		$legacy_show = get_option( 'brag_book_gallery_show_doctor', '__brag_missing__' );
+		if ( '__brag_missing__' !== $legacy_show ) {
+			update_option( 'brag_book_gallery_show_provider', $legacy_show );
+			delete_option( 'brag_book_gallery_show_doctor' );
+		}
+
+		// 5. Retype sync-registry rows so orphan cleanup keeps tracking them.
+		$registry_table = $wpdb->prefix . 'brag_sync_registry';
+		$registry_exists = $wpdb->get_var(
+			$wpdb->prepare( 'SHOW TABLES LIKE %s', $registry_table )
+		);
+		if ( $registry_exists === $registry_table ) {
+			$wpdb->update(
+				$registry_table,
+				[ 'item_type' => 'provider' ],
+				[ 'item_type' => 'doctor' ],
+				[ '%s' ],
+				[ '%s' ]
+			);
+		}
+
+		// Object caches for the migrated objects may be stale this request;
+		// they rebuild on the next read. Flush rewrites for the renamed taxonomy.
+		update_option( 'brag_book_gallery_flush_rewrite_rules', true );
+
+		update_option( 'brag_book_gallery_providers_migrated', true );
+
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+		error_log( 'BRAG book Gallery: Migrated doctors taxonomy and data to providers.' );
 	}
 
 	/**

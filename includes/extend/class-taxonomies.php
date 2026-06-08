@@ -31,12 +31,7 @@ class Taxonomies {
 	 * Taxonomy constants
 	 */
 	public const TAXONOMY_PROCEDURES = 'brag_book_procedures';
-	public const TAXONOMY_DOCTORS    = 'brag_book_doctors';
-
-	/**
-	 * Website property ID that enables the doctors taxonomy
-	 */
-	private const DOCTORS_ENABLED_PROPERTY_ID = 111;
+	public const TAXONOMY_PROVIDERS    = 'brag_book_providers';
 
 	/**
 	 * Initialize taxonomy functionality
@@ -60,14 +55,14 @@ class Taxonomies {
 		add_filter( 'manage_edit-' . self::TAXONOMY_PROCEDURES . '_columns', [ $this, 'add_procedure_columns' ] );
 		add_filter( 'manage_' . self::TAXONOMY_PROCEDURES . '_custom_column', [ $this, 'add_procedure_column_content' ], 10, 3 );
 
-		// Add taxonomy meta fields for Doctors (only if enabled)
-		if ( $this->is_doctors_taxonomy_enabled() ) {
-			add_action( self::TAXONOMY_DOCTORS . '_add_form_fields', [ $this, 'add_doctor_meta_fields' ] );
-			add_action( self::TAXONOMY_DOCTORS . '_edit_form_fields', [ $this, 'edit_doctor_meta_fields' ] );
-			add_action( 'edited_' . self::TAXONOMY_DOCTORS, [ $this, 'save_doctor_meta' ] );
-			add_action( 'create_' . self::TAXONOMY_DOCTORS, [ $this, 'save_doctor_meta' ] );
-			add_filter( 'manage_edit-' . self::TAXONOMY_DOCTORS . '_columns', [ $this, 'add_doctor_columns' ] );
-			add_filter( 'manage_' . self::TAXONOMY_DOCTORS . '_custom_column', [ $this, 'add_doctor_column_content' ], 10, 3 );
+		// Add taxonomy meta fields for Providers (only if enabled)
+		if ( $this->is_providers_taxonomy_enabled() ) {
+			add_action( self::TAXONOMY_PROVIDERS . '_add_form_fields', [ $this, 'add_provider_meta_fields' ] );
+			add_action( self::TAXONOMY_PROVIDERS . '_edit_form_fields', [ $this, 'edit_provider_meta_fields' ] );
+			add_action( 'edited_' . self::TAXONOMY_PROVIDERS, [ $this, 'save_provider_meta' ] );
+			add_action( 'create_' . self::TAXONOMY_PROVIDERS, [ $this, 'save_provider_meta' ] );
+			add_filter( 'manage_edit-' . self::TAXONOMY_PROVIDERS . '_columns', [ $this, 'add_provider_columns' ] );
+			add_filter( 'manage_' . self::TAXONOMY_PROVIDERS . '_custom_column', [ $this, 'add_provider_column_content' ], 10, 3 );
 		}
 
 		// Enqueue media scripts for taxonomy pages
@@ -75,21 +70,15 @@ class Taxonomies {
 	}
 
 	/**
-	 * Check if doctors taxonomy is enabled
+	 * Check if providers taxonomy is enabled
 	 *
-	 * Doctors taxonomy is only enabled when website property ID 111 is configured.
+	 * The providers taxonomy is enabled for all accounts.
 	 *
 	 * @since 3.3.3
-	 * @return bool True if doctors taxonomy should be enabled.
+	 * @return bool True if providers taxonomy should be enabled.
 	 */
-	public function is_doctors_taxonomy_enabled(): bool {
-		$website_property_ids = get_option( 'brag_book_gallery_website_property_id', [] );
-
-		if ( ! is_array( $website_property_ids ) ) {
-			$website_property_ids = [ $website_property_ids ];
-		}
-
-		return in_array( self::DOCTORS_ENABLED_PROPERTY_ID, array_map( 'intval', $website_property_ids ), true );
+	public function is_providers_taxonomy_enabled(): bool {
+		return true;
 	}
 
 	/**
@@ -152,47 +141,46 @@ class Taxonomies {
 
 		register_taxonomy( self::TAXONOMY_PROCEDURES, [ 'brag_book_cases' ], $procedures_args );
 
-		// Register Doctors taxonomy (only if enabled for website property ID 111)
-		if ( $this->is_doctors_taxonomy_enabled() ) {
-			$this->register_doctors_taxonomy();
+		// Register Providers taxonomy.
+		if ( $this->is_providers_taxonomy_enabled() ) {
+			$this->register_providers_taxonomy();
 		}
 	}
 
 	/**
-	 * Register the Doctors taxonomy
+	 * Register the Providers taxonomy
 	 *
-	 * Creates a taxonomy for managing doctors/providers with custom meta fields.
-	 * Only registered when website property ID 111 is configured.
+	 * Creates a taxonomy for managing providers/providers with custom meta fields.
 	 *
 	 * @since 3.3.3
 	 * @return void
 	 */
-	private function register_doctors_taxonomy(): void {
-		$doctors_labels = [
-			'name'                       => _x( 'Doctors', 'Taxonomy general name', 'brag-book-gallery' ),
-			'singular_name'              => _x( 'Doctor', 'Taxonomy singular name', 'brag-book-gallery' ),
-			'menu_name'                  => __( 'Doctors', 'brag-book-gallery' ),
-			'all_items'                  => __( 'All Doctors', 'brag-book-gallery' ),
-			'parent_item'                => __( 'Parent Doctor', 'brag-book-gallery' ),
-			'parent_item_colon'          => __( 'Parent Doctor:', 'brag-book-gallery' ),
-			'new_item_name'              => __( 'New Doctor Name', 'brag-book-gallery' ),
-			'add_new_item'               => __( 'Add New Doctor', 'brag-book-gallery' ),
-			'edit_item'                  => __( 'Edit Doctor', 'brag-book-gallery' ),
-			'update_item'                => __( 'Update Doctor', 'brag-book-gallery' ),
-			'view_item'                  => __( 'View Doctor', 'brag-book-gallery' ),
-			'separate_items_with_commas' => __( 'Separate doctors with commas', 'brag-book-gallery' ),
-			'add_or_remove_items'        => __( 'Add or remove doctors', 'brag-book-gallery' ),
+	private function register_providers_taxonomy(): void {
+		$providers_labels = [
+			'name'                       => _x( 'Providers', 'Taxonomy general name', 'brag-book-gallery' ),
+			'singular_name'              => _x( 'Provider', 'Taxonomy singular name', 'brag-book-gallery' ),
+			'menu_name'                  => __( 'Providers', 'brag-book-gallery' ),
+			'all_items'                  => __( 'All Providers', 'brag-book-gallery' ),
+			'parent_item'                => __( 'Parent Provider', 'brag-book-gallery' ),
+			'parent_item_colon'          => __( 'Parent Provider:', 'brag-book-gallery' ),
+			'new_item_name'              => __( 'New Provider Name', 'brag-book-gallery' ),
+			'add_new_item'               => __( 'Add New Provider', 'brag-book-gallery' ),
+			'edit_item'                  => __( 'Edit Provider', 'brag-book-gallery' ),
+			'update_item'                => __( 'Update Provider', 'brag-book-gallery' ),
+			'view_item'                  => __( 'View Provider', 'brag-book-gallery' ),
+			'separate_items_with_commas' => __( 'Separate providers with commas', 'brag-book-gallery' ),
+			'add_or_remove_items'        => __( 'Add or remove providers', 'brag-book-gallery' ),
 			'choose_from_most_used'      => __( 'Choose from the most used', 'brag-book-gallery' ),
-			'popular_items'              => __( 'Popular Doctors', 'brag-book-gallery' ),
-			'search_items'               => __( 'Search Doctors', 'brag-book-gallery' ),
+			'popular_items'              => __( 'Popular Providers', 'brag-book-gallery' ),
+			'search_items'               => __( 'Search Providers', 'brag-book-gallery' ),
 			'not_found'                  => __( 'Not Found', 'brag-book-gallery' ),
-			'no_terms'                   => __( 'No doctors', 'brag-book-gallery' ),
-			'items_list'                 => __( 'Doctors list', 'brag-book-gallery' ),
-			'items_list_navigation'      => __( 'Doctors list navigation', 'brag-book-gallery' ),
+			'no_terms'                   => __( 'No providers', 'brag-book-gallery' ),
+			'items_list'                 => __( 'Providers list', 'brag-book-gallery' ),
+			'items_list_navigation'      => __( 'Providers list navigation', 'brag-book-gallery' ),
 		];
 
-		$doctors_args = [
-			'labels'             => $doctors_labels,
+		$providers_args = [
+			'labels'             => $providers_labels,
 			'hierarchical'       => false,
 			'public'             => false, // Not publicly queryable - used as information feed for cases.
 			'publicly_queryable' => false, // No front-end archive/term pages.
@@ -205,7 +193,7 @@ class Taxonomies {
 			'rewrite'            => false, // No URL rewrites needed.
 		];
 
-		register_taxonomy( self::TAXONOMY_DOCTORS, [ 'brag_book_cases' ], $doctors_args );
+		register_taxonomy( self::TAXONOMY_PROVIDERS, [ 'brag_book_cases' ], $providers_args );
 	}
 
 	public function custom_procedure_term_link( $link, $term, $taxonomy ): ?string {
@@ -222,7 +210,7 @@ class Taxonomies {
 	 * Enqueue admin scripts for taxonomy pages
 	 *
 	 * Loads WordPress media scripts on taxonomy administration pages
-	 * to enable image selection functionality for procedures and doctors.
+	 * to enable image selection functionality for procedures and providers.
 	 *
 	 * @since 3.0.0
 	 * @param string $hook_suffix The current admin page hook suffix.
@@ -235,9 +223,9 @@ class Taxonomies {
 			if ( $screen ) {
 				$supported_taxonomies = [ self::TAXONOMY_PROCEDURES ];
 
-				// Add doctors taxonomy if enabled
-				if ( $this->is_doctors_taxonomy_enabled() ) {
-					$supported_taxonomies[] = self::TAXONOMY_DOCTORS;
+				// Add providers taxonomy if enabled
+				if ( $this->is_providers_taxonomy_enabled() ) {
+					$supported_taxonomies[] = self::TAXONOMY_PROVIDERS;
 				}
 
 				if ( in_array( $screen->taxonomy, $supported_taxonomies, true ) ) {
@@ -284,7 +272,7 @@ class Taxonomies {
 		<div class="form-field">
 			<label for="member_id"><?php esc_html_e( 'Member ID', 'brag-book-gallery' ); ?></label>
 			<input type="text" name="member_id" id="member_id" value="" />
-			<p class="description"><?php esc_html_e( 'Member/Doctor ID associated with this procedure', 'brag-book-gallery' ); ?></p>
+			<p class="description"><?php esc_html_e( 'Member/Provider ID associated with this procedure', 'brag-book-gallery' ); ?></p>
 		</div>
 
 		<div class="form-field">
@@ -377,7 +365,7 @@ class Taxonomies {
 			</th>
 			<td>
 				<input type="text" name="member_id" id="member_id" value="<?php echo esc_attr( $member_id ); ?>" />
-				<p class="description"><?php esc_html_e( 'Member/Doctor ID associated with this procedure', 'brag-book-gallery' ); ?></p>
+				<p class="description"><?php esc_html_e( 'Member/Provider ID associated with this procedure', 'brag-book-gallery' ); ?></p>
 			</td>
 		</tr>
 
@@ -708,7 +696,7 @@ class Taxonomies {
 	 */
 	public function maybe_flush_rewrites(): void {
 		$option_key = 'brag_book_taxonomy_version';
-		$current_version = '3.3.3_brag_book_doctors';
+		$current_version = '3.3.3_brag_book_providers';
 		$saved_version = get_option( $option_key, '' );
 
 		// If the taxonomy version has changed, flush rewrites
@@ -723,56 +711,62 @@ class Taxonomies {
 	}
 
 	/**
-	 * Add meta fields to doctor add form
+	 * Add meta fields to provider add form
 	 *
-	 * Renders form fields for doctor metadata including first name, last name,
+	 * Renders form fields for provider metadata including first name, last name,
 	 * suffix, profile URL, profile photo, and member ID.
 	 *
 	 * @since 3.3.3
 	 * @return void
 	 */
-	public function add_doctor_meta_fields(): void {
-		wp_nonce_field( 'save_doctor_meta', 'doctor_meta_nonce' );
+	public function add_provider_meta_fields(): void {
+		wp_nonce_field( 'save_provider_meta', 'provider_meta_nonce' );
 		?>
 		<div class="form-field">
-			<label for="doctor_member_id"><?php esc_html_e( 'Member ID', 'brag-book-gallery' ); ?></label>
-			<input type="text" name="doctor_member_id" id="doctor_member_id" value="" />
+			<label for="provider_member_id"><?php esc_html_e( 'Member ID', 'brag-book-gallery' ); ?></label>
+			<input type="text" name="provider_member_id" id="provider_member_id" value="" />
 			<p class="description"><?php esc_html_e( 'Unique member ID from the BRAGBook API', 'brag-book-gallery' ); ?></p>
 		</div>
 
 		<div class="form-field">
-			<label for="doctor_first_name"><?php esc_html_e( 'First Name', 'brag-book-gallery' ); ?></label>
-			<input type="text" name="doctor_first_name" id="doctor_first_name" value="" />
-			<p class="description"><?php esc_html_e( 'Doctor\'s first name', 'brag-book-gallery' ); ?></p>
+			<label for="provider_first_name"><?php esc_html_e( 'First Name', 'brag-book-gallery' ); ?></label>
+			<input type="text" name="provider_first_name" id="provider_first_name" value="" />
+			<p class="description"><?php esc_html_e( 'Provider\'s first name', 'brag-book-gallery' ); ?></p>
 		</div>
 
 		<div class="form-field">
-			<label for="doctor_last_name"><?php esc_html_e( 'Last Name', 'brag-book-gallery' ); ?></label>
-			<input type="text" name="doctor_last_name" id="doctor_last_name" value="" />
-			<p class="description"><?php esc_html_e( 'Doctor\'s last name', 'brag-book-gallery' ); ?></p>
+			<label for="provider_last_name"><?php esc_html_e( 'Last Name', 'brag-book-gallery' ); ?></label>
+			<input type="text" name="provider_last_name" id="provider_last_name" value="" />
+			<p class="description"><?php esc_html_e( 'Provider\'s last name', 'brag-book-gallery' ); ?></p>
 		</div>
 
 		<div class="form-field">
-			<label for="doctor_suffix"><?php esc_html_e( 'Suffix', 'brag-book-gallery' ); ?></label>
-			<input type="text" name="doctor_suffix" id="doctor_suffix" value="" />
+			<label for="provider_bio"><?php esc_html_e( 'Bio', 'brag-book-gallery' ); ?></label>
+			<textarea name="provider_bio" id="provider_bio" rows="4" class="large-text"></textarea>
+			<p class="description"><?php esc_html_e( 'Short provider biography. Synced from the API when available.', 'brag-book-gallery' ); ?></p>
+		</div>
+
+		<div class="form-field">
+			<label for="provider_suffix"><?php esc_html_e( 'Suffix', 'brag-book-gallery' ); ?></label>
+			<input type="text" name="provider_suffix" id="provider_suffix" value="" />
 			<p class="description"><?php esc_html_e( 'Professional suffix (e.g., MD, DO, DDS)', 'brag-book-gallery' ); ?></p>
 		</div>
 
 		<div class="form-field">
-			<label for="doctor_profile_url"><?php esc_html_e( 'Profile URL', 'brag-book-gallery' ); ?></label>
-			<input type="url" name="doctor_profile_url" id="doctor_profile_url" value="" />
-			<p class="description"><?php esc_html_e( 'URL to the doctor\'s profile page', 'brag-book-gallery' ); ?></p>
+			<label for="provider_profile_url"><?php esc_html_e( 'Profile URL', 'brag-book-gallery' ); ?></label>
+			<input type="url" name="provider_profile_url" id="provider_profile_url" value="" />
+			<p class="description"><?php esc_html_e( 'URL to the provider\'s profile page', 'brag-book-gallery' ); ?></p>
 		</div>
 
 		<div class="form-field">
-			<label for="doctor_profile_photo"><?php esc_html_e( 'Profile Photo', 'brag-book-gallery' ); ?></label>
-			<input type="hidden" id="doctor_profile_photo" name="doctor_profile_photo" value="" />
+			<label for="provider_profile_photo"><?php esc_html_e( 'Profile Photo', 'brag-book-gallery' ); ?></label>
+			<input type="hidden" id="provider_profile_photo" name="provider_profile_photo" value="" />
 			<button type="button"
 			        class="button"
 			        data-bb-media-upload
-			        data-target-input="#doctor_profile_photo"
-			        data-target-preview="#doctor_photo_preview"
-			        data-remove-button="#remove_doctor_photo_button"
+			        data-target-input="#provider_profile_photo"
+			        data-target-preview="#provider_photo_preview"
+			        data-remove-button="#remove_provider_photo_button"
 			        data-frame-title="<?php esc_attr_e( 'Choose Profile Photo', 'brag-book-gallery' ); ?>"
 			        data-frame-button-text="<?php esc_attr_e( 'Choose Photo', 'brag-book-gallery' ); ?>"
 			        data-preview-style="max-width:150px;height:auto;border-radius:50%;">
@@ -780,102 +774,128 @@ class Taxonomies {
 			</button>
 			<button type="button"
 			        class="button"
-			        id="remove_doctor_photo_button"
+			        id="remove_provider_photo_button"
 			        data-bb-media-remove
-			        data-target-input="#doctor_profile_photo"
-			        data-target-preview="#doctor_photo_preview"
+			        data-target-input="#provider_profile_photo"
+			        data-target-preview="#provider_photo_preview"
 			        style="display:none;">
 				<?php esc_html_e( 'Remove Photo', 'brag-book-gallery' ); ?>
 			</button>
-			<div id="doctor_photo_preview" style="margin-top: 10px;"></div>
-			<p class="description"><?php esc_html_e( 'Profile photo for this doctor', 'brag-book-gallery' ); ?></p>
+			<div id="provider_photo_preview" style="margin-top: 10px;"></div>
+			<p class="description"><?php esc_html_e( 'Profile photo for this provider', 'brag-book-gallery' ); ?></p>
 		</div>
 		<?php
 	}
 
 	/**
-	 * Add meta fields to doctor edit form
+	 * Add meta fields to provider edit form
 	 *
-	 * Renders editable form fields for doctor metadata on the
+	 * Renders editable form fields for provider metadata on the
 	 * taxonomy edit page with pre-populated values.
 	 *
 	 * @since 3.3.3
 	 * @param \WP_Term $term The term being edited.
 	 * @return void
 	 */
-	public function edit_doctor_meta_fields( \WP_Term $term ): void {
+	public function edit_provider_meta_fields( \WP_Term $term ): void {
 		// Get existing values
-		$member_id     = get_term_meta( $term->term_id, 'doctor_member_id', true );
-		$first_name    = get_term_meta( $term->term_id, 'doctor_first_name', true );
-		$last_name     = get_term_meta( $term->term_id, 'doctor_last_name', true );
-		$suffix        = get_term_meta( $term->term_id, 'doctor_suffix', true );
-		$profile_url   = get_term_meta( $term->term_id, 'doctor_profile_url', true );
-		$profile_photo = get_term_meta( $term->term_id, 'doctor_profile_photo', true );
+		$member_id     = get_term_meta( $term->term_id, 'provider_member_id', true );
+		$first_name    = get_term_meta( $term->term_id, 'provider_first_name', true );
+		$last_name     = get_term_meta( $term->term_id, 'provider_last_name', true );
+		$bio           = get_term_meta( $term->term_id, 'provider_bio', true );
+		$image_url     = get_term_meta( $term->term_id, 'provider_image_url', true );
+		$suffix        = get_term_meta( $term->term_id, 'provider_suffix', true );
+		$profile_url   = get_term_meta( $term->term_id, 'provider_profile_url', true );
+		$profile_photo = get_term_meta( $term->term_id, 'provider_profile_photo', true );
 
-		wp_nonce_field( 'save_doctor_meta', 'doctor_meta_nonce' );
+		wp_nonce_field( 'save_provider_meta', 'provider_meta_nonce' );
 		?>
 		<tr class="form-field">
 			<th scope="row">
-				<label for="doctor_member_id"><?php esc_html_e( 'Member ID', 'brag-book-gallery' ); ?></label>
+				<label for="provider_member_id"><?php esc_html_e( 'Member ID', 'brag-book-gallery' ); ?></label>
 			</th>
 			<td>
-				<input type="text" name="doctor_member_id" id="doctor_member_id" value="<?php echo esc_attr( $member_id ); ?>" />
+				<input type="text" name="provider_member_id" id="provider_member_id" value="<?php echo esc_attr( $member_id ); ?>" />
 				<p class="description"><?php esc_html_e( 'Unique member ID from the BRAGBook API', 'brag-book-gallery' ); ?></p>
 			</td>
 		</tr>
 
 		<tr class="form-field">
 			<th scope="row">
-				<label for="doctor_first_name"><?php esc_html_e( 'First Name', 'brag-book-gallery' ); ?></label>
+				<label for="provider_first_name"><?php esc_html_e( 'First Name', 'brag-book-gallery' ); ?></label>
 			</th>
 			<td>
-				<input type="text" name="doctor_first_name" id="doctor_first_name" value="<?php echo esc_attr( $first_name ); ?>" />
-				<p class="description"><?php esc_html_e( 'Doctor\'s first name', 'brag-book-gallery' ); ?></p>
+				<input type="text" name="provider_first_name" id="provider_first_name" value="<?php echo esc_attr( $first_name ); ?>" />
+				<p class="description"><?php esc_html_e( 'Provider\'s first name', 'brag-book-gallery' ); ?></p>
 			</td>
 		</tr>
 
 		<tr class="form-field">
 			<th scope="row">
-				<label for="doctor_last_name"><?php esc_html_e( 'Last Name', 'brag-book-gallery' ); ?></label>
+				<label for="provider_last_name"><?php esc_html_e( 'Last Name', 'brag-book-gallery' ); ?></label>
 			</th>
 			<td>
-				<input type="text" name="doctor_last_name" id="doctor_last_name" value="<?php echo esc_attr( $last_name ); ?>" />
-				<p class="description"><?php esc_html_e( 'Doctor\'s last name', 'brag-book-gallery' ); ?></p>
+				<input type="text" name="provider_last_name" id="provider_last_name" value="<?php echo esc_attr( $last_name ); ?>" />
+				<p class="description"><?php esc_html_e( 'Provider\'s last name', 'brag-book-gallery' ); ?></p>
 			</td>
 		</tr>
 
 		<tr class="form-field">
 			<th scope="row">
-				<label for="doctor_suffix"><?php esc_html_e( 'Suffix', 'brag-book-gallery' ); ?></label>
+				<label for="provider_bio"><?php esc_html_e( 'Bio', 'brag-book-gallery' ); ?></label>
 			</th>
 			<td>
-				<input type="text" name="doctor_suffix" id="doctor_suffix" value="<?php echo esc_attr( $suffix ); ?>" />
+				<textarea name="provider_bio" id="provider_bio" rows="4" class="large-text"><?php echo esc_textarea( $bio ); ?></textarea>
+				<p class="description"><?php esc_html_e( 'Short provider biography. The API value is used when it supplies one; otherwise this value is kept.', 'brag-book-gallery' ); ?></p>
+			</td>
+		</tr>
+
+		<tr class="form-field">
+			<th scope="row">
+				<label><?php esc_html_e( 'Synced Photo (API)', 'brag-book-gallery' ); ?></label>
+			</th>
+			<td>
+				<?php if ( ! empty( $image_url ) ) : ?>
+					<img src="<?php echo esc_url( $image_url ); ?>" alt="" style="max-width:150px;height:auto;border-radius:50%;" />
+					<p class="description"><?php esc_html_e( 'Photo synced from the BRAGBook API. It is shown in preference to a manually-uploaded photo below.', 'brag-book-gallery' ); ?></p>
+				<?php else : ?>
+					<p class="description"><?php esc_html_e( 'No photo has been synced from the API for this provider.', 'brag-book-gallery' ); ?></p>
+				<?php endif; ?>
+			</td>
+		</tr>
+
+		<tr class="form-field">
+			<th scope="row">
+				<label for="provider_suffix"><?php esc_html_e( 'Suffix', 'brag-book-gallery' ); ?></label>
+			</th>
+			<td>
+				<input type="text" name="provider_suffix" id="provider_suffix" value="<?php echo esc_attr( $suffix ); ?>" />
 				<p class="description"><?php esc_html_e( 'Professional suffix (e.g., MD, DO, DDS)', 'brag-book-gallery' ); ?></p>
 			</td>
 		</tr>
 
 		<tr class="form-field">
 			<th scope="row">
-				<label for="doctor_profile_url"><?php esc_html_e( 'Profile URL', 'brag-book-gallery' ); ?></label>
+				<label for="provider_profile_url"><?php esc_html_e( 'Profile URL', 'brag-book-gallery' ); ?></label>
 			</th>
 			<td>
-				<input type="url" name="doctor_profile_url" id="doctor_profile_url" value="<?php echo esc_url( $profile_url ); ?>" class="regular-text" />
-				<p class="description"><?php esc_html_e( 'URL to the doctor\'s profile page', 'brag-book-gallery' ); ?></p>
+				<input type="url" name="provider_profile_url" id="provider_profile_url" value="<?php echo esc_url( $profile_url ); ?>" class="regular-text" />
+				<p class="description"><?php esc_html_e( 'URL to the provider\'s profile page', 'brag-book-gallery' ); ?></p>
 			</td>
 		</tr>
 
 		<tr class="form-field">
 			<th scope="row">
-				<label for="doctor_profile_photo"><?php esc_html_e( 'Profile Photo', 'brag-book-gallery' ); ?></label>
+				<label for="provider_profile_photo"><?php esc_html_e( 'Profile Photo', 'brag-book-gallery' ); ?></label>
 			</th>
 			<td>
-				<input type="hidden" id="doctor_profile_photo" name="doctor_profile_photo" value="<?php echo esc_attr( $profile_photo ); ?>" />
+				<input type="hidden" id="provider_profile_photo" name="provider_profile_photo" value="<?php echo esc_attr( $profile_photo ); ?>" />
 				<button type="button"
 				        class="button"
 				        data-bb-media-upload
-				        data-target-input="#doctor_profile_photo"
-				        data-target-preview="#doctor_photo_preview"
-				        data-remove-button="#remove_doctor_photo_button"
+				        data-target-input="#provider_profile_photo"
+				        data-target-preview="#provider_photo_preview"
+				        data-remove-button="#remove_provider_photo_button"
 				        data-frame-title="<?php esc_attr_e( 'Choose Profile Photo', 'brag-book-gallery' ); ?>"
 				        data-frame-button-text="<?php esc_attr_e( 'Choose Photo', 'brag-book-gallery' ); ?>"
 				        data-preview-style="max-width:150px;height:auto;border-radius:50%;">
@@ -883,14 +903,14 @@ class Taxonomies {
 				</button>
 				<button type="button"
 				        class="button"
-				        id="remove_doctor_photo_button"
+				        id="remove_provider_photo_button"
 				        data-bb-media-remove
-				        data-target-input="#doctor_profile_photo"
-				        data-target-preview="#doctor_photo_preview"
+				        data-target-input="#provider_profile_photo"
+				        data-target-preview="#provider_photo_preview"
 				        style="<?php echo empty( $profile_photo ) ? 'display:none;' : ''; ?>">
 					<?php esc_html_e( 'Remove Photo', 'brag-book-gallery' ); ?>
 				</button>
-				<div id="doctor_photo_preview" style="margin-top: 10px;">
+				<div id="provider_photo_preview" style="margin-top: 10px;">
 					<?php if ( $profile_photo ) : ?>
 						<?php
 						echo wp_get_attachment_image(
@@ -902,25 +922,25 @@ class Taxonomies {
 						?>
 					<?php endif; ?>
 				</div>
-				<p class="description"><?php esc_html_e( 'Profile photo for this doctor', 'brag-book-gallery' ); ?></p>
+				<p class="description"><?php esc_html_e( 'Profile photo for this provider', 'brag-book-gallery' ); ?></p>
 			</td>
 		</tr>
 		<?php
 	}
 
 	/**
-	 * Save doctor meta data
+	 * Save provider meta data
 	 *
-	 * Handles saving of custom meta fields for doctor taxonomy
+	 * Handles saving of custom meta fields for provider taxonomy
 	 * with proper nonce verification and capability checks.
 	 *
 	 * @since 3.3.3
 	 * @param int $term_id The term ID being saved.
 	 * @return void
 	 */
-	public function save_doctor_meta( int $term_id ): void {
+	public function save_provider_meta( int $term_id ): void {
 		// Verify nonce
-		if ( ! isset( $_POST['doctor_meta_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['doctor_meta_nonce'] ) ), 'save_doctor_meta' ) ) {
+		if ( ! isset( $_POST['provider_meta_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['provider_meta_nonce'] ) ), 'save_provider_meta' ) ) {
 			return;
 		}
 
@@ -930,67 +950,77 @@ class Taxonomies {
 		}
 
 		// Save member ID
-		if ( isset( $_POST['doctor_member_id'] ) ) {
-			update_term_meta( $term_id, 'doctor_member_id', sanitize_text_field( $_POST['doctor_member_id'] ) );
+		if ( isset( $_POST['provider_member_id'] ) ) {
+			update_term_meta( $term_id, 'provider_member_id', sanitize_text_field( $_POST['provider_member_id'] ) );
 		}
 
 		// Save first name
-		if ( isset( $_POST['doctor_first_name'] ) ) {
-			update_term_meta( $term_id, 'doctor_first_name', sanitize_text_field( $_POST['doctor_first_name'] ) );
+		if ( isset( $_POST['provider_first_name'] ) ) {
+			update_term_meta( $term_id, 'provider_first_name', sanitize_text_field( $_POST['provider_first_name'] ) );
 		}
 
 		// Save last name
-		if ( isset( $_POST['doctor_last_name'] ) ) {
-			update_term_meta( $term_id, 'doctor_last_name', sanitize_text_field( $_POST['doctor_last_name'] ) );
+		if ( isset( $_POST['provider_last_name'] ) ) {
+			update_term_meta( $term_id, 'provider_last_name', sanitize_text_field( $_POST['provider_last_name'] ) );
+		}
+
+		// Save bio
+		if ( isset( $_POST['provider_bio'] ) ) {
+			$bio = sanitize_textarea_field( wp_unslash( $_POST['provider_bio'] ) );
+			if ( '' !== $bio ) {
+				update_term_meta( $term_id, 'provider_bio', $bio );
+			} else {
+				delete_term_meta( $term_id, 'provider_bio' );
+			}
 		}
 
 		// Save suffix
-		if ( isset( $_POST['doctor_suffix'] ) ) {
-			update_term_meta( $term_id, 'doctor_suffix', sanitize_text_field( $_POST['doctor_suffix'] ) );
+		if ( isset( $_POST['provider_suffix'] ) ) {
+			update_term_meta( $term_id, 'provider_suffix', sanitize_text_field( $_POST['provider_suffix'] ) );
 		}
 
 		// Save profile URL
-		if ( isset( $_POST['doctor_profile_url'] ) ) {
-			$profile_url = esc_url_raw( $_POST['doctor_profile_url'] );
+		if ( isset( $_POST['provider_profile_url'] ) ) {
+			$profile_url = esc_url_raw( $_POST['provider_profile_url'] );
 			if ( ! empty( $profile_url ) ) {
-				update_term_meta( $term_id, 'doctor_profile_url', $profile_url );
+				update_term_meta( $term_id, 'provider_profile_url', $profile_url );
 			} else {
-				delete_term_meta( $term_id, 'doctor_profile_url' );
+				delete_term_meta( $term_id, 'provider_profile_url' );
 			}
 		}
 
 		// Save profile photo
-		if ( isset( $_POST['doctor_profile_photo'] ) ) {
-			$photo_id = absint( $_POST['doctor_profile_photo'] );
+		if ( isset( $_POST['provider_profile_photo'] ) ) {
+			$photo_id = absint( $_POST['provider_profile_photo'] );
 			if ( $photo_id ) {
-				update_term_meta( $term_id, 'doctor_profile_photo', $photo_id );
+				update_term_meta( $term_id, 'provider_profile_photo', $photo_id );
 			} else {
-				delete_term_meta( $term_id, 'doctor_profile_photo' );
+				delete_term_meta( $term_id, 'provider_profile_photo' );
 			}
 		}
 	}
 
 	/**
-	 * Add custom columns to doctor taxonomy table
+	 * Add custom columns to provider taxonomy table
 	 *
-	 * Adds columns for displaying doctor metadata in the
+	 * Adds columns for displaying provider metadata in the
 	 * taxonomy administration table.
 	 *
 	 * @since 3.3.3
 	 * @param array $columns Existing columns array.
 	 * @return array Modified columns array.
 	 */
-	public function add_doctor_columns( array $columns ): array {
+	public function add_provider_columns( array $columns ): array {
 		$new_columns = [];
 
 		foreach ( $columns as $key => $value ) {
 			if ( 'name' === $key ) {
-				$new_columns['doctor_photo'] = __( 'Photo', 'brag-book-gallery' );
+				$new_columns['provider_photo'] = __( 'Photo', 'brag-book-gallery' );
 			}
 			$new_columns[ $key ] = $value;
 			if ( 'name' === $key ) {
-				$new_columns['doctor_member_id'] = __( 'Member ID', 'brag-book-gallery' );
-				$new_columns['doctor_suffix']    = __( 'Suffix', 'brag-book-gallery' );
+				$new_columns['provider_member_id'] = __( 'Member ID', 'brag-book-gallery' );
+				$new_columns['provider_suffix']    = __( 'Suffix', 'brag-book-gallery' );
 			}
 		}
 
@@ -998,7 +1028,7 @@ class Taxonomies {
 	}
 
 	/**
-	 * Add content to custom doctor columns
+	 * Add content to custom provider columns
 	 *
 	 * Displays the meta data content in the custom columns.
 	 *
@@ -1008,10 +1038,10 @@ class Taxonomies {
 	 * @param int    $term_id The term ID.
 	 * @return string The column content.
 	 */
-	public function add_doctor_column_content( string $content, string $column_name, int $term_id ): string {
+	public function add_provider_column_content( string $content, string $column_name, int $term_id ): string {
 		switch ( $column_name ) {
-			case 'doctor_photo':
-				$photo_id = get_term_meta( $term_id, 'doctor_profile_photo', true );
+			case 'provider_photo':
+				$photo_id = get_term_meta( $term_id, 'provider_profile_photo', true );
 				if ( $photo_id ) {
 					$content = wp_get_attachment_image(
 						$photo_id,
@@ -1024,13 +1054,13 @@ class Taxonomies {
 				}
 				break;
 
-			case 'doctor_member_id':
-				$member_id = get_term_meta( $term_id, 'doctor_member_id', true );
+			case 'provider_member_id':
+				$member_id = get_term_meta( $term_id, 'provider_member_id', true );
 				$content   = $member_id ?: '—';
 				break;
 
-			case 'doctor_suffix':
-				$suffix  = get_term_meta( $term_id, 'doctor_suffix', true );
+			case 'provider_suffix':
+				$suffix  = get_term_meta( $term_id, 'provider_suffix', true );
 				$content = $suffix ?: '—';
 				break;
 		}
@@ -1039,47 +1069,47 @@ class Taxonomies {
 	}
 
 	/**
-	 * Helper method to get doctor meta
+	 * Helper method to get provider meta
 	 *
-	 * Retrieves all meta data for a given doctor term.
+	 * Retrieves all meta data for a given provider term.
 	 *
 	 * @since 3.3.3
 	 * @param int $term_id The term ID.
 	 * @return array Array of meta data.
 	 */
-	public function get_doctor_meta( int $term_id ): array {
+	public function get_provider_meta( int $term_id ): array {
 		return [
-			'member_id'     => get_term_meta( $term_id, 'doctor_member_id', true ),
-			'first_name'    => get_term_meta( $term_id, 'doctor_first_name', true ),
-			'last_name'     => get_term_meta( $term_id, 'doctor_last_name', true ),
-			'suffix'        => get_term_meta( $term_id, 'doctor_suffix', true ),
-			'profile_url'   => get_term_meta( $term_id, 'doctor_profile_url', true ),
-			'profile_photo' => get_term_meta( $term_id, 'doctor_profile_photo', true ),
+			'member_id'     => get_term_meta( $term_id, 'provider_member_id', true ),
+			'first_name'    => get_term_meta( $term_id, 'provider_first_name', true ),
+			'last_name'     => get_term_meta( $term_id, 'provider_last_name', true ),
+			'suffix'        => get_term_meta( $term_id, 'provider_suffix', true ),
+			'profile_url'   => get_term_meta( $term_id, 'provider_profile_url', true ),
+			'profile_photo' => get_term_meta( $term_id, 'provider_profile_photo', true ),
 		];
 	}
 
 	/**
-	 * Helper method to save doctor meta data
+	 * Helper method to save provider meta data
 	 *
-	 * Programmatically save doctor meta data from an array.
+	 * Programmatically save provider meta data from an array.
 	 *
 	 * @since 3.3.3
 	 * @param int   $term_id The term ID.
 	 * @param array $meta_data Array of meta data to save.
 	 * @return bool True on success, false on failure.
 	 */
-	public function save_doctor_meta_data( int $term_id, array $meta_data ): bool {
+	public function save_provider_meta_data( int $term_id, array $meta_data ): bool {
 		if ( ! term_exists( $term_id ) ) {
 			return false;
 		}
 
 		$field_map = [
-			'member_id'     => 'doctor_member_id',
-			'first_name'    => 'doctor_first_name',
-			'last_name'     => 'doctor_last_name',
-			'suffix'        => 'doctor_suffix',
-			'profile_url'   => 'doctor_profile_url',
-			'profile_photo' => 'doctor_profile_photo',
+			'member_id'     => 'provider_member_id',
+			'first_name'    => 'provider_first_name',
+			'last_name'     => 'provider_last_name',
+			'suffix'        => 'provider_suffix',
+			'profile_url'   => 'provider_profile_url',
+			'profile_photo' => 'provider_profile_photo',
 		];
 
 		foreach ( $meta_data as $key => $value ) {

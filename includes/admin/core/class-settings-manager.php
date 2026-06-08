@@ -179,7 +179,7 @@ class Settings_Manager {
 			return true;
 		}
 
-		if ( in_array( $screen->taxonomy, array( 'brag_book_procedures', 'brag_book_doctors' ), true ) ) {
+		if ( in_array( $screen->taxonomy, array( 'brag_book_procedures', 'brag_book_providers' ), true ) ) {
 			return true;
 		}
 

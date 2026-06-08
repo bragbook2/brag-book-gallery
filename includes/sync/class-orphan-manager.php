@@ -352,7 +352,7 @@ class Orphan_Manager {
 	private function get_taxonomy_for_item_type( string $item_type ): ?string {
 		return match ( $item_type ) {
 			'procedure' => Taxonomies::TAXONOMY_PROCEDURES,
-			'doctor'    => Taxonomies::TAXONOMY_DOCTORS,
+			'provider'    => Taxonomies::TAXONOMY_PROVIDERS,
 			default     => null,
 		};
 	}

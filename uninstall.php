@@ -58,7 +58,7 @@ function brag_book_gallery_delete_options() {
 		'brag_book_gallery_custom_css',
 		'brag_book_gallery_image_display_mode',
 		'brag_book_gallery_infinite_scroll',
-		'brag_book_gallery_show_doctor',
+		'brag_book_gallery_show_provider',
 		'brag_book_gallery_show_filter_counts',
 		'brag_book_gallery_expand_nav_menus',
 		'brag_book_gallery_case_card_type',

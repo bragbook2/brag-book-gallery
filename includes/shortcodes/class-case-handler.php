@@ -579,8 +579,8 @@ class Case_Handler {
 		$html .= '</div>';
 		$html .= '</div>'; // Close case-header
 
-		// Doctor profile section (only shown when property ID 111 is active)
-		$html .= $this->render_doctor_profile_section( $case_post->ID );
+		// Provider profile section.
+		$html .= $this->render_provider_profile_section( $case_post->ID );
 
 		$html .= '</div>'; // Close header-section
 
@@ -1893,138 +1893,177 @@ class Case_Handler {
 	}
 
 	/**
-	 * Check if doctors taxonomy is enabled
+	 * Check if providers taxonomy is enabled
 	 *
-	 * Doctors taxonomy is only enabled when website property ID 111 is configured.
+	 * The providers taxonomy is enabled for all accounts.
 	 *
 	 * @since 3.3.3
-	 * @return bool True if doctors taxonomy should be enabled.
+	 * @return bool True if providers taxonomy should be enabled.
 	 */
-	private function is_doctors_taxonomy_enabled(): bool {
-		$website_property_ids = get_option( 'brag_book_gallery_website_property_id', [] );
-
-		if ( ! is_array( $website_property_ids ) ) {
-			$website_property_ids = [ $website_property_ids ];
-		}
-
-		return in_array( 111, array_map( 'intval', $website_property_ids ), true );
+	private function is_providers_taxonomy_enabled(): bool {
+		return true;
 	}
 
 	/**
-	 * Get doctor information for a case post
+	 * Get provider information for a case post
 	 *
-	 * Retrieves the doctor term and its metadata for a given case post.
+	 * Retrieves the provider term and its metadata for a given case post.
 	 *
 	 * @since 3.3.3
 	 * @param int $post_id The case post ID.
-	 * @return array|null Doctor data array or null if not found.
+	 * @return array|null Provider data array or null if not found.
 	 */
-	private function get_doctor_for_case( int $post_id ): ?array {
-		// Check if doctors taxonomy is enabled
-		if ( ! $this->is_doctors_taxonomy_enabled() ) {
-			return null;
+	private function get_providers_for_case( int $post_id ): array {
+		// Check if providers taxonomy is enabled
+		if ( ! $this->is_providers_taxonomy_enabled() ) {
+			return [];
 		}
 
 		// Check if taxonomy exists
-		if ( ! taxonomy_exists( Taxonomies::TAXONOMY_DOCTORS ) ) {
-			return null;
+		if ( ! taxonomy_exists( Taxonomies::TAXONOMY_PROVIDERS ) ) {
+			return [];
 		}
 
-		// Get the doctor terms for this post
-		$doctor_terms = wp_get_post_terms( $post_id, Taxonomies::TAXONOMY_DOCTORS );
+		// Get the provider terms for this post
+		$provider_terms = wp_get_post_terms( $post_id, Taxonomies::TAXONOMY_PROVIDERS );
 
-		if ( empty( $doctor_terms ) || is_wp_error( $doctor_terms ) ) {
-			return null;
+		if ( empty( $provider_terms ) || is_wp_error( $provider_terms ) ) {
+			return [];
 		}
 
-		$doctor_term = $doctor_terms[0];
+		// Order terms by the per-case provider ID order captured at sync time.
+		$ordered_ids = array_filter(
+			array_map(
+				'absint',
+				explode( ',', (string) get_post_meta( $post_id, 'brag_book_gallery_provider_ids', true ) )
+			)
+		);
 
-		// Get doctor meta
-		$member_id     = get_term_meta( $doctor_term->term_id, 'doctor_member_id', true );
-		$first_name    = get_term_meta( $doctor_term->term_id, 'doctor_first_name', true );
-		$last_name     = get_term_meta( $doctor_term->term_id, 'doctor_last_name', true );
-		$suffix        = get_term_meta( $doctor_term->term_id, 'doctor_suffix', true );
-		$profile_url   = get_term_meta( $doctor_term->term_id, 'doctor_profile_url', true );
-		$profile_photo = get_term_meta( $doctor_term->term_id, 'doctor_profile_photo', true );
+		$by_member = [];
+		foreach ( $provider_terms as $term ) {
+			$member_id               = absint( get_term_meta( $term->term_id, 'provider_member_id', true ) );
+			$by_member[ $member_id ] = $term;
+		}
+
+		$ordered_terms = [];
+		foreach ( $ordered_ids as $member_id ) {
+			if ( isset( $by_member[ $member_id ] ) ) {
+				$ordered_terms[] = $by_member[ $member_id ];
+				unset( $by_member[ $member_id ] );
+			}
+		}
+		// Append any terms not present in the ordered list (legacy/safety).
+		foreach ( $by_member as $term ) {
+			$ordered_terms[] = $term;
+		}
+
+		$providers = [];
+		foreach ( $ordered_terms as $term ) {
+			$providers[] = $this->build_provider_data( $term );
+		}
+
+		return $providers;
+	}
+
+	/**
+	 * Build a provider display array from a provider term
+	 *
+	 * Resolves the provider photo with the API image winning: the synced
+	 * `provider_image_url` is used first, then a manually-uploaded attachment,
+	 * then the placeholder avatar (handled by the renderer).
+	 *
+	 * @since 4.6.0
+	 * @param \WP_Term $term The provider term.
+	 * @return array Provider display data.
+	 */
+	private function build_provider_data( \WP_Term $term ): array {
+		$image_url     = get_term_meta( $term->term_id, 'provider_image_url', true );
+		$profile_photo = get_term_meta( $term->term_id, 'provider_profile_photo', true );
+		$profile_url   = get_term_meta( $term->term_id, 'provider_profile_url', true );
+
+		$photo_url = '';
+		if ( ! empty( $image_url ) ) {
+			$photo_url = $image_url;
+		} elseif ( ! empty( $profile_photo ) ) {
+			$photo_url = wp_get_attachment_image_url( $profile_photo, [ 48, 48 ] ) ?: '';
+		}
 
 		return [
-			'term_id'       => $doctor_term->term_id,
-			'name'          => $doctor_term->name,
-			'member_id'     => $member_id,
-			'first_name'    => $first_name,
-			'last_name'     => $last_name,
-			'suffix'        => $suffix,
-			'profile_url'   => $profile_url,
-			'profile_photo' => $profile_photo,
+			'term_id'     => $term->term_id,
+			'name'        => $term->name,
+			'photo_url'   => $photo_url,
+			'profile_url' => $profile_url ?: '',
 		];
 	}
 
 	/**
-	 * Render doctor profile section for case header
+	 * Render provider profile section for case header
 	 *
-	 * Displays the doctor's profile photo, name, and link below the case title.
+	 * Displays each assigned provider's photo, name, and link below the case
+	 * title, ordered by the API position.
 	 *
 	 * @since 3.3.3
 	 * @param int $post_id The case post ID.
-	 * @return string Doctor profile HTML or empty string if not available.
+	 * @return string Provider profile HTML or empty string if not available.
 	 */
-	private function render_doctor_profile_section( int $post_id ): string {
-		$doctor = $this->get_doctor_for_case( $post_id );
+	private function render_provider_profile_section( int $post_id ): string {
+		$providers = $this->get_providers_for_case( $post_id );
 
-		if ( ! $doctor ) {
+		if ( empty( $providers ) ) {
 			return '';
 		}
 
-		$html = '<div class="brag-book-gallery-doctor-profile">';
+		$html = '<div class="brag-book-gallery-provider-profiles">';
 
-		// Profile photo (48x48 circle)
-		$html .= '<div class="brag-book-gallery-doctor-photo">';
-		if ( ! empty( $doctor['profile_photo'] ) ) {
-			$photo_url = wp_get_attachment_image_url( $doctor['profile_photo'], [ 48, 48 ] );
-			if ( $photo_url ) {
+		foreach ( $providers as $provider ) {
+			$html .= '<div class="brag-book-gallery-provider-profile">';
+
+			// Profile photo (48x48 circle)
+			$html .= '<div class="brag-book-gallery-provider-photo">';
+			if ( ! empty( $provider['photo_url'] ) ) {
 				$html .= sprintf(
-					'<img src="%s" alt="%s" width="48" height="48" class="brag-book-gallery-doctor-avatar">',
-					esc_url( $photo_url ),
-					esc_attr( $doctor['name'] )
+					'<img src="%s" alt="%s" width="48" height="48" class="brag-book-gallery-provider-avatar">',
+					esc_url( $provider['photo_url'] ),
+					esc_attr( $provider['name'] )
 				);
 			} else {
-				$html .= $this->render_doctor_placeholder_avatar();
+				$html .= $this->render_provider_placeholder_avatar();
 			}
-		} else {
-			$html .= $this->render_doctor_placeholder_avatar();
+			$html .= '</div>';
+
+			// Provider name and link
+			$html .= '<div class="brag-book-gallery-provider-info">';
+
+			if ( ! empty( $provider['profile_url'] ) ) {
+				$html .= sprintf(
+					'<a href="%s" class="brag-book-gallery-provider-name">%s</a>',
+					esc_url( $provider['profile_url'] ),
+					esc_html( $provider['name'] )
+				);
+			} else {
+				$html .= sprintf(
+					'<span class="brag-book-gallery-provider-name">%s</span>',
+					esc_html( $provider['name'] )
+				);
+			}
+
+			$html .= '</div>';
+			$html .= '</div>';
 		}
-		$html .= '</div>';
 
-		// Doctor name and link
-		$html .= '<div class="brag-book-gallery-doctor-info">';
-
-		if ( ! empty( $doctor['profile_url'] ) ) {
-			$html .= sprintf(
-				'<a href="%s" class="brag-book-gallery-doctor-name">%s</a>',
-				esc_url( $doctor['profile_url'] ),
-				esc_html( $doctor['name'] )
-			);
-		} else {
-			$html .= sprintf(
-				'<span class="brag-book-gallery-doctor-name">%s</span>',
-				esc_html( $doctor['name'] )
-			);
-		}
-
-		$html .= '</div>';
 		$html .= '</div>';
 
 		return $html;
 	}
 
 	/**
-	 * Render placeholder avatar for doctor without photo
+	 * Render placeholder avatar for provider without photo
 	 *
 	 * @since 3.3.3
 	 * @return string Placeholder avatar HTML.
 	 */
-	private function render_doctor_placeholder_avatar(): string {
-		return '<div class="brag-book-gallery-doctor-avatar brag-book-gallery-doctor-avatar--placeholder">'
+	private function render_provider_placeholder_avatar(): string {
+		return '<div class="brag-book-gallery-provider-avatar brag-book-gallery-provider-avatar--placeholder">'
 			. '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24" height="24">'
 			. '<path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>'
 			. '</svg>'

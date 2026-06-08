@@ -225,7 +225,7 @@ class Help_Page extends Settings_Base {
 					<ul>
 						<li><code>procedure</code> - <?php esc_html_e( 'Procedure slug to filter by', 'brag-book-gallery' ); ?></li>
 						<li><code>procedure_id</code> - <?php esc_html_e( 'Procedure ID (alternative to slug)', 'brag-book-gallery' ); ?></li>
-						<li><code>member_id</code> - <?php esc_html_e( 'Filter by specific member/doctor', 'brag-book-gallery' ); ?></li>
+						<li><code>member_id</code> - <?php esc_html_e( 'Filter by specific member/provider', 'brag-book-gallery' ); ?></li>
 						<li><code>limit</code> - <?php esc_html_e( 'Number of items (default: 10)', 'brag-book-gallery' ); ?></li>
 						<li><code>show_controls</code> - <?php esc_html_e( 'Navigation arrows (true/false)', 'brag-book-gallery' ); ?></li>
 						<li><code>show_pagination</code> - <?php esc_html_e( 'Dots pagination (true/false)', 'brag-book-gallery' ); ?></li>

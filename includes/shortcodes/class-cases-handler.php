@@ -820,19 +820,19 @@ final class Cases_Handler {
 			error_log( 'BRAGBook: render_case_card - NOT adding nudity warning for case: ' . $case_info['case_id'] . ' (procedure_nudity = false)' );
 		}
 
-		// Add case title or doctor name based on settings.
-		$show_doctor = (bool) get_option( 'brag_book_gallery_show_doctor', false );
+		// Add case title or provider name based on settings.
+		$show_provider = (bool) get_option( 'brag_book_gallery_show_provider', false );
 
-		if ( $show_doctor ) {
-			// Show doctor info with profile photo from taxonomy if available
+		if ( $show_provider ) {
+			// Show provider info with profile photo from taxonomy if available
 			$post_id = get_the_ID();
 			if ( $post_id ) {
-				$html .= self::render_doctor_card_info( $post_id, $case_info['seo_headline'] ?? '' );
+				$html .= self::render_provider_card_info( $post_id, $case_info['seo_headline'] ?? '' );
 			} else {
 				// Fallback to case data if no post context
-				$doctor_name = $case['doctorName'] ?? $case['doctor_name'] ?? '';
-				if ( ! empty( $doctor_name ) ) {
-					$html .= '<h3 class="case-title doctor-name">' . esc_html( $doctor_name ) . '</h3>';
+				$provider_name = $case['providerName'] ?? $case['provider_name'] ?? '';
+				if ( ! empty( $provider_name ) ) {
+					$html .= '<h3 class="case-title provider-name">' . esc_html( $provider_name ) . '</h3>';
 				}
 			}
 		} elseif ( ! empty( $case_info['seo_headline'] ) ) {
@@ -1215,13 +1215,13 @@ final class Cases_Handler {
 			$html .= '</div>';
 		}
 
-		// Add case title or doctor name based on settings.
-		$show_doctor = (bool) get_option( 'brag_book_gallery_show_doctor', false );
+		// Add case title or provider name based on settings.
+		$show_provider = (bool) get_option( 'brag_book_gallery_show_provider', false );
 
-		if ( $show_doctor ) {
-			// Show doctor info with profile photo from taxonomy
+		if ( $show_provider ) {
+			// Show provider info with profile photo from taxonomy
 			$seo_headline = get_post_meta( $post->ID, 'brag_book_gallery_seo_headline', true );
-			$html .= self::render_doctor_card_info( $post->ID, $seo_headline ?: '' );
+			$html .= self::render_provider_card_info( $post->ID, $seo_headline ?: '' );
 		} else {
 			// Show case SEO headline if available
 			$seo_headline = get_post_meta( $post->ID, 'brag_book_gallery_seo_headline', true );
@@ -2597,30 +2597,30 @@ final class Cases_Handler {
 							<div class="brag-book-gallery-case-card-overlay">
 								<div class="brag-book-gallery-case-card-overlay-content">
 									<?php
-									// Check if we should show doctor info instead of procedure
-									$show_doctor = (bool) get_option( 'brag_book_gallery_show_doctor', false );
-									$doctor_data = null;
+									// Check if we should show provider info instead of procedure
+									$show_provider = (bool) get_option( 'brag_book_gallery_show_provider', false );
+									$provider_data = null;
 
-									if ( $show_doctor && $post_id ) {
-										$doctor_data = self::get_doctor_for_post( $post_id );
+									if ( $show_provider && $post_id ) {
+										$provider_data = self::get_provider_for_post( $post_id );
 									}
 
-									if ( $show_doctor && $doctor_data ) :
+									if ( $show_provider && $provider_data ) :
 									?>
-									<div class="brag-book-gallery-case-card-overlay-info brag-book-gallery-case-card-overlay-info--doctor">
-										<?php if ( ! empty( $doctor_data['photo_url'] ) ) : ?>
-											<img src="<?php echo esc_url( $doctor_data['photo_url'] ); ?>"
-												 alt="<?php echo esc_attr( $doctor_data['name'] ); ?>"
+									<div class="brag-book-gallery-case-card-overlay-info brag-book-gallery-case-card-overlay-info--provider">
+										<?php if ( ! empty( $provider_data['photo_url'] ) ) : ?>
+											<img src="<?php echo esc_url( $provider_data['photo_url'] ); ?>"
+												 alt="<?php echo esc_attr( $provider_data['name'] ); ?>"
 												 width="48" height="48"
-												 class="brag-book-gallery-case-card-overlay-doctor-avatar">
+												 class="brag-book-gallery-case-card-overlay-provider-avatar">
 										<?php else : ?>
-											<div class="brag-book-gallery-case-card-overlay-doctor-avatar brag-book-gallery-case-card-overlay-doctor-avatar--placeholder">
+											<div class="brag-book-gallery-case-card-overlay-provider-avatar brag-book-gallery-case-card-overlay-provider-avatar--placeholder">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
 													<path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
 												</svg>
 											</div>
 										<?php endif; ?>
-										<span class="brag-book-gallery-case-card-overlay-title"><?php echo esc_html( $doctor_data['name'] ); ?></span>
+										<span class="brag-book-gallery-case-card-overlay-title"><?php echo esc_html( $provider_data['name'] ); ?></span>
 									</div>
 									<?php else : ?>
 									<div class="brag-book-gallery-case-card-overlay-info">
@@ -3020,88 +3020,141 @@ final class Cases_Handler {
 	}
 
 	/**
-	 * Check if doctors taxonomy is enabled
+	 * Check if providers taxonomy is enabled
 	 *
-	 * Doctors taxonomy is only enabled when website property ID 111 is configured.
+	 * The providers taxonomy is enabled for all accounts.
 	 *
-	 * @return bool True if doctors taxonomy should be enabled.
+	 * @return bool True if providers taxonomy should be enabled.
 	 * @since 3.3.3
 	 */
-	private static function is_doctors_taxonomy_enabled(): bool {
-		$website_property_ids = get_option( 'brag_book_gallery_website_property_id', [] );
-
-		if ( ! is_array( $website_property_ids ) ) {
-			$website_property_ids = [ $website_property_ids ];
-		}
-
-		return in_array( 111, array_map( 'intval', $website_property_ids ), true );
+	private static function is_providers_taxonomy_enabled(): bool {
+		return true;
 	}
 
 	/**
-	 * Get doctor information from taxonomy for a post
+	 * Get provider information from taxonomy for a post
 	 *
-	 * Retrieves the doctor term and its metadata for a given case post.
+	 * Retrieves the provider term and its metadata for a given case post.
 	 *
 	 * @param int $post_id The case post ID.
-	 * @return array|null Doctor data array or null if not found.
+	 * @return array|null Provider data array or null if not found.
 	 * @since 3.3.3
 	 */
-	private static function get_doctor_for_post( int $post_id ): ?array {
-		// Check if doctors taxonomy is enabled
-		if ( ! self::is_doctors_taxonomy_enabled() ) {
-			return null;
+	private static function get_providers_for_post( int $post_id ): array {
+		// Check if providers taxonomy is enabled
+		if ( ! self::is_providers_taxonomy_enabled() ) {
+			return [];
 		}
 
 		// Check if taxonomy exists
-		if ( ! taxonomy_exists( Taxonomies::TAXONOMY_DOCTORS ) ) {
-			return null;
+		if ( ! taxonomy_exists( Taxonomies::TAXONOMY_PROVIDERS ) ) {
+			return [];
 		}
 
-		// Get the doctor terms for this post
-		$doctor_terms = wp_get_post_terms( $post_id, Taxonomies::TAXONOMY_DOCTORS );
+		// Get the provider terms for this post
+		$provider_terms = wp_get_post_terms( $post_id, Taxonomies::TAXONOMY_PROVIDERS );
 
-		if ( empty( $doctor_terms ) || is_wp_error( $doctor_terms ) ) {
-			return null;
+		if ( empty( $provider_terms ) || is_wp_error( $provider_terms ) ) {
+			return [];
 		}
 
-		$doctor_term = $doctor_terms[0];
+		// Order terms by the per-case provider ID order captured at sync time.
+		$ordered_ids = array_filter(
+			array_map(
+				'absint',
+				explode( ',', (string) get_post_meta( $post_id, 'brag_book_gallery_provider_ids', true ) )
+			)
+		);
 
-		// Get doctor meta
-		$profile_photo = get_term_meta( $doctor_term->term_id, 'doctor_profile_photo', true );
-		$profile_url   = get_term_meta( $doctor_term->term_id, 'doctor_profile_url', true );
+		$by_member = [];
+		foreach ( $provider_terms as $term ) {
+			$member_id               = absint( get_term_meta( $term->term_id, 'provider_member_id', true ) );
+			$by_member[ $member_id ] = $term;
+		}
 
-		// Get photo URL if we have an attachment ID
+		$ordered_terms = [];
+		foreach ( $ordered_ids as $member_id ) {
+			if ( isset( $by_member[ $member_id ] ) ) {
+				$ordered_terms[] = $by_member[ $member_id ];
+				unset( $by_member[ $member_id ] );
+			}
+		}
+		foreach ( $by_member as $term ) {
+			$ordered_terms[] = $term;
+		}
+
+		$providers = [];
+		foreach ( $ordered_terms as $term ) {
+			$providers[] = self::build_provider_data( $term );
+		}
+
+		return $providers;
+	}
+
+	/**
+	 * Get the primary provider for a case post
+	 *
+	 * Returns the first provider in position order, or null when none.
+	 *
+	 * @param int $post_id The case post ID.
+	 * @return array|null Primary provider data or null if not found.
+	 * @since 3.3.3
+	 */
+	private static function get_provider_for_post( int $post_id ): ?array {
+		$providers = self::get_providers_for_post( $post_id );
+
+		return $providers[0] ?? null;
+	}
+
+	/**
+	 * Build a provider display array from a provider term
+	 *
+	 * Resolves the provider photo with the API image winning: the synced
+	 * `provider_image_url` is used first, then a manually-uploaded attachment.
+	 *
+	 * @param \WP_Term $term The provider term.
+	 * @return array Provider display data.
+	 * @since 4.6.0
+	 */
+	private static function build_provider_data( \WP_Term $term ): array {
+		$image_url     = get_term_meta( $term->term_id, 'provider_image_url', true );
+		$profile_photo = get_term_meta( $term->term_id, 'provider_profile_photo', true );
+		$profile_url   = get_term_meta( $term->term_id, 'provider_profile_url', true );
+
 		$photo_url = '';
-		if ( ! empty( $profile_photo ) ) {
-			$photo_url = wp_get_attachment_image_url( $profile_photo, [ 48, 48 ] );
+		if ( ! empty( $image_url ) ) {
+			$photo_url = $image_url;
+		} elseif ( ! empty( $profile_photo ) ) {
+			$photo_url = wp_get_attachment_image_url( $profile_photo, [ 48, 48 ] ) ?: '';
 		}
 
 		return [
-			'term_id'    => $doctor_term->term_id,
-			'name'       => $doctor_term->name,
-			'photo_url'  => $photo_url ?: '',
+			'term_id'     => $term->term_id,
+			'name'        => $term->name,
+			'photo_url'   => $photo_url,
 			'profile_url' => $profile_url ?: '',
 		];
 	}
 
 	/**
-	 * Render doctor info HTML for case card
+	 * Render provider info HTML for case card
 	 *
-	 * Renders the doctor profile photo and name for display in case cards.
+	 * Renders each assigned provider's photo and name (ordered by position) for
+	 * display in case cards.
 	 *
 	 * @param int $post_id The case post ID.
-	 * @param string $fallback_name Fallback name to display if no doctor found.
-	 * @return string HTML output for doctor info.
+	 * @param string $fallback_name Fallback name to display if no provider found.
+	 * @return string HTML output for provider info.
 	 * @since 3.3.3
 	 */
-	private static function render_doctor_card_info( int $post_id, string $fallback_name = '' ): string {
-		$doctor = self::get_doctor_for_post( $post_id );
+	private static function render_provider_card_info( int $post_id, string $fallback_name = '' ): string {
+		$providers = self::get_providers_for_post( $post_id );
 
-		if ( ! $doctor ) {
+		if ( empty( $providers ) ) {
 			// Fall back to post meta if taxonomy not available
-			$doctor_name = get_post_meta( $post_id, 'brag_book_gallery_doctor_name', true );
-			if ( ! empty( $doctor_name ) ) {
-				return '<h3 class="case-title doctor-name">' . esc_html( $doctor_name ) . '</h3>';
+			$provider_name = get_post_meta( $post_id, 'brag_book_gallery_provider_name', true );
+			if ( ! empty( $provider_name ) ) {
+				return '<h3 class="case-title provider-name">' . esc_html( $provider_name ) . '</h3>';
 			}
 			if ( ! empty( $fallback_name ) ) {
 				return '<h3 class="case-title">' . esc_html( $fallback_name ) . '</h3>';
@@ -3109,26 +3162,32 @@ final class Cases_Handler {
 			return '';
 		}
 
-		$html = '<div class="brag-book-gallery-case-doctor">';
+		$html = '<div class="brag-book-gallery-case-providers">';
 
-		// Profile photo (48x48 circle)
-		if ( ! empty( $doctor['photo_url'] ) ) {
-			$html .= sprintf(
-				'<img src="%s" alt="%s" width="48" height="48" class="brag-book-gallery-case-doctor-avatar">',
-				esc_url( $doctor['photo_url'] ),
-				esc_attr( $doctor['name'] )
-			);
-		} else {
-			// Placeholder avatar
-			$html .= '<div class="brag-book-gallery-case-doctor-avatar brag-book-gallery-case-doctor-avatar--placeholder">'
-				. '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24" height="24">'
-				. '<path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>'
-				. '</svg>'
-				. '</div>';
+		foreach ( $providers as $provider ) {
+			$html .= '<div class="brag-book-gallery-case-provider">';
+
+			// Profile photo (48x48 circle)
+			if ( ! empty( $provider['photo_url'] ) ) {
+				$html .= sprintf(
+					'<img src="%s" alt="%s" width="48" height="48" class="brag-book-gallery-case-provider-avatar">',
+					esc_url( $provider['photo_url'] ),
+					esc_attr( $provider['name'] )
+				);
+			} else {
+				// Placeholder avatar
+				$html .= '<div class="brag-book-gallery-case-provider-avatar brag-book-gallery-case-provider-avatar--placeholder">'
+					. '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24" height="24">'
+					. '<path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>'
+					. '</svg>'
+					. '</div>';
+			}
+
+			// Provider name
+			$html .= '<span class="brag-book-gallery-case-provider-name">' . esc_html( $provider['name'] ) . '</span>';
+
+			$html .= '</div>';
 		}
-
-		// Doctor name
-		$html .= '<span class="brag-book-gallery-case-doctor-name">' . esc_html( $doctor['name'] ) . '</span>';
 
 		$html .= '</div>';
 

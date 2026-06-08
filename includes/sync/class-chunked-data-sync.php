@@ -1457,6 +1457,19 @@ class Chunked_Data_Sync {
 			$normalized['creator'] = $v2_data['creator'];
 		}
 
+		// Pass through providers (a case may have multiple) and the
+		// featured / top-performing flags so they reach post meta and the
+		// provider taxonomy assignment.
+		if ( isset( $v2_data['providers'] ) ) {
+			$normalized['providers'] = $v2_data['providers'];
+		}
+		if ( isset( $v2_data['featured'] ) ) {
+			$normalized['featured'] = $v2_data['featured'];
+		}
+		if ( isset( $v2_data['topPerforming'] ) ) {
+			$normalized['topPerforming'] = $v2_data['topPerforming'];
+		}
+
 		// Pass through postOp information
 		if ( isset( $v2_data['postOp'] ) ) {
 			$normalized['postOp'] = $v2_data['postOp'];
@@ -1607,8 +1620,8 @@ class Chunked_Data_Sync {
 		update_post_meta( $post_id, 'brag_book_gallery_case_order', $case_position );
 		$this->debug_log( "Chunked Sync: Set case order position to {$case_position} for post {$post_id}" );
 
-		// Assign doctor taxonomy if enabled (website property ID 111)
-		$this->maybe_assign_doctor_taxonomy( $post_id, $case_details );
+		// Assign provider taxonomy if enabled.
+		$this->maybe_assign_provider_taxonomy( $post_id, $case_details );
 
 		// Register case in sync registry
 		if ( $this->database ) {
@@ -1825,28 +1838,23 @@ class Chunked_Data_Sync {
 	}
 
 	/**
-	 * Check if doctors taxonomy is enabled
+	 * Check if providers taxonomy is enabled
 	 *
-	 * Doctors taxonomy is only enabled when website property ID 111 is configured.
+	 * The providers taxonomy is enabled for all accounts.
 	 *
-	 * @return bool True if doctors taxonomy should be enabled.
+	 * @return bool True if providers taxonomy should be enabled.
 	 * @since 3.3.3
 	 */
-	private function is_doctors_taxonomy_enabled(): bool {
-		$website_property_ids = get_option( 'brag_book_gallery_website_property_id', [] );
-
-		if ( ! is_array( $website_property_ids ) ) {
-			$website_property_ids = [ $website_property_ids ];
-		}
-
-		return in_array( 111, array_map( 'intval', $website_property_ids ), true );
+	private function is_providers_taxonomy_enabled(): bool {
+		return true;
 	}
 
 	/**
-	 * Assign doctor taxonomy to a case post if enabled
+	 * Assign provider taxonomy to a case post if enabled
 	 *
-	 * Creates or updates the doctor term based on case creator data,
-	 * then assigns the term to the case post.
+	 * A case may have multiple providers in the v2 API `providers` array. Each
+	 * provider is created/updated as a term and all of them are assigned to the
+	 * case post.
 	 *
 	 * @param int   $post_id   The case post ID.
 	 * @param array $case_data The case data from API.
@@ -1854,98 +1862,110 @@ class Chunked_Data_Sync {
 	 * @return void
 	 * @since 3.3.3
 	 */
-	private function maybe_assign_doctor_taxonomy( int $post_id, array $case_data ): void {
-		// Only process if doctors taxonomy is enabled
-		if ( ! $this->is_doctors_taxonomy_enabled() ) {
+	private function maybe_assign_provider_taxonomy( int $post_id, array $case_data ): void {
+		// Only process if providers taxonomy is enabled
+		if ( ! $this->is_providers_taxonomy_enabled() ) {
 			return;
 		}
 
 		// Check if taxonomy exists (it should be registered if enabled)
-		if ( ! taxonomy_exists( Taxonomies::TAXONOMY_DOCTORS ) ) {
-			$this->debug_log( 'Chunked Sync: Doctors taxonomy is enabled but not registered' );
+		if ( ! taxonomy_exists( Taxonomies::TAXONOMY_PROVIDERS ) ) {
+			$this->debug_log( 'Chunked Sync: Providers taxonomy is enabled but not registered' );
 
 			return;
 		}
 
-		// Extract creator/doctor data from case
-		$creator = $case_data['creator'] ?? null;
+		// Extract the providers array from the case.
+		$providers = $case_data['providers'] ?? null;
 
-		if ( empty( $creator ) || ! is_array( $creator ) ) {
-			$this->debug_log( "Chunked Sync: No creator data found for post {$post_id}" );
-
-			return;
-		}
-
-		// Get member ID - required field
-		$member_id = $creator['id'] ?? null;
-
-		if ( empty( $member_id ) ) {
-			$this->debug_log( "Chunked Sync: No member ID found in creator data for post {$post_id}" );
+		if ( empty( $providers ) || ! is_array( $providers ) ) {
+			$this->debug_log( "Chunked Sync: No providers data found for post {$post_id}" );
 
 			return;
 		}
 
-		// Create or update the doctor term
-		$doctor_term = $this->create_or_update_doctor_term( $creator );
+		// Create/update a term for each provider and collect the term IDs.
+		$term_ids = [];
+		foreach ( $providers as $provider ) {
+			if ( ! is_array( $provider ) || empty( $provider['id'] ) ) {
+				continue;
+			}
 
-		if ( ! $doctor_term ) {
-			$this->debug_log( "Chunked Sync: Failed to create/update doctor term for member {$member_id}" );
+			$provider_term = $this->create_or_update_provider_term( $provider );
+
+			if ( $provider_term ) {
+				$term_ids[] = $provider_term->term_id;
+			}
+		}
+
+		if ( empty( $term_ids ) ) {
+			$this->debug_log( "Chunked Sync: No provider terms resolved for post {$post_id}" );
 
 			return;
 		}
 
-		// Assign the doctor term to the case post
-		$result = wp_set_object_terms( $post_id, [ $doctor_term->term_id ], Taxonomies::TAXONOMY_DOCTORS );
+		// Assign all provider terms to the case post (replaces any prior set).
+		$result = wp_set_object_terms( $post_id, $term_ids, Taxonomies::TAXONOMY_PROVIDERS );
 
 		if ( is_wp_error( $result ) ) {
-			$this->debug_log( "Chunked Sync: Failed to assign doctor term to post {$post_id}: " . $result->get_error_message() );
+			$this->debug_log( "Chunked Sync: Failed to assign provider terms to post {$post_id}: " . $result->get_error_message() );
 		} else {
-			$this->debug_log( "Chunked Sync: ✓ Assigned doctor '{$doctor_term->name}' (term ID: {$doctor_term->term_id}) to post {$post_id}" );
+			$this->debug_log( 'Chunked Sync: ✓ Assigned ' . count( $term_ids ) . " provider term(s) to post {$post_id}" );
 		}
 	}
 
 	/**
-	 * Create or update a doctor taxonomy term
+	 * Create or update a provider taxonomy term
 	 *
-	 * Finds existing term by member ID or creates a new one.
-	 * Updates term meta with doctor information from API.
+	 * Finds existing term by provider ID or creates a new one. The provider ID
+	 * is stored as `provider_member_id` term meta so it can be reused against the
+	 * /v2/providers endpoint.
 	 *
-	 * @param array $creator_data The creator data from API case response.
+	 * @param array $provider_data A single provider object from the API `providers` array.
 	 *
-	 * @return \WP_Term|null The doctor term or null on failure.
+	 * @return \WP_Term|null The provider term or null on failure.
 	 * @since 3.3.3
 	 */
-	private function create_or_update_doctor_term( array $creator_data ): ?\WP_Term {
-		$member_id   = absint( $creator_data['id'] ?? 0 );
-		$first_name  = sanitize_text_field( $creator_data['firstName'] ?? '' );
-		$last_name   = sanitize_text_field( $creator_data['lastName'] ?? '' );
-		$suffix      = sanitize_text_field( $creator_data['suffix'] ?? '' );
-		$profile_url = isset( $creator_data['profileLink'] ) ? esc_url_raw( $creator_data['profileLink'] ) : '';
+	private function create_or_update_provider_term( array $provider_data ): ?\WP_Term {
+		$member_id = absint( $provider_data['id'] ?? 0 );
 
 		if ( empty( $member_id ) ) {
 			return null;
 		}
 
-		// Build the doctor display name
-		$name_parts  = array_filter( [ $first_name, $last_name ] );
-		$doctor_name = implode( ' ', $name_parts );
+		$first_name = sanitize_text_field( $provider_data['firstName'] ?? '' );
+		$last_name  = sanitize_text_field( $provider_data['lastName'] ?? '' );
+		$api_name   = sanitize_text_field( $provider_data['name'] ?? '' );
+		$bio        = isset( $provider_data['bio'] ) ? sanitize_textarea_field( (string) $provider_data['bio'] ) : '';
+		$image_url  = isset( $provider_data['imageUrl'] ) ? esc_url_raw( (string) $provider_data['imageUrl'] ) : '';
+		$position   = absint( $provider_data['position'] ?? 0 );
 
-		if ( ! empty( $suffix ) ) {
-			$doctor_name .= ', ' . $suffix;
+		// Display name: the API-provided full name wins (it already includes
+		// credentials), otherwise build from first + last, otherwise fall back.
+		$provider_name = $api_name;
+		if ( empty( $provider_name ) ) {
+			$provider_name = trim( implode( ' ', array_filter( [ $first_name, $last_name ] ) ) );
+		}
+		if ( empty( $provider_name ) ) {
+			$provider_name = "Provider {$member_id}";
 		}
 
-		// Fallback if no name provided
-		if ( empty( $doctor_name ) ) {
-			$doctor_name = "Doctor {$member_id}";
-		}
+		$meta = [
+			'member_id'  => $member_id,
+			'first_name' => $first_name,
+			'last_name'  => $last_name,
+			'bio'        => $bio,
+			'image_url'  => $image_url,
+			'position'   => $position,
+		];
 
 		// Check if term already exists by member ID
 		$existing_terms = get_terms( [
-			'taxonomy'   => Taxonomies::TAXONOMY_DOCTORS,
+			'taxonomy'   => Taxonomies::TAXONOMY_PROVIDERS,
 			'hide_empty' => false,
 			'meta_query' => [
 				[
-					'key'   => 'doctor_member_id',
+					'key'   => 'provider_member_id',
 					'value' => $member_id,
 					'type'  => 'NUMERIC',
 				],
@@ -1957,32 +1977,32 @@ class Chunked_Data_Sync {
 			$term = $existing_terms[0];
 
 			// Update existing term name if it has changed
-			if ( $term->name !== $doctor_name ) {
-				wp_update_term( $term->term_id, Taxonomies::TAXONOMY_DOCTORS, [
-					'name' => $doctor_name,
-					'slug' => sanitize_title( $doctor_name . '-' . $member_id ),
+			if ( $term->name !== $provider_name ) {
+				wp_update_term( $term->term_id, Taxonomies::TAXONOMY_PROVIDERS, [
+					'name' => $provider_name,
+					'slug' => sanitize_title( $provider_name . '-' . $member_id ),
 				] );
-				$this->debug_log( "Chunked Sync: Updated doctor term name to '{$doctor_name}' (term ID: {$term->term_id})" );
+				$this->debug_log( "Chunked Sync: Updated provider term name to '{$provider_name}' (term ID: {$term->term_id})" );
 			}
 
 			// Update term meta
-			$this->update_doctor_term_meta( $term->term_id, $first_name, $last_name, $suffix, $member_id, $profile_url );
+			$this->update_provider_term_meta( $term->term_id, $meta );
 
-			// Register doctor in sync registry
-			$this->register_doctor_in_registry( $member_id, $term->term_id );
+			// Register provider in sync registry
+			$this->register_provider_in_registry( $member_id, $term->term_id );
 
-			return get_term( $term->term_id, Taxonomies::TAXONOMY_DOCTORS );
+			return get_term( $term->term_id, Taxonomies::TAXONOMY_PROVIDERS );
 		}
 
 		// Create new term
 		$result = wp_insert_term(
-			$doctor_name,
-			Taxonomies::TAXONOMY_DOCTORS,
+			$provider_name,
+			Taxonomies::TAXONOMY_PROVIDERS,
 			[
-				'slug'        => sanitize_title( $doctor_name . '-' . $member_id ),
+				'slug'        => sanitize_title( $provider_name . '-' . $member_id ),
 				'description' => sprintf(
-					/* translators: %s: member ID */
-					__( 'Doctor profile for member ID %s', 'brag-book-gallery' ),
+					/* translators: %s: provider ID */
+					__( 'Provider profile for provider ID %s', 'brag-book-gallery' ),
 					$member_id
 				),
 			]
@@ -1992,21 +2012,21 @@ class Chunked_Data_Sync {
 			// Check if term already exists with same slug
 			if ( $result->get_error_code() === 'term_exists' ) {
 				$term_id = $result->get_error_data( 'term_exists' );
-				$term    = get_term( $term_id, Taxonomies::TAXONOMY_DOCTORS );
+				$term    = get_term( $term_id, Taxonomies::TAXONOMY_PROVIDERS );
 
 				if ( $term && ! is_wp_error( $term ) ) {
 					// Update meta for the existing term
-					$this->update_doctor_term_meta( $term->term_id, $first_name, $last_name, $suffix, $member_id, $profile_url );
-					$this->debug_log( "Chunked Sync: Using existing doctor term '{$doctor_name}' (term ID: {$term->term_id})" );
+					$this->update_provider_term_meta( $term->term_id, $meta );
+					$this->debug_log( "Chunked Sync: Using existing provider term '{$provider_name}' (term ID: {$term->term_id})" );
 
-					// Register doctor in sync registry
-					$this->register_doctor_in_registry( $member_id, $term->term_id );
+					// Register provider in sync registry
+					$this->register_provider_in_registry( $member_id, $term->term_id );
 
 					return $term;
 				}
 			}
 
-			$this->debug_log( "Chunked Sync: Failed to create doctor term '{$doctor_name}': " . $result->get_error_message() );
+			$this->debug_log( "Chunked Sync: Failed to create provider term '{$provider_name}': " . $result->get_error_message() );
 
 			return null;
 		}
@@ -2014,18 +2034,18 @@ class Chunked_Data_Sync {
 		$term_id = $result['term_id'];
 
 		// Save term meta
-		$this->update_doctor_term_meta( $term_id, $first_name, $last_name, $suffix, $member_id, $profile_url );
+		$this->update_provider_term_meta( $term_id, $meta );
 
-		// Register doctor in sync registry
-		$this->register_doctor_in_registry( $member_id, $term_id );
+		// Register provider in sync registry
+		$this->register_provider_in_registry( $member_id, $term_id );
 
-		$this->debug_log( "Chunked Sync: ✓ Created new doctor term '{$doctor_name}' (term ID: {$term_id})" );
+		$this->debug_log( "Chunked Sync: ✓ Created new provider term '{$provider_name}' (term ID: {$term_id})" );
 
-		return get_term( $term_id, Taxonomies::TAXONOMY_DOCTORS );
+		return get_term( $term_id, Taxonomies::TAXONOMY_PROVIDERS );
 	}
 
 	/**
-	 * Register a doctor in the sync registry
+	 * Register a provider in the sync registry
 	 *
 	 * @since 4.3.3
 	 *
@@ -2034,10 +2054,10 @@ class Chunked_Data_Sync {
 	 *
 	 * @return void
 	 */
-	private function register_doctor_in_registry( int $member_id, int $term_id ): void {
+	private function register_provider_in_registry( int $member_id, int $term_id ): void {
 		if ( $this->database && $member_id > 0 && $term_id > 0 ) {
 			$this->database->upsert_registry_item(
-				'doctor',
+				'provider',
 				$member_id,
 				$term_id,
 				'term',
@@ -2049,28 +2069,33 @@ class Chunked_Data_Sync {
 	}
 
 	/**
-	 * Update doctor term meta fields
+	 * Update provider term meta fields
 	 *
-	 * @param int    $term_id     The term ID.
-	 * @param string $first_name  Doctor's first name.
-	 * @param string $last_name   Doctor's last name.
-	 * @param string $suffix      Professional suffix.
-	 * @param int    $member_id   Member ID from API.
-	 * @param string $profile_url Profile URL.
+	 * Writes the fields supplied by the v2 `providers` payload. `provider_member_id`
+	 * stores the provider's API ID for reuse against /v2/providers. The legacy
+	 * `provider_suffix`, `provider_profile_url`, and the manually-uploaded
+	 * `provider_profile_photo` are intentionally left untouched so manual values
+	 * survive re-syncs.
+	 *
+	 * @param int   $term_id The term ID.
+	 * @param array $data    Sanitized provider data: member_id, first_name, last_name, bio, image_url, position.
 	 *
 	 * @return void
 	 * @since 3.3.3
 	 */
-	private function update_doctor_term_meta( int $term_id, string $first_name, string $last_name, string $suffix, int $member_id, string $profile_url ): void {
-		update_term_meta( $term_id, 'doctor_member_id', $member_id );
-		update_term_meta( $term_id, 'doctor_first_name', $first_name );
-		update_term_meta( $term_id, 'doctor_last_name', $last_name );
-		update_term_meta( $term_id, 'doctor_suffix', $suffix );
+	private function update_provider_term_meta( int $term_id, array $data ): void {
+		update_term_meta( $term_id, 'provider_member_id', absint( $data['member_id'] ?? 0 ) );
+		update_term_meta( $term_id, 'provider_first_name', $data['first_name'] ?? '' );
+		update_term_meta( $term_id, 'provider_last_name', $data['last_name'] ?? '' );
+		update_term_meta( $term_id, 'provider_position', absint( $data['position'] ?? 0 ) );
 
-		if ( ! empty( $profile_url ) ) {
-			update_term_meta( $term_id, 'doctor_profile_url', $profile_url );
+		// Bio and image win from the API only when supplied, so manual values
+		// entered in the term editor survive a re-sync when the API omits them.
+		if ( ! empty( $data['bio'] ) ) {
+			update_term_meta( $term_id, 'provider_bio', $data['bio'] );
 		}
-
-		// Note: Profile photo is not synced from API - must be manually uploaded
+		if ( ! empty( $data['image_url'] ) ) {
+			update_term_meta( $term_id, 'provider_image_url', $data['image_url'] );
+		}
 	}
 }

@@ -93,6 +93,33 @@ class Changelog_Page extends Settings_Base {
 				</div>
 			</div>
 
+			<!-- Version 4.6.0-beta5 -->
+			<div class="brag-book-gallery-section">
+				<div class="brag-book-gallery-changelog-version">
+					<h3>
+						<span class="version-badge version-beta">v4.6.0-beta5</span>
+						<?php esc_html_e( 'June 8, 2026', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Beta Release', 'brag-book-gallery' ); ?>
+					</h3>
+					<div class="brag-book-gallery-card">
+						<p><?php esc_html_e( 'Renames the "Doctors" taxonomy to "Providers" — more universal terminology for related medical staff — and makes it available to every account.', 'brag-book-gallery' ); ?></p>
+						<h4><?php esc_html_e( '🔄 Changed', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Providers Taxonomy: the brag_book_doctors taxonomy is now registered as brag_book_providers. Admin menu, case displays, term and post meta, the display toggle, and sync all use "provider" terminology.', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Universal Availability: the providers taxonomy is now enabled for all accounts. It was previously restricted to a single website property ID.', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Provider Sync: now reads the v2 providers array (a case can have multiple providers) instead of the deprecated single creator object. Each provider is stored as a term with its API ID (provider_member_id, reusable against /v2/providers), name, bio, image URL, and position. The case stores the ordered provider ID list in brag_book_gallery_provider_ids. All providers render on the case detail and cards, ordered by position, with the API photo preferred over a manual upload.', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '✨ Added', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Featured / Top Performing: the API featured and topPerforming flags are now mapped to the brag_book_gallery_featured and brag_book_gallery_top_performing case post meta during sync.', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '🛠 Migration', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Existing synced data is migrated automatically on upgrade: provider terms, their photos and meta, case associations, the denormalized case post meta, the display option, and sync-registry rows are all moved in place. No re-sync is required.', 'brag-book-gallery' ); ?></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
 			<!-- Version 4.5.1 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">

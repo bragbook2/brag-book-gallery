@@ -686,12 +686,8 @@ class General_Page extends Settings_Base {
 		$show_filter_counts  = (bool) get_option( 'brag_book_gallery_show_filter_counts', true );
 		$enable_favorites    = (bool) get_option( 'brag_book_gallery_enable_favorites', true );
 		$enable_consultation = (bool) get_option( 'brag_book_gallery_enable_consultation', true );
-		$show_doctor         = (bool) get_option( 'brag_book_gallery_show_doctor', false );
+		$show_provider         = (bool) get_option( 'brag_book_gallery_show_provider', false );
 		$enable_powered_by   = (bool) get_option( 'brag_book_gallery_enable_powered_by', false );
-
-		// Property ID validation.
-		$website_property_ids = (array) get_option( 'brag_book_gallery_website_property_id', array() );
-		$has_property_111     = in_array( '111', $website_property_ids, true );
 
 		// Current mode (default only)
 		$current_mode = 'default';
@@ -1051,28 +1047,26 @@ class General_Page extends Settings_Base {
 					</div>
 				</div>
 
-				<?php if ( $has_property_111 ) : ?>
-				<!-- Show Doctor Toggle -->
+				<!-- Show Provider Toggle -->
 				<div class="display-settings-option">
 					<div class="brag-book-gallery-toggle-wrapper">
 						<label class="brag-book-gallery-toggle">
-							<input type="hidden" name="brag_book_gallery_show_doctor" value="0" />
+							<input type="hidden" name="brag_book_gallery_show_provider" value="0" />
 							<input type="checkbox"
-							       id="brag_book_gallery_show_doctor"
-							       name="brag_book_gallery_show_doctor"
+							       id="brag_book_gallery_show_provider"
+							       name="brag_book_gallery_show_provider"
 							       value="1"
-							       <?php checked( $show_doctor, true ); ?> />
+							       <?php checked( $show_provider, true ); ?> />
 							<span class="brag-book-gallery-toggle-slider"></span>
 						</label>
 						<span class="brag-book-gallery-toggle-label">
-							<?php esc_html_e( 'Display doctor information in cases', 'brag-book-gallery' ); ?>
+							<?php esc_html_e( 'Display provider information in cases', 'brag-book-gallery' ); ?>
 						</span>
 					</div>
 					<p class="description">
-						<?php esc_html_e( 'When enabled, doctor details will be shown in case displays.', 'brag-book-gallery' ); ?>
+						<?php esc_html_e( 'When enabled, provider details will be shown in case displays.', 'brag-book-gallery' ); ?>
 					</p>
 				</div>
-				<?php endif; ?>
 
 				<!-- Gallery Columns -->
 				<div class="display-settings-option">
@@ -2161,7 +2155,7 @@ class General_Page extends Settings_Base {
 		$features = array(
 			'brag_book_gallery_enable_favorites',
 			'brag_book_gallery_enable_consultation',
-			'brag_book_gallery_show_doctor',
+			'brag_book_gallery_show_provider',
 			'brag_book_gallery_enable_powered_by',
 		);
 

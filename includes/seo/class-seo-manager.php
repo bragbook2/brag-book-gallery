@@ -1127,7 +1127,7 @@ final class SEO_Manager {
 					$this->seo_data['procedure_name']
 				);
 				$structured_data['description'] = sprintf(
-					'Review %d %s before and after cases submitted by real doctors from our online gallery.',
+					'Review %d %s before and after cases submitted by real providers from our online gallery.',
 					$total_cases,
 					$this->seo_data['procedure_name']
 				);

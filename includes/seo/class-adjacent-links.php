@@ -94,7 +94,7 @@ final class Adjacent_Links {
 	/**
 	 * Determine whether the current request is a BRAG book gallery view.
 	 *
-	 * Covers both Local mode (real case posts and procedure/doctor archives)
+	 * Covers both Local mode (real case posts and procedure/provider archives)
 	 * and Default mode (the shortcode-driven gallery page).
 	 *
 	 * @return bool True on any gallery context.
@@ -105,7 +105,7 @@ final class Adjacent_Links {
 			is_singular( Post_Types::POST_TYPE_CASES )
 			|| is_post_type_archive( Post_Types::POST_TYPE_CASES )
 			|| is_tax( Taxonomies::TAXONOMY_PROCEDURES )
-			|| is_tax( Taxonomies::TAXONOMY_DOCTORS )
+			|| is_tax( Taxonomies::TAXONOMY_PROVIDERS )
 		) {
 			return true;
 		}
