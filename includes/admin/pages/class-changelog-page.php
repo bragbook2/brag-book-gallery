@@ -93,6 +93,23 @@ class Changelog_Page extends Settings_Base {
 				</div>
 			</div>
 
+			<!-- Version 4.6.0-beta7 -->
+			<div class="brag-book-gallery-section">
+				<div class="brag-book-gallery-changelog-version">
+					<h3>
+						<span class="version-badge version-beta">v4.6.0-beta7</span>
+						<?php esc_html_e( 'June 8, 2026', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Beta Release', 'brag-book-gallery' ); ?>
+					</h3>
+					<div class="brag-book-gallery-card">
+						<p><?php esc_html_e( 'Packaging fix for the Find a Provider locator; contains all 4.6.0-beta6 changes.', 'brag-book-gallery' ); ?></p>
+						<h4><?php esc_html_e( '🐛 Fixed', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'The Find a Provider locator script is now bundled into the release build. In 4.6.0-beta6 the build clean step removed the hand-written script, so the locator dialog did nothing; it is now a proper build entry and ships correctly.', 'brag-book-gallery' ); ?></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
 			<!-- Version 4.6.0-beta6 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">

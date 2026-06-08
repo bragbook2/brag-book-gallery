@@ -4,7 +4,7 @@ Tags: gallery, before-after, medical, cosmetic, procedures
 Requires at least: 6.8
 Tested up to: 6.9
 Requires PHP: 8.2
-Stable tag: 4.6.0-beta6
+Stable tag: 4.6.0-beta7
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -91,6 +91,9 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 4. Sync management interface
 
 == Changelog ==
+
+= 4.6.0-beta7 =
+* Fixed: The "Find a Provider" locator script is now bundled into the release build. In 4.6.0-beta6 the build's clean step removed the hand-written script, so the locator dialog did nothing; it is now a proper build entry and ships correctly. Contains all 4.6.0-beta6 changes.
 
 = 4.6.0-beta6 =
 * Added: Practices are now synced as a new internal `brag_book_practices` custom post type, associated with providers. During sync each provider's practices are fetched from `/api/plugin/v2/practices` (by provider id) and upserted, with name, address, geo coordinates, phone, website, on-site surgical-suite flag, and accreditations stored as editable post meta on the practice (populated from the API, adjustable in the admin between syncs). Each practice is linked to its providers through the `brag_book_providers` taxonomy — the provider term (which carries the provider id) is assigned to the practice post — so providers connect to both cases and practices. Practices are an internal data feed (not publicly queryable); orphaned practices are pruned on sync like other synced records.

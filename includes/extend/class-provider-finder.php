@@ -94,11 +94,13 @@ class Provider_Finder {
 			);
 		}
 
+		$suffix = ( defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ) ? '' : '.min';
+
 		wp_enqueue_script(
 			'brag-book-gallery-provider-finder',
-			Setup::get_asset_url( 'assets/js/brag-book-gallery-provider-finder.js' ),
+			Setup::get_asset_url( 'assets/js/brag-book-gallery-provider-finder' . $suffix . '.js' ),
 			[],
-			self::asset_version(),
+			self::asset_version( $suffix ),
 			true
 		);
 
@@ -118,10 +120,11 @@ class Provider_Finder {
 	 * Asset version string for cache busting.
 	 *
 	 * @since 4.6.0
+	 * @param string $suffix Asset filename suffix ('' or '.min').
 	 * @return string
 	 */
-	private static function asset_version(): string {
-		$file = Setup::get_plugin_path() . 'assets/js/brag-book-gallery-provider-finder.js';
+	private static function asset_version( string $suffix = '.min' ): string {
+		$file = Setup::get_plugin_path() . 'assets/js/brag-book-gallery-provider-finder' . $suffix . '.js';
 		return file_exists( $file ) ? (string) filemtime( $file ) : '4.6.0';
 	}
 

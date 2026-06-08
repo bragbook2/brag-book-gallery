@@ -314,7 +314,7 @@ final class Gallery_Handler {
 	 * @since 3.3.2
 	 */
 	private static function render_disclaimer(): string {
-		if ( ! (bool) get_option( 'brag_book_gallery_enable_disclaimer', true ) ) {
+		if ( ! (bool) get_option( 'brag_book_gallery_enable_disclaimer', false ) ) {
 			return '';
 		}
 

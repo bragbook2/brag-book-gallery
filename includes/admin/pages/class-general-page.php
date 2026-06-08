@@ -691,7 +691,7 @@ class General_Page extends Settings_Base {
 		$enable_practices    = (bool) get_option( 'brag_book_gallery_enable_practices', false );
 		$google_maps_api_key = (string) get_option( 'brag_book_gallery_google_maps_api_key', '' );
 		$enable_powered_by   = (bool) get_option( 'brag_book_gallery_enable_powered_by', false );
-		$enable_disclaimer   = (bool) get_option( 'brag_book_gallery_enable_disclaimer', true );
+		$enable_disclaimer   = (bool) get_option( 'brag_book_gallery_enable_disclaimer', false );
 
 		// Current mode (default only)
 		$current_mode = 'default';

@@ -15,7 +15,8 @@ module.exports = (env, argv) => {
 			'carousel-frontend': './src/js/carousel-frontend.js',
 			admin: './src/js/admin.js',
 			'sync-admin': './src/js/sync-admin.js',
-			'stage-sync': './src/js/stage-sync.js'
+			'stage-sync': './src/js/stage-sync.js',
+			'provider-finder': './src/js/provider-finder.js'
 		},
 		output: {
 			path: path.resolve(__dirname, 'assets/js'),
@@ -26,7 +27,8 @@ module.exports = (env, argv) => {
 					'carousel-frontend': 'brag-book-gallery-carousel.js',
 					admin: 'brag-book-gallery-admin.js',
 					'sync-admin': 'brag-book-gallery-sync-admin.js',
-					'stage-sync': 'brag-book-gallery-stage-sync.js'
+					'stage-sync': 'brag-book-gallery-stage-sync.js',
+					'provider-finder': 'brag-book-gallery-provider-finder.js'
 				};
 				const baseName = nameMap[pathData.chunk.name] || '[name].js';
 				// Add .min suffix for production builds
