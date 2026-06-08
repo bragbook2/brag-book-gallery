@@ -21,6 +21,8 @@ declare( strict_types=1 );
 namespace BRAGBookGallery\Includes\Admin\Debug;
 
 use BRAGBookGallery\Includes\Core\Setup;
+use BRAGBookGallery\Includes\Extend\Post_Types;
+use BRAGBookGallery\Includes\Extend\Taxonomies;
 use Exception;
 use Error;
 
@@ -129,16 +131,14 @@ final class Debug_Factory_Reset {
 		try {
 			global $wpdb;
 
-			// Get all plugin options.
-			$plugin_options = $this->get_plugin_options();
-
 			// Delete the gallery page if it exists.
 			$this->delete_gallery_pages();
 
+			// Delete all synced content (cases, procedures, providers).
+			$this->delete_synced_content();
+
 			// Delete all plugin options.
-			foreach ( $plugin_options as $option ) {
-				delete_option( $option );
-			}
+			$this->delete_plugin_options();
 
 			// Clear all transients.
 			$this->clear_transients();
@@ -189,39 +189,64 @@ final class Debug_Factory_Reset {
 	}
 
 	/**
-	 * Get list of plugin options to delete
+	 * Delete all plugin options
 	 *
-	 * Returns an array of all plugin option names that should be deleted during reset.
+	 * Removes every option created by the plugin. Uses a pattern match on the
+	 * shared option prefix so newly added options are cleaned up automatically,
+	 * rather than relying on a hardcoded list that drifts out of date.
 	 *
 	 * @since 3.3.0
 	 *
-	 * @return array List of option names
+	 * @return void
 	 */
-	private function get_plugin_options(): array {
-		return array(
-			'brag_book_gallery_api_token',
-			'brag_book_gallery_website_property_id',
-			'brag_book_gallery_page_slug',
-			'brag_book_gallery_mode',
-			'brag_book_gallery_debug_mode',
-			'brag_book_gallery_javascript_enabled',
-			'brag_book_gallery_log_api_calls',
-			'brag_book_gallery_log_errors',
-			'brag_book_gallery_log_verbosity',
-			'brag_book_gallery_cache_duration',
-			'brag_book_gallery_items_per_page',
-			'brag_book_gallery_enable_favorites',
-			'brag_book_gallery_enable_sharing',
-			'brag_book_gallery_enable_nudity_warning',
-			'brag_book_gallery_consultation_form_url',
-			'brag_book_gallery_consultation_form_type',
-			'brag_book_gallery_consultation_custom_html',
-			'brag_book_gallery_db_version',
-			'brag_book_gallery_version',
-			'brag_book_gallery_activation_time',
-			'brag_book_gallery_last_sync',
-			'brag_book_gallery_page_id',
+	private function delete_plugin_options(): void {
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$wpdb->query(
+			"DELETE FROM {$wpdb->options}
+			WHERE option_name LIKE 'brag_book_gallery_%'
+			OR option_name = 'brag_book_last_sync_session'"
 		);
+	}
+
+	/**
+	 * Delete all synced content
+	 *
+	 * Removes every synced case (post) and all procedure and provider
+	 * taxonomy terms created by the plugin.
+	 *
+	 * @since 3.3.0
+	 *
+	 * @return void
+	 */
+	private function delete_synced_content(): void {
+		$cases = get_posts( array(
+			'post_type'      => Post_Types::POST_TYPE_CASES,
+			'posts_per_page' => -1,
+			'post_status'    => 'any',
+			'fields'         => 'ids',
+		) );
+
+		foreach ( $cases as $case_id ) {
+			wp_delete_post( (int) $case_id, true );
+		}
+
+		foreach ( array( Taxonomies::TAXONOMY_PROCEDURES, Taxonomies::TAXONOMY_PROVIDERS ) as $taxonomy ) {
+			$terms = get_terms( array(
+				'taxonomy'   => $taxonomy,
+				'hide_empty' => false,
+				'fields'     => 'ids',
+			) );
+
+			if ( is_wp_error( $terms ) ) {
+				continue;
+			}
+
+			foreach ( $terms as $term_id ) {
+				wp_delete_term( (int) $term_id, $taxonomy );
+			}
+		}
 	}
 
 	/**
@@ -298,6 +323,10 @@ final class Debug_Factory_Reset {
 		global $wpdb;
 
 		$tables = array(
+			// Tables in active use.
+			$wpdb->prefix . 'brag_sync_registry',
+			$wpdb->prefix . 'brag_book_sync_log',
+			// Legacy tables from earlier versions, dropped defensively.
 			$wpdb->prefix . 'brag_case_map',
 			$wpdb->prefix . 'brag_sync_log',
 		);

@@ -187,7 +187,7 @@ class Sync_Page extends Settings_Base {
 	 * Render Delete All Data danger zone section
 	 *
 	 * Displays a destructive action section that allows administrators
-	 * to delete all synced procedures, doctors, and cases.
+	 * to delete all synced procedures, providers, and cases.
 	 *
 	 * @since 3.4.0
 	 * @return void
@@ -204,11 +204,10 @@ class Sync_Page extends Settings_Base {
 				<div class="danger-zone-info">
 					<strong><?php esc_html_e( 'Delete All Synced Data', 'brag-book-gallery' ); ?></strong>
 					<p class="description">
-						<?php esc_html_e( 'Permanently delete all synced cases, procedures, and doctors from this WordPress site. This does not affect data on the BRAG book API.', 'brag-book-gallery' ); ?>
+						<?php esc_html_e( 'Permanently delete all synced cases, procedures, and providers from this WordPress site. This does not affect data on the BRAG book API.', 'brag-book-gallery' ); ?>
 					</p>
 				</div>
 				<button type="button" class="button button-danger" id="brag-book-delete-all-data">
-					<span class="dashicons dashicons-trash" style="margin-top: 3px;"></span>
 					<?php esc_html_e( 'Delete All Data', 'brag-book-gallery' ); ?>
 				</button>
 			</div>
@@ -236,7 +235,7 @@ class Sync_Page extends Settings_Base {
 						<ul style="margin: 8px 0 8px 20px; list-style: disc;">
 							<li><?php esc_html_e( 'Cases (posts)', 'brag-book-gallery' ); ?></li>
 							<li><?php esc_html_e( 'Procedures (taxonomy terms)', 'brag-book-gallery' ); ?></li>
-							<li><?php esc_html_e( 'Doctors (taxonomy terms)', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Providers (taxonomy terms)', 'brag-book-gallery' ); ?></li>
 						</ul>
 						<p>
 							<?php
@@ -255,7 +254,6 @@ class Sync_Page extends Settings_Base {
 						<?php esc_html_e( 'Cancel', 'brag-book-gallery' ); ?>
 					</button>
 					<button type="button" class="button button-danger" id="brag-book-delete-confirm-btn" disabled>
-						<span class="dashicons dashicons-trash" style="margin-top: 3px;"></span>
 						<?php esc_html_e( 'Delete Everything', 'brag-book-gallery' ); ?>
 					</button>
 				</div>
@@ -334,7 +332,7 @@ class Sync_Page extends Settings_Base {
 						})
 						.finally(function () {
 							confirmBtn.disabled = false;
-							confirmBtn.innerHTML = '<span class="dashicons dashicons-trash" style="margin-top: 3px;"></span> ' + i18n.btnLabel;
+							confirmBtn.textContent = i18n.btnLabel;
 						});
 				});
 			}
@@ -391,7 +389,7 @@ class Sync_Page extends Settings_Base {
 	 * Handle AJAX request to delete all synced data
 	 *
 	 * Deletes all cases (posts), procedures (taxonomy terms),
-	 * and doctors (taxonomy terms) from the WordPress site.
+	 * and providers (taxonomy terms) from the WordPress site.
 	 *
 	 * @since 3.4.0
 	 * @return void
@@ -407,7 +405,7 @@ class Sync_Page extends Settings_Base {
 
 		$deleted_cases      = 0;
 		$deleted_procedures = 0;
-		$deleted_doctors    = 0;
+		$deleted_providers    = 0;
 
 		// Delete all cases
 		$cases = get_posts( [
@@ -438,31 +436,51 @@ class Sync_Page extends Settings_Base {
 			}
 		}
 
-		// Delete all doctor terms
-		$doctors = get_terms( [
-			'taxonomy'   => Taxonomies::TAXONOMY_DOCTORS,
+		// Delete all provider terms
+		$providers = get_terms( [
+			'taxonomy'   => Taxonomies::TAXONOMY_PROVIDERS,
 			'hide_empty' => false,
 			'fields'     => 'ids',
 		] );
 
-		if ( ! is_wp_error( $doctors ) ) {
-			foreach ( $doctors as $term_id ) {
-				if ( wp_delete_term( $term_id, Taxonomies::TAXONOMY_DOCTORS ) ) {
-					$deleted_doctors++;
+		if ( ! is_wp_error( $providers ) ) {
+			foreach ( $providers as $term_id ) {
+				if ( wp_delete_term( $term_id, Taxonomies::TAXONOMY_PROVIDERS ) ) {
+					$deleted_providers++;
 				}
 			}
 		}
 
-		// Clear related transients and sync status
-		delete_option( 'brag_book_gallery_last_sync_time' );
-		delete_option( 'brag_book_gallery_last_sync_status' );
-		delete_option( 'brag_book_gallery_last_sync_source' );
+		// Clear related sync status and orphaned sync-state options
+		$sync_state_options = [
+			'brag_book_gallery_last_sync_time',
+			'brag_book_gallery_last_sync_status',
+			'brag_book_gallery_last_sync_source',
+			'brag_book_gallery_last_sync',
+			'brag_book_gallery_last_sync_session',
+			'brag_book_last_sync_session',
+			'brag_book_gallery_sync_progress',
+			'brag_book_gallery_active_sync',
+			'brag_book_gallery_case_progress',
+			'brag_book_gallery_completed_sync_log',
+			'brag_book_gallery_staged_sync_start',
+			'brag_book_gallery_sync_batch_token',
+			'brag_book_gallery_sync_context',
+			'brag_book_gallery_bg_sync_token',
+			'brag_book_gallery_sync_stop_flag',
+		];
+		foreach ( $sync_state_options as $option_name ) {
+			delete_option( $option_name );
+		}
 
-		// Clear sync registry table
+		// Clear sync registry and sync log tables
 		global $wpdb;
 		$registry_table = $wpdb->prefix . 'brag_sync_registry';
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
-		$wpdb->query( "TRUNCATE TABLE `{$registry_table}`" );
+		$log_table      = $wpdb->prefix . 'brag_book_sync_log';
+		foreach ( [ $registry_table, $log_table ] as $sync_table ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
+			$wpdb->query( "TRUNCATE TABLE `{$sync_table}`" );
+		}
 
 		// Delete sync data and manifest files from disk
 		$upload_dir = wp_upload_dir();
@@ -486,16 +504,16 @@ class Sync_Page extends Settings_Base {
 
 		wp_send_json_success( [
 			'message' => sprintf(
-				/* translators: 1: number of cases, 2: number of procedures, 3: number of doctors */
-				__( 'Successfully deleted %1$d cases, %2$d procedures, and %3$d doctors.', 'brag-book-gallery' ),
+				/* translators: 1: number of cases, 2: number of procedures, 3: number of providers */
+				__( 'Successfully deleted %1$d cases, %2$d procedures, and %3$d providers.', 'brag-book-gallery' ),
 				$deleted_cases,
 				$deleted_procedures,
-				$deleted_doctors
+				$deleted_providers
 			),
 			'deleted' => [
 				'cases'      => $deleted_cases,
 				'procedures' => $deleted_procedures,
-				'doctors'    => $deleted_doctors,
+				'providers'    => $deleted_providers,
 			],
 		] );
 	}
