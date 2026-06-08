@@ -495,6 +495,14 @@ final class Gallery_Handler {
 					</button>
 				</div>
 			<?php endif; ?>
+
+			<?php if ( (bool) get_option( 'brag_book_gallery_enable_disclaimer', true ) ) : ?>
+				<div class="brag-book-gallery-disclaimer">
+					<p class="brag-book-gallery-disclaimer__text">
+						<?php esc_html_e( 'Gallery photos may include smart device processing, AI processing or standard image enhancements. These edits are applied to image quality only and are not intended to alter patient outcomes.', 'brag-book-gallery' ); ?>
+					</p>
+				</div>
+			<?php endif; ?>
 		</div>
 		<?php
 		return ob_get_clean();
