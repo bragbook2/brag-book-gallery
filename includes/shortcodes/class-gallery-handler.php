@@ -2806,6 +2806,12 @@ final class Gallery_Handler {
 						echo self::render_taxonomy_cases( $procedure_term );
 						?>
 					</div>
+
+					<?php
+					// Image processing disclaimer, shown after the case grid when enabled.
+					// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Markup is escaped within render_disclaimer().
+					echo self::render_disclaimer();
+					?>
 				</div>
 			</div>
 
