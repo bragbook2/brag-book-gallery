@@ -5435,6 +5435,13 @@ class Data_Sync {
 		$image_url  = isset( $provider_data['imageUrl'] ) ? esc_url_raw( (string) $provider_data['imageUrl'] ) : '';
 		$position   = absint( $provider_data['position'] ?? 0 );
 
+		// TEMP DIAGNOSTIC: reveal the exact provider object the sync receives so we
+		// can confirm whether the detail endpoint includes imageUrl. Debug-gated.
+		if ( get_option( 'brag_book_gallery_debug_mode' ) === 'yes' ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			error_log( 'BRAG book Gallery Sync: provider object for member ' . $member_id . ' keys=[' . implode( ',', array_keys( $provider_data ) ) . '] imageUrl=' . ( isset( $provider_data['imageUrl'] ) ? (string) $provider_data['imageUrl'] : '(absent)' ) );
+		}
+
 		// Display name: the API-provided full name wins (it already includes
 		// credentials), otherwise build from first + last, otherwise fall back.
 		$provider_name = $api_name;
