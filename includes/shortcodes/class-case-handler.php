@@ -2013,16 +2013,16 @@ class Case_Handler {
 			return '';
 		}
 
-		$html = '<div class="brag-book-gallery-provider-profiles">';
+		$html = '<ul class="brag-book-gallery-provider-profiles">';
 
 		foreach ( $providers as $provider ) {
-			$html .= '<div class="brag-book-gallery-provider-profile">';
+			$html .= '<li class="brag-book-gallery-provider-profile">';
 
-			// Profile photo (48x48 circle)
+			// Profile photo (40x40 circle)
 			$html .= '<div class="brag-book-gallery-provider-photo">';
 			if ( ! empty( $provider['photo_url'] ) ) {
 				$html .= sprintf(
-					'<img src="%s" alt="%s" width="48" height="48" class="brag-book-gallery-provider-avatar">',
+					'<img src="%s" alt="%s" width="40" height="40" class="brag-book-gallery-provider-avatar">',
 					esc_url( $provider['photo_url'] ),
 					esc_attr( $provider['name'] )
 				);
@@ -2048,10 +2048,10 @@ class Case_Handler {
 			}
 
 			$html .= '</div>';
-			$html .= '</div>';
+			$html .= '</li>';
 		}
 
-		$html .= '</div>';
+		$html .= '</ul>';
 
 		return $html;
 	}

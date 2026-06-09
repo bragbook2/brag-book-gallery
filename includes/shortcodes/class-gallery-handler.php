@@ -1294,7 +1294,7 @@ final class Gallery_Handler {
 					</aside>
 
 					<!-- My Favorites Button -->
-					<?php if ( \BRAGBookGallery\Includes\Core\Settings_Helper::is_favorites_enabled() ) : ?>
+						<?php if ( \BRAGBookGallery\Includes\Core\Settings_Helper::is_favorites_enabled() ) : ?>
 						<div class="brag-book-gallery-favorites-link-wrapper">
 							<?php
 							$favorites_url = self::get_favorites_page_url();
@@ -1770,7 +1770,7 @@ final class Gallery_Handler {
 			<!-- Find a Provider Dialog -->
 			<?php
 			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- markup escaped within render_dialog().
-			echo \BRAGBookGallery\Includes\Extend\Provider_Finder::render_dialog();
+			echo \BRAGBookGallery\Includes\Extend\Provider_Finder::render_dialog( \BRAGBookGallery\Includes\Extend\Provider_Finder::procedure_context( $current_taxonomy ) );
 			?>
 
 			<!-- Favorites Dialog -->
@@ -2853,7 +2853,7 @@ final class Gallery_Handler {
 			<!-- Find a Provider Dialog -->
 			<?php
 			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- markup escaped within render_dialog().
-			echo \BRAGBookGallery\Includes\Extend\Provider_Finder::render_dialog();
+			echo \BRAGBookGallery\Includes\Extend\Provider_Finder::render_dialog( \BRAGBookGallery\Includes\Extend\Provider_Finder::procedure_context( $procedure_term ) );
 			?>
 
 			<!-- Favorites Dialog -->
@@ -3410,6 +3410,12 @@ final class Gallery_Handler {
 				</div>
 			</dialog>
 		<?php endif; ?>
+
+		<!-- Find a Provider Dialog -->
+		<?php
+		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- markup escaped within render_dialog().
+		echo \BRAGBookGallery\Includes\Extend\Provider_Finder::render_dialog();
+		?>
 
 		<?php if ( \BRAGBookGallery\Includes\Core\Settings_Helper::is_favorites_enabled() ) : ?>
 			<dialog class="brag-book-gallery-dialog" id="favoritesDialog">

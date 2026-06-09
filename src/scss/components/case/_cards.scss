@@ -397,16 +397,11 @@
 }
 
 .brag-book-gallery-case-card-overlay-provider-avatar {
-	width: 40px;
-	height: 40px;
+	width: 40px !important;
+	height: 40px !important;
 	border-radius: 50%;
 	object-fit: cover;
 	flex-shrink: 0;
-
-	@media (hover: hover) and (pointer: fine) {
-		width: 48px;
-		height: 48px;
-	}
 
 	&--placeholder {
 		display: flex;
@@ -434,11 +429,6 @@
 // V3 card provider avatar adjustments (mobile-style always)
 .brag-book-gallery-case-card--v3 {
 	.brag-book-gallery-case-card-overlay-provider-avatar {
-		@media (hover: hover) and (pointer: fine) {
-			width: 40px;
-			height: 40px;
-		}
-
 		&--placeholder {
 			@media (hover: hover) and (pointer: fine) {
 				background-color: var(--wp--custom--brag-book-gallery--color--light-gray, #e5e7eb);

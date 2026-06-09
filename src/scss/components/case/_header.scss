@@ -81,21 +81,21 @@
 }
 
 // Provider profile section (shown below the case title). A case may have
-// multiple providers, stacked vertically.
+// multiple providers, laid out inline (wrapping) rather than stacked.
 .brag-book-gallery-provider-profiles {
 	display: flex;
-	flex-direction: column;
-	gap: var(--wp--custom--brag-book-gallery--spacer--sm, 12px);
+	flex-flow: row wrap;
+	align-items: center;
+	gap: var(--wp--custom--brag-book-gallery--spacer--md, 20px) var(--wp--custom--brag-book-gallery--spacer--sm, 12px);
+	margin: 0;
+	padding: 0;
+	list-style: none;
 }
 
 .brag-book-gallery-provider-profile {
 	display: flex;
 	align-items: center;
 	gap: var(--wp--custom--brag-book-gallery--spacer--sm, 12px);
-
-	@media (max-width: 768px) {
-		justify-content: center;
-	}
 }
 
 .brag-book-gallery-provider-photo {
@@ -103,8 +103,8 @@
 }
 
 .brag-book-gallery-provider-avatar {
-	width: 48px;
-	height: 48px;
+	width: 40px;
+	height: 40px;
 	border-radius: 50%;
 	object-fit: cover;
 	border: 2px solid var(--wp--custom--brag-book-gallery--color--light-gray, #e5e7eb);

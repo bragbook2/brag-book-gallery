@@ -18,7 +18,6 @@
   var config = window.bragBookProviderFinder || {};
   var dialog = null;
   var map = null;
-  var geocoder = null;
   var infoWindow = null;
   var markers = [];
   var practices = [];
@@ -26,6 +25,8 @@
   var loaded = false;
   var originMarker = null;
   var lastOrigin = null;
+  var sessionToken = null;
+  var suggestDebounce = null;
 
   /**
    * Selected search radius in miles (defaults to 25).
@@ -86,6 +87,69 @@
       return p.address;
     }
     return [[p.city, p.state].filter(Boolean).join(', '), p.zip].filter(Boolean).join(' ');
+  }
+
+  /**
+   * Show a transient status/error message under the search bar.
+   */
+  function showStatus(message) {
+    var el = document.getElementById('bbProviderFinderStatus');
+    if (el) {
+      el.textContent = message || '';
+      el.classList.toggle('is-visible', !!message);
+    }
+  }
+
+  /**
+   * Some practices arrive without geo coordinates (the API omitted them).
+   * Geocode those by address via Places (New) searchByText so they can be
+   * distance-filtered. Results are cached per session to avoid repeat lookups.
+   */
+  function geocodeMissing() {
+    var places = placesLib();
+    if (!places || !places.Place) {
+      return;
+    }
+    practices.forEach(function (p) {
+      if (p.lat != null && p.lng != null || !practiceAddress(p)) {
+        return;
+      }
+      var cacheKey = 'bbpf_geo_' + p.id;
+      try {
+        var cached = window.sessionStorage.getItem(cacheKey);
+        if (cached) {
+          var coords = JSON.parse(cached);
+          p.lat = coords.lat;
+          p.lng = coords.lng;
+          return;
+        }
+      } catch (cacheErr) {
+        // sessionStorage unavailable (private mode); fall through to live lookup.
+      }
+      places.Place.searchByText({
+        textQuery: practiceAddress(p),
+        fields: ['location'],
+        maxResultCount: 1
+      }).then(function (response) {
+        var list = response && response.places ? response.places : [];
+        if (list[0] && list[0].location) {
+          p.lat = list[0].location.lat();
+          p.lng = list[0].location.lng();
+          try {
+            window.sessionStorage.setItem(cacheKey, JSON.stringify({
+              lat: p.lat,
+              lng: p.lng
+            }));
+          } catch (saveErr) {
+            // Cache write failed; non-fatal, the coords are still in memory.
+          }
+          // A search may already be active — re-rank so the now-located practice appears.
+          refresh(lastOrigin);
+        }
+      }).catch(function () {
+        // Address could not be geocoded; the practice stays unlocated.
+      });
+    });
   }
 
   /**
@@ -217,6 +281,14 @@
           color: '#ffffff',
           fontWeight: '700',
           fontSize: '12px'
+        },
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 13,
+          fillColor: '#000000',
+          fillOpacity: 1,
+          strokeColor: '#ffffff',
+          strokeWeight: 2
         }
       });
       marker._practiceId = p.id;
@@ -289,7 +361,6 @@
     if (!mapEl) {
       return;
     }
-    geocoder = new google.maps.Geocoder();
     map = new google.maps.Map(mapEl, {
       zoom: 4,
       center: {
@@ -317,6 +388,12 @@
     var body = new FormData();
     body.append('action', config.action || 'brag_book_get_practices');
     body.append('nonce', config.nonce || '');
+
+    // Scope results to the current procedure when the dialog carries one.
+    var procedureSlug = dialog ? dialog.dataset.procedureSlug || '' : '';
+    if (procedureSlug) {
+      body.append('procedure', procedureSlug);
+    }
     fetch(config.ajaxUrl, {
       method: 'POST',
       body: body,
@@ -334,7 +411,10 @@
       currentOrdered = getOrdered(null);
       renderList(currentOrdered, null);
       if (config.hasMap) {
-        whenGoogleReady(initMap);
+        whenGoogleReady(function () {
+          initMap();
+          geocodeMissing();
+        });
       }
     }).catch(function () {
       if (listEl) {
@@ -348,6 +428,7 @@
    */
   function applyOrigin(origin) {
     lastOrigin = origin;
+    showStatus('');
     refresh(origin);
     if (!map) {
       return;
@@ -370,34 +451,180 @@
       zIndex: 999
     });
   }
+
+  /**
+   * The Places (New) library namespace, or null when unavailable.
+   */
+  function placesLib() {
+    return window.google && google.maps && google.maps.places ? google.maps.places : null;
+  }
+
+  /**
+   * Container for our custom autocomplete dropdown, created lazily under the
+   * input so it renders inside the modal dialog (above the top layer) and we
+   * control the markup — no legacy `.pac-container`.
+   */
+  function getSuggestionsEl() {
+    var field = document.querySelector('.brag-book-gallery-provider-finder-search-field');
+    if (!field) {
+      return null;
+    }
+    var el = field.querySelector('.brag-book-gallery-provider-finder-suggestions');
+    if (!el) {
+      el = document.createElement('ul');
+      el.className = 'brag-book-gallery-provider-finder-suggestions';
+      el.setAttribute('role', 'listbox');
+      field.appendChild(el);
+    }
+    return el;
+  }
+  function clearSuggestions() {
+    var el = getSuggestionsEl();
+    if (el) {
+      el.innerHTML = '';
+      el.classList.remove('is-open');
+    }
+  }
+
+  /**
+   * Display text for a Places (New) prediction.
+   */
+  function predictionText(prediction) {
+    if (prediction.text && typeof prediction.text.text === 'string') {
+      return prediction.text.text;
+    }
+    return String(prediction.text || '');
+  }
+
+  /**
+   * Fetch Places (New) autocomplete predictions for the typed query and render
+   * a custom dropdown. Uses AutocompleteSuggestion (not the legacy API).
+   */
+  function fetchSuggestions(query) {
+    var places = placesLib();
+    if (!places || !places.AutocompleteSuggestion) {
+      return;
+    }
+    if (!sessionToken && places.AutocompleteSessionToken) {
+      sessionToken = new places.AutocompleteSessionToken();
+    }
+    var request = {
+      input: query,
+      sessionToken: sessionToken
+    };
+    if (config.country) {
+      request.includedRegionCodes = [].concat(config.country);
+    }
+    places.AutocompleteSuggestion.fetchAutocompleteSuggestions(request).then(function (response) {
+      renderSuggestions(response && response.suggestions ? response.suggestions : []);
+    }).catch(function () {
+      // Lookup failed (e.g. network/quota); hide stale suggestions.
+      clearSuggestions();
+    });
+  }
+  function renderSuggestions(suggestions) {
+    var el = getSuggestionsEl();
+    if (!el) {
+      return;
+    }
+    var predictions = suggestions.map(function (s) {
+      return s.placePrediction;
+    }).filter(Boolean);
+    if (!predictions.length) {
+      clearSuggestions();
+      return;
+    }
+    el.innerHTML = '';
+    predictions.slice(0, 6).forEach(function (prediction) {
+      var li = document.createElement('li');
+      li.className = 'brag-book-gallery-provider-finder-suggestion';
+      li.setAttribute('role', 'option');
+      li.textContent = predictionText(prediction);
+      li.addEventListener('click', function () {
+        selectPrediction(prediction);
+      });
+      el.appendChild(li);
+    });
+    el.classList.add('is-open');
+  }
+
+  /**
+   * Resolve a selected prediction to coordinates (Places New) and re-centre.
+   */
+  function selectPrediction(prediction) {
+    var input = document.getElementById('bbProviderFinderSearch');
+    if (input) {
+      input.value = predictionText(prediction);
+    }
+    clearSuggestions();
+    var place = prediction.toPlace();
+    place.fetchFields({
+      fields: ['location']
+    }).then(function () {
+      if (place.location) {
+        applyOrigin({
+          lat: place.location.lat(),
+          lng: place.location.lng()
+        });
+      }
+      // End the autocomplete session after a successful selection.
+      sessionToken = null;
+    }).catch(function () {
+      // Could not resolve the place; keep the current results.
+      sessionToken = null;
+    });
+  }
+
+  /**
+   * Resolve a free-text query (Search button / Enter) via Places (New)
+   * searchByText, then re-centre.
+   */
+  function resolveQuery(query) {
+    var places = placesLib();
+    if (!places || !places.Place) {
+      return;
+    }
+    places.Place.searchByText({
+      textQuery: query,
+      fields: ['location'],
+      maxResultCount: 1
+    }).then(function (response) {
+      var list = response && response.places ? response.places : [];
+      if (list[0] && list[0].location) {
+        applyOrigin({
+          lat: list[0].location.lat(),
+          lng: list[0].location.lng()
+        });
+      }
+    }).catch(function () {
+      // No match for the typed query; leave the list unchanged.
+    });
+  }
   function handleSearch() {
     var input = document.getElementById('bbProviderFinderSearch');
     var query = input ? input.value.trim() : '';
     if (!query || !config.hasMap) {
       return;
     }
+    clearSuggestions();
     whenGoogleReady(function () {
-      if (!geocoder) {
-        geocoder = new google.maps.Geocoder();
-      }
-      geocoder.geocode({
-        address: query
-      }, function (results, status) {
-        if (status === 'OK' && results[0]) {
-          var loc = results[0].geometry.location;
-          applyOrigin({
-            lat: loc.lat(),
-            lng: loc.lng()
-          });
-        }
-      });
+      resolveQuery(query);
     });
   }
   function handleLocate() {
     if (!navigator.geolocation) {
+      showStatus('Location is not supported by this browser. Enter a ZIP or city instead.');
       return;
     }
+
+    // Geolocation only works on secure origins (https or localhost).
+    if (window.isSecureContext === false) {
+      showStatus('Location needs a secure (https) connection. Enter a ZIP or city instead.');
+      return;
+    }
+    showStatus('Locating…');
     navigator.geolocation.getCurrentPosition(function (pos) {
+      showStatus('');
       var origin = {
         lat: pos.coords.latitude,
         lng: pos.coords.longitude
@@ -410,6 +637,20 @@
         lastOrigin = origin;
         refresh(origin);
       }
+    }, function (err) {
+      var message = 'Unable to get your location. Enter a ZIP or city instead.';
+      if (err && err.code === 1) {
+        message = 'Location permission was denied. Enter a ZIP or city instead.';
+      } else if (err && err.code === 2) {
+        message = 'Your location is unavailable. Enter a ZIP or city instead.';
+      } else if (err && err.code === 3) {
+        message = 'Location request timed out. Try again or enter a ZIP or city.';
+      }
+      showStatus(message);
+    }, {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 60000
     });
   }
 
@@ -421,6 +662,9 @@
     if (input) {
       input.value = '';
     }
+    clearSuggestions();
+    showStatus('');
+    sessionToken = null;
     lastOrigin = null;
     if (originMarker) {
       originMarker.setMap(null);
@@ -485,6 +729,10 @@
         if (item) {
           focusPractice(parseInt(item.dataset.practiceId, 10), true);
         }
+        // Clicking outside the search field closes the suggestions.
+        if (!e.target.closest('.brag-book-gallery-provider-finder-search-field')) {
+          clearSuggestions();
+        }
       }
     });
 
@@ -500,7 +748,26 @@
         if (e.key === 'Enter') {
           e.preventDefault();
           handleSearch();
+        } else if (e.key === 'Escape') {
+          clearSuggestions();
         }
+      });
+
+      // Live address suggestions (Places New), debounced.
+      searchInput.addEventListener('input', function () {
+        var query = searchInput.value.trim();
+        if (suggestDebounce) {
+          clearTimeout(suggestDebounce);
+        }
+        if (query.length < 3 || !config.hasMap) {
+          clearSuggestions();
+          return;
+        }
+        suggestDebounce = setTimeout(function () {
+          whenGoogleReady(function () {
+            fetchSuggestions(query);
+          });
+        }, 250);
       });
     }
 

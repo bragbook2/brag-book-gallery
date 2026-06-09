@@ -974,17 +974,11 @@ body.brag-book-gallery-page:not(.disable-custom-font) .brag-book-gallery-favorit
 }
 
 .brag-book-gallery-case-card-overlay-provider-avatar {
-  width: 40px;
-  height: 40px;
+  width: 40px !important;
+  height: 40px !important;
   border-radius: 50%;
   object-fit: cover;
   flex-shrink: 0;
-}
-@media (hover: hover) and (pointer: fine) {
-  .brag-book-gallery-case-card-overlay-provider-avatar {
-    width: 48px;
-    height: 48px;
-  }
 }
 .brag-book-gallery-case-card-overlay-provider-avatar--placeholder {
   display: flex;
@@ -1009,12 +1003,6 @@ body.brag-book-gallery-page:not(.disable-custom-font) .brag-book-gallery-favorit
   }
 }
 
-@media (hover: hover) and (pointer: fine) {
-  .brag-book-gallery-case-card--v3 .brag-book-gallery-case-card-overlay-provider-avatar {
-    width: 40px;
-    height: 40px;
-  }
-}
 @media (hover: hover) and (pointer: fine) {
   .brag-book-gallery-case-card--v3 .brag-book-gallery-case-card-overlay-provider-avatar--placeholder {
     background-color: var(--wp--custom--brag-book-gallery--color--light-gray, #e5e7eb);
@@ -1807,8 +1795,12 @@ details[open] .brag-book-gallery-gallery-selector__panel {
 
 .brag-book-gallery-provider-profiles {
   display: flex;
-  flex-direction: column;
-  gap: var(--wp--custom--brag-book-gallery--spacer--sm, 12px);
+  flex-flow: row wrap;
+  align-items: center;
+  gap: var(--wp--custom--brag-book-gallery--spacer--md, 20px) var(--wp--custom--brag-book-gallery--spacer--sm, 12px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .brag-book-gallery-provider-profile {
@@ -1816,19 +1808,14 @@ details[open] .brag-book-gallery-gallery-selector__panel {
   align-items: center;
   gap: var(--wp--custom--brag-book-gallery--spacer--sm, 12px);
 }
-@media (max-width: 768px) {
-  .brag-book-gallery-provider-profile {
-    justify-content: center;
-  }
-}
 
 .brag-book-gallery-provider-photo {
   flex-shrink: 0;
 }
 
 .brag-book-gallery-provider-avatar {
-  width: 48px;
-  height: 48px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   object-fit: cover;
   border: 2px solid var(--wp--custom--brag-book-gallery--color--light-gray, #e5e7eb);
@@ -4104,8 +4091,6 @@ details[open] .brag-book-gallery-filter-dropdown__panel .brag-book-gallery-filte
 .brag-book-gallery-image-container {
   position: relative;
   width: 100%;
-  aspect-ratio: 16/10;
-  overflow: hidden;
   border-top-right-radius: var(--wp--custom--brag-book-gallery--rounded, 4px);
   border-top-left-radius: var(--wp--custom--brag-book-gallery--rounded, 4px);
 }
@@ -5015,7 +5000,11 @@ body.brag-book-gallery-hide-filter-counts .brag-book-gallery-nav-count {
 .brag-book-gallery-provider-finder-dialog .brag-book-gallery-dialog-header {
   flex: 0 0 auto;
   margin: 0;
-  padding: 0;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
   border-bottom: 1px solid #e3e3e3;
 }
 .brag-book-gallery-provider-finder-dialog .brag-book-gallery-dialog-header .brag-book-gallery-dialog-title {
@@ -5044,21 +5033,63 @@ body.brag-book-gallery-hide-filter-counts .brag-book-gallery-nav-count {
   display: flex;
   align-items: center;
   flex: 1 1 240px;
-  height: 56px;
+  height: 48px;
 }
 .brag-book-gallery-provider-finder-search .brag-book-gallery-provider-finder-search-input {
   width: 100%;
-  height: 56px;
-  padding: 8px 52px 8px 14px;
+  height: 48px;
+  padding: 8px 48px 8px 14px;
   border: 1px solid #ccc;
   border-radius: 4px;
   font: inherit;
   box-sizing: border-box;
 }
 .brag-book-gallery-provider-finder-search .brag-book-gallery-button {
-  height: 56px;
-  max-height: 56px;
+  height: 48px;
+  max-height: 48px;
+  margin: 0;
   font-weight: 700;
+}
+.brag-book-gallery-provider-finder-search .brag-book-gallery-provider-finder-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  z-index: 10;
+  max-height: 260px;
+  overflow-y: auto;
+  display: none;
+}
+.brag-book-gallery-provider-finder-search .brag-book-gallery-provider-finder-suggestions.is-open {
+  display: block;
+}
+.brag-book-gallery-provider-finder-search .brag-book-gallery-provider-finder-suggestion {
+  padding: 10px 14px;
+  cursor: pointer;
+  font-size: 0.95em;
+}
+.brag-book-gallery-provider-finder-search .brag-book-gallery-provider-finder-suggestion:hover, .brag-book-gallery-provider-finder-search .brag-book-gallery-provider-finder-suggestion:focus {
+  background: #f1f3f4;
+}
+
+.brag-book-gallery-provider-finder-status {
+  display: none;
+  flex: 0 0 auto;
+  padding: 8px 16px;
+  color: #b3261e;
+  font-size: 0.9em;
+  background: #fce8e6;
+  border-bottom: 1px solid #f5c2bd;
+}
+.brag-book-gallery-provider-finder-status.is-visible {
+  display: block;
 }
 
 .brag-book-gallery-provider-finder-locate {
@@ -5089,8 +5120,8 @@ body.brag-book-gallery-hide-filter-counts .brag-book-gallery-nav-count {
 }
 
 .brag-book-gallery-provider-finder-radius {
-  height: 56px;
-  max-height: 56px;
+  height: 48px;
+  max-height: 48px;
   padding: 8px 40px 8px 12px;
   border: 1px solid #ccc;
   border-radius: 4px;
@@ -5175,7 +5206,7 @@ body.brag-book-gallery-hide-filter-counts .brag-book-gallery-nav-count {
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  background: #1a73e8;
+  background: #000;
   color: #fff;
   font-weight: 700;
   font-size: 0.85em;

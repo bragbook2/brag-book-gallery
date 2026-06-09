@@ -85,7 +85,7 @@ class Provider_Finder {
 				'brag-book-google-maps',
 				'https://maps.googleapis.com/maps/api/js?' . http_build_query( [
 					'key'       => $api_key,
-					'libraries' => 'geometry',
+					'libraries' => 'geometry,places',
 					'loading'   => 'async',
 				] ),
 				[],
@@ -160,21 +160,33 @@ class Provider_Finder {
 	 * Render the locator dialog markup.
 	 *
 	 * Output once per gallery. The list and map are populated by JavaScript.
+	 * When a procedure context is supplied (e.g. on a procedure view), the
+	 * title reads "Find a Provider for {Procedure}" and results are scoped to
+	 * practices whose providers have cases for that procedure.
 	 *
 	 * @since 4.6.0
+	 * @param array $procedure Optional procedure context: 'slug' and 'name'.
 	 * @return string Dialog HTML, or empty string when the feature is off.
 	 */
-	public static function render_dialog(): string {
+	public static function render_dialog( array $procedure = [] ): string {
 		if ( ! self::is_enabled() ) {
 			return '';
 		}
 
+		$procedure_slug = isset( $procedure['slug'] ) ? (string) $procedure['slug'] : '';
+		$procedure_name = isset( $procedure['name'] ) ? (string) $procedure['name'] : '';
+
+		$title = '' !== $procedure_name
+			/* translators: %s: procedure name, e.g. "Breast Implants". */
+			? sprintf( __( 'Find a Provider for %s', 'brag-book-gallery' ), $procedure_name )
+			: __( 'Find a Provider', 'brag-book-gallery' );
+
 		ob_start();
 		?>
-		<dialog class="brag-book-gallery-dialog brag-book-gallery-provider-finder-dialog" id="findProviderDialog">
+		<dialog class="brag-book-gallery-dialog brag-book-gallery-provider-finder-dialog" id="findProviderDialog"<?php echo '' !== $procedure_slug ? ' data-procedure-slug="' . esc_attr( $procedure_slug ) . '"' : ''; ?>>
 			<div class="brag-book-gallery-dialog-content brag-book-gallery-provider-finder">
 				<div class="brag-book-gallery-dialog-header">
-					<h2 class="brag-book-gallery-dialog-title"><?php esc_html_e( 'Find a Provider', 'brag-book-gallery' ); ?></h2>
+					<h2 class="brag-book-gallery-dialog-title"><?php echo esc_html( $title ); ?></h2>
 					<button class="brag-book-gallery-dialog-close" data-action="close-dialog" aria-label="<?php esc_attr_e( 'Close dialog', 'brag-book-gallery' ); ?>">
 						<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
 					</button>
@@ -196,6 +208,7 @@ class Provider_Finder {
 					<button type="button" class="brag-book-gallery-button" data-action="provider-finder-search"><?php esc_html_e( 'Search', 'brag-book-gallery' ); ?></button>
 					<button type="button" class="brag-book-gallery-button brag-book-gallery-provider-finder-reset" data-action="provider-finder-reset"><?php esc_html_e( 'Reset', 'brag-book-gallery' ); ?></button>
 				</div>
+				<div class="brag-book-gallery-provider-finder-status" id="bbProviderFinderStatus" role="status" aria-live="polite"></div>
 				<div class="brag-book-gallery-provider-finder-body">
 					<div class="brag-book-gallery-provider-finder-list" id="bbProviderFinderList" aria-live="polite"></div>
 					<div class="brag-book-gallery-provider-finder-map" id="bbProviderFinderMap"></div>
@@ -221,13 +234,29 @@ class Provider_Finder {
 			wp_send_json_error( [ 'message' => __( 'Provider finder is not enabled.', 'brag-book-gallery' ) ], 400 );
 		}
 
-		$posts = get_posts( [
+		// Optional procedure context — scope results to practices whose providers
+		// have cases for that procedure.
+		$procedure_slug = isset( $_POST['procedure'] )
+			? sanitize_title( wp_unslash( $_POST['procedure'] ) )
+			: '';
+
+		$query_args = [
 			'post_type'      => Post_Types::POST_TYPE_PRACTICES,
 			'post_status'    => 'publish',
 			'posts_per_page' => 200,
 			'orderby'        => 'title',
 			'order'          => 'ASC',
-		] );
+		];
+
+		if ( '' !== $procedure_slug ) {
+			$allowed_ids = self::get_practice_ids_for_procedure( $procedure_slug );
+			if ( empty( $allowed_ids ) ) {
+				wp_send_json_success( [ 'practices' => [] ] );
+			}
+			$query_args['post__in'] = $allowed_ids;
+		}
+
+		$posts = get_posts( $query_args );
 
 		$practices = [];
 		foreach ( $posts as $post ) {
@@ -238,6 +267,85 @@ class Provider_Finder {
 		}
 
 		wp_send_json_success( [ 'practices' => $practices ] );
+	}
+
+	/**
+	 * Build a procedure context array for the dialog from a procedures term.
+	 *
+	 * @since 4.6.0
+	 * @param \WP_Term|null $term A term that may belong to the procedures taxonomy.
+	 * @return array{slug:string,name:string} Context, or an empty-string pair.
+	 */
+	public static function procedure_context( ?\WP_Term $term ): array {
+		if ( $term instanceof \WP_Term && Taxonomies::TAXONOMY_PROCEDURES === $term->taxonomy ) {
+			return [ 'slug' => $term->slug, 'name' => $term->name ];
+		}
+		return [ 'slug' => '', 'name' => '' ];
+	}
+
+	/**
+	 * Get the practice post IDs relevant to a procedure.
+	 *
+	 * Resolves the chain procedure → providers (from that procedure's cases) →
+	 * practices linked to those providers.
+	 *
+	 * @since 4.6.0
+	 * @param string $procedure_slug The procedures taxonomy term slug.
+	 * @return int[] Practice post IDs (empty when none apply).
+	 */
+	private static function get_practice_ids_for_procedure( string $procedure_slug ): array {
+		// Cases assigned to this procedure.
+		$case_ids = get_posts( [
+			'post_type'              => Post_Types::POST_TYPE_CASES,
+			'post_status'            => 'publish',
+			'posts_per_page'         => -1,
+			'fields'                 => 'ids',
+			'no_found_rows'          => true,
+			'update_post_meta_cache' => false,
+			'tax_query'              => [
+				[
+					'taxonomy' => Taxonomies::TAXONOMY_PROCEDURES,
+					'field'    => 'slug',
+					'terms'    => $procedure_slug,
+				],
+			],
+		] );
+
+		if ( empty( $case_ids ) ) {
+			return [];
+		}
+
+		// Providers assigned to those cases.
+		$provider_term_ids = wp_get_object_terms(
+			$case_ids,
+			Taxonomies::TAXONOMY_PROVIDERS,
+			[ 'fields' => 'ids' ]
+		);
+
+		if ( is_wp_error( $provider_term_ids ) || empty( $provider_term_ids ) ) {
+			return [];
+		}
+
+		$provider_term_ids = array_values( array_unique( array_map( 'intval', $provider_term_ids ) ) );
+
+		// Practices linked to those providers.
+		$practice_ids = get_posts( [
+			'post_type'              => Post_Types::POST_TYPE_PRACTICES,
+			'post_status'            => 'publish',
+			'posts_per_page'         => -1,
+			'fields'                 => 'ids',
+			'no_found_rows'          => true,
+			'update_post_meta_cache' => false,
+			'tax_query'              => [
+				[
+					'taxonomy' => Taxonomies::TAXONOMY_PROVIDERS,
+					'field'    => 'term_id',
+					'terms'    => $provider_term_ids,
+				],
+			],
+		] );
+
+		return array_map( 'intval', $practice_ids );
 	}
 
 	/**
