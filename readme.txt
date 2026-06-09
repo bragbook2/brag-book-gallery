@@ -4,7 +4,7 @@ Tags: gallery, before-after, medical, cosmetic, procedures
 Requires at least: 6.8
 Tested up to: 6.9
 Requires PHP: 8.2
-Stable tag: 4.6.0-beta9
+Stable tag: 4.6.0-beta10
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -91,6 +91,16 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 4. Sync management interface
 
 == Changelog ==
+
+= 4.6.0-beta10 =
+* Changed: "Find a Provider" search now uses the Places API (New) — live address suggestions as you type (ZIP/city) plus text search — removing the deprecated legacy Places/Geocoder dependency.
+* Added: Practices that are missing coordinates are geocoded by address on the fly so they still appear within the selected radius.
+* Added: The "Find a Provider" results are now procedure-aware — on a procedure view the dialog is titled "Find a Provider for {Procedure}" and lists only practices whose providers have cases for that procedure.
+* Fixed: The "Find a Provider" button now opens the dialog on case and landing views (the dialog markup was missing from those views' shared bundle).
+* Fixed: The "use my location" button now reports geolocation errors and notes that it requires a secure (https) connection, instead of failing silently.
+* Changed: "Find a Provider" dialog polish — 48px aligned controls, black numbered result circles, header padding, zero-margin buttons, and a custom suggestions dropdown that renders above the modal.
+* Changed: Provider profiles on the case detail now render as an inline list with 40x40 avatars (previously stacked), and the case-card overlay provider avatar is fixed at 40x40.
+* Changed: On the procedure tiles view, the image processing disclaimer (when enabled) now displays after the case grid.
 
 = 4.6.0-beta9 =
 * Changed: The "Find a Provider" dialog is now 80% of the viewport height and at least 1280px wide on desktop, and goes full-screen on mobile. Padding was removed from the header and inner content so the map fills the dialog edge-to-edge.

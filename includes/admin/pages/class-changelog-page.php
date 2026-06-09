@@ -93,6 +93,36 @@ class Changelog_Page extends Settings_Base {
 				</div>
 			</div>
 
+			<!-- Version 4.6.0-beta10 -->
+			<div class="brag-book-gallery-section">
+				<div class="brag-book-gallery-changelog-version">
+					<h3>
+						<span class="version-badge version-beta">v4.6.0-beta10</span>
+						<?php esc_html_e( 'June 9, 2026', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Beta Release', 'brag-book-gallery' ); ?>
+					</h3>
+					<div class="brag-book-gallery-card">
+						<p><?php esc_html_e( 'Find a Provider: Places API (New) search, procedure-aware results, and broader display fixes.', 'brag-book-gallery' ); ?></p>
+						<h4><?php esc_html_e( '🔄 Changed', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Find a Provider search now uses the Places API (New) — live address suggestions as you type plus text search — removing the deprecated legacy Places/Geocoder dependency.', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Find a Provider results are now procedure-aware — on a procedure view the dialog is titled "Find a Provider for {Procedure}" and lists only practices whose providers have cases for that procedure.', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Find a Provider dialog polish — 48px aligned controls, black numbered result circles, header padding, zero-margin buttons, and a custom suggestions dropdown that renders above the modal.', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Provider profiles on the case detail now render as an inline list with 40x40 avatars (previously stacked), and the case-card overlay provider avatar is fixed at 40x40.', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'On the procedure tiles view, the image processing disclaimer (when enabled) now displays after the case grid.', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '✨ Added', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Practices missing coordinates are geocoded by address on the fly so they still appear within the selected radius.', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '🐛 Fixed', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'The Find a Provider button now opens the dialog on case and landing views (the dialog markup was missing from those views\' shared bundle).', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'The "use my location" button now reports geolocation errors and notes that it requires a secure (https) connection, instead of failing silently.', 'brag-book-gallery' ); ?></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
 			<!-- Version 4.6.0-beta9 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">
