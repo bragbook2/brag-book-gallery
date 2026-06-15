@@ -4,7 +4,7 @@ Tags: gallery, before-after, medical, cosmetic, procedures
 Requires at least: 6.8
 Tested up to: 6.9
 Requires PHP: 8.2
-Stable tag: 4.6.0-beta11
+Stable tag: 4.6.0-beta12
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -91,6 +91,9 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 4. Sync management interface
 
 == Changelog ==
+
+= 4.6.0-beta12 =
+* Fixed: The Banner Image and Profile Photo buttons on the procedure and provider taxonomy screens did not open the WordPress media library. The enqueued admin assets (taxonomies-media.js and taxonomies.css) were missing and returned 404s, so the button click handler never loaded.
 
 = 4.6.0-beta11 =
 * Added: Inline location search before the gallery filter dropdown — type an address, city, or ZIP (Google Places autocomplete) or use your current location to find cases near you. Shown only when a Google Maps API key is configured and Maps loads.

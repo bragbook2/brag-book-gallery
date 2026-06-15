@@ -4,6 +4,16 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.6.0-beta12] - 2026-06-15 (Beta Release)
+
+### Fixed
+
+- **Taxonomy media library**: the Banner Image (procedures) and Profile Photo
+  (providers) buttons on the taxonomy admin screens did not open the WordPress
+  media library. The enqueued admin assets (`taxonomies-media.js` and
+  `taxonomies.css`) were missing and returned 404s, so the button click
+  handler never loaded. The assets are now included.
+
 ## [4.6.0-beta11] - 2026-06-14 (Beta Release)
 
 ### Added
