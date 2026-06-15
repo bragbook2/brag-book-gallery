@@ -4,7 +4,7 @@ Tags: gallery, before-after, medical, cosmetic, procedures
 Requires at least: 6.8
 Tested up to: 6.9
 Requires PHP: 8.2
-Stable tag: 4.6.0-beta10
+Stable tag: 4.6.0-beta11
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -91,6 +91,15 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 4. Sync management interface
 
 == Changelog ==
+
+= 4.6.0-beta11 =
+* Added: Inline location search before the gallery filter dropdown — type an address, city, or ZIP (Google Places autocomplete) or use your current location to find cases near you. Shown only when a Google Maps API key is configured and Maps loads.
+* Changed: Selecting a location filters the case grid to providers whose associated practice is within 50 miles (widening to 100 miles when none are closer) and orders the results nearest-first. A summary ("Showing N cases within R miles of …") spans the top of the gallery above the title.
+* Removed: The previous "Find a Provider" map locator (button, modal, and embedded Google Map) has been replaced by the inline location search.
+* Changed: Sync now applies the manifest/terms order to child procedures, not just parent categories, so child procedures match the BRAGBook ordering after a sync.
+* Changed: The gallery column view defaults to 2 and follows the configured Columns setting for the active view, while still remembering a visitor's manual choice across reloads.
+* Changed: The Google Maps API Key field on the General settings page is now a password input with a show/hide toggle.
+* Changed: The image processing disclaimer text is now 14px with spacing above it so it is not crowded against the case grid.
 
 = 4.6.0-beta10 =
 * Changed: "Find a Provider" search now uses the Places API (New) — live address suggestions as you type (ZIP/city) plus text search — removing the deprecated legacy Places/Geocoder dependency.

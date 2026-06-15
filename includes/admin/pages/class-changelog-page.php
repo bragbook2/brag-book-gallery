@@ -93,6 +93,35 @@ class Changelog_Page extends Settings_Base {
 				</div>
 			</div>
 
+			<!-- Version 4.6.0-beta11 -->
+			<div class="brag-book-gallery-section">
+				<div class="brag-book-gallery-changelog-version">
+					<h3>
+						<span class="version-badge version-beta">v4.6.0-beta11</span>
+						<?php esc_html_e( 'June 14, 2026', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Beta Release', 'brag-book-gallery' ); ?>
+					</h3>
+					<div class="brag-book-gallery-card">
+						<p><?php esc_html_e( 'Inline location search replaces the Find a Provider map; child procedure ordering, gallery columns default, and settings polish.', 'brag-book-gallery' ); ?></p>
+						<h4><?php esc_html_e( '✨ Added', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Inline location search before the gallery filter dropdown — type an address, city, or ZIP (Google Places autocomplete) or use your current location to find cases near you. Shown only when a Google Maps API key is configured and Maps loads.', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '🔄 Changed', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Selecting a location filters the case grid to providers whose associated practice is within 50 miles (widening to 100 miles when none are closer) and orders results nearest-first. A summary spans the top of the gallery above the title.', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Sync now applies the manifest/terms order to child procedures, not just parent categories, so child procedures match the BRAGBook ordering after a sync.', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'The gallery column view defaults to 2 and follows the configured Columns setting for the active view, while still remembering a visitor\'s manual choice across reloads.', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'The Google Maps API Key field on the General settings page is now a password input with a show/hide toggle.', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'The image processing disclaimer text is now 14px with spacing above it so it is not crowded against the case grid.', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '🗑️ Removed', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'The previous "Find a Provider" map locator (button, modal, and embedded Google Map) has been replaced by the inline location search.', 'brag-book-gallery' ); ?></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
 			<!-- Version 4.6.0-beta10 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">

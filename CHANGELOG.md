@@ -4,6 +4,37 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.6.0-beta11] - 2026-06-14 (Beta Release)
+
+### Added
+
+- **Inline location search**: a search field rendered before the gallery
+  filter dropdown. Type an address, city, or ZIP (Google Places
+  autocomplete) or use your current location to find cases near you. It is
+  shown only when a Google Maps API key is configured and Maps loads.
+
+### Changed
+
+- Selecting a location filters the case grid to providers whose associated
+  practice is within 50 miles, automatically widening to 100 miles when none
+  are closer, and orders the results nearest-first. A summary ("Showing N
+  cases within R miles of …") spans the top of the gallery above the title.
+- **Sync ordering**: the manifest/terms order now applies to child
+  procedures, not just parent categories, so child procedures match the
+  BRAGBook ordering after a sync.
+- **Gallery columns**: the column view defaults to 2 and follows the
+  configured Columns setting for the active view, while still remembering a
+  visitor's manual choice across reloads.
+- The Google Maps API Key field on the General settings page is now a
+  password input with a show/hide toggle.
+- The image processing disclaimer text is now 14px with spacing above it so
+  it is not crowded against the case grid.
+
+### Removed
+
+- The previous "Find a Provider" map locator (button, modal, and embedded
+  Google Map) has been replaced by the inline location search.
+
 ## [4.6.0-beta2] - 2026-05-08 (Beta Release)
 
 ### Performance
