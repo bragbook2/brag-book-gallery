@@ -809,7 +809,7 @@ final class System_Info {
 			// Settings
 			$info[] = '';
 			$info[] = 'Display Settings:';
-			$info[] = '  Columns: ' . get_option( 'brag_book_gallery_columns', '3' );
+			$info[] = '  Columns: ' . get_option( 'brag_book_gallery_columns', '2' );
 			$info[] = '  Items Per Page: ' . get_option( 'brag_book_gallery_items_per_page', '10' );
 			$info[] = '  Enable Sharing: ' . get_option( 'brag_book_gallery_enable_sharing', 'no' );
 			$info[] = '  Enable Lightbox: ' . get_option( 'brag_book_gallery_enable_lightbox', 'no' );

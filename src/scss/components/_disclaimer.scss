@@ -1,0 +1,15 @@
+@charset "UTF-8";
+
+// -----------------------------------------------------------------------------
+// components / disclaimer
+// -----------------------------------------------------------------------------
+
+.brag-book-gallery-disclaimer {
+	// Separate the disclaimer from the case grid above it.
+	margin-block-start: var(--wp--custom--brag-book-gallery--spacer--2xl, 24px);
+
+	&__text {
+		margin: 0;
+		font-size: var(--wp--custom--brag-book-gallery--text-sm, 14px);
+	}
+}

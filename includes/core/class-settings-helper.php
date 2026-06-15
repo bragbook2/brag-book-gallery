@@ -175,11 +175,11 @@ final class Settings_Helper {
 			return self::$settings_cache[ $cache_key ];
 		}
 
-		// Get setting with default '3'
-		$setting = get_option( 'brag_book_gallery_columns', '3' );
+		// Get setting with default '2'
+		$setting = get_option( 'brag_book_gallery_columns', '2' );
 
 		// Validate and ensure valid value
-		$columns = in_array( $setting, [ '2', '3' ], true ) ? $setting : '3';
+		$columns = in_array( $setting, [ '2', '3' ], true ) ? $setting : '2';
 		self::$settings_cache[ $cache_key ] = $columns;
 
 		return $columns;

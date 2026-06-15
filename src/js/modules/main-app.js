@@ -4453,7 +4453,8 @@ class BRAGbookGalleryApp {
 		const favoritesCount = Object.keys(favoritesData.cases_data || {}).length;
 		const userEmail = userInfo?.email || 'Unknown User';
 
-		// Default columns: saved preference, then configured setting, then 2.
+		// Default columns: a visitor's saved manual choice persists; otherwise fall
+		// back to the configured gallery setting, then 2.
 		const galleryColumns = parseInt(localStorage.getItem('brag-book-gallery-grid-columns'))
 			|| parseInt(window.bragBookGalleryConfig?.columns)
 			|| 2;

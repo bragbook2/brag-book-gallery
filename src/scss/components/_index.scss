@@ -14,6 +14,7 @@
 @use 'content';
 @use 'controls';
 @use 'dialog';
+@use 'disclaimer';
 @use 'favorites';
 @use 'filters';
 @use 'form';
@@ -26,7 +27,7 @@
 @use 'nudity';
 @use 'powered-by';
 @use 'procedure-template';
-@use 'provider-finder';
+@use 'location-search';
 @use 'search';
 @use 'section';
 @use 'share';

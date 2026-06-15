@@ -2527,9 +2527,10 @@ document.addEventListener('DOMContentLoaded', () => {
 		const isDesktop = window.innerWidth >= 1024;
 
 		if (isDesktop && !isTilesView) {
-			// Columns: saved preference, then the configured gallery setting, then 2.
-			const savedColumns = localStorage.getItem('brag-book-gallery-grid-columns');
-			const columns = parseInt(savedColumns)
+			// Columns: a visitor's saved manual choice persists; otherwise fall back
+			// to the configured gallery setting, then 2. localStorage is only ever
+			// written by a manual button click (updateGridLayout).
+			const columns = parseInt(localStorage.getItem('brag-book-gallery-grid-columns'))
 				|| parseInt(window.bragBookGalleryConfig?.columns)
 				|| 2;
 			grid.setAttribute('data-columns', columns);

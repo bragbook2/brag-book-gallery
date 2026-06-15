@@ -1098,16 +1098,40 @@ class General_Page extends Settings_Base {
 					<label class="display-settings-option__label" for="brag_book_gallery_google_maps_api_key">
 						<?php esc_html_e( 'Google Maps API Key', 'brag-book-gallery' ); ?>
 					</label>
-					<input type="text"
-					       id="brag_book_gallery_google_maps_api_key"
-					       name="brag_book_gallery_google_maps_api_key"
-					       value="<?php echo esc_attr( $google_maps_api_key ); ?>"
-					       class="regular-text"
-					       autocomplete="off" />
+					<div class="api-token-field">
+						<input type="password"
+						       id="brag_book_gallery_google_maps_api_key"
+						       name="brag_book_gallery_google_maps_api_key"
+						       value="<?php echo esc_attr( $google_maps_api_key ); ?>"
+						       class="regular-text brag-book-gallery-api-token"
+						       autocomplete="off" />
+						<button type="button"
+						        class="toggle-api-token"
+						        title="<?php esc_attr_e( 'Toggle visibility', 'brag-book-gallery' ); ?>">
+							<span class="dashicons dashicons-visibility"></span>
+						</button>
+					</div>
 					<p class="description">
 						<?php esc_html_e( 'Required for the "Find a Provider" locator map. Use a key with the Maps JavaScript API and Geocoding API enabled.', 'brag-book-gallery' ); ?>
 					</p>
 				</div>
+				<script>
+					( function () {
+						const field = document.querySelector( '#brag_book_gallery_google_maps_api_key' )?.closest( '.api-token-field' );
+						const button = field?.querySelector( '.toggle-api-token' );
+						if ( ! field || ! button ) {
+							return;
+						}
+						button.addEventListener( 'click', function () {
+							const input = field.querySelector( '.brag-book-gallery-api-token' );
+							const icon = button.querySelector( '.dashicons' );
+							const isPassword = input.type === 'password';
+							input.type = isPassword ? 'text' : 'password';
+							icon.classList.toggle( 'dashicons-visibility', ! isPassword );
+							icon.classList.toggle( 'dashicons-hidden', isPassword );
+						} );
+					} )();
+				</script>
 
 				<!-- Show Provider Toggle -->
 				<div class="display-settings-option">

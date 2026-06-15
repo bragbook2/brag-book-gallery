@@ -711,8 +711,8 @@ class FilterSystem {
 		html += '<div class="brag-book-gallery-active-filters" style="display: none;"></div>';
 		html += '</div>'; // Close controls-left
 
-		// Grid selector section. Default columns come from the saved layout
-		// preference, then the configured gallery columns setting, then 2.
+		// Grid selector section. A visitor's saved manual choice persists; otherwise
+		// fall back to the configured gallery columns setting, then 2.
 		const galleryColumns = parseInt(localStorage.getItem('brag-book-gallery-grid-columns'))
 			|| parseInt(window.bragBookGalleryConfig?.columns)
 			|| 2;

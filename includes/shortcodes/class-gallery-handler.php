@@ -1357,21 +1357,29 @@ final class Gallery_Handler {
 					} elseif ( $current_taxonomy ) {
 						// Show procedure-specific content
 						?>
+						<?php
+						// Location search results banner, spanning the top of the gallery.
+						// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static markup from render_results_banner().
+						echo \BRAGBookGallery\Includes\Extend\Location_Search::render_results_banner();
+						?>
 						<div class="brag-book-gallery-content-header">
 							<h1 class="brag-book-gallery-content-title">
 								<strong><?php echo esc_html( $current_taxonomy->name ); ?></strong>
 								Before &amp; After Gallery
 							</h1>
-							<?php
-							// Find a Provider trigger (top-right, inline with the title).
-							// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- markup escaped within render_button().
-							echo \BRAGBookGallery\Includes\Extend\Provider_Finder::render_button( 'title' );
-							?>
 						</div>
 
 						<!-- Filter controls will be added here by JavaScript -->
 						<div class="brag-book-gallery-controls">
 							<div class="brag-book-gallery-controls-left">
+								<?php
+								// Inline location search, before the filter dropdown.
+								// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- markup escaped within render_search().
+								echo \BRAGBookGallery\Includes\Extend\Location_Search::render_search( [
+									'slug' => $current_taxonomy->slug,
+									'name' => $current_taxonomy->name,
+								] );
+								?>
 								<details
 									class="brag-book-gallery-filter-dropdown"
 									id="procedure-filters-details"
@@ -1766,12 +1774,6 @@ final class Gallery_Handler {
 					</div>
 				</dialog>
 			<?php endif; ?>
-
-			<!-- Find a Provider Dialog -->
-			<?php
-			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- markup escaped within render_dialog().
-			echo \BRAGBookGallery\Includes\Extend\Provider_Finder::render_dialog( \BRAGBookGallery\Includes\Extend\Provider_Finder::procedure_context( $current_taxonomy ) );
-			?>
 
 			<!-- Favorites Dialog -->
 			<?php if ( \BRAGBookGallery\Includes\Core\Settings_Helper::is_favorites_enabled() ) : ?>
@@ -2661,6 +2663,11 @@ final class Gallery_Handler {
 				</details>
 
 				<?php if ( $show_filters ) : ?>
+				<?php
+				// Inline location search, before the filter dropdown.
+				// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- markup escaped within render_search().
+				echo \BRAGBookGallery\Includes\Extend\Location_Search::render_search();
+				?>
 				<!-- Procedure Filters -->
 				<details class="brag-book-gallery-filter-dropdown" id="procedure-filters-details" data-initialized="true">
 					<summary class="brag-book-gallery-filter-dropdown__toggle">
@@ -2700,12 +2707,6 @@ final class Gallery_Handler {
 						<span class="brag-book-gallery-favorites-link-count" data-favorites-count>0</span>
 					</a>
 				<?php endif; ?>
-
-				<!-- Find a Provider (between favorites and consultation) -->
-				<?php
-				// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- markup escaped within render_button().
-				echo \BRAGBookGallery\Includes\Extend\Provider_Finder::render_button( 'title' );
-				?>
 
 				<!-- Request Consultation Button -->
 				<?php if ( \BRAGBookGallery\Includes\Core\Settings_Helper::is_consultation_enabled() ) : ?>
@@ -2791,6 +2792,12 @@ final class Gallery_Handler {
 					echo self::render_tiles_filter_bar();
 					?>
 
+					<!-- Location search results banner, spanning the top of the gallery. -->
+					<?php
+					// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static markup from render_results_banner().
+					echo \BRAGBookGallery\Includes\Extend\Location_Search::render_results_banner();
+					?>
+
 					<!-- Content Title -->
 					<h1 class="brag-book-gallery-content-title">
 						<strong><?php echo esc_html( $procedure_term->name ); ?></strong>
@@ -2855,12 +2862,6 @@ final class Gallery_Handler {
 					</div>
 				</dialog>
 			<?php endif; ?>
-
-			<!-- Find a Provider Dialog -->
-			<?php
-			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- markup escaped within render_dialog().
-			echo \BRAGBookGallery\Includes\Extend\Provider_Finder::render_dialog( \BRAGBookGallery\Includes\Extend\Provider_Finder::procedure_context( $procedure_term ) );
-			?>
 
 			<!-- Favorites Dialog -->
 			<?php if ( \BRAGBookGallery\Includes\Core\Settings_Helper::is_favorites_enabled() ) : ?>
@@ -3416,12 +3417,6 @@ final class Gallery_Handler {
 				</div>
 			</dialog>
 		<?php endif; ?>
-
-		<!-- Find a Provider Dialog -->
-		<?php
-		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- markup escaped within render_dialog().
-		echo \BRAGBookGallery\Includes\Extend\Provider_Finder::render_dialog();
-		?>
 
 		<?php if ( \BRAGBookGallery\Includes\Core\Settings_Helper::is_favorites_enabled() ) : ?>
 			<dialog class="brag-book-gallery-dialog" id="favoritesDialog">

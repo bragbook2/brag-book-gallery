@@ -234,9 +234,9 @@ class Sidebar_Handler {
 			$child_terms = [];
 		}
 
-		// Sort child procedures alphabetically by default. If procedure_order has
-		// been manually set on a term (non-empty meta), use that value instead —
-		// manually-ordered items sort before unordered ones.
+		// Sort child procedures by procedure_order (set from the manifest during
+		// sync, or manually on a term). Terms with a non-empty order value sort
+		// first by that value; any without one fall back to alphabetical.
 		if ( ! empty( $child_terms ) ) {
 			usort( $child_terms, function( $a, $b ) {
 				$meta_a = get_term_meta( $a->term_id, 'procedure_order', true );
