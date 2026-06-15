@@ -24,7 +24,7 @@
 		"lint:js": "eslint src/js/**/*.js",
 		"lint:css": "stylelint src/scss/**/*.scss",
 		"format:js": "prettier --write src/js/**/*.js",
-		"clean": "rm -rf assets/js/* assets/css/*",
+		"clean": "find assets/js assets/css -maxdepth 1 -type f -delete",
 		"prebuild:plugin": "npm run clean && npm run build",
 		"build:plugin": "npm run package",
 		"package": "npm run package:prepare && npm run package:zip",
