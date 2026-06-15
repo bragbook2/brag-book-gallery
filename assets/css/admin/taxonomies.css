@@ -1,0 +1,30 @@
+/**
+ * BRAGBook Gallery — Taxonomy admin styles.
+ *
+ * Styling for the image selection fields rendered on the procedure and
+ * provider taxonomy screens (add-term form and edit-term form).
+ *
+ * @since 4.4.0
+ */
+
+/* Spacing between the upload and remove buttons. */
+[data-bb-media-upload] + [data-bb-media-remove] {
+	margin-left: 6px;
+}
+
+/* Image preview containers. */
+#banner_image_preview img,
+#provider_photo_preview img {
+	display: block;
+	max-width: 150px;
+	height: auto;
+	margin-top: 10px;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+}
+
+/* Column thumbnails in the term list table. */
+.column-banner_image img {
+	display: block;
+	border-radius: 4px;
+}
