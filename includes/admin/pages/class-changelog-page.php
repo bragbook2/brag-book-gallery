@@ -93,18 +93,22 @@ class Changelog_Page extends Settings_Base {
 				</div>
 			</div>
 
-			<!-- Version 4.6.0-beta12 -->
+			<!-- Version 4.7.0 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">
 					<h3>
-						<span class="version-badge version-beta">v4.6.0-beta12</span>
-						<?php esc_html_e( 'June 15, 2026', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Beta Release', 'brag-book-gallery' ); ?>
+						<span class="version-badge version-minor">v4.7.0</span>
+						<?php esc_html_e( 'June 16, 2026', 'brag-book-gallery' ); ?>
 					</h3>
 					<div class="brag-book-gallery-card">
-						<p><?php esc_html_e( 'Fixes the taxonomy media library so banner and profile photo buttons open as expected.', 'brag-book-gallery' ); ?></p>
+						<p><?php esc_html_e( 'Fixes the taxonomy media library so banner and profile photo buttons open as expected, and tightens the nudity warning spacing.', 'brag-book-gallery' ); ?></p>
 						<h4><?php esc_html_e( '🐛 Fixed', 'brag-book-gallery' ); ?></h4>
 						<ul>
 							<li><?php esc_html_e( 'The Banner Image (procedures) and Profile Photo (providers) buttons on the taxonomy admin screens did not open the WordPress media library. The enqueued admin assets (taxonomies-media.js and taxonomies.css) were missing and returned 404s, so the button click handler never loaded. The assets are now included.', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '🔧 Changed', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Tightened the nudity warning overlay spacing so the title, caption, and acknowledge button sit closer together, and simplified the compact short-height layout.', 'brag-book-gallery' ); ?></li>
 						</ul>
 					</div>
 				</div>

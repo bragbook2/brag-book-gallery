@@ -4,7 +4,7 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [4.6.0-beta12] - 2026-06-15 (Beta Release)
+## [4.7.0] - 2026-06-16
 
 ### Fixed
 
@@ -13,6 +13,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   media library. The enqueued admin assets (`taxonomies-media.js` and
   `taxonomies.css`) were missing and returned 404s, so the button click
   handler never loaded. The assets are now included.
+
+### Changed
+
+- **Nudity warning spacing**: tightened the gaps between the warning title,
+  caption, and acknowledge button, and simplified the compact (short-height)
+  container layout so the controls are no longer pushed apart.
+
+### Build
+
+- The release `clean` step no longer deletes the static admin assets in
+  `assets/js/admin` and `assets/css/admin`, so they are reproduced and shipped
+  in the distribution package.
 
 ## [4.6.0-beta11] - 2026-06-14 (Beta Release)
 
