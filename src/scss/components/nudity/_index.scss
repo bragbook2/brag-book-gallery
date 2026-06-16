@@ -38,7 +38,7 @@
 		flex-direction: column;
 		align-items: center;
 		justify-content: center;
-		gap: var(--wp--custom--brag-book-gallery--spacer--lg,16px);
+		gap: var(--wp--custom--brag-book-gallery--spacer--sm,8px);
 	}
 
 	&-title {
@@ -46,13 +46,15 @@
 		font-size: var(--wp--custom--brag-book-gallery--text-lg) !important;
 		font-weight: var(--wp--custom--brag-book-gallery--font-weight--semibold);
 		margin-block-end: 0;
+		margin-block-start: 0;
 	}
 
 	&-caption {
 		color: var(--wp--custom--brag-book-gallery--color--black,#000);
 		font-size: var(--wp--custom--brag-book-gallery--text-xs) !important;
 		line-height: 1.25;
-		margin-bottom: var(--wp--custom--brag-book-gallery--spacer--2xl,24px);
+		margin-top: 0;
+		margin-bottom: 0;
 	}
 
 	&-button {
@@ -88,10 +90,7 @@
 	// the default stacked (column) layout returns.
 	@container nudity-warning (max-height: 220px) {
 		&-content {
-			flex-direction: row;
 			flex-wrap: wrap;
-			column-gap: var(--wp--custom--brag-book-gallery--spacer--md,12px);
-			row-gap: var(--wp--custom--brag-book-gallery--spacer--xs,4px);
 		}
 
 		// Drop the large stacked-layout spacing that pushes the button down.
