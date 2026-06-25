@@ -657,15 +657,20 @@ class StageSyncManager {
 	}
 
 	/**
-	 * Execute Full Sync (all three stages)
+	 * Execute Full Sync (all stages — four when Providers & Practices are enabled,
+	 * otherwise three).
 	 */
 	async executeFullSync() {
 		if (this.isRunning) return;
 
+		// Stage 4 (Providers & Practices) only renders its button when enabled,
+		// so its presence tells us whether this is a three- or four-stage run.
+		const totalStages = this.stage4Btn ? 4 : 3;
+
 		// Show confirmation dialog
 		syncDialog.showConfirm(
 			'Execute Full Sync',
-			'This will run all three stages sequentially and may take a considerable amount of time. Continue?',
+			`This will run all ${totalStages} stages sequentially and may take a considerable amount of time. Continue?`,
 			{
 				confirmText: 'Execute',
 				cancelText: 'Cancel',

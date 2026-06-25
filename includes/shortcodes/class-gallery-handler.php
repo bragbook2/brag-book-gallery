@@ -1380,6 +1380,15 @@ final class Gallery_Handler {
 									'name' => $current_taxonomy->name,
 								] );
 								?>
+								<?php
+								// Provider (doctor) filter, before the procedure filters,
+								// scoped to the current procedure's cases.
+								// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- markup escaped within render_filter().
+								echo \BRAGBookGallery\Includes\Extend\Provider_Filter::render_filter( [
+									'slug' => $current_taxonomy->slug,
+									'name' => $current_taxonomy->name,
+								] );
+								?>
 								<details
 									class="brag-book-gallery-filter-dropdown"
 									id="procedure-filters-details"
@@ -2675,6 +2684,14 @@ final class Gallery_Handler {
 				echo \BRAGBookGallery\Includes\Extend\Location_Search::render_search( $procedure );
 				?>
 				<?php if ( $show_filters ) : ?>
+				<?php
+				// Provider (doctor) filter, before the procedure filters. Lists
+				// providers with cases in this context; scoped to the procedure
+				// when one is supplied. Gated with the filters so it only renders
+				// on views that have a case grid to filter.
+				// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- markup escaped within render_filter().
+				echo \BRAGBookGallery\Includes\Extend\Provider_Filter::render_filter( $procedure );
+				?>
 				<!-- Procedure Filters -->
 				<details class="brag-book-gallery-filter-dropdown" id="procedure-filters-details" data-initialized="true">
 					<summary class="brag-book-gallery-filter-dropdown__toggle">

@@ -4,6 +4,39 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.8.0] - 2026-06-25
+
+### Added
+
+- **Provider filter**: a provider (doctor) dropdown filter rendered before the
+  gallery filters and styled to match them. Each option shows the provider's
+  avatar and name; selecting one replaces the case grid with that provider's
+  cases via AJAX, scoped to the current procedure on a procedure view. The
+  toggle reflects the selected provider's avatar, and an "All Providers" option
+  plus a Reset button restore the unfiltered grid. Lists only providers that
+  have cases in the current context, and uses the configured case card design.
+- **Provider image sync**: provider images are downloaded into the WordPress
+  media library during sync, named after the provider slug, and attached as the
+  provider's Profile Photo. The created attachment is tracked and deleted from
+  WordPress when the provider term is removed. Downloads are idempotent (skipped
+  when the source is unchanged), manually-chosen photos are preserved, and the
+  remote URL is kept as a fallback when a download fails.
+
+### Fixed
+
+- **Sync stage count**: the Full Sync tooltip, confirmation dialog, and help
+  text no longer always say "three stages". They now report three or four
+  depending on whether Stage 4 (Providers & Practices) will run, which is only
+  when both features are enabled.
+
+### Changed
+
+- **Provider editor wording**: the synced photo field is now described as
+  downloaded into the media library rather than a remote API URL.
+- **Internal**: extracted a shared `Cases_Handler::build_case_data_from_post()`
+  used by the procedure grid, location search, and provider filter so every
+  entry point renders identical cards.
+
 ## [4.7.1] - 2026-06-25
 
 ### Fixed

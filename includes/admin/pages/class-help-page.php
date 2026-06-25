@@ -248,7 +248,7 @@ class Help_Page extends Settings_Base {
 				<div class="brag-book-gallery-accordion-content">
 
 					<h4><?php esc_html_e( 'Sync Gallery Data', 'brag-book-gallery' ); ?></h4>
-					<p><?php esc_html_e( 'The Stage-Based Sync system imports your gallery data in three sequential stages:', 'brag-book-gallery' ); ?></p>
+					<p><?php esc_html_e( 'The Stage-Based Sync system imports your gallery data in sequential stages:', 'brag-book-gallery' ); ?></p>
 					<ol class="help-list">
 						<li>
 							<strong><?php esc_html_e( 'Stage 1: Fetch Procedures', 'brag-book-gallery' ); ?></strong> - <?php esc_html_e( 'Downloads all available procedures from BRAG book API', 'brag-book-gallery' ); ?>
@@ -259,9 +259,12 @@ class Help_Page extends Settings_Base {
 						<li>
 							<strong><?php esc_html_e( 'Stage 3: Process Cases', 'brag-book-gallery' ); ?></strong> - <?php esc_html_e( 'Downloads detailed case data in batches and saves to WordPress', 'brag-book-gallery' ); ?>
 						</li>
+						<li>
+							<strong><?php esc_html_e( 'Stage 4: Providers & Practices', 'brag-book-gallery' ); ?></strong> - <?php esc_html_e( 'Optional, and only runs when the Providers and Practices features are both enabled; creates each synced provider\'s practices', 'brag-book-gallery' ); ?>
+						</li>
 					</ol>
 					<ul>
-						<li><strong><?php esc_html_e( 'Full Sync:', 'brag-book-gallery' ); ?></strong> <?php esc_html_e( 'Runs all three stages automatically', 'brag-book-gallery' ); ?></li>
+						<li><strong><?php esc_html_e( 'Full Sync:', 'brag-book-gallery' ); ?></strong> <?php esc_html_e( 'Runs all stages automatically (four when Providers & Practices are enabled, otherwise three)', 'brag-book-gallery' ); ?></li>
 						<li><strong><?php esc_html_e( 'Stop Button:', 'brag-book-gallery' ); ?></strong> <?php esc_html_e( 'Stops the sync process at any time', 'brag-book-gallery' ); ?></li>
 						<li><strong><?php esc_html_e( 'Delete Files:', 'brag-book-gallery' ); ?></strong> <?php esc_html_e( 'Remove sync data or manifest files when needed', 'brag-book-gallery' ); ?></li>
 					</ul>

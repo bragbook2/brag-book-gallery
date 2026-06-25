@@ -2224,6 +2224,36 @@ final class Cases_Handler {
 	}
 
 	/**
+	 * Build the case-data array the card renderer expects from a case post.
+	 *
+	 * Shared shape used by the procedure gallery grid and by the location and
+	 * provider filters so every entry point renders identical cards.
+	 *
+	 * @since 4.8.0
+	 * @param \WP_Post $post Case post.
+	 * @return array<string,mixed>
+	 */
+	public static function build_case_data_from_post( \WP_Post $post ): array {
+		$images = get_post_meta( $post->ID, 'images', true );
+
+		return [
+			'id'         => get_post_meta( $post->ID, 'case_id', true ) ?: $post->ID,
+			'post_id'    => $post->ID,
+			'images'     => is_array( $images ) ? $images : [],
+			'age'        => get_post_meta( $post->ID, 'age', true ) ?: '',
+			'gender'     => get_post_meta( $post->ID, 'gender', true ) ?: '',
+			'ethnicity'  => get_post_meta( $post->ID, 'ethnicity', true ) ?: '',
+			'height'     => get_post_meta( $post->ID, 'height', true ) ?: '',
+			'weight'     => get_post_meta( $post->ID, 'weight', true ) ?: '',
+			'notes'      => get_post_meta( $post->ID, 'notes', true ) ?: '',
+			'procedures' => array_map(
+				static fn( $term ) => is_object( $term ) ? $term->name : $term,
+				wp_get_post_terms( $post->ID, \BRAGBookGallery\Includes\Extend\Taxonomies::TAXONOMY_PROCEDURES ) ?: []
+			),
+		];
+	}
+
+	/**
 	 * Render WordPress post-based case card
 	 *
 	 * Renders a case card using WordPress post data with the correct HTML structure

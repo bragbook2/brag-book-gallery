@@ -4,7 +4,7 @@ Tags: gallery, before-after, medical, cosmetic, procedures
 Requires at least: 6.8
 Tested up to: 6.9
 Requires PHP: 8.2
-Stable tag: 4.7.1
+Stable tag: 4.8.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -91,6 +91,12 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 4. Sync management interface
 
 == Changelog ==
+
+= 4.8.0 =
+* Added: Provider (doctor) dropdown filter, shown before the gallery filters and styled to match them. Each option shows the provider's avatar and name; selecting one replaces the case grid with that provider's cases. On a procedure view the results are scoped to that procedure. Includes an "All Providers" option and a Reset button to restore the unfiltered grid, and the toggle shows the selected provider's avatar.
+* Added: Provider images are now downloaded into the WordPress media library during sync, named after the provider slug, and set as the provider's Profile Photo. The downloaded image is tracked and removed from WordPress when the provider term is deleted. Re-syncs skip unchanged images, manually-chosen photos are preserved, and the remote URL is kept as a fallback if a download fails.
+* Fixed: The sync UI no longer always says "three stages". The Full Sync tooltip, confirmation dialog, and help text now reflect whether the run has three or four stages (Stage 4, Providers & Practices, only runs when both features are enabled).
+* Changed: Provider term editor wording — the synced photo is now described as downloaded into the media library rather than a remote API URL.
 
 = 4.7.1 =
 * Fixed: Location search on a procedure page now returns only that procedure's cases. The shared tiles filter bar rendered the search without the procedure context, so the distance search matched cases across every procedure (e.g. "74 cases" on a procedure that has only a handful). The current procedure is now passed through and results are scoped to it.

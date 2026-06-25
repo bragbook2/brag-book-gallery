@@ -1,0 +1,119 @@
+@charset "UTF-8";
+
+// -----------------------------------------------------------------------------
+// components / provider-filter
+// Provider (doctor) dropdown filter, rendered before the procedure filters. It
+// reuses the .brag-book-gallery-filter-dropdown chrome for the toggle and panel;
+// the rules below style the provider list, options, and avatars.
+// -----------------------------------------------------------------------------
+
+.brag-book-gallery-provider-filter {
+
+	&__label {
+		// Truncate a long selected provider name instead of widening the toggle.
+		max-width: 160px;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	// Holds either the default person icon or, once a provider is selected, that
+	// provider's avatar — sized down to sit inline with the toggle text.
+	&__toggle-icon {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		flex: 0 0 auto;
+
+		.brag-book-gallery-provider-filter__avatar {
+			width: 20px;
+			height: 20px;
+
+			&--placeholder svg {
+				width: 14px;
+				height: 14px;
+			}
+		}
+	}
+
+	&__list {
+		list-style: none;
+		margin: 0;
+		padding: var(--wp--custom--brag-book-gallery--spacer--xs, 4px);
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		max-height: 320px;
+		overflow-y: auto;
+	}
+
+	&__option {
+		display: flex;
+		align-items: center;
+		gap: var(--wp--custom--brag-book-gallery--spacer--sm, 8px);
+		width: 100%;
+		padding: var(--wp--custom--brag-book-gallery--spacer--xs, 4px) var(--wp--custom--brag-book-gallery--spacer--sm, 8px);
+		background: none;
+		border: none;
+		border-radius: var(--wp--custom--brag-book-gallery--rounded, 4px);
+		font-size: var(--wp--custom--brag-book-gallery--text-sm, 14px);
+		color: var(--wp--custom--brag-book-gallery--color--black, #101828);
+		text-align: left;
+		cursor: pointer;
+		transition: var(--wp--custom--brag-book-gallery--transition);
+
+		&:hover {
+			background-color: var(--wp--custom--brag-book-gallery--color--lighter-gray);
+		}
+
+		&:focus-visible {
+			outline: 2px solid var(--wp--custom--brag-book-gallery--color--black);
+			outline-offset: -2px;
+		}
+
+		&.is-active {
+			background-color: var(--wp--custom--brag-book-gallery--color--lighter-gray);
+			font-weight: var(--wp--custom--brag-book-gallery--font-weight--semibold, 600);
+		}
+	}
+
+	&__avatar {
+		flex: 0 0 auto;
+		width: 28px;
+		height: 28px;
+		border-radius: 50%;
+		object-fit: cover;
+
+		&--placeholder {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			background-color: var(--wp--custom--brag-book-gallery--color--light-gray, #e5e7eb);
+			color: var(--wp--custom--brag-book-gallery--color--gray, #9ca3af);
+		}
+	}
+
+	&__name {
+		flex: 1 1 auto;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	// Reset action, pinned below the provider list inside the panel.
+	&__actions {
+		display: flex;
+		justify-content: flex-end;
+		padding: var(--wp--custom--brag-book-gallery--spacer--sm, 8px);
+		border-top: 1px solid var(--wp--custom--brag-book-gallery--color--light-gray);
+	}
+
+	// Shown in the case grid when a provider has no matching cases.
+	&__empty {
+		grid-column: 1 / -1;
+		padding: var(--wp--custom--brag-book-gallery--spacer--2xl, 32px);
+		text-align: center;
+		color: var(--wp--custom--brag-book-gallery--color--gray);
+	}
+}

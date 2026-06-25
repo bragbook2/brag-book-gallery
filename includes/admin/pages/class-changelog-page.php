@@ -93,6 +93,32 @@ class Changelog_Page extends Settings_Base {
 				</div>
 			</div>
 
+			<!-- Version 4.8.0 -->
+			<div class="brag-book-gallery-section">
+				<div class="brag-book-gallery-changelog-version">
+					<h3>
+						<span class="version-badge version-minor">v4.8.0</span>
+						<?php esc_html_e( 'June 25, 2026', 'brag-book-gallery' ); ?>
+					</h3>
+					<div class="brag-book-gallery-card">
+						<p><?php esc_html_e( 'Adds a provider (doctor) filter and provider image syncing, and corrects the sync stage count in the UI.', 'brag-book-gallery' ); ?></p>
+						<h4><?php esc_html_e( '✨ Added', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Provider (doctor) dropdown filter, shown before the gallery filters and styled to match them. Each option shows the provider\'s avatar and name; selecting one replaces the case grid with that provider\'s cases, scoped to the procedure on a procedure view. The toggle shows the selected provider\'s avatar, with an "All Providers" option and a Reset button to restore the unfiltered grid.', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Provider images are downloaded into the media library during sync, named after the provider slug, and set as the provider\'s Profile Photo. The downloaded image is tracked and removed from WordPress when the provider is deleted; re-syncs skip unchanged images, manually-chosen photos are kept, and the remote URL is used as a fallback if a download fails.', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '🐛 Fixed', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'The sync UI no longer always says "three stages". The Full Sync tooltip, confirmation dialog, and help text now reflect whether the run has three or four stages (Stage 4, Providers & Practices, only runs when both features are enabled).', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '🔧 Changed', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Provider term editor wording — the synced photo is now described as downloaded into the media library rather than a remote API URL.', 'brag-book-gallery' ); ?></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
 			<!-- Version 4.7.1 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">

@@ -470,7 +470,7 @@ class Location_Search {
 				: '';
 
 			$html .= Cases_Handler::render_wordpress_case_card(
-				self::build_case_data( $post ),
+				Cases_Handler::build_case_data_from_post( $post ),
 				$image_display_mode,
 				self::case_has_nudity( $case_id ),
 				$procedure_name,
@@ -481,36 +481,6 @@ class Location_Search {
 		}
 
 		return $html;
-	}
-
-	/**
-	 * Build the case-data array the card renderer expects from a case post.
-	 *
-	 * Mirrors the shape assembled by the procedure gallery grid so both render
-	 * identically.
-	 *
-	 * @since 4.7.0
-	 * @param \WP_Post $post Case post.
-	 * @return array<string,mixed>
-	 */
-	private static function build_case_data( \WP_Post $post ): array {
-		$images = get_post_meta( $post->ID, 'images', true );
-
-		return [
-			'id'         => get_post_meta( $post->ID, 'case_id', true ) ?: $post->ID,
-			'post_id'    => $post->ID,
-			'images'     => is_array( $images ) ? $images : [],
-			'age'        => get_post_meta( $post->ID, 'age', true ) ?: '',
-			'gender'     => get_post_meta( $post->ID, 'gender', true ) ?: '',
-			'ethnicity'  => get_post_meta( $post->ID, 'ethnicity', true ) ?: '',
-			'height'     => get_post_meta( $post->ID, 'height', true ) ?: '',
-			'weight'     => get_post_meta( $post->ID, 'weight', true ) ?: '',
-			'notes'      => get_post_meta( $post->ID, 'notes', true ) ?: '',
-			'procedures' => array_map(
-				static fn( $term ) => is_object( $term ) ? $term->name : $term,
-				wp_get_post_terms( $post->ID, Taxonomies::TAXONOMY_PROCEDURES ) ?: []
-			),
-		];
 	}
 
 	/**

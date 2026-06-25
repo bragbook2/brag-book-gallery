@@ -871,12 +871,12 @@ class Taxonomies {
 
 		<tr class="form-field">
 			<th scope="row">
-				<label><?php esc_html_e( 'Synced Photo (API)', 'brag-book-gallery' ); ?></label>
+				<label><?php esc_html_e( 'Synced Photo', 'brag-book-gallery' ); ?></label>
 			</th>
 			<td>
 				<?php if ( ! empty( $image_url ) ) : ?>
 					<img src="<?php echo esc_url( $image_url ); ?>" alt="" style="max-width:150px;height:auto;border-radius:50%;" />
-					<p class="description"><?php esc_html_e( 'Photo synced from the BRAGBook API. It is shown in preference to a manually-uploaded photo below.', 'brag-book-gallery' ); ?></p>
+					<p class="description"><?php esc_html_e( 'Downloaded from the BRAGBook API into the media library during sync and used as this provider\'s photo. It is shown in preference to a manually-uploaded photo below.', 'brag-book-gallery' ); ?></p>
 				<?php else : ?>
 					<p class="description"><?php esc_html_e( 'No photo has been synced from the API for this provider.', 'brag-book-gallery' ); ?></p>
 				<?php endif; ?>

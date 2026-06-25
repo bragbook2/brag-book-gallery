@@ -2107,8 +2107,10 @@ class Chunked_Data_Sync {
 		if ( ! empty( $data['bio'] ) ) {
 			update_term_meta( $term_id, 'provider_bio', $data['bio'] );
 		}
+		// Download the API image into the media library and attach it as the
+		// Profile Photo; falls back to storing the remote URL if the download fails.
 		if ( ! empty( $data['image_url'] ) ) {
-			update_term_meta( $term_id, 'provider_image_url', $data['image_url'] );
+			Provider_Image_Sync::sync_from_url( $term_id, (string) $data['image_url'] );
 		}
 	}
 
@@ -2358,7 +2360,7 @@ class Chunked_Data_Sync {
 
 			// Capture the provider image supplied by the /v2/practices payload.
 			if ( ! empty( $provider_data['imageUrl'] ) ) {
-				update_term_meta( $term->term_id, 'provider_image_url', esc_url_raw( (string) $provider_data['imageUrl'] ) );
+				Provider_Image_Sync::sync_from_url( $term->term_id, esc_url_raw( (string) $provider_data['imageUrl'] ) );
 			}
 
 			return $term;
@@ -2386,7 +2388,7 @@ class Chunked_Data_Sync {
 		update_term_meta( $term_id, 'provider_member_id', $member_id );
 		update_term_meta( $term_id, 'provider_id', $member_id );
 		if ( ! empty( $provider_data['imageUrl'] ) ) {
-			update_term_meta( $term_id, 'provider_image_url', esc_url_raw( (string) $provider_data['imageUrl'] ) );
+			Provider_Image_Sync::sync_from_url( $term_id, esc_url_raw( (string) $provider_data['imageUrl'] ) );
 		}
 		$this->register_provider_in_registry( $member_id, $term_id );
 

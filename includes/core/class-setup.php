@@ -357,6 +357,9 @@ final class Setup {
 		$this->services['post_types'] = new Post_Types();
 		$this->services['taxonomies'] = new Taxonomies();
 
+		// Remove a provider's synced media-library image when its term is deleted.
+		\BRAGBookGallery\Includes\Sync\Provider_Image_Sync::register();
+
 		// Check if we need to flush rewrite rules for new case URL structure (one-time)
 		if ( ! get_option( 'brag_book_gallery_case_url_structure_updated', false ) ) {
 			update_option( 'brag_book_gallery_flush_rewrite_rules', true );
@@ -394,6 +397,9 @@ final class Setup {
 
 		// Register the location-based gallery search (AJAX + asset enqueue).
 		\BRAGBookGallery\Includes\Extend\Location_Search::register();
+
+		// Register the provider (doctor) gallery filter (AJAX + asset enqueue).
+		\BRAGBookGallery\Includes\Extend\Provider_Filter::register();
 
 		// Initialize carousel shortcodes
 		add_shortcode( 'brag_book_carousel', [ \BRAGBookGallery\Includes\Shortcodes\Carousel_Handler::class, 'handle' ] );

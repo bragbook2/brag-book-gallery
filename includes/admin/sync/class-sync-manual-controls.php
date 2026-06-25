@@ -88,9 +88,36 @@ final class Sync_Manual_Controls {
 	}
 
 	/**
+	 * Whether the optional fourth sync stage (Providers & Practices) runs.
+	 *
+	 * Stage 4 is only available when both the Providers and Practices features
+	 * are enabled.
+	 *
+	 * @since 4.8.0
+	 *
+	 * @return bool
+	 */
+	private function stage_four_enabled(): bool {
+		return (bool) get_option( 'brag_book_gallery_enable_providers', false )
+			&& (bool) get_option( 'brag_book_gallery_enable_practices', false );
+	}
+
+	/**
+	 * Total number of sync stages for the current configuration (3 or 4).
+	 *
+	 * @since 4.8.0
+	 *
+	 * @return int
+	 */
+	private function total_stage_count(): int {
+		return $this->stage_four_enabled() ? 4 : 3;
+	}
+
+	/**
 	 * Render stage buttons
 	 *
-	 * Displays the three stage sync buttons with tooltips.
+	 * Displays the stage sync buttons with tooltips (Stage 4 only when the
+	 * Providers and Practices features are both enabled).
 	 *
 	 * @since 3.3.0
 	 *
@@ -117,7 +144,7 @@ final class Sync_Manual_Controls {
 					<span class="stage-btn-label"><?php esc_html_e( 'Process Cases', 'brag-book-gallery' ); ?></span>
 				</span>
 			</button>
-			<?php if ( get_option( 'brag_book_gallery_enable_providers', false ) && get_option( 'brag_book_gallery_enable_practices', false ) ) : ?>
+			<?php if ( $this->stage_four_enabled() ) : ?>
 				<button type="button" id="stage-4-btn" class="button stage-button stage-button--4" title="<?php esc_attr_e( 'Report synced providers and practices', 'brag-book-gallery' ); ?>">
 					<span class="stage-btn-number">4</span>
 					<span class="stage-btn-body">
@@ -222,7 +249,7 @@ final class Sync_Manual_Controls {
 			<div id="stage3-status-content" class="stage-status-content"></div>
 		</div>
 
-			<?php if ( get_option( 'brag_book_gallery_enable_providers', false ) && get_option( 'brag_book_gallery_enable_practices', false ) ) : ?>
+			<?php if ( $this->stage_four_enabled() ) : ?>
 				<!-- Stage 4 Status -->
 				<div id="stage4-status" class="stage-status-panel stage-status-panel--4" style="display: none;">
 					<div class="stage-status-panel-header">
@@ -268,9 +295,14 @@ final class Sync_Manual_Controls {
 	 * @return void Outputs HTML directly
 	 */
 	private function render_full_sync_controls(): void {
+		$total_stages = $this->total_stage_count();
 		?>
 		<div class="full-sync-controls">
-			<button type="button" id="full-sync-btn" class="button button-full-sync" title="<?php esc_attr_e( 'Run all three stages sequentially', 'brag-book-gallery' ); ?>">
+			<button type="button" id="full-sync-btn" class="button button-full-sync" title="<?php echo esc_attr( sprintf(
+				/* translators: %d: number of sync stages that will run (3 or 4). */
+				__( 'Run all %d stages sequentially', 'brag-book-gallery' ),
+				$total_stages
+			) ); ?>">
 				<?php esc_html_e( 'Full Sync', 'brag-book-gallery' ); ?>
 			</button>
 			<button type="button" id="stop-sync-btn" class="button button-stop-sync" style="display: none;" title="<?php esc_attr_e( 'Stop the running sync process', 'brag-book-gallery' ); ?>">

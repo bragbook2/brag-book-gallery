@@ -669,7 +669,14 @@ class Sync_Page extends Settings_Base {
 
 								<!-- Full Sync Controls -->
 								<div class="full-sync-controls" style="display: flex; gap: 10px; margin-top: 20px; padding-top: 15px; border-top: 1px solid #ddd;">
-									<button type="button" id="full-sync-btn" class="button button-hero" style="background: #0f172a; color: white; border-color: #0f172a;" title="<?php esc_attr_e( 'Run all three stages sequentially', 'brag-book-gallery' ); ?>">
+									<?php
+									$full_sync_stage_count = ( get_option( 'brag_book_gallery_enable_providers', false ) && get_option( 'brag_book_gallery_enable_practices', false ) ) ? 4 : 3;
+									?>
+									<button type="button" id="full-sync-btn" class="button button-hero" style="background: #0f172a; color: white; border-color: #0f172a;" title="<?php echo esc_attr( sprintf(
+										/* translators: %d: number of sync stages that will run (3 or 4). */
+										__( 'Run all %d stages sequentially', 'brag-book-gallery' ),
+										$full_sync_stage_count
+									) ); ?>">
 										<?php esc_html_e( 'Full Sync', 'brag-book-gallery' ); ?>
 									</button>
 									<button type="button" id="stop-sync-btn" class="button button-link-delete" style="display: none;" title="<?php esc_attr_e( 'Stop the running sync process', 'brag-book-gallery' ); ?>">
