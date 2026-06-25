@@ -1357,17 +1357,17 @@ final class Gallery_Handler {
 					} elseif ( $current_taxonomy ) {
 						// Show procedure-specific content
 						?>
-						<?php
-						// Location search results banner, spanning the top of the gallery.
-						// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static markup from render_results_banner().
-						echo \BRAGBookGallery\Includes\Extend\Location_Search::render_results_banner();
-						?>
 						<div class="brag-book-gallery-content-header">
 							<h1 class="brag-book-gallery-content-title">
 								<strong><?php echo esc_html( $current_taxonomy->name ); ?></strong>
 								Before &amp; After Gallery
 							</h1>
 						</div>
+						<?php
+						// Location search results banner, shown below the title.
+						// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static markup from render_results_banner().
+						echo \BRAGBookGallery\Includes\Extend\Location_Search::render_results_banner();
+						?>
 
 						<!-- Filter controls will be added here by JavaScript -->
 						<div class="brag-book-gallery-controls">
@@ -2597,10 +2597,15 @@ final class Gallery_Handler {
 	 * Displays gallery selector, procedure filters, favorites, and consultation button
 	 * in a horizontal layout.
 	 *
+	 * @param bool  $show_filters Whether to render the procedure filters dropdown.
+	 * @param array $procedure    Optional procedure context ('slug', 'name'). When
+	 *                            supplied, the location search is scoped to it; when
+	 *                            empty the location search is not rendered.
+	 *
 	 * @return string Rendered filter bar HTML.
 	 * @since 3.3.2
 	 */
-	public static function render_tiles_filter_bar( bool $show_filters = true ): string {
+	public static function render_tiles_filter_bar( bool $show_filters = true, array $procedure = [] ): string {
 		ob_start();
 
 		// Get favorites URL
@@ -2662,12 +2667,14 @@ final class Gallery_Handler {
 					</div>
 				</details>
 
-				<?php if ( $show_filters ) : ?>
 				<?php
-				// Inline location search, before the filter dropdown.
+				// Inline location search, before the filter dropdown. Renders only
+				// when a procedure context is supplied, so results stay scoped to the
+				// current procedure (it is hidden on the contextless landing view).
 				// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- markup escaped within render_search().
-				echo \BRAGBookGallery\Includes\Extend\Location_Search::render_search();
+				echo \BRAGBookGallery\Includes\Extend\Location_Search::render_search( $procedure );
 				?>
+				<?php if ( $show_filters ) : ?>
 				<!-- Procedure Filters -->
 				<details class="brag-book-gallery-filter-dropdown" id="procedure-filters-details" data-initialized="true">
 					<summary class="brag-book-gallery-filter-dropdown__toggle">
@@ -2789,13 +2796,10 @@ final class Gallery_Handler {
 					<!-- Horizontal Filter Bar -->
 					<?php
 					// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Output is escaped in the rendering method
-					echo self::render_tiles_filter_bar();
-					?>
-
-					<!-- Location search results banner, spanning the top of the gallery. -->
-					<?php
-					// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static markup from render_results_banner().
-					echo \BRAGBookGallery\Includes\Extend\Location_Search::render_results_banner();
+					echo self::render_tiles_filter_bar( true, [
+						'slug' => $procedure_term->slug,
+						'name' => $procedure_term->name,
+					] );
 					?>
 
 					<!-- Content Title -->
@@ -2803,6 +2807,12 @@ final class Gallery_Handler {
 						<strong><?php echo esc_html( $procedure_term->name ); ?></strong>
 						Before &amp; After Gallery
 					</h1>
+
+					<!-- Location search results banner, shown below the title. -->
+					<?php
+					// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static markup from render_results_banner().
+					echo \BRAGBookGallery\Includes\Extend\Location_Search::render_results_banner();
+					?>
 
 					<!-- Case Grid - 2x2 tiles layout -->
 					<div class="brag-book-gallery-case-grid brag-book-gallery-case-grid--tiles grid-initialized"

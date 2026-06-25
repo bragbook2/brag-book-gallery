@@ -4,6 +4,31 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.7.1] - 2026-06-25
+
+### Fixed
+
+- **Location search procedure scoping**: a location search on a procedure page
+  returned cases from every procedure (e.g. "74 cases" on a procedure with only
+  a handful). The shared tiles filter bar rendered the search without the
+  procedure context, so no procedure filter was applied. The current procedure
+  is now passed through and the candidate cases are scoped to it before the
+  distance filtering.
+- **Location search card design**: result cards now use the same renderer as
+  the procedure gallery grid, so they honour the configured case card design
+  (`default` / `v2` / `v3`). They previously used an older renderer that ignored
+  the setting.
+
+### Changed
+
+- **Distance badge**: each location search result card now shows how far the
+  case is from the searched location (e.g. "3.4 miles away") as a badge on the
+  card image.
+- **Contextless landing view**: the location search is no longer rendered on
+  the main gallery landing view, which has no procedure to scope results to.
+- **Results banner placement**: the "Showing N cases within R miles of …"
+  banner now appears below the procedure title instead of above it.
+
 ## [4.7.0] - 2026-06-16
 
 ### Fixed

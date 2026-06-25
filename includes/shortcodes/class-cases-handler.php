@@ -2233,6 +2233,10 @@ final class Cases_Handler {
 	 * @param string $image_display_mode Display mode for images.
 	 * @param bool $procedure_nudity Whether procedure has nudity warning.
 	 * @param string $procedure_context Context for case display.
+	 * @param string $current_procedure_id Current procedure API ID, if any.
+	 * @param string $current_term_id Current procedure term ID, if any.
+	 * @param string $distance_label Optional distance label (e.g. "3.4 miles away") shown
+	 *                               on the card; used by the location search results.
 	 *
 	 * @return string Generated case card HTML.
 	 * @since 3.0.0
@@ -2243,7 +2247,8 @@ final class Cases_Handler {
 		bool $procedure_nudity = false,
 		string $procedure_context = '',
 		string $current_procedure_id = '',
-		string $current_term_id = ''
+		string $current_term_id = '',
+		string $distance_label = ''
 	): string {
 		$case_id    = $case_data['id'] ?: '';
 		$post_id    = $case_data['post_id'] ?? '';
@@ -2482,6 +2487,12 @@ final class Cases_Handler {
 		<article class="brag-book-gallery-case-card<?php echo esc_attr( $card_type_class ); ?>" <?php echo implode( ' ', $data_attrs ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Data attributes are escaped individually during construction. ?> data-alt-text="<?php echo esc_attr( $image_alt ); ?>">
 			<div class="brag-book-gallery-case-images single-image">
 				<div class="brag-book-gallery-image-container">
+						<?php if ( '' !== $distance_label ) : ?>
+							<span class="brag-book-gallery-case-card__distance">
+								<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+								<?php echo esc_html( $distance_label ); ?>
+							</span>
+						<?php endif; ?>
 						<div class="brag-book-gallery-skeleton-loader" style="display: none;"></div>
 						<div class="brag-book-gallery-item-actions">
 							<?php

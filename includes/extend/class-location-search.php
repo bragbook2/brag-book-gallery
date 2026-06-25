@@ -151,12 +151,15 @@ class Location_Search {
 	 * Render the inline location search markup.
 	 *
 	 * Output before the filter dropdown. The autocomplete and geolocation are
-	 * wired up by JavaScript. When a procedure context is supplied, results are
-	 * scoped to that procedure's cases.
+	 * wired up by JavaScript. A procedure context is required: results are scoped
+	 * to that procedure's cases, so the search is only shown on a procedure view.
+	 * The contextless main gallery would return cases across every procedure, so
+	 * the search is intentionally hidden there.
 	 *
 	 * @since 4.7.0
-	 * @param array $procedure Optional procedure context: 'slug' and 'name'.
-	 * @return string Search HTML, or empty string when the feature is off.
+	 * @param array $procedure Procedure context: 'slug' and 'name'.
+	 * @return string Search HTML, or empty string when the feature is off or no
+	 *                procedure context is supplied.
 	 */
 	public static function render_search( array $procedure = [] ): string {
 		if ( ! self::is_enabled() ) {
@@ -164,6 +167,12 @@ class Location_Search {
 		}
 
 		$procedure_slug = isset( $procedure['slug'] ) ? (string) $procedure['slug'] : '';
+
+		// No procedure context means no way to scope results to the page; hide
+		// the search rather than return cases from unrelated procedures.
+		if ( '' === $procedure_slug ) {
+			return '';
+		}
 
 		ob_start();
 		?>
@@ -246,7 +255,7 @@ class Location_Search {
 		}
 
 		wp_send_json_success( [
-			'html'   => self::render_matched_cases( $matched_ids, $procedure_slug ),
+			'html'   => self::render_matched_cases( $matched_ids, $procedure_slug, $distances ),
 			'count'  => count( $matched_ids ),
 			'radius' => $used_radius,
 			'total'  => count( $case_ids ),
@@ -431,14 +440,24 @@ class Location_Search {
 	/**
 	 * Render the matched case cards in distance order.
 	 *
+	 * Uses the same renderer as the procedure gallery grid so the results honour
+	 * the configured card design (default / v2 / v3), with a distance badge added.
+	 *
 	 * @since 4.7.0
-	 * @param int[]  $case_ids       Ordered (nearest-first) case post IDs.
-	 * @param string $procedure_slug Procedure context for card URLs, if any.
+	 * @param int[]            $case_ids       Ordered (nearest-first) case post IDs.
+	 * @param string           $procedure_slug Procedure context the search is scoped to.
+	 * @param array<int,float> $distances      Map of case ID to nearest distance in miles.
 	 * @return string Concatenated case card HTML.
 	 */
-	private static function render_matched_cases( array $case_ids, string $procedure_slug ): string {
+	private static function render_matched_cases( array $case_ids, string $procedure_slug, array $distances ): string {
 		$image_display_mode = (string) get_option( 'brag_book_gallery_image_display_mode', 'single' );
-		$html               = '';
+
+		// Display name for the procedure the search is scoped to, matching the
+		// procedure context the gallery grid passes to the card renderer.
+		$term           = get_term_by( 'slug', $procedure_slug, Taxonomies::TAXONOMY_PROCEDURES );
+		$procedure_name = $term instanceof \WP_Term ? $term->name : '';
+
+		$html = '';
 
 		foreach ( $case_ids as $case_id ) {
 			$post = get_post( $case_id );
@@ -446,15 +465,71 @@ class Location_Search {
 				continue;
 			}
 
-			$html .= Cases_Handler::render_case_card_from_post(
-				$post,
+			$distance_label = isset( $distances[ $case_id ] )
+				? self::format_distance( $distances[ $case_id ] )
+				: '';
+
+			$html .= Cases_Handler::render_wordpress_case_card(
+				self::build_case_data( $post ),
 				$image_display_mode,
 				self::case_has_nudity( $case_id ),
-				$procedure_slug
+				$procedure_name,
+				'',
+				'',
+				$distance_label
 			);
 		}
 
 		return $html;
+	}
+
+	/**
+	 * Build the case-data array the card renderer expects from a case post.
+	 *
+	 * Mirrors the shape assembled by the procedure gallery grid so both render
+	 * identically.
+	 *
+	 * @since 4.7.0
+	 * @param \WP_Post $post Case post.
+	 * @return array<string,mixed>
+	 */
+	private static function build_case_data( \WP_Post $post ): array {
+		$images = get_post_meta( $post->ID, 'images', true );
+
+		return [
+			'id'         => get_post_meta( $post->ID, 'case_id', true ) ?: $post->ID,
+			'post_id'    => $post->ID,
+			'images'     => is_array( $images ) ? $images : [],
+			'age'        => get_post_meta( $post->ID, 'age', true ) ?: '',
+			'gender'     => get_post_meta( $post->ID, 'gender', true ) ?: '',
+			'ethnicity'  => get_post_meta( $post->ID, 'ethnicity', true ) ?: '',
+			'height'     => get_post_meta( $post->ID, 'height', true ) ?: '',
+			'weight'     => get_post_meta( $post->ID, 'weight', true ) ?: '',
+			'notes'      => get_post_meta( $post->ID, 'notes', true ) ?: '',
+			'procedures' => array_map(
+				static fn( $term ) => is_object( $term ) ? $term->name : $term,
+				wp_get_post_terms( $post->ID, Taxonomies::TAXONOMY_PROCEDURES ) ?: []
+			),
+		];
+	}
+
+	/**
+	 * Format a distance in miles as a human-readable, localized label.
+	 *
+	 * Distances under 10 miles keep one decimal of precision ("3.4 miles away");
+	 * larger distances round to whole miles ("42 miles away").
+	 *
+	 * @since 4.7.0
+	 * @param float $miles Distance in miles.
+	 * @return string Localized distance label.
+	 */
+	private static function format_distance( float $miles ): string {
+		$display = $miles < 10.0
+			? number_format_i18n( $miles, 1 )
+			: number_format_i18n( round( $miles ) );
+
+		/* translators: %s: distance in miles (e.g. "3.4"). */
+		return sprintf( _n( '%s mile away', '%s miles away', (int) round( $miles ), 'brag-book-gallery' ), $display );
 	}
 
 	/**

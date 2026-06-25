@@ -93,6 +93,30 @@ class Changelog_Page extends Settings_Base {
 				</div>
 			</div>
 
+			<!-- Version 4.7.1 -->
+			<div class="brag-book-gallery-section">
+				<div class="brag-book-gallery-changelog-version">
+					<h3>
+						<span class="version-badge version-patch">v4.7.1</span>
+						<?php esc_html_e( 'June 25, 2026', 'brag-book-gallery' ); ?>
+					</h3>
+					<div class="brag-book-gallery-card">
+						<p><?php esc_html_e( 'Scopes the location search to the current procedure, matches result cards to the configured card design, and adds a distance badge.', 'brag-book-gallery' ); ?></p>
+						<h4><?php esc_html_e( '🐛 Fixed', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Location search on a procedure page now returns only that procedure\'s cases. The shared tiles filter bar rendered the search without the procedure context, so the distance search matched cases across every procedure (for example "74 cases" on a procedure with only a handful). The current procedure is now passed through and results are scoped to it.', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Location search result cards now follow the configured case card design (default, v2, or v3) so they match the rest of the gallery. They previously used an older card renderer that ignored the setting.', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '🔧 Changed', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Each location search result card now shows how far the case is from the searched location (for example "3.4 miles away") as a badge on the image.', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'The location search is no longer shown on the main gallery landing view, which has no procedure to scope results to.', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'The "Showing N cases within R miles of …" results banner now appears below the procedure title instead of above it.', 'brag-book-gallery' ); ?></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
 			<!-- Version 4.7.0 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">

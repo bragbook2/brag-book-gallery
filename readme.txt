@@ -4,7 +4,7 @@ Tags: gallery, before-after, medical, cosmetic, procedures
 Requires at least: 6.8
 Tested up to: 6.9
 Requires PHP: 8.2
-Stable tag: 4.7.0
+Stable tag: 4.7.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -91,6 +91,13 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 4. Sync management interface
 
 == Changelog ==
+
+= 4.7.1 =
+* Fixed: Location search on a procedure page now returns only that procedure's cases. The shared tiles filter bar rendered the search without the procedure context, so the distance search matched cases across every procedure (e.g. "74 cases" on a procedure that has only a handful). The current procedure is now passed through and results are scoped to it.
+* Fixed: Location search result cards now follow the configured case card design (default, v2, or v3) so they match the rest of the gallery. They previously used an older card renderer that ignored the setting.
+* Changed: Each location search result card now shows how far the case is from the searched location (e.g. "3.4 miles away") as a badge on the image.
+* Changed: The location search is no longer shown on the main gallery landing view, which has no procedure to scope results to.
+* Changed: The "Showing N cases within R miles of …" results banner now appears below the procedure title instead of above it.
 
 = 4.7.0 =
 * Fixed: The Banner Image and Profile Photo buttons on the procedure and provider taxonomy screens did not open the WordPress media library. The enqueued admin assets (taxonomies-media.js and taxonomies.css) were missing and returned 404s, so the button click handler never loaded.
