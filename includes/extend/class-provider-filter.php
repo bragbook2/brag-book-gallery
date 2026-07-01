@@ -138,7 +138,18 @@ class Provider_Filter {
 				<span class="brag-book-gallery-provider-filter__label" data-default-label="<?php esc_attr_e( 'Provider', 'brag-book-gallery' ); ?>"><?php esc_html_e( 'Provider', 'brag-book-gallery' ); ?></span>
 			</summary>
 			<div class="brag-book-gallery-filter-dropdown__panel">
-				<ul class="brag-book-gallery-provider-filter__list" role="listbox" aria-label="<?php esc_attr_e( 'Filter by provider', 'brag-book-gallery' ); ?>">
+				<div class="brag-book-gallery-provider-filter__search">
+					<svg class="brag-book-gallery-provider-filter__search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+					<input
+						type="search"
+						class="brag-book-gallery-provider-filter__search-input"
+						placeholder="<?php esc_attr_e( 'Search providers…', 'brag-book-gallery' ); ?>"
+						aria-label="<?php esc_attr_e( 'Search providers', 'brag-book-gallery' ); ?>"
+						aria-controls="provider-filter-list"
+						autocomplete="off"
+					/>
+				</div>
+				<ul class="brag-book-gallery-provider-filter__list" id="provider-filter-list" role="listbox" aria-label="<?php esc_attr_e( 'Filter by provider', 'brag-book-gallery' ); ?>">
 					<li>
 						<button type="button" class="brag-book-gallery-provider-filter__option is-active" data-provider-slug="">
 							<?php esc_html_e( 'All Providers', 'brag-book-gallery' ); ?>
@@ -146,7 +157,7 @@ class Provider_Filter {
 					</li>
 					<?php foreach ( $providers as $provider ) : ?>
 						<li>
-							<button type="button" class="brag-book-gallery-provider-filter__option" data-provider-slug="<?php echo esc_attr( $provider['slug'] ); ?>">
+							<button type="button" class="brag-book-gallery-provider-filter__option" data-provider-slug="<?php echo esc_attr( $provider['slug'] ); ?>" data-provider-name="<?php echo esc_attr( strtolower( $provider['name'] ) ); ?>">
 								<?php
 								// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- avatar_markup escapes its output.
 								echo self::avatar_markup( $provider );
@@ -155,6 +166,9 @@ class Provider_Filter {
 							</button>
 						</li>
 					<?php endforeach; ?>
+					<li class="brag-book-gallery-provider-filter__no-match" hidden>
+						<?php esc_html_e( 'No providers match your search.', 'brag-book-gallery' ); ?>
+					</li>
 				</ul>
 				<div class="brag-book-gallery-provider-filter__actions">
 					<button type="button" class="brag-book-gallery-button brag-book-gallery-button--clear" data-provider-reset>
@@ -202,7 +216,7 @@ class Provider_Filter {
 	 *
 	 * @since 4.8.0
 	 * @param string $procedure_slug Optional procedures taxonomy slug to scope to.
-	 * @return array<int,array{slug:string,name:string,position:int,photo_url:string}>
+	 * @return array<int,array{slug:string,name:string,photo_url:string}>
 	 */
 	private static function get_providers( string $procedure_slug ): array {
 		$case_ids = self::get_candidate_case_ids( '', $procedure_slug );
@@ -220,15 +234,14 @@ class Provider_Filter {
 			$providers[] = [
 				'slug'      => $term->slug,
 				'name'      => $term->name,
-				'position'  => (int) get_term_meta( $term->term_id, 'provider_position', true ),
 				'photo_url' => self::provider_photo_url( $term->term_id ),
 			];
 		}
 
-		// Order by the synced provider position, then alphabetically by name.
+		// Alphanumeric order by name, so a long provider list is easy to scan/search.
 		usort(
 			$providers,
-			static fn( array $a, array $b ): int => [ $a['position'], $a['name'] ] <=> [ $b['position'], $b['name'] ]
+			static fn( array $a, array $b ): int => strnatcasecmp( $a['name'], $b['name'] )
 		);
 
 		return $providers;

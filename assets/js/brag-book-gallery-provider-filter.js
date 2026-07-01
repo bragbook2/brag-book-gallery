@@ -27,6 +27,8 @@
   const OPTION_SELECTOR = '.brag-book-gallery-provider-filter__option';
   const NAME_SELECTOR = '.brag-book-gallery-provider-filter__name';
   const AVATAR_SELECTOR = '.brag-book-gallery-provider-filter__avatar';
+  const SEARCH_INPUT_SELECTOR = '.brag-book-gallery-provider-filter__search-input';
+  const NO_MATCH_SELECTOR = '.brag-book-gallery-provider-filter__no-match';
 
   /**
    * Wire up a single provider filter widget.
@@ -38,7 +40,11 @@
     const label = root.querySelector('.brag-book-gallery-provider-filter__label');
     const toggleIcon = root.querySelector('.brag-book-gallery-provider-filter__toggle-icon');
     const resetBtn = root.querySelector('[data-provider-reset]');
+    const searchInput = root.querySelector(SEARCH_INPUT_SELECTOR);
+    const noMatch = root.querySelector(NO_MATCH_SELECTOR);
     const options = Array.prototype.slice.call(root.querySelectorAll(OPTION_SELECTOR));
+    // The "All Providers" option has no name to search against, so it's always shown.
+    const searchableOptions = options.filter(option => option.hasAttribute('data-provider-name'));
     const ui = {
       label,
       toggleIcon,
@@ -74,6 +80,51 @@
         closeDetails(root);
         resetFilter(state, ui);
       });
+    }
+    if (searchInput) {
+      searchInput.addEventListener('input', () => {
+        filterOptionList(searchableOptions, noMatch, searchInput.value);
+      });
+      searchInput.addEventListener('click', event => {
+        // Keep clicks in the search field from bubbling up to <summary> and
+        // toggling the dropdown closed.
+        event.stopPropagation();
+      });
+    }
+    if (root.tagName === 'DETAILS') {
+      root.addEventListener('toggle', () => {
+        if (!root.open && searchInput) {
+          // Start with a clean list each time the dropdown is reopened.
+          searchInput.value = '';
+          filterOptionList(searchableOptions, noMatch, '');
+        }
+      });
+    }
+  }
+
+  /**
+   * Show/hide provider options by name against a search query.
+   *
+   * @param {HTMLElement[]} searchableOptions Provider option buttons (excludes "All Providers").
+   * @param {HTMLElement|null} noMatch The "no providers match" list item.
+   * @param {string} query Raw search input value.
+   */
+  function filterOptionList(searchableOptions, noMatch, query) {
+    const needle = query.trim().toLowerCase();
+    let visibleCount = 0;
+    searchableOptions.forEach(option => {
+      const haystack = option.getAttribute('data-provider-name') || '';
+      const isMatch = needle === '' || haystack.indexOf(needle) !== -1;
+      const item = option.closest('li');
+      if (item) {
+        item.hidden = !isMatch;
+      }
+      if (isMatch) {
+        visibleCount += 1;
+      }
+    });
+    if (noMatch) {
+      noMatch.hidden = visibleCount !== 0;
     }
   }
 

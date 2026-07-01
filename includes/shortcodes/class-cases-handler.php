@@ -119,6 +119,14 @@ final class Cases_Handler {
 	private const DEFAULT_COLUMNS = 2;
 
 	/**
+	 * Maximum cases returned when filtering by provider_id
+	 *
+	 * @since 3.3.2
+	 * @var int
+	 */
+	private const PROVIDER_CASES_LIMIT = 99;
+
+	/**
 	 * Cache group for cases data
 	 *
 	 * @since 3.0.0
@@ -509,6 +517,7 @@ final class Cases_Handler {
 			'api_token'           => '',
 			'website_property_id' => '',
 			'procedure_ids'       => '',
+			'provider_id'         => '',
 			'limit'               => $items_per_page,
 			'page'                => 1,
 			'columns'             => $default_columns,
@@ -524,6 +533,7 @@ final class Cases_Handler {
 			'api_token'           => sanitize_text_field( $atts['api_token'] ),
 			'website_property_id' => sanitize_text_field( $atts['website_property_id'] ),
 			'procedure_ids'       => sanitize_text_field( $atts['procedure_ids'] ),
+			'provider_id'         => absint( $atts['provider_id'] ),
 			'limit'               => max( 1, min( 200, absint( $atts['limit'] ) ) ), // Bounds: 1-200
 			'page'                => max( 1, absint( $atts['page'] ) ), // Minimum: 1
 			'columns'             => max( 1, min( 6, absint( $atts['columns'] ) ) ), // Bounds: 1-6
@@ -1265,6 +1275,7 @@ final class Cases_Handler {
 	 *                                 If provided, only cases with this procedure will be shown.
 	 * @param array $atts Optional. Additional attributes for customization.
 	 *                                 - 'image_display_mode': How to display images ('single' or other modes)
+	 *                                 - 'provider_id': Provider taxonomy API ID to filter cases by
 	 *
 	 * @return string HTML output for the complete cases gallery interface.
 	 * @since 1.0.0
@@ -1272,7 +1283,7 @@ final class Cases_Handler {
 	 */
 	public static function render_cases_grid_from_posts( string $filter_procedure = '', array $atts = [] ): string {
 		// Get cases from WordPress posts based on filter criteria
-		$query = self::get_cases_query( $filter_procedure );
+		$query = self::get_cases_query( $filter_procedure, absint( $atts['provider_id'] ?? 0 ) );
 
 		// Return early with "no cases" message if query has no results
 		if ( ! $query->have_posts() ) {
@@ -1282,7 +1293,9 @@ final class Cases_Handler {
 		// Extract data from query and options
 		$posts              = $query->posts;
 		$total_cases        = $query->found_posts;
-		$items_per_page     = absint( get_option( 'brag_book_gallery_items_per_page', '200' ) );
+		// Use the query's actual posts_per_page (respects the provider_id cap) so the
+		// "load more" button doesn't offer to load cases beyond what provider_id allows.
+		$items_per_page     = absint( $query->get( 'posts_per_page' ) );
 		$default_columns    = absint( get_option( 'brag_book_gallery_columns', self::DEFAULT_COLUMNS ) );
 		$image_display_mode = $atts['image_display_mode'] ?? 'single';
 
@@ -1321,12 +1334,14 @@ final class Cases_Handler {
 	 * from the procedure taxonomy term meta.
 	 *
 	 * @param string $filter_procedure Optional. Procedure slug to filter cases by.
+	 * @param int    $provider_id      Optional. Provider taxonomy API ID to filter cases by.
+	 *                                 When provided, results are capped at PROVIDER_CASES_LIMIT.
 	 *
 	 * @return \WP_Query WordPress query object containing the case posts.
 	 * @since 1.0.0
 	 *
 	 */
-	private static function get_cases_query( string $filter_procedure = '' ): \WP_Query {
+	private static function get_cases_query( string $filter_procedure = '', int $provider_id = 0 ): \WP_Query {
 		// Debug logging at entry point
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
@@ -1345,6 +1360,22 @@ final class Cases_Handler {
 			'meta_query'     => [],
 			'tax_query'      => [],
 		];
+
+		// Add provider-specific filtering if a provider_id is specified.
+		if ( $provider_id > 0 ) {
+			$provider_term_ids = self::get_provider_term_ids( $provider_id );
+
+			if ( ! empty( $provider_term_ids ) ) {
+				$query_args['tax_query'][] = [
+					'taxonomy' => Taxonomies::TAXONOMY_PROVIDERS,
+					'field'    => 'term_id',
+					'terms'    => $provider_term_ids,
+				];
+			}
+
+			// Cap results when filtering by provider, regardless of the global items-per-page setting.
+			$query_args['posts_per_page'] = min( self::PROVIDER_CASES_LIMIT, $query_args['posts_per_page'] );
+		}
 
 		// Add procedure-specific filtering and sorting if a filter is specified
 		if ( ! empty( $filter_procedure ) ) {
@@ -1421,6 +1452,42 @@ final class Cases_Handler {
 		}
 
 		return new \WP_Query( $query_args );
+	}
+
+	/**
+	 * Resolve a provider API ID to its matching provider taxonomy term IDs.
+	 *
+	 * Providers are synced from the external API into the `brag_book_providers`
+	 * taxonomy, with the API ID stored as term meta. Newer syncs store the ID
+	 * under `provider_id`; older syncs may only have `provider_member_id`, so
+	 * both are checked.
+	 *
+	 * @param int $provider_id Provider API ID to look up.
+	 *
+	 * @return int[] Matching term IDs (usually zero or one).
+	 * @since 3.3.2
+	 */
+	private static function get_provider_term_ids( int $provider_id ): array {
+		$terms = get_terms(
+			[
+				'taxonomy'   => Taxonomies::TAXONOMY_PROVIDERS,
+				'hide_empty' => false,
+				'fields'     => 'ids',
+				'meta_query' => [
+					'relation' => 'OR',
+					[
+						'key'   => 'provider_id',
+						'value' => $provider_id,
+					],
+					[
+						'key'   => 'provider_member_id',
+						'value' => $provider_id,
+					],
+				],
+			]
+		);
+
+		return is_array( $terms ) ? array_map( 'absint', $terms ) : [];
 	}
 
 	/**
