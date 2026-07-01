@@ -93,6 +93,28 @@ class Changelog_Page extends Settings_Base {
 				</div>
 			</div>
 
+			<!-- Version 4.9.0-beta1 -->
+			<div class="brag-book-gallery-section">
+				<div class="brag-book-gallery-changelog-version">
+					<h3>
+						<span class="version-badge version-beta">v4.9.0-beta1</span>
+						<?php esc_html_e( 'July 1, 2026', 'brag-book-gallery' ); ?> - <?php esc_html_e( 'Beta Release', 'brag-book-gallery' ); ?>
+					</h3>
+					<div class="brag-book-gallery-card">
+						<p><?php esc_html_e( 'Adds a provider_id shortcode attribute for embedding a single provider\'s cases, and a search box in the provider filter dropdown.', 'brag-book-gallery' ); ?></p>
+						<h4><?php esc_html_e( '✨ Added', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'A provider_id attribute for the [brag_book_gallery_cases] shortcode, so a single provider\'s cases can be embedded directly (for example [brag_book_gallery_cases provider_id="123"]). The ID is matched against the provider taxonomy term\'s synced API ID, and results are capped at 99 cases.', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'A search box at the top of the provider filter dropdown, so a long provider list can be narrowed by typing instead of scrolling.', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '🔧 Changed', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'The provider filter dropdown now lists providers alphabetically by name instead of by synced position.', 'brag-book-gallery' ); ?></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
 			<!-- Version 4.8.0 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">

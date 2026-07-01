@@ -121,7 +121,7 @@ final class Cases_Handler {
 	/**
 	 * Maximum cases returned when filtering by provider_id
 	 *
-	 * @since 3.3.2
+	 * @since 4.9.0
 	 * @var int
 	 */
 	private const PROVIDER_CASES_LIMIT = 99;
@@ -1465,7 +1465,7 @@ final class Cases_Handler {
 	 * @param int $provider_id Provider API ID to look up.
 	 *
 	 * @return int[] Matching term IDs (usually zero or one).
-	 * @since 3.3.2
+	 * @since 4.9.0
 	 */
 	private static function get_provider_term_ids( int $provider_id ): array {
 		$terms = get_terms(
