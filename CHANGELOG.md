@@ -4,7 +4,25 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [4.9.0-beta1] - 2026-07-01
+## [4.9.0] - 2026-07-02
+
+### Added
+
+- **`provider_id` shortcode attribute**: `[brag_book_gallery_cases]` now accepts
+  a `provider_id` attribute (e.g. `[brag_book_gallery_cases provider_id="123"]`)
+  to embed a single provider's cases directly. The ID is matched against the
+  provider taxonomy term's synced API ID (`provider_id`, falling back to the
+  legacy `provider_member_id`), and results are capped at 99 cases.
+- **Provider dropdown search**: a search box at the top of the provider filter
+  dropdown narrows the list by typing, so long provider lists no longer need to
+  be scrolled A-to-Z.
+
+### Changed
+
+- **Provider dropdown ordering**: the provider filter dropdown now lists
+  providers alphabetically by name instead of by synced position.
+
+## [4.9.0-beta1] - 2026-07-01 (Beta Release)
 
 ### Added
 
