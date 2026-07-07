@@ -135,7 +135,7 @@ class ShortcodeTest extends WP_UnitTestCase {
 		$test_attributes = [
 			'[brag_book_carousel procedure="test" limit="10" autoplay="true"]',
 			'[brag_book_carousel procedure="test" show_controls="false"]',
-			'[brag_book_carousel member_id="123" limit="5"]',
+			'[brag_book_carousel provider_id="123" limit="5"]',
 		];
 
 		foreach ( $test_attributes as $shortcode ) {

@@ -68,6 +68,7 @@ use BRAGBookGallery\Includes\Extend\Taxonomies;
 use BRAGBookGallery\Includes\Resources\Asset_Manager;
 use BRAGBookGallery\Includes\Core\Setup;
 use BRAGBookGallery\Includes\Extend\Data_Fetcher;
+use BRAGBookGallery\Includes\Shortcodes\Traits\Trait_Provider_Query;
 
 // Prevent direct access.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -101,6 +102,8 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @since 3.0.0
  */
 final class Cases_Handler {
+
+	use Trait_Provider_Query;
 
 	/**
 	 * Default cases per page
@@ -1366,11 +1369,7 @@ final class Cases_Handler {
 			$provider_term_ids = self::get_provider_term_ids( $provider_id );
 
 			if ( ! empty( $provider_term_ids ) ) {
-				$query_args['tax_query'][] = [
-					'taxonomy' => Taxonomies::TAXONOMY_PROVIDERS,
-					'field'    => 'term_id',
-					'terms'    => $provider_term_ids,
-				];
+				$query_args['tax_query'][] = self::build_provider_tax_query( $provider_term_ids );
 			}
 
 			// Cap results when filtering by provider, regardless of the global items-per-page setting.
@@ -1452,42 +1451,6 @@ final class Cases_Handler {
 		}
 
 		return new \WP_Query( $query_args );
-	}
-
-	/**
-	 * Resolve a provider API ID to its matching provider taxonomy term IDs.
-	 *
-	 * Providers are synced from the external API into the `brag_book_providers`
-	 * taxonomy, with the API ID stored as term meta. Newer syncs store the ID
-	 * under `provider_id`; older syncs may only have `provider_member_id`, so
-	 * both are checked.
-	 *
-	 * @param int $provider_id Provider API ID to look up.
-	 *
-	 * @return int[] Matching term IDs (usually zero or one).
-	 * @since 4.9.0
-	 */
-	private static function get_provider_term_ids( int $provider_id ): array {
-		$terms = get_terms(
-			[
-				'taxonomy'   => Taxonomies::TAXONOMY_PROVIDERS,
-				'hide_empty' => false,
-				'fields'     => 'ids',
-				'meta_query' => [
-					'relation' => 'OR',
-					[
-						'key'   => 'provider_id',
-						'value' => $provider_id,
-					],
-					[
-						'key'   => 'provider_member_id',
-						'value' => $provider_id,
-					],
-				],
-			]
-		);
-
-		return is_array( $terms ) ? array_map( 'absint', $terms ) : [];
 	}
 
 	/**

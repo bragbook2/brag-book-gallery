@@ -4,7 +4,7 @@ Tags: gallery, before-after, medical, cosmetic, procedures
 Requires at least: 6.8
 Tested up to: 6.9
 Requires PHP: 8.2
-Stable tag: 4.9.0
+Stable tag: 4.9.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -91,6 +91,10 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 4. Sync management interface
 
 == Changelog ==
+
+= 4.9.1 =
+* Changed: The `[brag_book_carousel]` and `[brag_book_gallery_procedures]` shortcodes now use a `provider_id` attribute (e.g. `[brag_book_carousel provider_id="43"]`); the former `member_id` attribute has been removed. Cases are matched through the provider taxonomy assigned to each case, so a provider returns every case they appear on, whether primary or secondary.
+* Fixed: Provider filtering on the `[brag_book_carousel]` shortcode, which previously matched an unused meta key and returned no results.
 
 = 4.9.0 =
 * Added: `provider_id` attribute for the `[brag_book_gallery_cases]` shortcode, so a single provider's cases can be embedded directly (e.g. `[brag_book_gallery_cases provider_id="123"]`). Matches the provider taxonomy term's synced API ID and caps results at 99 cases.

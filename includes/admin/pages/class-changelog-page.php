@@ -93,6 +93,27 @@ class Changelog_Page extends Settings_Base {
 				</div>
 			</div>
 
+			<!-- Version 4.9.1 -->
+			<div class="brag-book-gallery-section">
+				<div class="brag-book-gallery-changelog-version">
+					<h3>
+						<span class="version-badge version-patch">v4.9.1</span>
+						<?php esc_html_e( 'July 7, 2026', 'brag-book-gallery' ); ?>
+					</h3>
+					<div class="brag-book-gallery-card">
+						<p><?php esc_html_e( 'Standardizes provider filtering on the provider_id attribute across the carousel and procedures shortcodes, and fixes provider filtering that never took effect on the carousel.', 'brag-book-gallery' ); ?></p>
+						<h4><?php esc_html_e( '🔧 Changed', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'The [brag_book_carousel] and [brag_book_gallery_procedures] shortcodes now use a provider_id attribute (for example [brag_book_carousel provider_id="43"]). The former member_id attribute has been removed. Cases are matched through the provider taxonomy assigned to each case, so a provider returns every case they appear on, whether primary or secondary.', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '🐛 Fixed', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Provider filtering on the [brag_book_carousel] shortcode, which previously matched an unused meta key and returned no results.', 'brag-book-gallery' ); ?></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
 			<!-- Version 4.9.0 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">

@@ -6028,7 +6028,7 @@ class BRAGbookGalleryApp {
       // Get current state from wrapper data attributes
       const currentPage = parseInt(wrapper.dataset.page, 10) || 1;
       const limit = parseInt(wrapper.dataset.limit, 10) || 20;
-      const memberId = wrapper.dataset.memberId || '';
+      const providerId = wrapper.dataset.providerId || '';
       const total = parseInt(wrapper.dataset.total, 10) || 0;
 
       // Set loading state
@@ -6043,7 +6043,7 @@ class BRAGbookGalleryApp {
         formData.append('nonce', nonce);
         formData.append('page', currentPage + 1);
         formData.append('limit', limit);
-        formData.append('member_id', memberId);
+        formData.append('provider_id', providerId);
         const response = await fetch(ajaxUrl, {
           method: 'POST',
           body: formData

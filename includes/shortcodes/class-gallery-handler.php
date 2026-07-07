@@ -66,9 +66,11 @@ use BRAGBookGallery\Includes\Shortcodes\Cases_Handler;
 use BRAGBookGallery\Includes\Shortcodes\Case_Handler;
 use BRAGBookGallery\Includes\Extend\Taxonomies;
 use BRAGBookGallery\Includes\Core\Trait_Api;
+use BRAGBookGallery\Includes\Shortcodes\Traits\Trait_Provider_Query;
 
 final class Gallery_Handler {
 	use Trait_Api;
+	use Trait_Provider_Query;
 
 	/**
 	 * Initialize the gallery handler
@@ -328,10 +330,10 @@ final class Gallery_Handler {
 	 * Handle procedures shortcode
 	 *
 	 * Displays cases in a tiles grid layout using WP_Query with lazy loading.
-	 * Shows cases with optional filtering by member_id, loading more via AJAX.
+	 * Shows cases with optional filtering by provider_id, loading more via AJAX.
 	 *
 	 * @param array $atts Shortcode attributes. Supports:
-	 *                    - member_id: Filter cases by member ID.
+	 *                    - provider_id: Filter cases by provider API ID.
 	 *                    - limit: Number of cases to load per page. Default 20.
 	 *
 	 * @return string Rendered cases grid HTML.
@@ -342,17 +344,28 @@ final class Gallery_Handler {
 		// Parse shortcode attributes.
 		$atts = shortcode_atts(
 			array(
-				'member_id' => '',
-				'limit'     => 20,
+				'provider_id' => '',
+				'limit'       => 20,
 			),
 			$atts,
 			'brag_book_gallery_procedures'
 		);
 
-		// Sanitize member_id
-		$member_id = ! empty( $atts['member_id'] ) ? sanitize_text_field( $atts['member_id'] ) : '';
-		$limit     = (int) $atts['limit'];
-		$limit     = $limit > 0 ? $limit : 20;
+		// Sanitize provider_id (provider API ID stored on brag_book_providers terms).
+		$provider_id = absint( $atts['provider_id'] );
+		$limit       = (int) $atts['limit'];
+		$limit       = $limit > 0 ? $limit : 20;
+
+		// Resolve the provider to its taxonomy term(s). A provider_id that matches
+		// no term must yield no cases rather than silently returning every case.
+		$provider_tax_query = null;
+		if ( $provider_id > 0 ) {
+			$provider_term_ids = self::get_provider_term_ids( $provider_id );
+			if ( empty( $provider_term_ids ) ) {
+				return '<p class="brag-book-gallery-error">' . esc_html__( 'No cases available.', 'brag-book-gallery' ) . '</p>';
+			}
+			$provider_tax_query = self::build_provider_tax_query( $provider_term_ids );
+		}
 
 		// Enqueue gallery assets
 		Asset_Manager::enqueue_gallery_assets();
@@ -374,14 +387,8 @@ final class Gallery_Handler {
 			'fields'         => 'ids',
 		);
 
-		if ( ! empty( $member_id ) ) {
-			$count_args['meta_query'] = array(
-				array(
-					'key'     => 'brag_book_gallery_member_id',
-					'value'   => $member_id,
-					'compare' => '=',
-				),
-			);
+		if ( $provider_tax_query ) {
+			$count_args['tax_query'] = array( $provider_tax_query );
 		}
 
 		$count_query = new \WP_Query( $count_args );
@@ -397,15 +404,9 @@ final class Gallery_Handler {
 			'order'          => 'DESC',
 		);
 
-		// Add meta query filter if member_id is provided
-		if ( ! empty( $member_id ) ) {
-			$query_args['meta_query'] = array(
-				array(
-					'key'     => 'brag_book_gallery_member_id',
-					'value'   => $member_id,
-					'compare' => '=',
-				),
-			);
+		// Add provider filter if a provider_id is provided.
+		if ( $provider_tax_query ) {
+			$query_args['tax_query'] = array( $provider_tax_query );
 		}
 
 		$cases_query = new \WP_Query( $query_args );
@@ -426,7 +427,7 @@ final class Gallery_Handler {
 		<div class="<?php echo esc_attr( $wrapper_class ); ?> brag-book-gallery-procedures-wrapper"
 			 role="application"
 			 aria-label="Cases Grid"
-			 data-member-id="<?php echo esc_attr( $member_id ); ?>"
+			 data-provider-id="<?php echo esc_attr( (string) $provider_id ); ?>"
 			 data-limit="<?php echo esc_attr( $limit ); ?>"
 			 data-page="1"
 			 data-total="<?php echo esc_attr( $total_cases ); ?>">
@@ -437,7 +438,7 @@ final class Gallery_Handler {
 				// Get image display mode from settings
 				$image_display_mode = get_option( 'brag_book_gallery_image_display_mode', 'single' );
 
-				// Track case IDs to prevent duplicates when filtering by member_id.
+				// Track case IDs to prevent duplicates when filtering by provider_id.
 				$displayed_case_ids = array();
 
 				while ( $cases_query->have_posts() ) :
@@ -538,9 +539,9 @@ final class Gallery_Handler {
 			return;
 		}
 
-		$page      = absint( $_POST['page'] ?? 1 );
-		$limit     = absint( $_POST['limit'] ?? 20 );
-		$member_id = sanitize_text_field( wp_unslash( $_POST['member_id'] ?? '' ) );
+		$page        = absint( $_POST['page'] ?? 1 );
+		$limit       = absint( $_POST['limit'] ?? 20 );
+		$provider_id = absint( $_POST['provider_id'] ?? 0 );
 
 		$offset = ( $page - 1 ) * $limit;
 
@@ -554,14 +555,17 @@ final class Gallery_Handler {
 			'order'          => 'DESC',
 		);
 
-		if ( ! empty( $member_id ) ) {
-			$query_args['meta_query'] = array(
-				array(
-					'key'     => 'brag_book_gallery_member_id',
-					'value'   => $member_id,
-					'compare' => '=',
-				),
-			);
+		// Filter by provider. An unresolved provider_id returns no further cases.
+		if ( $provider_id > 0 ) {
+			$provider_term_ids = self::get_provider_term_ids( $provider_id );
+			if ( empty( $provider_term_ids ) ) {
+				wp_send_json_success( [
+					'html'    => '',
+					'hasMore' => false,
+				] );
+				return;
+			}
+			$query_args['tax_query'] = array( self::build_provider_tax_query( $provider_term_ids ) );
 		}
 
 		$cases_query = new \WP_Query( $query_args );

@@ -30,6 +30,7 @@ namespace BRAGBookGallery\Includes\shortcodes;
 
 use BRAGBookGallery\Includes\Core\Setup;
 use BRAGBookGallery\Includes\Resources\Asset_Manager;
+use BRAGBookGallery\Includes\Shortcodes\Traits\Trait_Provider_Query;
 
 // Prevent direct access.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -69,6 +70,8 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @since 3.0.0
  */
 final class Carousel_Handler {
+
+	use Trait_Provider_Query;
 
 	/**
 	 * Default maximum number of carousel items to display
@@ -172,7 +175,7 @@ final class Carousel_Handler {
 				'start'               => self::DEFAULT_START_INDEX,
 				'procedure_id'        => '',
 				'procedure'           => '', // Legacy support for procedure parameter
-				'member_id'           => '',
+				'provider_id'         => '',
 				'show_controls'       => 'true',
 				'show_pagination'     => 'true',
 				'auto_play'           => 'false',
@@ -341,7 +344,7 @@ final class Carousel_Handler {
 			}
 		}
 
-		$member_id = ! empty( $atts['member_id'] ) ? absint( $atts['member_id'] ) : null;
+		$provider_id = absint( $atts['provider_id'] );
 
 		return [
 			'error'  => false,
@@ -352,7 +355,7 @@ final class Carousel_Handler {
 				'start'               => absint( $atts['start'] ?: self::DEFAULT_START_INDEX ),
 				'procedure_id'        => $procedure_id,
 				'procedure_slug'      => $procedure_slug,
-				'member_id'           => $member_id,
+				'provider_id'         => $provider_id,
 				'show_controls'       => filter_var( $atts['show_controls'] ?? true, FILTER_VALIDATE_BOOLEAN ),
 				'show_pagination'     => filter_var( $atts['show_pagination'] ?? true, FILTER_VALIDATE_BOOLEAN ),
 				'auto_play'           => filter_var( $atts['auto_play'] ?? false, FILTER_VALIDATE_BOOLEAN ),
@@ -853,13 +856,14 @@ final class Carousel_Handler {
 		// Note: Procedure filtering is now handled by get_cases_for_procedure() method
 		// This method provides fallback data when no procedure-specific cases are found
 
-		// Filter by member_id if specified
-		if ( ! empty( $config['member_id'] ) ) {
-			$query_args['meta_query'][] = [
-				'key'     => 'member_id',
-				'value'   => sanitize_text_field( $config['member_id'] ),
-				'compare' => '=',
-			];
+		// Filter by provider if specified (matched against the brag_book_providers
+		// taxonomy assigned to each case).
+		if ( ! empty( $config['provider_id'] ) ) {
+			$provider_term_ids = self::get_provider_term_ids( absint( $config['provider_id'] ) );
+			if ( empty( $provider_term_ids ) ) {
+				return [];
+			}
+			$query_args['tax_query'][] = self::build_provider_tax_query( $provider_term_ids );
 		}
 
 		$query = new \WP_Query( $query_args );

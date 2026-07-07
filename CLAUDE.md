@@ -193,8 +193,10 @@ The plugin follows a modular architecture with clear separation of concerns:
 ### Carousel
 ```
 [brag_book_carousel procedure="arm-lift" limit="5"]
+[brag_book_carousel provider_id="43" limit="5"]
 ```
-- Parameters: `procedure`, `procedure_id`, `member_id`, `limit`, `show_controls`, `show_pagination`, `autoplay`, `autoplay_delay`
+- Parameters: `procedure`, `procedure_id`, `provider_id`, `limit`, `show_controls`, `show_pagination`, `autoplay`, `autoplay_delay`
+- `provider_id`: filters to a single provider (matched against the `brag_book_providers` taxonomy assigned to each case).
 
 ### Cases Grid
 ```
@@ -203,6 +205,13 @@ The plugin follows a modular architecture with clear separation of concerns:
 ```
 - Parameters: `api_token`, `website_property_id`, `procedure_ids`, `provider_id`, `limit`, `page`, `columns`, `show_details`, `class`
 - `provider_id`: filters cases to a single provider (matched against the `brag_book_providers` taxonomy term's `provider_id`/`provider_member_id` meta). Results are capped at 99 cases regardless of the site's global items-per-page setting.
+
+### Procedures Grid
+```
+[brag_book_gallery_procedures provider_id="43" limit="20"]
+```
+- Parameters: `provider_id`, `limit`
+- `provider_id`: filters cases to a single provider (matched against the `brag_book_providers` taxonomy assigned to each case); returns every case the provider appears on, whether primary or secondary. Supports AJAX "load more".
 
 ### Single Case
 ```
