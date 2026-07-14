@@ -92,6 +92,12 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 
 == Changelog ==
 
+= 4.9.2-beta1 =
+* Added: Context-aware next/previous navigation on single case pages. When a visitor arrives from a provider-filtered view (the provider dropdown or a `[brag_book_gallery_procedures provider_id="…"]` grid), the prev/next buttons walk that provider's cases within the current procedure, falling back to provider-wide when there is no procedure context. Navigating from a view without a provider filter resets to the normal procedure navigation.
+* Changed: "Load More" in the `[brag_book_gallery_procedures]` grid now respects the active procedure category on a procedures archive, instead of loading the provider's cases across every category.
+* Changed: Provider syncs now update both the Synced Photo and the Profile Photo, so the Profile Photo always reflects the latest synced image. A manually-chosen Profile Photo is no longer preserved across syncs, and the provider term editor wording has been updated to match.
+* Fixed: Cases assigned to more than one procedure category no longer appear as duplicates in the provider grid, its "Load More" results, or the case previous/next sequence; entries sharing a case ID are collapsed to a single case.
+
 = 4.9.1 =
 * Changed: The `[brag_book_carousel]` and `[brag_book_gallery_procedures]` shortcodes now use a `provider_id` attribute (e.g. `[brag_book_carousel provider_id="43"]`); the former `member_id` attribute has been removed. Cases are matched through the provider taxonomy assigned to each case, so a provider returns every case they appear on, whether primary or secondary.
 * Fixed: Provider filtering on the `[brag_book_carousel]` shortcode, which previously matched an unused meta key and returned no results.

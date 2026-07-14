@@ -4,6 +4,50 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.2-beta1] - 2026-07-14 (Beta Release)
+
+### Added
+
+- **Context-aware case navigation**: The previous/next buttons on a single case
+  now follow the provider the visitor was browsing. Arriving from a provider
+  dropdown selection or a `[brag_book_gallery_procedures provider_id="…"]` grid
+  scopes prev/next to that provider's cases within the current procedure, falling
+  back to provider-wide when no procedure context is present. Navigating from a
+  view without a provider filter resets to the default procedure navigation.
+
+### Changed
+
+- **Category-scoped Load More**: "Load More" in the `[brag_book_gallery_procedures]`
+  grid now respects the active procedure category on a procedures archive rather
+  than pulling the provider's cases across every category.
+- **Provider photo sync**: Every sync now refreshes both the Synced Photo and the
+  Profile Photo so the Profile Photo always reflects the latest synced image; a
+  manually-chosen Profile Photo is no longer preserved across syncs. Provider term
+  editor descriptions were updated to match.
+
+### Fixed
+
+- **Duplicate cases collapsed**: Cases assigned to multiple procedure categories
+  exist as separate posts that share a case ID. They are now de-duplicated
+  (keeping the first) in the provider grid, its Load More pagination, and the case
+  previous/next sequence, so the same case no longer appears twice.
+
+## [4.9.1] - 2026-07-14
+
+### Changed
+
+- **`provider_id` on carousel and procedures shortcodes**: The
+  `[brag_book_carousel]` and `[brag_book_gallery_procedures]` shortcodes now use a
+  `provider_id` attribute (e.g. `[brag_book_carousel provider_id="43"]`); the
+  former `member_id` attribute has been removed. Cases are matched through the
+  provider taxonomy assigned to each case, so a provider returns every case they
+  appear on, whether primary or secondary.
+
+### Fixed
+
+- **Carousel provider filtering**: `[brag_book_carousel]` provider filtering
+  previously matched an unused meta key and returned no results.
+
 ## [4.9.0] - 2026-07-02
 
 ### Added

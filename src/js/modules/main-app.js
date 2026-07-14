@@ -2825,6 +2825,7 @@ class BRAGbookGalleryApp {
 			const currentPage = parseInt(wrapper.dataset.page, 10) || 1;
 			const limit = parseInt(wrapper.dataset.limit, 10) || 20;
 			const providerId = wrapper.dataset.providerId || '';
+			const termId = wrapper.dataset.termId || '';
 			const total = parseInt(wrapper.dataset.total, 10) || 0;
 
 			// Set loading state
@@ -2842,6 +2843,7 @@ class BRAGbookGalleryApp {
 				formData.append('page', currentPage + 1);
 				formData.append('limit', limit);
 				formData.append('provider_id', providerId);
+				formData.append('term_id', termId);
 
 				const response = await fetch(ajaxUrl, {
 					method: 'POST',

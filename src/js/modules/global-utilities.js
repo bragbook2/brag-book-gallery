@@ -16,8 +16,15 @@ import { NudityWarningManager, PhoneFormatter } from './utilities.js';
  * Store the current procedure context when user clicks a case card
  * This allows combo procedures to navigate back to the correct procedure
  */
-window.storeProcedureReferrer = function(procedureSlug, procedureName, procedureUrl, procedureId, termId, caseId, caseWpId) {
+window.storeProcedureReferrer = function(procedureSlug, procedureName, procedureUrl, procedureId, termId, caseId, caseWpId, providerSlug, providerId) {
 	if (!procedureSlug) return;
+
+	// Capture any active provider filter so the case page can navigate within the
+	// provider. When callers don't pass it explicitly, read it from the current
+	// view so every capture path (grid, carousel, archive) benefits automatically.
+	const providerContext = getActiveProviderContext();
+	const resolvedProviderSlug = (providerSlug !== undefined && providerSlug !== null) ? providerSlug : providerContext.slug;
+	const resolvedProviderId = (providerId !== undefined && providerId !== null) ? providerId : providerContext.id;
 
 	const referrer = {
 		'slug': procedureSlug,
@@ -27,11 +34,40 @@ window.storeProcedureReferrer = function(procedureSlug, procedureName, procedure
 		'case-wp-id': caseWpId || null,
 		'procedure-id': procedureId || null,
 		'term-id': termId || null,
+		'provider-slug': resolvedProviderSlug || null,
+		'provider-id': resolvedProviderId || null,
 		'timestamp': Date.now()
 	};
 
 	localStorage.setItem('brag-book-gallery-procedure-referrer', JSON.stringify(referrer));
 };
+
+/**
+ * Read the active provider filter context from the current view.
+ *
+ * An empty slug/id means no provider filter is applied, which resets navigation
+ * to the default procedure behaviour.
+ *
+ * @returns {{slug: string, id: string}}
+ */
+function getActiveProviderContext() {
+	// Interactive provider dropdown: the active option carries the slug
+	// (empty for the "All Providers" reset option).
+	const activeOption = document.querySelector('.brag-book-gallery-provider-filter__option.is-active');
+	const dropdownSlug = activeOption ? (activeOption.dataset.providerSlug || '') : '';
+	if (dropdownSlug) {
+		return { slug: dropdownSlug, id: '' };
+	}
+
+	// Server-rendered provider grid: the wrapper carries the provider API id.
+	const proceduresWrapper = document.querySelector('.brag-book-gallery-procedures-wrapper');
+	const wrapperId = proceduresWrapper ? (proceduresWrapper.dataset.providerId || '') : '';
+	if (wrapperId && wrapperId !== '0') {
+		return { slug: '', id: wrapperId };
+	}
+
+	return { slug: '', id: '' };
+}
 
 /**
  * Get the stored procedure referrer
@@ -79,18 +115,27 @@ window.updateNavigationFromReferrer = function() {
 		backButton.href = referrer.url;
 	}
 
-	// Update next/previous post navigation links
-	updateAdjacentPostLinks(referrer.slug, referrer.termId);
+	// Update next/previous post navigation links, carrying any provider context
+	// so navigation stays within the provider the user was browsing.
+	updateAdjacentPostLinks(
+		referrer.slug,
+		referrer['term-id'],
+		referrer['provider-slug'],
+		referrer['provider-id']
+	);
 };
 
 /**
  * Update next/previous post links to navigate within the referrer procedure
  * @param {string} procedureSlug - The procedure slug to use for navigation
  * @param {number} termId - The WordPress term ID for the procedure
+ * @param {string} [providerSlug] - Active provider taxonomy slug, if any
+ * @param {string} [providerId] - Active provider API id, if any
  */
-function updateAdjacentPostLinks(procedureSlug, termId) {
-	if (!procedureSlug) {
-		console.warn('updateAdjacentPostLinks: No procedure slug provided');
+function updateAdjacentPostLinks(procedureSlug, termId, providerSlug, providerId) {
+	// Provider context can drive navigation on its own, so only bail when there
+	// is neither a procedure nor a provider to navigate within.
+	if (!procedureSlug && !providerSlug && !providerId) {
 		return;
 	}
 
@@ -105,7 +150,7 @@ function updateAdjacentPostLinks(procedureSlug, termId) {
 		return;
 	}
 
-	// Fetch adjacent cases for this procedure via AJAX
+	// Fetch adjacent cases via AJAX, scoped to the provider when one is active.
 	fetchAdjacentCases(procedureSlug, termId, currentPostId, (adjacentCases) => {
 
 		// Update next link if we have a new URL
@@ -119,7 +164,7 @@ function updateAdjacentPostLinks(procedureSlug, termId) {
 			prevLink.href = adjacentCases.prev;
 			prevLink.style.display = '';
 		}
-	});
+	}, providerSlug, providerId);
 }
 
 /**
@@ -149,16 +194,26 @@ function getCurrentPostId() {
  * @param {number} termId - WordPress term ID for the procedure
  * @param {number} currentPostId - Current post ID
  * @param {Function} callback - Callback with adjacent cases data
+ * @param {string} [providerSlug] - Active provider taxonomy slug, if any
+ * @param {string} [providerId] - Active provider API id, if any
  */
-function fetchAdjacentCases(procedureSlug, termId, currentPostId, callback) {
+function fetchAdjacentCases(procedureSlug, termId, currentPostId, callback, providerSlug, providerId) {
 	// Make AJAX call to WordPress admin-ajax.php
 	const formData = new FormData();
 	formData.append('action', 'brag_book_get_adjacent_cases');
-	formData.append('procedure_slug', procedureSlug);
+	if (procedureSlug) {
+		formData.append('procedure_slug', procedureSlug);
+	}
 	if (termId) {
 		formData.append('term_id', termId);
 	}
 	formData.append('post_id', currentPostId);
+	if (providerSlug) {
+		formData.append('provider_slug', providerSlug);
+	}
+	if (providerId) {
+		formData.append('provider_id', providerId);
+	}
 
 	const ajaxUrl = window.bragBookGalleryConfig?.ajaxUrl || '/wp-admin/admin-ajax.php';
 

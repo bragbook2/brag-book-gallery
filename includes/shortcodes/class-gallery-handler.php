@@ -379,45 +379,34 @@ final class Gallery_Handler {
 		// Generate wrapper classes
 		$wrapper_class = self::generate_wrapper_classes();
 
-		// First, get total count of cases
-		$count_args = array(
-			'post_type'      => \BRAGBookGallery\Includes\Extend\Post_Types::POST_TYPE_CASES,
-			'post_status'    => 'publish',
-			'posts_per_page' => -1,
-			'fields'         => 'ids',
+		// Scope to the active procedure category when this grid is rendered on a
+		// procedures archive, so it (and its Load More) only shows cases in the
+		// category being viewed rather than the provider's entire catalogue.
+		$term_id = self::get_active_procedure_term_id();
+
+		// Collapse cases that share a case ID (the same case synced under more
+		// than one category) into a single ordered list, so each case is counted
+		// and paginated exactly once across the initial render and Load More.
+		$unique_post_ids = self::get_ordered_unique_case_post_ids( $provider_tax_query, $term_id );
+		$total_cases     = count( $unique_post_ids );
+
+		if ( 0 === $total_cases ) {
+			return '<p class="brag-book-gallery-error">' . esc_html__( 'No cases available.', 'brag-book-gallery' ) . '</p>';
+		}
+
+		// Render only the first page; the remainder is fetched via Load More.
+		$page_post_ids = array_slice( $unique_post_ids, 0, $limit );
+
+		$cases_query = new \WP_Query(
+			array(
+				'post_type'      => \BRAGBookGallery\Includes\Extend\Post_Types::POST_TYPE_CASES,
+				'post_status'    => 'publish',
+				'post__in'       => $page_post_ids,
+				'orderby'        => 'post__in',
+				'posts_per_page' => count( $page_post_ids ),
+				'no_found_rows'  => true,
+			)
 		);
-
-		if ( $provider_tax_query ) {
-			$count_args['tax_query'] = array( $provider_tax_query );
-		}
-
-		$count_query = new \WP_Query( $count_args );
-		$total_cases = $count_query->found_posts;
-		wp_reset_postdata();
-
-		// Build query arguments for initial load
-		$query_args = array(
-			'post_type'      => \BRAGBookGallery\Includes\Extend\Post_Types::POST_TYPE_CASES,
-			'post_status'    => 'publish',
-			'posts_per_page' => $limit,
-			'orderby'        => 'date',
-			'order'          => 'DESC',
-		);
-
-		// Add provider filter if a provider_id is provided.
-		if ( $provider_tax_query ) {
-			$query_args['tax_query'] = array( $provider_tax_query );
-		}
-
-		$cases_query = new \WP_Query( $query_args );
-
-		if ( ! $cases_query->have_posts() ) {
-			$debug_info = '';
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				$debug_info = '<br><small>Query args: post_type=' . \BRAGBookGallery\Includes\Extend\Post_Types::POST_TYPE_CASES . ', status=publish, posts_per_page=' . $limit . '</small>';
-			}
-			return '<p class="brag-book-gallery-error">' . esc_html__( 'No cases available.', 'brag-book-gallery' ) . $debug_info . '</p>';
-		}
 
 		$has_more = $total_cases > $limit;
 
@@ -428,6 +417,7 @@ final class Gallery_Handler {
 			 role="application"
 			 aria-label="Cases Grid"
 			 data-provider-id="<?php echo esc_attr( (string) $provider_id ); ?>"
+			 data-term-id="<?php echo esc_attr( (string) $term_id ); ?>"
 			 data-limit="<?php echo esc_attr( $limit ); ?>"
 			 data-page="1"
 			 data-total="<?php echo esc_attr( $total_cases ); ?>">
@@ -438,24 +428,9 @@ final class Gallery_Handler {
 				// Get image display mode from settings
 				$image_display_mode = get_option( 'brag_book_gallery_image_display_mode', 'single' );
 
-				// Track case IDs to prevent duplicates when filtering by provider_id.
-				$displayed_case_ids = array();
-
 				while ( $cases_query->have_posts() ) :
 					$cases_query->the_post();
 					$post = get_post();
-
-					$case_id = get_post_meta( $post->ID, 'brag_book_gallery_case_id', true );
-
-					// Skip if this case ID has already been displayed
-					if ( ! empty( $case_id ) && in_array( $case_id, $displayed_case_ids, true ) ) {
-						continue;
-					}
-
-					// Track this case ID.
-					if ( ! empty( $case_id ) ) {
-						$displayed_case_ids[] = $case_id;
-					}
 
 					// Get taxonomy for this case.
 					$procedure_terms = wp_get_post_terms( $post->ID, Taxonomies::TAXONOMY_PROCEDURES );
@@ -542,20 +517,13 @@ final class Gallery_Handler {
 		$page        = absint( $_POST['page'] ?? 1 );
 		$limit       = absint( $_POST['limit'] ?? 20 );
 		$provider_id = absint( $_POST['provider_id'] ?? 0 );
+		$term_id     = absint( $_POST['term_id'] ?? 0 );
 
 		$offset = ( $page - 1 ) * $limit;
 
-		// Build query
-		$query_args = array(
-			'post_type'      => \BRAGBookGallery\Includes\Extend\Post_Types::POST_TYPE_CASES,
-			'post_status'    => 'publish',
-			'posts_per_page' => $limit,
-			'offset'         => $offset,
-			'orderby'        => 'date',
-			'order'          => 'DESC',
-		);
-
-		// Filter by provider. An unresolved provider_id returns no further cases.
+		// Resolve the provider filter. An unresolved provider_id returns no
+		// further cases rather than silently widening to every provider.
+		$provider_tax_query = null;
 		if ( $provider_id > 0 ) {
 			$provider_term_ids = self::get_provider_term_ids( $provider_id );
 			if ( empty( $provider_term_ids ) ) {
@@ -565,12 +533,17 @@ final class Gallery_Handler {
 				] );
 				return;
 			}
-			$query_args['tax_query'] = array( self::build_provider_tax_query( $provider_term_ids ) );
+			$provider_tax_query = self::build_provider_tax_query( $provider_term_ids );
 		}
 
-		$cases_query = new \WP_Query( $query_args );
+		// Build the ordered, de-duplicated list scoped to the provider and the
+		// active category, then slice the requested page from it so pagination
+		// and duplicate collapsing stay consistent with the initial render.
+		$unique_post_ids = self::get_ordered_unique_case_post_ids( $provider_tax_query, $term_id );
+		$total_cases     = count( $unique_post_ids );
+		$page_post_ids   = array_slice( $unique_post_ids, $offset, $limit );
 
-		if ( ! $cases_query->have_posts() ) {
+		if ( empty( $page_post_ids ) ) {
 			wp_send_json_success( [
 				'html'    => '',
 				'hasMore' => false,
@@ -578,24 +551,23 @@ final class Gallery_Handler {
 			return;
 		}
 
+		$cases_query = new \WP_Query(
+			array(
+				'post_type'      => \BRAGBookGallery\Includes\Extend\Post_Types::POST_TYPE_CASES,
+				'post_status'    => 'publish',
+				'post__in'       => $page_post_ids,
+				'orderby'        => 'post__in',
+				'posts_per_page' => count( $page_post_ids ),
+				'no_found_rows'  => true,
+			)
+		);
+
 		$html = '';
 		$image_display_mode = get_option( 'brag_book_gallery_image_display_mode', 'single' );
-		$displayed_case_ids = array();
 
 		while ( $cases_query->have_posts() ) {
 			$cases_query->the_post();
 			$post = get_post();
-
-			$case_id = get_post_meta( $post->ID, 'brag_book_gallery_case_id', true );
-
-			// Skip duplicates
-			if ( ! empty( $case_id ) && in_array( $case_id, $displayed_case_ids, true ) ) {
-				continue;
-			}
-
-			if ( ! empty( $case_id ) ) {
-				$displayed_case_ids[] = $case_id;
-			}
 
 			// Get taxonomy for this case.
 			$procedure_terms    = wp_get_post_terms( $post->ID, Taxonomies::TAXONOMY_PROCEDURES );
@@ -640,9 +612,9 @@ final class Gallery_Handler {
 
 		wp_reset_postdata();
 
-		// Check if there are more
-		$total_cases   = $cases_query->found_posts;
-		$loaded_so_far = $offset + $cases_query->post_count;
+		// Pagination is derived from the de-duplicated total, not the raw post
+		// count, so collapsed duplicates never leave a dangling Load More.
+		$loaded_so_far = $offset + count( $page_post_ids );
 		$has_more      = $loaded_so_far < $total_cases;
 
 		wp_send_json_success( [
@@ -652,6 +624,24 @@ final class Gallery_Handler {
 			'loaded'  => $loaded_so_far,
 			'total'   => $total_cases,
 		] );
+	}
+
+	/**
+	 * Resolve the active procedure category term ID for the current request.
+	 *
+	 * When the procedures grid is rendered on a procedures taxonomy archive the
+	 * queried term scopes the grid to that category; elsewhere there is no active
+	 * category and the provider filter (if any) stands alone.
+	 *
+	 * @return int Active procedure term ID, or 0 when not on a procedures archive.
+	 * @since 4.9.2
+	 */
+	private static function get_active_procedure_term_id(): int {
+		if ( ! is_tax( Taxonomies::TAXONOMY_PROCEDURES ) ) {
+			return 0;
+		}
+
+		return absint( get_queried_object_id() );
 	}
 
 	/**

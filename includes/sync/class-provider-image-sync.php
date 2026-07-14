@@ -110,7 +110,7 @@ class Provider_Image_Sync {
 
 		update_term_meta( $term_id, self::META_SYNCED_ATTACHMENT, $attachment_id );
 		update_term_meta( $term_id, self::META_SYNCED_SOURCE, $source_path );
-		self::apply_attachment( $term_id, $attachment_id, $tracked_id );
+		self::apply_attachment( $term_id, $attachment_id );
 	}
 
 	/**
@@ -135,25 +135,22 @@ class Provider_Image_Sync {
 	/**
 	 * Point the term's image meta and Profile Photo at the local attachment.
 	 *
-	 * The Profile Photo is only set when it is empty or still references the
-	 * attachment a previous sync created, so a manually-chosen photo is kept.
+	 * Both the Synced Photo URL and the Profile Photo are refreshed on every
+	 * sync so they always reflect the latest synced image, overwriting any
+	 * manually-chosen Profile Photo.
 	 *
 	 * @since 4.8.0
-	 * @param int $term_id            Provider term ID.
-	 * @param int $attachment_id      Local attachment to apply.
-	 * @param int $previous_synced_id Attachment a prior sync had set, if any.
+	 * @param int $term_id       Provider term ID.
+	 * @param int $attachment_id Local attachment to apply.
 	 * @return void
 	 */
-	private static function apply_attachment( int $term_id, int $attachment_id, int $previous_synced_id = 0 ): void {
+	private static function apply_attachment( int $term_id, int $attachment_id ): void {
 		$local_url = wp_get_attachment_url( $attachment_id );
 		if ( is_string( $local_url ) && '' !== $local_url ) {
 			update_term_meta( $term_id, self::META_IMAGE_URL, $local_url );
 		}
 
-		$current_photo = (int) get_term_meta( $term_id, self::META_PROFILE_PHOTO, true );
-		if ( 0 === $current_photo || $current_photo === $previous_synced_id ) {
-			update_term_meta( $term_id, self::META_PROFILE_PHOTO, $attachment_id );
-		}
+		update_term_meta( $term_id, self::META_PROFILE_PHOTO, $attachment_id );
 	}
 
 	/**

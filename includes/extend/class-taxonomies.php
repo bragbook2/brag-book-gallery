@@ -789,7 +789,7 @@ class Taxonomies {
 				<?php esc_html_e( 'Remove Photo', 'brag-book-gallery' ); ?>
 			</button>
 			<div id="provider_photo_preview" style="margin-top: 10px;"></div>
-			<p class="description"><?php esc_html_e( 'Profile photo for this provider', 'brag-book-gallery' ); ?></p>
+			<p class="description"><?php esc_html_e( 'Profile photo for this provider. Each sync overwrites this with the photo from the BRAGBook API, so manual changes are replaced on the next sync.', 'brag-book-gallery' ); ?></p>
 		</div>
 		<?php
 	}
@@ -876,7 +876,7 @@ class Taxonomies {
 			<td>
 				<?php if ( ! empty( $image_url ) ) : ?>
 					<img src="<?php echo esc_url( $image_url ); ?>" alt="" style="max-width:150px;height:auto;border-radius:50%;" />
-					<p class="description"><?php esc_html_e( 'Downloaded from the BRAGBook API into the media library during sync and used as this provider\'s photo. It is shown in preference to a manually-uploaded photo below.', 'brag-book-gallery' ); ?></p>
+					<p class="description"><?php esc_html_e( 'Downloaded from the BRAGBook API into the media library during sync. The Profile Photo below is set to this image on every sync.', 'brag-book-gallery' ); ?></p>
 				<?php else : ?>
 					<p class="description"><?php esc_html_e( 'No photo has been synced from the API for this provider.', 'brag-book-gallery' ); ?></p>
 				<?php endif; ?>
@@ -941,7 +941,7 @@ class Taxonomies {
 						?>
 					<?php endif; ?>
 				</div>
-				<p class="description"><?php esc_html_e( 'Profile photo for this provider', 'brag-book-gallery' ); ?></p>
+				<p class="description"><?php esc_html_e( 'Profile photo for this provider. Each sync overwrites this with the latest Synced Photo above, so manual changes are replaced on the next sync.', 'brag-book-gallery' ); ?></p>
 			</td>
 		</tr>
 		<?php

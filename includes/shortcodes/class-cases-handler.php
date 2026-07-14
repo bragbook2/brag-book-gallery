@@ -2933,6 +2933,10 @@ final class Cases_Handler {
 		$term_id         = isset( $_POST['term_id'] ) ? absint( $_POST['term_id'] ) : 0;
 		// phpcs:ignore WordPress.Security.NonceVerification.Missing
 		$current_post_id = isset( $_POST['post_id'] ) ? absint( $_POST['post_id'] ) : 0;
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$provider_slug   = isset( $_POST['provider_slug'] ) ? sanitize_title( wp_unslash( $_POST['provider_slug'] ) ) : '';
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$provider_id     = isset( $_POST['provider_id'] ) ? absint( $_POST['provider_id'] ) : 0;
 
 		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'AJAX Adjacent Cases - Procedure: ' . $procedure_slug . ', Term ID: ' . $term_id . ', Post ID: ' . $current_post_id );
@@ -2953,6 +2957,41 @@ final class Cases_Handler {
 			wp_send_json_error( [ 'message' => 'Invalid post ID: ' . $current_post_id ] );
 			return;
 		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+		}
+
+		// Provider context: when the user arrived from a provider-filtered view,
+		// navigate within the provider's cases, scoped to the current procedure
+		// when a term is supplied and provider-wide otherwise. Absent provider
+		// context falls through to the default procedure navigation below.
+		$provider_term_ids = array();
+		if ( '' !== $provider_slug ) {
+			$provider_term = get_term_by( 'slug', $provider_slug, Taxonomies::TAXONOMY_PROVIDERS );
+			if ( $provider_term instanceof \WP_Term ) {
+				$provider_term_ids = array( $provider_term->term_id );
+			}
+		} elseif ( $provider_id > 0 ) {
+			$provider_term_ids = self::get_provider_term_ids( $provider_id );
+		}
+
+		if ( ! empty( $provider_term_ids ) ) {
+			// Scope to the current procedure when one can be resolved (term_id, or
+			// the procedure slug from the source view); otherwise navigate across
+			// all of the provider's cases.
+			$procedure_term_id = $term_id;
+			if ( $procedure_term_id <= 0 && '' !== $procedure_slug ) {
+				$slug_term = get_term_by( 'slug', $procedure_slug, Taxonomies::TAXONOMY_PROCEDURES );
+				if ( $slug_term instanceof \WP_Term ) {
+					$procedure_term_id = $slug_term->term_id;
+				}
+			}
+
+			$provider_case_ids = self::get_ordered_unique_case_post_ids(
+				self::build_provider_tax_query( $provider_term_ids ),
+				$procedure_term_id
+			);
+
+			wp_send_json_success( self::resolve_adjacent_urls( $provider_case_ids, $current_post_id ) );
+			return;
 		}
 
 		// Get the procedure term - prefer term_id if provided, otherwise fallback to slug lookup
@@ -3024,58 +3063,52 @@ final class Cases_Handler {
 			error_log( 'AJAX Adjacent Cases - Fallback to query, found ' . count( $case_ids ) . ' cases' );
 		}
 
-		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-		$current_key = array_search( $current_post_id, $case_ids );
+		$case_ids = array_map( 'intval', $case_ids );
 
-		$next_url = null;
-		$prev_url = null;
+		wp_send_json_success( self::resolve_adjacent_urls( $case_ids, $current_post_id ) );
+	}
 
-		if ( $current_key === false ) {
-			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'AJAX Adjacent Cases - Current case not found in procedure case order list' );
-			wp_send_json_success( [
-				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				'next'    => null,
-				'prev'    => null,
-				'message' => 'Case not found in this procedure',
-			] );
-			return;
+	/**
+	 * Resolve the previous/next case URLs for a post within an ordered ID list.
+	 *
+	 * Shared by the procedure and provider navigation paths. Returns null for an
+	 * edge of the list (or an unknown current case) so the caller leaves the
+	 * existing link in place rather than breaking navigation.
+	 *
+	 * @since 4.9.2
+	 * @param int[] $case_ids        Ordered case post IDs.
+	 * @param int   $current_post_id The case currently being viewed.
+	 * @return array{next: string|null, prev: string|null}
+	 */
+	private static function resolve_adjacent_urls( array $case_ids, int $current_post_id ): array {
+		$current_key = array_search( $current_post_id, $case_ids, true );
+
+		if ( false === $current_key ) {
+			return [ 'next' => null, 'prev' => null ];
 		}
 
-		// Get gallery page slug for URL construction
-		$gallery_slug = get_option( 'brag_book_gallery_page_slug', 'gallery' );
-
-		// Get next case
-		if ( isset( $case_ids[ $current_key + 1 ] ) ) {
-			$next_post_id = $case_ids[ $current_key + 1 ];
-			// Use WordPress permalink for absolute URL
-			$next_url = get_permalink( $next_post_id );
-			// Ensure absolute URL with domain
-			if ( ! preg_match( '/^https?:\/\//', $next_url ) ) {
-				$next_url = home_url( wp_make_link_relative( $next_url ) );
+		$to_url = static function ( ?int $post_id ): ?string {
+			if ( empty( $post_id ) ) {
+				return null;
 			}
-			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'AJAX Adjacent Cases - Next case ID: ' . $next_post_id . ', URL: ' . $next_url );
-		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-		}
 
-		// Get previous case
-		if ( isset( $case_ids[ $current_key - 1 ] ) ) {
-			$prev_post_id = $case_ids[ $current_key - 1 ];
-			// Use WordPress permalink for absolute URL
-			$prev_url = get_permalink( $prev_post_id );
-			// Ensure absolute URL with domain
-			if ( ! preg_match( '/^https?:\/\//', $prev_url ) ) {
-				$prev_url = home_url( wp_make_link_relative( $prev_url ) );
+			$url = get_permalink( $post_id );
+			if ( ! $url ) {
+				return null;
 			}
-			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'AJAX Adjacent Cases - Prev case ID: ' . $prev_post_id . ', URL: ' . $prev_url );
-		}
 
-		wp_send_json_success( [
-			'next' => $next_url,
-			'prev' => $prev_url,
-		] );
+			// Force an absolute URL even when a plugin filters permalinks to be relative.
+			if ( ! preg_match( '/^https?:\/\//', $url ) ) {
+				$url = home_url( wp_make_link_relative( $url ) );
+			}
+
+			return $url;
+		};
+
+		return [
+			'next' => $to_url( $case_ids[ $current_key + 1 ] ?? null ),
+			'prev' => $to_url( $case_ids[ $current_key - 1 ] ?? null ),
+		];
 	}
 
 	/**
