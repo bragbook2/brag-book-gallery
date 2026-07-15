@@ -92,6 +92,12 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 
 == Changelog ==
 
+= 4.9.2-beta2 =
+* Added: Small, medium and full image variants are now captured from the v2 cases API and stored per case. The gallery grid, case carousels and single-case view render a responsive `srcset` so browsers load an appropriately sized image (grid cards favour the smaller variants; the case detail viewer uses the full image and its thumbnails use the small variant). Variants that the API has not generated yet fall back to the full-size image.
+* Added: The case editor's "Image URLs" section is now an editable, tabbed interface with per-variant (full/medium/small) fields and thumbnail previews. The API Case Data meta-box tabs now work and follow the WordPress admin colour scheme.
+* Changed: "Load More" on the main gallery and the `[brag_book_gallery_cases]` shortcode now paginates within the active view. Selecting a provider loads only that provider's cases, entering a location loads only cases within 50 (widening to 100) miles, and on a procedure page the current procedure is combined with either. The provider filter and location search paginate through the same ordered result set instead of loading everything at once.
+* Fixed: Provider-filtered case cards now carry their procedure context, so provider-scoped previous/next navigation works when arriving from the provider dropdown.
+
 = 4.9.2-beta1 =
 * Added: Context-aware next/previous navigation on single case pages. When a visitor arrives from a provider-filtered view (the provider dropdown or a `[brag_book_gallery_procedures provider_id="…"]` grid), the prev/next buttons walk that provider's cases within the current procedure, falling back to provider-wide when there is no procedure context. Navigating from a view without a provider filter resets to the normal procedure navigation.
 * Changed: "Load More" in the `[brag_book_gallery_procedures]` grid now respects the active procedure category on a procedures archive, instead of loading the provider's cases across every category.

@@ -93,6 +93,58 @@ class Changelog_Page extends Settings_Base {
 				</div>
 			</div>
 
+			<!-- Version 4.9.2-beta2 -->
+			<div class="brag-book-gallery-section">
+				<div class="brag-book-gallery-changelog-version">
+					<h3>
+						<span class="version-badge version-beta">v4.9.2-beta2</span>
+						<?php esc_html_e( 'July 15, 2026', 'brag-book-gallery' ); ?>
+					</h3>
+					<div class="brag-book-gallery-card">
+						<p><?php esc_html_e( 'Adds responsive image variants with srcset rendering and an editable image-URL editor, and makes gallery "Load More" respect the active provider, location and procedure context.', 'brag-book-gallery' ); ?></p>
+						<h4><?php esc_html_e( '✨ Added', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Small, medium and full image variants are captured from the v2 cases API and stored per case. The gallery grid, case carousels and single-case view render a responsive srcset (grid cards favour smaller variants; the case viewer uses the full image and its thumbnails use the small variant). Variants the API has not generated yet fall back to the full-size image.', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'The case editor\'s Image URLs section is now an editable, tabbed interface with per-variant (full/medium/small) fields and thumbnail previews. The API Case Data meta-box tabs now work and follow the WordPress admin colour scheme.', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '🔧 Changed', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Load More on the main gallery and the [brag_book_gallery_cases] shortcode now paginates within the active view. A selected provider loads only that provider\'s cases, an entered location loads only cases within 50 (widening to 100) miles, and on a procedure page the current procedure is combined with either. The provider filter and location search paginate through the same ordered result set instead of loading everything at once.', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '🐛 Fixed', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Provider-filtered case cards now carry their procedure context, so provider-scoped previous/next navigation works when arriving from the provider dropdown.', 'brag-book-gallery' ); ?></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
+			<!-- Version 4.9.2-beta1 -->
+			<div class="brag-book-gallery-section">
+				<div class="brag-book-gallery-changelog-version">
+					<h3>
+						<span class="version-badge version-beta">v4.9.2-beta1</span>
+						<?php esc_html_e( 'July 14, 2026', 'brag-book-gallery' ); ?>
+					</h3>
+					<div class="brag-book-gallery-card">
+						<p><?php esc_html_e( 'Adds context-aware previous/next navigation within a provider, scopes the procedures grid Load More to the active category, and fixes duplicate cases across procedure categories.', 'brag-book-gallery' ); ?></p>
+						<h4><?php esc_html_e( '✨ Added', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Context-aware next/previous navigation on single case pages. When a visitor arrives from a provider-filtered view (the provider dropdown or a [brag_book_gallery_procedures provider_id="…"] grid), the prev/next buttons walk that provider\'s cases within the current procedure, falling back to provider-wide when there is no procedure context. Navigating from a view without a provider filter resets to the normal procedure navigation.', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '🔧 Changed', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Load More in the [brag_book_gallery_procedures] grid now respects the active procedure category on a procedures archive, instead of loading the provider\'s cases across every category.', 'brag-book-gallery' ); ?></li>
+							<li><?php esc_html_e( 'Provider syncs now update both the Synced Photo and the Profile Photo, so the Profile Photo always reflects the latest synced image. A manually chosen Profile Photo is no longer preserved across syncs.', 'brag-book-gallery' ); ?></li>
+						</ul>
+						<h4><?php esc_html_e( '🐛 Fixed', 'brag-book-gallery' ); ?></h4>
+						<ul>
+							<li><?php esc_html_e( 'Cases assigned to more than one procedure category no longer appear as duplicates in the provider grid, its Load More results, or the case previous/next sequence; entries sharing a case ID are collapsed to a single case.', 'brag-book-gallery' ); ?></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+
 			<!-- Version 4.9.1 -->
 			<div class="brag-book-gallery-section">
 				<div class="brag-book-gallery-changelog-version">

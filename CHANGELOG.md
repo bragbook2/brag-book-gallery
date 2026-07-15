@@ -4,6 +4,38 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.2-beta2] - 2026-07-15 (Beta Release)
+
+### Added
+
+- **Responsive image variants**: Small, medium and full image variants are now
+  captured from the v2 cases API and stored per case
+  (`brag_book_gallery_case_image_variants`, with the legacy flat URL keys kept as
+  a derived compatibility layer). The gallery grid, case carousels and single-case
+  view render a responsive `srcset` — grid cards favour the smaller variants, the
+  case detail viewer uses the full image and its thumbnails use the small variant.
+  Variants the API has not generated yet fall back to the full-size image.
+- **Editable image-URL editor**: The case editor's "Image URLs" section is now an
+  editable, tabbed interface with per-variant (full/medium/small) fields and
+  thumbnail previews. The API Case Data meta-box tabs now function and follow the
+  WordPress admin colour scheme.
+
+### Changed
+
+- **Context-aware Load More**: "Load More" on the main gallery and the
+  `[brag_book_gallery_cases]` shortcode now paginates within the active view. A
+  selected provider loads only that provider's cases, an entered location loads
+  only cases within 50 (widening to 100) miles, and on a procedure page the
+  current procedure is combined with either. The provider filter and location
+  search paginate through the same ordered result set via a shared context pager
+  instead of loading everything at once.
+
+### Fixed
+
+- **Provider previous/next navigation**: Provider-filtered case cards now carry
+  their procedure context (`data-current-term-id`), so provider-scoped
+  previous/next navigation works when arriving from the provider dropdown.
+
 ## [4.9.2-beta1] - 2026-07-14 (Beta Release)
 
 ### Added
