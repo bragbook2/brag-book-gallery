@@ -38,19 +38,11 @@ class Location_Search {
 	private const AJAX_ACTION = 'brag_book_gallery_location_search';
 
 	/**
-	 * Default search radius in miles.
+	 * Default search radius in miles, advertised to the client script. The
+	 * authoritative radius (and the 50→100 mile widening) is applied server-side
+	 * by the shared context pager.
 	 */
 	private const DEFAULT_RADIUS_MILES = 50;
-
-	/**
-	 * Fallback radius in miles, used when nothing is within the default radius.
-	 */
-	private const EXTENDED_RADIUS_MILES = 100;
-
-	/**
-	 * Mean radius of the Earth in miles (for the Haversine formula).
-	 */
-	private const EARTH_RADIUS_MILES = 3958.8;
 
 	/**
 	 * Register hooks for the location search.
@@ -61,7 +53,7 @@ class Location_Search {
 	public static function register(): void {
 		add_action( 'wp_ajax_' . self::AJAX_ACTION, [ self::class, 'ajax_search' ] );
 		add_action( 'wp_ajax_nopriv_' . self::AJAX_ACTION, [ self::class, 'ajax_search' ] );
-		add_action( 'wp_enqueue_scripts', [ self::class, 'enqueue_assets' ] );
+		add_action( 'wp_enqueue_scripts', [ self::class, 'register_assets' ] );
 	}
 
 	/**
@@ -89,18 +81,23 @@ class Location_Search {
 	}
 
 	/**
-	 * Enqueue the location search script and Google Maps Places library.
+	 * Register the location search script and Google Maps Places library.
+	 *
+	 * Registered (not enqueued) here so the assets load only where the widget is
+	 * actually rendered. {@see render_search()} enqueues them on demand, which
+	 * keeps the (billable) Google Maps API off case views and every other page
+	 * that has no location search to drive.
 	 *
 	 * @since 4.7.0
 	 * @return void
 	 */
-	public static function enqueue_assets(): void {
+	public static function register_assets(): void {
 		if ( ! self::is_enabled() ) {
 			return;
 		}
 
 		// Google Maps JS API — Places library only (distance is computed server-side).
-		wp_enqueue_script(
+		wp_register_script(
 			'brag-book-google-maps',
 			'https://maps.googleapis.com/maps/api/js?' . http_build_query( [
 				'key'       => self::get_api_key(),
@@ -114,7 +111,7 @@ class Location_Search {
 
 		$suffix = ( defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ) ? '' : '.min';
 
-		wp_enqueue_script(
+		wp_register_script(
 			'brag-book-gallery-location-search',
 			Setup::get_asset_url( 'assets/js/brag-book-gallery-location-search' . $suffix . '.js' ),
 			[],
@@ -133,6 +130,20 @@ class Location_Search {
 				'placeholder'   => __( 'Enter location...', 'brag-book-gallery' ),
 			]
 		);
+	}
+
+	/**
+	 * Enqueue the previously-registered location search assets.
+	 *
+	 * Called from {@see render_search()} so Google Maps and the search script
+	 * load only on views that render the widget.
+	 *
+	 * @since 4.7.0
+	 * @return void
+	 */
+	private static function enqueue_assets(): void {
+		wp_enqueue_script( 'brag-book-google-maps' );
+		wp_enqueue_script( 'brag-book-gallery-location-search' );
 	}
 
 	/**
@@ -173,6 +184,10 @@ class Location_Search {
 		if ( '' === $procedure_slug ) {
 			return '';
 		}
+
+		// Committed to rendering the widget — load its assets now, so Google Maps
+		// only loads on views that actually have a location search.
+		self::enqueue_assets();
 
 		ob_start();
 		?>
@@ -241,306 +256,30 @@ class Location_Search {
 			? sanitize_title( wp_unslash( $_POST['procedure'] ) )
 			: '';
 
-		$case_ids = self::get_candidate_case_ids( $procedure_slug );
-		if ( empty( $case_ids ) ) {
-			wp_send_json_success( self::empty_response( self::DEFAULT_RADIUS_MILES, 0 ) );
-		}
+		$page     = max( 1, absint( $_POST['page'] ?? 1 ) );
+		$per_page = absint( get_option( 'brag_book_gallery_items_per_page', '200' ) );
 
-		$distances = self::distances_by_case( $case_ids, $lat, $lng );
-
-		list( $matched_ids, $used_radius ) = self::filter_by_radius( $distances );
-
-		if ( empty( $matched_ids ) ) {
-			wp_send_json_success( self::empty_response( self::EXTENDED_RADIUS_MILES, count( $case_ids ) ) );
-		}
+		// Delegate to the shared, context-aware pager so the location results
+		// paginate and order identically to the "load more" button that continues
+		// them. The context carries the location, so distance scoping/sorting and
+		// the 50→100 mile widening happen inside the shared resolver.
+		$result = Cases_Handler::render_context_page(
+			[
+				'procedure_slug' => $procedure_slug,
+				'lat'            => $lat,
+				'lng'            => $lng,
+			],
+			$page,
+			$per_page
+		);
 
 		wp_send_json_success( [
-			'html'   => self::render_matched_cases( $matched_ids, $procedure_slug, $distances ),
-			'count'  => count( $matched_ids ),
-			'radius' => $used_radius,
-			'total'  => count( $case_ids ),
+			'html'    => $result['html'],
+			'count'   => $result['total'],
+			'total'   => $result['total'],
+			'radius'  => $result['radius'],
+			'hasMore' => $result['has_more'],
+			'page'    => $page,
 		] );
-	}
-
-	/**
-	 * Build a no-results success payload.
-	 *
-	 * @since 4.7.0
-	 * @param int $radius The radius (miles) that was searched.
-	 * @param int $total  Total candidate cases considered.
-	 * @return array{html:string,count:int,radius:int,total:int}
-	 */
-	private static function empty_response( int $radius, int $total ): array {
-		return [
-			'html'   => '',
-			'count'  => 0,
-			'radius' => $radius,
-			'total'  => $total,
-		];
-	}
-
-	/**
-	 * Resolve the candidate case IDs, optionally scoped to a procedure.
-	 *
-	 * @since 4.7.0
-	 * @param string $procedure_slug Optional procedures taxonomy slug.
-	 * @return int[] Published case post IDs.
-	 */
-	private static function get_candidate_case_ids( string $procedure_slug ): array {
-		$args = [
-			'post_type'              => Post_Types::POST_TYPE_CASES,
-			'post_status'            => 'publish',
-			'posts_per_page'         => -1,
-			'fields'                 => 'ids',
-			'no_found_rows'          => true,
-			'update_post_meta_cache' => false,
-		];
-
-		if ( '' !== $procedure_slug ) {
-			$args['tax_query'] = [
-				[
-					'taxonomy' => Taxonomies::TAXONOMY_PROCEDURES,
-					'field'    => 'slug',
-					'terms'    => $procedure_slug,
-				],
-			];
-		}
-
-		return array_map( 'intval', get_posts( $args ) );
-	}
-
-	/**
-	 * Compute the nearest associated practice distance (miles) for each case.
-	 *
-	 * Cases with no geocoded practice are omitted from the result.
-	 *
-	 * @since 4.7.0
-	 * @param int[] $case_ids Candidate case post IDs.
-	 * @param float $lat      Search latitude.
-	 * @param float $lng      Search longitude.
-	 * @return array<int,float> Map of case ID to nearest distance in miles.
-	 */
-	private static function distances_by_case( array $case_ids, float $lat, float $lng ): array {
-		$geo_map    = self::build_provider_practice_geo_map();
-		$case_terms = self::map_cases_to_provider_terms( $case_ids );
-		$distances  = [];
-
-		foreach ( $case_ids as $case_id ) {
-			$nearest = null;
-
-			foreach ( $case_terms[ $case_id ] ?? [] as $term_id ) {
-				foreach ( $geo_map[ $term_id ] ?? [] as $coord ) {
-					$distance = self::haversine_miles( $lat, $lng, $coord[0], $coord[1] );
-					if ( null === $nearest || $distance < $nearest ) {
-						$nearest = $distance;
-					}
-				}
-			}
-
-			if ( null !== $nearest ) {
-				$distances[ $case_id ] = $nearest;
-			}
-		}
-
-		return $distances;
-	}
-
-	/**
-	 * Map provider terms to the coordinates of their linked practices.
-	 *
-	 * @since 4.7.0
-	 * @return array<int,array<int,array{0:float,1:float}>> provider term ID => list of [lat, lng].
-	 */
-	private static function build_provider_practice_geo_map(): array {
-		$practice_ids = get_posts( [
-			'post_type'              => Post_Types::POST_TYPE_PRACTICES,
-			'post_status'            => 'publish',
-			'posts_per_page'         => -1,
-			'fields'                 => 'ids',
-			'no_found_rows'          => true,
-			'update_post_meta_cache' => false,
-		] );
-
-		$map = [];
-
-		foreach ( $practice_ids as $practice_id ) {
-			$lat = get_post_meta( $practice_id, 'brag_book_gallery_practice_latitude', true );
-			$lng = get_post_meta( $practice_id, 'brag_book_gallery_practice_longitude', true );
-
-			if ( '' === $lat || '' === $lng ) {
-				continue;
-			}
-
-			$coord = [ (float) $lat, (float) $lng ];
-
-			$term_ids = wp_get_post_terms( $practice_id, Taxonomies::TAXONOMY_PROVIDERS, [ 'fields' => 'ids' ] );
-			if ( is_wp_error( $term_ids ) ) {
-				continue;
-			}
-
-			foreach ( $term_ids as $term_id ) {
-				$map[ (int) $term_id ][] = $coord;
-			}
-		}
-
-		return $map;
-	}
-
-	/**
-	 * Map each case to its assigned provider term IDs in a single query.
-	 *
-	 * @since 4.7.0
-	 * @param int[] $case_ids Candidate case post IDs.
-	 * @return array<int,int[]> Map of case ID to provider term IDs.
-	 */
-	private static function map_cases_to_provider_terms( array $case_ids ): array {
-		$terms = wp_get_object_terms(
-			$case_ids,
-			Taxonomies::TAXONOMY_PROVIDERS,
-			[ 'fields' => 'all_with_object_id' ]
-		);
-
-		if ( is_wp_error( $terms ) ) {
-			return [];
-		}
-
-		$map = [];
-		foreach ( $terms as $term ) {
-			$map[ (int) $term->object_id ][] = (int) $term->term_id;
-		}
-
-		return $map;
-	}
-
-	/**
-	 * Filter cases to the default radius, widening to the extended radius when
-	 * the default returns nothing. Results are ordered nearest-first.
-	 *
-	 * @since 4.7.0
-	 * @param array<int,float> $distances Map of case ID to distance in miles.
-	 * @return array{0:int[],1:int} Ordered matched case IDs and the radius used.
-	 */
-	private static function filter_by_radius( array $distances ): array {
-		asort( $distances );
-
-		$within_default = array_keys(
-			array_filter( $distances, static fn( float $miles ): bool => $miles <= self::DEFAULT_RADIUS_MILES )
-		);
-		if ( ! empty( $within_default ) ) {
-			return [ $within_default, self::DEFAULT_RADIUS_MILES ];
-		}
-
-		$within_extended = array_keys(
-			array_filter( $distances, static fn( float $miles ): bool => $miles <= self::EXTENDED_RADIUS_MILES )
-		);
-
-		return [ $within_extended, self::EXTENDED_RADIUS_MILES ];
-	}
-
-	/**
-	 * Render the matched case cards in distance order.
-	 *
-	 * Uses the same renderer as the procedure gallery grid so the results honour
-	 * the configured card design (default / v2 / v3), with a distance badge added.
-	 *
-	 * @since 4.7.0
-	 * @param int[]            $case_ids       Ordered (nearest-first) case post IDs.
-	 * @param string           $procedure_slug Procedure context the search is scoped to.
-	 * @param array<int,float> $distances      Map of case ID to nearest distance in miles.
-	 * @return string Concatenated case card HTML.
-	 */
-	private static function render_matched_cases( array $case_ids, string $procedure_slug, array $distances ): string {
-		$image_display_mode = (string) get_option( 'brag_book_gallery_image_display_mode', 'single' );
-
-		// Display name for the procedure the search is scoped to, matching the
-		// procedure context the gallery grid passes to the card renderer.
-		$term           = get_term_by( 'slug', $procedure_slug, Taxonomies::TAXONOMY_PROCEDURES );
-		$procedure_name = $term instanceof \WP_Term ? $term->name : '';
-
-		$html = '';
-
-		foreach ( $case_ids as $case_id ) {
-			$post = get_post( $case_id );
-			if ( ! $post instanceof \WP_Post ) {
-				continue;
-			}
-
-			$distance_label = isset( $distances[ $case_id ] )
-				? self::format_distance( $distances[ $case_id ] )
-				: '';
-
-			$html .= Cases_Handler::render_wordpress_case_card(
-				Cases_Handler::build_case_data_from_post( $post ),
-				$image_display_mode,
-				self::case_has_nudity( $case_id ),
-				$procedure_name,
-				'',
-				'',
-				$distance_label
-			);
-		}
-
-		return $html;
-	}
-
-	/**
-	 * Format a distance in miles as a human-readable, localized label.
-	 *
-	 * Distances under 10 miles keep one decimal of precision ("3.4 miles away");
-	 * larger distances round to whole miles ("42 miles away").
-	 *
-	 * @since 4.7.0
-	 * @param float $miles Distance in miles.
-	 * @return string Localized distance label.
-	 */
-	private static function format_distance( float $miles ): string {
-		$display = $miles < 10.0
-			? number_format_i18n( $miles, 1 )
-			: number_format_i18n( round( $miles ) );
-
-		/* translators: %s: distance in miles (e.g. "3.4"). */
-		return sprintf( _n( '%s mile away', '%s miles away', (int) round( $miles ), 'brag-book-gallery' ), $display );
-	}
-
-	/**
-	 * Whether any of a case's procedures are flagged for nudity.
-	 *
-	 * @since 4.7.0
-	 * @param int $case_id The case post ID.
-	 * @return bool
-	 */
-	private static function case_has_nudity( int $case_id ): bool {
-		$term_ids = wp_get_post_terms( $case_id, Taxonomies::TAXONOMY_PROCEDURES, [ 'fields' => 'ids' ] );
-		if ( is_wp_error( $term_ids ) || empty( $term_ids ) ) {
-			return false;
-		}
-
-		foreach ( $term_ids as $term_id ) {
-			if ( 'true' === (string) get_term_meta( $term_id, 'nudity', true ) ) {
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	/**
-	 * Great-circle distance between two points, in miles (Haversine).
-	 *
-	 * @since 4.7.0
-	 * @param float $lat1 First latitude.
-	 * @param float $lng1 First longitude.
-	 * @param float $lat2 Second latitude.
-	 * @param float $lng2 Second longitude.
-	 * @return float Distance in miles.
-	 */
-	private static function haversine_miles( float $lat1, float $lng1, float $lat2, float $lng2 ): float {
-		$d_lat = deg2rad( $lat2 - $lat1 );
-		$d_lng = deg2rad( $lng2 - $lng1 );
-
-		$a = ( sin( $d_lat / 2 ) ** 2 )
-			+ ( cos( deg2rad( $lat1 ) ) * cos( deg2rad( $lat2 ) ) * ( sin( $d_lng / 2 ) ** 2 ) );
-
-		return self::EARTH_RADIUS_MILES * 2 * asin( min( 1.0, sqrt( $a ) ) );
 	}
 }

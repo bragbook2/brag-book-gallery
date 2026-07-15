@@ -20,6 +20,7 @@ namespace BRAGBookGallery\Includes\Extend;
 
 use BRAGBookGallery\Includes\Core\Setup;
 use WP_Post;
+use WP_Query;
 
 if ( ! defined( 'WPINC' ) ) {
 	die( 'Restricted Access' );
@@ -108,6 +109,16 @@ class Post_Types {
 			array( $this, 'render_case_provider_column' ),
 			10,
 			2
+		);
+
+		add_action(
+			'restrict_manage_posts',
+			array( $this, 'render_case_provider_filter' )
+		);
+
+		add_action(
+			'pre_get_posts',
+			array( $this, 'filter_cases_by_provider' )
 		);
 
 		add_action(
@@ -597,6 +608,85 @@ class Post_Types {
 	}
 
 	/**
+	 * Render a "Providers" dropdown filter above the Cases list table
+	 *
+	 * Hooked on restrict_manage_posts. Only rendered on the Cases list screen.
+	 *
+	 * @since 4.9.0
+	 * @param string $post_type The list table's post type.
+	 * @return void
+	 */
+	public function render_case_provider_filter( string $post_type ): void {
+		if ( self::POST_TYPE_CASES !== $post_type || ! taxonomy_exists( Taxonomies::TAXONOMY_PROVIDERS ) ) {
+			return;
+		}
+
+		$terms = get_terms(
+			array(
+				'taxonomy'   => Taxonomies::TAXONOMY_PROVIDERS,
+				'hide_empty' => false,
+				'orderby'    => 'name',
+				'order'      => 'ASC',
+			)
+		);
+		if ( is_wp_error( $terms ) || empty( $terms ) ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only list filter, no state change.
+		$selected = isset( $_GET['bb_provider'] ) ? absint( wp_unslash( $_GET['bb_provider'] ) ) : 0;
+
+		echo '<label class="screen-reader-text" for="bb_provider">' . esc_html__( 'Filter by provider', 'brag-book-gallery' ) . '</label>';
+		echo '<select name="bb_provider" id="bb_provider">';
+		echo '<option value="0">' . esc_html__( 'All providers', 'brag-book-gallery' ) . '</option>';
+		foreach ( $terms as $term ) {
+			printf(
+				'<option value="%d"%s>%s (%d)</option>',
+				(int) $term->term_id,
+				selected( $selected, (int) $term->term_id, false ),
+				esc_html( $term->name ),
+				(int) $term->count
+			);
+		}
+		echo '</select>';
+	}
+
+	/**
+	 * Filter the Cases list table by the selected provider term
+	 *
+	 * Hooked on pre_get_posts. Applies a tax_query for the chosen provider on the
+	 * Cases list screen's main query only.
+	 *
+	 * @since 4.9.0
+	 * @param WP_Query $query The current query.
+	 * @return void
+	 */
+	public function filter_cases_by_provider( WP_Query $query ): void {
+		if ( ! is_admin() || ! $query->is_main_query() ) {
+			return;
+		}
+
+		global $pagenow;
+		if ( 'edit.php' !== $pagenow || self::POST_TYPE_CASES !== $query->get( 'post_type' ) ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only list filter, no state change.
+		$provider_id = isset( $_GET['bb_provider'] ) ? absint( wp_unslash( $_GET['bb_provider'] ) ) : 0;
+		if ( $provider_id <= 0 ) {
+			return;
+		}
+
+		$tax_query   = (array) $query->get( 'tax_query' );
+		$tax_query[] = array(
+			'taxonomy' => Taxonomies::TAXONOMY_PROVIDERS,
+			'field'    => 'term_id',
+			'terms'    => $provider_id,
+		);
+		$query->set( 'tax_query', $tax_query );
+	}
+
+	/**
 	 * Customize permalink structure for cases
 	 *
 	 * Replaces the %brag_book_procedures% placeholder with the actual procedure slug.
@@ -653,6 +743,161 @@ class Post_Types {
 			'normal',
 			'default'
 		);
+	}
+
+	/**
+	 * Case image nodes: variant meta key => human label.
+	 *
+	 * Order matches the API photoSet structure (before, after, afterPlus, then the
+	 * two side-by-side renders).
+	 *
+	 * @since 3.3.3
+	 * @var array<string,string>
+	 */
+	private const CASE_IMAGE_NODES = array(
+		'before'         => 'Before',
+		'after'          => 'After',
+		'after_plus'     => 'After Plus',
+		'post_processed' => 'Side-by-Side (Standard)',
+		'high_res'       => 'Side-by-Side (High-Res)',
+	);
+
+	/**
+	 * Case image nodes: variant node key => legacy flat meta key.
+	 *
+	 * The flat keys are the full-size compatibility layer read by the frontend
+	 * renderers; they are re-derived from the variant sets whenever a case is
+	 * saved from the editor.
+	 *
+	 * @since 3.3.3
+	 * @var array<string,string>
+	 */
+	private const CASE_IMAGE_FLAT_KEYS = array(
+		'before'         => 'brag_book_gallery_case_before_url',
+		'after'          => 'brag_book_gallery_case_after_url',
+		'after_plus'     => 'brag_book_gallery_case_after_plus_url',
+		'post_processed' => 'brag_book_gallery_case_post_processed_url',
+		'high_res'       => 'brag_book_gallery_case_high_res_url',
+	);
+
+	/**
+	 * Build the editable variant sets for the meta box.
+	 *
+	 * Prefers the structured `brag_book_gallery_case_image_variants` meta. For
+	 * cases synced before variants existed, reconstructs equivalent sets from the
+	 * legacy flat URL keys (every size collapses to the one stored URL) so the
+	 * editor is always populated.
+	 *
+	 * @since 3.3.3
+	 * @param int $post_id Case post ID.
+	 * @return array<int,array<string,array<string,string>>>
+	 */
+	private static function get_editable_image_variants( int $post_id ): array {
+		$sets = get_post_meta( $post_id, 'brag_book_gallery_case_image_variants', true );
+		if ( is_array( $sets ) && ! empty( $sets ) ) {
+			return $sets;
+		}
+
+		$split = static function ( $raw ): array {
+			if ( ! is_string( $raw ) || '' === $raw ) {
+				return array();
+			}
+			$parts = preg_split( '/[\r\n;]+/', $raw, -1, PREG_SPLIT_NO_EMPTY );
+			return is_array( $parts ) ? array_values( array_filter( array_map( 'trim', $parts ) ) ) : array();
+		};
+
+		$flat = array();
+		$max  = 0;
+		foreach ( self::CASE_IMAGE_FLAT_KEYS as $node => $key ) {
+			$flat[ $node ] = $split( get_post_meta( $post_id, $key, true ) );
+			$max           = max( $max, count( $flat[ $node ] ) );
+		}
+
+		$reconstructed = array();
+		for ( $i = 0; $i < $max; $i++ ) {
+			$set = array();
+			foreach ( self::CASE_IMAGE_FLAT_KEYS as $node => $key ) {
+				$url          = $flat[ $node ][ $i ] ?? '';
+				$set[ $node ] = array( 'full' => $url, 'medium' => $url, 'small' => $url, 'alt' => '' );
+			}
+			$reconstructed[] = $set;
+		}
+
+		return $reconstructed;
+	}
+
+	/**
+	 * Render the editable "Image URLs" panel (photoSet × node × size grid).
+	 *
+	 * @since 3.3.3
+	 * @param int $post_id Case post ID.
+	 * @return void
+	 */
+	private static function render_image_variants_panel( int $post_id ): void {
+		$sets = self::get_editable_image_variants( $post_id );
+		?>
+		<div class="brag-book-gallery-image-variants">
+			<p class="description">
+				<?php esc_html_e( 'Each image has full, medium, and small variants. Leave medium or small blank to fall back to the full-size URL. Values sync from the API; edits here overwrite them until the next sync.', 'brag-book-gallery' ); ?>
+			</p>
+			<?php if ( empty( $sets ) ) : ?>
+				<p><?php esc_html_e( 'No images stored for this case yet.', 'brag-book-gallery' ); ?></p>
+			<?php else : ?>
+				<?php foreach ( $sets as $set_index => $set ) : ?>
+					<fieldset class="brag-book-gallery-image-variant-set">
+						<legend>
+							<?php
+							/* translators: %d: photo set number. */
+							printf( esc_html__( 'Photo Set %d', 'brag-book-gallery' ), (int) $set_index + 1 );
+							?>
+						</legend>
+						<?php foreach ( self::CASE_IMAGE_NODES as $node => $label ) : ?>
+							<?php
+							$node_data = isset( $set[ $node ] ) && is_array( $set[ $node ] ) ? $set[ $node ] : array();
+							$full      = (string) ( $node_data['full'] ?? '' );
+							$medium    = (string) ( $node_data['medium'] ?? '' );
+							$small     = (string) ( $node_data['small'] ?? '' );
+							$base_name = sprintf( 'bbg_image_variants[%d][%s]', (int) $set_index, $node );
+							?>
+							<div class="brag-book-gallery-image-variant-node">
+								<div class="brag-book-gallery-image-variant-node__preview">
+									<?php if ( '' !== $full ) : ?>
+										<img src="<?php echo esc_url( $full ); ?>" alt="" loading="lazy" decoding="async" />
+									<?php else : ?>
+										<span class="brag-book-gallery-image-variant-node__placeholder" aria-hidden="true">—</span>
+									<?php endif; ?>
+								</div>
+								<div class="brag-book-gallery-image-variant-node__fields">
+									<strong class="brag-book-gallery-image-variant-node__label"><?php echo esc_html( $label ); ?></strong>
+									<?php
+									foreach (
+										array(
+											'full'   => __( 'Full', 'brag-book-gallery' ),
+											'medium' => __( 'Medium', 'brag-book-gallery' ),
+											'small'  => __( 'Small', 'brag-book-gallery' ),
+										) as $size => $size_label
+									) :
+										$value = ( 'full' === $size ) ? $full : ( ( 'medium' === $size ) ? $medium : $small );
+										?>
+										<label class="brag-book-gallery-image-variant-field">
+											<span><?php echo esc_html( $size_label ); ?></span>
+											<input
+												type="url"
+												class="large-text code"
+												name="<?php echo esc_attr( $base_name . '[' . $size . ']' ); ?>"
+												value="<?php echo esc_attr( $value ); ?>"
+												placeholder="https://…"
+											/>
+										</label>
+									<?php endforeach; ?>
+								</div>
+							</div>
+						<?php endforeach; ?>
+					</fieldset>
+				<?php endforeach; ?>
+			<?php endif; ?>
+		</div>
+		<?php
 	}
 
 	/**
@@ -713,14 +958,6 @@ class Post_Types {
 		$seo_page_description = get_post_meta( $post->ID, 'brag_book_gallery_seo_page_description', true );
 		$seo_alt_text         = get_post_meta( $post->ID, 'brag_book_gallery_seo_alt_text', true );
 
-		// Image Fields.
-		$url_fields = array(
-			'brag_book_gallery_case_before_url'          => esc_html__( 'Before Image URLs', 'brag-book-gallery' ),
-			'brag_book_gallery_case_after_url'           => esc_html__( 'After Image URLs', 'brag-book-gallery' ),
-			'brag_book_gallery_case_after_plus_url'      => esc_html__( 'After Plus Image URLs', 'brag-book-gallery' ),
-			'brag_book_gallery_case_post_processed_url'  => esc_html__( 'Post-Processed Image URLs', 'brag-book-gallery' ),
-			'brag_book_gallery_case_high_res_url'        => esc_html__( 'High-Res Post-Processed Image URLs', 'brag-book-gallery' ),
-		);
 		?>
 		<div class="brag-book-gallery-admin-wrap">
 			<div class="brag-book-gallery-section">
@@ -1152,52 +1389,7 @@ class Post_Types {
 					</div>
 
 					<div id="api-images" class="tab-content">
-						<table class="form-table">
-							<?php
-							foreach ( $url_fields as $meta_key => $label ) :
-								// Get the current value from the new meta field format
-								$urls_value = get_post_meta( $post->ID, $meta_key, true );
-
-								// Clean up the display value: handle both semicolon-delimited and newline-delimited formats
-								$display_value = '';
-								if ( ! empty( $urls_value ) ) {
-									// First split by newlines, then split each line by semicolons
-									$lines       = explode( "\n", $urls_value );
-									$clean_lines = array();
-									foreach ( $lines as $line ) {
-										$parts = explode( ';', $line );
-										foreach ( $parts as $part ) {
-											$clean_url = trim( $part );
-											if ( ! empty( $clean_url ) ) {
-												$clean_lines[] = $clean_url;
-											}
-										}
-									}
-									$display_value = implode( "\n", $clean_lines );
-								}
-								?>
-								<tr>
-									<th scope="row">
-										<label for="<?php echo esc_attr( $meta_key ); ?>"><?php echo esc_html( $label ); ?></label>
-									</th>
-									<td>
-										<textarea
-											name="<?php echo esc_attr( $meta_key ); ?>"
-											id="<?php echo esc_attr( $meta_key ); ?>"
-											rows="4"
-											cols="60"
-											class="large-text"
-											placeholder="<?php esc_attr_e( 'Enter one URL per line...', 'brag-book-gallery' ); ?>"
-										><?php echo esc_textarea( $display_value ); ?></textarea>
-										<p class="description">
-											<?php esc_html_e( 'Enter one URL per line for this image type. Semicolons will be added automatically when saved.', 'brag-book-gallery' ); ?>
-										</p>
-									</td>
-								</tr>
-								<?php
-							endforeach;
-							?>
-						</table>
+						<?php self::render_image_variants_panel( $post->ID ); ?>
 					</div>
 				</div>
 			</div>
@@ -1226,18 +1418,24 @@ class Post_Types {
 			return;
 		}
 
+		// Version by file modification time so edits to these standalone assets
+		// always bust the browser cache (they are not part of the webpack/sass
+		// build, so their version can't ride the plugin version bump).
+		$css_path = Setup::get_plugin_path() . 'assets/css/admin/case-meta.css';
+		$js_path  = Setup::get_plugin_path() . 'assets/js/admin/case-meta-tabs.js';
+
 		wp_enqueue_style(
 			'brag-book-gallery-case-meta',
 			Setup::get_asset_url( 'assets/css/admin/case-meta.css' ),
 			array(),
-			'4.4.0'
+			file_exists( $css_path ) ? (string) filemtime( $css_path ) : '3.3.3'
 		);
 
 		wp_enqueue_script(
 			'brag-book-gallery-case-meta-tabs',
 			Setup::get_asset_url( 'assets/js/admin/case-meta-tabs.js' ),
 			array(),
-			'4.4.0',
+			file_exists( $js_path ) ? (string) filemtime( $js_path ) : '3.3.3',
 			true
 		);
 	}
@@ -1385,67 +1583,13 @@ class Post_Types {
 			}
 		}
 
-		// Handle new individual URL fields from meta boxes.
-		// Only re-process when the API Case Data meta box was actually submitted —
-		// otherwise other save flows (e.g. Rank Math / Yoast saving from their own
-		// editor sidebars, REST updates, etc.) can trigger an unrelated re-save that
-		// silently drops valid signed image URLs and breaks the case carousels.
-		$url_fields = array(
-			'brag_book_gallery_case_before_url',
-			'brag_book_gallery_case_after_url',
-			'brag_book_gallery_case_post_processed_url',
-			'brag_book_gallery_case_high_res_url',
-		);
-
+		// Handle the editable image-variant grid from the API Case Data meta box.
+		// Writes the structured variant meta and re-derives the legacy flat URL
+		// keys the frontend renderers read. Guarded by the meta-box nonce so
+		// unrelated save flows (Rank Math / Yoast sidebars, REST updates) can't
+		// clobber the signed image URLs.
 		if ( isset( $_POST['case_api_data_nonce'] ) && wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['case_api_data_nonce'] ) ), 'save_case_api_data' ) ) {
-			$split_urls = static function ( string $raw ): array {
-				$parts = preg_split( '/[\r\n;]+/', $raw, -1, PREG_SPLIT_NO_EMPTY );
-				if ( ! is_array( $parts ) ) {
-					return array();
-				}
-				$out = array();
-				foreach ( $parts as $part ) {
-					$trimmed = trim( $part );
-					if ( '' !== $trimmed ) {
-						$out[] = $trimmed;
-					}
-				}
-				return $out;
-			};
-
-			foreach ( $url_fields as $field ) {
-				if ( ! isset( $_POST[ $field ] ) ) {
-					continue;
-				}
-
-				// Compare the submitted URL list against the currently stored list
-				// BEFORE running anything destructive. If the lists match (the user
-				// did not actually edit URLs), skip the write entirely — never call
-				// esc_url_raw on signed URLs, since it isn't perfectly byte-idempotent
-				// against long JWT query strings and re-running it can corrupt the
-				// signature, producing "InvalidSignature" errors at fetch time.
-				$submitted_raw = wp_unslash( $_POST[ $field ] );
-				$submitted_raw = is_string( $submitted_raw ) ? $submitted_raw : '';
-				$submitted_urls = $split_urls( $submitted_raw );
-
-				$stored_raw  = (string) get_post_meta( $post_id, $field, true );
-				$stored_urls = $split_urls( $stored_raw );
-
-				if ( $submitted_urls === $stored_urls ) {
-					continue;
-				}
-
-				// User actively changed the textarea — re-validate and write.
-				$processed_lines = array();
-				foreach ( $submitted_urls as $candidate ) {
-					$safe_url = esc_url_raw( $candidate );
-					if ( '' !== $safe_url ) {
-						$processed_lines[] = $safe_url . ';';
-					}
-				}
-
-				update_post_meta( $post_id, $field, implode( "\n", $processed_lines ) );
-			}
+			$this->save_case_image_variants( $post_id );
 		}
 
 		// Save API data
@@ -1528,52 +1672,139 @@ class Post_Types {
 				update_post_meta( $post_id, 'brag_book_gallery_images', $gallery_images );
 			}
 		}
+	}
 
-		// Save image URLs from separate textareas
-		if ( isset( $_POST['case_api_data_nonce'] ) && wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['case_api_data_nonce'] ) ), 'save_case_api_data' ) ) {
-			$url_types    = array( 'before_url', 'after_url1', 'after_url2', 'after_url3', 'post_processed_url', 'high_res_url' );
-			$urls_by_type = array();
+	/**
+	 * Persist the editable image-variant grid submitted from the meta box.
+	 *
+	 * Rebuilds the structured `brag_book_gallery_case_image_variants` meta and
+	 * re-derives the legacy flat URL keys. Unchanged URLs are preserved verbatim
+	 * rather than re-escaped: `esc_url_raw()` is not perfectly byte-idempotent
+	 * against long JWT query strings, and re-running it can corrupt a signature
+	 * and produce "InvalidSignature" errors at fetch time. Blank medium/small
+	 * fields fall back to full so the stored data keeps a complete set.
+	 *
+	 * @since 3.3.3
+	 * @param int $post_id Case post ID.
+	 * @return void
+	 */
+	private function save_case_image_variants( int $post_id ): void {
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified by the caller.
+		if ( ! isset( $_POST['bbg_image_variants'] ) || ! is_array( $_POST['bbg_image_variants'] ) ) {
+			return;
+		}
 
-			// Collect URLs from each textarea
-			foreach ( $url_types as $url_type ) {
-				if ( isset( $_POST[ 'case_' . $url_type ] ) ) {
-					$textarea_content = sanitize_textarea_field( wp_unslash( $_POST[ 'case_' . $url_type ] ) );
-					$urls             = array_filter( array_map( 'trim', explode( "\n", $textarea_content ) ) );
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified by the caller.
+		$submitted = wp_unslash( $_POST['bbg_image_variants'] );
+		$stored    = get_post_meta( $post_id, 'brag_book_gallery_case_image_variants', true );
+		$stored    = is_array( $stored ) ? $stored : array();
 
-					// Sanitize URLs
-					$sanitized_urls = array();
-					foreach ( $urls as $url ) {
-						$clean_url = esc_url_raw( $url );
-						if ( ! empty( $clean_url ) ) {
-							$sanitized_urls[] = $clean_url;
-						}
-					}
-					$urls_by_type[ $url_type ] = $sanitized_urls;
-				} else {
-					$urls_by_type[ $url_type ] = array();
-				}
+		$clean_url = static function ( string $new, string $old ): string {
+			$new = trim( $new );
+			if ( '' === $new ) {
+				return '';
+			}
+			// Preserve signed URLs verbatim when unchanged; only escape real edits.
+			return ( $new === $old ) ? $old : esc_url_raw( $new );
+		};
+
+		$sets = array();
+		foreach ( $submitted as $set_index => $nodes ) {
+			if ( ! is_array( $nodes ) ) {
+				continue;
 			}
 
-			// Convert to URL sets format (each row corresponds to one set)
-			$max_urls       = max( array_map( 'count', $urls_by_type ) );
-			$image_url_sets = array();
+			$set     = array();
+			$has_url = false;
+			foreach ( self::CASE_IMAGE_NODES as $node => $label ) {
+				$input    = isset( $nodes[ $node ] ) && is_array( $nodes[ $node ] ) ? $nodes[ $node ] : array();
+				$old_node = isset( $stored[ $set_index ][ $node ] ) && is_array( $stored[ $set_index ][ $node ] ) ? $stored[ $set_index ][ $node ] : array();
 
-			for ( $i = 0; $i < $max_urls; $i++ ) {
-				$set = array(
-					'before_url'         => $urls_by_type['before_url'][ $i ] ?? '',
-					'after_url'         => $urls_by_type['after_url'][ $i ] ?? '',
-					'post_processed_url' => $urls_by_type['post_processed_url'][ $i ] ?? '',
-					'high_res_url'       => $urls_by_type['high_res_url'][ $i ] ?? '',
+				$full   = $clean_url( (string) ( $input['full'] ?? '' ), (string) ( $old_node['full'] ?? '' ) );
+				$medium = $clean_url( (string) ( $input['medium'] ?? '' ), (string) ( $old_node['medium'] ?? '' ) );
+				$small  = $clean_url( (string) ( $input['small'] ?? '' ), (string) ( $old_node['small'] ?? '' ) );
+
+				// Keep the fallback contract intact: medium ← full, small ← medium.
+				if ( '' === $medium ) {
+					$medium = $full;
+				}
+				if ( '' === $small ) {
+					$small = $medium;
+				}
+
+				$set[ $node ] = array(
+					'full'   => $full,
+					'medium' => $medium,
+					'small'  => $small,
+					'alt'    => isset( $old_node['alt'] ) ? (string) $old_node['alt'] : '',
 				);
 
-				// Only add sets that have at least one URL
-				if ( array_filter( $set ) ) {
-					$image_url_sets[] = $set;
+				if ( '' !== $full ) {
+					$has_url = true;
 				}
 			}
 
-			// Save in both new and legacy formats
-			update_post_meta( $post_id, 'brag_book_gallery_image_url_sets', $image_url_sets );
+			if ( $has_url ) {
+				$sets[] = $set;
+			}
+		}
+
+		if ( empty( $sets ) ) {
+			delete_post_meta( $post_id, 'brag_book_gallery_case_image_variants' );
+		} else {
+			update_post_meta( $post_id, 'brag_book_gallery_case_image_variants', $sets );
+		}
+
+		self::sync_flat_image_keys_from_variants( $post_id, $sets );
+	}
+
+	/**
+	 * Re-derive the legacy flat image URL keys from the structured variant sets.
+	 *
+	 * Keeps `brag_book_gallery_case_*_url` (semicolon/newline-delimited full-size
+	 * URLs) and `brag_book_gallery_image_url_sets` in sync with the variant meta
+	 * so the existing frontend renderers stay correct after an editor save.
+	 *
+	 * @since 3.3.3
+	 * @param int                                                  $post_id Case post ID.
+	 * @param array<int,array<string,array<string,string>>>        $sets    Variant sets.
+	 * @return void
+	 */
+	private static function sync_flat_image_keys_from_variants( int $post_id, array $sets ): void {
+		$flat_lists = array();
+		foreach ( self::CASE_IMAGE_FLAT_KEYS as $node => $key ) {
+			$flat_lists[ $node ] = array();
+		}
+		$url_sets = array();
+
+		foreach ( $sets as $set ) {
+			$url_set = array();
+			foreach ( self::CASE_IMAGE_FLAT_KEYS as $node => $key ) {
+				$full = isset( $set[ $node ]['full'] ) ? (string) $set[ $node ]['full'] : '';
+				if ( '' !== $full ) {
+					$flat_lists[ $node ][] = $full;
+				}
+				// image_url_sets uses "<node>_url" keys (before_url, after_url, …).
+				$url_set[ $node . '_url' ] = $full;
+			}
+			if ( array_filter( $url_set ) ) {
+				$url_sets[] = $url_set;
+			}
+		}
+
+		foreach ( self::CASE_IMAGE_FLAT_KEYS as $node => $key ) {
+			if ( empty( $flat_lists[ $node ] ) ) {
+				delete_post_meta( $post_id, $key );
+				continue;
+			}
+			$lines = array_map( static fn( string $url ): string => $url . ';', $flat_lists[ $node ] );
+			update_post_meta( $post_id, $key, implode( "\n", $lines ) );
+		}
+
+		if ( empty( $url_sets ) ) {
+			delete_post_meta( $post_id, 'brag_book_gallery_image_url_sets' );
+		} else {
+			update_post_meta( $post_id, 'brag_book_gallery_image_url_sets', $url_sets );
 		}
 	}
 
@@ -1937,14 +2168,16 @@ class Post_Types {
 				'brag_book_gallery_case_after_plus_url',
 				'brag_book_gallery_case_post_processed_url',
 				'brag_book_gallery_case_high_res_url',
+				'brag_book_gallery_case_image_variants',
 			);
 
 			foreach ( $url_fields_to_clear as $field ) {
 				delete_post_meta( $post_id, $field );
 			}
 
-			$photo_set_count = 0;
-			$image_url_sets  = array();
+			$photo_set_count    = 0;
+			$image_url_sets     = array();
+			$image_variant_sets = array();
 
 			foreach ( $api_data['photoSets'] as $photo_set ) {
 				++$photo_set_count;
@@ -1956,28 +2189,30 @@ class Post_Types {
 				// Extract images object from photo set (new API structure)
 				$images = isset( $photo_set['images'] ) && is_array( $photo_set['images'] ) ? $photo_set['images'] : array();
 
-				// Support both old flat structure and new nested structure
-				// Try new nested structure first, fallback to old flat structure
-				$before_url         = '';
-				$after_url          = '';
-				$after_plus_url     = '';
-				$post_processed_url = '';
-				$high_res_url       = '';
-
+				// Resolve the small/medium/full variants (and alt text) for every
+				// image node. The new nested structure carries them under `variants`;
+				// the old flat structure has only a single URL, so each size collapses
+				// to that URL and downstream srcset code still receives a full set.
 				if ( ! empty( $images ) ) {
-					// New nested structure
-					$before_url         = isset( $images['before']['url'] ) ? esc_url_raw( $images['before']['url'] ) : '';
-					$after_url          = isset( $images['after']['url'] ) ? esc_url_raw( $images['after']['url'] ) : '';
-					$after_plus_url     = isset( $images['afterPlus']['url'] ) ? esc_url_raw( $images['afterPlus']['url'] ) : '';
-					$post_processed_url = isset( $images['sideBySide']['standard']['url'] ) ? esc_url_raw( $images['sideBySide']['standard']['url'] ) : '';
-					$high_res_url       = isset( $images['sideBySide']['highDefinition']['url'] ) ? esc_url_raw( $images['sideBySide']['highDefinition']['url'] ) : '';
+					$before_variants     = self::extract_image_variants( $images['before'] ?? array() );
+					$after_variants      = self::extract_image_variants( $images['after'] ?? array() );
+					$after_plus_variants = self::extract_image_variants( $images['afterPlus'] ?? array() );
+					$post_processed_vars = self::extract_image_variants( $images['sideBySide']['standard'] ?? array() );
+					$high_res_variants   = self::extract_image_variants( $images['sideBySide']['highDefinition'] ?? array() );
 				} else {
-					// Old flat structure (fallback)
-					$before_url         = isset( $photo_set['beforeLocationUrl'] ) ? esc_url_raw( $photo_set['beforeLocationUrl'] ) : '';
-					$after_url          = isset( $photo_set['afterLocationUrl1'] ) ? esc_url_raw( $photo_set['afterLocationUrl1'] ) : '';
-					$post_processed_url = isset( $photo_set['postProcessedImageLocation'] ) ? esc_url_raw( $photo_set['postProcessedImageLocation'] ) : '';
-					$high_res_url       = isset( $photo_set['highResPostProcessedImageLocation'] ) ? esc_url_raw( $photo_set['highResPostProcessedImageLocation'] ) : '';
+					$before_variants     = self::flat_url_to_variants( $photo_set['beforeLocationUrl'] ?? '' );
+					$after_variants      = self::flat_url_to_variants( $photo_set['afterLocationUrl1'] ?? '' );
+					$after_plus_variants = self::flat_url_to_variants( $photo_set['afterLocationUrl2'] ?? '' );
+					$post_processed_vars = self::flat_url_to_variants( $photo_set['postProcessedImageLocation'] ?? '' );
+					$high_res_variants   = self::flat_url_to_variants( $photo_set['highResPostProcessedImageLocation'] ?? '' );
 				}
+
+				// Full-size URLs kept in the legacy flat meta for existing readers.
+				$before_url         = $before_variants['full'];
+				$after_url          = $after_variants['full'];
+				$after_plus_url     = $after_plus_variants['full'];
+				$post_processed_url = $post_processed_vars['full'];
+				$high_res_url       = $high_res_variants['full'];
 
 				// Build URL set for this photo set
 				$url_set = array(
@@ -2000,6 +2235,15 @@ class Post_Types {
 
 				if ( $has_urls ) {
 					$image_url_sets[] = $url_set;
+
+					// Structured variant set: srcset rendering + admin editing.
+					$image_variant_sets[] = array(
+						'before'         => $before_variants,
+						'after'          => $after_variants,
+						'after_plus'     => $after_plus_variants,
+						'post_processed' => $post_processed_vars,
+						'high_res'       => $high_res_variants,
+					);
 				}
 
 				// Save before image URL
@@ -2048,6 +2292,10 @@ class Post_Types {
 					$progress_callback( 'Saved ' . count( $image_url_sets ) . " image URL sets for post {$post_id}" );
 				}
 			}
+
+			if ( ! empty( $image_variant_sets ) ) {
+				update_post_meta( $post_id, 'brag_book_gallery_case_image_variants', $image_variant_sets );
+			}
 		}
 
 		// Save SEO alt text from seoInfo (root-level, not per photo set).
@@ -2061,6 +2309,55 @@ class Post_Types {
 		update_post_meta( $post_id, 'brag_book_gallery_api_response', $api_data );
 
 		return true;
+	}
+
+	/**
+	 * Resolve the small/medium/full variants and alt text for a v2 image node.
+	 *
+	 * The v2 API nests sized variants under `variants` ('full', 'medium', 'small').
+	 * Any variant can be null until the backend generates it, so each size falls
+	 * back to the next-larger one and finally to the node's own `url`. This keeps
+	 * every stored size populated so frontend srcset output never has holes.
+	 *
+	 * @since 3.3.3
+	 * @param array $node A single image node (e.g. images.before), or an empty array.
+	 * @return array{full:string, medium:string, small:string, alt:string}
+	 */
+	private static function extract_image_variants( array $node ): array {
+		$base     = isset( $node['url'] ) ? esc_url_raw( (string) $node['url'] ) : '';
+		$variants = isset( $node['variants'] ) && is_array( $node['variants'] ) ? $node['variants'] : array();
+
+		$full   = ! empty( $variants['full'] ) ? esc_url_raw( (string) $variants['full'] ) : $base;
+		$medium = ! empty( $variants['medium'] ) ? esc_url_raw( (string) $variants['medium'] ) : $full;
+		$small  = ! empty( $variants['small'] ) ? esc_url_raw( (string) $variants['small'] ) : $medium;
+
+		return array(
+			'full'   => $full,
+			'medium' => $medium,
+			'small'  => $small,
+			'alt'    => isset( $node['altText'] ) ? sanitize_text_field( (string) $node['altText'] ) : '',
+		);
+	}
+
+	/**
+	 * Build a variant set from a single flat URL (old API shape, no variants).
+	 *
+	 * Every size collapses to the one available URL so downstream srcset code can
+	 * treat old and new data identically.
+	 *
+	 * @since 3.3.3
+	 * @param string $url The single image URL, or an empty string.
+	 * @return array{full:string, medium:string, small:string, alt:string}
+	 */
+	private static function flat_url_to_variants( string $url ): array {
+		$clean = '' !== $url ? esc_url_raw( $url ) : '';
+
+		return array(
+			'full'   => $clean,
+			'medium' => $clean,
+			'small'  => $clean,
+			'alt'    => '',
+		);
 	}
 
 	/**

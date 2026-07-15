@@ -21,6 +21,7 @@ use BRAGBookGallery\Includes\Extend\Taxonomies;
 use BRAGBookGallery\Includes\Core\Setup;
 use BRAGBookGallery\Includes\Core\Trait_Api;
 use BRAGBookGallery\Includes\Resources\Asset_Manager;
+use BRAGBookGallery\Includes\Shortcodes\Traits\Trait_Image_Variants;
 
 /**
  * Single Case Handler class
@@ -32,6 +33,7 @@ use BRAGBookGallery\Includes\Resources\Asset_Manager;
  */
 class Case_Handler {
 	use Trait_Api;
+	use Trait_Image_Variants;
 
 	/**
 	 * Missing data log
@@ -692,8 +694,12 @@ class Case_Handler {
 			foreach ( $images as $index => $image_url ) {
 				$active_class  = $index === 0 ? ' active' : '';
 				$thumbnail_alt = sprintf( '%s - Angle %d', $base_alt, $index + 1 );
+				// Thumbnails are small; load the small variant when available. The
+				// full URL stays in data-processed-url so clicking still swaps the
+				// main viewer to full resolution.
+				$thumb_url = self::get_variant_url_for_url( (int) $wp_post_id, $image_url, 'small' );
 				$html .= '<div class="brag-book-gallery-thumbnail-item' . $active_class . '" data-image-index="' . $index . '" data-processed-url="' . esc_attr( $image_url ) . '">';
-				$html .= '<img src="' . esc_url( $image_url ) . '" alt="' . esc_attr( $thumbnail_alt ) . '" loading="lazy" decoding="async" itemprop="thumbnail">';
+				$html .= '<img src="' . esc_url( $thumb_url ) . '" alt="' . esc_attr( $thumbnail_alt ) . '" loading="lazy" decoding="async" itemprop="thumbnail">';
 				$html .= '</div>';
 			}
 
@@ -758,6 +764,18 @@ class Case_Handler {
 			$site_name
 		);
 
+		// Reference the medical organization node emitted by Medical_Schema on
+		// this view (linked by @id across the page's JSON-LD blocks) so the
+		// provider carries the real practice details rather than the site name.
+		// Falls back to a minimal MedicalBusiness when medical schema is off.
+		$provider = \BRAGBookGallery\Includes\SEO\Medical_Schema::is_enabled()
+			? array( '@id' => \BRAGBookGallery\Includes\SEO\Medical_Schema::organization_id() )
+			: array(
+				'@type' => 'MedicalBusiness',
+				'name'  => $site_name,
+				'url'   => $site_url,
+			);
+
 		// Build the schema data
 		$schema_data = array(
 			'@context' => 'https://schema.org',
@@ -765,11 +783,7 @@ class Case_Handler {
 			'name' => sprintf( '%s - Before & After Case #%s', $procedure_name, $case_data['id'] ),
 			'description' => $description,
 			'url' => get_permalink(),
-			'provider' => array(
-				'@type' => 'MedicalBusiness',
-				'name' => $site_name,
-				'url' => $site_url,
-			),
+			'provider' => $provider,
 			'about' => array(
 				'@type' => 'MedicalProcedure',
 				'name' => implode( ', ', $all_procedures ),

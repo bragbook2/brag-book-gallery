@@ -69,6 +69,8 @@ use BRAGBookGallery\Includes\Resources\Asset_Manager;
 use BRAGBookGallery\Includes\Core\Setup;
 use BRAGBookGallery\Includes\Extend\Data_Fetcher;
 use BRAGBookGallery\Includes\Shortcodes\Traits\Trait_Provider_Query;
+use BRAGBookGallery\Includes\Shortcodes\Traits\Trait_Image_Variants;
+use BRAGBookGallery\Includes\Shortcodes\Traits\Trait_Location_Query;
 
 // Prevent direct access.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -104,6 +106,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class Cases_Handler {
 
 	use Trait_Provider_Query;
+	use Trait_Image_Variants;
+	use Trait_Location_Query;
 
 	/**
 	 * Default cases per page
@@ -1285,22 +1289,24 @@ final class Cases_Handler {
 	 *
 	 */
 	public static function render_cases_grid_from_posts( string $filter_procedure = '', array $atts = [] ): string {
-		// Get cases from WordPress posts based on filter criteria
-		$query = self::get_cases_query( $filter_procedure, absint( $atts['provider_id'] ?? 0 ) );
+		$provider_id = absint( $atts['provider_id'] ?? 0 );
 
-		// Return early with "no cases" message if query has no results
-		if ( ! $query->have_posts() ) {
+		// Build the view context and render page 1 through the shared pager, so the
+		// initial grid and the "load more" button slice the same ordered list.
+		$context = [
+			'provider_id'    => $provider_id,
+			'procedure_slug' => $filter_procedure,
+		];
+
+		$items_per_page = absint( get_option( 'brag_book_gallery_items_per_page', '200' ) );
+		$page           = self::render_context_page( $context, 1, $items_per_page );
+
+		// Return early with "no cases" message if there are no results
+		if ( 0 === $page['total'] ) {
 			return self::render_no_cases_found();
 		}
 
-		// Extract data from query and options
-		$posts              = $query->posts;
-		$total_cases        = $query->found_posts;
-		// Use the query's actual posts_per_page (respects the provider_id cap) so the
-		// "load more" button doesn't offer to load cases beyond what provider_id allows.
-		$items_per_page     = absint( $query->get( 'posts_per_page' ) );
-		$default_columns    = absint( get_option( 'brag_book_gallery_columns', self::DEFAULT_COLUMNS ) );
-		$image_display_mode = $atts['image_display_mode'] ?? 'single';
+		$default_columns = absint( get_option( 'brag_book_gallery_columns', self::DEFAULT_COLUMNS ) );
 
 		// Build the complete gallery HTML structure
 		$output = sprintf(
@@ -1319,12 +1325,9 @@ final class Cases_Handler {
 			esc_attr__( 'Gallery content', 'brag-book-gallery' ),
 			self::render_controls( $default_columns ),
 			$default_columns,
-			self::render_case_cards( $posts, $image_display_mode, $filter_procedure ),
-			self::render_load_more_button( $total_cases, $items_per_page, $filter_procedure )
+			$page['html'],
+			self::render_load_more_button( $context, $items_per_page, $page['total'] )
 		);
-
-		// Reset WordPress query globals
-		wp_reset_postdata();
 
 		return $output;
 	}
@@ -1723,46 +1726,64 @@ final class Cases_Handler {
 	 * - Contains data attributes for AJAX loading
 	 * - Tracks procedure filters for consistent loading
 	 *
-	 * @param int $total_cases Total number of cases in the query.
-	 * @param int $items_per_page Number of items shown per page.
-	 * @param string $filter_procedure Current procedure filter to maintain during pagination.
+	 * @param array<string,mixed> $context        View context (provider/procedure/location).
+	 * @param int                 $items_per_page Number of items shown per page.
+	 * @param int                 $total_cases    Total number of cases in the context.
 	 *
 	 * @return string HTML output for the load more button, or empty string if not needed.
 	 * @since 1.0.0
 	 *
 	 */
-	private static function render_load_more_button( int $total_cases, int $items_per_page, string $filter_procedure ): string {
+	private static function render_load_more_button( array $context, int $items_per_page, int $total_cases ): string {
 		// Don't show load more button if all cases fit on first page
 		if ( $total_cases <= $items_per_page ) {
 			return '';
 		}
 
-		// Get procedure term ID for the filter if specified
-		$procedure_ids = '';
-		if ( ! empty( $filter_procedure ) ) {
-			$procedure_term = get_term_by( 'slug', $filter_procedure, Taxonomies::TAXONOMY_PROCEDURES );
-			if ( $procedure_term ) {
-				$procedure_ids = $procedure_term->term_id;
+		$provider_id    = absint( $context['provider_id'] ?? 0 );
+		$provider_slug  = (string) ( $context['provider_slug'] ?? '' );
+		$procedure_slug = (string) ( $context['procedure_slug'] ?? '' );
+
+		// Resolve the procedure term id so the pager can scope by term directly.
+		$term_id = absint( $context['term_id'] ?? 0 );
+		if ( $term_id <= 0 && '' !== $procedure_slug ) {
+			$procedure_term = get_term_by( 'slug', $procedure_slug, Taxonomies::TAXONOMY_PROCEDURES );
+			if ( $procedure_term instanceof \WP_Term ) {
+				$term_id = $procedure_term->term_id;
 			}
 		}
 
+		$lat = isset( $context['lat'] ) && is_numeric( $context['lat'] ) ? (string) (float) $context['lat'] : '';
+		$lng = isset( $context['lng'] ) && is_numeric( $context['lng'] ) ? (string) (float) $context['lng'] : '';
+
 		// Hide button if infinite scroll is enabled (JavaScript will handle loading)
 		$infinite_scroll = get_option( 'brag_book_gallery_infinite_scroll', 'no' );
-		$display_style   = ( $infinite_scroll === 'yes' ) ? ' style="display: none;"' : '';
+		$display_style   = ( 'yes' === $infinite_scroll ) ? ' style="display: none;"' : '';
 
 		return sprintf(
 			'<div class="brag-book-gallery-load-more-container">
             <button class="brag-book-gallery-button brag-book-gallery-button--load-more"
                 data-action="load-more"
                 data-start-page="2"
-                data-procedure-ids="%s"
-                data-procedure-name="%s"
-                onclick="loadMoreCasesFromCache(this)"%s>
-                %s
+                data-per-page="%1$d"
+                data-procedure-ids="%2$s"
+                data-procedure-name="%3$s"
+                data-term-id="%2$s"
+                data-provider-id="%4$s"
+                data-provider-slug="%5$s"
+                data-lat="%6$s"
+                data-lng="%7$s"
+                onclick="loadMoreCasesFromCache(this)"%8$s>
+                %9$s
             </button>
         </div>',
-			esc_attr( $procedure_ids ),
-			esc_attr( $filter_procedure ),
+			$items_per_page,
+			esc_attr( (string) $term_id ),
+			esc_attr( $procedure_slug ),
+			esc_attr( (string) $provider_id ),
+			esc_attr( $provider_slug ),
+			esc_attr( $lat ),
+			esc_attr( $lng ),
 			$display_style,
 			esc_html__( 'Load More', 'brag-book-gallery' )
 		);
@@ -2405,12 +2426,19 @@ final class Cases_Handler {
 			$data_attrs[] = 'data-procedure-case-id="' . esc_attr( $procedure_case_id ) . '"';
 		}
 
+		// On taxonomy archives the current procedure comes from the main query. In
+		// other contexts (e.g. the provider-filter AJAX response, where is_tax() is
+		// false) it must be supplied via $current_term_id so the card still carries
+		// the procedure context that referrer-based next/previous navigation needs.
 		if ( is_tax() ) {
-			$current_term_id = get_queried_object_id();
+			$current_term_id = (string) get_queried_object_id();
+		}
+
+		if ( '' !== $current_term_id ) {
 			$data_attrs[] = 'data-current-term-id="' . esc_attr( $current_term_id ) . '"';
 
 			// Get API procedure ID from current term meta
-			$current_api_procedure_id = get_term_meta( $current_term_id, 'procedure_id', true );
+			$current_api_procedure_id = get_term_meta( (int) $current_term_id, 'procedure_id', true );
 			if ( ! empty( $current_api_procedure_id ) ) {
 				$data_attrs[] = 'data-current-procedure-id="' . esc_attr( $current_api_procedure_id ) . '"';
 			}
@@ -2492,6 +2520,11 @@ final class Cases_Handler {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( "BRAGBook Debug: Final image_url for case $case_id: " . ( $image_url ?: 'empty' ) );
 		}
+
+		// Responsive srcset for the grid card image, matched to the same source
+		// node so small/medium variants load on smaller viewports. Empty for
+		// cases synced before variants existed (falls back to plain src).
+		$image_srcset = self::build_variant_srcset_for_url( (int) $post_id, (string) $image_url );
 
 		// Get card type setting
 		$case_card_type = get_option( 'brag_book_gallery_case_card_type', 'default' );
@@ -2585,8 +2618,10 @@ final class Cases_Handler {
 									   data-case-id="<?php echo esc_attr( $case_id ); ?>"
 									   data-procedure-ids="<?php echo esc_attr( implode( ',', $procedure_ids ) ); ?>">
 										<?php foreach ( $carousel_images as $index => $carousel_url ) : ?>
+											<?php $carousel_srcset = self::build_variant_srcset_for_url( (int) $post_id, (string) $carousel_url ); ?>
 											<picture class="brag-book-gallery-picture" id="case-<?php echo esc_attr( $case_id ); ?>-img-<?php echo (int) $index; ?>">
 												<img src="<?php echo esc_url( $carousel_url ); ?>"
+													<?php if ( '' !== $carousel_srcset ) : ?> srcset="<?php echo esc_attr( $carousel_srcset ); ?>" sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"<?php endif; ?>
 													 alt="<?php echo esc_attr( $image_alt ); ?><?php echo count( $carousel_images ) > 1 ? ' - Angle ' . ( (int) $index + 1 ) : ''; ?>"
 													 loading="<?php echo 0 === $index ? 'eager' : 'lazy'; ?>"
 													 decoding="async"
@@ -2621,6 +2656,7 @@ final class Cases_Handler {
 								<!-- Single image fallback -->
 								<picture class="brag-book-gallery-picture">
 									<img src="<?php echo esc_url( $image_url ); ?>"
+										<?php if ( '' !== $image_srcset ) : ?> srcset="<?php echo esc_attr( $image_srcset ); ?>" sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"<?php endif; ?>
 										 alt="<?php echo esc_attr( $image_alt ); ?>"
 										 loading="eager"
 										 decoding="async"
@@ -2645,6 +2681,7 @@ final class Cases_Handler {
 								if ( ! empty( $image_url ) ) : ?>
 									<picture class="brag-book-gallery-picture">
 										<img src="<?php echo esc_url( $image_url ); ?>"
+											<?php if ( '' !== $image_srcset ) : ?> srcset="<?php echo esc_attr( $image_srcset ); ?>" sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"<?php endif; ?>
 											 alt="<?php echo esc_attr( $image_alt ); ?>"
 											 loading="eager"
 											 decoding="async"
@@ -2789,6 +2826,223 @@ final class Cases_Handler {
 	}
 
 	/**
+	 * Location radius constants (miles) for location-scoped context. The pager
+	 * searches the default radius first and widens to the extended radius only
+	 * when the default yields nothing.
+	 *
+	 * @since 3.3.3
+	 */
+	private const LOCATION_DEFAULT_RADIUS  = 50;
+	private const LOCATION_EXTENDED_RADIUS = 100;
+
+	/**
+	 * Read the active view context from an AJAX request.
+	 *
+	 * Consolidates the provider, procedure and location parameters the front-end
+	 * widgets post so every "load more" request scopes identically.
+	 *
+	 * @since 3.3.3
+	 * @return array<string,mixed> Context array for resolve_context_case_ids().
+	 */
+	private static function build_context_from_request(): array {
+		// phpcs:disable WordPress.Security.NonceVerification.Missing -- Nonce verified by the calling AJAX handler.
+		$lat = isset( $_POST['lat'] ) && is_numeric( wp_unslash( $_POST['lat'] ) ) ? (float) wp_unslash( $_POST['lat'] ) : null;
+		$lng = isset( $_POST['lng'] ) && is_numeric( wp_unslash( $_POST['lng'] ) ) ? (float) wp_unslash( $_POST['lng'] ) : null;
+
+		$context = [
+			'provider_id'    => isset( $_POST['provider_id'] ) ? absint( $_POST['provider_id'] ) : 0,
+			'provider_slug'  => isset( $_POST['provider_slug'] ) ? sanitize_title( wp_unslash( $_POST['provider_slug'] ) ) : '',
+			'term_id'        => isset( $_POST['term_id'] ) ? absint( $_POST['term_id'] ) : 0,
+			'procedure_slug' => isset( $_POST['procedure_name'] ) ? sanitize_title( wp_unslash( $_POST['procedure_name'] ) ) : '',
+			'lat'            => $lat,
+			'lng'            => $lng,
+		];
+		// phpcs:enable WordPress.Security.NonceVerification.Missing
+
+		return $context;
+	}
+
+	/**
+	 * Resolve the full, ordered list of case post IDs for a view context.
+	 *
+	 * The single source of truth shared by the initial grid render, the provider
+	 * and location filters, and the "load more" pager, so every page slices the
+	 * same ordered list and pagination never duplicates or skips cases.
+	 *
+	 * Ordering: a pure single-procedure view keeps its curated case-order-list
+	 * order; provider/location/all-cases views use the deterministic date-desc,
+	 * de-duplicated order; an active location overrides ordering with nearest-first
+	 * and drops cases outside the radius.
+	 *
+	 * @since 3.3.3
+	 * @param array<string,mixed> $context Provider/procedure/location context.
+	 * @return array{ids:int[],distances:array<int,float>,radius:int}
+	 */
+	public static function resolve_context_case_ids( array $context ): array {
+		$provider_id    = absint( $context['provider_id'] ?? 0 );
+		$provider_slug  = (string) ( $context['provider_slug'] ?? '' );
+		$term_id        = absint( $context['term_id'] ?? 0 );
+		$procedure_slug = (string) ( $context['procedure_slug'] ?? '' );
+		$lat            = $context['lat'] ?? null;
+		$lng            = $context['lng'] ?? null;
+
+		// Resolve the provider taxonomy clause from slug (preferred) or API id.
+		$provider_term_ids = [];
+		if ( '' !== $provider_slug ) {
+			$term = get_term_by( 'slug', $provider_slug, Taxonomies::TAXONOMY_PROVIDERS );
+			if ( $term instanceof \WP_Term ) {
+				$provider_term_ids = [ $term->term_id ];
+			}
+		} elseif ( $provider_id > 0 ) {
+			$provider_term_ids = self::get_provider_term_ids( $provider_id );
+		}
+		$provider_tax_query = ! empty( $provider_term_ids ) ? self::build_provider_tax_query( $provider_term_ids ) : null;
+
+		// Resolve the procedure term id from an explicit id or the slug.
+		if ( $term_id <= 0 && '' !== $procedure_slug ) {
+			$proc_term = get_term_by( 'slug', $procedure_slug, Taxonomies::TAXONOMY_PROCEDURES );
+			if ( $proc_term instanceof \WP_Term ) {
+				$term_id = $proc_term->term_id;
+			}
+		}
+
+		$has_provider = ! empty( $provider_tax_query );
+		$has_location = is_numeric( $lat ) && is_numeric( $lng );
+
+		// Base ordered id list.
+		if ( ! $has_provider && ! $has_location && $term_id > 0 ) {
+			$ids = self::get_procedure_ordered_ids( $term_id );
+		} else {
+			$ids = self::get_ordered_unique_case_post_ids( $provider_tax_query, $term_id );
+		}
+
+		$distances = [];
+		$radius    = self::LOCATION_DEFAULT_RADIUS;
+
+		if ( $has_location && ! empty( $ids ) ) {
+			$distances = self::distances_by_case( $ids, (float) $lat, (float) $lng );
+			list( $matched_ids, $radius ) = self::filter_by_radius(
+				$distances,
+				self::LOCATION_DEFAULT_RADIUS,
+				self::LOCATION_EXTENDED_RADIUS
+			);
+			$ids = $matched_ids; // Nearest-first, radius-filtered.
+		}
+
+		return [
+			'ids'       => array_values( array_map( 'absint', $ids ) ),
+			'distances' => $distances,
+			'radius'    => (int) $radius,
+		];
+	}
+
+	/**
+	 * Ordered case post IDs for a single procedure term.
+	 *
+	 * Honours the curated `brag_book_gallery_case_order_list` when present (the
+	 * same order the initial grid uses), otherwise falls back to the shared
+	 * de-duplicated date-desc order scoped to the term.
+	 *
+	 * @since 3.3.3
+	 * @param int $term_id Procedure term id.
+	 * @return int[] Ordered, published case post IDs.
+	 */
+	private static function get_procedure_ordered_ids( int $term_id ): array {
+		if ( $term_id <= 0 ) {
+			return self::get_ordered_unique_case_post_ids( null, 0 );
+		}
+
+		$order_list = get_term_meta( $term_id, 'brag_book_gallery_case_order_list', true );
+		if ( is_array( $order_list ) && ! empty( $order_list ) ) {
+			$ids = [];
+			foreach ( $order_list as $row ) {
+				if ( is_array( $row ) && ! empty( $row['wp_id'] ) ) {
+					$wp_id = absint( $row['wp_id'] );
+					if ( $wp_id > 0 && 'publish' === get_post_status( $wp_id ) ) {
+						$ids[] = $wp_id;
+					}
+				}
+			}
+			if ( ! empty( $ids ) ) {
+				return $ids;
+			}
+		}
+
+		return self::get_ordered_unique_case_post_ids( null, $term_id );
+	}
+
+	/**
+	 * Render one page of cases for a view context.
+	 *
+	 * Slices the shared ordered id list from resolve_context_case_ids() and renders
+	 * the cards with the standard grid renderer (adding a distance badge when the
+	 * context is a location search). Used by the initial grid render, the provider
+	 * and location filters, and the load-more pager so all agree on scope + order.
+	 *
+	 * @since 3.3.3
+	 * @param array<string,mixed> $context  Provider/procedure/location context.
+	 * @param int                 $page     1-based page number.
+	 * @param int                 $per_page Cases per page.
+	 * @return array{html:string,total:int,has_more:bool,radius:int,loaded:int}
+	 */
+	public static function render_context_page( array $context, int $page, int $per_page ): array {
+		$per_page = max( 1, $per_page );
+		$page     = max( 1, $page );
+
+		$resolved = self::resolve_context_case_ids( $context );
+		$all_ids  = $resolved['ids'];
+		$total    = count( $all_ids );
+		$offset   = ( $page - 1 ) * $per_page;
+		$page_ids = array_slice( $all_ids, $offset, $per_page );
+
+		$image_display_mode = (string) get_option( 'brag_book_gallery_image_display_mode', 'single' );
+
+		// Procedure display name + term id for the card renderer context.
+		$term_id        = absint( $context['term_id'] ?? 0 );
+		$procedure_slug = (string) ( $context['procedure_slug'] ?? '' );
+		if ( $term_id <= 0 && '' !== $procedure_slug ) {
+			$term    = get_term_by( 'slug', $procedure_slug, Taxonomies::TAXONOMY_PROCEDURES );
+			$term_id = $term instanceof \WP_Term ? $term->term_id : 0;
+		}
+		$procedure_name = '';
+		if ( $term_id > 0 ) {
+			$term           = get_term( $term_id, Taxonomies::TAXONOMY_PROCEDURES );
+			$procedure_name = $term instanceof \WP_Term ? $term->name : '';
+		}
+		$term_id_attr = $term_id > 0 ? (string) $term_id : '';
+
+		$html = '';
+		foreach ( $page_ids as $post_id ) {
+			$post = get_post( $post_id );
+			if ( ! $post instanceof \WP_Post ) {
+				continue;
+			}
+
+			$distance_label = isset( $resolved['distances'][ $post_id ] )
+				? self::format_distance( (float) $resolved['distances'][ $post_id ] )
+				: '';
+
+			$html .= self::render_wordpress_case_card(
+				self::build_case_data_from_post( $post ),
+				$image_display_mode,
+				self::case_has_nudity( (int) $post_id ),
+				$procedure_name,
+				'',
+				$term_id_attr,
+				$distance_label
+			);
+		}
+
+		return [
+			'html'     => $html,
+			'total'    => $total,
+			'has_more' => ( $offset + count( $page_ids ) ) < $total,
+			'radius'   => $resolved['radius'],
+			'loaded'   => $offset + count( $page_ids ),
+		];
+	}
+
+	/**
 	 * AJAX handler for loading more cases
 	 *
 	 * Handles AJAX requests to load additional cases for pagination.
@@ -2806,111 +3060,23 @@ final class Cases_Handler {
 			return;
 		}
 
-		// Get parameters from AJAX request
-		$start_page     = absint( $_POST['start_page'] ?? 2 );
-		$procedure_ids  = sanitize_text_field( wp_unslash( $_POST['procedure_ids'] ?? '' ) );
-		$procedure_name = sanitize_text_field( wp_unslash( $_POST['procedure_name'] ?? '' ) );
+		// Page to load and page size. The context (provider / location / procedure)
+		// is read from the same POST fields the filters set on the button.
+		$start_page = max( 1, absint( $_POST['start_page'] ?? 2 ) );
+		$per_page   = absint( get_option( 'brag_book_gallery_items_per_page', '200' ) );
 
 		try {
-			// Get cases data from WordPress posts (since we're using local data now)
-			$atts = [
-				'columns'        => 3,
-				'show_details'   => true,
-				'items_per_page' => get_option( 'brag_book_gallery_items_per_page', '200' ),
-			];
+			$context = self::build_context_from_request();
+			$result  = self::render_context_page( $context, $start_page, $per_page );
 
-			// Calculate offset based on page and items per page
-			$items_per_page = absint( $atts['items_per_page'] );
-			$offset         = ( $start_page - 1 ) * $items_per_page;
-
-			// Query WordPress posts for cases
-			$query_args = [
-				'post_type'      => 'brag_book_cases',
-				'post_status'    => 'publish',
-				'posts_per_page' => $items_per_page,
-				'offset'         => $offset,
-				'meta_query'     => [],
-			];
-
-			// Add procedure filtering if provided
-			if ( ! empty( $procedure_name ) ) {
-				$query_args['tax_query'] = [
-					[
-						'taxonomy' => Taxonomies::TAXONOMY_PROCEDURES,
-						'field'    => 'slug',
-						'terms'    => $procedure_name,
-					],
-				];
-			}
-
-			$cases_query = new \WP_Query( $query_args );
-			$html        = '';
-
-			if ( $cases_query->have_posts() ) {
-				// Get image display mode setting
-				$image_display_mode = get_option( 'brag_book_gallery_image_display_mode', 'single' );
-
-				// Check if the current procedure has nudity flag set
-				$procedure_has_nudity = self::procedure_has_nudity( $procedure_name );
-
-				while ( $cases_query->have_posts() ) {
-					$cases_query->the_post();
-					$post_id = get_the_ID();
-
-					// Build case data array from WordPress post
-					$case_data = [
-						'id'           => get_post_meta( $post_id, 'brag_book_gallery_case_id', true ),
-						'mainImageUrl' => get_post_meta( $post_id, 'brag_book_gallery_main_image_url', true ),
-						'age'          => get_post_meta( $post_id, 'brag_book_gallery_patient_age', true ),
-						'gender'       => get_post_meta( $post_id, 'brag_book_gallery_patient_gender', true ),
-						'ethnicity'    => get_post_meta( $post_id, 'brag_book_gallery_ethnicity', true ),
-						'seoHeadline'  => get_post_meta( $post_id, 'brag_book_gallery_seo_headline', true ),
-					];
-
-					// Use case data or post title as fallback
-					if ( empty( $case_data['seoHeadline'] ) ) {
-						$case_data['seoHeadline'] = get_the_title( $post_id ) ?: 'Untitled Case';
-					}
-
-					// Get current procedure ID and term ID from request
-					$current_procedure_id = isset( $_POST['current_procedure_id'] ) ? sanitize_text_field( wp_unslash( $_POST['current_procedure_id'] ) ) : '';
-					$current_term_id      = isset( $_POST['current_term_id'] ) ? sanitize_text_field( wp_unslash( $_POST['current_term_id'] ) ) : '';
-
-					// Render case card
-					$html .= self::render_case_card(
-						$case_data,
-						$image_display_mode,
-						$procedure_has_nudity,
-						$procedure_name,
-						$current_procedure_id,
-						$current_term_id
-					);
-				}
-
-				wp_reset_postdata();
-
-				// Check if there are more pages available
-				$total_posts    = $cases_query->found_posts;
-				$current_loaded = $offset + $cases_query->post_count;
-				$has_more       = $current_loaded < $total_posts;
-
-				wp_send_json_success( [
-					'html'        => $html,
-					'hasMore'     => $has_more,
-					'currentPage' => $start_page,
-					'totalCases'  => $total_posts,
-					'loadedCases' => $current_loaded,
-				] );
-
-			} else {
-				// No more cases found
-				wp_send_json_success( [
-					'html'    => '',
-					'hasMore' => false,
-					'message' => 'No more cases found',
-				] );
-			}
-
+			wp_send_json_success( [
+				'html'        => $result['html'],
+				'hasMore'     => $result['has_more'],
+				'currentPage' => $start_page,
+				'totalCases'  => $result['total'],
+				'loadedCases' => $result['loaded'],
+				'radius'      => $result['radius'],
+			] );
 		} catch ( \Exception $e ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			error_log( 'BRAG book Gallery Load More Error: ' . $e->getMessage() );

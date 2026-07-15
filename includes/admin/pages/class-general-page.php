@@ -1490,6 +1490,16 @@ class General_Page extends Settings_Base {
 		}
 
 		$slug = get_option( 'brag_book_gallery_page_slug', '' );
+
+		// Medical schema (structured data) options.
+		$schema_enabled   = '1' === (string) get_option( 'brag_book_gallery_schema_enabled', '1' );
+		$schema_physician = '1' === (string) get_option( 'brag_book_gallery_schema_include_physician', '1' );
+		$schema_type      = (string) get_option( 'brag_book_gallery_schema_type', 'MedicalClinic' );
+		$schema_specialty = (string) get_option( 'brag_book_gallery_schema_specialty', 'PlasticSurgery' );
+		$schema_org_name  = (string) get_option( 'brag_book_gallery_schema_org_name', '' );
+		$schema_org_logo  = (string) get_option( 'brag_book_gallery_schema_org_logo', '' );
+		$schema_types       = \BRAGBookGallery\Includes\SEO\Medical_Schema::get_available_types();
+		$schema_specialties = \BRAGBookGallery\Includes\SEO\Medical_Schema::get_available_specialties();
 		?>
 
 		<h2><?php esc_html_e( 'SEO Settings', 'brag-book-gallery' ); ?></h2>
@@ -1585,6 +1595,100 @@ class General_Page extends Settings_Base {
 						<p class="description">
 							<?php esc_html_e( 'Recommended: 120-160 characters. This is the snippet shown in search results.', 'brag-book-gallery' ); ?>
 						</p>
+					</td>
+				</tr>
+			</table>
+
+			<h3><?php esc_html_e( 'Medical Schema (Structured Data)', 'brag-book-gallery' ); ?></h3>
+			<p class="description">
+				<?php esc_html_e( 'Outputs schema.org medical structured data (JSON-LD) on case and gallery views — a medical organization node for your practice, plus Physician and MedicalProcedure nodes on case pages. When Yoast, RankMath, or All in One SEO is active, the data is merged into that plugin\'s schema graph; otherwise it is printed on its own.', 'brag-book-gallery' ); ?>
+			</p>
+
+			<table class="form-table brag-book-gallery-form-table" role="presentation">
+				<tr>
+					<th scope="row"><?php esc_html_e( 'Enable Medical Schema', 'brag-book-gallery' ); ?></th>
+					<td>
+						<label>
+							<input type="checkbox"
+							       name="brag_book_gallery_schema_enabled"
+							       value="1"
+							       <?php checked( $schema_enabled ); ?>>
+							<?php esc_html_e( 'Output medical structured data on case and gallery pages', 'brag-book-gallery' ); ?>
+						</label>
+					</td>
+				</tr>
+
+				<tr>
+					<th scope="row">
+						<label for="brag_book_gallery_schema_type"><?php esc_html_e( 'Organization Type', 'brag-book-gallery' ); ?></label>
+					</th>
+					<td>
+						<select id="brag_book_gallery_schema_type" name="brag_book_gallery_schema_type">
+							<?php foreach ( $schema_types as $type_value => $type_label ) : ?>
+								<option value="<?php echo esc_attr( $type_value ); ?>" <?php selected( $schema_type, $type_value ); ?>>
+									<?php echo esc_html( $type_label ); ?>
+								</option>
+							<?php endforeach; ?>
+						</select>
+						<p class="description">
+							<?php esc_html_e( 'The schema.org type that represents your practice. Medical Clinic is recommended for a practice with a physical location.', 'brag-book-gallery' ); ?>
+						</p>
+					</td>
+				</tr>
+
+				<tr>
+					<th scope="row">
+						<label for="brag_book_gallery_schema_specialty"><?php esc_html_e( 'Medical Specialty', 'brag-book-gallery' ); ?></label>
+					</th>
+					<td>
+						<select id="brag_book_gallery_schema_specialty" name="brag_book_gallery_schema_specialty">
+							<?php foreach ( $schema_specialties as $specialty_value => $specialty_label ) : ?>
+								<option value="<?php echo esc_attr( $specialty_value ); ?>" <?php selected( $schema_specialty, $specialty_value ); ?>>
+									<?php echo esc_html( $specialty_label ); ?>
+								</option>
+							<?php endforeach; ?>
+						</select>
+					</td>
+				</tr>
+
+				<tr>
+					<th scope="row"><?php esc_html_e( 'Provider Schema', 'brag-book-gallery' ); ?></th>
+					<td>
+						<label>
+							<input type="checkbox"
+							       name="brag_book_gallery_schema_include_physician"
+							       value="1"
+							       <?php checked( $schema_physician ); ?>>
+							<?php esc_html_e( 'Include Physician nodes for each provider on case pages', 'brag-book-gallery' ); ?>
+						</label>
+					</td>
+				</tr>
+
+				<tr>
+					<th scope="row">
+						<label for="brag_book_gallery_schema_org_name"><?php esc_html_e( 'Organization Name Override', 'brag-book-gallery' ); ?></label>
+					</th>
+					<td>
+						<input type="text"
+						       id="brag_book_gallery_schema_org_name"
+						       name="brag_book_gallery_schema_org_name"
+						       value="<?php echo esc_attr( $schema_org_name ); ?>"
+						       class="large-text"
+						       placeholder="<?php esc_attr_e( 'Defaults to your primary practice, then the site name', 'brag-book-gallery' ); ?>">
+					</td>
+				</tr>
+
+				<tr>
+					<th scope="row">
+						<label for="brag_book_gallery_schema_org_logo"><?php esc_html_e( 'Organization Logo URL', 'brag-book-gallery' ); ?></label>
+					</th>
+					<td>
+						<input type="url"
+						       id="brag_book_gallery_schema_org_logo"
+						       name="brag_book_gallery_schema_org_logo"
+						       value="<?php echo esc_attr( $schema_org_logo ); ?>"
+						       class="large-text"
+						       placeholder="<?php esc_attr_e( 'Defaults to your theme\'s custom logo', 'brag-book-gallery' ); ?>">
 					</td>
 				</tr>
 			</table>
@@ -2330,6 +2434,50 @@ class General_Page extends Settings_Base {
 		if ( isset( $_POST['brag_book_gallery_seo_description'] ) ) {
 			$seo_description = sanitize_textarea_field( wp_unslash( $_POST['brag_book_gallery_seo_description'] ) );
 			update_option( 'brag_book_gallery_seo_page_description', $seo_description );
+			$saved = true;
+		}
+
+		// Medical schema settings. These fields share the SEO form, so a submit
+		// with the form present always carries them (checkboxes absent = off).
+		if ( isset( $_POST['brag_book_gallery_seo_title'] ) ) {
+			update_option(
+				'brag_book_gallery_schema_enabled',
+				isset( $_POST['brag_book_gallery_schema_enabled'] ) ? '1' : '0'
+			);
+			update_option(
+				'brag_book_gallery_schema_include_physician',
+				isset( $_POST['brag_book_gallery_schema_include_physician'] ) ? '1' : '0'
+			);
+
+			$schema_type = isset( $_POST['brag_book_gallery_schema_type'] )
+				? sanitize_text_field( wp_unslash( $_POST['brag_book_gallery_schema_type'] ) )
+				: 'MedicalClinic';
+			if ( ! array_key_exists( $schema_type, \BRAGBookGallery\Includes\SEO\Medical_Schema::get_available_types() ) ) {
+				$schema_type = 'MedicalClinic';
+			}
+			update_option( 'brag_book_gallery_schema_type', $schema_type );
+
+			$schema_specialty = isset( $_POST['brag_book_gallery_schema_specialty'] )
+				? sanitize_text_field( wp_unslash( $_POST['brag_book_gallery_schema_specialty'] ) )
+				: 'PlasticSurgery';
+			if ( ! array_key_exists( $schema_specialty, \BRAGBookGallery\Includes\SEO\Medical_Schema::get_available_specialties() ) ) {
+				$schema_specialty = 'PlasticSurgery';
+			}
+			update_option( 'brag_book_gallery_schema_specialty', $schema_specialty );
+
+			update_option(
+				'brag_book_gallery_schema_org_name',
+				isset( $_POST['brag_book_gallery_schema_org_name'] )
+					? sanitize_text_field( wp_unslash( $_POST['brag_book_gallery_schema_org_name'] ) )
+					: ''
+			);
+			update_option(
+				'brag_book_gallery_schema_org_logo',
+				isset( $_POST['brag_book_gallery_schema_org_logo'] )
+					? esc_url_raw( wp_unslash( $_POST['brag_book_gallery_schema_org_logo'] ) )
+					: ''
+			);
+
 			$saved = true;
 		}
 

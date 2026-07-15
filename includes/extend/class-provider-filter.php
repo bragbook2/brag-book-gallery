@@ -203,11 +203,26 @@ class Provider_Filter {
 			wp_send_json_error( [ 'message' => __( 'A provider is required.', 'brag-book-gallery' ) ], 400 );
 		}
 
-		$case_ids = self::get_candidate_case_ids( $provider_slug, $procedure_slug );
+		$page     = max( 1, absint( $_POST['page'] ?? 1 ) );
+		$per_page = absint( get_option( 'brag_book_gallery_items_per_page', '200' ) );
+
+		// Delegate to the shared, context-aware pager so provider results paginate
+		// and order identically to the "load more" button that continues them.
+		$result = Cases_Handler::render_context_page(
+			[
+				'provider_slug'  => $provider_slug,
+				'procedure_slug' => $procedure_slug,
+			],
+			$page,
+			$per_page
+		);
 
 		wp_send_json_success( [
-			'html'  => self::render_matched_cases( $case_ids, $procedure_slug ),
-			'count' => count( $case_ids ),
+			'html'    => $result['html'],
+			'count'   => $result['total'],
+			'total'   => $result['total'],
+			'hasMore' => $result['has_more'],
+			'page'    => $page,
 		] );
 	}
 
@@ -346,10 +361,14 @@ class Provider_Filter {
 	private static function render_matched_cases( array $case_ids, string $procedure_slug ): string {
 		$image_display_mode = (string) get_option( 'brag_book_gallery_image_display_mode', 'single' );
 
-		$procedure_name = '';
+		$procedure_name    = '';
+		$procedure_term_id = '';
 		if ( '' !== $procedure_slug ) {
-			$term           = get_term_by( 'slug', $procedure_slug, Taxonomies::TAXONOMY_PROCEDURES );
-			$procedure_name = $term instanceof \WP_Term ? $term->name : '';
+			$term = get_term_by( 'slug', $procedure_slug, Taxonomies::TAXONOMY_PROCEDURES );
+			if ( $term instanceof \WP_Term ) {
+				$procedure_name    = $term->name;
+				$procedure_term_id = (string) $term->term_id;
+			}
 		}
 
 		$html = '';
@@ -359,11 +378,16 @@ class Provider_Filter {
 				continue;
 			}
 
+			// Pass the procedure term id so the AJAX-rendered card carries the
+			// procedure context (is_tax() is false here), letting next/previous
+			// navigation stay scoped to this provider on the case page.
 			$html .= Cases_Handler::render_wordpress_case_card(
 				Cases_Handler::build_case_data_from_post( $post ),
 				$image_display_mode,
 				self::case_has_nudity( $case_id ),
-				$procedure_name
+				$procedure_name,
+				'',
+				$procedure_term_id
 			);
 		}
 

@@ -156,6 +156,11 @@
 			const autocompleteEl = new places.PlaceAutocompleteElement();
 			autocompleteEl.id = 'bbLocationSearchInput';
 			autocompleteEl.setAttribute('aria-label', 'Search cases by location');
+			// Force the component's light theme (input + predictions dropdown) so it
+			// stays on-brand regardless of the OS/browser dark-mode preference. The
+			// inline color-scheme is the signal the web component honours; the SCSS
+			// rule alone does not reliably reach its shadow DOM.
+			autocompleteEl.style.colorScheme = 'light';
 			setPlaceholder(autocompleteEl, config.placeholder || 'Enter location...');
 			mount.appendChild(autocompleteEl);
 			state.autocompleteEl = autocompleteEl;
@@ -259,6 +264,7 @@
 		body.set('lat', String(ctx.lat));
 		body.set('lng', String(ctx.lng));
 		body.set('radius', String(config.defaultRadius || 50));
+		body.set('page', '1');
 		if (ctx.procedure) {
 			body.set('procedure', ctx.procedure);
 		}
@@ -299,6 +305,12 @@
 			grid.innerHTML = '<p class="brag-book-gallery-location-search__empty">' +
 				'No cases found near ' + escapeHtml(ctx.label) + '.</p>';
 			ctx.status('No cases found near ' + ctx.label + '.');
+			if (typeof window.bragBookGalleryUpdateLoadMoreContext === 'function') {
+				window.bragBookGalleryUpdateLoadMoreContext(
+					{ lat: ctx.lat, lng: ctx.lng, procedureName: ctx.procedure || '', termId: '' },
+					false
+				);
+			}
 			return;
 		}
 
@@ -307,6 +319,13 @@
 			'Showing ' + count + ' ' + (count === 1 ? 'case' : 'cases') +
 			' within ' + data.radius + ' miles of ' + ctx.label + '.'
 		);
+		// Point Load More at this location so it paginates within the radius.
+		if (typeof window.bragBookGalleryUpdateLoadMoreContext === 'function') {
+			window.bragBookGalleryUpdateLoadMoreContext(
+				{ lat: ctx.lat, lng: ctx.lng, procedureName: ctx.procedure || '', termId: '' },
+				!!data.hasMore
+			);
+		}
 	}
 
 	/**
@@ -318,6 +337,10 @@
 		const grid = document.querySelector(GRID_SELECTOR);
 		if (grid && state.originalGrid !== null) {
 			grid.innerHTML = state.originalGrid;
+		}
+		// Restore Load More to the original, unfiltered context.
+		if (typeof window.bragBookGalleryUpdateLoadMoreContext === 'function') {
+			window.bragBookGalleryUpdateLoadMoreContext(null);
 		}
 	}
 
@@ -333,8 +356,40 @@
 		return div.innerHTML;
 	}
 
+	/**
+	 * Initialise every location search widget currently in the DOM, skipping any
+	 * already wired up. Idempotent, so it is safe to call on every re-render.
+	 */
+	function initAll() {
+		document.querySelectorAll('.brag-book-gallery-location-search').forEach((root) => {
+			if (root.dataset.locationSearchReady === 'true') {
+				return;
+			}
+			root.dataset.locationSearchReady = 'true';
+			initWidget(root);
+		});
+	}
+
+	/**
+	 * Re-initialise the widget when the gallery swaps its content. Client-side
+	 * navigation replaces the innerHTML of #gallery-content, discarding the old
+	 * widget (and its in-memory search state) and inserting a fresh, server-
+	 * rendered empty one. Re-initialising that new widget is what resets the
+	 * search when the visitor switches pages.
+	 */
+	function observeReRenders() {
+		const target = document.getElementById('gallery-content');
+		if (!target) {
+			return;
+		}
+		// childList only (not subtree): fires when the content area is swapped on
+		// navigation, but not on the deep grid mutations a search itself makes.
+		new MutationObserver(initAll).observe(target, { childList: true });
+	}
+
 	function init() {
-		document.querySelectorAll('.brag-book-gallery-location-search').forEach(initWidget);
+		initAll();
+		observeReRenders();
 	}
 
 	if (document.readyState === 'loading') {

@@ -2451,16 +2451,24 @@ window.loadMoreCasesFromCache = function(button) {
 	const originalText = button.textContent;
 	button.textContent = 'Loading...';
 
-	// Get data from button attributes
+	// Get data from button attributes. The full view context (provider /
+	// location / procedure) is stamped on the button by the server render and by
+	// the provider/location filters, so pagination stays within the active view.
 	const startPage = button.getAttribute('data-start-page') || '2';
 	const procedureIds = button.getAttribute('data-procedure-ids') || '';
 	const procedureName = button.getAttribute('data-procedure-name') || '';
+	const termId = button.getAttribute('data-term-id') || '';
+	const providerId = button.getAttribute('data-provider-id') || '';
+	const providerSlug = button.getAttribute('data-provider-slug') || '';
+	const lat = button.getAttribute('data-lat') || '';
+	const lng = button.getAttribute('data-lng') || '';
 
 	// Get AJAX configuration
 	const ajaxUrl = window.bragBookGalleryConfig?.ajaxUrl || '/wp-admin/admin-ajax.php';
 	const nonce = window.bragBookGalleryConfig?.nonce || '';
 
-	// Get current procedure context from active nav link
+	// Get current procedure context from active nav link (fallback when the
+	// button has no explicit term id, e.g. legacy server renders).
 	const activeLink = document.querySelector('.brag-book-gallery-nav-link.brag-book-gallery-active');
 	const currentProcedureId = activeLink?.dataset.procedureId || '';
 	const currentTermId = activeLink?.dataset.termId || '';
@@ -2472,7 +2480,11 @@ window.loadMoreCasesFromCache = function(button) {
 	formData.append('start_page', startPage);
 	formData.append('procedure_ids', procedureIds);
 	formData.append('procedure_name', procedureName);
-	formData.append('loaded_ids', ''); // Will be populated by server
+	formData.append('term_id', termId || currentTermId);
+	formData.append('provider_id', providerId);
+	formData.append('provider_slug', providerSlug);
+	formData.append('lat', lat);
+	formData.append('lng', lng);
 	formData.append('current_procedure_id', currentProcedureId);
 	formData.append('current_term_id', currentTermId);
 
@@ -2526,6 +2538,67 @@ window.loadMoreCasesFromCache = function(button) {
 		button.disabled = false;
 		button.textContent = originalText;
 	});
+};
+
+/**
+ * Point the Load More button at a new view context, or restore the original.
+ *
+ * Called by the provider and location filters after they render page 1, so the
+ * button continues paginating within the active filter instead of the original
+ * (unfiltered) query. Passing `context = null` restores the button to the
+ * server-rendered context it started with (used on filter reset).
+ *
+ * @param {Object|null} context - { procedureName, termId, providerId, providerSlug, lat, lng } or null to restore.
+ * @param {boolean} hasMore - Whether more pages exist for the new context.
+ */
+window.bragBookGalleryUpdateLoadMoreContext = function(context, hasMore) {
+	const button = document.querySelector('.brag-book-gallery-button--load-more');
+	if (!button) return;
+
+	// Snapshot the server-rendered context once, so a reset can restore it.
+	if (!button.dataset.originalContext) {
+		button.dataset.originalContext = JSON.stringify({
+			startPage: button.getAttribute('data-start-page') || '2',
+			procedureIds: button.getAttribute('data-procedure-ids') || '',
+			procedureName: button.getAttribute('data-procedure-name') || '',
+			termId: button.getAttribute('data-term-id') || '',
+			providerId: button.getAttribute('data-provider-id') || '',
+			providerSlug: button.getAttribute('data-provider-slug') || '',
+			lat: button.getAttribute('data-lat') || '',
+			lng: button.getAttribute('data-lng') || '',
+			display: button.style.display || '',
+		});
+	}
+
+	if (context === null) {
+		const orig = JSON.parse(button.dataset.originalContext);
+		button.setAttribute('data-start-page', orig.startPage);
+		button.setAttribute('data-procedure-ids', orig.procedureIds);
+		button.setAttribute('data-procedure-name', orig.procedureName);
+		button.setAttribute('data-term-id', orig.termId);
+		button.setAttribute('data-provider-id', orig.providerId);
+		button.setAttribute('data-provider-slug', orig.providerSlug);
+		button.setAttribute('data-lat', orig.lat);
+		button.setAttribute('data-lng', orig.lng);
+		button.style.display = orig.display;
+		button.disabled = false;
+		return;
+	}
+
+	// Apply the filter context and reset pagination to page 2.
+	const termId = context.termId ?? '';
+	button.setAttribute('data-start-page', '2');
+	button.setAttribute('data-term-id', termId);
+	button.setAttribute('data-procedure-ids', termId);
+	if (context.procedureName !== undefined) {
+		button.setAttribute('data-procedure-name', context.procedureName);
+	}
+	button.setAttribute('data-provider-id', context.providerId ?? '');
+	button.setAttribute('data-provider-slug', context.providerSlug ?? '');
+	button.setAttribute('data-lat', context.lat ?? '');
+	button.setAttribute('data-lng', context.lng ?? '');
+	button.disabled = false;
+	button.style.display = hasMore ? '' : 'none';
 };
 
 /**

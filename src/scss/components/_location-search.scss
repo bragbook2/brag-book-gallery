@@ -18,6 +18,10 @@
 	flex-direction: column;
 	gap: var(--wp--custom--brag-book-gallery--spacer--xs, 4px);
 
+	// Brand is light-only: pin the whole widget to the light theme so neither the
+	// field chrome nor the mounted Places component follow OS/browser dark mode.
+	color-scheme: light;
+
 	// Hidden until JavaScript confirms Google Maps Places loaded correctly.
 	&--loading {
 		display: none;

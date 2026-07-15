@@ -1443,6 +1443,9 @@ class Chunked_Data_Sync {
 					'highResPostProcessedImageLocation'    => $images['sideBySide']['highDefinition']['url'] ?? '',
 					'seoAltText'                           => '', // Alt text comes from seoInfo, not photo images
 					'isNude'                               => false, // Default value (not in v2 response)
+					// Preserve the nested images node so save_api_response_data() can
+					// capture the per-image small/medium/full variants and alt text.
+					'images'                               => $images,
 				];
 
 				$normalized['photoSets'][] = $flat_photo_set;

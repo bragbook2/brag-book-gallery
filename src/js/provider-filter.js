@@ -216,6 +216,7 @@
 		body.set('action', config.action);
 		body.set('nonce', config.nonce);
 		body.set('provider', provider);
+		body.set('page', '1');
 		if (procedure) {
 			body.set('procedure', procedure);
 		}
@@ -232,6 +233,13 @@
 					return;
 				}
 				renderResults(grid, payload.data);
+				// Point Load More at this provider so it paginates within it.
+				if (typeof window.bragBookGalleryUpdateLoadMoreContext === 'function') {
+					window.bragBookGalleryUpdateLoadMoreContext(
+						{ providerSlug: provider, procedureName: procedure || '', termId: '' },
+						!!(payload.data && payload.data.hasMore)
+					);
+				}
 			})
 			.catch(() => {
 				// Network/parse failure: restore the unfiltered grid so the view
@@ -268,6 +276,10 @@
 		const grid = document.querySelector(GRID_SELECTOR);
 		if (grid && state.originalGrid !== null) {
 			grid.innerHTML = state.originalGrid;
+		}
+		// Restore Load More to the original, unfiltered context.
+		if (typeof window.bragBookGalleryUpdateLoadMoreContext === 'function') {
+			window.bragBookGalleryUpdateLoadMoreContext(null);
 		}
 	}
 

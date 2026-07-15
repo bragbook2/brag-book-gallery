@@ -1,0 +1,282 @@
+/**
+ * Case meta box styling.
+ *
+ * Styles the tabbed "API Case Data" meta box and the editable image-variant
+ * grid on the brag_book_cases editor. Tab switching lives in
+ * assets/js/admin/case-meta-tabs.js; the `.active` rules here hide inactive
+ * panels so the box is usable even before the script runs.
+ *
+ * Colors follow the user's chosen WordPress admin color scheme via the
+ * `--wp-admin-theme-color*` custom properties (with Fresh-scheme fallbacks),
+ * and otherwise use the standard admin neutral palette.
+ *
+ * @package BRAGBookGallery
+ * @since   3.3.3
+ */
+
+.brag-book-api-data-tabs {
+	--bbg-accent: var( --wp-admin-theme-color, #2271b1 );
+	--bbg-accent-darker: var( --wp-admin-theme-color-darker-10, #135e96 );
+	--bbg-text: #1d2327;
+	--bbg-muted: #646970;
+	--bbg-border: #dcdcde;
+	--bbg-border-strong: #c3c4c7;
+	--bbg-rule: #f0f0f1;
+	--bbg-surface: #fff;
+	--bbg-surface-alt: #f6f7f7;
+}
+
+/* Tab navigation
+   ------------------------------------------------------------------------- */
+.brag-book-api-data-tabs .nav-tab-wrapper {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0;
+	margin: 0;
+	padding: 0 12px;
+	border-bottom: 1px solid var( --bbg-border );
+	background: var( --bbg-surface-alt );
+}
+
+.brag-book-api-data-tabs .nav-tab {
+	margin: 0;
+	padding: 13px 16px;
+	border: 0;
+	border-bottom: 2px solid transparent;
+	background: transparent;
+	color: var( --bbg-muted );
+	font-size: 13px;
+	font-weight: 500;
+	line-height: 1;
+	cursor: pointer;
+	transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.brag-book-api-data-tabs .nav-tab:hover {
+	color: var( --bbg-text );
+	background: rgba( 0, 0, 0, 0.03 );
+}
+
+.brag-book-api-data-tabs .nav-tab:focus {
+	box-shadow: none;
+	outline: none;
+}
+
+.brag-book-api-data-tabs .nav-tab:focus-visible {
+	outline: 2px solid var( --bbg-accent );
+	outline-offset: -2px;
+	border-radius: 2px;
+}
+
+.brag-book-api-data-tabs .nav-tab-active,
+.brag-book-api-data-tabs .nav-tab-active:hover {
+	color: var( --bbg-accent );
+	border-bottom-color: var( --bbg-accent );
+	background: var( --bbg-surface );
+}
+
+/* Panels
+   ------------------------------------------------------------------------- */
+.brag-book-api-data-tabs .tab-content {
+	display: none;
+	padding: 16px 16px 8px;
+	animation: bbg-tab-fade 0.15s ease;
+}
+
+.brag-book-api-data-tabs .tab-content.active {
+	display: block;
+}
+
+@keyframes bbg-tab-fade {
+	from { opacity: 0; transform: translateY( 2px ); }
+	to   { opacity: 1; transform: none; }
+}
+
+.brag-book-api-data-tabs .tab-content h4 {
+	margin: 0 0 4px;
+	font-size: 14px;
+	color: var( --bbg-text );
+}
+
+/* Form tables (all tabs)
+   ------------------------------------------------------------------------- */
+.brag-book-api-data-tabs .form-table {
+	margin-top: 8px;
+	border-collapse: collapse;
+}
+
+.brag-book-api-data-tabs .form-table th {
+	width: 220px;
+	padding: 14px 16px 14px 0;
+	font-weight: 600;
+	font-size: 13px;
+	color: var( --bbg-text );
+	vertical-align: top;
+}
+
+.brag-book-api-data-tabs .form-table td {
+	padding: 12px 0;
+	vertical-align: top;
+}
+
+.brag-book-api-data-tabs .form-table tr + tr th,
+.brag-book-api-data-tabs .form-table tr + tr td {
+	border-top: 1px solid var( --bbg-rule );
+}
+
+.brag-book-api-data-tabs .form-table .description {
+	margin: 6px 0 0;
+	color: var( --bbg-muted );
+	font-style: normal;
+}
+
+/* Inputs
+   ------------------------------------------------------------------------- */
+.brag-book-api-data-tabs input[type="text"],
+.brag-book-api-data-tabs input[type="url"],
+.brag-book-api-data-tabs input[type="number"],
+.brag-book-api-data-tabs input[type="email"],
+.brag-book-api-data-tabs select,
+.brag-book-api-data-tabs textarea {
+	border: 1px solid var( --bbg-border-strong );
+	border-radius: 4px;
+	background: var( --bbg-surface );
+	color: var( --bbg-text );
+	box-shadow: none;
+	transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.brag-book-api-data-tabs input[type="text"]:focus,
+.brag-book-api-data-tabs input[type="url"]:focus,
+.brag-book-api-data-tabs input[type="number"]:focus,
+.brag-book-api-data-tabs input[type="email"]:focus,
+.brag-book-api-data-tabs select:focus,
+.brag-book-api-data-tabs textarea:focus {
+	border-color: var( --bbg-accent );
+	box-shadow: 0 0 0 1px var( --bbg-accent );
+	outline: 2px solid transparent;
+}
+
+.brag-book-api-data-tabs textarea {
+	min-height: 72px;
+}
+
+/* Image variant grid
+   ------------------------------------------------------------------------- */
+.brag-book-gallery-image-variants > .description {
+	margin: 0 0 16px;
+	color: var( --bbg-muted );
+}
+
+.brag-book-gallery-image-variant-set {
+	margin: 0 0 16px;
+	padding: 8px 16px 12px;
+	border: 1px solid var( --bbg-border );
+	border-radius: 6px;
+	background: var( --bbg-surface );
+	box-shadow: 0 1px 1px rgba( 0, 0, 0, 0.03 );
+}
+
+.brag-book-gallery-image-variant-set > legend {
+	padding: 0 8px;
+	font-weight: 600;
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: var( --bbg-muted );
+}
+
+.brag-book-gallery-image-variant-node {
+	display: flex;
+	gap: 16px;
+	align-items: flex-start;
+	padding: 14px 0;
+	border-top: 1px solid var( --bbg-rule );
+}
+
+.brag-book-gallery-image-variant-node:first-of-type {
+	border-top: 0;
+	padding-top: 4px;
+}
+
+.brag-book-gallery-image-variant-node__preview {
+	flex: 0 0 88px;
+	width: 88px;
+	height: 88px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	overflow: hidden;
+	border: 1px solid var( --bbg-border );
+	border-radius: 4px;
+	background: var( --bbg-surface-alt );
+}
+
+.brag-book-gallery-image-variant-node__preview img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	display: block;
+}
+
+.brag-book-gallery-image-variant-node__placeholder {
+	color: #a7aaad;
+	font-size: 22px;
+	line-height: 1;
+}
+
+.brag-book-gallery-image-variant-node__fields {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.brag-book-gallery-image-variant-node__label {
+	display: block;
+	margin-bottom: 8px;
+	font-size: 13px;
+	font-weight: 600;
+	color: var( --bbg-text );
+}
+
+.brag-book-gallery-image-variant-field {
+	display: grid;
+	grid-template-columns: 64px 1fr;
+	align-items: center;
+	gap: 10px;
+	margin-bottom: 6px;
+}
+
+.brag-book-gallery-image-variant-field:last-child {
+	margin-bottom: 0;
+}
+
+.brag-book-gallery-image-variant-field > span {
+	font-size: 12px;
+	color: var( --bbg-muted );
+	text-align: right;
+}
+
+.brag-book-gallery-image-variant-field input[type="url"] {
+	width: 100%;
+	font-size: 12px;
+	font-family: Consolas, Monaco, monospace;
+}
+
+/* Narrow editor columns.
+   ------------------------------------------------------------------------- */
+@media screen and ( max-width: 782px ) {
+	.brag-book-api-data-tabs .form-table th {
+		width: auto;
+		display: block;
+		padding-bottom: 4px;
+	}
+
+	.brag-book-api-data-tabs .form-table td {
+		display: block;
+		padding-top: 0;
+	}
+
+	.brag-book-gallery-image-variant-node {
+		flex-wrap: wrap;
+	}
+}

@@ -349,6 +349,7 @@ final class Setup {
 		$this->services['on_page_seo'] = new On_Page();
 		$this->services['content_meta_description'] = new Content_Meta_Description();
 		$this->services['adjacent_links'] = new Adjacent_Links();
+		$this->services['medical_schema'] = new \BRAGBookGallery\Includes\SEO\Medical_Schema();
 
 		// Initialize communications handler.
 		$this->services['communications'] = new Communications();

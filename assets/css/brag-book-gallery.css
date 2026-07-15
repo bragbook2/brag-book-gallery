@@ -4997,6 +4997,7 @@ body.brag-book-gallery-hide-filter-counts .brag-book-gallery-nav-count {
   display: flex;
   flex-direction: column;
   gap: var(--wp--custom--brag-book-gallery--spacer--xs, 4px);
+  color-scheme: light;
 }
 .brag-book-gallery-location-search--loading {
   display: none;
