@@ -65,6 +65,7 @@ use BRAGBookGallery\Includes\Shortcodes\Sidebar_Handler;
 use BRAGBookGallery\Includes\Shortcodes\Cases_Handler;
 use BRAGBookGallery\Includes\Shortcodes\Case_Handler;
 use BRAGBookGallery\Includes\Extend\Taxonomies;
+use BRAGBookGallery\Includes\Core\Settings_Helper;
 use BRAGBookGallery\Includes\Core\Trait_Api;
 use BRAGBookGallery\Includes\Shortcodes\Traits\Trait_Provider_Query;
 
@@ -329,43 +330,34 @@ final class Gallery_Handler {
 	/**
 	 * Handle procedures shortcode
 	 *
-	 * Displays cases in a tiles grid layout using WP_Query with lazy loading.
-	 * Shows cases with optional filtering by provider_id, loading more via AJAX.
+	 * Displays cases in a tiles grid layout, paged through the shared
+	 * Cases_Handler pager so the initial render and the Load More button slice
+	 * the same ordered list as every other gallery view.
 	 *
 	 * @param array $atts Shortcode attributes. Supports:
 	 *                    - provider_id: Filter cases by provider API ID.
-	 *                    - limit: Number of cases to load per page. Default 20.
+	 *                    - limit: Cases per load. Defaults to the site's
+	 *                      items-per-page setting when omitted.
 	 *
 	 * @return string Rendered cases grid HTML.
 	 * @since 3.3.2
 	 */
 	public static function handle_procedures_shortcode( array $atts ): string {
 
-		// Parse shortcode attributes.
+		// Parse shortcode attributes. An explicit limit is an author override;
+		// otherwise the site's items-per-page setting decides the page size.
 		$atts = shortcode_atts(
 			array(
 				'provider_id' => '',
-				'limit'       => 20,
+				'limit'       => 0,
 			),
 			$atts,
 			'brag_book_gallery_procedures'
 		);
 
-		// Sanitize provider_id (provider API ID stored on brag_book_providers terms).
 		$provider_id = absint( $atts['provider_id'] );
-		$limit       = (int) $atts['limit'];
-		$limit       = $limit > 0 ? $limit : 20;
-
-		// Resolve the provider to its taxonomy term(s). A provider_id that matches
-		// no term must yield no cases rather than silently returning every case.
-		$provider_tax_query = null;
-		if ( $provider_id > 0 ) {
-			$provider_term_ids = self::get_provider_term_ids( $provider_id );
-			if ( empty( $provider_term_ids ) ) {
-				return '<p class="brag-book-gallery-error">' . esc_html__( 'No cases available.', 'brag-book-gallery' ) . '</p>';
-			}
-			$provider_tax_query = self::build_provider_tax_query( $provider_term_ids );
-		}
+		$limit       = absint( $atts['limit'] );
+		$limit       = $limit > 0 ? $limit : Settings_Helper::get_items_per_page();
 
 		// Enqueue gallery assets
 		Asset_Manager::enqueue_gallery_assets();
@@ -384,246 +376,44 @@ final class Gallery_Handler {
 		// category being viewed rather than the provider's entire catalogue.
 		$term_id = self::get_active_procedure_term_id();
 
-		// Collapse cases that share a case ID (the same case synced under more
-		// than one category) into a single ordered list, so each case is counted
-		// and paginated exactly once across the initial render and Load More.
-		$unique_post_ids = self::get_ordered_unique_case_post_ids( $provider_tax_query, $term_id );
-		$total_cases     = count( $unique_post_ids );
+		// The shared resolver collapses cases synced under more than one category
+		// and yields no cases for a provider_id that matches no term.
+		$context = [
+			'provider_id' => $provider_id,
+			'term_id'     => $term_id,
+		];
 
-		if ( 0 === $total_cases ) {
+		$page = Cases_Handler::render_context_page( $context, 1, $limit );
+
+		if ( 0 === $page['total'] ) {
 			return '<p class="brag-book-gallery-error">' . esc_html__( 'No cases available.', 'brag-book-gallery' ) . '</p>';
 		}
-
-		// Render only the first page; the remainder is fetched via Load More.
-		$page_post_ids = array_slice( $unique_post_ids, 0, $limit );
-
-		$cases_query = new \WP_Query(
-			array(
-				'post_type'      => \BRAGBookGallery\Includes\Extend\Post_Types::POST_TYPE_CASES,
-				'post_status'    => 'publish',
-				'post__in'       => $page_post_ids,
-				'orderby'        => 'post__in',
-				'posts_per_page' => count( $page_post_ids ),
-				'no_found_rows'  => true,
-			)
-		);
-
-		$has_more = $total_cases > $limit;
 
 		ob_start();
 		?>
 		<!-- Cases Grid View -->
 		<div class="<?php echo esc_attr( $wrapper_class ); ?> brag-book-gallery-procedures-wrapper"
 			 role="application"
-			 aria-label="Cases Grid"
-			 data-provider-id="<?php echo esc_attr( (string) $provider_id ); ?>"
-			 data-term-id="<?php echo esc_attr( (string) $term_id ); ?>"
-			 data-limit="<?php echo esc_attr( $limit ); ?>"
-			 data-page="1"
-			 data-total="<?php echo esc_attr( $total_cases ); ?>">
+			 aria-label="Cases Grid">
 
 			<div class="brag-book-gallery-case-grid brag-book-gallery-case-grid--tiles brag-book-gallery-procedures-grid grid-initialized"
 				 data-columns="2">
 				<?php
-				// Get image display mode from settings
-				$image_display_mode = get_option( 'brag_book_gallery_image_display_mode', 'single' );
-
-				while ( $cases_query->have_posts() ) :
-					$cases_query->the_post();
-					$post = get_post();
-
-					// Get taxonomy for this case.
-					$procedure_terms = wp_get_post_terms( $post->ID, Taxonomies::TAXONOMY_PROCEDURES );
-					$procedure_taxonomy = ! empty( $procedure_terms ) && ! is_wp_error( $procedure_terms ) ? $procedure_terms[0] : null;
-
-					// Check for nudity.
-					$procedure_nudity = false;
-					if ( $procedure_taxonomy ) {
-						$nudity_meta = get_term_meta( $procedure_taxonomy->term_id, 'nudity', true );
-						$procedure_nudity = 'true' === $nudity_meta;
-					}
-
-					// Convert post to case data format (same as render_taxonomy_cases)
-					$case_data = [
-						'id'         => get_post_meta( $post->ID, 'case_id', true ) ?: $post->ID,
-						'post_id'    => $post->ID,
-						'images'     => get_post_meta( $post->ID, 'images', true ) ?: [],
-						'age'        => get_post_meta( $post->ID, 'age', true ) ?: '',
-						'gender'     => get_post_meta( $post->ID, 'gender', true ) ?: '',
-						'ethnicity'  => get_post_meta( $post->ID, 'ethnicity', true ) ?: '',
-						'height'     => get_post_meta( $post->ID, 'height', true ) ?: '',
-						'weight'     => get_post_meta( $post->ID, 'weight', true ) ?: '',
-						'notes'      => get_post_meta( $post->ID, 'notes', true ) ?: '',
-						'procedures' => array_map( function ( $term ) {
-							return is_object( $term ) ? $term->name : $term;
-						}, $procedure_terms ),
-					];
-
-					// Ensure images is an array
-					if ( ! is_array( $case_data['images'] ) ) {
-						$case_data['images'] = [];
-					}
-
-					// Render full case card using Cases_Handler
-					$card_html = Cases_Handler::render_wordpress_case_card(
-						$case_data,
-						$image_display_mode,
-						$procedure_nudity,
-						$procedure_taxonomy ? $procedure_taxonomy->name : '',
-						'',
-						$procedure_taxonomy ? (string) $procedure_taxonomy->term_id : ''
-					);
-
-					// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Output is escaped in the rendering method
-					echo $card_html;
-
-				endwhile;
-				wp_reset_postdata();
+				// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Output is escaped within render_context_page().
+				echo $page['html'];
 				?>
 			</div>
 
-			<?php if ( $has_more ) : ?>
-				<div class="brag-book-gallery-load-more-container brag-book-gallery-procedures-load-more">
-					<button type="button"
-							class="brag-book-gallery-button brag-book-gallery-button--load-more brag-book-gallery-procedures-load-more-btn"
-							data-loading="false">
-						<?php esc_html_e( 'Load More', 'brag-book-gallery' ); ?>
-					</button>
-				</div>
-			<?php endif; ?>
-
 			<?php
+			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Output is escaped within render_load_more_button().
+			echo Cases_Handler::render_load_more_button( $context, $limit, $page['total'] );
+
 			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Markup is escaped within render_disclaimer().
 			echo self::render_disclaimer();
 			?>
 		</div>
 		<?php
 		return ob_get_clean();
-	}
-
-	/**
-	 * AJAX handler for loading more cases in procedures shortcode
-	 *
-	 * @return void
-	 * @since 4.3.2
-	 */
-	public static function ajax_load_more_procedures(): void {
-		// Verify nonce
-		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ?? '' ) ), 'brag_book_gallery_nonce' ) ) {
-			wp_send_json_error( [ 'message' => 'Invalid nonce' ] );
-			return;
-		}
-
-		$page        = absint( $_POST['page'] ?? 1 );
-		$limit       = absint( $_POST['limit'] ?? 20 );
-		$provider_id = absint( $_POST['provider_id'] ?? 0 );
-		$term_id     = absint( $_POST['term_id'] ?? 0 );
-
-		$offset = ( $page - 1 ) * $limit;
-
-		// Resolve the provider filter. An unresolved provider_id returns no
-		// further cases rather than silently widening to every provider.
-		$provider_tax_query = null;
-		if ( $provider_id > 0 ) {
-			$provider_term_ids = self::get_provider_term_ids( $provider_id );
-			if ( empty( $provider_term_ids ) ) {
-				wp_send_json_success( [
-					'html'    => '',
-					'hasMore' => false,
-				] );
-				return;
-			}
-			$provider_tax_query = self::build_provider_tax_query( $provider_term_ids );
-		}
-
-		// Build the ordered, de-duplicated list scoped to the provider and the
-		// active category, then slice the requested page from it so pagination
-		// and duplicate collapsing stay consistent with the initial render.
-		$unique_post_ids = self::get_ordered_unique_case_post_ids( $provider_tax_query, $term_id );
-		$total_cases     = count( $unique_post_ids );
-		$page_post_ids   = array_slice( $unique_post_ids, $offset, $limit );
-
-		if ( empty( $page_post_ids ) ) {
-			wp_send_json_success( [
-				'html'    => '',
-				'hasMore' => false,
-			] );
-			return;
-		}
-
-		$cases_query = new \WP_Query(
-			array(
-				'post_type'      => \BRAGBookGallery\Includes\Extend\Post_Types::POST_TYPE_CASES,
-				'post_status'    => 'publish',
-				'post__in'       => $page_post_ids,
-				'orderby'        => 'post__in',
-				'posts_per_page' => count( $page_post_ids ),
-				'no_found_rows'  => true,
-			)
-		);
-
-		$html = '';
-		$image_display_mode = get_option( 'brag_book_gallery_image_display_mode', 'single' );
-
-		while ( $cases_query->have_posts() ) {
-			$cases_query->the_post();
-			$post = get_post();
-
-			// Get taxonomy for this case.
-			$procedure_terms    = wp_get_post_terms( $post->ID, Taxonomies::TAXONOMY_PROCEDURES );
-			$procedure_taxonomy = ! empty( $procedure_terms ) && ! is_wp_error( $procedure_terms ) ? $procedure_terms[0] : null;
-
-			// Check for nudity.
-			$procedure_nudity = false;
-			if ( $procedure_taxonomy ) {
-				$nudity_meta      = get_term_meta( $procedure_taxonomy->term_id, 'nudity', true );
-				$procedure_nudity = 'true' === $nudity_meta;
-			}
-
-			// Convert post to case data format
-			$case_data = [
-				'id'         => get_post_meta( $post->ID, 'case_id', true ) ?: $post->ID,
-				'post_id'    => $post->ID,
-				'images'     => get_post_meta( $post->ID, 'images', true ) ?: [],
-				'age'        => get_post_meta( $post->ID, 'age', true ) ?: '',
-				'gender'     => get_post_meta( $post->ID, 'gender', true ) ?: '',
-				'ethnicity'  => get_post_meta( $post->ID, 'ethnicity', true ) ?: '',
-				'height'     => get_post_meta( $post->ID, 'height', true ) ?: '',
-				'weight'     => get_post_meta( $post->ID, 'weight', true ) ?: '',
-				'notes'      => get_post_meta( $post->ID, 'notes', true ) ?: '',
-				'procedures' => array_map( function ( $term ) {
-					return is_object( $term ) ? $term->name : $term;
-				}, $procedure_terms ),
-			];
-
-			if ( ! is_array( $case_data['images'] ) ) {
-				$case_data['images'] = [];
-			}
-
-			$html .= Cases_Handler::render_wordpress_case_card(
-				$case_data,
-				$image_display_mode,
-				$procedure_nudity,
-				$procedure_taxonomy ? $procedure_taxonomy->name : '',
-				'',
-				$procedure_taxonomy ? (string) $procedure_taxonomy->term_id : ''
-			);
-		}
-
-		wp_reset_postdata();
-
-		// Pagination is derived from the de-duplicated total, not the raw post
-		// count, so collapsed duplicates never leave a dangling Load More.
-		$loaded_so_far = $offset + count( $page_post_ids );
-		$has_more      = $loaded_so_far < $total_cases;
-
-		wp_send_json_success( [
-			'html'    => $html,
-			'hasMore' => $has_more,
-			'page'    => $page,
-			'loaded'  => $loaded_so_far,
-			'total'   => $total_cases,
-		] );
 	}
 
 	/**
@@ -1637,15 +1427,19 @@ final class Gallery_Handler {
 							 id="gallery-sections">
 							<div class="brag-book-gallery-section"
 								 aria-label="Filtered Gallery Results">
+								<?php $cases_page = self::render_taxonomy_cases( $current_taxonomy ); ?>
 								<div
 									class="brag-book-gallery-case-grid masonry-layout"
 									data-columns="<?php echo esc_attr( $default_columns ); ?>">
 									<?php
-									// Load cases from WordPress posts for this taxonomy
-									// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Output is escaped in the rendering method
-									echo self::render_taxonomy_cases( $current_taxonomy );
+									// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Output is escaped within render_taxonomy_cases().
+									echo $cases_page['html'];
 									?>
 								</div>
+								<?php
+								// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Output is escaped within render_load_more_button().
+								echo $cases_page['button'];
+								?>
 							</div>
 						</div>
 						<?php
@@ -2360,72 +2154,24 @@ final class Gallery_Handler {
 			<?php
 			// Get columns from settings
 			$default_columns = absint( get_option( 'brag_book_gallery_columns', 2 ) );
+
+			// Page one of this procedure's cases, plus the button that continues it.
+			// The pager reports the context total, so no separate count query is needed.
+			$cases_page = self::render_taxonomy_cases( $procedure_term );
 			?>
 			<div class="brag-book-gallery-procedure-cases"
 				 data-filter-procedure="<?php echo esc_attr( $procedure_slug ); ?>">
 				<div class="brag-book-gallery-case-grid masonry-layout"
 					 data-columns="<?php echo esc_attr( $default_columns ); ?>">
 					<?php
-					// Load cases from WordPress posts for this procedure
-					// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Output is escaped in the rendering method
-					echo self::render_taxonomy_cases( $procedure_term );
+					// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Output is escaped within render_taxonomy_cases().
+					echo $cases_page['html'];
 					?>
 				</div>
 
 				<?php
-				// Get items per page from settings
-				$items_per_page = absint( get_option( 'brag_book_gallery_items_per_page', 12 ) );
-
-				// Get total cases for this specific procedure
-				$procedure_id = get_term_meta( $procedure_term->term_id, 'procedure_id', true );
-				$total_case_ids = [];
-
-				if ( $procedure_id ) {
-					// Get all ordered case IDs for this procedure
-					$case_order_list = get_term_meta( $procedure_term->term_id, 'brag_book_gallery_case_order_list', true );
-					if ( is_array( $case_order_list ) ) {
-						$total_case_ids = $case_order_list;
-					}
-				}
-
-				// If we have ordered cases, use that count; otherwise count posts in taxonomy
-				if ( ! empty( $total_case_ids ) ) {
-					$total_cases = count( $total_case_ids );
-				} else {
-					// Fallback to counting posts in this taxonomy
-					$count_query = new \WP_Query( [
-						'post_type' => \BRAGBookGallery\Includes\Extend\Post_Types::POST_TYPE_CASES,
-						'tax_query' => [
-							[
-								'taxonomy' => $procedure_term->taxonomy,
-								'field'    => 'term_id',
-								'terms'    => $procedure_term->term_id,
-							]
-						],
-						'posts_per_page' => -1,
-						'fields' => 'ids',
-					] );
-					$total_cases = $count_query->found_posts;
-				}
-
-				// Add Load More pagination if there are more cases than items per page
-				if ( $total_cases > $items_per_page ) {
-					$infinite_scroll = get_option( 'brag_book_gallery_infinite_scroll', 'no' );
-					$is_hidden       = ( $infinite_scroll === 'yes' );
-					?>
-					<div class="brag-book-gallery-load-more-container">
-						<button
-							class="brag-book-gallery-button brag-book-gallery-button--load-more"<?php if ( $is_hidden ) { echo ' style="display: none;"'; } ?>
-							data-action="load-more"
-							data-start-page="2"
-							data-procedure-ids=""
-							data-procedure-name="<?php echo esc_attr( $procedure_slug ); ?>"
-							data-total-pages="<?php echo (int) ceil( $total_cases / $items_per_page ); ?>">
-							<?php esc_html_e( 'Load More', 'brag-book-gallery' ); ?>
-						</button>
-					</div>
-					<?php
-				}
+				// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Output is escaped within render_load_more_button().
+				echo $cases_page['button'];
 				?>
 			</div>
 			<?php
@@ -2826,14 +2572,19 @@ final class Gallery_Handler {
 					?>
 
 					<!-- Case Grid - 2x2 tiles layout -->
+					<?php $cases_page = self::render_taxonomy_cases( $procedure_term ); ?>
 					<div class="brag-book-gallery-case-grid brag-book-gallery-case-grid--tiles grid-initialized"
 						 data-columns="2">
 						<?php
-						// Render cases for this procedure
-						// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Output is escaped in the rendering method
-						echo self::render_taxonomy_cases( $procedure_term );
+						// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Output is escaped within render_taxonomy_cases().
+						echo $cases_page['html'];
 						?>
 					</div>
+
+					<?php
+					// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Output is escaped within render_load_more_button().
+					echo $cases_page['button'];
+					?>
 
 					<?php
 					// Image processing disclaimer, shown after the case grid when enabled.
@@ -2940,133 +2691,52 @@ final class Gallery_Handler {
 	}
 
 	/**
-	 * Render cases for taxonomy pages
+	 * Render the first page of a procedure's cases, with its "load more" button.
 	 *
-	 * Gets WordPress posts for the current taxonomy and renders them
-	 * as case cards using the Cases_Handler.
+	 * Delegates to the shared Cases_Handler pager so the initial render, the
+	 * provider and location filters, and the load-more button all slice the same
+	 * ordered list at the same page size. Previously this rendered every case for
+	 * the term, which both ignored the items-per-page setting and made the first
+	 * load-more append duplicate cards.
 	 *
-	 * @param \WP_Term $taxonomy Current taxonomy term.
-	 *
-	 * @return string HTML for taxonomy cases.
 	 * @since 3.0.0
+	 * @param \WP_Term $taxonomy Procedure term to render cases for.
+	 * @return array{html:string,button:string,total:int} Grid markup, load-more
+	 *                                                    markup (empty when every
+	 *                                                    case fits on page one),
+	 *                                                    and the context total.
 	 */
-	private static function render_taxonomy_cases( \WP_Term $taxonomy ): string {
+	private static function render_taxonomy_cases( \WP_Term $taxonomy ): array {
+		$per_page = Settings_Helper::get_items_per_page();
+		$context  = [
+			'term_id'        => $taxonomy->term_id,
+			'procedure_slug' => $taxonomy->slug,
+		];
 
-		// Show all results - no pagination limit
-		// Use -1 to get all posts for this taxonomy
-		$items_per_page = -1;
+		$page = Cases_Handler::render_context_page( $context, 1, $per_page );
 
-		// Get case order list from taxonomy term meta
-		$case_order_list = get_term_meta( $taxonomy->term_id, 'brag_book_gallery_case_order_list', true );
-
-		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAGBook Gallery: render_taxonomy_cases for term ' . $taxonomy->term_id . ' (' . $taxonomy->slug . ')' );
-			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log, WordPress.PHP.DevelopmentFunctions.error_log_print_r
-			error_log( 'BRAGBook Gallery: Case order list: ' . print_r( $case_order_list, true ) );
-		}
-
-		// Build query args
-		$query_args = array(
-			'post_type'      => \BRAGBookGallery\Includes\Extend\Post_Types::POST_TYPE_CASES,
-			'post_status'    => 'publish',
-			'posts_per_page' => $items_per_page,
-		);
-
-		// If we have case order with WordPress IDs, use post__in for ordering
-		if ( is_array( $case_order_list ) && ! empty( $case_order_list ) ) {
-			$post_ids = [];
-			foreach ( $case_order_list as $case_data ) {
-				if ( is_array( $case_data ) && ! empty( $case_data['wp_id'] ) ) {
-					$post_ids[] = $case_data['wp_id'];
-				}
-			}
-
-			if ( ! empty( $post_ids ) ) {
-				$query_args['post__in'] = $post_ids;
-				$query_args['orderby']  = 'post__in';
-
-				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-					error_log( 'BRAGBook Gallery: Using post__in with ' . count( $post_ids ) . ' WordPress IDs for ordering' );
-					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-					error_log( 'BRAGBook Gallery: Post IDs in order: ' . implode( ', ', $post_ids ) );
-				}
-			} else {
-				// Fallback to taxonomy filter
-				$query_args['tax_query'] = array(
-					array(
-						'taxonomy' => $taxonomy->taxonomy,
-						'field'    => 'term_id',
-						'terms'    => $taxonomy->term_id,
-					),
-				);
-				$query_args['orderby'] = 'date';
-				$query_args['order']   = 'DESC';
-			}
-		} else {
-			// Fallback to taxonomy filter if no case order list
-			$query_args['tax_query'] = array(
-				array(
-					'taxonomy' => $taxonomy->taxonomy,
-					'field'    => 'term_id',
-					'terms'    => $taxonomy->term_id,
+		if ( 0 === $page['total'] ) {
+			return [
+				'html'   => sprintf(
+					'<div class="brag-book-gallery-no-cases"><p>%s</p></div>',
+					esc_html(
+						sprintf(
+							/* translators: %s: procedure name. */
+							__( 'No cases found for %s.', 'brag-book-gallery' ),
+							$taxonomy->name
+						)
+					)
 				),
-			);
-			$query_args['orderby'] = 'date';
-			$query_args['order']   = 'DESC';
-		}
-
-		$posts = get_posts( $query_args );
-
-		if ( empty( $posts ) ) {
-			return '<div class="brag-book-gallery-no-cases" style="grid-column: 1/-1; text-align: center; padding: 2rem;">
-				<p>No cases found for ' . esc_html( $taxonomy->name ) . '.</p>
-			</div>';
-		}
-
-		// Check if current taxonomy has nudity using WordPress term meta (same as sidebar)
-		$nudity_meta = get_term_meta( $taxonomy->term_id, 'nudity', true );
-		$procedure_nudity = 'true' === $nudity_meta;
-
-
-		// Use Cases_Handler to render the cases
-		$cases_html = '';
-		foreach ( $posts as $post ) {
-			// Convert post to case data format
-			$case_data = [
-				'id'         => get_post_meta( $post->ID, 'case_id', true ) ?: $post->ID,
-				'post_id'    => $post->ID,
-				'images'     => get_post_meta( $post->ID, 'images', true ) ?: [],
-				'age'        => get_post_meta( $post->ID, 'age', true ) ?: '',
-				'gender'     => get_post_meta( $post->ID, 'gender', true ) ?: '',
-				'ethnicity'  => get_post_meta( $post->ID, 'ethnicity', true ) ?: '',
-				'height'     => get_post_meta( $post->ID, 'height', true ) ?: '',
-				'weight'     => get_post_meta( $post->ID, 'weight', true ) ?: '',
-				'notes'      => get_post_meta( $post->ID, 'notes', true ) ?: '',
-				'procedures' => array_map( function ( $term ) {
-					return is_object( $term ) ? $term->name : $term;
-				}, wp_get_post_terms( $post->ID, $taxonomy->taxonomy ) ?: [] ),
+				'button' => '',
+				'total'  => 0,
 			];
-
-
-			// Ensure images is an array
-			if ( ! is_array( $case_data['images'] ) ) {
-				$case_data['images'] = [];
-			}
-
-			// Use Cases_Handler to render the WordPress case card
-			$cases_html .= \BRAGBookGallery\Includes\Shortcodes\Cases_Handler::render_wordpress_case_card(
-				$case_data,
-				'single', // image_display_mode - use single mode for taxonomy pages
-				$procedure_nudity, // procedure_nudity - from taxonomy meta
-				$taxonomy->name // procedure_context - pass the actual taxonomy name
-			);
 		}
 
-		// Note: Pagination moved outside of grid container in the calling method
-
-		return $cases_html;
+		return [
+			'html'   => $page['html'],
+			'button' => Cases_Handler::render_load_more_button( $context, $per_page, $page['total'] ),
+			'total'  => $page['total'],
+		];
 	}
 
 	/**

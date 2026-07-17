@@ -34,6 +34,32 @@ if ( ! defined( 'WPINC' ) ) {
 final class Settings_Helper {
 
 	/**
+	 * Cases rendered per page when the site has never saved the setting.
+	 *
+	 * @since 4.9.2
+	 * @var int
+	 */
+	public const DEFAULT_ITEMS_PER_PAGE = 12;
+
+	/**
+	 * Smallest accepted items-per-page value. Below 1 the grid renders nothing
+	 * and the pager cannot advance.
+	 *
+	 * @since 4.9.2
+	 * @var int
+	 */
+	public const MIN_ITEMS_PER_PAGE = 1;
+
+	/**
+	 * Largest accepted items-per-page value. Bounds the admin field so a single
+	 * load cannot be made arbitrarily expensive.
+	 *
+	 * @since 4.9.2
+	 * @var int
+	 */
+	public const MAX_ITEMS_PER_PAGE = 200;
+
+	/**
 	 * Static cache for settings to avoid repeated database queries
 	 *
 	 * @since 3.2.4
@@ -140,8 +166,16 @@ final class Settings_Helper {
 	/**
 	 * Get items per page setting
 	 *
+	 * The single source of truth for how many cases render per load, shared by
+	 * the initial grid render, the provider and location filters, and the
+	 * "load more" pager, so every batch is the same size.
+	 *
+	 * Floored at 1 because a page size of 0 would render nothing and leave the
+	 * pager unable to advance. Not capped here: the admin field bounds the value
+	 * on save, and a site that deliberately stores a larger number should get it.
+	 *
 	 * @since 3.2.4
-	 * @return int Number of items to show per page
+	 * @return int Number of items to show per page, always >= 1.
 	 */
 	public static function get_items_per_page(): int {
 		$cache_key = 'items_per_page';
@@ -151,11 +185,12 @@ final class Settings_Helper {
 			return self::$settings_cache[ $cache_key ];
 		}
 
-		// Get setting with default 10
-		$setting = get_option( 'brag_book_gallery_items_per_page', 200 );
+		$setting = get_option(
+			'brag_book_gallery_items_per_page',
+			self::DEFAULT_ITEMS_PER_PAGE
+		);
 
-		// Convert to int, ensure minimum of 1, maximum of 100
-		$items_per_page = max( 1, min( 100, absint( $setting ) ) );
+		$items_per_page                     = max( 1, absint( $setting ) );
 		self::$settings_cache[ $cache_key ] = $items_per_page;
 
 		return $items_per_page;

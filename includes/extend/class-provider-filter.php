@@ -18,6 +18,7 @@
 
 namespace BRAGBookGallery\Includes\Extend;
 
+use BRAGBookGallery\Includes\Core\Settings_Helper;
 use BRAGBookGallery\Includes\Core\Setup;
 use BRAGBookGallery\Includes\Shortcodes\Cases_Handler;
 
@@ -204,7 +205,7 @@ class Provider_Filter {
 		}
 
 		$page     = max( 1, absint( $_POST['page'] ?? 1 ) );
-		$per_page = absint( get_option( 'brag_book_gallery_items_per_page', '200' ) );
+		$per_page = Settings_Helper::get_items_per_page();
 
 		// Delegate to the shared, context-aware pager so provider results paginate
 		// and order identically to the "load more" button that continues them.

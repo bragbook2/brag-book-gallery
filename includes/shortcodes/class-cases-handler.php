@@ -66,8 +66,8 @@ namespace BRAGBookGallery\Includes\shortcodes;
 use BRAGBookGallery\Includes\Extend\Post_Types;
 use BRAGBookGallery\Includes\Extend\Taxonomies;
 use BRAGBookGallery\Includes\Resources\Asset_Manager;
+use BRAGBookGallery\Includes\Core\Settings_Helper;
 use BRAGBookGallery\Includes\Core\Setup;
-use BRAGBookGallery\Includes\Extend\Data_Fetcher;
 use BRAGBookGallery\Includes\Shortcodes\Traits\Trait_Provider_Query;
 use BRAGBookGallery\Includes\Shortcodes\Traits\Trait_Image_Variants;
 use BRAGBookGallery\Includes\Shortcodes\Traits\Trait_Location_Query;
@@ -110,28 +110,12 @@ final class Cases_Handler {
 	use Trait_Location_Query;
 
 	/**
-	 * Default cases per page
-	 *
-	 * @since 3.0.0
-	 * @var int
-	 */
-	private const DEFAULT_CASES_LIMIT = 20;
-
-	/**
 	 * Default grid columns
 	 *
 	 * @since 3.0.0
 	 * @var int
 	 */
 	private const DEFAULT_COLUMNS = 2;
-
-	/**
-	 * Maximum cases returned when filtering by provider_id
-	 *
-	 * @since 4.9.0
-	 * @var int
-	 */
-	private const PROVIDER_CASES_LIMIT = 99;
 
 	/**
 	 * Cache group for cases data
@@ -407,38 +391,8 @@ final class Cases_Handler {
 			);
 		}
 
-		// Get procedure IDs based on filter.
-		$procedure_ids = self::get_procedure_ids_for_filter( $filter_procedure, $atts );
-
-		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-		// Get items per page setting
-		$items_per_page = absint( get_option( 'brag_book_gallery_items_per_page', '200' ) );
-
-		// When filtering by procedure, load enough cases for pagination plus some buffer
-		// but avoid loading excessive amounts on initial page load for performance
-		$initial_load_size = ! empty( $filter_procedure ) ? min( 200, $items_per_page * 5 ) : $items_per_page;
-
-		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-		// Get cases from API.
-		$cases_data = Data_Fetcher::get_cases_from_api(
-			$atts['api_token'],
-			$atts['website_property_id'],
-			$procedure_ids,
-			$initial_load_size,
-			absint( $atts['page'] )
-		);
-
 		// Enqueue cases assets.
 		Asset_Manager::enqueue_cases_assets();
-
-		// Get sidebar data for filters
-		$api_tokens           = get_option( 'brag_book_gallery_api_token', [] );
-		$website_property_ids = get_option( 'brag_book_gallery_website_property_id', [] );
-
-		$sidebar_data = [];
-		if ( ! empty( $api_tokens[0] ) && ! empty( $website_property_ids[0] ) ) {
-			$sidebar_data = Data_Fetcher::get_sidebar_data( $api_tokens[0], $website_property_ids[0] );
-		}
 
 		// Localize script with necessary data for filters. The case dataset is
 		// emitted as a separate inline script (see Gallery_Handler) so we don't
@@ -448,7 +402,7 @@ final class Cases_Handler {
 				'api_token'           => $atts['api_token'],
 				'website_property_id' => $atts['website_property_id'],
 			],
-			$sidebar_data
+			[] // Sidebar data is populated by JavaScript at runtime.
 		);
 
 		// Render cases grid using WordPress posts instead of API data.
@@ -514,7 +468,7 @@ final class Cases_Handler {
 	 */
 	private static function validate_and_sanitize_shortcode_attributes( array $raw_atts ): array {
 		// Get items per page from settings
-		$items_per_page = absint( get_option( 'brag_book_gallery_items_per_page', self::DEFAULT_CASES_LIMIT ) );
+		$items_per_page = Settings_Helper::get_items_per_page();
 
 		// Get columns from settings
 		$default_columns = absint( get_option( 'brag_book_gallery_columns', self::DEFAULT_COLUMNS ) );
@@ -671,55 +625,6 @@ final class Cases_Handler {
 		$request_uri = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : 'N/A';
 		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'Current URL: ' . esc_url_raw( $request_uri ) );
-	}
-
-	/**
-	 * Get procedure IDs for filtering
-	 *
-	 * Determines procedure IDs based on filter or shortcode attributes.
-	 *
-	 * @param string $filter_procedure Procedure slug to filter by.
-	 * @param array $atts Shortcode attributes.
-	 *
-	 * @return array Array of procedure IDs.
-	 * @since 3.0.0
-	 *
-	 */
-	private static function get_procedure_ids_for_filter( string $filter_procedure, array $atts ): array {
-		$procedure_ids = array();
-
-		if ( ! empty( $filter_procedure ) ) {
-			// Try to find matching procedure in sidebar data.
-			$sidebar_data = Data_Fetcher::get_sidebar_data( $atts['api_token'] );
-
-			if ( ! empty( $sidebar_data['data'] ) ) {
-				$procedure_info = Data_Fetcher::find_procedure_by_slug( $sidebar_data['data'], $filter_procedure );
-
-				// Use 'ids' array which contains all procedure IDs for this procedure type.
-				if ( ! empty( $procedure_info['ids'] ) && is_array( $procedure_info['ids'] ) ) {
-					$procedure_ids = array_map( 'intval', $procedure_info['ids'] );
-
-					if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
-						// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-						error_log( 'Cases shortcode - Found procedure IDs for ' . $filter_procedure . ': ' . implode( ',', $procedure_ids ) );
-						// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-						error_log( 'Total case count from sidebar: ' . ( $procedure_info['totalCase'] ?? 0 ) );
-					}
-				} elseif ( ! empty( $procedure_info['id'] ) ) {
-					// Fallback to single 'id' if 'ids' array doesn't exist.
-					$procedure_ids = array( intval( $procedure_info['id'] ) );
-
-					if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
-						// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-						error_log( 'Cases shortcode - Using single procedure ID for ' . $filter_procedure . ': ' . $procedure_info['id'] );
-					}
-				}
-			}
-		} elseif ( ! empty( $atts['procedure_ids'] ) ) {
-			$procedure_ids = array_map( 'intval', explode( ',', $atts['procedure_ids'] ) );
-		}
-
-		return $procedure_ids;
 	}
 
 	/**
@@ -1298,7 +1203,7 @@ final class Cases_Handler {
 			'procedure_slug' => $filter_procedure,
 		];
 
-		$items_per_page = absint( get_option( 'brag_book_gallery_items_per_page', '200' ) );
+		$items_per_page = Settings_Helper::get_items_per_page();
 		$page           = self::render_context_page( $context, 1, $items_per_page );
 
 		// Return early with "no cases" message if there are no results
@@ -1330,130 +1235,6 @@ final class Cases_Handler {
 		);
 
 		return $output;
-	}
-
-	/**
-	 * Builds and returns a WP_Query object for fetching case posts.
-	 *
-	 * Constructs a query with appropriate filters, sorting, and pagination settings.
-	 * When a procedure filter is provided, adds taxonomy query and custom sorting by case order
-	 * from the procedure taxonomy term meta.
-	 *
-	 * @param string $filter_procedure Optional. Procedure slug to filter cases by.
-	 * @param int    $provider_id      Optional. Provider taxonomy API ID to filter cases by.
-	 *                                 When provided, results are capped at PROVIDER_CASES_LIMIT.
-	 *
-	 * @return \WP_Query WordPress query object containing the case posts.
-	 * @since 1.0.0
-	 *
-	 */
-	private static function get_cases_query( string $filter_procedure = '', int $provider_id = 0 ): \WP_Query {
-		// Debug logging at entry point
-		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAGBook: get_cases_query() called with filter_procedure: "' . $filter_procedure . '"' );
-			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAGBook: filter_procedure empty check: ' . ( empty( $filter_procedure ) ? 'EMPTY' : 'NOT EMPTY' ) );
-		}
-
-		// Base query arguments for fetching published case posts
-		$query_args = [
-			'post_type'      => Post_Types::POST_TYPE_CASES,
-			'post_status'    => 'publish',
-			'posts_per_page' => absint( get_option( 'brag_book_gallery_items_per_page', '200' ) ),
-			'orderby'        => 'date',
-			'order'          => 'DESC',
-			'meta_query'     => [],
-			'tax_query'      => [],
-		];
-
-		// Add provider-specific filtering if a provider_id is specified.
-		if ( $provider_id > 0 ) {
-			$provider_term_ids = self::get_provider_term_ids( $provider_id );
-
-			if ( ! empty( $provider_term_ids ) ) {
-				$query_args['tax_query'][] = self::build_provider_tax_query( $provider_term_ids );
-			}
-
-			// Cap results when filtering by provider, regardless of the global items-per-page setting.
-			$query_args['posts_per_page'] = min( self::PROVIDER_CASES_LIMIT, $query_args['posts_per_page'] );
-		}
-
-		// Add procedure-specific filtering and sorting if a filter is specified
-		if ( ! empty( $filter_procedure ) ) {
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'BRAGBook: Filter procedure is not empty, proceeding with term lookup' );
-			}
-			// Get the procedure term to access its case order
-			$procedure_term = get_term_by( 'slug', $filter_procedure, Taxonomies::TAXONOMY_PROCEDURES );
-
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'BRAGBook: Taxonomy constant: ' . Taxonomies::TAXONOMY_PROCEDURES );
-				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'BRAGBook: Term lookup result: ' . ( $procedure_term ? 'FOUND (ID: ' . $procedure_term->term_id . ')' : 'NOT FOUND' ) );
-				if ( is_wp_error( $procedure_term ) ) {
-					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-					error_log( 'BRAGBook: Term lookup error: ' . $procedure_term->get_error_message() );
-				}
-			}
-
-			if ( $procedure_term && ! is_wp_error( $procedure_term ) ) {
-				// Get the case order list from term meta
-				$case_order_list = get_term_meta( $procedure_term->term_id, 'brag_book_gallery_case_order_list', true );
-
-				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log, WordPress.PHP.DevelopmentFunctions.error_log_print_r
-					error_log( 'BRAGBook: Case order list for ' . $filter_procedure . ' (term ID: ' . $procedure_term->term_id . '): ' . print_r( $case_order_list, true ) );
-					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-					error_log( 'BRAGBook: Case order list type: ' . gettype( $case_order_list ) . ', is_array: ' . ( is_array( $case_order_list ) ? 'YES' : 'NO' ) . ', count: ' . ( is_array( $case_order_list ) ? count( $case_order_list ) : 'N/A' ) );
-				}
-
-				// If we have a case order list with WordPress IDs, use post__in for ordering
-				if ( is_array( $case_order_list ) && ! empty( $case_order_list ) ) {
-					// Extract WordPress post IDs from the case order list
-					$post_ids = [];
-					foreach ( $case_order_list as $case_data ) {
-						if ( is_array( $case_data ) && ! empty( $case_data['wp_id'] ) ) {
-							$post_ids[] = $case_data['wp_id'];
-						}
-					}
-
-					if ( ! empty( $post_ids ) ) {
-						// Use post__in to get only these posts in this exact order
-						$query_args['post__in'] = $post_ids;
-						// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-						$query_args['orderby']  = 'post__in';
-						unset( $query_args['order'] );
-
-						if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-							// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-							error_log( 'BRAGBook: Using post__in with ' . count( $post_ids ) . ' WordPress IDs for ordering' );
-						}
-					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-					} else {
-						// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-						// Fallback to taxonomy filter if no valid post IDs found
-						$query_args['tax_query'][] = [
-							'taxonomy' => Taxonomies::TAXONOMY_PROCEDURES,
-							'field'    => 'slug',
-							'terms'    => $filter_procedure,
-						];
-					}
-				} else {
-					// Fallback to taxonomy filter if no case order list
-					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-					$query_args['tax_query'][] = [
-						'taxonomy' => Taxonomies::TAXONOMY_PROCEDURES,
-						'field'    => 'slug',
-						'terms'    => $filter_procedure,
-					];
-				}
-			}
-		}
-
-		return new \WP_Query( $query_args );
 	}
 
 	/**
@@ -1734,7 +1515,7 @@ final class Cases_Handler {
 	 * @since 1.0.0
 	 *
 	 */
-	private static function render_load_more_button( array $context, int $items_per_page, int $total_cases ): string {
+	public static function render_load_more_button( array $context, int $items_per_page, int $total_cases ): string {
 		// Don't show load more button if all cases fit on first page
 		if ( $total_cases <= $items_per_page ) {
 			return '';
@@ -2022,102 +1803,6 @@ final class Cases_Handler {
 
 		// Prevent wpautop from adding unwanted <p> and <br> tags to shortcode output
 		return '<!--brag-book-gallery-start-->' . $output . '<!--brag-book-gallery-end-->';
-	}
-
-	/**
-	 * Check if the current procedure being viewed has nudity flag set to true.
-	 *
-	 * Uses the sidebar data to determine if a procedure has nudity enabled.
-	 * This ensures that server-rendered case cards show nudity warnings when appropriate.
-	 *
-	 * @param string $filter_procedure Current procedure being viewed.
-	 *
-	 * @return bool True if procedure has nudity flag set.
-	 * @since 3.0.0
-	 *
-	 */
-	private static function procedure_has_nudity( string $filter_procedure ): bool {
-		if ( WP_DEBUG ) {
-			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAGBook: procedure_has_nudity called with filter_procedure: ' . $filter_procedure );
-		}
-
-		// Get sidebar data to check procedure nudity
-		$api_tokens = get_option( 'brag_book_gallery_api_tokens', [] );
-		if ( empty( $api_tokens ) || ! is_array( $api_tokens ) ) {
-			if ( WP_DEBUG ) {
-				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'BRAGBook: procedure_has_nudity - No API tokens found' );
-			}
-
-			return false;
-		}
-
-		$sidebar_data = null;
-		if ( ! empty( $api_tokens[0] ) ) {
-			$sidebar_data = \BRAGBookGallery\Includes\Extend\Data_Fetcher::get_sidebar_data( $api_tokens[0] );
-		}
-
-		if ( empty( $sidebar_data ) || ! is_array( $sidebar_data ) ) {
-			if ( WP_DEBUG ) {
-				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'BRAGBook: procedure_has_nudity - No sidebar data found' );
-			}
-
-			return false;
-		}
-
-		if ( WP_DEBUG ) {
-			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAGBook: procedure_has_nudity - Searching through ' . count( $sidebar_data ) . ' categories' );
-		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-		}
-
-		// Search through categories for the procedure and check nudity flag
-		foreach ( $sidebar_data as $category ) {
-			if ( ! isset( $category['procedures'] ) || ! is_array( $category['procedures'] ) ) {
-				continue;
-			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			}
-
-			foreach ( $category['procedures'] as $procedure ) {
-				// Check if this is the procedure we're looking for (by slug or name)
-				$procedure_slug = $procedure['slug'] ?? '';
-				$procedure_name = strtolower( $procedure['name'] ?? '' );
-				$filter_lower   = strtolower( $filter_procedure );
-
-				if ( WP_DEBUG ) {
-					// Log every procedure to see what we're comparing
-					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-					error_log( 'BRAGBook: procedure_has_nudity - Checking procedure: ' . $procedure_slug . ' (has_nudity: ' . ( ! empty( $procedure['has_nudity'] ) ? 'true' : 'false' ) . ', nudity: ' . ( ! empty( $procedure['nudity'] ) ? 'true' : 'false' ) . ')' );
-				}
-// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-
-				if ( $procedure_slug === $filter_procedure ||
-					 $procedure_name === $filter_lower ||
-					 sanitize_title( $procedure_name ) === $filter_procedure ) {
-
-					// Check if this procedure has nudity
-					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-					$has_nudity = ! empty( $procedure['has_nudity'] ) || ! empty( $procedure['nudity'] );
-
-					if ( WP_DEBUG ) {
-						// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-						error_log( 'BRAGBook: procedure_has_nudity - MATCH FOUND for procedure: ' . $filter_procedure . ' - has_nudity: ' . ( $has_nudity ? 'true' : 'false' ) );
-					}
-
-					return $has_nudity;
-				}
-			}
-		}
-
-		if ( WP_DEBUG ) {
-			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAGBook: procedure_has_nudity - No match found for procedure: ' . $filter_procedure );
-		}
-
-		return false;
-	// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 	}
 
 	/**
@@ -2896,6 +2581,18 @@ final class Cases_Handler {
 		} elseif ( $provider_id > 0 ) {
 			$provider_term_ids = self::get_provider_term_ids( $provider_id );
 		}
+
+		// A provider was asked for but matches no term: yield no cases. Falling
+		// through would leave the tax query null and widen the result to every
+		// provider, which reads as "the filter did nothing" rather than "no match".
+		if ( ( '' !== $provider_slug || $provider_id > 0 ) && empty( $provider_term_ids ) ) {
+			return [
+				'ids'       => [],
+				'distances' => [],
+				'radius'    => self::LOCATION_DEFAULT_RADIUS,
+			];
+		}
+
 		$provider_tax_query = ! empty( $provider_term_ids ) ? self::build_provider_tax_query( $provider_term_ids ) : null;
 
 		// Resolve the procedure term id from an explicit id or the slug.
@@ -3063,7 +2760,7 @@ final class Cases_Handler {
 		// Page to load and page size. The context (provider / location / procedure)
 		// is read from the same POST fields the filters set on the button.
 		$start_page = max( 1, absint( $_POST['start_page'] ?? 2 ) );
-		$per_page   = absint( get_option( 'brag_book_gallery_items_per_page', '200' ) );
+		$per_page   = Settings_Helper::get_items_per_page();
 
 		try {
 			$context = self::build_context_from_request();

@@ -785,8 +785,9 @@ class Post_Types {
 	 *
 	 * Prefers the structured `brag_book_gallery_case_image_variants` meta. For
 	 * cases synced before variants existed, reconstructs equivalent sets from the
-	 * legacy flat URL keys (every size collapses to the one stored URL) so the
-	 * editor is always populated.
+	 * legacy flat URL keys so the editor is always populated. Those keys only ever
+	 * held full-size URLs, so medium and small are shown empty — the renditions
+	 * genuinely do not exist until the case is re-synced.
 	 *
 	 * @since 3.3.3
 	 * @param int $post_id Case post ID.
@@ -818,7 +819,7 @@ class Post_Types {
 			$set = array();
 			foreach ( self::CASE_IMAGE_FLAT_KEYS as $node => $key ) {
 				$url          = $flat[ $node ][ $i ] ?? '';
-				$set[ $node ] = array( 'full' => $url, 'medium' => $url, 'small' => $url, 'alt' => '' );
+				$set[ $node ] = array( 'full' => $url, 'medium' => '', 'small' => '', 'alt' => '' );
 			}
 			$reconstructed[] = $set;
 		}
@@ -1720,17 +1721,11 @@ class Post_Types {
 				$input    = isset( $nodes[ $node ] ) && is_array( $nodes[ $node ] ) ? $nodes[ $node ] : array();
 				$old_node = isset( $stored[ $set_index ][ $node ] ) && is_array( $stored[ $set_index ][ $node ] ) ? $stored[ $set_index ][ $node ] : array();
 
+				// A cleared field stays cleared: an empty size means "this rendition
+				// does not exist", so it must not be back-filled from a larger one.
 				$full   = $clean_url( (string) ( $input['full'] ?? '' ), (string) ( $old_node['full'] ?? '' ) );
 				$medium = $clean_url( (string) ( $input['medium'] ?? '' ), (string) ( $old_node['medium'] ?? '' ) );
 				$small  = $clean_url( (string) ( $input['small'] ?? '' ), (string) ( $old_node['small'] ?? '' ) );
-
-				// Keep the fallback contract intact: medium ← full, small ← medium.
-				if ( '' === $medium ) {
-					$medium = $full;
-				}
-				if ( '' === $small ) {
-					$small = $medium;
-				}
 
 				$set[ $node ] = array(
 					'full'   => $full,
@@ -2191,8 +2186,8 @@ class Post_Types {
 
 				// Resolve the small/medium/full variants (and alt text) for every
 				// image node. The new nested structure carries them under `variants`;
-				// the old flat structure has only a single URL, so each size collapses
-				// to that URL and downstream srcset code still receives a full set.
+				// the old flat structure has only a single URL, so only `full` is
+				// populated. Sizes the API has not generated are stored empty.
 				if ( ! empty( $images ) ) {
 					$before_variants     = self::extract_image_variants( $images['before'] ?? array() );
 					$after_variants      = self::extract_image_variants( $images['after'] ?? array() );
@@ -2315,26 +2310,31 @@ class Post_Types {
 	 * Resolve the small/medium/full variants and alt text for a v2 image node.
 	 *
 	 * The v2 API nests sized variants under `variants` ('full', 'medium', 'small').
-	 * Any variant can be null until the backend generates it, so each size falls
-	 * back to the next-larger one and finally to the node's own `url`. This keeps
-	 * every stored size populated so frontend srcset output never has holes.
+	 * Any variant can be null until the backend generates it. A null size is stored
+	 * empty rather than filled with a larger image: recording a full-size URL as the
+	 * "small" variant would claim a rendition that does not exist, and srcset would
+	 * then offer the browser a large file under a small width descriptor.
+	 *
+	 * `full` still falls back to the node's own `url` — that URL *is* the full-size
+	 * image, not a substitute — and the legacy flat keys are derived from it.
+	 *
+	 * Readers already cope with empty sizes: build_srcset_from_node() skips them
+	 * (emitting `src` alone when only `full` is known) and get_variant_url_for_url()
+	 * falls back to the full URL.
 	 *
 	 * @since 3.3.3
 	 * @param array $node A single image node (e.g. images.before), or an empty array.
-	 * @return array{full:string, medium:string, small:string, alt:string}
+	 * @return array{full:string, medium:string, small:string, alt:string} Sizes the
+	 *               API has not generated are empty strings.
 	 */
 	private static function extract_image_variants( array $node ): array {
 		$base     = isset( $node['url'] ) ? esc_url_raw( (string) $node['url'] ) : '';
 		$variants = isset( $node['variants'] ) && is_array( $node['variants'] ) ? $node['variants'] : array();
 
-		$full   = ! empty( $variants['full'] ) ? esc_url_raw( (string) $variants['full'] ) : $base;
-		$medium = ! empty( $variants['medium'] ) ? esc_url_raw( (string) $variants['medium'] ) : $full;
-		$small  = ! empty( $variants['small'] ) ? esc_url_raw( (string) $variants['small'] ) : $medium;
-
 		return array(
-			'full'   => $full,
-			'medium' => $medium,
-			'small'  => $small,
+			'full'   => ! empty( $variants['full'] ) ? esc_url_raw( (string) $variants['full'] ) : $base,
+			'medium' => ! empty( $variants['medium'] ) ? esc_url_raw( (string) $variants['medium'] ) : '',
+			'small'  => ! empty( $variants['small'] ) ? esc_url_raw( (string) $variants['small'] ) : '',
 			'alt'    => isset( $node['altText'] ) ? sanitize_text_field( (string) $node['altText'] ) : '',
 		);
 	}
@@ -2342,20 +2342,19 @@ class Post_Types {
 	/**
 	 * Build a variant set from a single flat URL (old API shape, no variants).
 	 *
-	 * Every size collapses to the one available URL so downstream srcset code can
-	 * treat old and new data identically.
+	 * The old shape carries one full-size URL and no sized renditions, so `medium`
+	 * and `small` are left empty rather than pointed at the full image.
 	 *
 	 * @since 3.3.3
 	 * @param string $url The single image URL, or an empty string.
-	 * @return array{full:string, medium:string, small:string, alt:string}
+	 * @return array{full:string, medium:string, small:string, alt:string} Only
+	 *               `full` is ever populated.
 	 */
 	private static function flat_url_to_variants( string $url ): array {
-		$clean = '' !== $url ? esc_url_raw( $url ) : '';
-
 		return array(
-			'full'   => $clean,
-			'medium' => $clean,
-			'small'  => $clean,
+			'full'   => '' !== $url ? esc_url_raw( $url ) : '',
+			'medium' => '',
+			'small'  => '',
 			'alt'    => '',
 		);
 	}

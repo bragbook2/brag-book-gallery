@@ -2618,6 +2618,13 @@ html.nudity-accepted-preload .brag-book-gallery-nudity-blur, body.nudity-accepte
   line-height: 0;
 }
 
+.brag-book-gallery-no-cases {
+  grid-column: 1/-1;
+  padding: var(--wp--custom--brag-book-gallery--spacer--2xl, 32px);
+  text-align: center;
+  color: var(--wp--custom--brag-book-gallery--color--gray);
+}
+
 .brag-book-gallery-consultation-text {
   display: flex;
   flex-direction: column;

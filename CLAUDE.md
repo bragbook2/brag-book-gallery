@@ -204,7 +204,7 @@ The plugin follows a modular architecture with clear separation of concerns:
 [brag_book_gallery_cases provider_id="123"]
 ```
 - Parameters: `api_token`, `website_property_id`, `procedure_ids`, `provider_id`, `limit`, `page`, `columns`, `show_details`, `class`
-- `provider_id`: filters cases to a single provider (matched against the `brag_book_providers` taxonomy term's `provider_id`/`provider_member_id` meta). Results are capped at 99 cases regardless of the site's global items-per-page setting.
+- `provider_id`: filters cases to a single provider (matched against the `brag_book_providers` taxonomy term's `provider_id`/`provider_member_id` meta). Results page at the site's global items-per-page setting, continued by the Load More button.
 
 ### Procedures Grid
 ```
@@ -212,6 +212,7 @@ The plugin follows a modular architecture with clear separation of concerns:
 ```
 - Parameters: `provider_id`, `limit`
 - `provider_id`: filters cases to a single provider (matched against the `brag_book_providers` taxonomy assigned to each case); returns every case the provider appears on, whether primary or secondary. Supports AJAX "load more".
+- `limit`: cases per load. Omit it to use the site's global items-per-page setting (the default); an explicit value overrides that setting.
 
 ### Single Case
 ```

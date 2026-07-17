@@ -25,6 +25,7 @@ declare( strict_types=1 );
 
 namespace BRAGBookGallery\Includes\Resources;
 
+use BRAGBookGallery\Includes\Core\Settings_Helper;
 use BRAGBookGallery\Includes\Core\Setup;
 
 // Prevent direct access.
@@ -307,6 +308,7 @@ final class Asset_Manager {
 			'gallerySlug'         => $gallery_slug,
 			'enableSharing'       => sanitize_text_field( get_option( 'brag_book_gallery_enable_sharing', 'no' ) ),
 			'infiniteScroll'      => sanitize_text_field( get_option( 'brag_book_gallery_infinite_scroll', 'no' ) ),
+			'itemsPerPage'        => Settings_Helper::get_items_per_page(),
 			'sidebarData'         => $sidebar_data,
 		);
 

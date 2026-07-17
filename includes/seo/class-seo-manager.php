@@ -58,17 +58,6 @@ final class SEO_Manager {
 	use Trait_Api; // Note: Trait_Api includes Trait_Sanitizer
 
 	/**
-	 * SEO-specific cache duration constants
-	 *
-	 * @since 3.0.0
-	 * Note: Using CACHE_TTL constants from Trait_Api for shared cache durations
-	 * Additional SEO-specific cache constants defined below
-	 */
-	private const CACHE_TTL_SEO_META = 1800;     // 30 minutes - for SEO metadata
-	private const CACHE_TTL_STRUCTURED = 3600;   // 1 hour - for structured data
-	private const CACHE_TTL_SITEMAP = 7200;      // 2 hours - for sitemap data
-
-	/**
 	 * Current page SEO data
 	 *
 	 * @since 3.0.0
@@ -326,6 +315,30 @@ final class SEO_Manager {
 	}
 
 	/**
+	 * Read a per-gallery-page SEO option, tolerating both stored shapes.
+	 *
+	 * These options are written as an array indexed by gallery page when several
+	 * galleries are configured (see API_Page), but as a plain string by the
+	 * General and Default settings screens. Indexing a string with `[$index]`
+	 * returns a single *character*, so a title of "My Gallery" silently rendered
+	 * as "M"; resolve the shape before indexing.
+	 *
+	 * @since 4.9.2
+	 * @param string $option     Option name.
+	 * @param int    $page_index Index of the current gallery page.
+	 * @return string The configured value, or '' when unset.
+	 */
+	private static function seo_option_for_page( string $option, int $page_index ): string {
+		$value = get_option( $option, '' );
+
+		if ( is_array( $value ) ) {
+			return (string) ( $value[ $page_index ] ?? '' );
+		}
+
+		return (string) $value;
+	}
+
+	/**
 	 * Generate SEO data for current page
 	 *
 	 * @return array<string, mixed> SEO data.
@@ -388,12 +401,12 @@ final class SEO_Manager {
 		// Get base page SEO settings.
 		if ( $is_gallery ) {
 
-			$seo_data['title']       = get_option(
+			$seo_data['title']       = (string) get_option(
 				'brag_book_gallery_seo_page_title',
 				''
 			);
 
-			$seo_data['description'] = get_option(
+			$seo_data['description'] = (string) get_option(
 				'brag_book_gallery_seo_page_description',
 				''
 			);
@@ -402,17 +415,14 @@ final class SEO_Manager {
 			$page_index = $this->get_page_index_by_slug( $page_slug );
 
 			if ( false !== $page_index ) {
-				$seo_titles       = get_option(
+				$seo_data['title']       = self::seo_option_for_page(
 					'brag_book_gallery_seo_page_title',
-					[]
+					$page_index
 				);
-				$seo_descriptions = get_option(
+				$seo_data['description'] = self::seo_option_for_page(
 					'brag_book_gallery_seo_page_description',
-					[]
+					$page_index
 				);
-
-				$seo_data['title']       = $seo_titles[ $page_index ] ?? '';
-				$seo_data['description'] = $seo_descriptions[ $page_index ] ?? '';
 			}
 		}
 
@@ -552,16 +562,6 @@ final class SEO_Manager {
 	 */
 	private function get_procedure_data( string $procedure_slug, bool $is_combine ): ?array {
 
-		// Cache key based on procedure slug and combine status.
-		$cache_key   = 'brag_book_gallery_seo_procedure_' . $procedure_slug . ( $is_combine ? '_combine' : '_single' );
-
-		// Check cache first.
-		// $cached_data = false; // Cache_Manager::get( $cache_key );
-
-		if ( false !== $cached_data ) {
-			return $cached_data;
-		}
-
 		// Get API tokens and website property IDs
 		if ( $is_combine ) {
 			$api_tokens   = get_option(
@@ -590,13 +590,7 @@ final class SEO_Manager {
 			$sidebar_data = $this->get_sidebar_data( $api_token );
 		}
 
-		$procedure_data = $this->find_procedure_in_sidebar( $sidebar_data, $procedure_slug );
-
-		if ( $procedure_data ) {
-			// Cache_Manager::set( $cache_key, $procedure_data, HOUR_IN_SECONDS );
-		}
-
-		return $procedure_data;
+		return $this->find_procedure_in_sidebar( $sidebar_data, $procedure_slug );
 	}
 
 	/**
@@ -610,16 +604,6 @@ final class SEO_Manager {
 	 * @since 3.0.0
 	 */
 	private function get_case_seo_data( string $case_id_or_slug, array $procedure_data, bool $is_combine ): ?array {
-
-		// Cache key based on case identifier and procedure data.
-		$cache_key   = 'brag_book_gallery_seo_case_' .$case_id_or_slug . serialize( $procedure_data );
-
-		// Check cache first.
-		// $cached_data = false; // Cache_Manager::get( $cache_key );
-
-		if ( false !== $cached_data ) {
-			return $cached_data;
-		}
 
 		// Determine if this is a numeric case ID or SEO suffix.
 		$case_id    = '';
@@ -743,13 +727,6 @@ final class SEO_Manager {
 	 */
 	private function get_combined_sidebar_data( array $api_tokens ): array {
 
-		$cache_key   = 'brag_book_gallery_seo_combined_sidebar_' . serialize( $api_tokens );
-		// $cached_data = false; // Cache_Manager::get( $cache_key );
-
-		if ( false !== $cached_data ) {
-			return $cached_data;
-		}
-
 		$combined_data = array();
 
 		foreach ( $api_tokens as $api_token ) {
@@ -779,8 +756,6 @@ final class SEO_Manager {
 			}
 		}
 
-		// Cache_Manager::set( $cache_key, $combined_data, HOUR_IN_SECONDS );
-
 		return $combined_data;
 	}
 
@@ -800,14 +775,6 @@ final class SEO_Manager {
 	 */
 	private function get_sidebar_data( string $api_token ): array {
 
-		$cache_key   = 'brag_book_gallery_seo_sidebar_' . $api_token;
-
-		// $cached_data = false; // Cache_Manager::get( $cache_key );
-
-		if ( false !== $cached_data ) {
-			return $cached_data;
-		}
-
 		$response = $this->api_get(
 			'/api/plugin/sidebar',
 			array( 'apiToken' => $api_token )
@@ -817,10 +784,7 @@ final class SEO_Manager {
 			return [];
 		}
 
-		$sidebar_data = $response['data'];
-		// Cache_Manager::set( $cache_key, $sidebar_data, HOUR_IN_SECONDS );
-
-		return $sidebar_data;
+		return $response['data'];
 	}
 
 	/**
@@ -1632,73 +1596,33 @@ final class SEO_Manager {
 	}
 
 	/**
-	 * Rate limit API requests to prevent abuse
+	 * Memoise a callback's result for the rest of the request.
 	 *
-	 * Implements basic rate limiting to prevent API abuse and improve performance.
-	 * Uses WordPress transients for simple rate limiting implementation.
-	 *
-	 * @param string $identifier Unique identifier for rate limiting.
-	 * @param int    $limit      Maximum requests allowed.
-	 * @param int    $window     Time window in seconds.
-	 *
-	 * @return bool True if request is allowed, false if rate limited.
-	 * @since 3.0.0
-	 */
-	private function is_rate_limited( string $identifier, int $limit = 100, int $window = 3600 ): bool {
-		$cache_key = 'brag_book_gallery_transient_rate_limit_' . $identifier;
-		// $requests = false; // Cache_Manager::get( $cache_key ) ?: 0;
-
-		if ( $requests >= $limit ) {
-			$this->log_error( 'Rate limit exceeded', [
-				'identifier' => $identifier,
-				'requests' => $requests,
-				'limit' => $limit
-			] );
-			return true;
-		}
-
-		// Cache_Manager::set( $cache_key, $requests + 1, $window );
-		return false;
-	}
-
-	/**
-	 * Get cached data with performance tracking
-	 *
-	 * Retrieves cached data while tracking performance metrics.
-	 * Implements multi-level caching for optimal performance.
+	 * Caches within the request only. The persistent tier this fronted was
+	 * removed along with Cache_Manager, so there is no TTL to honour.
 	 *
 	 * @param string $cache_key Cache identifier.
 	 * @param callable $callback Callback to generate data if not cached.
-	 * @param int $ttl Cache TTL in seconds.
 	 * @param string $category Performance category for tracking.
 	 *
 	 * @return mixed Cached or generated data.
 	 * @since 3.0.0
 	 */
-	private function get_cached_data( string $cache_key, callable $callback, int $ttl = self::CACHE_TTL_MEDIUM, string $category = 'seo' ) {
+	private function get_cached_data( string $cache_key, callable $callback, string $category = 'seo' ) {
 		$start_time = microtime( true );
 
-		// Check memory cache first (fastest)
+		// Per-request memory cache. The persistent tier this sat in front of was
+		// removed with Cache_Manager, so a miss goes straight to the callback.
 		if ( isset( $this->memory_cache[ $cache_key ] ) ) {
 			$this->track_performance( $category, microtime( true ) - $start_time, 'memory_hit' );
 			return $this->memory_cache[ $cache_key ];
-		}
-
-		// Check transient cache (second fastest)
-		// $cached_data = false; // Cache_Manager::get( $cache_key );
-		if ( false !== $cached_data ) {
-			$this->memory_cache[ $cache_key ] = $cached_data;
-			$this->track_performance( $category, microtime( true ) - $start_time, 'transient_hit' );
-			return $cached_data;
 		}
 
 		// Generate data if not cached
 		try {
 			$data = $callback();
 
-			// Store in both cache levels
 			$this->memory_cache[ $cache_key ] = $data;
-			// Cache_Manager::set( $cache_key, $data, $ttl );
 
 			$this->track_performance( $category, microtime( true ) - $start_time, 'cache_miss' );
 			return $data;
@@ -1770,59 +1694,6 @@ final class SEO_Manager {
 			if ( count( $entries ) > $max_performance_entries ) {
 				$entries = array_slice( $entries, -$max_performance_entries );
 			}
-		}
-
-		// Clear old transients periodically
-		$this->cleanup_old_transients();
-	}
-
-	/**
-	 * Cleanup old transients to prevent database bloat
-	 *
-	 * Removes expired and unused transients related to the plugin.
-	 * Helps maintain database performance and reduce storage usage.
-	 *
-	 * @return void
-	 * @since 3.0.0
-	 */
-	private function cleanup_old_transients(): void {
-		global $wpdb;
-
-		// Only run cleanup occasionally to avoid performance impact
-		$cleanup_key = 'brag_book_seo_cleanup_last';
-		// $last_cleanup = false; // Cache_Manager::get( $cleanup_key );
-
-		if ( false !== $last_cleanup ) {
-			return; // Cleanup already performed recently
-		}
-
-		try {
-			// Delete expired transients related to the plugin
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-			$expired_transients = $wpdb->get_col( $wpdb->prepare(
-				"SELECT option_name FROM {$wpdb->options}
-				WHERE option_name LIKE %s
-				AND option_name LIKE %s
-				AND (
-					SELECT CAST(option_value AS UNSIGNED)
-					FROM {$wpdb->options} o2
-					WHERE o2.option_name = CONCAT('_transient_timeout_', SUBSTRING(option_name, 12))
-				) < %d",
-				'_transient_brag_book_%',
-				'%seo%',
-				time()
-			) );
-
-			foreach ( $expired_transients as $transient_name ) {
-				$transient_key = str_replace( '_transient_', '', $transient_name );
-				// Cache_Manager::delete( $transient_key );
-			}
-
-			// Mark cleanup as completed
-			// Cache_Manager::set( $cleanup_key, time(), DAY_IN_SECONDS );
-
-		} catch ( \Exception $e ) {
-			$this->log_error( 'Transient cleanup failed', [ 'error' => $e->getMessage() ] );
 		}
 	}
 
@@ -1927,7 +1798,6 @@ final class SEO_Manager {
 				$this->get_cached_data(
 					'brag_book_gallery_seo_combined_sidebar_' . serialize( $api_tokens ),
 					fn() => $this->get_combined_sidebar_data( $api_tokens ),
-					self::CACHE_TTL_LONG,
 					'warm_up'
 				);
 			}
@@ -1936,7 +1806,6 @@ final class SEO_Manager {
 			$this->get_cached_data(
 				'brag_book_seo_basic_' . sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ?? '/' ) ),
 				fn() => $this->generate_seo_data(),
-				self::CACHE_TTL_MEDIUM,
 				'warm_up'
 			);
 

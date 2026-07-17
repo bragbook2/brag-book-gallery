@@ -27,3 +27,12 @@
 .brag-book-gallery-picture {
 	line-height: 0;
 }
+
+// Empty state rendered in place of the cards, inside the case grid. Spans every
+// column so the message centres against the whole grid rather than the first cell.
+.brag-book-gallery-no-cases {
+	grid-column: 1 / -1;
+	padding: var(--wp--custom--brag-book-gallery--spacer--2xl, 32px);
+	text-align: center;
+	color: var(--wp--custom--brag-book-gallery--color--gray);
+}

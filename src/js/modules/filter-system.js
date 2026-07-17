@@ -639,8 +639,9 @@ class FilterSystem {
 	 * @returns {string} Generated HTML
 	 */
 	generateFilteredGalleryHTML(cases, procedureName, procedure, procedureIds) {
-		// Set pagination parameters
-		const itemsPerPage = 10;
+		// Page size comes from the items-per-page setting, so the JS-rendered
+		// filtered gallery batches identically to the server-rendered grids.
+		const itemsPerPage = parseInt(window.bragBookGalleryConfig?.itemsPerPage, 10) || 12;
 
 		// Store all cases in global cache for pagination
 		if (typeof allCasesData !== 'undefined') {
@@ -757,7 +758,7 @@ class FilterSystem {
 		// Add cases container structure (matching PHP exactly)
 		html += '<div class="brag-book-gallery-case-grid masonry-layout" data-columns="' + galleryColumns + '">';
 
-		// Only display the first 10 cases initially for pagination
+		// Only display the first page initially; the rest arrive via Load More.
 		const casesToDisplay = transformedCases.slice(0, itemsPerPage);
 
 		casesToDisplay.forEach(caseData => {

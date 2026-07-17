@@ -392,10 +392,6 @@ final class Setup {
 		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'BRAG book Gallery: View tracking AJAX handlers registered' );
 
-		// Register procedures shortcode load more AJAX handler
-		add_action( 'wp_ajax_brag_book_load_more_procedures', [ \BRAGBookGallery\Includes\Shortcodes\Gallery_Handler::class, 'ajax_load_more_procedures' ] );
-		add_action( 'wp_ajax_nopriv_brag_book_load_more_procedures', [ \BRAGBookGallery\Includes\Shortcodes\Gallery_Handler::class, 'ajax_load_more_procedures' ] );
-
 		// Register the location-based gallery search (AJAX + asset enqueue).
 		\BRAGBookGallery\Includes\Extend\Location_Search::register();
 

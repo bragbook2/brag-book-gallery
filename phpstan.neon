@@ -1,13 +1,10 @@
-includes:
-  - vendor/szepeviktor/phpstan-wordpress/extension.neon
-
 parameters:
   level: 8
   phpVersion: 80200
-  
+
   paths:
     - includes/
-    - bragbook.php
+    - brag-book-gallery.php
     - uninstall.php
   
   excludePaths:
@@ -22,10 +19,7 @@ parameters:
     
   scanDirectories:
     - vendor/php-stubs/wordpress-stubs/
-  
-  bootstrapFiles:
-    - tests/phpstan-bootstrap.php
-  
+
   treatPhpDocTypesAsCertain: false
   
   checkMissingIterableValueType: false

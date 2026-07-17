@@ -23,6 +23,7 @@ declare( strict_types=1 );
 
 namespace BRAGBookGallery\Includes\Admin\Debug;
 
+use BRAGBookGallery\Includes\Core\Settings_Helper;
 use WP_Error;
 use Exception;
 use Throwable;
@@ -810,7 +811,7 @@ final class System_Info {
 			$info[] = '';
 			$info[] = 'Display Settings:';
 			$info[] = '  Columns: ' . get_option( 'brag_book_gallery_columns', '2' );
-			$info[] = '  Items Per Page: ' . get_option( 'brag_book_gallery_items_per_page', '10' );
+			$info[] = '  Items Per Page: ' . Settings_Helper::get_items_per_page();
 			$info[] = '  Enable Sharing: ' . get_option( 'brag_book_gallery_enable_sharing', 'no' );
 			$info[] = '  Enable Lightbox: ' . get_option( 'brag_book_gallery_enable_lightbox', 'no' );
 			$info[] = '  Enable Filtering: ' . get_option( 'brag_book_gallery_enable_filtering', 'yes' );

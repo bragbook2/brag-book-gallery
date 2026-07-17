@@ -15,6 +15,7 @@ declare( strict_types=1 );
 namespace BRAGBookGallery\Includes\Admin\Pages;
 
 use BRAGBookGallery\Includes\Admin\Core\Settings_Base;
+use BRAGBookGallery\Includes\Core\Settings_Helper;
 use BRAGBookGallery\Includes\Core\Updater;
 
 if ( ! defined( 'WPINC' ) ) {
@@ -670,7 +671,7 @@ class General_Page extends Settings_Base {
 		$favorites_view      = sanitize_text_field( get_option( 'brag_book_gallery_favorites_view', 'default' ) );
 		$case_card_type      = sanitize_text_field( get_option( 'brag_book_gallery_case_card_type', 'default' ) );
 		$case_image_carousel = (bool) get_option( 'brag_book_gallery_case_image_carousel', false );
-		$items_per_page      = absint( get_option( 'brag_book_gallery_items_per_page', 12 ) );
+		$items_per_page      = Settings_Helper::get_items_per_page();
 
 		// Landing page content.
 		$default_landing_text = sprintf(
@@ -999,8 +1000,8 @@ class General_Page extends Settings_Base {
 						       id="brag_book_gallery_items_per_page"
 						       name="brag_book_gallery_items_per_page"
 						       value="<?php echo esc_attr( $items_per_page ); ?>"
-						       min="1"
-						       max="200"
+						       min="<?php echo esc_attr( (string) Settings_Helper::MIN_ITEMS_PER_PAGE ); ?>"
+						       max="<?php echo esc_attr( (string) Settings_Helper::MAX_ITEMS_PER_PAGE ); ?>"
 						       step="1" />
 					</div>
 					<p class="description">
@@ -2234,10 +2235,15 @@ class General_Page extends Settings_Base {
 			: 2;
 		update_option( 'brag_book_gallery_columns', $columns );
 
-		// Items per page (integer)
+		// Items per page (integer). Clamped server-side: the field's min/max are
+		// browser-only, and a stored 0 would render an empty, unpageable grid.
 		$items_per_page = isset( $_POST['brag_book_gallery_items_per_page'] )
 			? absint( $_POST['brag_book_gallery_items_per_page'] )
-			: 200;
+			: Settings_Helper::DEFAULT_ITEMS_PER_PAGE;
+		$items_per_page = max(
+			Settings_Helper::MIN_ITEMS_PER_PAGE,
+			min( Settings_Helper::MAX_ITEMS_PER_PAGE, $items_per_page )
+		);
 		update_option( 'brag_book_gallery_items_per_page', $items_per_page );
 
 		// Case image carousel (boolean)

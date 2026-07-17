@@ -17,6 +17,7 @@ declare( strict_types=1 );
 
 namespace BRAGBookGallery\Includes\Resources;
 
+use BRAGBookGallery\Includes\Core\Settings_Helper;
 use BRAGBookGallery\Includes\Core\Setup;
 use Exception;
 
@@ -302,6 +303,7 @@ class Assets {
 			'nonce'   => wp_create_nonce( 'brag_book_gallery_nonce' ),
 			'consultation_nonce' => wp_create_nonce( 'consultation_form_nonce' ),
 			'columns' => absint( get_option( 'brag_book_gallery_columns', 2 ) ),
+			'itemsPerPage' => Settings_Helper::get_items_per_page(),
 		] );
 
 		// Allow plugins/themes to add custom scripts.

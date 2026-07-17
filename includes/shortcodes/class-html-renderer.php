@@ -60,8 +60,6 @@ declare(strict_types=1);
 
 namespace BRAGBookGallery\Includes\shortcodes;
 
-use BRAGBookGallery\Includes\Extend\Data_Fetcher;
-
 // Prevent direct access.
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
