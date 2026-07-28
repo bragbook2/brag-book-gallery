@@ -4,6 +4,61 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.2-beta4] - 2026-07-28 (Beta Release)
+
+> Note: 4.9.2-beta3 was released without an entry in this file. Its notes are in
+> `readme.txt` under `= 4.9.2-beta3 =`.
+
+### Added
+
+- **Responsive variants across the remaining views**: carousel slides, favourites
+  cards, the case-detail main viewer and related-case cards now emit a `srcset`
+  built from the stored small/medium/full variants, alongside a `sizes` value
+  matched to the layout each one is rendered in. Views with no smaller renditions
+  stored — cases synced before variants existed, or sizes the API has not
+  generated — fall back to the plain full-size `src` as before.
+- **Variant data for the client-rendered favourites grid**: the
+  `brag_book_get_case_by_api_id` endpoint now returns `featured_image_srcset` and
+  `featured_image_sizes` alongside `featured_image_url`, so cards built in the
+  browser get the same responsive sources as the server-rendered ones. The
+  variant meta is resolved server-side rather than duplicating the lookup in JS.
+- **Carousels in the default landing page content**: the default landing page
+  text now includes `[brag_book_carousel procedure="breast-augmentation"]` and
+  `[brag_book_carousel procedure="liposuction"]`. Applies only to sites that have
+  never saved their own landing page text.
+
+### Fixed
+
+- **Under-declared `sizes` on the cases grid**: cards were declared at `50vw`
+  below 576px where the grid is a single full-width column, letting the browser
+  select a rendition too small for the space and render it soft. The declared
+  breakpoints now track the grid SCSS.
+- **Thumbnail swap on the case detail page**: `srcset` takes precedence over
+  `src`, so once the main viewer carried a `srcset`, updating only `src` on a
+  thumbnail click left the previous image on screen. Each thumbnail now carries
+  the `srcset` for its own image and both are swapped together.
+
+### Changed
+
+- **Removed ~1,850 lines of unreachable frontend JavaScript**, shrinking the
+  built gallery bundles by roughly 1,700 lines. This covered card builders with
+  no callers (`createCaseCard`, the `generateCaseDetailHTML` subtree,
+  `initializeThumbnailNavigation`) and three chains whose only route was an AJAX
+  action that is not registered anywhere in the plugin (`brag_book_api_proxy`
+  twice, `brag_book_gallery_load_filtered_cases` once). Each removal was verified
+  unreachable first, and the surviving Load More and filter paths were pointed
+  straight at their working AJAX handlers.
+- **Single source of truth for the default landing page text**: the default was
+  duplicated in four places — two admin editors and two render paths — in two
+  different forms. All four now read `Settings_Helper::get_default_landing_page_text()`.
+
+### Known issues
+
+- `loadFilteredContentViaAjax` still posts `brag_book_gallery_load_filtered_gallery`,
+  which is not registered. This path is reachable from a procedure-filtered URL
+  and has been failing since before this release; it was left in place
+  deliberately rather than removing live code.
+
 ## [4.9.2-beta2] - 2026-07-15 (Beta Release)
 
 ### Added

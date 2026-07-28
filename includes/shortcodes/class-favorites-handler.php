@@ -45,6 +45,7 @@ use BRAGBookGallery\Includes\Resources\Asset_Manager;
 use BRAGBookGallery\Includes\Core\Setup;
 use BRAGBookGallery\Includes\Core\Trait_Api;
 use BRAGBookGallery\Includes\Core\Trait_Sanitizer;
+use BRAGBookGallery\Includes\Shortcodes\Traits\Trait_Image_Variants;
 
 // Prevent direct access.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -61,6 +62,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 final class Favorites_Handler {
 	use Trait_Api;
+	use Trait_Image_Variants;
 	use Trait_Sanitizer;
 
 	/**
@@ -1452,6 +1454,12 @@ final class Favorites_Handler {
 			);
 		}
 
+		// Responsive sources for the card image, matched to the same variant node
+		// so small/medium load on narrower viewports. Empty for API-sourced
+		// favorites with no local post and for cases synced before variants
+		// existed, which fall back to the plain full-size src.
+		$responsive_attrs = self::build_responsive_attrs( (int) $post_id, (string) $primary_image, self::SIZES_FAVORITES_GRID );
+
 		// Get procedure slug for URL
 		$procedure_slug = $case_data['procedure_slug'] ?? '';
 
@@ -1515,6 +1523,10 @@ final class Favorites_Handler {
 							<?php if ( ! empty( $primary_image ) ) : ?>
 								<picture class="brag-book-gallery-picture">
 									<img src="<?php echo esc_url( $primary_image ); ?>"
+										<?php
+										// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Pre-escaped by build_responsive_attrs().
+										echo $responsive_attrs;
+										?>
 										 alt="<?php echo esc_attr( $image_alt ); ?>"
 										 loading="lazy"
 										 decoding="async"
@@ -1862,6 +1874,13 @@ final class Favorites_Handler {
 			}
 		}
 
+		// Resolve the smaller renditions for the image being handed to the client.
+		// The card is built in JS, which has no access to the variant meta, so the
+		// srcset is computed here alongside the URL it belongs to. Empty when the
+		// case has no smaller renditions or the URL came from the thumbnail
+		// fallback above, in which case the client renders `src` alone.
+		$featured_image_srcset = self::build_variant_srcset_for_url( $post->ID, $featured_image_url );
+
 		// Prepare response data
 		$response_data = [
 			'ID' => $post->ID,
@@ -1869,6 +1888,11 @@ final class Favorites_Handler {
 			'post_name' => $post->post_name,
 			'post_content' => $post->post_content,
 			'featured_image_url' => $featured_image_url,
+			'featured_image_srcset' => $featured_image_srcset,
+			// The JS favorites grid renders into .brag-book-gallery-case-grid, not
+			// the PHP-rendered .brag-book-gallery-favorites-grid, so it needs the
+			// case-grid breakpoints rather than SIZES_FAVORITES_GRID.
+			'featured_image_sizes' => '' !== $featured_image_srcset ? self::SIZES_CASE_GRID : '',
 			'procedure_name' => $procedure_name,
 			'procedure_slug' => $procedure_slug,
 			'procedure_id' => $procedure_id,

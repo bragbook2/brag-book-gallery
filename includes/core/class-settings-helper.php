@@ -60,12 +60,62 @@ final class Settings_Helper {
 	public const MAX_ITEMS_PER_PAGE = 200;
 
 	/**
+	 * Procedure slugs for the carousels in the default landing page content.
+	 *
+	 * A starting point for a fresh install, not a guarantee. A site with no
+	 * procedure matching one of these slugs still renders a carousel: the
+	 * handler falls back to an unfiltered case query rather than showing
+	 * nothing, so the slot is filled with whatever cases exist. Editors are
+	 * expected to swap these for their own procedures in the landing page
+	 * editor, which overrides this default from then on.
+	 *
+	 * @since 4.9.2
+	 * @var array<int,string>
+	 */
+	public const DEFAULT_LANDING_CAROUSEL_PROCEDURES = [
+		'breast-augmentation',
+		'liposuction',
+	];
+
+	/**
 	 * Static cache for settings to avoid repeated database queries
 	 *
 	 * @since 3.2.4
 	 * @var array
 	 */
 	private static array $settings_cache = [];
+
+	/**
+	 * Landing page content used until a site saves its own.
+	 *
+	 * Single source of truth for the `brag_book_gallery_landing_page_text`
+	 * default. It is read by the two admin editors and by the two front-end
+	 * render paths, which must agree — if they drift, the admin field shows
+	 * content the gallery does not render.
+	 *
+	 * The returned markup is passed through `do_shortcode()` at render time, so
+	 * the carousel shortcodes here are executed rather than printed.
+	 *
+	 * @since 4.9.2
+	 * @return string Landing page HTML, including the default carousels.
+	 */
+	public static function get_default_landing_page_text(): string {
+		$content = sprintf(
+			'<h2>%s</h2>' . "\n" . '<p>%s</p>',
+			__( 'Go ahead, browse our before & afters... visualize your possibilities.', 'brag-book-gallery' ),
+			__( 'Our gallery is full of our real patients. Keep in mind results vary.', 'brag-book-gallery' )
+		);
+
+		foreach ( self::DEFAULT_LANDING_CAROUSEL_PROCEDURES as $procedure_slug ) {
+			// Not translatable: a shortcode tag and its attributes are code.
+			$content .= "\n" . sprintf(
+				'[brag_book_carousel procedure="%s"]',
+				$procedure_slug
+			);
+		}
+
+		return $content;
+	}
 
 	/**
 	 * Check if favorites functionality is enabled

@@ -15,6 +15,7 @@ declare( strict_types=1 );
 namespace BRAGBookGallery\Includes\Admin\Pages;
 
 use BRAGBookGallery\Includes\Admin\Core\Settings_Base;
+use BRAGBookGallery\Includes\Core\Settings_Helper;
 
 if ( ! defined( 'WPINC' ) ) {
 	die( 'Restricted Access' );
@@ -81,9 +82,10 @@ class Default_Page extends Settings_Base {
 		}
 
 		// Get current settings with default value
-		$default_landing_text = '<h2>Go ahead, browse our before & afters... visualize your possibilities.</h2>' . "\n" .
-		                       '<p>Our gallery is full of our real patients. Keep in mind results vary.</p>';
-		$landing_text            = get_option( 'brag_book_gallery_landing_page_text', $default_landing_text );
+		$landing_text            = get_option(
+			'brag_book_gallery_landing_page_text',
+			Settings_Helper::get_default_landing_page_text()
+		);
 		// Get gallery page slug from option
 		$slug            = get_option( 'brag_book_gallery_page_slug', '' );
 

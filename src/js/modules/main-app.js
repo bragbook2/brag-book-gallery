@@ -1675,6 +1675,16 @@ class BRAGbookGalleryApp {
 			const mainImg = mainContainer.querySelector('.brag-book-gallery-main-single img');
 			if (mainImg && processedUrl) {
 				const mainAlt = thumbnailAlt.replace(/ - Angle \d+$/, '');
+				// srcset wins over src, so swapping src alone would leave the
+				// previous image on screen. Each thumbnail carries the srcset for
+				// its own image; an empty value means that case has no smaller
+				// renditions and src is the only source.
+				const fullSrcset = thumbnail.dataset.fullSrcset || '';
+				if (fullSrcset) {
+					mainImg.srcset = fullSrcset;
+				} else {
+					mainImg.removeAttribute('srcset');
+				}
 				mainImg.src = processedUrl;
 				mainImg.alt = mainAlt;
 			}
@@ -2522,93 +2532,6 @@ class BRAGbookGalleryApp {
 	}
 
 
-	createCaseCard(caseData) {
-		const caseId = caseData.id;
-		const gallerySlug = window.bragBookGalleryConfig?.gallerySlug || 'before-after';
-
-		// Get the current procedure context from the URL or use case technique as fallback
-		let procedureSlug = 'case';
-		let procedureDisplayName = 'Case';
-
-		// Try to get procedure from current URL pattern
-		const currentPath = window.location.pathname;
-		const galleryPattern = new RegExp(`/${gallerySlug}/([^/]+)`);
-		const match = currentPath.match(galleryPattern);
-
-		if (match && match[1]) {
-			// Use the procedure from the URL (e.g., 'facelift' from /before-after/facelift/)
-			procedureSlug = match[1];
-			// Convert slug to display name (e.g., 'facelift' -> 'Facelift')
-			procedureDisplayName = procedureSlug
-				.split('-')
-				.map(word => word.charAt(0).toUpperCase() + word.slice(1))
-				.join(' ');
-		} else if (caseData.technique) {
-			// Fallback to case technique if no URL context
-			procedureSlug = caseData.technique.toLowerCase().replace(/\s+/g, '-');
-			procedureDisplayName = caseData.technique;
-		}
-
-		const caseUrl = '/' + gallerySlug + '/' + procedureSlug + '/' + caseId + '/';
-
-		// Get the first processed image
-		let imageUrl = '';
-		if (caseData.photoSets && caseData.photoSets.length > 0) {
-			imageUrl = caseData.photoSets[0].postProcessedImageLocation || '';
-		}
-
-		// Get procedure ID from active nav link for favorites
-		const activeProcedureLink = document.querySelector('.brag-book-gallery-nav-link.brag-book-gallery-active');
-		const currentProcedureId = activeProcedureLink?.dataset.procedureId || '';
-
-		// Get procedure IDs from case data
-		const procedureIds = caseData.procedureIds || [];
-		const procedureIdsStr = procedureIds.join(',');
-
-		// Use current procedure ID for favorites, fallback to first procedure ID, then case ID
-		const favoriteItemId = currentProcedureId || (procedureIds.length > 0 ? procedureIds[0] : caseId);
-		const isFavorited = this.components.favoritesManager.getFavorites().has(String(favoriteItemId));
-
-		// Build data attributes
-		let dataAttrs = `data-case-id="${caseId}"`;
-		if (currentProcedureId) {
-			dataAttrs += ` data-current-procedure-id="${currentProcedureId}"`;
-		}
-		if (procedureIdsStr) {
-			dataAttrs += ` data-procedure-ids="${procedureIdsStr}"`;
-		}
-
-		return `
-			<article class="brag-book-gallery-case-card" ${dataAttrs}>
-				<div class="brag-book-gallery-image-container">
-					<div class="brag-book-gallery-skeleton-loader" style="display:none;"></div>
-					<div class="brag-book-gallery-item-actions">
-						<button class="brag-book-gallery-favorite-button" data-favorited="${isFavorited}" data-item-id="${favoriteItemId}" aria-label="${isFavorited ? 'Remove from' : 'Add to'} favorites">
-							<svg fill="${isFavorited ? 'red' : 'rgba(255, 255, 255, 0.5)'}" stroke="white" stroke-width="2" viewBox="0 0 24 24">
-								<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-							</svg>
-						</button>
-					</div>
-					<a href="${caseUrl}" class="brag-book-gallery-case-card-link" data-case-id="${caseId}">
-						<picture class="brag-book-gallery-picture">
-							<img src="${imageUrl}" alt="Before and after ${procedureDisplayName} case ${caseId}" loading="lazy" data-image-type="single">
-						</picture>
-					</a>
-				</div>
-				<div class="brag-book-gallery-case-card-summary">
-					<div class="brag-book-gallery-case-card-summary-info">
-						<span class="brag-book-gallery-case-card-summary-info__name">${procedureDisplayName}</span>
-						<span class="brag-book-gallery-case-card-summary-info__case-number">Case #${caseId}</span>
-					</div>
-					<div class="brag-book-gallery-case-card-summary-details">
-						${caseData.age ? `<span class="brag-book-gallery-age">${caseData.age} yrs</span>` : ''}
-						${caseData.gender ? `<span class="brag-book-gallery-gender">${caseData.gender}</span>` : ''}
-					</div>
-				</div>
-			</article>
-		`;
-	}
-
 	reinitializeGalleryComponents() {
 		// Reinitialize case links
 		this.initializeCaseLinks();
@@ -3096,502 +3019,6 @@ class BRAGbookGalleryApp {
 
 
 	/**
-	 * Generate HTML for case details from API data
-	 * Matches PHP HTML_Renderer::render_case_details_html() structure exactly
-	 */
-	generateCaseDetailHTML(caseData) {
-		const caseId = caseData.id || '';
-
-		// Extract procedure data using method that matches PHP implementation
-		const procedureData = this.extractProcedureDataForDetails(caseData);
-		const seoData = this.extractSEOData(caseData);
-		const navigationData = caseData.navigation || null;
-
-		// Extract current procedure info from URL
-		const pathSegments = window.location.pathname.split('/').filter(s => s);
-		const procedureSlug = pathSegments.length > 2 ? pathSegments[pathSegments.length - 2] : '';
-		const procedureName = procedureData.name || '';
-
-		// Extract procedure IDs for data attributes (matching PHP implementation exactly)
-		let procedureIdsAttr = '';
-		if (caseData.procedureIds && Array.isArray(caseData.procedureIds)) {
-			const procedureIdsClean = caseData.procedureIds.map(id => parseInt(id)).filter(id => !isNaN(id));
-			procedureIdsAttr = ` data-procedure-ids="${this.escapeHtml(procedureIdsClean.join(','))}"`;
-		}
-
-		// Add procedure slug attribute if available
-		const procedureSlugAttr = procedureSlug ? ` data-procedure="${this.escapeHtml(procedureSlug)}"` : '';
-
-		// Build complete HTML structure matching PHP exactly (single line, no extra whitespace)
-		return `<div class="brag-book-gallery-case-detail-view" data-case-id="${this.escapeHtml(caseId)}"${procedureIdsAttr}${procedureSlugAttr}>${this.renderCaseHeader(procedureData, seoData, caseId, procedureSlug, procedureName, navigationData)}${this.renderCaseImages(caseData, procedureData, caseId)}${this.renderCaseDetailsCards(caseData)}</div>`;
-	}
-
-	/**
-	 * Extract procedure data from case data for details view (matching PHP method exactly)
-	 */
-	extractProcedureDataForDetails(caseData) {
-		let procedureName = '';
-		let procedureSlug = '';
-		let procedureIds = [];
-
-		// Check for procedures array with objects (matching PHP logic)
-		if (caseData.procedures && Array.isArray(caseData.procedures) && caseData.procedures.length > 0) {
-			const firstProcedure = caseData.procedures[0];
-
-			if (firstProcedure.name) {
-				const rawProcedureName = firstProcedure.name;
-				procedureName = this.formatProcedureDisplayName(rawProcedureName);
-				procedureSlug = this.sanitizeTitle(rawProcedureName);
-			} else if (firstProcedure.id) {
-				procedureIds.push(parseInt(firstProcedure.id));
-			}
-		} else if (caseData.procedureIds && Array.isArray(caseData.procedureIds)) {
-			procedureIds = caseData.procedureIds.map(id => parseInt(id)).filter(id => !isNaN(id));
-		}
-
-		return {
-			name: procedureName,
-			slug: procedureSlug,
-			ids: procedureIds,
-			procedures: caseData.procedures || []
-		};
-	}
-
-	/**
-	 * Format procedure display name (matching PHP method)
-	 */
-	formatProcedureDisplayName(procedureName) {
-		if (!procedureName) return '';
-		return procedureName.trim();
-	}
-
-	/**
-	 * Sanitize title for URL-safe slug (matching PHP sanitize_title)
-	 */
-	sanitizeTitle(title) {
-		if (!title) return '';
-
-		return title
-			.toLowerCase()
-			.trim()
-			.replace(/[^a-z0-9\s-]/g, '') // Remove special characters
-			.replace(/\s+/g, '-') // Replace spaces with hyphens
-			.replace(/-+/g, '-') // Replace multiple hyphens with single
-			.replace(/^-|-$/g, ''); // Remove leading/trailing hyphens
-	}
-
-	/**
-	 * Extract procedure data from case data (original method)
-	 */
-	extractProcedureData(caseData) {
-		let procedureName = '';
-		let procedureSlug = '';
-		let procedureIds = [];
-
-		// Check for procedures array with objects
-		if (caseData.procedures && Array.isArray(caseData.procedures) && caseData.procedures.length > 0) {
-			const firstProcedure = caseData.procedures[0];
-			if (firstProcedure.name) {
-				procedureName = firstProcedure.name;
-			}
-			if (firstProcedure.slugName) {
-				procedureSlug = firstProcedure.slugName;
-			}
-
-			// Collect all procedure IDs
-			procedureIds = caseData.procedures.map(proc => proc.id).filter(id => id);
-		}
-
-		// Fallback: check for procedureIds array
-		if (procedureIds.length === 0 && caseData.procedureIds && Array.isArray(caseData.procedureIds)) {
-			procedureIds = caseData.procedureIds;
-		}
-
-		return {
-			procedureName,
-			procedureSlug,
-			procedureIds,
-			hasProcedures: procedureIds.length > 0
-		};
-	}
-
-	/**
-	 * Extract SEO data from case data (matches PHP method)
-	 */
-	extractSEOData(caseData) {
-		const title = caseData.seoTitle || `Case ${caseData.id}`;
-		const description = caseData.seoDescription || '';
-		const keywords = caseData.seoKeywords || '';
-
-		return {
-			title,
-			description,
-			keywords
-		};
-	}
-
-	/**
-	 * Render case header with navigation (matches PHP render_case_header)
-	 */
-	renderCaseHeader(procedureData, seoData, caseId, procedureSlug, procedureName, navigationData) {
-		const gallerySlug = this.getGallerySlug();
-		const basePath = '/' + gallerySlug.replace(/^\/+/, '');
-
-		// Build back URL and text
-		let backUrl = basePath + '/';
-		let backText = '← Back to Gallery';
-
-		if (procedureSlug) {
-			backUrl = basePath + '/' + procedureSlug + '/';
-			if (procedureName) {
-				backText = `← Back to ${procedureName}`;
-			}
-		}
-
-		// Build navigation buttons
-		const navigationButtons = this.buildNavigationButtons(navigationData, procedureSlug);
-
-		// Build title content
-		const titleContent = this.buildTitleContent(seoData, procedureData, caseId, procedureName);
-
-		return `
-			<div class="brag-book-gallery-case-detail-header">
-				<div class="brag-book-gallery-case-navigation">
-					<a href="${this.escapeHtml(backUrl)}" class="brag-book-gallery-back-button" rel="nofollow">
-						${this.escapeHtml(backText)}
-					</a>
-					${navigationButtons}
-				</div>
-				${titleContent}
-			</div>
-		`;
-	}
-
-	/**
-	 * Build navigation buttons for previous/next cases
-	 */
-	buildNavigationButtons(navigationData, procedureSlug) {
-		if (!navigationData) {
-			return '';
-		}
-
-		const gallerySlug = this.getGallerySlug();
-		const basePath = '/' + gallerySlug.replace(/^\/+/, '');
-		let html = '<div class="brag-book-gallery-case-nav-buttons">';
-
-		// Previous case button
-		if (navigationData.previous) {
-			const prevCase = navigationData.previous;
-			const prevUrl = procedureSlug ?
-				`${basePath}/${procedureSlug}/${prevCase.id}/` :
-				`${basePath}/case/${prevCase.id}/`;
-
-			html += `
-				<a href="${this.escapeHtml(prevUrl)}" class="brag-book-gallery-nav-button brag-book-gallery-prev-case" rel="prev nofollow">
-					<span class="brag-book-gallery-nav-arrow">←</span>
-					<span class="brag-book-gallery-nav-text">Previous Case</span>
-				</a>
-			`;
-		}
-
-		// Next case button
-		if (navigationData.next) {
-			const nextCase = navigationData.next;
-			const nextUrl = procedureSlug ?
-				`${basePath}/${procedureSlug}/${nextCase.id}/` :
-				`${basePath}/case/${nextCase.id}/`;
-
-			html += `
-				<a href="${this.escapeHtml(nextUrl)}" class="brag-book-gallery-nav-button brag-book-gallery-next-case" rel="next nofollow">
-					<span class="brag-book-gallery-nav-text">Next Case</span>
-					<span class="brag-book-gallery-nav-arrow">→</span>
-				</a>
-			`;
-		}
-
-		return html + '</div>';
-	}
-
-	/**
-	 * Build title content section
-	 */
-	buildTitleContent(seoData, procedureData, caseId, procedureName) {
-		const displayTitle = procedureName || procedureData.procedureName || 'Case Study';
-
-		return `
-			<div class="brag-book-gallery-case-title-section">
-				<h1 class="brag-book-gallery-case-title">${this.escapeHtml(displayTitle)}</h1>
-				<div class="brag-book-gallery-case-subtitle">Case #${this.escapeHtml(caseId)}</div>
-			</div>
-		`;
-	}
-
-	/**
-	 * Render case images section (matches PHP render_case_images)
-	 */
-	renderCaseImages(caseData, procedureData, caseId) {
-		if (!caseData.photoSets || !Array.isArray(caseData.photoSets) || caseData.photoSets.length === 0) {
-			return this.renderNoImagesSection();
-		}
-
-		const procedureTitle = procedureData.procedureName || 'Case Study';
-		const baseAlt = `Before and after ${procedureTitle} case ${caseId}`;
-		const mainViewer = this.renderMainImageViewer(caseData.photoSets, procedureData, caseId);
-		const thumbnails = caseData.photoSets.length > 1 ? this.renderThumbnails(caseData.photoSets, baseAlt) : '';
-
-		return `
-			<div class="brag-book-gallery-brag-book-gallery-case-content">
-				<div class="brag-book-gallery-case-images-section">
-					<div class="brag-book-gallery-case-images-layout">
-						${mainViewer}
-						${thumbnails}
-					</div>
-				</div>
-		`;
-	}
-
-	/**
-	 * Render no images available section
-	 */
-	renderNoImagesSection() {
-		return `
-			<div class="brag-book-gallery-case-images-section">
-				<div class="brag-book-gallery-no-images">
-					<p>No images available for this case.</p>
-				</div>
-			</div>
-		`;
-	}
-
-	/**
-	 * Render main image viewer
-	 */
-	renderMainImageViewer(photoSets, procedureData, caseId) {
-		if (!photoSets || photoSets.length === 0) {
-			return '';
-		}
-
-		const firstPhotoSet = photoSets[0];
-		const beforeImage = firstPhotoSet.beforeLocationUrl || '';
-		const afterImage = firstPhotoSet.afterLocationUrl1 || '';
-		const processedImage = firstPhotoSet.postProcessedImageLocation || '';
-
-		// Use processed image first, then before, then after
-		const mainImage = processedImage || beforeImage || afterImage;
-
-		if (!mainImage) {
-			return this.renderNoImagesSection();
-		}
-
-		const procedureTitle = procedureData.procedureName || 'Case Study';
-
-		return `
-			<div class="brag-book-gallery-main-image-viewer">
-				<div class="brag-book-gallery-main-image-container" data-photoset-index="0">
-					<img src="${this.escapeHtml(mainImage)}"
-						 alt="Before and after ${this.escapeHtml(procedureTitle)} case ${this.escapeHtml(caseId)}"
-						 class="brag-book-gallery-main-image"
-						 loading="lazy">
-				</div>
-			</div>
-		`;
-	}
-
-	/**
-	 * Render thumbnails for multiple photosets
-	 */
-	renderThumbnails(photoSets, baseAlt = '') {
-		if (!photoSets || photoSets.length <= 1) {
-			return '';
-		}
-
-		const thumbnailsHTML = photoSets.map((photoSet, index) => {
-			const thumbImage = photoSet.postProcessedImageLocation ||
-							  photoSet.beforeLocationUrl ||
-							  photoSet.afterLocationUrl1 || '';
-
-			if (!thumbImage) {
-				return '';
-			}
-
-			const isActive = index === 0 ? ' active' : '';
-
-			return `
-				<div class="brag-book-gallery-thumbnail${isActive}" data-photoset-index="${index}">
-					<img src="${this.escapeHtml(thumbImage)}"
-						 alt="${this.escapeHtml(baseAlt)} - Angle ${index + 1}"
-						 loading="lazy">
-				</div>
-			`;
-		}).filter(html => html).join('');
-
-		const prevSvg = '<svg class="brag-book-gallery-arrow-icon" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M400-240 160-480l240-240 56 58-142 142h486v80H314l142 142-56 58Z"/></svg>';
-		const nextSvg = '<svg class="brag-book-gallery-arrow-icon" xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="m560-240-56-58 142-142H160v-80h486L504-662l56-58 240 240-240 240Z"/></svg>';
-
-		return `
-			<div class="brag-book-gallery-case-thumbnails">
-				<button class="brag-book-gallery-carousel-btn brag-book-gallery-carousel-btn--prev" data-direction="prev" aria-label="Previous thumbnails">${prevSvg}</button>
-				<div class="brag-book-gallery-thumbnails-track">
-					${thumbnailsHTML}
-				</div>
-				<button class="brag-book-gallery-carousel-btn brag-book-gallery-carousel-btn--next" data-direction="next" aria-label="Next thumbnails">${nextSvg}</button>
-				<div class="brag-book-gallery-thumbnails-pagination"></div>
-			</div>
-		`;
-	}
-
-	/**
-	 * Render case details cards section (matches PHP render_case_details_cards)
-	 */
-	renderCaseDetailsCards(caseData) {
-		const html = `
-			<div class="brag-book-gallery-case-card-details-section">
-				<div class="brag-book-gallery-case-card-details-grid">
-					${this.renderProceduresCard(caseData)}
-					${this.renderPatientDetailsCard(caseData)}
-					${this.renderProcedureDetailsCard(caseData)}
-					${this.renderCaseNotesCard(caseData)}
-				</div>
-			</div>
-		`;
-
-		return html + '</div>'; // Close case-content
-	}
-
-	/**
-	 * Render procedures performed card
-	 */
-	renderProceduresCard(caseData) {
-		if (!caseData.procedures || !Array.isArray(caseData.procedures) || caseData.procedures.length === 0) {
-			return '';
-		}
-
-		const proceduresList = caseData.procedures.map(procedure =>
-			`<span class="procedure-badge">${this.escapeHtml(procedure.name || 'Unknown Procedure')}</span>`
-		).join('');
-
-		return `
-			<div class="case-detail-card procedures-performed-card">
-				<div class="card-header">
-					<h2 class="card-title">Procedures Performed</h2>
-				</div>
-				<div class="card-content">
-					<div class="brag-book-gallery-procedure-badges-list">${proceduresList}</div>
-				</div>
-			</div>
-		`;
-	}
-
-	/**
-	 * Render patient details card
-	 */
-	renderPatientDetailsCard(caseData) {
-		const itemTemplate = (label, value) =>
-			`<div class="brag-book-gallery-info-item"><span class="brag-book-gallery-info-label">${this.escapeHtml(label)}</span><span class="brag-book-gallery-info-value">${this.escapeHtml(String(value))}</span></div>`;
-
-		let items = '';
-
-		if (caseData.ethnicity) items += itemTemplate('Ethnicity', caseData.ethnicity);
-		if (caseData.gender) items += itemTemplate('Gender', caseData.gender);
-		if (caseData.age) items += itemTemplate('Age', `${caseData.age} years`);
-		if (caseData.height) items += itemTemplate('Height', caseData.height);
-		if (caseData.weight) items += itemTemplate('Weight', caseData.weight);
-
-		if (!items) return '';
-
-		return `
-			<div class="case-detail-card patient-details-card">
-				<div class="card-header">
-					<h2 class="card-title">Patient Information</h2>
-				</div>
-				<div class="card-content">
-					<div class="patient-info-grid">${items}</div>
-				</div>
-			</div>
-		`;
-	}
-
-	/**
-	 * Render procedure details card with accordion
-	 */
-	renderProcedureDetailsCard(caseData) {
-		if (!caseData.procedures || !Array.isArray(caseData.procedures) || caseData.procedures.length === 0) {
-			return '';
-		}
-
-		const chevronSvg = '<span class="accordion-chevron"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>';
-
-		const procedureDetails = caseData.procedureDetails || {};
-		let accordionItems = '';
-
-		caseData.procedures.forEach(procedure => {
-			const procId = procedure.procedure_id || procedure.id;
-			const procName = this.escapeHtml(procedure.name || 'Unknown Procedure');
-			const details = procedureDetails[procId] || {};
-
-			let detailRows = '';
-			Object.entries(details).forEach(([label, value]) => {
-				const displayValue = Array.isArray(value) ? value.join(', ') : value;
-				detailRows += `<div class="brag-book-gallery-info-item"><span class="brag-book-gallery-info-label">${this.escapeHtml(label)}</span><span class="brag-book-gallery-info-value">${this.escapeHtml(String(displayValue))}</span></div>`;
-			});
-
-			if (!detailRows) return;
-
-			accordionItems += `
-				<div class="procedure-accordion-item">
-					<button type="button" class="procedure-accordion-header" aria-expanded="false">
-						<span>${procName}</span>${chevronSvg}
-					</button>
-					<div class="procedure-accordion-content">
-						${detailRows}
-					</div>
-				</div>
-			`;
-		});
-
-		if (!accordionItems) return '';
-
-		return `
-			<div class="case-detail-card procedure-details-card">
-				<div class="card-header">
-					<h2 class="card-title">Procedure Details</h2>
-				</div>
-				<div class="card-content">
-					<div class="procedure-details-accordion">${accordionItems}</div>
-				</div>
-			</div>
-		`;
-	}
-
-	/**
-	 * Render case notes card
-	 */
-	renderCaseNotesCard(caseData) {
-		const notes = caseData.notes || caseData.description || caseData.caseNotes || '';
-
-		if (!notes) {
-			return '';
-		}
-
-		return `
-			<div class="case-detail-card case-notes-card">
-				<h2 class="case-notes-title">Case Notes</h2>
-				<div class="case-notes-body">
-					<p>${this.escapeHtml(notes).replace(/\n/g, '</p><p>')}</p>
-				</div>
-			</div>
-		`;
-	}
-
-	/**
-	 * Get gallery slug from configuration or default
-	 */
-	getGallerySlug() {
-		const config = window.bragBookGalleryConfig || {};
-		return config.gallerySlug || 'gallery';
-	}
-
-	/**
 	 * Escape HTML characters for safe output
 	 */
 	escapeHtml(text) {
@@ -3696,44 +3123,6 @@ class BRAGbookGalleryApp {
 		script.setAttribute('data-case-structured-data', 'true');
 		script.textContent = JSON.stringify(structuredData);
 		document.head.appendChild(script);
-	}
-
-	/**
-	 * Initialize thumbnail navigation functionality
-	 */
-	initializeThumbnailNavigation() {
-		// Add click handlers for thumbnails
-		const thumbnails = document.querySelectorAll('.brag-book-gallery-thumbnail');
-		const mainImage = document.querySelector('.brag-book-gallery-main-image');
-
-		if (!mainImage || thumbnails.length === 0) {
-			return;
-		}
-
-		thumbnails.forEach((thumbnail, index) => {
-			thumbnail.addEventListener('click', (e) => {
-				e.preventDefault();
-
-				// Remove active class from all thumbnails
-				thumbnails.forEach(thumb => thumb.classList.remove('active'));
-
-				// Add active class to clicked thumbnail
-				thumbnail.classList.add('active');
-
-				// Update main image
-				const thumbnailImg = thumbnail.querySelector('img');
-				if (thumbnailImg && thumbnailImg.src) {
-					mainImage.src = thumbnailImg.src;
-					mainImage.alt = thumbnailImg.alt || `Case image ${index + 1}`;
-
-					// Update photoset index data attribute
-					const mainContainer = document.querySelector('.brag-book-gallery-main-image-container');
-					if (mainContainer) {
-						mainContainer.setAttribute('data-photoset-index', index.toString());
-					}
-				}
-			});
-		});
 	}
 
 	/**
@@ -4082,6 +3471,12 @@ class BRAGbookGalleryApp {
 
 		// Use WordPress data if available, fallback to API data
 		let caseId, procedureTitle, procedureSlug, seoSuffix, imageUrl, postId;
+		// The small/medium renditions live in post meta the browser cannot read, so
+		// brag_book_get_case_by_api_id resolves them server-side and hands back the
+		// srcset for the same URL it gave us. Both stay empty on the API fallback
+		// branch, where there is no WordPress post to look them up on.
+		let imageSrcset = '';
+		let imageSizes = '';
 
 		if (wpPostData) {
 			// Use WordPress post data
@@ -4091,6 +3486,8 @@ class BRAGbookGalleryApp {
 			procedureSlug = wpPostData.procedure_slug || 'procedure';
 			seoSuffix = wpPostData.post_name || wpPostData.post_meta?._case_seo_suffix_url || caseId;
 			imageUrl = wpPostData.featured_image_url || '';
+			imageSrcset = wpPostData.featured_image_srcset || '';
+			imageSizes = wpPostData.featured_image_sizes || '';
 		} else {
 			// Fallback to API data
 			postId = caseData.post_id || '';
@@ -4169,6 +3566,10 @@ class BRAGbookGalleryApp {
 		const escapedItemId = this.escapeHtml(favoriteItemId);
 		const escapedImageUrl = this.escapeHtml(imageUrl);
 		const escapedProcId = caseData.procedure_id || procedureId || '';
+		// Only emit the pair together — a `sizes` with no `srcset` means nothing.
+		const responsiveAttrs = imageSrcset
+			? ` srcset="${this.escapeHtml(imageSrcset)}" sizes="${this.escapeHtml(imageSizes)}"`
+			: '';
 
 		let html = `<article class="brag-book-gallery-case-card brag-book-gallery-case-card--v3 brag-book-gallery-favorites-card" ${dataAttrs}>`;
 		html += '<div class="brag-book-gallery-case-images single-image">';
@@ -4190,7 +3591,7 @@ class BRAGbookGalleryApp {
 
 		if (imageUrl) {
 			html += '<picture class="brag-book-gallery-picture">';
-			html += `<img src="${escapedImageUrl}" alt="Before and after ${escapedProcTitle} case ${escapedCaseId}" loading="eager" data-image-type="carousel" data-image-url="${escapedImageUrl}" onload="this.closest('.brag-book-gallery-image-container').querySelector('.brag-book-gallery-skeleton-loader').style.display='none';" fetchpriority="high">`;
+			html += `<img src="${escapedImageUrl}"${responsiveAttrs} alt="Before and after ${escapedProcTitle} case ${escapedCaseId}" loading="eager" data-image-type="carousel" data-image-url="${escapedImageUrl}" onload="this.closest('.brag-book-gallery-image-container').querySelector('.brag-book-gallery-skeleton-loader').style.display='none';" fetchpriority="high">`;
 			html += '</picture>';
 		}
 

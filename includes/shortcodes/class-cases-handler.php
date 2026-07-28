@@ -2206,10 +2206,10 @@ final class Cases_Handler {
 			error_log( "BRAGBook Debug: Final image_url for case $case_id: " . ( $image_url ?: 'empty' ) );
 		}
 
-		// Responsive srcset for the grid card image, matched to the same source
-		// node so small/medium variants load on smaller viewports. Empty for
-		// cases synced before variants existed (falls back to plain src).
-		$image_srcset = self::build_variant_srcset_for_url( (int) $post_id, (string) $image_url );
+		// Responsive srcset/sizes for the grid card image, matched to the same
+		// source node so small/medium variants load on smaller viewports. Empty
+		// for cases synced before variants existed (falls back to plain src).
+		$image_responsive_attrs = self::build_responsive_attrs( (int) $post_id, (string) $image_url, self::SIZES_CASE_GRID );
 
 		// Get card type setting
 		$case_card_type = get_option( 'brag_book_gallery_case_card_type', 'default' );
@@ -2303,10 +2303,13 @@ final class Cases_Handler {
 									   data-case-id="<?php echo esc_attr( $case_id ); ?>"
 									   data-procedure-ids="<?php echo esc_attr( implode( ',', $procedure_ids ) ); ?>">
 										<?php foreach ( $carousel_images as $index => $carousel_url ) : ?>
-											<?php $carousel_srcset = self::build_variant_srcset_for_url( (int) $post_id, (string) $carousel_url ); ?>
+											<?php $carousel_responsive_attrs = self::build_responsive_attrs( (int) $post_id, (string) $carousel_url, self::SIZES_CASE_GRID ); ?>
 											<picture class="brag-book-gallery-picture" id="case-<?php echo esc_attr( $case_id ); ?>-img-<?php echo (int) $index; ?>">
 												<img src="<?php echo esc_url( $carousel_url ); ?>"
-													<?php if ( '' !== $carousel_srcset ) : ?> srcset="<?php echo esc_attr( $carousel_srcset ); ?>" sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"<?php endif; ?>
+													<?php
+													// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Pre-escaped by build_responsive_attrs().
+													echo $carousel_responsive_attrs;
+													?>
 													 alt="<?php echo esc_attr( $image_alt ); ?><?php echo count( $carousel_images ) > 1 ? ' - Angle ' . ( (int) $index + 1 ) : ''; ?>"
 													 loading="<?php echo 0 === $index ? 'eager' : 'lazy'; ?>"
 													 decoding="async"
@@ -2341,7 +2344,10 @@ final class Cases_Handler {
 								<!-- Single image fallback -->
 								<picture class="brag-book-gallery-picture">
 									<img src="<?php echo esc_url( $image_url ); ?>"
-										<?php if ( '' !== $image_srcset ) : ?> srcset="<?php echo esc_attr( $image_srcset ); ?>" sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"<?php endif; ?>
+										<?php
+										// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Pre-escaped by build_responsive_attrs().
+										echo $image_responsive_attrs;
+										?>
 										 alt="<?php echo esc_attr( $image_alt ); ?>"
 										 loading="eager"
 										 decoding="async"
@@ -2366,7 +2372,10 @@ final class Cases_Handler {
 								if ( ! empty( $image_url ) ) : ?>
 									<picture class="brag-book-gallery-picture">
 										<img src="<?php echo esc_url( $image_url ); ?>"
-											<?php if ( '' !== $image_srcset ) : ?> srcset="<?php echo esc_attr( $image_srcset ); ?>" sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"<?php endif; ?>
+											<?php
+											// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Pre-escaped by build_responsive_attrs().
+											echo $image_responsive_attrs;
+											?>
 											 alt="<?php echo esc_attr( $image_alt ); ?>"
 											 loading="eager"
 											 decoding="async"

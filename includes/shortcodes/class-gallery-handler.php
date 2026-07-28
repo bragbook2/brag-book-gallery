@@ -458,9 +458,10 @@ final class Gallery_Handler {
 		$wrapper_class = self::generate_wrapper_classes();
 
 		// Get landing page text from settings
-		$default_landing_text = '<h2>Go ahead, browse our before & afters... visualize your possibilities.</h2>' . "\n" .
-								'<p>Our gallery is full of our real patients. Keep in mind results vary.</p>';
-		$landing_page_text = get_option( 'brag_book_gallery_landing_page_text', $default_landing_text );
+		$landing_page_text = get_option(
+			'brag_book_gallery_landing_page_text',
+			Settings_Helper::get_default_landing_page_text()
+		);
 
 		// Remove escaped quotes that may have been added by WYSIWYG editor
 		$landing_page_text = str_replace( '\"', '"', $landing_page_text );
@@ -1448,9 +1449,10 @@ final class Gallery_Handler {
 						echo self::render_disclaimer();
 					} else {
 						// Show default gallery content
-						$default_landing_text = '<h2>Go ahead, browse our before & afters... visualize your possibilities.</h2>' . "\n" .
-												'<p>Our gallery is full of our real patients. Keep in mind results vary.</p>';
-						$landing_page_text    = get_option( 'brag_book_gallery_landing_page_text', $default_landing_text );
+						$landing_page_text    = get_option(
+							'brag_book_gallery_landing_page_text',
+							Settings_Helper::get_default_landing_page_text()
+						);
 
 						if ( ! empty( $landing_page_text ) ) {
 							// Remove escaped quotes that may have been added by WYSIWYG editor

@@ -661,8 +661,11 @@ class Case_Handler {
 
 		// Main image (first image) with microdata
 		if ( ! empty( $images[0] ) ) {
-			
-			$html .= '<img src="' . esc_url( $images[0] ) . '" alt="' . esc_attr( $base_alt ) . '" loading="eager" fetchpriority="high" decoding="async" itemprop="image">';
+			// The viewer spans the full content column, so a small screen can be
+			// served the small/medium rendition instead of the full-size file.
+			$main_responsive_attrs = self::build_responsive_attrs( (int) $wp_post_id, (string) $images[0], self::SIZES_FULL_WIDTH );
+
+			$html .= '<img src="' . esc_url( $images[0] ) . '"' . $main_responsive_attrs . ' alt="' . esc_attr( $base_alt ) . '" loading="eager" fetchpriority="high" decoding="async" itemprop="image">';
 			$html .= '<div class="brag-book-gallery-item-actions">';
 			// Use procedure case ID (junction ID) for favorites - fallback to post ID
 			$favorite_item_id = ! empty( $procedure_case_id ) ? $procedure_case_id : $wp_post_id;
@@ -698,7 +701,11 @@ class Case_Handler {
 				// full URL stays in data-processed-url so clicking still swaps the
 				// main viewer to full resolution.
 				$thumb_url = self::get_variant_url_for_url( (int) $wp_post_id, $image_url, 'small' );
-				$html .= '<div class="brag-book-gallery-thumbnail-item' . $active_class . '" data-image-index="' . $index . '" data-processed-url="' . esc_attr( $image_url ) . '">';
+				// The main viewer carries a srcset, which wins over src. Clicking a
+				// thumbnail therefore has to swap both, so each slot ships the srcset
+				// its own image needs.
+				$full_srcset = self::build_variant_srcset_for_url( (int) $wp_post_id, $image_url );
+				$html .= '<div class="brag-book-gallery-thumbnail-item' . $active_class . '" data-image-index="' . $index . '" data-processed-url="' . esc_attr( $image_url ) . '" data-full-srcset="' . esc_attr( $full_srcset ) . '">';
 				$html .= '<img src="' . esc_url( $thumb_url ) . '" alt="' . esc_attr( $thumbnail_alt ) . '" loading="lazy" decoding="async" itemprop="thumbnail">';
 				$html .= '</div>';
 			}
@@ -1352,8 +1359,10 @@ class Case_Handler {
 			);
 
 			$html .= sprintf(
-				'<img src="%s" alt="%s" class="brag-book-gallery-case-image" loading="lazy" decoding="async">',
+				'<img src="%s"%s alt="%s" class="brag-book-gallery-case-image" loading="lazy" decoding="async">',
 				esc_url( $primary_image ),
+				// Pre-escaped by build_responsive_attrs().
+				self::build_responsive_attrs( (int) $case_post->ID, (string) $primary_image, self::SIZES_CASE_GRID ),
 				/* translators: %s: case identifier */
 				esc_attr( sprintf( __( 'Case %s', 'brag-book-gallery' ), $case_id ) )
 			);

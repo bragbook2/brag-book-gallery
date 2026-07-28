@@ -92,6 +92,14 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 
 == Changelog ==
 
+= 4.9.2-beta4 =
+* Added: Responsive image variants now apply to the remaining views. Carousels, favourites cards, the case detail main viewer and related-case cards all offer the small and medium renditions alongside the full-size image, so browsers download a file suited to the space it is shown in rather than the full-size image everywhere. Cases synced before variants existed, and any view where the smaller sizes have not been generated, continue to use the full-size image.
+* Added: The favourites grid rendered in the browser now receives the matching image sources from the server, so it benefits from the same responsive images as the server-rendered grids.
+* Added: The default landing page content now includes two procedure carousels, for breast augmentation and liposuction, which can be edited or removed in the landing page editor. This applies only to sites that have never saved their own landing page text; existing content is untouched.
+* Fixed: Grid images could load a rendition smaller than the space they fill. Below 576px a case card spans the full width of the screen, but the gallery declared it as half, so browsers were free to pick an image sized for half the width and render it soft. The declared sizes now match the grid at every breakpoint.
+* Fixed: Clicking a thumbnail on a case detail page could leave the previous photo on screen once the main viewer carried multiple image sources, because only the primary source was swapped. Both are now swapped together.
+* Changed: Removed roughly 1,850 lines of unreachable gallery JavaScript — card builders with no callers and three paths that posted to server endpoints that do not exist — reducing the frontend script bundle. No behaviour changes: every removed path was verified unreachable before deletion.
+
 = 4.9.2-beta3 =
 * Fixed: The gallery page's SEO title and meta description rendered as a single letter — the first character of the configured value — because the saved setting was read as a list when it is stored as plain text. Both now render the full configured title and description.
 * Fixed: Several SEO routines crashed or silently did nothing after the caching layer they depended on was removed: the sidebar, procedure and case SEO lookups threw a fatal error whenever they ran, and the transient cleanup routine exited immediately every time without deleting anything. The obsolete cache handling has been removed, and a gutted cleanup routine and an unused rate limiter along with it.

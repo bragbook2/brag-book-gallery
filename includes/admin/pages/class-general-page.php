@@ -674,12 +674,12 @@ class General_Page extends Settings_Base {
 		$items_per_page      = Settings_Helper::get_items_per_page();
 
 		// Landing page content.
-		$default_landing_text = sprintf(
-			'<h2>%s</h2>' . "\n" . '<p>%s</p>',
-			__( 'Go ahead, browse our before & afters... visualize your possibilities.', 'brag-book-gallery' ),
-			__( 'Our gallery is full of our real patients. Keep in mind results vary.', 'brag-book-gallery' )
+		$landing_text = wp_kses_post(
+			get_option(
+				'brag_book_gallery_landing_page_text',
+				Settings_Helper::get_default_landing_page_text()
+			)
 		);
-		$landing_text = wp_kses_post( get_option( 'brag_book_gallery_landing_page_text', $default_landing_text ) );
 		$slug         = sanitize_title( get_option( 'brag_book_gallery_page_slug', '' ) );
 
 		// Toggle settings.

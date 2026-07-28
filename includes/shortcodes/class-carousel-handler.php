@@ -30,6 +30,7 @@ namespace BRAGBookGallery\Includes\shortcodes;
 
 use BRAGBookGallery\Includes\Core\Setup;
 use BRAGBookGallery\Includes\Resources\Asset_Manager;
+use BRAGBookGallery\Includes\Shortcodes\Traits\Trait_Image_Variants;
 use BRAGBookGallery\Includes\Shortcodes\Traits\Trait_Provider_Query;
 
 // Prevent direct access.
@@ -71,6 +72,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 final class Carousel_Handler {
 
+	use Trait_Image_Variants;
 	use Trait_Provider_Query;
 
 	/**
@@ -1295,7 +1297,7 @@ final class Carousel_Handler {
 		$nudity_warning = $photo_data['has_nudity'] ? HTML_Renderer::render_nudity_warning() : '';
 		$link_open = ! empty( $case_url ) ? self::render_slide_link_open( $case_url, $photo_data['alt_text'] ) : '';
 		$link_close = ! empty( $case_url ) ? '</a>' : '';
-		$image_element = self::render_slide_image( $photo_data, 0 === $slide_index );
+		$image_element = self::render_slide_image( $photo_data, 0 === $slide_index, (int) ( $case_data['post_id'] ?? 0 ) );
 
 		// Only render action buttons for non-standalone carousels
 		// Pass procedure ID (term ID) to get the API procedure ID for favorites
@@ -1423,13 +1425,17 @@ final class Carousel_Handler {
 	 * @param bool  $is_lcp     True for the first slide (eager + fetchpriority=high
 	 *                          so it's discoverable as the LCP candidate),
 	 *                          false for the rest (lazy).
+	 * @param int   $post_id    Case post ID, used to look up the small/medium
+	 *                          variants of this slide's image. 0 in API-driven
+	 *                          carousels with no local post, which renders the
+	 *                          plain full-size `src`.
 	 *
 	 * @return string Picture HTML.
 	 */
-	private static function render_slide_image( array $photo_data, bool $is_lcp = false ): string {
-		// A <picture> with a single <source> pointing at the same URL as <img>
-		// adds bytes without giving the browser any selection power. Until the
-		// API exposes WebP/AVIF or multiple sizes, a plain <img> is correct.
+	private static function render_slide_image( array $photo_data, bool $is_lcp = false, int $post_id = 0 ): string {
+		// A <picture> with multiple <source> elements would only pay off if the
+		// API exposed different formats; for the same image at several widths a
+		// plain <img srcset> lets the browser pick and stays simpler.
 		$class = 'brag-book-gallery-carousel-image';
 		if ( $photo_data['has_nudity'] ) {
 			$class .= ' brag-book-gallery-nudity-blur';
@@ -1439,9 +1445,18 @@ final class Carousel_Handler {
 			? 'loading="eager" fetchpriority="high"'
 			: 'loading="lazy"';
 
+		// Match on the same string that goes into `src` so the offered sources
+		// always belong to the image actually being rendered.
+		$responsive_attrs = self::build_responsive_attrs(
+			$post_id,
+			(string) $photo_data['image_url'],
+			self::SIZES_CAROUSEL
+		);
+
 		return sprintf(
-			'<img src="%s" alt="%s" class="%s" %s decoding="async">',
+			'<img src="%s"%s alt="%s" class="%s" %s decoding="async">',
 			esc_url( $photo_data['image_url'] ),
+			$responsive_attrs, // Pre-escaped by build_responsive_attrs().
 			esc_attr( $photo_data['alt_text'] ),
 			esc_attr( $class ),
 			$loading_attrs
