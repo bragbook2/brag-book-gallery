@@ -16,34 +16,6 @@
 	}
 }
 
-// Fast case detail image sections
-.brag-book-gallery-case-detail-fast {
-	.brag-book-gallery-case-images {
-		.brag-book-gallery-image-section {
-			margin-bottom: var(--wp--custom--brag-book-gallery--spacer--xl, 32px);
-
-			h3 {
-				font-size: 1.25rem;
-				font-weight: 600;
-				margin-bottom: var(--wp--custom--brag-book-gallery--spacer--md, 16px);
-			}
-
-			.brag-book-gallery-image-grid {
-				display: grid;
-				grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-				gap: var(--wp--custom--brag-book-gallery--spacer--md, 16px);
-
-				img {
-					width: 100%;
-					height: auto;
-					border-radius: 8px;
-					box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-				}
-			}
-		}
-	}
-}
-
 // Case image pairs (before/after)
 .brag-book-gallery-case-image-pair {
 	// Image pair layout

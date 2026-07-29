@@ -50,6 +50,17 @@ if ( ! defined( 'WPINC' ) ) {
 class General_Page extends Settings_Base {
 
 	/**
+	 * Option name holding the gallery landing page content.
+	 *
+	 * Doubles as the `wp_editor()` field id, so the reset button's JavaScript
+	 * can address the editor without a second hard-coded string.
+	 *
+	 * @since 4.9.2
+	 * @var string
+	 */
+	private const LANDING_PAGE_TEXT_OPTION = 'brag_book_gallery_landing_page_text';
+
+	/**
 	 * Initialize general settings page configuration
 	 *
 	 * Sets up the page slug for the general settings interface.
@@ -595,6 +606,53 @@ class General_Page extends Settings_Base {
 				initializeFavoritesEventListeners();
 			}
 		})();
+
+		// Landing page text: restore the plugin default into the editor.
+		(function() {
+			'use strict';
+
+			// JSON_HEX_TAG keeps the markup in the default from closing the inline
+			// <script> block it is printed into.
+			const EDITOR_ID = <?php echo wp_json_encode( self::LANDING_PAGE_TEXT_OPTION, JSON_HEX_TAG | JSON_HEX_AMP ); ?>;
+			const DEFAULT_CONTENT = <?php echo wp_json_encode( Settings_Helper::get_default_landing_page_text(), JSON_HEX_TAG | JSON_HEX_AMP ); ?>;
+			const CONFIRM_MESSAGE = <?php echo wp_json_encode( __( 'Replace the landing page text with the plugin default? Your current text will be lost.', 'brag-book-gallery' ), JSON_HEX_TAG | JSON_HEX_AMP ); ?>;
+
+			/**
+			 * Write the default into whichever editor mode is active.
+			 *
+			 * TinyMCE and the raw textarea hold the value independently depending on
+			 * whether the Visual or Text tab is showing, so both are set — otherwise
+			 * switching tabs after a reset would resurrect the previous content.
+			 */
+			const resetLandingPageText = () => {
+				if (!window.confirm(CONFIRM_MESSAGE)) {
+					return;
+				}
+
+				const textarea = document.getElementById(EDITOR_ID);
+				if (textarea) {
+					textarea.value = DEFAULT_CONTENT;
+				}
+
+				const editor = window.tinymce ? window.tinymce.get(EDITOR_ID) : null;
+				if (editor) {
+					editor.setContent(DEFAULT_CONTENT);
+				}
+			};
+
+			const initializeResetButton = () => {
+				const resetBtn = document.getElementById('reset-landing-page-text');
+				if (resetBtn) {
+					resetBtn.addEventListener('click', resetLandingPageText);
+				}
+			};
+
+			if (document.readyState === 'loading') {
+				document.addEventListener('DOMContentLoaded', initializeResetButton);
+			} else {
+				initializeResetButton();
+			}
+		})();
 		<?php
 		$inline_script = ob_get_clean();
 		if ( ! wp_script_is( 'brag-book-gallery-general-page', 'registered' ) ) {
@@ -676,7 +734,7 @@ class General_Page extends Settings_Base {
 		// Landing page content.
 		$landing_text = wp_kses_post(
 			get_option(
-				'brag_book_gallery_landing_page_text',
+				self::LANDING_PAGE_TEXT_OPTION,
 				Settings_Helper::get_default_landing_page_text()
 			)
 		);
@@ -836,15 +894,15 @@ class General_Page extends Settings_Base {
 
 				<!-- Landing Page Text -->
 				<div class="gallery-page-settings-field">
-					<label for="brag_book_gallery_landing_page_text" class="gallery-page-settings-field__label">
+					<label for="<?php echo esc_attr( self::LANDING_PAGE_TEXT_OPTION ); ?>" class="gallery-page-settings-field__label">
 						<?php esc_html_e( 'Landing Page Text', 'brag-book-gallery' ); ?>
 					</label>
 					<?php
 					wp_editor(
 						wp_unslash( $landing_text ),
-						'brag_book_gallery_landing_page_text',
+						self::LANDING_PAGE_TEXT_OPTION,
 						array(
-							'textarea_name' => 'brag_book_gallery_landing_page_text',
+							'textarea_name' => self::LANDING_PAGE_TEXT_OPTION,
 							'textarea_rows' => 10,
 							'media_buttons' => false,
 							'teeny'         => true,
@@ -856,8 +914,14 @@ class General_Page extends Settings_Base {
 						)
 					);
 					?>
+					<p>
+						<button type="button" id="reset-landing-page-text" class="button button-secondary">
+							<?php esc_html_e( 'Reset to Default', 'brag-book-gallery' ); ?>
+						</button>
+					</p>
 					<p class="description">
 						<?php esc_html_e( 'Text displayed on the gallery landing page. Edit visually or switch to the Text tab for HTML.', 'brag-book-gallery' ); ?>
+						<?php esc_html_e( 'Reset restores the plugin default in the editor; it is not stored until you save.', 'brag-book-gallery' ); ?>
 					</p>
 				</div>
 			</div>
@@ -2087,12 +2151,12 @@ class General_Page extends Settings_Base {
 	 * @return void
 	 */
 	private function save_landing_page_text(): void {
-		if ( ! isset( $_POST['brag_book_gallery_landing_page_text'] ) ) {
+		if ( ! isset( $_POST[ self::LANDING_PAGE_TEXT_OPTION ] ) ) {
 			return;
 		}
 
-		$landing_text = wp_kses_post( wp_unslash( $_POST['brag_book_gallery_landing_page_text'] ) );
-		update_option( 'brag_book_gallery_landing_page_text', $landing_text );
+		$landing_text = wp_kses_post( wp_unslash( $_POST[ self::LANDING_PAGE_TEXT_OPTION ] ) );
+		update_option( self::LANDING_PAGE_TEXT_OPTION, $landing_text );
 	}
 
 	/**

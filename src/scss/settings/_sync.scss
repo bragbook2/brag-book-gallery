@@ -1958,7 +1958,18 @@ body.wp-admin {
 		}
 	}
 
+	.brag-book-delete-target-list,
+	.brag-book-delete-result-list {
+		margin: 8px 0 8px 20px;
+		list-style: disc;
+	}
+
 	#brag-book-delete-confirm-input {
+		width: 100%;
+		margin-top: 8px;
+		padding: 8px 12px;
+		border: 2px solid #e2e8f0;
+		border-radius: 6px;
 		font-size: 14px;
 
 		&:focus {
@@ -1966,6 +1977,25 @@ body.wp-admin {
 			outline: none;
 			box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2);
 		}
+	}
+
+	// The shared progress bar is built for the wide sync panel; inside the
+	// dialog it needs to sit flush with the message column.
+	.brag-book-gallery-progress-header {
+		margin-top: 0;
+	}
+
+	.brag-book-delete-progress-detail {
+		margin: 4px 0 0;
+		color: var(--slate-600);
+		font-size: 13px;
+		min-height: 1.4em;
+	}
+
+	// The icon swaps to a checkmark on success; the danger variant would
+	// otherwise keep colouring it red.
+	.brag-book-gallery-dialog-icon .dashicons-yes-alt {
+		color: var(--green-500);
 	}
 }
 

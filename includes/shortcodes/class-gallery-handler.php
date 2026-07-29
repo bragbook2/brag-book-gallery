@@ -156,11 +156,6 @@ final class Gallery_Handler {
 				'sslverify' => true,
 			]
 		);
-
-		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( "BRAGBook Gallery: Tracked view for case {$case_id}" );
-		}
 	}
 
 	/**
@@ -173,46 +168,27 @@ final class Gallery_Handler {
 	 * @return void
 	 */
 	public static function ajax_track_view(): void {
-		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-		error_log( 'BRAGBook Gallery: ajax_track_view called' );
-
 		// Verify nonce
 		$nonce = isset( $_POST['nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['nonce'] ) ) : '';
-		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-		error_log( 'BRAGBook Gallery: ajax_track_view nonce received: ' . ( $nonce ? 'yes' : 'no' ) );
 
 		if ( empty( $nonce ) || ! wp_verify_nonce( $nonce, 'brag_book_gallery_nonce' ) ) {
-			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAGBook Gallery: ajax_track_view nonce verification failed' );
 			wp_send_json_error( [ 'message' => 'Invalid nonce' ], 403 );
 			return;
 		}
-
-		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-		error_log( 'BRAGBook Gallery: ajax_track_view nonce passed' );
 
 		// Get tracking parameters
 		$case_procedure_id = isset( $_POST['caseProcedureId'] ) ? absint( $_POST['caseProcedureId'] ) : 0;
 		$procedure_id      = isset( $_POST['procedureId'] ) ? absint( $_POST['procedureId'] ) : 0;
 
-		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-		error_log( "BRAGBook Gallery: ajax_track_view params - caseProcedureId: {$case_procedure_id}, procedureId: {$procedure_id}" );
-
 		if ( empty( $case_procedure_id ) && empty( $procedure_id ) ) {
-			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAGBook Gallery: ajax_track_view no IDs provided' );
 			wp_send_json_error( [ 'message' => 'No caseProcedureId or procedureId provided' ], 400 );
 			return;
 		}
 
 		// Get API configuration
 		$api_tokens = get_option( 'brag_book_gallery_api_token', [] );
-		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-		error_log( 'BRAGBook Gallery: ajax_track_view api_tokens type: ' . gettype( $api_tokens ) );
 
 		if ( empty( $api_tokens ) ) {
-			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAGBook Gallery: ajax_track_view no API tokens configured' );
 			wp_send_json_error( [ 'message' => 'API token not configured' ], 500 );
 			return;
 		}
@@ -226,14 +202,9 @@ final class Gallery_Handler {
 		}
 
 		if ( empty( $api_token ) ) {
-			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAGBook Gallery: ajax_track_view API token empty after extraction' );
 			wp_send_json_error( [ 'message' => 'API token not available' ], 500 );
 			return;
 		}
-
-		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-		error_log( 'BRAGBook Gallery: ajax_track_view API token found, length: ' . strlen( $api_token ) );
 
 		// Build API URL
 		$api_endpoint = get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' );
@@ -247,8 +218,6 @@ final class Gallery_Handler {
 		}
 
 		$tracking_url = rtrim( $api_endpoint, '/' ) . '/api/plugin/v2/views?' . http_build_query( $query_params );
-		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-		error_log( 'BRAGBook Gallery: ajax_track_view tracking URL: ' . $tracking_url );
 
 		// Make the API request server-side (no CORS issues)
 		$response = wp_remote_post(
@@ -264,8 +233,6 @@ final class Gallery_Handler {
 		);
 
 		if ( is_wp_error( $response ) ) {
-			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAGBook Gallery: ajax_track_view WP error: ' . $response->get_error_message() );
 			wp_send_json_error( [
 				'message' => 'API request failed: ' . $response->get_error_message(),
 			], 500 );
@@ -275,20 +242,13 @@ final class Gallery_Handler {
 		$status_code = wp_remote_retrieve_response_code( $response );
 		$body        = wp_remote_retrieve_body( $response );
 
-		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-		error_log( "BRAGBook Gallery: ajax_track_view API response - status: {$status_code}, body: {$body}" );
-
 		if ( $status_code >= 200 && $status_code < 300 ) {
-			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAGBook Gallery: ajax_track_view SUCCESS - API response: ' . $body );
 			wp_send_json_success( [
 				'message'          => 'View tracked successfully',
 				'caseProcedureId'  => $case_procedure_id,
 				'procedureId'      => $procedure_id,
 			] );
 		} else {
-			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( "BRAGBook Gallery: ajax_track_view API error - status: {$status_code}, body: {$body}" );
 			wp_send_json_error( [
 				'message'    => 'API returned error',
 				'statusCode' => $status_code,
@@ -1859,86 +1819,6 @@ final class Gallery_Handler {
 		return '/' . ltrim( $gallery_slug, '/' ) . '/myfavorites';
 	}
 
-	private static function generate_fast_case_html( array $case_data, string $procedure_title = '' ): string {
-		$case_id       = esc_html( $case_data['id'] ?? '' );
-		$images        = $case_data['images'] ?? [];
-		$before_images = array_filter( $images, fn( $img ) => ( $img['type'] ?? '' ) === 'before' );
-		$after_images  = array_filter( $images, fn( $img ) => ( $img['type'] ?? '' ) === 'after' );
-
-		$age    = ! empty( $case_data['age'] ) ? esc_html( $case_data['age'] ) : '';
-		$gender = ! empty( $case_data['gender'] ) ? esc_html( $case_data['gender'] ) : '';
-		$notes  = ! empty( $case_data['notes'] ) ? wp_kses_post( $case_data['notes'] ) : '';
-
-		ob_start();
-		?>
-		<div class="brag-book-gallery-wrapper">
-			<div class="brag-book-gallery-case-detail-fast">
-				<div class="brag-book-gallery-case-detail-header">
-					<div class="brag-book-gallery-case-detail-nav">
-						<a href="javascript:history.back()"
-						   class="brag-book-gallery-back-button">← Back to
-							Gallery</a>
-					</div>
-					<h1>Case #<?php echo esc_html( $case_id ); ?></h1>
-					<?php if ( ! empty( $procedure_title ) ): ?>
-						<div
-							class="brag-book-gallery-procedure-name"><?php echo esc_html( str_replace( '-', ' ', $procedure_title ) ); ?></div>
-					<?php endif; ?>
-					<?php if ( $age || $gender ): ?>
-						<div class="brag-book-gallery-case-meta">
-							<?php if ( $age ): ?><span
-								class="age"><?php echo esc_html( $age ); ?> years
-								old</span><?php endif; ?>
-							<?php if ( $gender ): ?><span
-								class="gender"><?php echo esc_html( $gender ); ?></span><?php endif; ?>
-						</div>
-					<?php endif; ?>
-				</div>
-
-				<div class="brag-book-gallery-case-images">
-					<?php if ( ! empty( $before_images ) ): ?>
-						<div class="brag-book-gallery-image-section">
-							<h3>Before</h3>
-							<div class="brag-book-gallery-image-grid">
-								<?php foreach ( $before_images as $image ): ?>
-									<img
-										src="<?php echo esc_url( $image['url'] ?? '' ); ?>"
-										alt="Before - Case <?php echo esc_attr( $case_id ); ?>"
-										loading="lazy"
-										decoding="async">
-								<?php endforeach; ?>
-							</div>
-						</div>
-					<?php endif; ?>
-
-					<?php if ( ! empty( $after_images ) ): ?>
-						<div class="brag-book-gallery-image-section">
-							<h3>After</h3>
-							<div class="brag-book-gallery-image-grid">
-								<?php foreach ( $after_images as $image ): ?>
-									<img
-										src="<?php echo esc_url( $image['url'] ?? '' ); ?>"
-										alt="After - Case <?php echo esc_attr( $case_id ); ?>"
-										loading="lazy"
-										decoding="async">
-								<?php endforeach; ?>
-							</div>
-						</div>
-					<?php endif; ?>
-				</div>
-
-				<?php if ( $notes ): ?>
-					<div class="brag-book-gallery-case-notes">
-						<h3>Case Notes</h3>
-						<div class="notes-content"><?php echo wp_kses_post( $notes ); ?></div>
-					</div>
-				<?php endif; ?>
-			</div>
-		</div>
-		<?php
-		return ob_get_clean();
-	}
-
 	/**
 	 * Handle column view - displays procedures organized by parent categories
 	 *
@@ -2974,12 +2854,6 @@ final class Gallery_Handler {
 				'timeout'  => 5, // Short timeout for non-blocking
 				'blocking' => false, // Non-blocking request
 			) );
-
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( "BRAGBook Gallery: Initiated async procedure view tracking for procedureId {$procedure_id}" );
-			}
-
 		} catch ( \Exception $e ) {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
@@ -3045,13 +2919,6 @@ final class Gallery_Handler {
 				'timeout'  => 5, // Short timeout for non-blocking
 				'blocking' => false, // Non-blocking request
 			) );
-
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				$id_info = ! empty( $case_procedure_id ) ? "caseProcedureId {$case_procedure_id}" : "procedureId {$procedure_id}";
-				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( "BRAGBook Gallery: Initiated async view tracking for {$id_info}" );
-			}
-
 		} catch ( \Exception $e ) {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log

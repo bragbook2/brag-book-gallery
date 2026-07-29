@@ -307,64 +307,7 @@ class Case_Handler {
 			$case_data[ $field ] = $value;
 		}
 
-		// Get image URLs from new meta fields
-		$case_data['post_processed_urls'] = $this->get_urls_from_meta( $post_id, 'brag_book_gallery_case_post_processed_url' );
-		$case_data['before_urls'] = $this->get_urls_from_meta( $post_id, 'brag_book_gallery_case_before_url' );
-		$case_data['after_urls1'] = $this->get_urls_from_meta( $post_id, 'brag_book_gallery_case_after_url1' );
-		$case_data['after_urls2'] = $this->get_urls_from_meta( $post_id, 'brag_book_gallery_case_after_url2' );
-		$case_data['after_urls3'] = $this->get_urls_from_meta( $post_id, 'brag_book_gallery_case_after_url3' );
-
 		return $case_data;
-	}
-
-	/**
-	 * Get URLs from semicolon-separated meta field
-	 *
-	 * @since 3.0.0
-	 * @param int $post_id The post ID.
-	 * @param string $meta_key The meta key to retrieve.
-	 * @return array Array of URLs.
-	 */
-	private function get_urls_from_meta( int $post_id, string $meta_key ): array {
-		$urls_string = get_post_meta( $post_id, $meta_key, true );
-
-		// Debug: Log what we're getting from meta
-		error_log( "Case Handler Debug: Getting URLs from meta key '{$meta_key}' for post {$post_id}" );
-		error_log( "Case Handler Debug: Raw meta value: " . var_export( $urls_string, true ) );
-		error_log( "Case Handler Debug: String length: " . strlen( $urls_string ) );
-
-		if ( empty( $urls_string ) ) {
-			error_log( "Case Handler Debug: Empty URLs string for meta key '{$meta_key}'" );
-			return [];
-		}
-
-		// Normalize line endings and split by various delimiters
-		$normalized = str_replace( [ "\r\n", "\r" ], "\n", $urls_string );
-		$lines = preg_split( '/[\n;]+/', $normalized, -1, PREG_SPLIT_NO_EMPTY );
-		$urls = [];
-
-		foreach ( $lines as $line ) {
-			$clean_url = trim( $line );
-
-			// Debug each individual URL attempt
-			error_log( "Case Handler Debug: Processing line: '{$clean_url}'" );
-
-			if ( ! empty( $clean_url ) ) {
-				if ( filter_var( $clean_url, FILTER_VALIDATE_URL ) ) {
-					$urls[] = $clean_url;
-					error_log( "Case Handler Debug: Valid URL added: '{$clean_url}'" );
-				} else {
-					error_log( "Case Handler Debug: Invalid URL rejected: '{$clean_url}'" );
-				}
-			}
-		}
-
-		error_log( "Case Handler Debug: Extracted " . count( $urls ) . " valid URLs from meta key '{$meta_key}'" );
-		if ( ! empty( $urls ) ) {
-			error_log( "Case Handler Debug: Final URLs: " . wp_json_encode( $urls ) );
-		}
-
-		return $urls;
 	}
 
 	/**
@@ -1362,7 +1305,7 @@ class Case_Handler {
 				'<img src="%s"%s alt="%s" class="brag-book-gallery-case-image" loading="lazy" decoding="async">',
 				esc_url( $primary_image ),
 				// Pre-escaped by build_responsive_attrs().
-				self::build_responsive_attrs( (int) $case_post->ID, (string) $primary_image, self::SIZES_CASE_GRID ),
+				self::build_responsive_attrs( (int) $case_post->ID, (string) $primary_image, self::sizes_case_grid() ),
 				/* translators: %s: case identifier */
 				esc_attr( sprintf( __( 'Case %s', 'brag-book-gallery' ), $case_id ) )
 			);

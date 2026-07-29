@@ -62,6 +62,44 @@ class Sync_Page extends Settings_Base {
 	];
 
 	/**
+	 * Steps the Delete All Data routine walks through, in order.
+	 *
+	 * The client requests each step by name and repeats the three deletion steps
+	 * until the server reports them complete, so a site with tens of thousands of
+	 * cases never has to finish inside one request.
+	 *
+	 * @since 4.9.2
+	 * @var string
+	 */
+	private const DELETE_STEP_COUNT      = 'count';
+	private const DELETE_STEP_CASES      = 'cases';
+	private const DELETE_STEP_PROCEDURES = 'procedures';
+	private const DELETE_STEP_PROVIDERS  = 'providers';
+	private const DELETE_STEP_CLEANUP    = 'cleanup';
+
+	/**
+	 * Cases removed per Delete All Data request.
+	 *
+	 * Deliberately small: wp_delete_post() with force also clears meta, term
+	 * relationships and revisions for each case, so a large batch is what pushes
+	 * the request past max_execution_time.
+	 *
+	 * @since 4.9.2
+	 * @var int
+	 */
+	private const DELETE_BATCH_POSTS = 25;
+
+	/**
+	 * Taxonomy terms removed per Delete All Data request.
+	 *
+	 * Term deletion is far cheaper than post deletion, so this can run higher.
+	 *
+	 * @since 4.9.2
+	 * @var int
+	 */
+	private const DELETE_BATCH_TERMS = 100;
+
+	/**
 	 * Manual sync controls component
 	 *
 	 * @since 3.3.0
@@ -200,7 +238,7 @@ class Sync_Page extends Settings_Base {
 				<?php esc_html_e( 'Irreversible actions that will permanently remove data from this site.', 'brag-book-gallery' ); ?>
 			</p>
 
-			<div class="danger-zone-action" style="margin-top: 16px;">
+			<div class="danger-zone-action">
 				<div class="danger-zone-info">
 					<strong><?php esc_html_e( 'Delete All Synced Data', 'brag-book-gallery' ); ?></strong>
 					<p class="description">
@@ -227,12 +265,14 @@ class Sync_Page extends Settings_Base {
 				</div>
 				<div class="brag-book-gallery-dialog-body">
 					<div class="brag-book-gallery-dialog-icon">
-						<span class="dashicons dashicons-trash"></span>
+						<span class="dashicons dashicons-trash" id="brag-book-delete-dialog-glyph"></span>
 					</div>
-					<div class="brag-book-gallery-dialog-message">
+
+					<!-- Pane 1: confirmation -->
+					<div class="brag-book-gallery-dialog-message" id="brag-book-delete-confirm-pane">
 						<p><strong><?php esc_html_e( 'Are you sure? This action cannot be undone.', 'brag-book-gallery' ); ?></strong></p>
 						<p><?php esc_html_e( 'This will permanently delete all synced:', 'brag-book-gallery' ); ?></p>
-						<ul style="margin: 8px 0 8px 20px; list-style: disc;">
+						<ul class="brag-book-delete-target-list">
 							<li><?php esc_html_e( 'Cases (posts)', 'brag-book-gallery' ); ?></li>
 							<li><?php esc_html_e( 'Procedures (taxonomy terms)', 'brag-book-gallery' ); ?></li>
 							<li><?php esc_html_e( 'Providers (taxonomy terms)', 'brag-book-gallery' ); ?></li>
@@ -246,7 +286,25 @@ class Sync_Page extends Settings_Base {
 							);
 							?>
 						</p>
-						<input type="text" id="brag-book-delete-confirm-input" placeholder="DELETE" autocomplete="off" style="width: 100%; margin-top: 8px; padding: 8px 12px; border: 2px solid #e2e8f0; border-radius: 6px;" />
+						<input type="text" id="brag-book-delete-confirm-input" placeholder="DELETE" autocomplete="off" />
+					</div>
+
+					<!-- Pane 2: progress -->
+					<div class="brag-book-gallery-dialog-message" id="brag-book-delete-progress-pane" hidden>
+						<div class="brag-book-gallery-progress-header">
+							<span class="brag-book-gallery-progress-label" id="brag-book-delete-progress-label"></span>
+							<span class="brag-book-gallery-progress-percentage" id="brag-book-delete-progress-percentage">0%</span>
+						</div>
+						<div class="brag-book-gallery-progress-bar brag-book-gallery-progress-bar--main">
+							<div class="brag-book-gallery-progress-fill" id="brag-book-delete-progress-fill" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
+						</div>
+						<p class="brag-book-delete-progress-detail" id="brag-book-delete-progress-detail" aria-live="polite"></p>
+					</div>
+
+					<!-- Pane 3: outcome -->
+					<div class="brag-book-gallery-dialog-message" id="brag-book-delete-result-pane" hidden>
+						<p id="brag-book-delete-result-message"></p>
+						<ul class="brag-book-delete-result-list" id="brag-book-delete-result-list"></ul>
 					</div>
 				</div>
 				<div class="brag-book-gallery-dialog-footer">
@@ -255,6 +313,9 @@ class Sync_Page extends Settings_Base {
 					</button>
 					<button type="button" class="button button-danger" id="brag-book-delete-confirm-btn" disabled>
 						<?php esc_html_e( 'Delete Everything', 'brag-book-gallery' ); ?>
+					</button>
+					<button type="button" class="button button-primary" id="brag-book-delete-done-btn" hidden>
+						<?php esc_html_e( 'Reload Page', 'brag-book-gallery' ); ?>
 					</button>
 				</div>
 			</div>
@@ -271,34 +332,279 @@ class Sync_Page extends Settings_Base {
 				return;
 			}
 
-			var confirmInput = document.getElementById('brag-book-delete-confirm-input');
-			var confirmBtn = document.getElementById('brag-book-delete-confirm-btn');
 			var openBtn = document.getElementById('brag-book-delete-all-data');
 			var closeBtn = document.getElementById('brag-book-delete-dialog-close');
 			var cancelBtn = document.getElementById('brag-book-delete-dialog-cancel');
+			var confirmBtn = document.getElementById('brag-book-delete-confirm-btn');
+			var doneBtn = document.getElementById('brag-book-delete-done-btn');
+			var confirmInput = document.getElementById('brag-book-delete-confirm-input');
 
-			var nonce = <?php echo wp_json_encode( wp_create_nonce( 'brag_book_delete_all_data' ) ); ?>;
+			var confirmPane = document.getElementById('brag-book-delete-confirm-pane');
+			var progressPane = document.getElementById('brag-book-delete-progress-pane');
+			var resultPane = document.getElementById('brag-book-delete-result-pane');
+
+			var glyph = document.getElementById('brag-book-delete-dialog-glyph');
+			var progressLabel = document.getElementById('brag-book-delete-progress-label');
+			var progressPercent = document.getElementById('brag-book-delete-progress-percentage');
+			var progressFill = document.getElementById('brag-book-delete-progress-fill');
+			var progressDetail = document.getElementById('brag-book-delete-progress-detail');
+			var resultMessage = document.getElementById('brag-book-delete-result-message');
+			var resultList = document.getElementById('brag-book-delete-result-list');
+
+			var nonce = <?php echo wp_json_encode( wp_create_nonce( 'brag_book_delete_all_data' ), JSON_HEX_TAG | JSON_HEX_AMP ); ?>;
+			var steps = <?php echo wp_json_encode( array(
+				'cases'      => self::DELETE_STEP_CASES,
+				'procedures' => self::DELETE_STEP_PROCEDURES,
+				'providers'  => self::DELETE_STEP_PROVIDERS,
+				'count'      => self::DELETE_STEP_COUNT,
+				'cleanup'    => self::DELETE_STEP_CLEANUP,
+			), JSON_HEX_TAG | JSON_HEX_AMP ); ?>;
 			var i18n = <?php echo wp_json_encode( array(
-				'deleting'  => __( 'Deleting...', 'brag-book-gallery' ),
-				'success'   => __( 'All data has been deleted.', 'brag-book-gallery' ),
-				'failure'   => __( 'Failed to delete data.', 'brag-book-gallery' ),
-				'error'     => __( 'An error occurred. Please try again.', 'brag-book-gallery' ),
-				'btnLabel'  => __( 'Delete Everything', 'brag-book-gallery' ),
-			) ); ?>;
+				'counting'   => __( 'Counting data to remove…', 'brag-book-gallery' ),
+				'cases'      => __( 'Deleting cases…', 'brag-book-gallery' ),
+				'procedures' => __( 'Deleting procedures…', 'brag-book-gallery' ),
+				'providers'  => __( 'Deleting providers…', 'brag-book-gallery' ),
+				'cleanup'    => __( 'Clearing sync state, caches and files…', 'brag-book-gallery' ),
+				'nothing'    => __( 'There was no synced data to delete. Sync state and caches were cleared.', 'brag-book-gallery' ),
+				'success'    => __( 'All synced data has been deleted.', 'brag-book-gallery' ),
+				'partial'    => __( 'Finished, but some items could not be deleted. Run it again to retry them.', 'brag-book-gallery' ),
+				'failure'    => __( 'The delete could not be completed.', 'brag-book-gallery' ),
+				'error'      => __( 'The server could not be reached. Nothing further was deleted.', 'brag-book-gallery' ),
+				'casesDone'  => __( 'Cases deleted', 'brag-book-gallery' ),
+				'procsDone'  => __( 'Procedures deleted', 'brag-book-gallery' ),
+				'provsDone'  => __( 'Providers deleted', 'brag-book-gallery' ),
+				'failed'     => __( 'Could not be deleted', 'brag-book-gallery' ),
+				'close'      => __( 'Close', 'brag-book-gallery' ),
+				'reload'     => __( 'Reload Page', 'brag-book-gallery' ),
+			), JSON_HEX_TAG | JSON_HEX_AMP ); ?>;
+
+			// Totals from the count step; drives the percentage.
+			var total = 0;
+			var processed = 0;
+			var tally = { cases: 0, procedures: 0, providers: 0, failed: 0 };
+
+			/**
+			 * Show exactly one of the three body panes.
+			 */
+			var showPane = function (pane) {
+				[confirmPane, progressPane, resultPane].forEach(function (el) {
+					if (el) {
+						el.hidden = el !== pane;
+					}
+				});
+			};
+
+			var setProgress = function (label, percent) {
+				var value = Math.max(0, Math.min(100, Math.round(percent)));
+				if (progressLabel) {
+					progressLabel.textContent = label;
+				}
+				if (progressPercent) {
+					progressPercent.textContent = value + '%';
+				}
+				if (progressFill) {
+					progressFill.style.width = value + '%';
+					progressFill.setAttribute('aria-valuenow', String(value));
+				}
+			};
+
+			var setDetail = function (text) {
+				if (progressDetail) {
+					progressDetail.textContent = text;
+				}
+			};
+
+			/**
+			 * Run one step of the delete routine.
+			 *
+			 * Rejects on transport failure or a server-reported error so the caller
+			 * can stop the sequence rather than looping against a broken endpoint.
+			 */
+			var runStep = function (step) {
+				var formData = new FormData();
+				formData.append('action', 'brag_book_delete_all_data');
+				formData.append('nonce', nonce);
+				formData.append('step', step);
+
+				return fetch(window.ajaxurl, {
+					method: 'POST',
+					body: formData,
+					credentials: 'same-origin'
+				}).then(function (res) {
+					return res.json();
+				}).then(function (payload) {
+					if (!payload || !payload.success) {
+						var message = (payload && payload.data && payload.data.message) || i18n.failure;
+						throw new Error(message);
+					}
+					return payload.data || {};
+				});
+			};
+
+			/**
+			 * Repeat one deletion step until the server says that type is exhausted.
+			 */
+			var drainStep = function (step, label, bucket) {
+				setProgress(label, total ? (processed / total) * 100 : 0);
+
+				return runStep(step).then(function (data) {
+					tally[bucket] += data.deleted || 0;
+					tally.failed += data.failed || 0;
+					processed += (data.deleted || 0) + (data.failed || 0);
+
+					setProgress(label, total ? (processed / total) * 100 : 0);
+					setDetail(label + ' ' + processed + ' / ' + total);
+
+					if (data.complete) {
+						return null;
+					}
+					return drainStep(step, label, bucket);
+				});
+			};
+
+			var appendResultRow = function (label, value) {
+				if (!resultList || !value) {
+					return;
+				}
+				var li = document.createElement('li');
+				li.textContent = label + ': ' + value;
+				resultList.appendChild(li);
+			};
+
+			var showResult = function (message, isError) {
+				showPane(resultPane);
+
+				if (glyph) {
+					glyph.className = isError ? 'dashicons dashicons-warning' : 'dashicons dashicons-yes-alt';
+				}
+				if (resultMessage) {
+					resultMessage.textContent = message;
+				}
+				if (resultList) {
+					resultList.textContent = '';
+					appendResultRow(i18n.casesDone, tally.cases);
+					appendResultRow(i18n.procsDone, tally.procedures);
+					appendResultRow(i18n.provsDone, tally.providers);
+					appendResultRow(i18n.failed, tally.failed);
+				}
+
+				if (confirmBtn) {
+					confirmBtn.hidden = true;
+				}
+				if (cancelBtn) {
+					cancelBtn.hidden = true;
+				}
+				if (doneBtn) {
+					// Nothing changed on a hard failure, so a reload would be noise.
+					doneBtn.textContent = isError ? i18n.close : i18n.reload;
+					doneBtn.hidden = false;
+					doneBtn.dataset.reload = isError ? '' : '1';
+					doneBtn.focus();
+				}
+			};
+
+			var startDelete = function () {
+				total = 0;
+				processed = 0;
+				tally = { cases: 0, procedures: 0, providers: 0, failed: 0 };
+
+				showPane(progressPane);
+				setProgress(i18n.counting, 0);
+				setDetail('');
+
+				if (confirmBtn) {
+					confirmBtn.disabled = true;
+				}
+				if (cancelBtn) {
+					cancelBtn.disabled = true;
+				}
+				if (closeBtn) {
+					closeBtn.disabled = true;
+				}
+
+				runStep(steps.count).then(function (counts) {
+					total = (counts.cases || 0) + (counts.procedures || 0) + (counts.providers || 0);
+					return drainStep(steps.cases, i18n.cases, 'cases');
+				}).then(function () {
+					return drainStep(steps.procedures, i18n.procedures, 'procedures');
+				}).then(function () {
+					return drainStep(steps.providers, i18n.providers, 'providers');
+				}).then(function () {
+					setProgress(i18n.cleanup, 100);
+					setDetail('');
+					return runStep(steps.cleanup);
+				}).then(function () {
+					var deleted = tally.cases + tally.procedures + tally.providers;
+					if (tally.failed > 0) {
+						showResult(i18n.partial, false);
+					} else if (deleted === 0) {
+						showResult(i18n.nothing, false);
+					} else {
+						showResult(i18n.success, false);
+					}
+				}).catch(function (err) {
+					showResult((err && err.message) || i18n.error, true);
+				}).finally(function () {
+					if (closeBtn) {
+						closeBtn.disabled = false;
+					}
+				});
+			};
+
+			/**
+			 * Return the dialog to its opening state.
+			 */
+			var resetDialog = function () {
+				showPane(confirmPane);
+
+				if (glyph) {
+					glyph.className = 'dashicons dashicons-trash';
+				}
+				if (confirmInput) {
+					confirmInput.value = '';
+				}
+				if (confirmBtn) {
+					confirmBtn.hidden = false;
+					confirmBtn.disabled = true;
+				}
+				if (cancelBtn) {
+					cancelBtn.hidden = false;
+					cancelBtn.disabled = false;
+				}
+				if (closeBtn) {
+					closeBtn.disabled = false;
+				}
+				if (doneBtn) {
+					doneBtn.hidden = true;
+				}
+				setProgress('', 0);
+				setDetail('');
+			};
 
 			if (openBtn) {
 				openBtn.addEventListener('click', function () {
-					if (confirmInput) { confirmInput.value = ''; }
-					if (confirmBtn) { confirmBtn.disabled = true; }
+					resetDialog();
 					dialog.showModal();
 				});
 			}
 
 			[closeBtn, cancelBtn].forEach(function (btn) {
 				if (btn) {
-					btn.addEventListener('click', function () { dialog.close(); });
+					btn.addEventListener('click', function () {
+						dialog.close();
+					});
 				}
 			});
+
+			if (doneBtn) {
+				doneBtn.addEventListener('click', function () {
+					if (doneBtn.dataset.reload) {
+						window.location.reload();
+						return;
+					}
+					dialog.close();
+				});
+			}
 
 			if (confirmInput && confirmBtn) {
 				confirmInput.addEventListener('input', function () {
@@ -307,39 +613,20 @@ class Sync_Page extends Settings_Base {
 			}
 
 			if (confirmBtn) {
-				confirmBtn.addEventListener('click', function () {
-					confirmBtn.disabled = true;
-					confirmBtn.textContent = i18n.deleting;
-
-					var formData = new FormData();
-					formData.append('action', 'brag_book_delete_all_data');
-					formData.append('nonce', nonce);
-
-					fetch(window.ajaxurl, { method: 'POST', body: formData, credentials: 'same-origin' })
-						.then(function (res) { return res.json(); })
-						.then(function (data) {
-							dialog.close();
-							if (data && data.success) {
-								window.alert((data.data && data.data.message) || i18n.success);
-								window.location.reload();
-							} else {
-								window.alert((data && data.data && data.data.message) || i18n.failure);
-							}
-						})
-						.catch(function () {
-							dialog.close();
-							window.alert(i18n.error);
-						})
-						.finally(function () {
-							confirmBtn.disabled = false;
-							confirmBtn.textContent = i18n.btnLabel;
-						});
-				});
+				confirmBtn.addEventListener('click', startDelete);
 			}
 
+			// Backdrop click closes only while idle; mid-delete it would hide progress.
 			dialog.addEventListener('click', function (e) {
-				if (e.target === dialog) {
+				if (e.target === dialog && progressPane.hidden) {
 					dialog.close();
+				}
+			});
+
+			// Same for Escape.
+			dialog.addEventListener('cancel', function (e) {
+				if (!progressPane.hidden) {
+					e.preventDefault();
 				}
 			});
 		}());
@@ -386,10 +673,12 @@ class Sync_Page extends Settings_Base {
 	}
 
 	/**
-	 * Handle AJAX request to delete all synced data
+	 * Handle one step of the Delete All Data routine
 	 *
-	 * Deletes all cases (posts), procedures (taxonomy terms),
-	 * and providers (taxonomy terms) from the WordPress site.
+	 * The routine is split into steps so the browser can show real progress and
+	 * so no single request has to delete an entire library. The client asks for
+	 * `count` first, then repeats `cases`, `procedures` and `providers` until each
+	 * reports `complete`, then finishes with `cleanup`.
 	 *
 	 * @since 3.4.0
 	 * @return void
@@ -403,54 +692,156 @@ class Sync_Page extends Settings_Base {
 			wp_send_json_error( [ 'message' => __( 'Insufficient permissions.', 'brag-book-gallery' ) ] );
 		}
 
-		$deleted_cases      = 0;
-		$deleted_procedures = 0;
-		$deleted_providers    = 0;
+		$step = sanitize_key( wp_unslash( $_POST['step'] ?? '' ) );
 
-		// Delete all cases
-		$cases = get_posts( [
-			'post_type'      => Post_Types::POST_TYPE_CASES,
-			'posts_per_page' => -1,
-			'post_status'    => 'any',
-			'fields'         => 'ids',
-		] );
+		$payload = match ( $step ) {
+			self::DELETE_STEP_COUNT      => $this->count_deletable_data(),
+			self::DELETE_STEP_CASES      => $this->delete_case_batch(),
+			self::DELETE_STEP_PROCEDURES => $this->delete_term_batch( Taxonomies::TAXONOMY_PROCEDURES ),
+			self::DELETE_STEP_PROVIDERS  => $this->delete_term_batch( Taxonomies::TAXONOMY_PROVIDERS ),
+			self::DELETE_STEP_CLEANUP    => $this->delete_sync_residue(),
+			default                      => null,
+		};
 
-		foreach ( $cases as $case_id ) {
-			if ( wp_delete_post( $case_id, true ) ) {
-				$deleted_cases++;
+		if ( null === $payload ) {
+			wp_send_json_error( [ 'message' => __( 'Unrecognised delete step.', 'brag-book-gallery' ) ] );
+		}
+
+		wp_send_json_success( $payload );
+	}
+
+	/**
+	 * Count everything the delete routine will remove
+	 *
+	 * Drives the progress bar's denominator. Counts are a snapshot — the client
+	 * only uses them for the percentage, never to decide when a step is finished.
+	 *
+	 * @since 4.9.2
+	 * @return array{cases:int, procedures:int, providers:int} Item counts.
+	 */
+	private function count_deletable_data(): array {
+		$case_counts = wp_count_posts( Post_Types::POST_TYPE_CASES );
+		$cases       = 0;
+
+		foreach ( (array) $case_counts as $count ) {
+			$cases += (int) $count;
+		}
+
+		return [
+			'cases'      => $cases,
+			'procedures' => $this->count_terms( Taxonomies::TAXONOMY_PROCEDURES ),
+			'providers'  => $this->count_terms( Taxonomies::TAXONOMY_PROVIDERS ),
+		];
+	}
+
+	/**
+	 * Count terms in a taxonomy, treating an error as zero
+	 *
+	 * @since 4.9.2
+	 * @param string $taxonomy Taxonomy name.
+	 * @return int Term count.
+	 */
+	private function count_terms( string $taxonomy ): int {
+		$count = wp_count_terms(
+			[
+				'taxonomy'   => $taxonomy,
+				'hide_empty' => false,
+			]
+		);
+
+		return is_wp_error( $count ) ? 0 : (int) $count;
+	}
+
+	/**
+	 * Delete one batch of case posts
+	 *
+	 * Reports `complete` when the query comes back empty, or when a full batch was
+	 * fetched but nothing could be deleted — without that second condition a post
+	 * that refuses to delete would make the client loop forever.
+	 *
+	 * @since 4.9.2
+	 * @return array{deleted:int, failed:int, complete:bool} Batch outcome.
+	 */
+	private function delete_case_batch(): array {
+		$case_ids = get_posts(
+			[
+				'post_type'              => Post_Types::POST_TYPE_CASES,
+				'posts_per_page'         => self::DELETE_BATCH_POSTS,
+				'post_status'            => 'any',
+				'fields'                 => 'ids',
+				'orderby'                => 'ID',
+				'order'                  => 'ASC',
+				'no_found_rows'          => true,
+				'update_post_meta_cache' => false,
+				'update_post_term_cache' => false,
+			]
+		);
+
+		$deleted = 0;
+
+		foreach ( $case_ids as $case_id ) {
+			if ( wp_delete_post( (int) $case_id, true ) ) {
+				$deleted++;
 			}
 		}
 
-		// Delete all procedure terms
-		$procedures = get_terms( [
-			'taxonomy'   => Taxonomies::TAXONOMY_PROCEDURES,
-			'hide_empty' => false,
-			'fields'     => 'ids',
-		] );
+		return [
+			'deleted'  => $deleted,
+			'failed'   => count( $case_ids ) - $deleted,
+			'complete' => empty( $case_ids ) || 0 === $deleted,
+		];
+	}
 
-		if ( ! is_wp_error( $procedures ) ) {
-			foreach ( $procedures as $term_id ) {
-				if ( wp_delete_term( $term_id, Taxonomies::TAXONOMY_PROCEDURES ) ) {
-					$deleted_procedures++;
-				}
+	/**
+	 * Delete one batch of taxonomy terms
+	 *
+	 * @since 4.9.2
+	 * @param string $taxonomy Taxonomy to clear.
+	 * @return array{deleted:int, failed:int, complete:bool} Batch outcome.
+	 */
+	private function delete_term_batch( string $taxonomy ): array {
+		$term_ids = get_terms(
+			[
+				'taxonomy'   => $taxonomy,
+				'hide_empty' => false,
+				'fields'     => 'ids',
+				'number'     => self::DELETE_BATCH_TERMS,
+			]
+		);
+
+		if ( is_wp_error( $term_ids ) ) {
+			return [
+				'deleted'  => 0,
+				'failed'   => 0,
+				'complete' => true,
+			];
+		}
+
+		$deleted = 0;
+
+		foreach ( $term_ids as $term_id ) {
+			$result = wp_delete_term( (int) $term_id, $taxonomy );
+			if ( true === $result ) {
+				$deleted++;
 			}
 		}
 
-		// Delete all provider terms
-		$providers = get_terms( [
-			'taxonomy'   => Taxonomies::TAXONOMY_PROVIDERS,
-			'hide_empty' => false,
-			'fields'     => 'ids',
-		] );
+		return [
+			'deleted'  => $deleted,
+			'failed'   => count( $term_ids ) - $deleted,
+			'complete' => empty( $term_ids ) || 0 === $deleted,
+		];
+	}
 
-		if ( ! is_wp_error( $providers ) ) {
-			foreach ( $providers as $term_id ) {
-				if ( wp_delete_term( $term_id, Taxonomies::TAXONOMY_PROVIDERS ) ) {
-					$deleted_providers++;
-				}
-			}
-		}
-
+	/**
+	 * Clear sync state, tables, files and caches
+	 *
+	 * The final step, run once after all cases, procedures and providers are gone.
+	 *
+	 * @since 4.9.2
+	 * @return array{done:bool} Completion marker.
+	 */
+	private function delete_sync_residue(): array {
 		// Clear related sync status and orphaned sync-state options
 		$sync_state_options = [
 			'brag_book_gallery_last_sync_time',
@@ -502,20 +893,7 @@ class Sync_Page extends Settings_Base {
 
 		wp_cache_flush();
 
-		wp_send_json_success( [
-			'message' => sprintf(
-				/* translators: 1: number of cases, 2: number of procedures, 3: number of providers */
-				__( 'Successfully deleted %1$d cases, %2$d procedures, and %3$d providers.', 'brag-book-gallery' ),
-				$deleted_cases,
-				$deleted_procedures,
-				$deleted_providers
-			),
-			'deleted' => [
-				'cases'      => $deleted_cases,
-				'procedures' => $deleted_procedures,
-				'providers'    => $deleted_providers,
-			],
-		] );
+		return [ 'done' => true ];
 	}
 
 	/**

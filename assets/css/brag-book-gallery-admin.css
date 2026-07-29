@@ -7222,13 +7222,35 @@ body.wp-admin #wpfooter {
 #brag-book-delete-all-dialog .brag-book-gallery-dialog-message ul {
   color: var(--slate-700);
 }
+#brag-book-delete-all-dialog .brag-book-delete-target-list,
+#brag-book-delete-all-dialog .brag-book-delete-result-list {
+  margin: 8px 0 8px 20px;
+  list-style: disc;
+}
 #brag-book-delete-all-dialog #brag-book-delete-confirm-input {
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px 12px;
+  border: 2px solid #e2e8f0;
+  border-radius: 6px;
   font-size: 14px;
 }
 #brag-book-delete-all-dialog #brag-book-delete-confirm-input:focus {
   border-color: #dc2626;
   outline: none;
   box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2);
+}
+#brag-book-delete-all-dialog .brag-book-gallery-progress-header {
+  margin-top: 0;
+}
+#brag-book-delete-all-dialog .brag-book-delete-progress-detail {
+  margin: 4px 0 0;
+  color: var(--slate-600);
+  font-size: 13px;
+  min-height: 1.4em;
+}
+#brag-book-delete-all-dialog .brag-book-gallery-dialog-icon .dashicons-yes-alt {
+  color: var(--green-500);
 }
 
 .auto-sync-card {

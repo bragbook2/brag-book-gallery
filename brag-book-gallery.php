@@ -19,7 +19,7 @@
  * Description:       BRAG book before and after gallery.
  * Version:           4.9.2-beta4
  * Requires at Least: 6.8
- * Tested up to:      6.9
+ * Tested up to:      7.0.2
  * Requires PHP:      8.2
  * Author:            Candace Crowe Design <candace@candacecrowe.com>
  * Author URI:        https://www.candacecrowe.com/

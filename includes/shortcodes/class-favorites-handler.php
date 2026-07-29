@@ -1522,6 +1522,10 @@ final class Favorites_Handler {
 						   data-procedure-ids="<?php echo esc_attr( $procedure_id ); ?>">
 							<?php if ( ! empty( $primary_image ) ) : ?>
 								<picture class="brag-book-gallery-picture">
+									<?php
+									// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Pre-escaped by build_variant_sources().
+									echo self::build_variant_sources( (int) $post_id, (string) $primary_image );
+									?>
 									<img src="<?php echo esc_url( $primary_image ); ?>"
 										<?php
 										// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Pre-escaped by build_responsive_attrs().
@@ -1892,7 +1896,7 @@ final class Favorites_Handler {
 			// The JS favorites grid renders into .brag-book-gallery-case-grid, not
 			// the PHP-rendered .brag-book-gallery-favorites-grid, so it needs the
 			// case-grid breakpoints rather than SIZES_FAVORITES_GRID.
-			'featured_image_sizes' => '' !== $featured_image_srcset ? self::SIZES_CASE_GRID : '',
+			'featured_image_sizes' => '' !== $featured_image_srcset ? self::sizes_case_grid() : '',
 			'procedure_name' => $procedure_name,
 			'procedure_slug' => $procedure_slug,
 			'procedure_id' => $procedure_id,

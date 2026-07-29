@@ -82,12 +82,19 @@ class Location_Search {
 	}
 
 	/**
-	 * Register the location search script and Google Maps Places library.
+	 * Register the location search script.
 	 *
-	 * Registered (not enqueued) here so the assets load only where the widget is
-	 * actually rendered. {@see render_search()} enqueues them on demand, which
+	 * Registered (not enqueued) here so it loads only where the widget is
+	 * actually rendered. {@see render_search()} enqueues it on demand, which
 	 * keeps the (billable) Google Maps API off case views and every other page
 	 * that has no location search to drive.
+	 *
+	 * The Google Maps JS API is loaded by the script itself, not enqueued here.
+	 * Other plugins/themes on a page may already load Maps under a different key;
+	 * a second maps/api/js tag corrupts the shared API (the Places web component
+	 * then throws "Cannot read properties of undefined"), so the client reuses an
+	 * existing loader when present and only injects its own when none is found.
+	 * The API key is handed to the script for that on-demand injection.
 	 *
 	 * @since 4.7.0
 	 * @return void
@@ -96,19 +103,6 @@ class Location_Search {
 		if ( ! self::is_enabled() ) {
 			return;
 		}
-
-		// Google Maps JS API — Places library only (distance is computed server-side).
-		wp_register_script(
-			'brag-book-google-maps',
-			'https://maps.googleapis.com/maps/api/js?' . http_build_query( [
-				'key'       => self::get_api_key(),
-				'libraries' => 'places',
-				'loading'   => 'async',
-			] ),
-			[],
-			null,
-			true
-		);
 
 		$suffix = ( defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ) ? '' : '.min';
 
@@ -127,6 +121,7 @@ class Location_Search {
 				'ajaxUrl'       => admin_url( 'admin-ajax.php' ),
 				'action'        => self::AJAX_ACTION,
 				'nonce'         => wp_create_nonce( 'brag_book_gallery_nonce' ),
+				'apiKey'        => self::get_api_key(),
 				'defaultRadius' => self::DEFAULT_RADIUS_MILES,
 				'placeholder'   => __( 'Enter location...', 'brag-book-gallery' ),
 			]
@@ -134,16 +129,15 @@ class Location_Search {
 	}
 
 	/**
-	 * Enqueue the previously-registered location search assets.
+	 * Enqueue the previously-registered location search script.
 	 *
-	 * Called from {@see render_search()} so Google Maps and the search script
-	 * load only on views that render the widget.
+	 * Called from {@see render_search()} so the script (and the Maps API it loads
+	 * on demand) load only on views that render the widget.
 	 *
 	 * @since 4.7.0
 	 * @return void
 	 */
 	private static function enqueue_assets(): void {
-		wp_enqueue_script( 'brag-book-google-maps' );
 		wp_enqueue_script( 'brag-book-gallery-location-search' );
 	}
 
