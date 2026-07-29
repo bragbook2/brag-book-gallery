@@ -208,12 +208,15 @@ class ImageVariantsTest extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The cases-grid `sizes` value declared on the trait.
+	 * The cases-grid `sizes` value built by the trait.
+	 *
+	 * Was a constant until the value had to account for the saved column count,
+	 * at which point it became a method.
 	 *
 	 * @return string
 	 */
 	private function grid_sizes(): string {
-		return (string) ( new ReflectionClass( Cases_Handler::class ) )->getConstant( 'SIZES_CASE_GRID' );
+		return $this->call( 'sizes_case_grid', array() );
 	}
 
 	/**

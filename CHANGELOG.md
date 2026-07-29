@@ -4,6 +4,59 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.2-beta5] - 2026-07-29 (Beta Release)
+
+### Fixed
+
+- **Small and medium renditions are now actually served**: they were emitted in
+  `srcset`, but `srcset` only nominates candidates — the browser picks by
+  comparing candidate widths against the slot width times the device pixel
+  ratio. The stored renditions measure 320px and 640px against multi-thousand
+  pixel originals, so a two-column card needing ~1000 device pixels never
+  reached for them. The `<picture>` wrappers now carry `<source media>`
+  elements, which are decided on the media query alone, pinning the small
+  rendition below 576px and the medium one below 1280px. Above that the `<img>`
+  keeps its `srcset` and resolves to the full image, which is still the only
+  rendition large enough for a desktop card.
+- **Variant lookup no longer breaks on re-signed URLs**: nodes were matched by
+  comparing whole URLs, including the JWT whose `iat` changes on every
+  re-sign. A display URL and a stored `full` URL signed at different moments
+  failed to match and silently dropped the entire `srcset`. Matching is now on
+  host plus percent-decoded path, and the largest `srcset` candidate is emitted
+  as the caller's own URL so the offered token is always the current one.
+- **`sizes` accounted for the gallery shell**: the container is a flex row from
+  1280px with a 382px sidebar and 32px of main padding, none of which was
+  subtracted. A three-column card renders at ~329px but was declared `33vw`
+  (~475px), overstating the requirement by 44%. The grid now derives `sizes`
+  from the saved column count and the case viewer subtracts the shell.
+- **Google Maps is no longer loaded twice**: the location search registered its
+  own Maps script tag even when another plugin or theme had already loaded the
+  API under a different key, corrupting the shared API so the Places component
+  threw. The client now reuses an existing loader and injects its own only when
+  none is present.
+
+### Added
+
+- **Reset to Default on the Landing Page Text editor**: restores
+  `Settings_Helper::get_default_landing_page_text()` into both TinyMCE and the
+  raw textarea, storing nothing until settings are saved. `get_option()` only
+  falls back to a default when the row is absent, so sites that had ever saved
+  landing page text could not otherwise pick up the default carousels added in
+  4.9.2-beta4.
+
+### Changed
+
+- **Delete All Synced Data runs in batches with real progress**: the previous
+  handler fetched every case ID at once and deleted them in a single request,
+  exceeding `max_execution_time` on a large library and dying with no feedback
+  and a half-deleted site. The routine is now counted and batched, and the
+  dialog gained progress and result panes in place of `window.alert()`. A step
+  reports complete when its query empties or when a full batch deleted nothing,
+  so an undeletable row cannot loop forever.
+- **Removed `Gallery_Handler::generate_fast_case_html()`**, which had no callers,
+  along with the three orphaned `.brag-book-gallery-case-detail-fast` SCSS
+  blocks it was the only consumer of.
+
 ## [4.9.2-beta4] - 2026-07-28 (Beta Release)
 
 > Note: 4.9.2-beta3 was released without an entry in this file. Its notes are in

@@ -25,28 +25,83 @@
   const GRID_SELECTOR = '.brag-book-gallery-case-grid';
   const MAPS_POLL_INTERVAL = 200;
   const MAPS_POLL_MAX = 50;
+  const MAPS_SRC = 'maps.googleapis.com/maps/api/js';
+
+  // Shared across every widget on the page so the Maps API is loaded at most
+  // once, no matter how many search widgets initialise.
+  let mapsReady = null;
 
   /**
-   * Resolve the Google Maps Places library via the async importLibrary loader,
-   * polling until the Maps script is present. Resolves null if it never loads.
+   * Whether the Maps API is loaded and exposes the dynamic library loader.
    *
-   * @return {Promise<object|null>}
+   * @return {boolean}
    */
-  function importPlaces() {
-    return new Promise(resolve => {
+  function mapsImportReady() {
+    return !!(window.google && window.google.maps && typeof window.google.maps.importLibrary === 'function');
+  }
+
+  /**
+   * Ensure the Google Maps JS API is present, without ever adding a second
+   * loader. A page may already load Maps from its theme or another plugin, often
+   * under a different API key; a second maps/api/js tag corrupts the shared API
+   * and makes the Places web component throw. So reuse an existing load, wait for
+   * one already in flight, and only inject our own when the page has none.
+   *
+   * @return {Promise<void>} Resolves once Maps is usable, or after the timeout.
+   */
+  function ensureGoogleMaps() {
+    if (mapsReady) {
+      return mapsReady;
+    }
+    mapsReady = new Promise(resolve => {
+      if (mapsImportReady()) {
+        resolve();
+        return;
+      }
+      // Inject a loader only when the page has none. An existing tag — ours
+      // from an earlier widget, or another plugin's — is left to finish.
+      const hasLoader = !!document.querySelector('script[src*="' + MAPS_SRC + '"]');
+      if (!hasLoader && config.apiKey) {
+        const params = new URLSearchParams({
+          key: config.apiKey,
+          libraries: 'places',
+          loading: 'async'
+        });
+        const script = document.createElement('script');
+        script.src = 'https://' + MAPS_SRC + '?' + params.toString();
+        script.async = true;
+        document.head.appendChild(script);
+      }
+      // Wait for whichever loader (ours or the page's) to finish.
       let attempts = 0;
       const check = () => {
-        if (window.google && window.google.maps && typeof window.google.maps.importLibrary === 'function') {
-          window.google.maps.importLibrary('places').then(resolve).catch(() => resolve(null));
+        if (mapsImportReady()) {
+          resolve();
           return;
         }
         if (++attempts >= MAPS_POLL_MAX) {
-          resolve(null);
+          resolve(); // Give up; importPlaces() reports the widget unavailable.
           return;
         }
         window.setTimeout(check, MAPS_POLL_INTERVAL);
       };
       check();
+    });
+    return mapsReady;
+  }
+
+  /**
+   * Resolve the Google Maps Places library, loading the Maps API first when
+   * needed. Resolves null when Maps never becomes available.
+   *
+   * @return {Promise<object|null>}
+   */
+  function importPlaces() {
+    return ensureGoogleMaps().then(() => {
+      if (!mapsImportReady()) {
+        return null;
+      }
+      return window.google.maps.importLibrary('places').catch(() => null);
     });
   }
 

@@ -92,6 +92,15 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 
 == Changelog ==
 
+= 4.9.2-beta5 =
+* Fixed: The small and medium versions of case images were never actually downloaded. They were offered to the browser, but as a list of options the browser was free to ignore — and because the generated versions are much smaller than the original, it always chose the full-size image. Narrow screens are now pointed directly at the smaller versions instead of being given a choice, so phones and tablets download a far smaller file. Desktop screens continue to use the full-size image, which remains the only version large enough for them.
+* Fixed: Images could lose their smaller versions entirely after a re-sync. The gallery matched an image to its smaller versions by comparing the complete web address, including the security signature that changes every time the address is regenerated, so any mismatch silently dropped them. Matching now ignores the signature.
+* Fixed: The gallery understated how much space case images occupy, ignoring the filter sidebar on desktop. Requested image widths were up to 44% too large, pushing every request to the full-size image.
+* Added: A Reset to Default button on the Landing Page Text editor. It restores the plugin's default content, including the two procedure carousels added in 4.9.2-beta4, and stores nothing until settings are saved. Sites that had already saved landing page text had no way to pick up that new default.
+* Changed: Delete All Synced Data now shows a progress bar and reports what it removed in the dialog itself, rather than a browser alert. The deletion runs in batches, so libraries large enough to previously time out mid-delete — leaving the site half-emptied with no indication of what happened — now complete reliably.
+* Fixed: The location search no longer loads Google Maps a second time when another plugin or theme on the page has already loaded it, which previously broke the search box.
+* Changed: Removed an unused case-detail rendering routine and its stylesheet rules.
+
 = 4.9.2-beta4 =
 * Added: Responsive image variants now apply to the remaining views. Carousels, favourites cards, the case detail main viewer and related-case cards all offer the small and medium renditions alongside the full-size image, so browsers download a file suited to the space it is shown in rather than the full-size image everywhere. Cases synced before variants existed, and any view where the smaller sizes have not been generated, continue to use the full-size image.
 * Added: The favourites grid rendered in the browser now receives the matching image sources from the server, so it benefits from the same responsive images as the server-rendered grids.
