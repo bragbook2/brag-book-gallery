@@ -106,7 +106,7 @@ class Template_Manager {
 	public function register_block_templates(): void {
 		// Debug logging
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
-			error_log( 'Template Manager: Registering block templates, wp_is_block_theme() = ' . ( wp_is_block_theme() ? 'true' : 'false' ) );
+			brag_book_log( 'Template Manager: Registering block templates, wp_is_block_theme() = ' . ( wp_is_block_theme() ? 'true' : 'false' ) );
 		}
 
 		// Only register for block themes
@@ -340,9 +340,9 @@ class Template_Manager {
 	public function load_taxonomy_templates( string $template ): string {
 		// Debug logging
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
-			error_log( 'Template Manager: wp_is_block_theme() = ' . ( wp_is_block_theme() ? 'true' : 'false' ) );
-			error_log( 'Template Manager: Current template = ' . $template );
-			error_log( 'Template Manager: is_tax(procedures) = ' . ( is_tax( 'procedures' ) ? 'true' : 'false' ) );
+			brag_book_log( 'Template Manager: wp_is_block_theme() = ' . ( wp_is_block_theme() ? 'true' : 'false' ) );
+			brag_book_log( 'Template Manager: Current template = ' . $template );
+			brag_book_log( 'Template Manager: is_tax(procedures) = ' . ( is_tax( 'procedures' ) ? 'true' : 'false' ) );
 		}
 
 		// Only handle classic themes (block themes use registered block templates)

@@ -539,7 +539,7 @@ final class Cases_Handler {
 		// Debug logging for credential extraction issues
 		if ( empty( $sanitized_credential ) && ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( "Cases Shortcode: {$credential_type} not found or empty in option '{$option_name}'" );
+			brag_book_log( "Cases Shortcode: {$credential_type} not found or empty in option '{$option_name}'" );
 		}
 
 		return $sanitized_credential;
@@ -1808,7 +1808,7 @@ final class Cases_Handler {
 		// Log to WordPress debug log if enabled
 		if ( WP_DEBUG && WP_DEBUG_LOG ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( sprintf(
+			brag_book_log( sprintf(
 				'BRAGBook Gallery: Missing data for post %d, field: %s',
 				$post_id,
 				$field
@@ -2659,7 +2659,7 @@ final class Cases_Handler {
 			] );
 		} catch ( \Exception $e ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery Load More Error: ' . $e->getMessage() );
+			brag_book_log( 'BRAG book Gallery Load More Error: ' . $e->getMessage() );
 			wp_send_json_error( [ 'message' => 'Failed to load more cases' ] );
 		}
 	}

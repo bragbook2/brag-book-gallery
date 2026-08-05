@@ -654,7 +654,7 @@ trait Trait_Tools {
 		}
 
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			error_log( sprintf( '[BRAGBook Tools] %s: %s', $context, $message ) );
+			brag_book_log( sprintf( '[BRAGBook Tools] %s: %s', $context, $message ) );
 		}
 	}
 

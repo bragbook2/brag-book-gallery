@@ -933,7 +933,7 @@ final class Sitemap {
 
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( sprintf(
+			brag_book_log( sprintf(
 				'BRAG book Sitemap Error [%s]: %s - Context: %s',
 				$error_id,
 				$message,
@@ -955,7 +955,7 @@ final class Sitemap {
 	private function log_warning( string $message, array $context = [] ): void {
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( sprintf(
+			brag_book_log( sprintf(
 				'BRAG book Sitemap Warning: %s - Context: %s',
 				$message,
 				wp_json_encode( $context )

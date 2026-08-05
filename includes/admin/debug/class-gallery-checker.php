@@ -461,7 +461,7 @@ class Gallery_Checker {
 		<?php
 		} catch ( Exception $e ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'Gallery Checker render_available_pages error: ' . $e->getMessage() );
+			brag_book_log( 'Gallery Checker render_available_pages error: ' . $e->getMessage() );
 			// Continue with basic display
 		}
 	}
@@ -663,7 +663,7 @@ class Gallery_Checker {
 		<?php
 		} catch ( Exception $e ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'Gallery Checker render_available_pages error: ' . $e->getMessage() );
+			brag_book_log( 'Gallery Checker render_available_pages error: ' . $e->getMessage() );
 			// Continue with basic display
 		}
 	}
@@ -695,7 +695,7 @@ class Gallery_Checker {
 
 		} catch ( Exception $e ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'Gallery Checker execute error: ' . $e->getMessage() );
+			brag_book_log( 'Gallery Checker execute error: ' . $e->getMessage() );
 			throw $e;
 		}
 	}
@@ -770,7 +770,7 @@ class Gallery_Checker {
 
 		} catch ( Exception $e ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'Gallery Checker create_gallery_page error: ' . $e->getMessage() );
+			brag_book_log( 'Gallery Checker create_gallery_page error: ' . $e->getMessage() );
 			return __( 'Failed to create gallery page', 'brag-book-gallery' );
 		}
 	}

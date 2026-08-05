@@ -1116,7 +1116,7 @@ class Chunked_Data_Sync {
 	private function debug_log( string $message ): void {
 		if ( get_option( 'brag_book_gallery_debug_mode' ) === 'yes' ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( $message );
+			brag_book_log( $message );
 		}
 	}
 

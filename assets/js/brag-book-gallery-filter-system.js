@@ -687,60 +687,6 @@ class FilterSystem {
   }
 
   /**
-   * Update filter badges display based on active filters
-   * DISABLED: Only demographic filters should create badges now
-   */
-  updateFilterBadges() {
-    // This method is disabled - only demographic filters create badges now
-    // All badge management is handled by the global updateFilterBadges() function
-    return;
-  }
-
-  /**
-   * Create a filter badge element
-   */
-  createFilterBadge(category, procedure, filterKey) {
-    const badge = document.createElement('div');
-    badge.className = 'brag-book-gallery-filter-badge';
-    badge.setAttribute('data-filter-key', filterKey);
-
-    // Format the display text based on category
-    let displayText = '';
-    switch (category) {
-      case 'age':
-        displayText = `Age: ${procedure}`;
-        break;
-      case 'gender':
-        displayText = `Gender: ${procedure}`;
-        break;
-      case 'ethnicity':
-        displayText = `Ethnicity: ${procedure}`;
-        break;
-      case 'procedure':
-        displayText = procedure;
-        break;
-      default:
-        displayText = `${category}: ${procedure}`;
-    }
-    badge.innerHTML = `
-			<span class="brag-book-gallery-badge-text">${displayText}</span>
-			<button class="brag-book-gallery-badge-remove" aria-label="Remove ${displayText} filter">
-				<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
-					<path d="M13 1L1 13M1 1l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-				</svg>
-			</button>
-		`;
-
-    // Add click handler to remove button
-    const removeButton = badge.querySelector('.brag-book-gallery-badge-remove');
-    removeButton.addEventListener('click', e => {
-      e.preventDefault();
-      this.removeFilterBadge(filterKey);
-    });
-    return badge;
-  }
-
-  /**
    * Remove a specific filter badge
    */
   removeFilterBadge(filterKey) {

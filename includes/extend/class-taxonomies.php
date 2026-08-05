@@ -706,7 +706,7 @@ class Taxonomies {
 			update_option( $option_key, $current_version );
 
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( 'BRAGBook: Flushed rewrite rules after taxonomy update to ' . $current_version );
+				brag_book_log( 'BRAGBook: Flushed rewrite rules after taxonomy update to ' . $current_version );
 			}
 		}
 	}

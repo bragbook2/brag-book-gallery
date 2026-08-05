@@ -211,10 +211,10 @@ trait Trait_Api {
 				$args['body']['websitePropertyIds'] = array_values( $website_property_ids );
 			}
 
-			error_log( 'API Request - Method: ' . $method . ', Endpoint: ' . $endpoint );
-			error_log( 'API Request - Tokens included: ' . ( ! empty( $args['body']['apiTokens'] ) ? 'Yes' : 'No' ) );
-			error_log( 'API Request - Property IDs included: ' . ( ! empty( $args['body']['websitePropertyIds'] ) ? 'Yes' : 'No' ) );
-			error_log( 'API Request - Body: ' . wp_json_encode( $args['body'] ) );
+			brag_book_log( 'API Request - Method: ' . $method . ', Endpoint: ' . $endpoint );
+			brag_book_log( 'API Request - Tokens included: ' . ( ! empty( $args['body']['apiTokens'] ) ? 'Yes' : 'No' ) );
+			brag_book_log( 'API Request - Property IDs included: ' . ( ! empty( $args['body']['websitePropertyIds'] ) ? 'Yes' : 'No' ) );
+			brag_book_log( 'API Request - Body: ' . wp_json_encode( $args['body'] ) );
 		}
 
 		// Validate URL.
@@ -262,23 +262,23 @@ trait Trait_Api {
 		}
 
 		// Log before making request
-		error_log( 'API Request - About to make request to: ' . $url );
+		brag_book_log( 'API Request - About to make request to: ' . $url );
 
 		// Make the request.
 		$response = wp_remote_request( $url, $args );
 
-		error_log( 'API Request - Response received, checking for errors...' );
+		brag_book_log( 'API Request - Response received, checking for errors...' );
 
 		// Check for errors.
 		if ( is_wp_error( $response ) ) {
-			error_log( 'API Request - WP_Error returned: ' . $response->get_error_message() );
+			brag_book_log( 'API Request - WP_Error returned: ' . $response->get_error_message() );
 			$this->log_api_error( $endpoint, $response->get_error_message() );
 			return $response;
 		}
 
 		// Get response code.
 		$response_code = wp_remote_retrieve_response_code( $response );
-		error_log( 'API Request - Response code: ' . $response_code );
+		brag_book_log( 'API Request - Response code: ' . $response_code );
 
 		// Check response code.
 		if ( $response_code < 200 || $response_code >= 300 ) {
@@ -314,12 +314,12 @@ trait Trait_Api {
 
 		// Get response body.
 		$body = wp_remote_retrieve_body( $response );
-		error_log( 'API Request - Response body length: ' . strlen( $body ) );
+		brag_book_log( 'API Request - Response body length: ' . strlen( $body ) );
 
 		// Decode JSON response.
-		error_log( 'API Request - About to decode JSON response' );
+		brag_book_log( 'API Request - About to decode JSON response' );
 		$data = json_decode( $body, true );
-		error_log( 'API Request - JSON decoded, checking for errors' );
+		brag_book_log( 'API Request - JSON decoded, checking for errors' );
 
 		// Check for JSON errors.
 		if ( json_last_error() !== JSON_ERROR_NONE ) {
@@ -520,7 +520,7 @@ trait Trait_Api {
 			return;
 		}
 
-		error_log(
+		brag_book_log(
 			sprintf(
 				'[BRAGBookGallery API Error] Endpoint: %s | Error: %s | Context: %s | Time: %s',
 				$endpoint,

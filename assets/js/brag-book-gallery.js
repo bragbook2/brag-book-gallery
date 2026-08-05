@@ -2319,8 +2319,8 @@ function updateFilterBadges() {
       displayType = filterType.charAt(0).toUpperCase() + filterType.slice(1);
     }
     badge.innerHTML = `
-			<span class="brag-book-gallery-badge-text">${displayType}: ${escapeHtml(displayValue)}</span>
-			<button class="brag-book-gallery-badge-remove" aria-label="Remove ${displayType}: ${escapeHtml(displayValue)} filter">
+			<span class="brag-book-gallery-badge-text">${escapeHtml(displayType)}: ${escapeHtml(displayValue)}</span>
+			<button class="brag-book-gallery-badge-remove" aria-label="Remove ${escapeHtml(displayType)}: ${escapeHtml(displayValue)} filter">
 				<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
 					<path d="M13 1L1 13M1 1l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
 				</svg>
@@ -2426,12 +2426,14 @@ window.removeFilterBadge = function (filterType, filterValue) {
 
 /**
  * Escape HTML characters for safe output (helper function)
+ *
+ * Escapes quotes as well as angle brackets, so the result is safe inside a
+ * quoted attribute value. The textContent/innerHTML trick this replaced left
+ * quotes intact, which is fine in text nodes but breaks out of attributes.
  */
 function escapeHtml(text) {
   if (!text) return '';
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
+  return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 }
 ;
 
@@ -3507,30 +3509,6 @@ class BRAGbookGalleryApp {
 
     // Store referrer with all IDs
     window.storeProcedureReferrer(procedureSlug, procedureName, procedureUrl, procedureId, termId, caseId, caseWpId);
-  }
-
-  /**
-   * Get API token from config
-   * Handles multiple possible locations for the token
-   */
-  getApiToken() {
-    const config = window.bragBookGalleryConfig;
-    if (!config) {
-      console.log('BRAGBook: bragBookGalleryConfig not available');
-      return null;
-    }
-
-    // Try different locations where the token might be stored
-    const token = config.api_token || config.apiToken || config.api_config && config.api_config.default_token || null;
-    if (token) {
-      console.log('BRAGBook: API token found');
-    } else {
-      console.log('BRAGBook: API token not found in config. Available keys:', Object.keys(config));
-      if (config.api_config) {
-        console.log('BRAGBook: api_config keys:', Object.keys(config.api_config));
-      }
-    }
-    return token;
   }
 
   /**
@@ -5824,16 +5802,6 @@ class BRAGbookGalleryApp {
       console.warn('AJAX preload failed:', error);
       return null;
     }
-  }
-
-  /**
-   * Escape HTML characters for safe output
-   */
-  escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
   }
 
   /**

@@ -1262,7 +1262,7 @@ final class SEO_Manager {
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 			try {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( sprintf(
+				brag_book_log( sprintf(
 					'BRAGBook SEO Error [%s]: %s - Context: %s',
 					$error_id,
 					$message,
@@ -1270,7 +1270,7 @@ final class SEO_Manager {
 				) );
 			} catch ( \JsonException $e ) {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( sprintf(
+				brag_book_log( sprintf(
 					'BRAGBook SEO Error [%s]: %s - Context encoding failed',
 					$error_id,
 					$message

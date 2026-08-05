@@ -405,7 +405,7 @@ final class Updater {
 			$log_message .= sprintf(' - %s', $error->get_error_message());
 		}
 
-		error_log($log_message);
+		brag_book_log($log_message);
 	}
 
 	/**
