@@ -1328,8 +1328,14 @@ final class Carousel_Handler {
 	 * @return string Wrapper HTML.
 	 */
 	private static function render_slide_wrapper( array $slide_data, array $case_data = [], ?int $procedure_id = null ): string {
+		// Namespaced deliberately. Bootstrap's carousel data-api delegates
+		// clicks on "[data-slide], [data-slide-to]" from the document and calls
+		// preventDefault() on anything that matches, treating it as a carousel
+		// control. A plain data-slide here made every slide match, so on any
+		// site that loads Bootstrap — common in WordPress themes and plugins —
+		// clicking a slide was cancelled and never reached its case page.
 		$data_attributes = sprintf(
-			'data-slide="%s"',
+			'data-bb-slide="%s"',
 			esc_attr( $slide_data['id'] )
 		);
 
