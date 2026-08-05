@@ -679,7 +679,6 @@ final class Carousel_Handler {
 			// Take only the first photo from this case to ensure variety.
 			$photo = $case['images'][0];
 
-			++$slide_index;
 			++$slide_count;
 
 			$slide_html = self::generate_carousel_slide_html(
@@ -690,6 +689,13 @@ final class Carousel_Handler {
 				true, // This is a standalone carousel
 				$config // Pass carousel configuration
 			);
+
+			// Increment after use: downstream code treats this as a zero-based
+			// index. render_slide() marks slide 0 as the LCP candidate, and
+			// build_slide_data() adds one for the human-facing "Slide N of M".
+			// Pre-incrementing made the first slide index 1, so no slide ever
+			// matched the LCP test and every image rendered loading="lazy".
+			++$slide_index;
 
 			// Debug logging for slide generation
 			if ( WP_DEBUG && WP_DEBUG_LOG && $slide_index === 1 ) {
@@ -1328,8 +1334,14 @@ final class Carousel_Handler {
 	 * @return string Wrapper HTML.
 	 */
 	private static function render_slide_wrapper( array $slide_data, array $case_data = [], ?int $procedure_id = null ): string {
+		// Namespaced deliberately. Bootstrap's carousel data-api delegates
+		// clicks on "[data-slide], [data-slide-to]" from the document and calls
+		// preventDefault() on anything that matches, treating it as a carousel
+		// control. A plain data-slide here made every slide match, so on any
+		// site that loads Bootstrap — common in WordPress themes and plugins —
+		// clicking a slide was cancelled and never reached its case page.
 		$data_attributes = sprintf(
-			'data-slide="%s"',
+			'data-bb-slide="%s"',
 			esc_attr( $slide_data['id'] )
 		);
 

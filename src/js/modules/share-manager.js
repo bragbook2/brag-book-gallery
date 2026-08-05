@@ -138,7 +138,9 @@ class ShareManager {
 		const img = this.activeItem.querySelector('img');
 		const imageUrl = img?.src || '';
 		const imageAlt = img?.alt || 'Medical procedure result';
-		const slideId = this.activeItem.dataset.slide || '';
+		// data-bb-slide, not data-slide: the latter collides with Bootstrap's
+		// carousel data-api, which cancels clicks on anything matching it.
+		const slideId = this.activeItem.dataset.bbSlide || '';
 
 		// Build share URL (use current page URL with slide anchor)
 		const baseUrl = window.location.origin + window.location.pathname;
