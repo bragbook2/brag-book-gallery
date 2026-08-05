@@ -8,6 +8,9 @@
 /***/ (function(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
 
 __webpack_require__.r(__webpack_exports__);
+/* harmony import */ var _utilities_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./utilities.js */ "./src/js/modules/utilities.js");
+
+
 /**
  * Search Autocomplete Component
  * Provides searchable dropdown for procedures
@@ -261,7 +264,7 @@ class SearchAutocomplete {
     if (this.filteredResults.length === 0) {
       this.dropdown.innerHTML = `
                 <div class="brag-book-gallery-search-no-results">
-                    No procedures found for "${this.escapeHtml(query)}"
+                    No procedures found for "${(0,_utilities_js__WEBPACK_IMPORTED_MODULE_0__.escapeHtml)(query)}"
                 </div>
             `;
       return;
@@ -291,11 +294,6 @@ class SearchAutocomplete {
     const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const regex = new RegExp(`(${escapedQuery})`, 'gi');
     return text.replace(regex, '<mark>$1</mark>');
-  }
-  escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
   }
   moveSelection(direction) {
     const items = this.dropdown.querySelectorAll('.brag-book-gallery-search-item');

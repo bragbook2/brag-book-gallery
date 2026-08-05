@@ -1,6 +1,6 @@
 import BRAGbookGalleryApp from './main-app.js';
 import Carousel from './carousel.js';
-import { NudityWarningManager, PhoneFormatter } from './utilities.js';
+import { NudityWarningManager, PhoneFormatter, escapeHtml } from './utilities.js';
 
 /**
  * Global utility functions for the BRAG book Gallery
@@ -1655,23 +1655,6 @@ window.removeFilterBadge = function(filterType, filterValue) {
 };
 
 
-/**
- * Escape HTML characters for safe output (helper function)
- *
- * Escapes quotes as well as angle brackets, so the result is safe inside a
- * quoted attribute value. The textContent/innerHTML trick this replaced left
- * quotes intact, which is fine in text nodes but breaks out of attributes.
- */
-function escapeHtml(text) {
-	if (!text) return '';
-
-	return String(text)
-		.replace(/&/g, '&amp;')
-		.replace(/</g, '&lt;')
-		.replace(/>/g, '&gt;')
-		.replace(/"/g, '&quot;')
-		.replace(/'/g, '&#039;');
-};
 
 /**
  * Calculate and apply image aspect ratio dynamically

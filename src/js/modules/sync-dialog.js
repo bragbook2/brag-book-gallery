@@ -11,6 +11,7 @@
  */
 
 import Dialog from './dialog.js';
+import { escapeHtml } from './utilities.js';
 
 /**
  * Sync Dialog Manager Class
@@ -299,7 +300,7 @@ export class SyncDialog {
 		dialog.innerHTML = `
 			<div class="brag-book-gallery-dialog-content">
 				<div class="brag-book-gallery-dialog-header">
-					<h3 class="brag-book-gallery-dialog-title">${this.escapeHtml( title )}</h3>
+					<h3 class="brag-book-gallery-dialog-title">${escapeHtml( title )}</h3>
 					<button type="button" class="brag-book-gallery-dialog-close" data-action="close" aria-label="Close dialog">
 						<span class="dashicons dashicons-no-alt"></span>
 					</button>
@@ -309,7 +310,7 @@ export class SyncDialog {
 						<span class="dashicons dashicons-${icon}"></span>
 					</div>
 					<div class="brag-book-gallery-dialog-message">
-						${this.escapeHtml( message )}
+						${escapeHtml( message )}
 					</div>
 				</div>
 				<div class="brag-book-gallery-dialog-footer">
@@ -342,7 +343,7 @@ export class SyncDialog {
 		dialog.innerHTML = `
 			<div class="brag-book-gallery-dialog-content">
 				<div class="brag-book-gallery-dialog-header">
-					<h3 class="brag-book-gallery-dialog-title">${this.escapeHtml( title )}</h3>
+					<h3 class="brag-book-gallery-dialog-title">${escapeHtml( title )}</h3>
 					<button type="button" class="brag-book-gallery-dialog-close" data-action="close" aria-label="Close dialog">
 						<span class="dashicons dashicons-no-alt"></span>
 					</button>
@@ -352,15 +353,15 @@ export class SyncDialog {
 						<span class="dashicons dashicons-warning"></span>
 					</div>
 					<div class="brag-book-gallery-dialog-message">
-						${this.escapeHtml( message )}
+						${escapeHtml( message )}
 					</div>
 				</div>
 				<div class="brag-book-gallery-dialog-footer">
 					<button type="button" class="button button-secondary" data-action="cancel">
-						${this.escapeHtml( options.cancelText )}
+						${escapeHtml( options.cancelText )}
 					</button>
 					<button type="button" class="button ${options.confirmButtonClass}" data-action="confirm">
-						${this.escapeHtml( options.confirmText )}
+						${escapeHtml( options.confirmText )}
 					</button>
 				</div>
 			</div>
@@ -388,22 +389,6 @@ export class SyncDialog {
 		};
 
 		return icons[ type ] || 'info';
-	}
-
-	/**
-	 * Escape HTML to prevent XSS
-	 *
-	 * @since 3.3.0
-	 * @private
-	 *
-	 * @param {string} text - Text to escape
-	 *
-	 * @return {string} Escaped text
-	 */
-	escapeHtml( text ) {
-		const div = document.createElement( 'div' );
-		div.textContent = text;
-		return div.innerHTML;
 	}
 }
 

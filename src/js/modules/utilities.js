@@ -173,4 +173,29 @@ class PhoneFormatter {
 	}
 }
 
-export { NudityWarningManager, PhoneFormatter };
+/**
+ * Escape a value for interpolation into HTML.
+ *
+ * Escapes quotes as well as angle brackets, so the result is safe in a quoted
+ * attribute value as well as in a text node. Several modules previously each
+ * carried their own copy of this, and the textContent/innerHTML variants among
+ * them left quotes intact — fine in a text node, but able to break out of an
+ * attribute. Use this one everywhere.
+ *
+ * @param {*} value - Value to escape; non-strings are coerced.
+ * @returns {string} Escaped text, or an empty string for null/undefined.
+ */
+function escapeHtml(value) {
+	if (value === null || value === undefined) {
+		return '';
+	}
+
+	return String(value)
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;')
+		.replace(/'/g, '&#039;');
+}
+
+export { NudityWarningManager, PhoneFormatter, escapeHtml };

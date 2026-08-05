@@ -1,3 +1,5 @@
+import { escapeHtml } from './utilities.js';
+
 /**
  * Filter System Component
  * Manages expandable filter groups with URL routing
@@ -680,7 +682,7 @@ class FilterSystem {
 	generateFilterSection(title, type, options) {
 		let html = '<details class="brag-book-gallery-filter">';
 		html += '<summary class="brag-book-gallery-filter-label">';
-		html += `<span class="brag-book-gallery-filter-label__name">${this.escapeHtml(title)}</span>`;
+		html += `<span class="brag-book-gallery-filter-label__name">${escapeHtml(title)}</span>`;
 		html += '<svg class="brag-book-gallery-filter-label__arrow" width="16" height="16" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">';
 		html += '<path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>';
 		html += '</svg>';
@@ -693,8 +695,8 @@ class FilterSystem {
 			const value = (type === 'gender' || type === 'ethnicity') ? option.toLowerCase() : option;
 
 			html += '<li class="brag-book-gallery-filter-option">';
-			html += `<input type="checkbox" id="${id}" value="${this.escapeHtml(value)}" data-filter-type="${type}">`;
-			html += `<label for="${id}">${this.escapeHtml(option)}</label>`;
+			html += `<input type="checkbox" id="${id}" value="${escapeHtml(value)}" data-filter-type="${type}">`;
+			html += `<label for="${id}">${escapeHtml(option)}</label>`;
 			html += '</li>';
 		});
 
@@ -703,21 +705,6 @@ class FilterSystem {
 
 		return html;
 	}
-
-	/**
-	 * Escape HTML characters for safe output
-	 * @param {string} text - Text to escape
-	 * @returns {string} Escaped text
-	 */
-	escapeHtml(text) {
-		if (!text) return '';
-
-		const div = document.createElement('div');
-		div.textContent = text;
-		// Also escape quotes for use in HTML attributes
-		return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-	}
-
 
 	/**
 	 * Remove a specific filter badge
