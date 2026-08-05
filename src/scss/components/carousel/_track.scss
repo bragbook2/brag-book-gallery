@@ -27,6 +27,8 @@
 	&.brag-book-gallery-grabbing {
 		cursor: grabbing;
 		scroll-behavior: auto;
+		// Stop the drag from selecting slide text as it sweeps across.
+		user-select: none;
 	}
 
 	// Mobile: 1 item per view

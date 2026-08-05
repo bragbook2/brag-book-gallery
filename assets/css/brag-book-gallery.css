@@ -416,6 +416,7 @@ body.brag-book-gallery-page:not(.disable-custom-font) .brag-book-gallery-favorit
 .brag-book-gallery-carousel-track.brag-book-gallery-grabbing {
   cursor: grabbing;
   scroll-behavior: auto;
+  user-select: none;
 }
 @media (max-width: 479px) {
   .brag-book-gallery-carousel-track {

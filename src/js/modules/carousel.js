@@ -193,72 +193,133 @@ class Carousel {
 		});
 	};
 
+	/**
+	 * Pointer dragging that leaves plain clicks alone.
+	 *
+	 * A press only becomes a drag once it travels DRAG_THRESHOLD pixels. Below
+	 * that the handlers do nothing at all, so the press stays an ordinary click
+	 * and the slide's link navigates. Past it the track scrolls with the
+	 * pointer, and the click that browsers fire after the release is swallowed
+	 * so dragging never navigates by accident.
+	 *
+	 * Touch is skipped here — setupTouchNavigation() owns it.
+	 */
 	setupTrackDrag = (object) => {
 		if (!object.grid) return;
 
-		let isDragging = false;
+		// Far enough to be a deliberate drag, short enough that a click with a
+		// shaky hand still counts as a click.
+		const DRAG_THRESHOLD = 5;
+
+		// Momentum is capped so a fast flick cannot throw the track across the
+		// whole strip. Roughly a slide and a half of coast at full speed.
+		const MAX_VELOCITY = 40;
+
+		let pointerId = null;
 		let startX = 0;
-		let startScrollLeft = 0;
-		let lastMouseX = 0;
+		let lastX = 0;
+		let lastMoveTime = 0;
 		let velocity = 0;
-		let animationFrameId = null;
+		let didDrag = false;
+		let momentumFrame = null;
 
-		const onMouseDown = (e) => {
-			isDragging = true;
-			startX = e.pageX;
-			lastMouseX = startX;
-			startScrollLeft = object.grid.scrollLeft;
+		const onPointerDown = (e) => {
+			// Left button only, and leave touch to the touch handlers.
+			if (e.button !== 0 || e.pointerType === 'touch') return;
 
-			object.grid.style.cursor = 'grabbing';
-			object.grid.style.userSelect = 'none';
+			pointerId = e.pointerId;
+			startX = e.clientX;
+			lastX = e.clientX;
+			lastMoveTime = e.timeStamp;
+			// Reset, or leftover speed from the previous drag would fling the
+			// track on the next press.
+			velocity = 0;
+			didDrag = false;
+
+			cancelAnimationFrame(momentumFrame);
 			object.grid.style.scrollBehavior = 'auto';
-
-			document.addEventListener('mousemove', onMouseMove);
-			document.addEventListener('mouseup', onMouseUp);
 		};
 
-		const onMouseMove = (e) => {
-			if (!isDragging) return;
-			e.preventDefault();
+		const onPointerMove = (e) => {
+			if (e.pointerId !== pointerId) return;
 
-			const currentX = e.pageX;
-			const deltaX = currentX - lastMouseX;
-			lastMouseX = currentX;
+			// Track the delta even before the threshold is met, so crossing it
+			// does not jump by the distance already travelled.
+			const deltaX = e.clientX - lastX;
+			lastX = e.clientX;
 
-			// Calculate velocity for momentum scrolling
-			velocity = deltaX * 2;
+			if (!didDrag) {
+				if (Math.abs(e.clientX - startX) < DRAG_THRESHOLD) return;
 
-			// Update scroll position with improved sensitivity
-			object.grid.scrollLeft = object.grid.scrollLeft - deltaX;
+				didDrag = true;
+				object.grid.setPointerCapture(pointerId);
+				object.grid.classList.add('brag-book-gallery-grabbing');
+			}
+
+			// Speed, not raw distance. Using the last delta alone meant a 5px
+			// nudge that only just crossed the threshold coasted as far as a
+			// deliberate flick, because the decay multiplies whatever it is
+			// given. Scaled to px-per-frame at 60fps and clamped.
+			const elapsed = e.timeStamp - lastMoveTime;
+			lastMoveTime = e.timeStamp;
+
+			if (elapsed > 0) {
+				const perFrame = (deltaX / elapsed) * 16;
+				velocity = Math.max(-MAX_VELOCITY, Math.min(MAX_VELOCITY, perFrame));
+			}
+
+			object.grid.scrollLeft -= deltaX;
 		};
 
-		const onMouseUp = () => {
-			if (!isDragging) return;
-			isDragging = false;
+		const onPointerUp = (e) => {
+			if (e.pointerId !== pointerId) return;
+			pointerId = null;
 
-			object.grid.style.cursor = '';
-			object.grid.style.userSelect = '';
+			// Deliberately not clearing didDrag: the click event fires after
+			// this, and onClickCapture reads it to decide whether to swallow.
+			if (!didDrag) {
+				// A plain click. Leave the scroll position and the event alone
+				// so the anchor can navigate.
+				object.grid.style.scrollBehavior = 'smooth';
+				return;
+			}
 
-			// Apply momentum scrolling
+			object.grid.classList.remove('brag-book-gallery-grabbing');
+
 			const applyMomentum = () => {
 				if (Math.abs(velocity) > 0.5) {
 					object.grid.scrollLeft -= velocity;
 					velocity *= 0.95; // Decay factor
-					animationFrameId = requestAnimationFrame(applyMomentum);
-				} else {
-					cancelAnimationFrame(animationFrameId);
-					object.grid.style.scrollBehavior = 'smooth';
-					this.snapToClosestSlide(object.grid);
+					momentumFrame = requestAnimationFrame(applyMomentum);
+					return;
 				}
+
+				object.grid.style.scrollBehavior = 'smooth';
+				this.snapToClosestSlide(object.grid);
 			};
 
 			applyMomentum();
-
-			document.removeEventListener('mousemove', onMouseMove);
-			document.removeEventListener('mouseup', onMouseUp);
 		};
 
-		object.grid.addEventListener('mousedown', onMouseDown);
+		// Capture phase, so this runs before the link sees the click.
+		const onClickCapture = (e) => {
+			if (!didDrag) return;
+
+			e.preventDefault();
+			e.stopPropagation();
+			didDrag = false;
+		};
+
+		// Images and links are natively draggable; without this a drag turns
+		// into a ghost-image drag instead of scrolling the track.
+		const onDragStart = (e) => e.preventDefault();
+
+		object.grid.addEventListener('pointerdown', onPointerDown);
+		object.grid.addEventListener('pointermove', onPointerMove);
+		object.grid.addEventListener('pointerup', onPointerUp);
+		object.grid.addEventListener('pointercancel', onPointerUp);
+		object.grid.addEventListener('click', onClickCapture, true);
+		object.grid.addEventListener('dragstart', onDragStart);
 	};
 
 	initializePagination = (object) => {
@@ -563,25 +624,48 @@ class Carousel {
 		grid.addEventListener('touchend', handleTouchEnd);
 	};
 
+	/**
+	 * Snap to whichever slide sits closest to the current scroll position.
+	 *
+	 * Measures each slide's own offsetLeft rather than multiplying an index by
+	 * a slide width. The track is a grid with a gap between columns, so
+	 * index * width drifts further out of alignment with every slide.
+	 */
 	snapToClosestSlide = (grid) => {
-		if (!grid.children[0]) return;
+		const slides = Array.from(grid.children);
+		if (!slides.length) return;
 
-		const slideWidth = grid.children[0].offsetWidth;
-		const scrollLeft = grid.scrollLeft;
-		const slideIndex = Math.round(scrollLeft / slideWidth);
+		const closest = slides.reduce((best, slide) =>
+			Math.abs(slide.offsetLeft - grid.scrollLeft) < Math.abs(best.offsetLeft - grid.scrollLeft)
+				? slide
+				: best
+		);
 
 		grid.style.scrollBehavior = 'smooth';
-		grid.scrollTo({
-			left: slideIndex * slideWidth
-		});
+		grid.scrollTo({ left: closest.offsetLeft });
 	};
 
 	getCurrentSlideIndex = (object) => {
 		if (!object.items[0]) return 0;
 
+		// offsetLeft per slide, for the same reason as snapToClosestSlide():
+		// the grid gap makes index * width drift.
+		//
+		// object.items is grid.children, an HTMLCollection — index into it
+		// rather than reaching for array methods it does not have.
 		const scrollLeft = object.grid.scrollLeft;
-		const slideWidth = object.items[0].offsetWidth;
-		return Math.round(scrollLeft / slideWidth);
+		let closestIndex = 0;
+		let closestDistance = Infinity;
+
+		for (let index = 0; index < object.items.length; index++) {
+			const distance = Math.abs(object.items[index].offsetLeft - scrollLeft);
+			if (distance < closestDistance) {
+				closestDistance = distance;
+				closestIndex = index;
+			}
+		}
+
+		return closestIndex;
 	};
 
 	init = () => {
