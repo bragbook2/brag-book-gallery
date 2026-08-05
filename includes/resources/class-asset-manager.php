@@ -252,55 +252,16 @@ final class Asset_Manager {
 		$gallery_slug_option = get_option( 'brag_book_gallery_page_slug', 'gallery' );
 		$gallery_slug = is_array( $gallery_slug_option ) ? ( $gallery_slug_option[0] ?? 'gallery' ) : $gallery_slug_option;
 
-		// Get API tokens and website property IDs from WordPress options
-		// These are stored as arrays with mode keys like ['default' => 'token_value']
-		$api_tokens_option = get_option( 'brag_book_gallery_api_token', [] );
-		$website_property_ids_option = get_option( 'brag_book_gallery_website_property_id', [] );
-
-		// Extract API token - check multiple formats
-		$api_token = '';
-		$website_property_id = '';
-
-		if ( is_array( $api_tokens_option ) ) {
-			// Try 'default' key first, then index 0
-			if ( isset( $api_tokens_option['default'] ) ) {
-				$api_token = sanitize_text_field( $api_tokens_option['default'] );
-			} elseif ( isset( $api_tokens_option[0] ) ) {
-				$api_token = sanitize_text_field( $api_tokens_option[0] );
-			}
-		} elseif ( ! empty( $api_tokens_option ) ) {
-			// Single string value
-			$api_token = sanitize_text_field( $api_tokens_option );
-		}
-
-		if ( is_array( $website_property_ids_option ) ) {
-			if ( isset( $website_property_ids_option['default'] ) ) {
-				$website_property_id = sanitize_text_field( $website_property_ids_option['default'] );
-			} elseif ( isset( $website_property_ids_option[0] ) ) {
-				$website_property_id = sanitize_text_field( $website_property_ids_option[0] );
-			}
-		} elseif ( ! empty( $website_property_ids_option ) ) {
-			$website_property_id = sanitize_text_field( $website_property_ids_option );
-		}
-
-		// If no tokens found, fallback to legacy single values from config
-		if ( empty( $api_token ) && ! empty( $config['api_token'] ) ) {
-			$api_token = sanitize_text_field( $config['api_token'] );
-		}
-		if ( empty( $website_property_id ) && ! empty( $config['website_property_id'] ) ) {
-			$website_property_id = sanitize_text_field( $config['website_property_id'] );
-		}
-
 		// Sanitize and prepare configuration data.
+		//
+		// The BRAGbook API token is deliberately NOT included here. This payload
+		// is printed into the page source for anonymous visitors, so anything
+		// added to it is public. All API calls that need the token are proxied
+		// through admin-ajax.php handlers server-side.
 		$localized_data = array(
 			'apiEndpoint'         => esc_url_raw( get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' ) ),
 			'apiBaseUrl'          => esc_url_raw( get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' ) ),
 			'api_endpoint'        => esc_url_raw( get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' ) ),
-			'api_token'           => $api_token,
-			'api_config'          => array(
-				'default_token'   => $api_token,
-				'endpoint'        => esc_url_raw( get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' ) ),
-			),
 			'ajaxUrl'             => esc_url_raw( admin_url( 'admin-ajax.php' ) ),
 			'nonce'               => wp_create_nonce( 'brag_book_gallery_nonce' ),
 			'consultation_nonce'  => wp_create_nonce( 'consultation_form_nonce' ),
@@ -317,11 +278,6 @@ final class Asset_Manager {
 			'bragBookGalleryConfig',
 			$localized_data
 		);
-
-		// Debug logging in development mode (excluding sensitive data)
-		if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
-			error_log( 'BRAG book Debug: JavaScript configuration localized (API tokens secured server-side)' );
-		}
 	}
 
 	/**
@@ -339,33 +295,15 @@ final class Asset_Manager {
 	 *
 	 * @since 3.0.0
 	 *
-	 * @param array<string, mixed> $config Carousel configuration settings.
-	 *
 	 * @return void
 	 */
-	public static function localize_carousel_script( array $config ): void {
-		// Build validated configuration data
-		$localized_data = [
-			'apiToken'          => sanitize_text_field( $config['api_token'] ?? '' ),
-			'websitePropertyId' => sanitize_text_field( $config['website_property_id'] ?? '' ),
-			'apiEndpoint'       => esc_url_raw( get_option( 'brag_book_gallery_api_endpoint', 'https://app.bragbookgallery.com' ) ),
-			'ajaxUrl'           => esc_url_raw( admin_url( 'admin-ajax.php' ) ),
-			'nonce'             => wp_create_nonce( 'brag_book_gallery_nonce' ),
-			'pluginUrl'         => esc_url_raw( Setup::get_plugin_url() ),
-			'showControls'      => (bool) ( $config['show_controls'] ?? true ),
-			'showPagination'    => (bool) ( $config['show_pagination'] ?? true ),
-			'autoPlay'          => (bool) ( $config['auto_play'] ?? false ),
-			'limit'             => absint( $config['limit'] ?? 10 ),
-		];
-
+	public static function localize_carousel_script(): void {
 		// Pick whichever JS handle the carousel handler enqueued: the small
 		// carousel-only bundle when carousel is alone on the page, or the
 		// full bundle when other shortcodes need it too.
 		$handle = wp_script_is( 'brag-book-gallery-carousel', 'enqueued' )
 			? 'brag-book-gallery-carousel'
 			: 'brag-book-gallery-main';
-
-		wp_localize_script( $handle, 'bragBookCarouselConfig', $localized_data );
 
 		// Ensure bragBookGalleryConfig is available for view tracking on carousel-only pages
 		global $wp_scripts;

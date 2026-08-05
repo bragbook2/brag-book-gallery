@@ -297,12 +297,17 @@ class Assets {
 			args: true
 		);
 
-		// Always localize script with AJAX data for forms and galleries
+		// Baseline config so consultation forms work on pages with no gallery
+		// shortcode. When a shortcode does render, Asset_Manager localizes the
+		// same object name on the same handle; WordPress concatenates the two
+		// `var bragBookGalleryConfig = {...}` statements, so the later one wins
+		// outright rather than merging. Keep this payload a strict subset of
+		// Asset_Manager::localize_gallery_script() or its keys vanish on
+		// gallery pages.
 		wp_localize_script( 'brag-book-gallery-main', 'bragBookGalleryConfig', [
 			'ajaxUrl' => admin_url( 'admin-ajax.php' ),
 			'nonce'   => wp_create_nonce( 'brag_book_gallery_nonce' ),
 			'consultation_nonce' => wp_create_nonce( 'consultation_form_nonce' ),
-			'columns' => absint( get_option( 'brag_book_gallery_columns', 2 ) ),
 			'itemsPerPage' => Settings_Helper::get_items_per_page(),
 		] );
 

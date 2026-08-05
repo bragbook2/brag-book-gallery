@@ -1120,10 +1120,10 @@ class Sync_Page extends Settings_Base {
 
 			if ( ! $update_result ) {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'BRAG book Gallery Sync: Failed to update sync settings' );
+				brag_book_log( 'BRAG book Gallery Sync: Failed to update sync settings' );
 			} else {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'BRAG book Gallery Sync: Successfully updated sync settings - Status: ' . $settings['sync_status'] . ', Time: ' . $settings['last_sync_time'] );
+				brag_book_log( 'BRAG book Gallery Sync: Successfully updated sync settings - Status: ' . $settings['sync_status'] . ', Time: ' . $settings['last_sync_time'] );
 			}
 
 			$response = [
@@ -1141,10 +1141,10 @@ class Sync_Page extends Settings_Base {
 
 			if ( ! $update_result ) {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'BRAG book Gallery Sync: Failed to update sync settings after error' );
+				brag_book_log( 'BRAG book Gallery Sync: Failed to update sync settings after error' );
 			} else {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'BRAG book Gallery Sync: Successfully updated sync settings after error - Status: error, Time: ' . $settings['last_sync_time'] );
+				brag_book_log( 'BRAG book Gallery Sync: Successfully updated sync settings after error - Status: error, Time: ' . $settings['last_sync_time'] );
 			}
 
 			$response = [
@@ -1174,7 +1174,7 @@ class Sync_Page extends Settings_Base {
 	 */
 	public function handle_full_sync(): void {
 		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-		error_log( 'BRAG book Gallery Sync: handle_full_sync method called - NEW DEBUG' );
+		brag_book_log( 'BRAG book Gallery Sync: handle_full_sync method called - NEW DEBUG' );
 
 		// Increase error reporting for debugging
 		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.prevent_path_disclosure_error_reporting, WordPress.PHP.DiscouragedPHPFunctions.runtime_configuration_error_reporting
@@ -1193,57 +1193,57 @@ class Sync_Page extends Settings_Base {
 		// Verify nonce
 		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ?? '' ) ), 'brag_book_gallery_sync' ) ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery Sync: Nonce verification FAILED' );
+			brag_book_log( 'BRAG book Gallery Sync: Nonce verification FAILED' );
 			wp_send_json_error( [
 				'message' => __( 'Security check failed.', 'brag-book-gallery' ),
 			] );
 		}
 
 		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-		error_log( 'BRAG book Gallery Sync: Nonce verification PASSED' );
+		brag_book_log( 'BRAG book Gallery Sync: Nonce verification PASSED' );
 
 		// Check permissions
 		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-		error_log( 'BRAG book Gallery Sync: Checking permissions...' );
+		brag_book_log( 'BRAG book Gallery Sync: Checking permissions...' );
 		if ( ! current_user_can( 'manage_options' ) ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery Sync: Permission check FAILED' );
+			brag_book_log( 'BRAG book Gallery Sync: Permission check FAILED' );
 			wp_send_json_error( [
 				'message' => __( 'Insufficient permissions.', 'brag-book-gallery' ),
 			] );
 		}
 		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-		error_log( 'BRAG book Gallery Sync: Permission check PASSED' );
+		brag_book_log( 'BRAG book Gallery Sync: Permission check PASSED' );
 
 		try {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery Sync: About to test Data_Sync constructor...' );
+			brag_book_log( 'BRAG book Gallery Sync: About to test Data_Sync constructor...' );
 
 			// Check if the class exists
 			if ( ! class_exists( '\BRAGBookGallery\Includes\Sync\Data_Sync' ) ) {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'BRAG book Gallery Sync: Data_Sync class does not exist!' );
+				brag_book_log( 'BRAG book Gallery Sync: Data_Sync class does not exist!' );
 				throw new Exception( 'Data_Sync class not found. Please check the plugin installation.' );
 			}
 
 			// Initialize sync manager (with built-in file-based logging)
 			$sync_manager = new Data_Sync();
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery Sync: Data_Sync constructor completed successfully!' );
+			brag_book_log( 'BRAG book Gallery Sync: Data_Sync constructor completed successfully!' );
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery Sync: Starting full synchronization with file logging' );
+			brag_book_log( 'BRAG book Gallery Sync: Starting full synchronization with file logging' );
 
 			// Now run the actual sync
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery Sync: Running actual two-stage sync...' );
+			brag_book_log( 'BRAG book Gallery Sync: Running actual two-stage sync...' );
 			$result = $sync_manager->run_two_stage_sync();
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery Sync: Sync completed with result: ' . wp_json_encode( $result ) );
+			brag_book_log( 'BRAG book Gallery Sync: Sync completed with result: ' . wp_json_encode( $result ) );
 
 			// Check if sync needs to resume (paused due to time/memory limits)
 			if ( isset( $result['needs_resume'] ) && $result['needs_resume'] ) {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'BRAG book Gallery Sync: Sync paused for resource limits - will resume on next call' );
+				brag_book_log( 'BRAG book Gallery Sync: Sync paused for resource limits - will resume on next call' );
 
 				// Return special response indicating sync should continue
 				wp_send_json_success( [
@@ -1264,19 +1264,19 @@ class Sync_Page extends Settings_Base {
 			// Debug: Check if total_api_cases is in the result
 			if (isset($result['total_api_cases'])) {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'BRAG book Gallery Sync: NEW FEATURE WORKING - total_api_cases: ' . $result['total_api_cases'] );
+				brag_book_log( 'BRAG book Gallery Sync: NEW FEATURE WORKING - total_api_cases: ' . $result['total_api_cases'] );
 			} else {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'BRAG book Gallery Sync: NEW FEATURE MISSING - total_api_cases not found in result' );
+				brag_book_log( 'BRAG book Gallery Sync: NEW FEATURE MISSING - total_api_cases not found in result' );
 			}
 
 			// Log completion
 			if ( $result['success'] ) {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'BRAG book Gallery Sync: 🎉 Synchronization completed successfully!' );
+				brag_book_log( 'BRAG book Gallery Sync: 🎉 Synchronization completed successfully!' );
 			} else {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'BRAG book Gallery Sync: Sync completed with errors: ' . implode( ', ', $result['errors'] ?? [] ) );
+				brag_book_log( 'BRAG book Gallery Sync: Sync completed with errors: ' . implode( ', ', $result['errors'] ?? [] ) );
 			}
 
 			// Also store the final sync results in the database for sync history
@@ -1310,14 +1310,14 @@ class Sync_Page extends Settings_Base {
 
 				if ($log_id) {
 					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-					error_log( 'BRAG book Gallery Sync: Stored sync results in database with ID: ' . $log_id );
+					brag_book_log( 'BRAG book Gallery Sync: Stored sync results in database with ID: ' . $log_id );
 				} else {
 					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-					error_log( 'BRAG book Gallery Sync: Failed to store sync results in database' );
+					brag_book_log( 'BRAG book Gallery Sync: Failed to store sync results in database' );
 				}
 			} catch (Exception $e) {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'BRAG book Gallery Sync: Database storage error: ' . $e->getMessage() );
+				brag_book_log( 'BRAG book Gallery Sync: Database storage error: ' . $e->getMessage() );
 			}
 			// Sync completion is now logged in Data_Sync class itself
 
@@ -1330,10 +1330,10 @@ class Sync_Page extends Settings_Base {
 
 			if ( ! $update_result ) {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'BRAG book Gallery Sync: Failed to update sync settings (display now uses history table)' );
+				brag_book_log( 'BRAG book Gallery Sync: Failed to update sync settings (display now uses history table)' );
 			} else {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'BRAG book Gallery Sync: Successfully updated sync settings - Status: ' . $settings['sync_status'] . ', Time: ' . $settings['last_sync_time'] );
+				brag_book_log( 'BRAG book Gallery Sync: Successfully updated sync settings - Status: ' . $settings['sync_status'] . ', Time: ' . $settings['last_sync_time'] );
 			}
 
 			$response = [
@@ -1357,23 +1357,23 @@ class Sync_Page extends Settings_Base {
 				$memory_limit = ini_get( 'memory_limit' );
 
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'BRAG book Gallery Sync: MEMORY EXHAUSTED ERROR' );
+				brag_book_log( 'BRAG book Gallery Sync: MEMORY EXHAUSTED ERROR' );
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( sprintf( 'BRAG book Gallery Sync: Current memory: %s', size_format( $current_memory ) ) );
+				brag_book_log( sprintf( 'BRAG book Gallery Sync: Current memory: %s', size_format( $current_memory ) ) );
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( sprintf( 'BRAG book Gallery Sync: Peak memory: %s', size_format( $peak_memory ) ) );
+				brag_book_log( sprintf( 'BRAG book Gallery Sync: Peak memory: %s', size_format( $peak_memory ) ) );
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( sprintf( 'BRAG book Gallery Sync: Memory limit: %s', $memory_limit ) );
+				brag_book_log( sprintf( 'BRAG book Gallery Sync: Memory limit: %s', $memory_limit ) );
 
 				// Try to get progress information
 				$progress = get_transient( 'brag_book_gallery_sync_progress' );
 				if ( $progress ) {
 					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-					error_log( sprintf( 'BRAG book Gallery Sync: Failed at: %s', $progress['message'] ?? 'Unknown step' ) );
+					brag_book_log( sprintf( 'BRAG book Gallery Sync: Failed at: %s', $progress['message'] ?? 'Unknown step' ) );
 					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-					error_log( sprintf( 'BRAG book Gallery Sync: Progress: %d%%', $progress['progress'] ?? 0 ) );
+					brag_book_log( sprintf( 'BRAG book Gallery Sync: Progress: %d%%', $progress['progress'] ?? 0 ) );
 					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-					error_log( sprintf( 'BRAG book Gallery Sync: Current procedure: %s', $progress['current_procedure'] ?? 'Unknown' ) );
+					brag_book_log( sprintf( 'BRAG book Gallery Sync: Current procedure: %s', $progress['current_procedure'] ?? 'Unknown' ) );
 				}
 
 				$error_message = sprintf(
@@ -1387,11 +1387,11 @@ class Sync_Page extends Settings_Base {
 				);
 			} else {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'BRAG book Gallery Sync: Fatal error during sync: ' . $e->getMessage() );
+				brag_book_log( 'BRAG book Gallery Sync: Fatal error during sync: ' . $e->getMessage() );
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'BRAG book Gallery Sync: Error file: ' . $e->getFile() . ' on line ' . $e->getLine() );
+				brag_book_log( 'BRAG book Gallery Sync: Error file: ' . $e->getFile() . ' on line ' . $e->getLine() );
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'BRAG book Gallery Sync: Error trace: ' . $e->getTraceAsString() );
+				brag_book_log( 'BRAG book Gallery Sync: Error trace: ' . $e->getTraceAsString() );
 
 				$error_message = sprintf(
 					/* translators: %1$s: error message, %2$s: file name, %3$d: line number */
@@ -1411,10 +1411,10 @@ class Sync_Page extends Settings_Base {
 
 			if ( ! $update_result ) {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'BRAG book Gallery Sync: Failed to update sync settings after error' );
+				brag_book_log( 'BRAG book Gallery Sync: Failed to update sync settings after error' );
 			} else {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'BRAG book Gallery Sync: Successfully updated sync settings after error - Status: error, Time: ' . $settings['last_sync_time'] );
+				brag_book_log( 'BRAG book Gallery Sync: Successfully updated sync settings after error - Status: error, Time: ' . $settings['last_sync_time'] );
 			}
 
 			$response = [
@@ -1443,11 +1443,11 @@ class Sync_Page extends Settings_Base {
 			];
 		} catch ( Error $e ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery Sync: PHP Error during sync: ' . $e->getMessage() );
+			brag_book_log( 'BRAG book Gallery Sync: PHP Error during sync: ' . $e->getMessage() );
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery Sync: Error file: ' . $e->getFile() . ' on line ' . $e->getLine() );
+			brag_book_log( 'BRAG book Gallery Sync: Error file: ' . $e->getFile() . ' on line ' . $e->getLine() );
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery Sync: Error trace: ' . $e->getTraceAsString() );
+			brag_book_log( 'BRAG book Gallery Sync: Error trace: ' . $e->getTraceAsString() );
 
 			// Update sync settings with error status
 			$settings = $this->get_settings();
@@ -1504,9 +1504,9 @@ class Sync_Page extends Settings_Base {
 	 */
 	public function handle_rest_sync_execution(): void {
 		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-		error_log( 'BRAG book Gallery: ========== REST API SYNC EXECUTION STARTED ==========' );
+		brag_book_log( 'BRAG book Gallery: ========== REST API SYNC EXECUTION STARTED ==========' );
 		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-		error_log( 'BRAG book Gallery: Sync triggered via REST API' );
+		brag_book_log( 'BRAG book Gallery: Sync triggered via REST API' );
 
 		$sync_source = 'rest_api';
 
@@ -1538,7 +1538,7 @@ class Sync_Page extends Settings_Base {
 		$this->execute_full_sync( $sync_source, $sync_api );
 
 		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-		error_log( 'BRAG book Gallery: ========== REST API SYNC EXECUTION COMPLETED ==========' );
+		brag_book_log( 'BRAG book Gallery: ========== REST API SYNC EXECUTION COMPLETED ==========' );
 	}
 
 	/**
@@ -1569,24 +1569,24 @@ class Sync_Page extends Settings_Base {
 		if ( $database ) {
 			$log_id = $database->log_sync_operation( 'full', 'started', 0, 0, '', $sync_source );
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery: Sync log created with ID: ' . $log_id );
+			brag_book_log( 'BRAG book Gallery: Sync log created with ID: ' . $log_id );
 		}
 
 		try {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery: Starting REST-triggered sync using Stage-Based Sync' );
+			brag_book_log( 'BRAG book Gallery: Starting REST-triggered sync using Stage-Based Sync' );
 
 			// Use the new stage-based sync
 			$sync = new \BRAGBookGallery\Includes\Sync\Chunked_Data_Sync();
 
 			// Run Stage 1: Fetch procedures
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery: Running Stage 1 - Fetching procedures' );
+			brag_book_log( 'BRAG book Gallery: Running Stage 1 - Fetching procedures' );
 			$stage1_result = $sync->execute_stage_1();
 
 			if ( ! $stage1_result['success'] ) {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'BRAG book Gallery: Stage 1 failed: ' . ($stage1_result['message'] ?? 'Unknown error') );
+				brag_book_log( 'BRAG book Gallery: Stage 1 failed: ' . ($stage1_result['message'] ?? 'Unknown error') );
 
 				// Update sync log with failure
 				if ( $database && $log_id ) {
@@ -1606,18 +1606,18 @@ class Sync_Page extends Settings_Base {
 			}
 
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery: Stage 1 completed - ' .
+			brag_book_log( 'BRAG book Gallery: Stage 1 completed - ' .
 				($stage1_result['procedures_created'] ?? 0) . ' created, ' .
 				($stage1_result['procedures_updated'] ?? 0) . ' updated' );
 
 			// Run Stage 2: Build manifest
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery: Running Stage 2 - Building manifest' );
+			brag_book_log( 'BRAG book Gallery: Running Stage 2 - Building manifest' );
 			$stage2_result = $sync->execute_stage_2();
 
 			if ( ! $stage2_result['success'] ) {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'BRAG book Gallery: Stage 2 failed: ' . ($stage2_result['message'] ?? 'Unknown error') );
+				brag_book_log( 'BRAG book Gallery: Stage 2 failed: ' . ($stage2_result['message'] ?? 'Unknown error') );
 
 				// Update sync log with failure
 				if ( $database && $log_id ) {
@@ -1637,13 +1637,13 @@ class Sync_Page extends Settings_Base {
 			}
 
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery: Stage 2 completed - ' .
+			brag_book_log( 'BRAG book Gallery: Stage 2 completed - ' .
 				($stage2_result['procedure_count'] ?? 0) . ' procedures, ' .
 				($stage2_result['case_count'] ?? 0) . ' cases in manifest' );
 
 			// Run Stage 3: Process cases in batches
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery: Running Stage 3 - Processing cases in batches' );
+			brag_book_log( 'BRAG book Gallery: Running Stage 3 - Processing cases in batches' );
 
 			$total_created = 0;
 			$total_updated = 0;
@@ -1657,13 +1657,13 @@ class Sync_Page extends Settings_Base {
 			while ( $needs_continue && $batch_count < $max_batches ) {
 				$batch_count++;
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( "BRAG book Gallery: Stage 3 - Processing batch {$batch_count}" );
+				brag_book_log( "BRAG book Gallery: Stage 3 - Processing batch {$batch_count}" );
 
 				$stage3_result = $sync->execute_stage_3();
 
 				if ( ! $stage3_result['success'] ) {
 					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-					error_log( 'BRAG book Gallery: Stage 3 failed: ' . ($stage3_result['message'] ?? 'Unknown error') );
+					brag_book_log( 'BRAG book Gallery: Stage 3 failed: ' . ($stage3_result['message'] ?? 'Unknown error') );
 
 					// Update sync log with failure
 					if ( $database && $log_id ) {
@@ -1691,12 +1691,12 @@ class Sync_Page extends Settings_Base {
 				$needs_continue  = $stage3_result['needs_continue'] ?? false;
 
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( "BRAG book Gallery: Stage 3 batch {$batch_count} - Progress: {$total_processed}/{$total_cases} cases ({$total_created} created, {$total_updated} updated, {$total_failed} failed)" );
+				brag_book_log( "BRAG book Gallery: Stage 3 batch {$batch_count} - Progress: {$total_processed}/{$total_cases} cases ({$total_created} created, {$total_updated} updated, {$total_failed} failed)" );
 
 				// Check if we need to continue
 				if ( ! $needs_continue ) {
 					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-					error_log( 'BRAG book Gallery: Stage 3 completed - All cases processed' );
+					brag_book_log( 'BRAG book Gallery: Stage 3 completed - All cases processed' );
 					$sync_success = true;
 					break;
 				}
@@ -1707,22 +1707,22 @@ class Sync_Page extends Settings_Base {
 
 			if ( $batch_count >= $max_batches ) {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( "BRAG book Gallery: Stage 3 stopped - Reached maximum batch limit ({$max_batches})" );
+				brag_book_log( "BRAG book Gallery: Stage 3 stopped - Reached maximum batch limit ({$max_batches})" );
 			}
 
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery: Stage 3 final totals - ' .
+			brag_book_log( 'BRAG book Gallery: Stage 3 final totals - ' .
 				"{$total_created} created, {$total_updated} updated, {$total_failed} failed ({$total_processed}/{$total_cases} cases)" );
 
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery: 🎉 Sync completed successfully' );
+			brag_book_log( 'BRAG book Gallery: 🎉 Sync completed successfully' );
 
 			// Update sync log with completion
 			if ( $database && $log_id ) {
 				$status = $sync_success ? 'completed' : 'partial';
 				$database->update_sync_log( $log_id, $status, $total_processed, $total_failed );
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'BRAG book Gallery: Sync log updated - Status: ' . $status . ', Processed: ' . $total_processed . ', Failed: ' . $total_failed );
+				brag_book_log( 'BRAG book Gallery: Sync log updated - Status: ' . $status . ', Processed: ' . $total_processed . ', Failed: ' . $total_failed );
 			}
 
 			// Update sync settings with success status
@@ -1736,10 +1736,10 @@ class Sync_Page extends Settings_Base {
 
 			if ( ! $update_result ) {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'BRAG book Gallery: Failed to update sync settings after REST sync' );
+				brag_book_log( 'BRAG book Gallery: Failed to update sync settings after REST sync' );
 			} else {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'BRAG book Gallery: Successfully updated sync settings - Status: ' . $settings['sync_status'] . ', Time: ' . $settings['last_sync_time'] );
+				brag_book_log( 'BRAG book Gallery: Successfully updated sync settings - Status: ' . $settings['sync_status'] . ', Time: ' . $settings['last_sync_time'] );
 			}
 
 			// Report sync completion to BRAG book API
@@ -1768,7 +1768,7 @@ class Sync_Page extends Settings_Base {
 		} catch ( \Exception $e ) {
 			$error_message = 'Sync failed: ' . $e->getMessage();
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery: ❌ ' . $error_message );
+			brag_book_log( 'BRAG book Gallery: ❌ ' . $error_message );
 
 			// Report failure to BRAG book API
 			$sync_api->report_sync(
@@ -1810,8 +1810,10 @@ class Sync_Page extends Settings_Base {
 				'callback'            => [ $this, 'handle_rest_trigger_sync' ],
 				'permission_callback' => [ $this, 'validate_sync_token' ],
 				'args'                => [
+					// Optional: the token is normally sent as the
+					// X-BRAGBook-Token header. See validate_sync_token().
 					'token' => [
-						'required'          => true,
+						'required'          => false,
 						'type'              => 'string',
 						'sanitize_callback' => 'sanitize_text_field',
 						'validate_callback' => function( $param ) {
@@ -1830,8 +1832,10 @@ class Sync_Page extends Settings_Base {
 				'callback'            => [ $this, 'handle_rest_get_update' ],
 				'permission_callback' => [ $this, 'validate_sync_token' ],
 				'args'                => [
+					// Optional: the token is normally sent as the
+					// X-BRAGBook-Token header. See validate_sync_token().
 					'token' => [
-						'required'          => true,
+						'required'          => false,
 						'type'              => 'string',
 						'sanitize_callback' => 'sanitize_text_field',
 						'validate_callback' => function( $param ) {
@@ -1850,8 +1854,10 @@ class Sync_Page extends Settings_Base {
 				'callback'            => [ $this, 'handle_rest_sync_status' ],
 				'permission_callback' => [ $this, 'validate_sync_token' ],
 				'args'                => [
+					// Optional: the token is normally sent as the
+					// X-BRAGBook-Token header. See validate_sync_token().
 					'token' => [
-						'required'          => true,
+						'required'          => false,
 						'type'              => 'string',
 						'sanitize_callback' => 'sanitize_text_field',
 						'validate_callback' => function( $param ) {
@@ -1873,7 +1879,17 @@ class Sync_Page extends Settings_Base {
 	 * @return bool|WP_Error True if valid, WP_Error otherwise
 	 */
 	public function validate_sync_token( \WP_REST_Request $request ) {
-		$provided_token = $request->get_param( 'token' );
+		// Prefer the header. A token in the query string is written to access
+		// logs, proxy logs and Referer headers by every hop in between.
+		//
+		// The ?token= form is still accepted so the BRAGBook application keeps
+		// working during the switchover. Drop the fallback once it sends the
+		// header, and treat any token that was ever sent as a URL as burned.
+		$provided_token = $request->get_header( 'x_bragbook_token' );
+
+		if ( empty( $provided_token ) ) {
+			$provided_token = $request->get_param( 'token' );
+		}
 
 		if ( empty( $provided_token ) ) {
 			return new \WP_Error(
@@ -1896,7 +1912,7 @@ class Sync_Page extends Settings_Base {
 
 		if ( empty( $api_tokens ) ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery: BRAGbook API token not configured' );
+			brag_book_log( 'BRAG book Gallery: BRAGbook API token not configured' );
 			return new \WP_Error(
 				'token_not_configured',
 				__( 'BRAGbook API token is not configured. Please configure it in the API Settings page.', 'brag-book-gallery' ),
@@ -1915,7 +1931,7 @@ class Sync_Page extends Settings_Base {
 
 		if ( ! $token_valid ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery: Invalid BRAGbook API token provided to REST API' );
+			brag_book_log( 'BRAG book Gallery: Invalid BRAGbook API token provided to REST API' );
 			return new \WP_Error(
 				'invalid_token',
 				__( 'Invalid authentication token.', 'brag-book-gallery' ),
@@ -2000,7 +2016,7 @@ class Sync_Page extends Settings_Base {
 	 */
 	public function handle_rest_trigger_sync( \WP_REST_Request $request ) {
 		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-		error_log( 'BRAG book Gallery: Sync triggered via REST API' );
+		brag_book_log( 'BRAG book Gallery: Sync triggered via REST API' );
 
 		// Read jobId passed by the BRAG Book app/cron in the trigger URL.
 		// intval() returns 0 for missing/non-numeric values, so treat 0 as absent.
@@ -2029,11 +2045,11 @@ class Sync_Page extends Settings_Base {
 		if ( ! is_wp_error( $registration_result ) && isset( $registration_result['job_id'] ) ) {
 			$job_id = $registration_result['job_id'];
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery: Sync registered with BRAG book API - Job ID: ' . $job_id );
+			brag_book_log( 'BRAG book Gallery: Sync registered with BRAG book API - Job ID: ' . $job_id );
 		} else {
 			$error_message = is_wp_error( $registration_result ) ? $registration_result->get_error_message() : 'Unknown error';
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery: Failed to register sync with BRAG book API: ' . $error_message );
+			brag_book_log( 'BRAG book Gallery: Failed to register sync with BRAG book API: ' . $error_message );
 			// Continue anyway — graceful degradation.
 		}
 
@@ -2064,7 +2080,7 @@ class Sync_Page extends Settings_Base {
 
 		if ( is_wp_error( $loopback_result ) ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery: Loopback request failed (' . $loopback_result->get_error_message() . ').' );
+			brag_book_log( 'BRAG book Gallery: Loopback request failed (' . $loopback_result->get_error_message() . ').' );
 		}
 
 		$response = [
@@ -2268,7 +2284,7 @@ class Sync_Page extends Settings_Base {
 		} else {
 			$deleted = 0;
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery: Could not clean up log records - column names not found' );
+			brag_book_log( 'BRAG book Gallery: Could not clean up log records - column names not found' );
 		}
 
 		if ( $deleted !== false ) {
@@ -2396,7 +2412,7 @@ class Sync_Page extends Settings_Base {
 		// Verify nonce - check the correct nonce name
 		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ?? '' ) ), 'brag_book_sync_delete' ) ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'Delete sync record: Nonce verification failed' );
+			brag_book_log( 'Delete sync record: Nonce verification failed' );
 			wp_send_json_error( [
 				'message' => __( 'Security check failed.', 'brag-book-gallery' ),
 			] );
@@ -2883,10 +2899,10 @@ class Sync_Page extends Settings_Base {
 		$progress = $transient_progress ?: $option_progress;
 
 		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-		error_log( 'BRAG book Gallery Sync: AJAX detailed progress request - found data: ' . ( $progress ? 'YES' : 'NO' ) );
+		brag_book_log( 'BRAG book Gallery Sync: AJAX detailed progress request - found data: ' . ( $progress ? 'YES' : 'NO' ) );
 		if ( $progress ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery Sync: Detailed progress data: ' . wp_json_encode( $progress ) );
+			brag_book_log( 'BRAG book Gallery Sync: Detailed progress data: ' . wp_json_encode( $progress ) );
 		}
 
 		if ( $progress ) {
@@ -3523,7 +3539,7 @@ class Sync_Page extends Settings_Base {
 		if ( ! $table_exists ) {
 			echo '<p>' . esc_html__( 'Sync history table not found. Please re-activate the plugin.', 'brag-book-gallery' ) . '</p>';
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAGBook Sync History: Table does not exist: ' . $table_name );
+			brag_book_log( 'BRAGBook Sync History: Table does not exist: ' . $table_name );
 			return;
 		}
 
@@ -3534,7 +3550,7 @@ class Sync_Page extends Settings_Base {
 		$has_created_at = in_array( 'created_at', $columns, true );
 
 		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-		error_log( 'BRAGBook Sync History: Table columns: ' . implode( ', ', $columns ) );
+		brag_book_log( 'BRAGBook Sync History: Table columns: ' . implode( ', ', $columns ) );
 
 		// Use appropriate column for ordering based on what exists
 		$order_column = 'id'; // Default fallback
@@ -3549,13 +3565,13 @@ class Sync_Page extends Settings_Base {
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$query = "SELECT * FROM {$table_name} ORDER BY {$order_column} DESC LIMIT 50";
 		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-		error_log( 'BRAGBook Sync History: Executing query: ' . $query );
+		brag_book_log( 'BRAGBook Sync History: Executing query: ' . $query );
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 		$records = $wpdb->get_results( $query );
 
 		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-		error_log( 'BRAGBook Sync History: Found ' . count( $records ) . ' records' );
+		brag_book_log( 'BRAGBook Sync History: Found ' . count( $records ) . ' records' );
 
 		if ( empty( $records ) ) {
 			// Show count for debugging
@@ -3563,7 +3579,7 @@ class Sync_Page extends Settings_Base {
 			$count = $wpdb->get_var( "SELECT COUNT(*) FROM {$table_name}" );
 			echo '<p>' . esc_html__( 'No sync history available.', 'brag-book-gallery' ) . ' (Total records in table: ' . esc_html( $count ) . ')</p>';
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAGBook Sync History: No records returned. Total in table: ' . $count );
+			brag_book_log( 'BRAGBook Sync History: No records returned. Total in table: ' . $count );
 			return;
 		}
 		?>
@@ -3935,19 +3951,19 @@ class Sync_Page extends Settings_Base {
 		if ( $database ) {
 			$log_id = $database->log_sync_operation( 'full', 'started', 0, 0, '', $sync_source );
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery: Sync log created with ID: ' . $log_id . ' (source: ' . $sync_source . ')' );
+			brag_book_log( 'BRAG book Gallery: Sync log created with ID: ' . $log_id . ' (source: ' . $sync_source . ')' );
 		}
 
 		try {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery: Starting sync via ' . $sync_source );
+			brag_book_log( 'BRAG book Gallery: Starting sync via ' . $sync_source );
 
 			// Use the stage-based sync
 			$sync = new \BRAGBookGallery\Includes\Sync\Chunked_Data_Sync();
 
 			// Run Stage 1: Fetch procedures
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery: Running Stage 1 - Fetching procedures' );
+			brag_book_log( 'BRAG book Gallery: Running Stage 1 - Fetching procedures' );
 			set_transient( 'brag_book_stage_progress', [
 				'current'    => 0,
 				'total'      => 3,
@@ -3963,11 +3979,11 @@ class Sync_Page extends Settings_Base {
 			}
 
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery: Stage 1 completed' );
+			brag_book_log( 'BRAG book Gallery: Stage 1 completed' );
 
 			// Run Stage 2: Build manifest
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery: Running Stage 2 - Building manifest' );
+			brag_book_log( 'BRAG book Gallery: Running Stage 2 - Building manifest' );
 			set_transient( 'brag_book_stage_progress', [
 				'current'    => 1,
 				'total'      => 3,
@@ -3983,14 +3999,14 @@ class Sync_Page extends Settings_Base {
 			}
 
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery: Stage 2 completed' );
+			brag_book_log( 'BRAG book Gallery: Stage 2 completed' );
 
 			// Stage 3: dispatch the first batch asynchronously so each batch runs
 			// in its own short-lived PHP request, immune to server timeouts.
 			// Completion and API reporting are handled by finalize_sync() once the
 			// last batch in the chain finishes.
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery: Dispatching Stage 3 batch chain asynchronously.' );
+			brag_book_log( 'BRAG book Gallery: Dispatching Stage 3 batch chain asynchronously.' );
 			set_transient( 'brag_book_stage_progress', [
 				'current'    => 2,
 				'total'      => 3,
@@ -4012,7 +4028,7 @@ class Sync_Page extends Settings_Base {
 		} catch ( \Exception $e ) {
 			$error_message = 'Sync failed: ' . $e->getMessage();
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery: ' . $error_message );
+			brag_book_log( 'BRAG book Gallery: ' . $error_message );
 
 			$sync_api->report_sync(
 				Sync_Api::STATUS_FAILED,
@@ -4063,7 +4079,7 @@ class Sync_Page extends Settings_Base {
 	private function handle_sync_stage_failure( array $result, string $stage_name, $database, ?int $log_id, array $settings, Sync_Api $sync_api, string $sync_source ): void {
 		$error_message = $result['message'] ?? $stage_name . ' failed';
 		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-		error_log( 'BRAG book Gallery: ' . $stage_name . ' failed: ' . $error_message );
+		brag_book_log( 'BRAG book Gallery: ' . $stage_name . ' failed: ' . $error_message );
 
 		if ( $database && $log_id ) {
 			$database->update_sync_log( $log_id, 'failed', 0, 0, $error_message );
