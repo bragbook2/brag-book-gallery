@@ -1,5 +1,0 @@
-includes/admin/sync/class-sync-automatic-settings.php
-includes/admin/ui/traits/trait-render-helper.php
-includes/core/trait-logger.php
-test-favorites-setup.js
-test-localStorage-detection.js
