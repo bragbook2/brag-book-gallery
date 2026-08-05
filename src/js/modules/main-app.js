@@ -593,35 +593,6 @@ class BRAGbookGalleryApp {
 	}
 
 	/**
-	 * Get API token from config
-	 * Handles multiple possible locations for the token
-	 */
-	getApiToken() {
-		const config = window.bragBookGalleryConfig;
-		if (!config) {
-			console.log('BRAGBook: bragBookGalleryConfig not available');
-			return null;
-		}
-
-		// Try different locations where the token might be stored
-		const token = config.api_token ||
-			   config.apiToken ||
-			   (config.api_config && config.api_config.default_token) ||
-			   null;
-
-		if (token) {
-			console.log('BRAGBook: API token found');
-		} else {
-			console.log('BRAGBook: API token not found in config. Available keys:', Object.keys(config));
-			if (config.api_config) {
-				console.log('BRAGBook: api_config keys:', Object.keys(config.api_config));
-			}
-		}
-
-		return token;
-	}
-
-	/**
 	 * Get API endpoint from config
 	 */
 	getApiEndpoint() {
@@ -3017,17 +2988,6 @@ class BRAGbookGalleryApp {
 		}
 	}
 
-
-	/**
-	 * Escape HTML characters for safe output
-	 */
-	escapeHtml(text) {
-		if (!text) return '';
-
-		const div = document.createElement('div');
-		div.textContent = text;
-		return div.innerHTML;
-	}
 
 	/**
 	 * Update SEO meta tags for case details

@@ -345,19 +345,19 @@ class Endpoints {
 
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log, WordPress.PHP.DevelopmentFunctions.error_log_print_r
-				error_log( 'get_case_details: Retrieved API tokens: ' . print_r( $api_tokens, true ) );
+				brag_book_log( 'get_case_details: Retrieved API tokens: ' . print_r( $api_tokens, true ) );
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log, WordPress.PHP.DevelopmentFunctions.error_log_print_r
-				error_log( 'get_case_details: Retrieved website property IDs: ' . print_r( $website_property_ids, true ) );
+				brag_book_log( 'get_case_details: Retrieved website property IDs: ' . print_r( $website_property_ids, true ) );
 			}
 
 			if ( empty( $api_tokens[0] ) || empty( $website_property_ids[0] ) ) {
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-					error_log( 'BRAG book Gallery: get_case_details - Missing API configuration' );
+					brag_book_log( 'BRAG book Gallery: get_case_details - Missing API configuration' );
 					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-					error_log( 'BRAG book Gallery: API tokens empty: ' . ( empty( $api_tokens[0] ) ? 'YES' : 'NO' ) );
+					brag_book_log( 'BRAG book Gallery: API tokens empty: ' . ( empty( $api_tokens[0] ) ? 'YES' : 'NO' ) );
 					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-					error_log( 'BRAG book Gallery: Website property IDs empty: ' . ( empty( $website_property_ids[0] ) ? 'YES' : 'NO' ) );
+					brag_book_log( 'BRAG book Gallery: Website property IDs empty: ' . ( empty( $website_property_ids[0] ) ? 'YES' : 'NO' ) );
 				}
 				return null;
 			}
@@ -367,9 +367,9 @@ class Endpoints {
 
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'get_case_details: Using API token (first 10): ' . substr( $api_token, 0, 10 ) );
+				brag_book_log( 'get_case_details: Using API token (first 10): ' . substr( $api_token, 0, 10 ) );
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'get_case_details: Using website property ID: ' . $website_property_id );
+				brag_book_log( 'get_case_details: Using website property ID: ' . $website_property_id );
 			}
 
 		// Get the API base URL from settings
@@ -444,111 +444,6 @@ class Endpoints {
 			$this->log_error( 'Unexpected error in get_case_details: ' . $e->getMessage() );
 			return null;
 		}
-	}
-
-	/**
-	 * Add case to user favorites with contact validation
-	 *
-	 * Securely saves a case to the user's favorites list with comprehensive
-	 * input validation, sanitization, and contact information processing.
-	 *
-	 * Security Features:
-	 * - Email validation using WordPress is_email() function
-	 * - Phone number sanitization with format preservation
-	 * - Name sanitization to prevent XSS attacks
-	 * - Input validation for all required fields
-	 *
-	 * @since 3.0.0
-	 *
-	 * @param array<string> $api_tokens       Array of API authentication tokens
-	 * @param array<int>    $website_prop_ids Array of website property IDs
-	 * @param string        $email            User's email address (validated)
-	 * @param string        $phone            User's phone number (sanitized)
-	 * @param string        $name             User's display name (sanitized)
-	 * @param int|string    $case_id          Case identifier to add to favorites
-	 *
-	 * @return string|null JSON response with favorite status, null on failure
-	 *
-	 * @throws InvalidArgumentException When email format is invalid
-	 * @throws InvalidArgumentException When required fields are empty
-	 */
-	public function get_favorite_data(
-		array $api_tokens,
-		array $website_prop_ids,
-		string $email,
-		string $phone,
-		string $name,
-		int|string $case_id
-	): ?string {
-
-		// Validate email.
-		if ( ! is_email( $email ) ) {
-			throw new \InvalidArgumentException(
-				esc_html__(
-					'Invalid email address',
-					'brag-book-gallery'
-				)
-			);
-		}
-
-		// Enhanced input validation and sanitization with security rules
-		$validation_errors = [];
-
-		// Validate email with enhanced security
-		$email = sanitize_email( $email );
-		if ( ! $this->validate_input( $email, 'email' ) ) {
-			$validation_errors[] = 'Invalid email format or length';
-		}
-
-		// Validate and sanitize phone number
-		$phone = $this->sanitize_phone( $phone );
-		if ( ! $this->validate_input( $phone, 'phone' ) ) {
-			$validation_errors[] = 'Invalid phone number format';
-		}
-
-		// Validate and sanitize name
-		$name = sanitize_text_field( $name );
-		if ( ! $this->validate_input( $name, 'name' ) ) {
-			$validation_errors[] = 'Invalid name format or length';
-		}
-
-		// Validate and sanitize case ID
-		$case_id_str = is_numeric( $case_id ) ? (string) $case_id : sanitize_text_field( (string) $case_id );
-		if ( ! $this->validate_input( $case_id_str, 'case_id' ) ) {
-			$validation_errors[] = 'Invalid case ID format';
-		}
-		$case_id = is_numeric( $case_id ) ? (int) $case_id : $case_id_str;
-
-		// Check for validation errors
-		if ( ! empty( $validation_errors ) ) {
-			throw new \InvalidArgumentException(
-				esc_html__(
-					'Input validation failed: ',
-					'brag-book-gallery'
-				) . esc_html( implode( ', ', $validation_errors ) )
-			);
-		}
-
-		// Prepare request body
-		$body = array(
-			'apiTokens'          => array_values( $api_tokens ),
-			'websitePropertyIds' => array_map(
-				'intval',
-				$website_prop_ids
-			),
-			'email'              => $email,
-			'phone'              => $phone,
-			'name'               => $name,
-			'caseId'             => intval( $case_id ), // API expects caseId as a number
-		);
-
-		// Make API request (don't cache favorites operations).
-		return $this->make_api_request(
-			self::API_ENDPOINTS['favorites_add'],
-			$body,
-			'POST',
-			false
-		);
 	}
 
 	/**
@@ -667,150 +562,6 @@ class Endpoints {
 			'POST',
 			false // Disable cache
 		);
-	}
-
-	/**
-	 * Get case details by case number.
-	 *
-	 * @since 3.0.0
-	 * @param string $api_token API authentication token
-	 * @param int $website_property_id Website property ID
-	 * @param string $case_number Case number to fetch
-	 * @param array $procedure_ids Optional procedure IDs for filtering
-	 * @return array|null Case data on success, null on failure
-	 */
-	public function get_case_by_number(
-		string $api_token,
-		int $website_property_id,
-		string $case_number,
-		array $procedure_ids = []
-	): ?array {
-		// Use the case detail endpoint with case ID
-		$endpoint = sprintf( self::API_ENDPOINTS['case_detail'], $case_number );
-
-		// Log the request details for debugging
-		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
-			do_action( 'qm/debug', 'BRAG book Gallery: Case API Request Details:' );
-			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
-			do_action( 'qm/debug', '  Endpoint: ' . $endpoint );
-			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
-			do_action( 'qm/debug', '  Full URL: ' . Setup::get_api_url() . $endpoint );
-			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
-			do_action( 'qm/debug', '  Token: ' . substr( $api_token, 0, 10 ) . '...' );
-			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
-			do_action( 'qm/debug', '  Property ID: ' . $website_property_id );
-			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
-			do_action( 'qm/debug', '  Case Number: ' . $case_number );
-			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
-			do_action( 'qm/debug', '  Procedure IDs: ' . wp_json_encode( $procedure_ids ) );
-		}
-
-		// Try both request formats - first with arrays (like pagination endpoint)
-		// For single case endpoint, we don't need to send procedureIds
-		$request_body = [
-			'apiTokens' => [ $api_token ],
-			'websitePropertyIds' => [ (int) $website_property_id ],
-		];
-
-		// Only add procedureIds if they were explicitly provided
-		if ( ! empty( $procedure_ids ) ) {
-			$request_body['procedureIds'] = array_map( 'intval', $procedure_ids );
-		}
-
-		// Make API request to get specific case
-		$response = $this->make_api_request(
-			$endpoint,
-			$request_body,
-			'POST',
-			false // Don't use cache for case details
-		);
-
-		// If first format failed, try with singular keys
-		if ( empty( $response ) ) {
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
-				do_action( 'qm/debug', 'First format failed, trying singular keys...' );
-			}
-
-			// Try with singular keys (some endpoints might expect this)
-			$request_body = [
-				'apiToken' => $api_token,
-				'websitePropertyId' => (int) $website_property_id,
-				'procedureIds' => array_map( 'intval', $procedure_ids ),
-			];
-
-			$response = $this->make_api_request(
-				$endpoint,
-				$request_body,
-				'POST',
-				false
-			);
-		}
-
-		if ( empty( $response ) ) {
-			$this->log_error( 'Empty response from case detail API for case: ' . $case_number . ', endpoint: ' . $endpoint );
-			return null;
-		}
-
-		// Decode response
-		$data = json_decode( $response, true );
-
-		// Log the response for debugging
-		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
-			do_action( 'qm/debug', 'BRAG book Gallery: Case API Response status: ' . ( ! empty( $data ) ? 'Has data' : 'Empty' ) );
-			if ( ! empty( $data ) ) {
-				// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
-				do_action( 'qm/debug', '  Response keys: ' . implode( ', ', array_keys( $data ) ) );
-				if ( isset( $data['success'] ) ) {
-					// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
-					do_action( 'qm/debug', '  Success flag: ' . ( $data['success'] ? 'true' : 'false' ) );
-				}
-				if ( isset( $data['data'] ) ) {
-					// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
-					do_action( 'qm/debug', '  Data type: ' . gettype( $data['data'] ) );
-					if ( is_array( $data['data'] ) ) {
-						// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
-						do_action( 'qm/debug', '  Data count: ' . count( $data['data'] ) );
-						if ( ! empty( $data['data'][0] ) && isset( $data['data'][0]['id'] ) ) {
-							// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
-							do_action( 'qm/debug', '  First case ID: ' . $data['data'][0]['id'] );
-						}
-					}
-				}
-			}
-		}
-
-		// Check if successful and has data
-		if ( ! is_array( $data ) ) {
-			$this->log_error( 'Invalid response format from case API' );
-			return null;
-		}
-
-		// Check for success flag
-		if ( isset( $data['success'] ) && $data['success'] === true && ! empty( $data['data'] ) ) {
-			// Return the first case from data array
-			return is_array( $data['data'] ) && ! empty( $data['data'][0] ) ? $data['data'][0] : null;
-		}
-
-		// If no success flag but has data key, try that
-		if ( isset( $data['data'] ) && is_array( $data['data'] ) && ! empty( $data['data'] ) ) {
-			// Return the first case from data array even without success flag
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
-				do_action( 'qm/debug', 'get_case_by_number: Found data array without success flag' );
-			}
-			return $data['data'][0];
-		}
-
-		// If no success flag, maybe the response is the case data directly
-		if ( isset( $data['id'] ) || isset( $data['caseId'] ) ) {
-			return $data;
-		}
-
-		$this->log_error( 'Case not found or invalid response structure. Keys: ' . implode(', ', array_keys($data)) );
-		return null;
 	}
 
 	/**
@@ -1417,123 +1168,6 @@ class Endpoints {
 	}
 
 	/**
-	 * Clear API cache
-	 *
-	 * Clears all cached API responses. Useful when data needs
-	 * to be refreshed immediately.
-	 *
-	 * @since 3.0.0
-	 *
-	 * @param string $type Optional cache type to clear
-	 *
-	 * @return bool True on success, false on failure
-	 */
-	public function clear_api_cache( string $type = '' ): bool {
-		global $wpdb;
-
-		// Ensure $type is never null to avoid deprecation warnings
-		$type = $type ?? '';
-
-		if ( empty( $type ) ) {
-			// Clear all BRAG book API cache including timeout transients
-			// $result = false; // Cache_Manager::delete_pattern( 'brag_book_gallery_transient_api_*' );
-		} else {
-			// Clear specific type including timeout transients
-			// $result = false; // Cache_Manager::delete_pattern( 'brag_book_gallery_transient_api_' . $type . '_*' );
-		}
-
-		// Clear object cache as well
-		wp_cache_flush();
-
-		/**
-		 * Action hook after cache is cleared
-		 *
-		 * @since 3.0.0
-		 *
-		 * @param string $type Cache type that was cleared
-		 * @param bool   $result Whether cache was successfully cleared
-		 */
-		do_action(
-			'brag_book_gallery_api_cache_cleared',
-			$type,
-			$result !== false
-		);
-
-		return $result !== false;
-	}
-
-	/**
-	 * Optimize image using API
-	 *
-	 * Optimizes and transforms images on-the-fly using the API service.
-	 *
-	 * @since 3.0.0
-	 *
-	 * @param string $api_token API authentication token
-	 * @param string $image_url Source image URL to optimize
-	 * @param string $quality Image quality (small/medium/large)
-	 * @param string $format Output format (png/jpg/webp)
-	 * @param string $plugin_version Plugin version for tracking
-	 *
-	 * @return string|null Optimized image URL on success, null on failure
-	 */
-	public function optimize_image(
-		string $api_token,
-		string $image_url,
-		string $quality = 'medium',
-		string $format = 'webp',
-		string $plugin_version = '3.0.0'
-	): ?string {
-		// Validate inputs
-		if ( empty( $api_token ) || empty( $image_url ) ) {
-			$this->log_error( 'API token and image URL are required for image optimization' );
-			return null;
-		}
-
-		// Validate URL
-		if ( ! filter_var( $image_url, FILTER_VALIDATE_URL ) ) {
-			$this->log_error( 'Invalid image URL provided for optimization' );
-			return null;
-		}
-
-		// Build query parameters
-		$query_params = [
-			'url' => $image_url,
-			'quality' => $quality,
-			'format' => $format,
-		];
-
-		// Build URL with query parameters
-		$url = self::API_ENDPOINTS['optimize_image'] . '?' . http_build_query( $query_params );
-		$full_url = Setup::get_api_url() . $url;
-
-		// Make GET request with headers
-		$response = wp_remote_get( $full_url, [
-			'timeout' => self::API_TIMEOUT,
-			'headers' => [
-				'x-api-token' => $api_token,
-				'x-plugin-version' => $plugin_version,
-				'Accept' => 'application/json',
-			],
-		] );
-
-		if ( is_wp_error( $response ) ) {
-			$this->log_error( 'Image optimization API request failed: ' . $response->get_error_message() );
-			return null;
-		}
-
-		$response_code = wp_remote_retrieve_response_code( $response );
-		$response_body = wp_remote_retrieve_body( $response );
-
-		if ( $response_code !== 200 ) {
-			$this->log_error( sprintf( 'Image optimization API returned status %d', $response_code ) );
-			return null;
-		}
-
-		return $response_body;
-	}
-
-	/**
 	 * Get sitemap data from API
 	 *
 	 * Generates sitemap data for SEO purposes.
@@ -1950,98 +1584,6 @@ class Endpoints {
 
 		if ( json_last_error() !== JSON_ERROR_NONE ) {
 			$this->log_error( 'Invalid JSON response from v2 practices API: ' . json_last_error_msg() );
-			return null;
-		}
-
-		return $data;
-	}
-
-	/**
-	 * Add case to user favorites using v2 API
-	 *
-	 * Adds a case to the user's favorites list using Bearer authentication
-	 * and query parameters instead of JSON body.
-	 *
-	 * @since 3.3.2
-	 *
-	 * @param string $api_token           API token for authentication
-	 * @param int    $website_property_id Website property ID
-	 * @param int    $case_procedure_id   The case procedure order ID
-	 * @param int    $procedure_id        The procedure ID
-	 * @param string $email               User's email address
-	 * @param string $phone               User's phone number
-	 * @param string $name                User's name
-	 *
-	 * @return array|null Response data on success, null on failure
-	 */
-	public function add_favorite_v2(
-		string $api_token,
-		int $website_property_id,
-		int $case_procedure_id,
-		int $procedure_id,
-		string $email,
-		string $phone,
-		string $name
-	): ?array {
-		// Validate inputs
-		if ( empty( $api_token ) || $website_property_id <= 0 || $case_procedure_id <= 0 || $procedure_id <= 0 ) {
-			$this->log_error( 'API token, website property ID, case procedure ID, and procedure ID are required for v2 favorites add' );
-			return null;
-		}
-
-		// Validate email
-		if ( ! is_email( $email ) ) {
-			$this->log_error( 'Valid email address is required for v2 favorites add' );
-			return null;
-		}
-
-		// Sanitize inputs
-		$email = sanitize_email( $email );
-		$phone = $this->sanitize_phone( $phone );
-		$name = sanitize_text_field( $name );
-
-		// Build query parameters
-		$params = [
-			'websitePropertyId' => $website_property_id,
-			'caseProcedureId'   => $case_procedure_id,
-			'procedureId'       => $procedure_id,
-			'email'             => $email,
-			'phone'             => $phone,
-			'name'              => $name,
-		];
-
-		// Build URL with query parameters
-		$url = self::API_ENDPOINTS['favorites_add_v2'] . '?' . http_build_query( $params );
-		$full_url = Setup::get_api_url() . $url;
-
-		// Make POST request with Bearer token authentication
-		$response = wp_remote_post( $full_url, [
-			'timeout' => self::API_TIMEOUT,
-			'headers' => [
-				'Authorization' => 'Bearer ' . $api_token,
-				'Accept'        => 'application/json',
-				'User-Agent'    => 'BRAG book Gallery Plugin/3.3.2',
-			],
-		] );
-
-		if ( is_wp_error( $response ) ) {
-			$this->log_error( 'v2 favorites add API request failed: ' . $response->get_error_message() );
-			return null;
-		}
-
-		$response_code = wp_remote_retrieve_response_code( $response );
-		$response_body = wp_remote_retrieve_body( $response );
-
-		if ( $response_code !== 200 && $response_code !== 201 ) {
-			$this->log_error( sprintf( 'v2 favorites add API returned status %d: %s', $response_code, $response_body ) );
-			return null;
-		}
-
-		// Decode JSON response
-		$data = json_decode( $response_body, true );
-
-		if ( json_last_error() !== JSON_ERROR_NONE ) {
-			$this->log_error( 'Invalid JSON response from v2 favorites add API: ' . json_last_error_msg() );
 			return null;
 		}
 
@@ -2537,40 +2079,6 @@ class Endpoints {
 		}
 
 		return $validated_tokens;
-	}
-
-	/**
-	 * Rate limiting check
-	 *
-	 * Simple rate limiting implementation to prevent API abuse.
-	 *
-	 * @since 3.0.0
-	 *
-	 * @param string $identifier Rate limit identifier (IP, user, etc.)
-	 * @param int    $limit      Maximum requests per time window
-	 * @param int    $window     Time window in seconds
-	 *
-	 * @return bool True if under limit, false if rate limited
-	 */
-	private function check_rate_limit( string $identifier, int $limit = 100, int $window = 3600 ): bool {
-		$cache_key = 'brag_book_gallery_transient_rate_limit_' . $identifier;
-		// $current_requests = false; // Cache_Manager::get( $cache_key );
-
-		if ( $current_requests === false ) {
-			// First request in window
-			// Cache_Manager::set( $cache_key, 1, $window );
-			return true;
-		}
-
-		if ( $current_requests >= $limit ) {
-			// Rate limit exceeded
-			$this->log_error( 'Rate limit exceeded for identifier: ' . $identifier );
-			return false;
-		}
-
-		// Increment counter
-		// Cache_Manager::set( $cache_key, $current_requests + 1, $window );
-		return true;
 	}
 
 	/**

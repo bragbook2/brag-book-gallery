@@ -1544,8 +1544,8 @@ function updateFilterBadges() {
 		}
 
 		badge.innerHTML = `
-			<span class="brag-book-gallery-badge-text">${displayType}: ${escapeHtml(displayValue)}</span>
-			<button class="brag-book-gallery-badge-remove" aria-label="Remove ${displayType}: ${escapeHtml(displayValue)} filter">
+			<span class="brag-book-gallery-badge-text">${escapeHtml(displayType)}: ${escapeHtml(displayValue)}</span>
+			<button class="brag-book-gallery-badge-remove" aria-label="Remove ${escapeHtml(displayType)}: ${escapeHtml(displayValue)} filter">
 				<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
 					<path d="M13 1L1 13M1 1l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
 				</svg>
@@ -1657,13 +1657,20 @@ window.removeFilterBadge = function(filterType, filterValue) {
 
 /**
  * Escape HTML characters for safe output (helper function)
+ *
+ * Escapes quotes as well as angle brackets, so the result is safe inside a
+ * quoted attribute value. The textContent/innerHTML trick this replaced left
+ * quotes intact, which is fine in text nodes but breaks out of attributes.
  */
 function escapeHtml(text) {
 	if (!text) return '';
 
-	const div = document.createElement('div');
-	div.textContent = text;
-	return div.innerHTML;
+	return String(text)
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;')
+		.replace(/'/g, '&#039;');
 };
 
 /**
