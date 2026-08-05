@@ -271,12 +271,12 @@ final class Cases_Handler {
 			true
 		);
 
-		// Localize script with necessary data for AJAX and functionality
-		wp_localize_script( 'brag-book-gallery-main', 'bragBookGalleryConfig', [
-			'ajaxUrl' => admin_url( 'admin-ajax.php' ),
-			'nonce'   => wp_create_nonce( 'brag_book_gallery_nonce' ),
-			'columns' => absint( get_option( 'brag_book_gallery_columns', 2 ) ),
-		] );
+		// Route through the canonical localizer rather than writing
+		// bragBookGalleryConfig directly — a second payload for the same object
+		// replaces the first outright instead of merging. handle() localizes
+		// the full config; the short payload that used to sit here added only
+		// a columns key that no JavaScript reads.
+		Asset_Manager::localize_gallery_script( [], [] );
 	}
 
 	/**
