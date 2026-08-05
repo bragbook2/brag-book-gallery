@@ -4,6 +4,77 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.2-beta6] - 2026-08-05 (Beta Release)
+
+### Security
+
+- **The API token is no longer printed into the page source**: the gallery,
+  carousel and favorites shortcodes localised it into `bragBookGalleryConfig`
+  and `bragBookCarouselConfig`, both of which are emitted for anonymous
+  visitors. Nothing consumed it — the only reader had no callers — so both
+  payloads are gone rather than reworked. Rotate the token if the site has been
+  public.
+- **Rate limiting works again**: `Cache_Manager` had been removed from the tree
+  and every call site commented out, so `check_rate_limits()` read a hardcoded
+  zero and never wrote a counter. The consultation form, the favorites email
+  lookup and the API client were all unthrottled. Replaced with transient-backed
+  per-IP counters.
+- **The favorites email lookup is throttled**: it returns a patient's name and
+  phone for any address that exists, so unthrottled it was an enumeration
+  oracle. Capped at ten attempts per IP per hour, and it no longer returns the
+  upstream exception message to the browser.
+- **Every error path in Communications was fatal**: the file imported `WP_Error`
+  from the plugin namespace, where no such class exists, so invalid input, spam
+  matches and bad request methods threw `Class not found` instead of returning a
+  message.
+- **The sync REST routes prefer a header over a query parameter**: a token in
+  the query string is written to access logs, proxy logs and `Referer` headers.
+  `X-BRAGBook-Token` is now preferred; `?token=` still works during the
+  switchover.
+- Removed `brag_book_test_ajax`, a debug endpoint registered for unauthenticated
+  callers with no nonce and no capability check.
+
+### Fixed
+
+- **Carousel slides are clickable again**: slides carried a `data-slide`
+  attribute, and Bootstrap's carousel data-api delegates clicks on
+  `[data-slide], [data-slide-to]` and cancels them, treating anything that
+  matches as one of its own controls. On any site loading Bootstrap — including
+  one still running the legacy `bagallery_v5_1` plugin — clicking a slide never
+  reached its case page. Renamed to `data-bb-slide`.
+- **Carousel images were never marked as the LCP candidate**: the slide index
+  was pre-incremented, so the first slide was index 1 while everything
+  downstream treated it as zero-based. No image ever received
+  `loading="eager"`, and the first slide announced itself as "Slide 2 of N".
+- **Carousel snapping drifted**: snap and current-slide detection computed
+  position as `index * offsetWidth`, ignoring the 16px grid gap, so both fell
+  further out of true with every slide.
+- `.brag-book-gallery-picture` now spans its container; the base rule only set
+  `display: flex`, so it sized to its content.
+
+### Added
+
+- **Drag to scroll a carousel, click to open the case**: a press becomes a drag
+  only once it travels 5px, so a plain click still opens the case while a
+  click-and-hold sweeps the track. Momentum now derives from pointer speed over
+  time and is clamped, rather than multiplying the last raw delta — a 5px nudge
+  used to coast half a slide.
+
+### Changed
+
+- **Debug logging is gated behind `WP_DEBUG`**: 656 direct `error_log()` calls,
+  370 of them in the sync, now route through `brag_book_log()`, which no-ops
+  unless debugging. A single sync run was writing hundreds of lines to the
+  host's error log on production sites.
+- **The changelog admin page renders this file**: it previously carried its own
+  hand-maintained copy of the version history in a 1,702-line method, which
+  drifted from the file every release.
+- Removed unreferenced classes and methods that never ran, including two whose
+  bodies read undefined variables and always reported success — one of which
+  called `wp_cache_flush()`, emptying the entire site's object cache.
+- Collapsed seven copies of `escapeHtml` in the JavaScript into one. Four left
+  quotes unescaped, which is safe in a text node but not in an attribute.
+
 ## [4.9.2-beta5] - 2026-07-29 (Beta Release)
 
 ### Fixed
