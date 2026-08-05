@@ -8,6 +8,9 @@
 /***/ (function(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
 
 __webpack_require__.r(__webpack_exports__);
+/* harmony import */ var _utilities_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./utilities.js */ "./src/js/modules/utilities.js");
+
+
 /**
  * Filter System Component
  * Manages expandable filter groups with URL routing
@@ -653,7 +656,7 @@ class FilterSystem {
   generateFilterSection(title, type, options) {
     let html = '<details class="brag-book-gallery-filter">';
     html += '<summary class="brag-book-gallery-filter-label">';
-    html += `<span class="brag-book-gallery-filter-label__name">${this.escapeHtml(title)}</span>`;
+    html += `<span class="brag-book-gallery-filter-label__name">${(0,_utilities_js__WEBPACK_IMPORTED_MODULE_0__.escapeHtml)(title)}</span>`;
     html += '<svg class="brag-book-gallery-filter-label__arrow" width="16" height="16" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">';
     html += '<path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>';
     html += '</svg>';
@@ -664,80 +667,13 @@ class FilterSystem {
       // Only convert to lowercase for gender and ethnicity filters
       const value = type === 'gender' || type === 'ethnicity' ? option.toLowerCase() : option;
       html += '<li class="brag-book-gallery-filter-option">';
-      html += `<input type="checkbox" id="${id}" value="${this.escapeHtml(value)}" data-filter-type="${type}">`;
-      html += `<label for="${id}">${this.escapeHtml(option)}</label>`;
+      html += `<input type="checkbox" id="${id}" value="${(0,_utilities_js__WEBPACK_IMPORTED_MODULE_0__.escapeHtml)(value)}" data-filter-type="${type}">`;
+      html += `<label for="${id}">${(0,_utilities_js__WEBPACK_IMPORTED_MODULE_0__.escapeHtml)(option)}</label>`;
       html += '</li>';
     });
     html += '</ul>';
     html += '</details>';
     return html;
-  }
-
-  /**
-   * Escape HTML characters for safe output
-   * @param {string} text - Text to escape
-   * @returns {string} Escaped text
-   */
-  escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    // Also escape quotes for use in HTML attributes
-    return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-  }
-
-  /**
-   * Update filter badges display based on active filters
-   * DISABLED: Only demographic filters should create badges now
-   */
-  updateFilterBadges() {
-    // This method is disabled - only demographic filters create badges now
-    // All badge management is handled by the global updateFilterBadges() function
-    return;
-  }
-
-  /**
-   * Create a filter badge element
-   */
-  createFilterBadge(category, procedure, filterKey) {
-    const badge = document.createElement('div');
-    badge.className = 'brag-book-gallery-filter-badge';
-    badge.setAttribute('data-filter-key', filterKey);
-
-    // Format the display text based on category
-    let displayText = '';
-    switch (category) {
-      case 'age':
-        displayText = `Age: ${procedure}`;
-        break;
-      case 'gender':
-        displayText = `Gender: ${procedure}`;
-        break;
-      case 'ethnicity':
-        displayText = `Ethnicity: ${procedure}`;
-        break;
-      case 'procedure':
-        displayText = procedure;
-        break;
-      default:
-        displayText = `${category}: ${procedure}`;
-    }
-    badge.innerHTML = `
-			<span class="brag-book-gallery-badge-text">${displayText}</span>
-			<button class="brag-book-gallery-badge-remove" aria-label="Remove ${displayText} filter">
-				<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
-					<path d="M13 1L1 13M1 1l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-				</svg>
-			</button>
-		`;
-
-    // Add click handler to remove button
-    const removeButton = badge.querySelector('.brag-book-gallery-badge-remove');
-    removeButton.addEventListener('click', e => {
-      e.preventDefault();
-      this.removeFilterBadge(filterKey);
-    });
-    return badge;
   }
 
   /**

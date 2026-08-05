@@ -2731,7 +2731,7 @@ final class Gallery_Handler {
 		if ( empty( $case_procedure_id ) ) {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( "BRAGBook Gallery: Could not resolve caseProcedureId for post {$case_id}" );
+				brag_book_log( "BRAGBook Gallery: Could not resolve caseProcedureId for post {$case_id}" );
 			}
 			return;
 		}
@@ -2800,7 +2800,7 @@ final class Gallery_Handler {
 		if ( empty( $procedure_id ) ) {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( "BRAGBook Gallery: Could not get procedure_id for term {$procedure_term->term_id} ({$procedure_term->slug})" );
+				brag_book_log( "BRAGBook Gallery: Could not get procedure_id for term {$procedure_term->term_id} ({$procedure_term->slug})" );
 			}
 			return;
 		}
@@ -2827,7 +2827,7 @@ final class Gallery_Handler {
 			if ( empty( $api_tokens ) ) {
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-					error_log( 'BRAGBook Gallery: API configuration missing for procedure view tracking' );
+					brag_book_log( 'BRAGBook Gallery: API configuration missing for procedure view tracking' );
 				}
 				return;
 			}
@@ -2857,7 +2857,7 @@ final class Gallery_Handler {
 		} catch ( \Exception $e ) {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'BRAGBook Gallery: Procedure view tracking exception - ' . $e->getMessage() );
+				brag_book_log( 'BRAGBook Gallery: Procedure view tracking exception - ' . $e->getMessage() );
 			}
 		}
 	}
@@ -2882,7 +2882,7 @@ final class Gallery_Handler {
 			if ( empty( $api_tokens ) ) {
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-					error_log( 'BRAGBook Gallery: API configuration missing for server-side view tracking' );
+					brag_book_log( 'BRAGBook Gallery: API configuration missing for server-side view tracking' );
 				}
 
 				return;
@@ -2922,7 +2922,7 @@ final class Gallery_Handler {
 		} catch ( \Exception $e ) {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'BRAGBook Gallery: Server-side view tracking exception - ' . $e->getMessage() );
+				brag_book_log( 'BRAGBook Gallery: Server-side view tracking exception - ' . $e->getMessage() );
 			}
 		}
 	}

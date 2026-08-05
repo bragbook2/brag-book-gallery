@@ -1,8 +1,273 @@
 /******/ (function() { // webpackBootstrap
 /******/ 	"use strict";
+/******/ 	var __webpack_modules__ = ({
+
+/***/ "./src/js/modules/utilities.js":
+/*!*************************************!*\
+  !*** ./src/js/modules/utilities.js ***!
+  \*************************************/
+/***/ (function(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   NudityWarningManager: function() { return /* binding */ NudityWarningManager; },
+/* harmony export */   PhoneFormatter: function() { return /* binding */ PhoneFormatter; },
+/* harmony export */   escapeHtml: function() { return /* binding */ escapeHtml; }
+/* harmony export */ });
+/**
+ * Nudity Warning Manager
+ * Handles nudity warnings and acceptance state
+ */
+class NudityWarningManager {
+  constructor() {
+    this.nudityAccepted = false;
+    this.storageKey = 'brag-book-gallery-nudity-accepted';
+
+    // Check acceptance status BEFORE DOM loads to prevent flash
+    this.checkInitialAcceptance();
+    this.init();
+  }
+  checkInitialAcceptance() {
+    // Check localStorage immediately
+    try {
+      const stored = localStorage.getItem(this.storageKey);
+      this.nudityAccepted = stored === 'true';
+
+      // Add class to body immediately if accepted
+      if (this.nudityAccepted) {
+        document.body.classList.add('nudity-accepted');
+      }
+    } catch (e) {
+      console.warn('Could not load nudity acceptance status from localStorage:', e);
+      this.nudityAccepted = false;
+    }
+  }
+  init() {
+    this.setupEventListeners();
+  }
+  saveAcceptanceStatus() {
+    try {
+      localStorage.setItem(this.storageKey, 'true');
+    } catch (e) {
+      console.warn('Could not save nudity acceptance status to localStorage:', e);
+    }
+  }
+  setupEventListeners() {
+    // Add click event listeners to all Proceed buttons in nudity warnings
+    document.addEventListener('click', e => {
+      if (e.target.matches('.brag-book-gallery-nudity-warning-button')) {
+        this.handleProceedButtonClick(e.target);
+      }
+      // Prevent clicks on nudity warning overlay from bubbling to underlying elements
+      else if (e.target.matches('.brag-book-gallery-nudity-warning') || e.target.closest('.brag-book-gallery-nudity-warning')) {
+        // Only prevent if not clicking on the proceed button
+        if (!e.target.matches('.brag-book-gallery-nudity-warning-button') && !e.target.closest('.brag-book-gallery-nudity-warning-button')) {
+          e.stopPropagation();
+          e.preventDefault();
+        }
+      }
+    });
+  }
+  handleProceedButtonClick(button) {
+    // Mark nudity as accepted globally
+    this.nudityAccepted = true;
+    this.saveAcceptanceStatus();
+
+    // Add class to body for CSS hiding
+    document.body.classList.add('nudity-accepted');
+
+    // Animate the removal for smooth transition
+    this.animateRemoval();
+  }
+  animateRemoval() {
+    const allNudityWarnings = document.querySelectorAll('.brag-book-gallery-nudity-warning');
+    const allBlurredImages = document.querySelectorAll('.brag-book-gallery-nudity-blur');
+    allNudityWarnings.forEach(nudityWarning => {
+      nudityWarning.style.transition = 'opacity 0.5s ease-out';
+      nudityWarning.style.opacity = '0';
+      setTimeout(() => {
+        nudityWarning.style.display = 'none';
+      }, 500);
+    });
+    allBlurredImages.forEach(blurredImage => {
+      blurredImage.style.transition = 'filter 0.5s ease-out';
+      blurredImage.style.filter = 'blur(0px)';
+    });
+  }
+
+  // Method to reset acceptance - call this from browser console
+  resetAcceptance() {
+    this.nudityAccepted = false;
+    try {
+      localStorage.removeItem(this.storageKey);
+      document.body.classList.remove('nudity-accepted');
+    } catch (e) {
+      console.warn('Could not remove nudity acceptance status from localStorage:', e);
+    }
+  }
+}
+
+/**
+ * Phone Number Formatter
+ * Formats phone inputs to (000) 000-0000 format
+ */
+class PhoneFormatter {
+  constructor() {
+    this.init();
+  }
+  init() {
+    // Find all phone inputs with data-phone-format attribute
+    const phoneInputs = document.querySelectorAll('[data-phone-format="true"]');
+    phoneInputs.forEach(input => {
+      this.setupPhoneInput(input);
+    });
+  }
+  setupPhoneInput(input) {
+    // Format on input
+    input.addEventListener('input', e => {
+      this.formatPhoneNumber(e.target);
+    });
+
+    // Handle paste
+    input.addEventListener('paste', e => {
+      setTimeout(() => {
+        this.formatPhoneNumber(e.target);
+      }, 0);
+    });
+
+    // Prevent non-numeric input except for formatting characters
+    input.addEventListener('keypress', e => {
+      const char = String.fromCharCode(e.which);
+      if (!/[0-9]/.test(char) && e.which !== 8 && e.which !== 46) {
+        e.preventDefault();
+      }
+    });
+  }
+  formatPhoneNumber(input) {
+    // Remove all non-digits
+    let value = input.value.replace(/\D/g, '');
+
+    // Limit to 10 digits
+    value = value.substring(0, 10);
+
+    // Format the number
+    let formattedValue = '';
+    if (value.length > 0) {
+      if (value.length <= 3) {
+        formattedValue = `(${value}`;
+      } else if (value.length <= 6) {
+        formattedValue = `(${value.substring(0, 3)}) ${value.substring(3)}`;
+      } else {
+        formattedValue = `(${value.substring(0, 3)}) ${value.substring(3, 6)}-${value.substring(6, 10)}`;
+      }
+    }
+
+    // Update input value
+    input.value = formattedValue;
+
+    // Update validity
+    if (value.length === 10) {
+      input.setCustomValidity('');
+    } else if (input.hasAttribute('required') && value.length > 0) {
+      input.setCustomValidity('Please enter a complete 10-digit phone number');
+    }
+  }
+}
+
+/**
+ * Escape a value for interpolation into HTML.
+ *
+ * Escapes quotes as well as angle brackets, so the result is safe in a quoted
+ * attribute value as well as in a text node. Several modules previously each
+ * carried their own copy of this, and the textContent/innerHTML variants among
+ * them left quotes intact — fine in a text node, but able to break out of an
+ * attribute. Use this one everywhere.
+ *
+ * @param {*} value - Value to escape; non-strings are coerced.
+ * @returns {string} Escaped text, or an empty string for null/undefined.
+ */
+function escapeHtml(value) {
+  if (value === null || value === undefined) {
+    return '';
+  }
+  return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
+
+
+/***/ })
+
+/******/ 	});
+/************************************************************************/
+/******/ 	// The module cache
+/******/ 	var __webpack_module_cache__ = {};
+/******/ 	
+/******/ 	// The require function
+/******/ 	function __webpack_require__(moduleId) {
+/******/ 		// Check if module is in cache
+/******/ 		var cachedModule = __webpack_module_cache__[moduleId];
+/******/ 		if (cachedModule !== undefined) {
+/******/ 			return cachedModule.exports;
+/******/ 		}
+/******/ 		// Create a new module (and put it into the cache)
+/******/ 		var module = __webpack_module_cache__[moduleId] = {
+/******/ 			// no module.id needed
+/******/ 			// no module.loaded needed
+/******/ 			exports: {}
+/******/ 		};
+/******/ 	
+/******/ 		// Execute the module function
+/******/ 		if (!(moduleId in __webpack_modules__)) {
+/******/ 			delete __webpack_module_cache__[moduleId];
+/******/ 			var e = new Error("Cannot find module '" + moduleId + "'");
+/******/ 			e.code = 'MODULE_NOT_FOUND';
+/******/ 			throw e;
+/******/ 		}
+/******/ 		__webpack_modules__[moduleId](module, module.exports, __webpack_require__);
+/******/ 	
+/******/ 		// Return the exports of the module
+/******/ 		return module.exports;
+/******/ 	}
+/******/ 	
+/************************************************************************/
+/******/ 	/* webpack/runtime/define property getters */
+/******/ 	!function() {
+/******/ 		// define getter functions for harmony exports
+/******/ 		__webpack_require__.d = function(exports, definition) {
+/******/ 			for(var key in definition) {
+/******/ 				if(__webpack_require__.o(definition, key) && !__webpack_require__.o(exports, key)) {
+/******/ 					Object.defineProperty(exports, key, { enumerable: true, get: definition[key] });
+/******/ 				}
+/******/ 			}
+/******/ 		};
+/******/ 	}();
+/******/ 	
+/******/ 	/* webpack/runtime/hasOwnProperty shorthand */
+/******/ 	!function() {
+/******/ 		__webpack_require__.o = function(obj, prop) { return Object.prototype.hasOwnProperty.call(obj, prop); }
+/******/ 	}();
+/******/ 	
+/******/ 	/* webpack/runtime/make namespace object */
+/******/ 	!function() {
+/******/ 		// define __esModule on exports
+/******/ 		__webpack_require__.r = function(exports) {
+/******/ 			if(typeof Symbol !== 'undefined' && Symbol.toStringTag) {
+/******/ 				Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
+/******/ 			}
+/******/ 			Object.defineProperty(exports, '__esModule', { value: true });
+/******/ 		};
+/******/ 	}();
+/******/ 	
+/************************************************************************/
+var __webpack_exports__ = {};
+// This entry needs to be wrapped in an IIFE because it needs to be isolated against other modules in the chunk.
+!function() {
 /*!***********************************!*\
   !*** ./src/js/location-search.js ***!
   \***********************************/
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */ var _modules_utilities_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./modules/utilities.js */ "./src/js/modules/utilities.js");
+
+
 /**
  * Location Search
  *
@@ -15,8 +280,7 @@
  * @since 4.7.0
  */
 
-
-
+'use strict';
 (function () {
   const config = window.bragBookLocationSearch;
   if (!config || !config.ajaxUrl) {
@@ -361,7 +625,7 @@
   function renderResults(grid, data, ctx) {
     const count = data.count || 0;
     if (count === 0) {
-      grid.innerHTML = '<p class="brag-book-gallery-location-search__empty">' + 'No cases found near ' + escapeHtml(ctx.label) + '.</p>';
+      grid.innerHTML = '<p class="brag-book-gallery-location-search__empty">' + 'No cases found near ' + (0,_modules_utilities_js__WEBPACK_IMPORTED_MODULE_0__.escapeHtml)(ctx.label) + '.</p>';
       ctx.status('No cases found near ' + ctx.label + '.');
       if (typeof window.bragBookGalleryUpdateLoadMoreContext === 'function') {
         window.bragBookGalleryUpdateLoadMoreContext({
@@ -400,18 +664,6 @@
     if (typeof window.bragBookGalleryUpdateLoadMoreContext === 'function') {
       window.bragBookGalleryUpdateLoadMoreContext(null);
     }
-  }
-
-  /**
-   * Escape a string for safe insertion into HTML text.
-   *
-   * @param {string} value Raw string.
-   * @return {string}
-   */
-  function escapeHtml(value) {
-    const div = document.createElement('div');
-    div.textContent = String(value);
-    return div.innerHTML;
   }
 
   /**
@@ -456,6 +708,7 @@
     init();
   }
 })();
+}();
 /******/ })()
 ;
 //# sourceMappingURL=brag-book-gallery-location-search.js.map

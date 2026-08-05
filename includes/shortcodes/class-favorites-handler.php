@@ -44,6 +44,7 @@ namespace BRAGBookGallery\Includes\Shortcodes;
 use BRAGBookGallery\Includes\Resources\Asset_Manager;
 use BRAGBookGallery\Includes\Core\Setup;
 use BRAGBookGallery\Includes\Core\Trait_Api;
+use BRAGBookGallery\Includes\Core\Trait_Rate_Limit;
 use BRAGBookGallery\Includes\Core\Trait_Sanitizer;
 use BRAGBookGallery\Includes\Shortcodes\Traits\Trait_Image_Variants;
 
@@ -63,7 +64,20 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class Favorites_Handler {
 	use Trait_Api;
 	use Trait_Image_Variants;
+	use Trait_Rate_Limit;
 	use Trait_Sanitizer;
+
+	/**
+	 * Email lookups allowed per IP per hour.
+	 *
+	 * The lookup endpoint returns a patient's name and phone number for any
+	 * email address that exists, so it is an enumeration target. This caps how
+	 * fast an address list can be tested.
+	 *
+	 * @since 4.9.2
+	 * @var int
+	 */
+	private const LOOKUP_LIMIT_PER_HOUR = 10;
 
 	/**
 	 * Initialize the favorites handler
@@ -91,10 +105,6 @@ final class Favorites_Handler {
 		// Register AJAX handlers for getting case data by API ID
 		add_action( 'wp_ajax_brag_book_get_case_by_api_id', [ self::class, 'ajax_get_case_by_api_id' ] );
 		add_action( 'wp_ajax_nopriv_brag_book_get_case_by_api_id', [ self::class, 'ajax_get_case_by_api_id' ] );
-
-		// Add a test endpoint to verify AJAX is working
-		add_action( 'wp_ajax_brag_book_test_ajax', [ self::class, 'ajax_test' ] );
-		add_action( 'wp_ajax_nopriv_brag_book_test_ajax', [ self::class, 'ajax_test' ] );
 
 		// Register AJAX handlers for favorites grid
 		add_action( 'wp_ajax_brag_book_load_favorites_grid', [ self::class, 'ajax_load_favorites_grid' ] );
@@ -633,7 +643,7 @@ final class Favorites_Handler {
 			// Debug logging for favorites troubleshooting
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( sprintf(
+				brag_book_log( sprintf(
 					'BRAG book Favorites Debug - Add: received_case_id=%s, wp_post_id=%d, case_procedure_id=%s, procedure_id=%d',
 					$received_case_id,
 					$wp_post_id,
@@ -786,7 +796,7 @@ final class Favorites_Handler {
 		// Debug logging for API request
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( sprintf(
+			brag_book_log( sprintf(
 				'BRAG book Favorites API - Add Request: websitePropertyId=%d, caseProcedureId=%d, procedureId=%d, email=%s',
 				$website_property_id,
 				$case_procedure_id_int,
@@ -954,7 +964,7 @@ final class Favorites_Handler {
 			// Debug logging for favorites troubleshooting
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( sprintf(
+				brag_book_log( sprintf(
 					'BRAGBook Favorites Debug - Remove: received_case_id=%s, wp_post_id=%d, case_procedure_id=%s, procedure_id=%d, email=%s',
 					$received_case_id,
 					$wp_post_id,
@@ -975,7 +985,7 @@ final class Favorites_Handler {
 				// Log warning but allow remove to proceed — API can identify by caseProcedureId + email
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-					error_log( 'BRAGBook Gallery: procedure_id empty for remove favorite, caseProcedureId=' . $case_procedure_id );
+					brag_book_log( 'BRAGBook Gallery: procedure_id empty for remove favorite, caseProcedureId=' . $case_procedure_id );
 				}
 				$procedure_id = 0;
 			}
@@ -1039,7 +1049,7 @@ final class Favorites_Handler {
 		// Debug logging for API request
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( sprintf(
+			brag_book_log( sprintf(
 				'BRAGBook Favorites API - Remove Request: websitePropertyId=%d, caseProcedureId=%d, procedureId=%d, email=%s',
 				$website_property_id,
 				$case_procedure_id_int,
@@ -1080,7 +1090,7 @@ final class Favorites_Handler {
 		// Debug logging for API response
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( sprintf(
+			brag_book_log( sprintf(
 				'BRAGBook Favorites API - Remove Response: status=%d, body=%s',
 				$response_code,
 				substr( $response_body, 0, 500 )
@@ -1153,6 +1163,13 @@ final class Favorites_Handler {
 			] );
 		}
 
+		// Throttle after validation so malformed input costs an attacker a slot.
+		if ( ! self::within_rate_limit( 'favorites_lookup', self::LOOKUP_LIMIT_PER_HOUR, HOUR_IN_SECONDS ) ) {
+			wp_send_json_error( [
+				'message' => __( 'Too many lookup attempts. Please wait a few minutes and try again.', 'brag-book-gallery' ),
+			] );
+		}
+
 		// Make API call to lookup user favorites by email
 		try {
 			$user_data = self::lookup_user_by_email( $email );
@@ -1185,11 +1202,16 @@ final class Favorites_Handler {
 				] );
 			}
 		} catch ( \Exception $e ) {
-			// API call failed
+			// Keep the upstream message server-side; it can name internal hosts
+			// and API paths that a public visitor has no business seeing.
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				brag_book_log( 'BRAG book Gallery: favorites lookup failed — ' . $e->getMessage() );
+			}
+
 			wp_send_json_error( [
 				'message' => __( 'Unable to verify email address at this time. Please try again later.', 'brag-book-gallery' ),
 				'email' => $email,
-				'error' => $e->getMessage(),
 			] );
 		}
 	}
@@ -1650,7 +1672,7 @@ final class Favorites_Handler {
 		// Debug logging
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( sprintf(
+			brag_book_log( sprintf(
 				'BRAGBook Favorites API - List Request: URL=%s, websitePropertyId=%d, email=%s',
 				$api_url,
 				$website_property_id,
@@ -1697,7 +1719,7 @@ final class Favorites_Handler {
 		// Debug logging for response
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( sprintf(
+			brag_book_log( sprintf(
 				'BRAGBook Favorites API - List Response: success=%s, has_favorites=%s, raw_response=%s',
 				isset( $data['success'] ) ? ( $data['success'] ? 'true' : 'false' ) : 'not set',
 				! empty( $favorites_array ) ? 'yes (' . count( $favorites_array ) . ')' : 'no',
@@ -1751,7 +1773,7 @@ final class Favorites_Handler {
 		// Debug logging for extracted user info
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( sprintf(
+			brag_book_log( sprintf(
 				'BRAGBook Favorites API - Extracted user info: email=%s, name=%s, phone=%s, favorites_count=%d',
 				$user_info['email'] ?? 'empty',
 				$user_info['name'] ?? 'empty',
@@ -1765,7 +1787,7 @@ final class Favorites_Handler {
 			// Log the reason for failure
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'BRAGBook Favorites API - User info incomplete, returning false' );
+				brag_book_log( 'BRAGBook Favorites API - User info incomplete, returning false' );
 			}
 			return false;
 		}
@@ -1906,21 +1928,5 @@ final class Favorites_Handler {
 		];
 
 		wp_send_json_success( $response_data );
-	}
-
-	/**
-	 * Test AJAX endpoint to verify AJAX is working
-	 *
-	 * @return void
-	 * @since 3.0.0
-	 */
-	public static function ajax_test(): void {
-		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-		error_log( 'BRAGBook: ajax_test endpoint called' );
-
-		wp_send_json_success( [
-			'message' => 'AJAX is working correctly!',
-			'timestamp' => current_time( 'mysql' ),
-		] );
 	}
 }

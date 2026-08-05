@@ -2319,8 +2319,8 @@ function updateFilterBadges() {
       displayType = filterType.charAt(0).toUpperCase() + filterType.slice(1);
     }
     badge.innerHTML = `
-			<span class="brag-book-gallery-badge-text">${displayType}: ${escapeHtml(displayValue)}</span>
-			<button class="brag-book-gallery-badge-remove" aria-label="Remove ${displayType}: ${escapeHtml(displayValue)} filter">
+			<span class="brag-book-gallery-badge-text">${(0,_utilities_js__WEBPACK_IMPORTED_MODULE_2__.escapeHtml)(displayType)}: ${(0,_utilities_js__WEBPACK_IMPORTED_MODULE_2__.escapeHtml)(displayValue)}</span>
+			<button class="brag-book-gallery-badge-remove" aria-label="Remove ${(0,_utilities_js__WEBPACK_IMPORTED_MODULE_2__.escapeHtml)(displayType)}: ${(0,_utilities_js__WEBPACK_IMPORTED_MODULE_2__.escapeHtml)(displayValue)} filter">
 				<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
 					<path d="M13 1L1 13M1 1l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
 				</svg>
@@ -2423,17 +2423,6 @@ window.removeFilterBadge = function (filterType, filterValue) {
   // Re-apply filters to update the display
   applyProcedureFilters();
 };
-
-/**
- * Escape HTML characters for safe output (helper function)
- */
-function escapeHtml(text) {
-  if (!text) return '';
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
-;
 
 /**
  * Calculate and apply image aspect ratio dynamically
@@ -3507,30 +3496,6 @@ class BRAGbookGalleryApp {
 
     // Store referrer with all IDs
     window.storeProcedureReferrer(procedureSlug, procedureName, procedureUrl, procedureId, termId, caseId, caseWpId);
-  }
-
-  /**
-   * Get API token from config
-   * Handles multiple possible locations for the token
-   */
-  getApiToken() {
-    const config = window.bragBookGalleryConfig;
-    if (!config) {
-      console.log('BRAGBook: bragBookGalleryConfig not available');
-      return null;
-    }
-
-    // Try different locations where the token might be stored
-    const token = config.api_token || config.apiToken || config.api_config && config.api_config.default_token || null;
-    if (token) {
-      console.log('BRAGBook: API token found');
-    } else {
-      console.log('BRAGBook: API token not found in config. Available keys:', Object.keys(config));
-      if (config.api_config) {
-        console.log('BRAGBook: api_config keys:', Object.keys(config.api_config));
-      }
-    }
-    return token;
   }
 
   /**
@@ -5827,16 +5792,6 @@ class BRAGbookGalleryApp {
   }
 
   /**
-   * Escape HTML characters for safe output
-   */
-  escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-  }
-
-  /**
    * Update SEO meta tags for case details
    */
   updateCaseDetailsSEO(caseData, procedureName) {
@@ -6331,18 +6286,18 @@ class BRAGbookGalleryApp {
     }
 
     // Build data attributes
-    const dataAttrs = [`data-case-id="${this.escapeHtml(caseId)}"`, `data-post-id="${postId}"`, `data-procedure-id="${procedureId}"`, `data-procedure-case-id="${this.escapeHtml(procedureCaseId)}"`, `data-age="${caseData.age || ''}"`, `data-gender="${caseData.gender || ''}"`, `data-ethnicity="${caseData.ethnicity || ''}"`, `data-procedure-ids="${procedureId}"`, `data-card="true"`, `data-favorited="true"`].join(' ');
+    const dataAttrs = [`data-case-id="${(0,_utilities_js__WEBPACK_IMPORTED_MODULE_2__.escapeHtml)(caseId)}"`, `data-post-id="${postId}"`, `data-procedure-id="${procedureId}"`, `data-procedure-case-id="${(0,_utilities_js__WEBPACK_IMPORTED_MODULE_2__.escapeHtml)(procedureCaseId)}"`, `data-age="${caseData.age || ''}"`, `data-gender="${caseData.gender || ''}"`, `data-ethnicity="${caseData.ethnicity || ''}"`, `data-procedure-ids="${procedureId}"`, `data-card="true"`, `data-favorited="true"`].join(' ');
 
     // Build HTML matching the v3 gallery card structure exactly
     const favoriteItemId = procedureCaseId || caseId;
-    const escapedCaseId = this.escapeHtml(caseId);
-    const escapedCaseUrl = this.escapeHtml(caseUrl);
-    const escapedProcTitle = this.escapeHtml(procedureTitle);
-    const escapedItemId = this.escapeHtml(favoriteItemId);
-    const escapedImageUrl = this.escapeHtml(imageUrl);
+    const escapedCaseId = (0,_utilities_js__WEBPACK_IMPORTED_MODULE_2__.escapeHtml)(caseId);
+    const escapedCaseUrl = (0,_utilities_js__WEBPACK_IMPORTED_MODULE_2__.escapeHtml)(caseUrl);
+    const escapedProcTitle = (0,_utilities_js__WEBPACK_IMPORTED_MODULE_2__.escapeHtml)(procedureTitle);
+    const escapedItemId = (0,_utilities_js__WEBPACK_IMPORTED_MODULE_2__.escapeHtml)(favoriteItemId);
+    const escapedImageUrl = (0,_utilities_js__WEBPACK_IMPORTED_MODULE_2__.escapeHtml)(imageUrl);
     const escapedProcId = caseData.procedure_id || procedureId || '';
     // Only emit the pair together — a `sizes` with no `srcset` means nothing.
-    const responsiveAttrs = imageSrcset ? ` srcset="${this.escapeHtml(imageSrcset)}" sizes="${this.escapeHtml(imageSizes)}"` : '';
+    const responsiveAttrs = imageSrcset ? ` srcset="${(0,_utilities_js__WEBPACK_IMPORTED_MODULE_2__.escapeHtml)(imageSrcset)}" sizes="${(0,_utilities_js__WEBPACK_IMPORTED_MODULE_2__.escapeHtml)(imageSizes)}"` : '';
     let html = `<article class="brag-book-gallery-case-card brag-book-gallery-case-card--v3 brag-book-gallery-favorites-card" ${dataAttrs}>`;
     html += '<div class="brag-book-gallery-case-images single-image">';
     html += '<div class="brag-book-gallery-image-container">';
@@ -6387,16 +6342,6 @@ class BRAGbookGalleryApp {
     html += '</div>'; // Close case-images
     html += '</article>';
     return html;
-  }
-
-  /**
-   * Escape HTML to prevent XSS attacks
-   */
-  escapeHtml(unsafe) {
-    if (typeof unsafe !== 'string') {
-      return String(unsafe || '');
-    }
-    return unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
   }
 
   /**
@@ -6957,7 +6902,8 @@ class MobileMenu {
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   NudityWarningManager: function() { return /* binding */ NudityWarningManager; },
-/* harmony export */   PhoneFormatter: function() { return /* binding */ PhoneFormatter; }
+/* harmony export */   PhoneFormatter: function() { return /* binding */ PhoneFormatter; },
+/* harmony export */   escapeHtml: function() { return /* binding */ escapeHtml; }
 /* harmony export */ });
 /**
  * Nudity Warning Manager
@@ -7117,6 +7063,25 @@ class PhoneFormatter {
       input.setCustomValidity('Please enter a complete 10-digit phone number');
     }
   }
+}
+
+/**
+ * Escape a value for interpolation into HTML.
+ *
+ * Escapes quotes as well as angle brackets, so the result is safe in a quoted
+ * attribute value as well as in a text node. Several modules previously each
+ * carried their own copy of this, and the textContent/innerHTML variants among
+ * them left quotes intact — fine in a text node, but able to break out of an
+ * attribute. Use this one everywhere.
+ *
+ * @param {*} value - Value to escape; non-strings are coerced.
+ * @returns {string} Escaped text, or an empty string for null/undefined.
+ */
+function escapeHtml(value) {
+  if (value === null || value === undefined) {
+    return '';
+  }
+  return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 }
 
 

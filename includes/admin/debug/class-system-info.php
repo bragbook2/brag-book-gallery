@@ -1115,7 +1115,7 @@ final class System_Info {
 	private function handle_error( Exception $e, string $context ): void {
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( sprintf(
+			brag_book_log( sprintf(
 				'BRAG book Gallery System Info Error in %s: %s',
 				$context,
 				$e->getMessage()
@@ -1135,7 +1135,7 @@ final class System_Info {
 			$total_time = array_sum( $this->metrics );
 			if ( $total_time > 1.0 ) { // Log if operations take more than 1 second
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( sprintf(
+				brag_book_log( sprintf(
 					'BRAG book Gallery System Info Performance: %s',
 					wp_json_encode( $this->metrics )
 				) );

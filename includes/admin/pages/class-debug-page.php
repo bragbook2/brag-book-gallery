@@ -2150,9 +2150,9 @@ class Debug_Page extends Settings_Base {
 			// Log detailed error information
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'API Test Error: ' . $e->getMessage() );
+				brag_book_log( 'API Test Error: ' . $e->getMessage() );
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'API Test Endpoint: ' . $endpoint );
+				brag_book_log( 'API Test Endpoint: ' . $endpoint );
 			}
 
 			wp_send_json_error( array(

@@ -210,7 +210,7 @@ final class Carousel_Handler {
 		self::enqueue_carousel_assets();
 
 		// Localize script data for JavaScript functionality.
-		Asset_Manager::localize_carousel_script( $config );
+		Asset_Manager::localize_carousel_script();
 
 		// Generate and return carousel HTML.
 		$output = self::render_html( $carousel_data, $config );
@@ -329,7 +329,7 @@ final class Carousel_Handler {
 				// Debug logging with WordPress VIP compliance
 				if ( WP_DEBUG && WP_DEBUG_LOG ) {
 					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-					error_log( 'BRAG book Carousel: Converted slug "' . $procedure_slug . '" to ID: ' . ( $procedure_id ?: 'not found' ) );
+					brag_book_log( 'BRAG book Carousel: Converted slug "' . $procedure_slug . '" to ID: ' . ( $procedure_id ?: 'not found' ) );
 				}
 			}
 		}
@@ -342,7 +342,7 @@ final class Carousel_Handler {
 
 			if ( WP_DEBUG && WP_DEBUG_LOG ) {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'BRAG book Carousel: Auto-detected nudity for ' . $procedure_slug . ': ' . ( $nudity ? 'true' : 'false' ) );
+				brag_book_log( 'BRAG book Carousel: Auto-detected nudity for ' . $procedure_slug . ': ' . ( $nudity ? 'true' : 'false' ) );
 			}
 		}
 
@@ -453,9 +453,9 @@ final class Carousel_Handler {
 		// Debug logging for render_html
 		if ( WP_DEBUG && WP_DEBUG_LOG ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Carousel Debug: render_html called with data: ' . wp_json_encode( array_keys( $carousel_data ) ) );
+			brag_book_log( 'BRAG book Carousel Debug: render_html called with data: ' . wp_json_encode( array_keys( $carousel_data ) ) );
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Carousel Debug: carousel_data structure: ' . wp_json_encode( $carousel_data ) );
+			brag_book_log( 'BRAG book Carousel Debug: carousel_data structure: ' . wp_json_encode( $carousel_data ) );
 		}
 
 		// Check if we have data in either format.
@@ -479,14 +479,14 @@ final class Carousel_Handler {
 				$has_data = false;
 				if ( WP_DEBUG && WP_DEBUG_LOG ) {
 					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-					error_log( 'BRAG book Carousel Debug: Posts found but no images available' );
+					brag_book_log( 'BRAG book Carousel Debug: Posts found but no images available' );
 				}
 			}
 		}
 
 		if ( WP_DEBUG && WP_DEBUG_LOG ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Carousel Debug: has_data result: ' . ( $has_data ? 'true' : 'false' ) );
+			brag_book_log( 'BRAG book Carousel Debug: has_data result: ' . ( $has_data ? 'true' : 'false' ) );
 		}
 
 		if ( ! $has_data ) {
@@ -644,7 +644,7 @@ final class Carousel_Handler {
 		if ( empty( $items ) ) {
 			if ( WP_DEBUG && WP_DEBUG_LOG ) {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'BRAG book Carousel Debug: generate_carousel_items called with empty items array' );
+				brag_book_log( 'BRAG book Carousel Debug: generate_carousel_items called with empty items array' );
 			}
 			return '';
 		}
@@ -652,7 +652,7 @@ final class Carousel_Handler {
 		// Debug logging
 		if ( WP_DEBUG && WP_DEBUG_LOG ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Carousel Debug: generate_carousel_items called with ' . count( $items ) . ' items' );
+			brag_book_log( 'BRAG book Carousel Debug: generate_carousel_items called with ' . count( $items ) . ' items' );
 		}
 
 		// Sanitize inputs.
@@ -694,9 +694,9 @@ final class Carousel_Handler {
 			// Debug logging for slide generation
 			if ( WP_DEBUG && WP_DEBUG_LOG && $slide_index === 1 ) {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'BRAG book Carousel Debug: Generated slide HTML length: ' . strlen( $slide_html ) );
+				brag_book_log( 'BRAG book Carousel Debug: Generated slide HTML length: ' . strlen( $slide_html ) );
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'BRAG book Carousel Debug: Photo data: ' . wp_json_encode( $photo ) );
+				brag_book_log( 'BRAG book Carousel Debug: Photo data: ' . wp_json_encode( $photo ) );
 			}
 
 			$html_parts[] = $slide_html;
@@ -851,7 +851,7 @@ final class Carousel_Handler {
 				'posts_per_page' => 1,
 			] );
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Carousel Debug: Total published brag_book_cases posts: ' . $test_query->found_posts );
+			brag_book_log( 'BRAG book Carousel Debug: Total published brag_book_cases posts: ' . $test_query->found_posts );
 			wp_reset_postdata();
 		}
 
@@ -873,18 +873,18 @@ final class Carousel_Handler {
 		// Debug logging
 		if ( WP_DEBUG && WP_DEBUG_LOG ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Carousel Debug: Query args: ' . wp_json_encode( $query_args ) );
+			brag_book_log( 'BRAG book Carousel Debug: Query args: ' . wp_json_encode( $query_args ) );
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Carousel Debug: Found posts: ' . $query->post_count );
+			brag_book_log( 'BRAG book Carousel Debug: Found posts: ' . $query->post_count );
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Carousel Debug: Query SQL: ' . $query->request );
+			brag_book_log( 'BRAG book Carousel Debug: Query SQL: ' . $query->request );
 		}
 
 		// If no posts found with procedure filter, try without filter as fallback
 		if ( ! $query->have_posts() && ( ! empty( $config['procedure_id'] ) || ! empty( $config['procedure_slug'] ) ) ) {
 			if ( WP_DEBUG && WP_DEBUG_LOG ) {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'BRAG book Carousel Debug: No posts found with procedure filter, trying without filter' );
+				brag_book_log( 'BRAG book Carousel Debug: No posts found with procedure filter, trying without filter' );
 			}
 
 			// Remove taxonomy filters and try again
@@ -895,9 +895,9 @@ final class Carousel_Handler {
 
 			if ( WP_DEBUG && WP_DEBUG_LOG ) {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'BRAG book Carousel Debug: Fallback query found posts: ' . $query->post_count );
+				brag_book_log( 'BRAG book Carousel Debug: Fallback query found posts: ' . $query->post_count );
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'BRAG book Carousel Debug: Fallback query SQL: ' . $query->request );
+				brag_book_log( 'BRAG book Carousel Debug: Fallback query SQL: ' . $query->request );
 			}
 		}
 
@@ -963,10 +963,10 @@ final class Carousel_Handler {
 		// Debug logging for final result
 		if ( WP_DEBUG && WP_DEBUG_LOG ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Carousel Debug: Final carousel items count: ' . count( $carousel_items ) );
+			brag_book_log( 'BRAG book Carousel Debug: Final carousel items count: ' . count( $carousel_items ) );
 			if ( ! empty( $carousel_items ) ) {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'BRAG book Carousel Debug: First item: ' . wp_json_encode( $carousel_items[0] ) );
+				brag_book_log( 'BRAG book Carousel Debug: First item: ' . wp_json_encode( $carousel_items[0] ) );
 			}
 		}
 

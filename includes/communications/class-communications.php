@@ -22,10 +22,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-use BRAGBookGallery\Includes\Core\None;
 use BRAGBookGallery\Includes\Core\Trait_Api;
+use BRAGBookGallery\Includes\Core\Trait_Rate_Limit;
 use BRAGBookGallery\Includes\Core\Trait_Tools;
-use BRAGBookGallery\Includes\Core\WP_Error;
+use WP_Error;
 use WP_Query;
 use const BRAGBookGallery\Includes\Core\BRAG_BOOK_GALLERY_VERSION;
 
@@ -88,6 +88,7 @@ use const BRAGBookGallery\Includes\Core\BRAG_BOOK_GALLERY_VERSION;
  */
 class Communications {
 	use Trait_Api; // Note: Trait_Api includes Trait_Sanitizer
+	use Trait_Rate_Limit;
 	use Trait_Tools;
 
 	/**
@@ -842,15 +843,7 @@ class Communications {
 	 * @return true|WP_Error True if within limits, WP_Error if rate limited
 	 */
 	private function check_rate_limits(): true|WP_Error {
-		// Get client IP (with proxy support).
-		$client_ip = $this->get_client_ip();
-		$ip_hash = md5( $client_ip );
-
-		// Check hourly limit.
-		$hourly_key = "communications_hourly_{$ip_hash}";
-		$hourly_count = 0; // (int) Cache_Manager::get( $hourly_key );
-
-		if ( $hourly_count >= self::RATE_LIMITS['submissions_per_hour'] ) {
+		if ( ! self::within_rate_limit( 'communications_hourly', self::RATE_LIMITS['submissions_per_hour'], HOUR_IN_SECONDS ) ) {
 			return $this->handle_error(
 				'rate_limit_hourly',
 				sprintf(
@@ -858,15 +851,11 @@ class Communications {
 					esc_html__( 'Too many submissions. Maximum %d per hour allowed.', 'brag-book-gallery' ),
 					self::RATE_LIMITS['submissions_per_hour']
 				),
-				[ 'ip' => $client_ip, 'count' => $hourly_count, 'limit' => 'hourly' ]
+				[ 'ip' => self::get_client_ip(), 'limit' => 'hourly' ]
 			);
 		}
 
-		// Check daily limit.
-		$daily_key = "communications_daily_{$ip_hash}";
-		$daily_count = 0; // (int) Cache_Manager::get( $daily_key );
-
-		if ( $daily_count >= self::RATE_LIMITS['submissions_per_day'] ) {
+		if ( ! self::within_rate_limit( 'communications_daily', self::RATE_LIMITS['submissions_per_day'], DAY_IN_SECONDS ) ) {
 			return $this->handle_error(
 				'rate_limit_daily',
 				sprintf(
@@ -874,56 +863,11 @@ class Communications {
 					esc_html__( 'Daily submission limit reached. Maximum %d per day allowed.', 'brag-book-gallery' ),
 					self::RATE_LIMITS['submissions_per_day']
 				),
-				[ 'ip' => $client_ip, 'count' => $daily_count, 'limit' => 'daily' ]
+				[ 'ip' => self::get_client_ip(), 'limit' => 'daily' ]
 			);
 		}
 
-		// Update counters.
-		// Cache_Manager::set( $hourly_key, $hourly_count + 1, HOUR_IN_SECONDS );
-		// Cache_Manager::set( $daily_key, $daily_count + 1, DAY_IN_SECONDS );
-
 		return true;
-	}
-
-	/**
-	 * Get client IP address with proxy detection
-	 *
-	 * Safely retrieves the client's IP address, accounting for various
-	 * proxy configurations while preventing header spoofing attacks.
-	 *
-	 * @since 3.0.0
-	 *
-	 * @return string Client IP address
-	 */
-	private function get_client_ip(): string {
-		// Check for shared IP from load balancers.
-		$ip_keys = [
-			'HTTP_CF_CONNECTING_IP', // Cloudflare
-			'HTTP_X_REAL_IP',        // Nginx proxy
-			'HTTP_X_FORWARDED_FOR',  // Standard proxy header
-			'HTTP_X_FORWARDED',      // Alternative proxy header
-			'HTTP_FORWARDED_FOR',    // RFC 7239
-			'HTTP_FORWARDED',        // RFC 7239
-			'REMOTE_ADDR',           // Standard CGI variable
-		];
-
-		foreach ( $ip_keys as $key ) {
-			if ( ! empty( $_SERVER[ $key ] ) ) {
-				$ip = sanitize_text_field( wp_unslash( $_SERVER[ $key ] ) );
-
-				// Handle comma-separated IPs (first is usually the real client IP).
-				if ( str_contains( $ip, ',' ) ) {
-					$ip = trim( explode( ',', $ip )[0] );
-				}
-
-				// Validate IP format.
-				if ( filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE ) ) {
-					return $ip;
-				}
-			}
-		}
-
-		return '127.0.0.1'; // Fallback for local/invalid IPs.
 	}
 
 	/**

@@ -390,7 +390,7 @@ final class Setup {
 		add_action( 'wp_ajax_brag_book_track_view', [ \BRAGBookGallery\Includes\Shortcodes\Gallery_Handler::class, 'ajax_track_view' ] );
 		add_action( 'wp_ajax_nopriv_brag_book_track_view', [ \BRAGBookGallery\Includes\Shortcodes\Gallery_Handler::class, 'ajax_track_view' ] );
 		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-		error_log( 'BRAG book Gallery: View tracking AJAX handlers registered' );
+		brag_book_log( 'BRAG book Gallery: View tracking AJAX handlers registered' );
 
 		// Register the location-based gallery search (AJAX + asset enqueue).
 		\BRAGBookGallery\Includes\Extend\Location_Search::register();
@@ -433,10 +433,10 @@ final class Setup {
 		// Initialize optimized sync AJAX handlers
 		if ( is_admin() ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery: Initializing Sync_Ajax_Handler' );
+			brag_book_log( 'BRAG book Gallery: Initializing Sync_Ajax_Handler' );
 			\BRAGBookGallery\Includes\Sync\Sync_Ajax_Handler::init();
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery: Sync_Ajax_Handler initialized' );
+			brag_book_log( 'BRAG book Gallery: Sync_Ajax_Handler initialized' );
 		}
 
 		// Register custom cron schedules
@@ -1598,12 +1598,12 @@ final class Setup {
 			// Log for debugging
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'BRAG book Gallery: Delayed rewrite rules flush completed' );
+				brag_book_log( 'BRAG book Gallery: Delayed rewrite rules flush completed' );
 			}
 		} catch ( Exception $e ) {
 			// Log error but don't break site
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery: Failed to flush rewrite rules - ' . $e->getMessage() );
+			brag_book_log( 'BRAG book Gallery: Failed to flush rewrite rules - ' . $e->getMessage() );
 		}
 	}
 
@@ -1630,7 +1630,7 @@ final class Setup {
 			$string_slug = ! empty( $current_slug ) ? $current_slug[0] : 'gallery';
 			update_option( 'brag_book_gallery_page_slug', $string_slug );
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( "BRAG book Gallery: Migrated page slug from array to string: '{$string_slug}'" );
+			brag_book_log( "BRAG book Gallery: Migrated page slug from array to string: '{$string_slug}'" );
 		}
 
 		// Mark migration as complete
@@ -1666,7 +1666,7 @@ final class Setup {
 		if ( false === $updated ) {
 			// Database error — leave the flag unset so the migration retries on next init.
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery: Failed to migrate form-entries post type. ' . $wpdb->last_error );
+			brag_book_log( 'BRAG book Gallery: Failed to migrate form-entries post type. ' . $wpdb->last_error );
 			return;
 		}
 
@@ -1674,7 +1674,7 @@ final class Setup {
 			wp_cache_delete( 'form-entries', 'counts' );
 			wp_cache_delete( 'brag_book_forms', 'counts' );
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( "BRAG book Gallery: Migrated {$updated} 'form-entries' post(s) to 'brag_book_forms'." );
+			brag_book_log( "BRAG book Gallery: Migrated {$updated} 'form-entries' post(s) to 'brag_book_forms'." );
 		}
 
 		update_option( 'brag_book_gallery_form_post_type_migrated', true );
@@ -1775,7 +1775,7 @@ final class Setup {
 		update_option( 'brag_book_gallery_providers_migrated', true );
 
 		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-		error_log( 'BRAG book Gallery: Migrated doctors taxonomy and data to providers.' );
+		brag_book_log( 'BRAG book Gallery: Migrated doctors taxonomy and data to providers.' );
 	}
 
 	/**
@@ -1819,7 +1819,7 @@ final class Setup {
 			if ( empty( $api_tokens ) ) {
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'BRAG book Gallery: API configuration missing for scheduled view tracking' );
+				brag_book_log( 'BRAG book Gallery: API configuration missing for scheduled view tracking' );
 				}
 				return;
 			}
@@ -1850,7 +1850,7 @@ final class Setup {
 			if ( is_wp_error( $response ) ) {
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-					error_log( 'BRAG book Gallery: Scheduled view tracking API error - ' . $response->get_error_message() );
+					brag_book_log( 'BRAG book Gallery: Scheduled view tracking API error - ' . $response->get_error_message() );
 				}
 				return;
 			}
@@ -1861,20 +1861,20 @@ final class Setup {
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 					$response_body = wp_remote_retrieve_body( $response );
 					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-					error_log( "BRAG book Gallery: Scheduled view tracking API returned status {$response_code}: {$response_body}" );
+					brag_book_log( "BRAG book Gallery: Scheduled view tracking API returned status {$response_code}: {$response_body}" );
 				}
 				return;
 			}
 
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( "BRAG book Gallery: Successfully tracked scheduled view for caseProcedureId {$case_procedure_id}" );
+				brag_book_log( "BRAG book Gallery: Successfully tracked scheduled view for caseProcedureId {$case_procedure_id}" );
 			}
 
 		} catch ( \Exception $e ) {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'BRAG book Gallery: Scheduled view tracking exception - ' . $e->getMessage() );
+				brag_book_log( 'BRAG book Gallery: Scheduled view tracking exception - ' . $e->getMessage() );
 			}
 		}
 	}

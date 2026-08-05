@@ -943,14 +943,14 @@ class API_Page extends Settings_Base {
 
 		// Log to file for debugging (since we can't easily check WP_DEBUG in this environment)
 		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-		error_log( 'BRAG book Gallery: AJAX validate_api called' );
+		brag_book_log( 'BRAG book Gallery: AJAX validate_api called' );
 		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-		error_log( 'BRAG book Gallery: POST data keys: ' . implode( ', ', array_keys( $_POST ) ) );
+		brag_book_log( 'BRAG book Gallery: POST data keys: ' . implode( ', ', array_keys( $_POST ) ) );
 
 		// Verify nonce - check manually first for debugging
 		if ( ! isset( $_POST['nonce'] ) ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery: No nonce in POST data' );
+			brag_book_log( 'BRAG book Gallery: No nonce in POST data' );
 			wp_send_json_error( __( 'Missing security nonce.', 'brag-book-gallery' ) );
 			return;
 		}
@@ -958,7 +958,7 @@ class API_Page extends Settings_Base {
 		$nonce = sanitize_text_field( wp_unslash( $_POST['nonce'] ) );
 		if ( ! wp_verify_nonce( $nonce, 'brag_book_gallery_settings_nonce' ) ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery: Nonce verification failed' );
+			brag_book_log( 'BRAG book Gallery: Nonce verification failed' );
 			wp_send_json_error( __( 'Security check failed.', 'brag-book-gallery' ) );
 			return;
 		}
@@ -966,7 +966,7 @@ class API_Page extends Settings_Base {
 		// Check capability
 		if ( ! current_user_can( 'manage_options' ) ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery: User capability check failed' );
+			brag_book_log( 'BRAG book Gallery: User capability check failed' );
 			wp_send_json_error( __( 'You do not have permission to perform this action.', 'brag-book-gallery' ) );
 			return;
 		}
@@ -976,12 +976,12 @@ class API_Page extends Settings_Base {
 		$index              = isset( $_POST['index'] ) ? intval( $_POST['index'] ) : 0;
 
 		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-		error_log( "BRAG book Gallery: Processing API token (length: " . strlen( $api_token ) . ") and property ID: {$website_property_id}" );
+		brag_book_log( "BRAG book Gallery: Processing API token (length: " . strlen( $api_token ) . ") and property ID: {$website_property_id}" );
 
 		// Validate inputs
 		if ( empty( $api_token ) || empty( $website_property_id ) ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery: Missing API token or property ID' );
+			brag_book_log( 'BRAG book Gallery: Missing API token or property ID' );
 			wp_send_json_error( __( 'API token and Website Property ID are required.', 'brag-book-gallery' ) );
 			return;
 		}
@@ -989,17 +989,17 @@ class API_Page extends Settings_Base {
 		try {
 			$validation = $this->validate_api_credentials( $api_token, $website_property_id );
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery: Validation completed' );
+			brag_book_log( 'BRAG book Gallery: Validation completed' );
 		} catch ( Exception $e ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery: Exception in validate_api_credentials: ' . $e->getMessage() );
+			brag_book_log( 'BRAG book Gallery: Exception in validate_api_credentials: ' . $e->getMessage() );
 			wp_send_json_error( __( 'Validation failed due to an error.', 'brag-book-gallery' ) );
 			return;
 		}
 
 		if ( $validation['valid'] ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery: Validation successful, saving credentials' );
+			brag_book_log( 'BRAG book Gallery: Validation successful, saving credentials' );
 
 			// Save the validated credentials
 			$saved_tokens       = get_option( 'brag_book_gallery_api_token', array() );
@@ -1032,7 +1032,7 @@ class API_Page extends Settings_Base {
 			update_option( 'brag_book_gallery_account_info', $saved_account_info );
 
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery: Sending success response' );
+			brag_book_log( 'BRAG book Gallery: Sending success response' );
 			wp_send_json_success( array(
 				'valid'        => true,
 				'message'      => __( 'API credentials validated and saved successfully.', 'brag-book-gallery' ),
@@ -1040,7 +1040,7 @@ class API_Page extends Settings_Base {
 			) );
 		} else {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAG book Gallery: Validation failed: ' . $validation['message'] );
+			brag_book_log( 'BRAG book Gallery: Validation failed: ' . $validation['message'] );
 			wp_send_json_error( $validation['message'] );
 		}
 	}
@@ -1331,7 +1331,7 @@ class API_Page extends Settings_Base {
 			if ( ! $update_result && get_option( 'brag_book_gallery_page_slug' ) !== $slug ) {
 				// If option couldn't be updated, still proceed but log warning
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( "BRAGBook Gallery: Could not update gallery page slug option to '$slug'" );
+				brag_book_log( "BRAGBook Gallery: Could not update gallery page slug option to '$slug'" );
 
 				// Fallback: update option directly
 				// Store as a single string (first page takes precedence)

@@ -1,3 +1,5 @@
+import { escapeHtml } from './utilities.js';
+
 /**
  * Search Autocomplete Component
  * Provides searchable dropdown for procedures
@@ -283,7 +285,7 @@ class SearchAutocomplete {
 		if (this.filteredResults.length === 0) {
 			this.dropdown.innerHTML = `
                 <div class="brag-book-gallery-search-no-results">
-                    No procedures found for "${this.escapeHtml(query)}"
+                    No procedures found for "${escapeHtml(query)}"
                 </div>
             `;
 			return;
@@ -317,12 +319,6 @@ class SearchAutocomplete {
 		const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 		const regex = new RegExp(`(${escapedQuery})`, 'gi');
 		return text.replace(regex, '<mark>$1</mark>');
-	}
-
-	escapeHtml(text) {
-		const div = document.createElement('div');
-		div.textContent = text;
-		return div.innerHTML;
 	}
 
 	moveSelection(direction) {

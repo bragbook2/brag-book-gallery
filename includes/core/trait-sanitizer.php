@@ -510,7 +510,7 @@ trait Trait_Sanitizer {
 		$this->validation_errors[ $field ][] = $message;
 
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			error_log( sprintf( '[BRAGBook Sanitizer] Validation error for %s: %s', $field, $message ) );
+			brag_book_log( sprintf( '[BRAGBook Sanitizer] Validation error for %s: %s', $field, $message ) );
 		}
 	}
 

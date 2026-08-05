@@ -387,6 +387,6 @@ class Orphan_Manager {
 			'manual'
 		);
 
-		error_log( 'BRAGBook Orphan Manager: ' . $message );
+		brag_book_log( 'BRAGBook Orphan Manager: ' . $message );
 	}
 }

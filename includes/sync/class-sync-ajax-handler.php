@@ -78,17 +78,17 @@ class Sync_Ajax_Handler {
 	 * @since 3.3.0
 	 */
 	public static function handle_sync_start(): void {
-		error_log( 'Data_Sync: handle_sync_start called' );
+		brag_book_log( 'Data_Sync: handle_sync_start called' );
 
 		// Check permissions
 		if ( ! current_user_can( 'manage_options' ) ) {
-			error_log( 'Data_Sync: Insufficient permissions' );
+			brag_book_log( 'Data_Sync: Insufficient permissions' );
 			wp_send_json_error( 'Insufficient permissions' );
 		}
 
 		// Verify nonce
 		if ( ! check_ajax_referer( 'brag_book_gallery_sync', 'nonce', false ) ) {
-			error_log( 'Data_Sync: Invalid nonce' );
+			brag_book_log( 'Data_Sync: Invalid nonce' );
 			wp_send_json_error( 'Invalid nonce' );
 		}
 
@@ -99,26 +99,26 @@ class Sync_Ajax_Handler {
 		// Create initial log entry
 		$log_id = null;
 		if ( $database ) {
-			error_log( 'Data_Sync: Database service available, attempting to log sync operation' );
+			brag_book_log( 'Data_Sync: Database service available, attempting to log sync operation' );
 			$log_id = $database->log_sync_operation( 'full', 'started', 0, 0, '', 'manual' );
 			if ( $log_id ) {
-				error_log( 'Data_Sync: Sync log created with ID: ' . $log_id );
+				brag_book_log( 'Data_Sync: Sync log created with ID: ' . $log_id );
 			} else {
-				error_log( 'Data_Sync: Failed to create sync log entry' );
+				brag_book_log( 'Data_Sync: Failed to create sync log entry' );
 			}
 		} else {
-			error_log( 'Data_Sync: Database service not available!' );
+			brag_book_log( 'Data_Sync: Database service not available!' );
 		}
 
 		try {
-			error_log( 'Data_Sync: Creating Data_Sync instance' );
+			brag_book_log( 'Data_Sync: Creating Data_Sync instance' );
 			// Initialize sync
 			$sync = new Data_Sync();
-			error_log( 'Data_Sync: Calling run_two_stage_sync' );
+			brag_book_log( 'Data_Sync: Calling run_two_stage_sync' );
 
 			// Run the full sync with cases
 			$result = $sync->run_two_stage_sync( true );
-			error_log( 'Data_Sync: run_two_stage_sync completed' );
+			brag_book_log( 'Data_Sync: run_two_stage_sync completed' );
 
 			// Update log entry with success
 			if ( $database && $log_id ) {
@@ -142,8 +142,8 @@ class Sync_Ajax_Handler {
 			wp_send_json_success( $result );
 
 		} catch ( \Exception $e ) {
-			error_log( 'Data_Sync start error: ' . $e->getMessage() );
-			error_log( 'Stack trace: ' . $e->getTraceAsString() );
+			brag_book_log( 'Data_Sync start error: ' . $e->getMessage() );
+			brag_book_log( 'Stack trace: ' . $e->getTraceAsString() );
 
 			// Update log entry with failure
 			if ( $database && $log_id ) {
@@ -156,8 +156,8 @@ class Sync_Ajax_Handler {
 
 			wp_send_json_error( $e->getMessage() );
 		} catch ( \Error $e ) {
-			error_log( 'Data_Sync fatal error: ' . $e->getMessage() );
-			error_log( 'Stack trace: ' . $e->getTraceAsString() );
+			brag_book_log( 'Data_Sync fatal error: ' . $e->getMessage() );
+			brag_book_log( 'Stack trace: ' . $e->getTraceAsString() );
 
 			// Update log entry with failure
 			if ( $database && $log_id ) {
@@ -325,17 +325,17 @@ class Sync_Ajax_Handler {
 	 * @since 3.3.0
 	 */
 	public static function handle_stage_1(): void {
-		error_log( 'AJAX: handle_stage_1 called' );
+		brag_book_log( 'AJAX: handle_stage_1 called' );
 
 		// Check permissions
 		if ( ! current_user_can( 'manage_options' ) ) {
-			error_log( 'AJAX: Stage 1 - Insufficient permissions' );
+			brag_book_log( 'AJAX: Stage 1 - Insufficient permissions' );
 			wp_send_json_error( 'Insufficient permissions' );
 		}
 
 		// Verify nonce
 		if ( ! check_ajax_referer( 'brag_book_gallery_sync', 'nonce', false ) ) {
-			error_log( 'AJAX: Stage 1 - Invalid nonce' );
+			brag_book_log( 'AJAX: Stage 1 - Invalid nonce' );
 			wp_send_json_error( 'Invalid nonce' );
 		}
 
@@ -369,14 +369,14 @@ class Sync_Ajax_Handler {
 		}
 
 		try {
-			error_log( 'AJAX: Creating Chunked_Data_Sync instance' );
+			brag_book_log( 'AJAX: Creating Chunked_Data_Sync instance' );
 			// Use new Chunked_Data_Sync
 			$sync = new \BRAGBookGallery\Includes\Sync\Chunked_Data_Sync();
 
-			error_log( 'AJAX: Calling execute_stage_1' );
+			brag_book_log( 'AJAX: Calling execute_stage_1' );
 			$result = $sync->execute_stage_1();
 
-			error_log( 'AJAX: Stage 1 result: ' . wp_json_encode( $result ) );
+			brag_book_log( 'AJAX: Stage 1 result: ' . wp_json_encode( $result ) );
 
 			if ( $result['success'] ) {
 				// Update log entry
@@ -424,8 +424,8 @@ class Sync_Ajax_Handler {
 			}
 
 		} catch ( \Exception $e ) {
-			error_log( 'AJAX: Stage 1 sync exception: ' . $e->getMessage() );
-			error_log( 'AJAX: Stack trace: ' . $e->getTraceAsString() );
+			brag_book_log( 'AJAX: Stage 1 sync exception: ' . $e->getMessage() );
+			brag_book_log( 'AJAX: Stack trace: ' . $e->getTraceAsString() );
 
 			// Update log entry
 			if ( $database && $log_id ) {
@@ -441,8 +441,8 @@ class Sync_Ajax_Handler {
 				'line'    => $e->getLine(),
 			] );
 		} catch ( \Error $e ) {
-			error_log( 'AJAX: Stage 1 sync fatal error: ' . $e->getMessage() );
-			error_log( 'AJAX: Stack trace: ' . $e->getTraceAsString() );
+			brag_book_log( 'AJAX: Stage 1 sync fatal error: ' . $e->getMessage() );
+			brag_book_log( 'AJAX: Stack trace: ' . $e->getTraceAsString() );
 
 			// Update log entry
 			if ( $database && $log_id ) {
@@ -523,7 +523,7 @@ class Sync_Ajax_Handler {
 			}
 
 		} catch ( \Exception $e ) {
-			error_log( 'Stage 2 sync error: ' . $e->getMessage() );
+			brag_book_log( 'Stage 2 sync error: ' . $e->getMessage() );
 
 			// Update log entry
 			if ( $database && $log_id ) {
@@ -573,14 +573,14 @@ class Sync_Ajax_Handler {
 		}
 
 		try {
-			error_log( 'AJAX: Starting Stage 3 handler' );
+			brag_book_log( 'AJAX: Starting Stage 3 handler' );
 
 			// Use new Chunked_Data_Sync
 			$sync = new \BRAGBookGallery\Includes\Sync\Chunked_Data_Sync();
-			error_log( 'AJAX: Chunked_Data_Sync instance created for Stage 3' );
+			brag_book_log( 'AJAX: Chunked_Data_Sync instance created for Stage 3' );
 
 			$result = $sync->execute_stage_3();
-			error_log( 'AJAX: Stage 3 execution completed' );
+			brag_book_log( 'AJAX: Stage 3 execution completed' );
 
 			if ( $result['success'] ) {
 				// Update log entry
@@ -630,7 +630,7 @@ class Sync_Ajax_Handler {
 							'error_log'         => ! empty( $result['errors'] ) ? implode( "\n", $result['errors'] ) : '',
 						]
 					);
-					error_log( 'AJAX: Stage 3 - Reported ' . $status . ' to BRAG book API' );
+					brag_book_log( 'AJAX: Stage 3 - Reported ' . $status . ' to BRAG book API' );
 				}
 
 				wp_send_json_success( $result );
@@ -648,14 +648,14 @@ class Sync_Ajax_Handler {
 					Sync_Api::STATUS_FAILED,
 					[ 'message' => 'Stage 3 failed: ' . ( $result['message'] ?? 'Unknown error' ) ]
 				);
-				error_log( 'AJAX: Stage 3 - Reported FAILED to BRAG book API' );
+				brag_book_log( 'AJAX: Stage 3 - Reported FAILED to BRAG book API' );
 
 				wp_send_json_error( $result );
 			}
 
 		} catch ( \Exception $e ) {
-			error_log( 'Stage 3 sync Exception: ' . $e->getMessage() );
-			error_log( 'Stack trace: ' . $e->getTraceAsString() );
+			brag_book_log( 'Stage 3 sync Exception: ' . $e->getMessage() );
+			brag_book_log( 'Stack trace: ' . $e->getTraceAsString() );
 
 			// Update log entry
 			if ( $database && $log_id ) {
@@ -679,8 +679,8 @@ class Sync_Ajax_Handler {
 				'stage'   => 3,
 			] );
 		} catch ( \Error $e ) {
-			error_log( 'Stage 3 sync Fatal Error: ' . $e->getMessage() );
-			error_log( 'Stack trace: ' . $e->getTraceAsString() );
+			brag_book_log( 'Stage 3 sync Fatal Error: ' . $e->getMessage() );
+			brag_book_log( 'Stack trace: ' . $e->getTraceAsString() );
 
 			// Update log entry
 			if ( $database && $log_id ) {
@@ -758,49 +758,49 @@ class Sync_Ajax_Handler {
 	 * @since 3.3.0
 	 */
 	public static function handle_check_files(): void {
-		error_log( 'AJAX: handle_check_files called' );
+		brag_book_log( 'AJAX: handle_check_files called' );
 
 		// Check permissions
 		if ( ! current_user_can( 'manage_options' ) ) {
-			error_log( 'AJAX: Check files - Insufficient permissions' );
+			brag_book_log( 'AJAX: Check files - Insufficient permissions' );
 			wp_send_json_error( 'Insufficient permissions' );
 		}
 
 		try {
-			error_log( 'AJAX: About to create Chunked_Data_Sync instance' );
+			brag_book_log( 'AJAX: About to create Chunked_Data_Sync instance' );
 
 			// Check if class exists
 			if ( ! class_exists( '\BRAGBookGallery\Includes\Sync\Chunked_Data_Sync' ) ) {
-				error_log( 'AJAX: Chunked_Data_Sync class does not exist!' );
+				brag_book_log( 'AJAX: Chunked_Data_Sync class does not exist!' );
 
 				// Try to manually include the file
 				$file_path = plugin_dir_path( dirname( __DIR__ ) ) . 'sync/class-chunked-data-sync.php';
-				error_log( 'AJAX: Attempting to include file: ' . $file_path );
+				brag_book_log( 'AJAX: Attempting to include file: ' . $file_path );
 
 				if ( file_exists( $file_path ) ) {
 					require_once $file_path;
-					error_log( 'AJAX: File included manually' );
+					brag_book_log( 'AJAX: File included manually' );
 				} else {
-					error_log( 'AJAX: File not found at: ' . $file_path );
+					brag_book_log( 'AJAX: File not found at: ' . $file_path );
 					wp_send_json_error( 'Chunked_Data_Sync class file not found' );
 				}
 			}
 
 			$sync = new \BRAGBookGallery\Includes\Sync\Chunked_Data_Sync();
-			error_log( 'AJAX: Chunked_Data_Sync instance created' );
+			brag_book_log( 'AJAX: Chunked_Data_Sync instance created' );
 
 			$file_status = $sync->get_file_status();
-			error_log( 'AJAX: File status retrieved' );
+			brag_book_log( 'AJAX: File status retrieved' );
 
 			wp_send_json_success( $file_status );
 
 		} catch ( \Exception $e ) {
-			error_log( 'Check files Exception: ' . $e->getMessage() );
-			error_log( 'Stack trace: ' . $e->getTraceAsString() );
+			brag_book_log( 'Check files Exception: ' . $e->getMessage() );
+			brag_book_log( 'Stack trace: ' . $e->getTraceAsString() );
 			wp_send_json_error( $e->getMessage() );
 		} catch ( \Error $e ) {
-			error_log( 'Check files Fatal Error: ' . $e->getMessage() );
-			error_log( 'Stack trace: ' . $e->getTraceAsString() );
+			brag_book_log( 'Check files Fatal Error: ' . $e->getMessage() );
+			brag_book_log( 'Stack trace: ' . $e->getTraceAsString() );
 			wp_send_json_error( 'Fatal error: ' . $e->getMessage() );
 		}
 	}
@@ -827,7 +827,7 @@ class Sync_Ajax_Handler {
 			wp_send_json_success( $preview );
 
 		} catch ( \Exception $e ) {
-			error_log( 'Get manifest preview error: ' . $e->getMessage() );
+			brag_book_log( 'Get manifest preview error: ' . $e->getMessage() );
 			wp_send_json_error( $e->getMessage() );
 		}
 	}
@@ -865,7 +865,7 @@ class Sync_Ajax_Handler {
 			}
 
 		} catch ( \Exception $e ) {
-			error_log( 'Get progress error: ' . $e->getMessage() );
+			brag_book_log( 'Get progress error: ' . $e->getMessage() );
 			wp_send_json_error( $e->getMessage() );
 		}
 	}
@@ -1026,7 +1026,7 @@ class Sync_Ajax_Handler {
 			}
 
 		} catch ( \Exception $e ) {
-			error_log( 'Delete file error: ' . $e->getMessage() );
+			brag_book_log( 'Delete file error: ' . $e->getMessage() );
 			wp_send_json_error( 'Error deleting files: ' . $e->getMessage() );
 		}
 	}
@@ -1063,7 +1063,7 @@ class Sync_Ajax_Handler {
 			}
 
 		} catch ( \Exception $e ) {
-			error_log( 'Clear Stage 3 status error: ' . $e->getMessage() );
+			brag_book_log( 'Clear Stage 3 status error: ' . $e->getMessage() );
 			wp_send_json_error( 'Error clearing Stage 3 status: ' . $e->getMessage() );
 		}
 	}
@@ -1161,7 +1161,7 @@ class Sync_Ajax_Handler {
 			] );
 
 		} catch ( \Exception $e ) {
-			error_log( 'Orphan detection error: ' . $e->getMessage() );
+			brag_book_log( 'Orphan detection error: ' . $e->getMessage() );
 			wp_send_json_error( 'Error detecting orphans: ' . $e->getMessage() );
 		}
 	}
@@ -1218,7 +1218,7 @@ class Sync_Ajax_Handler {
 			] );
 
 		} catch ( \Exception $e ) {
-			error_log( 'Orphan deletion error: ' . $e->getMessage() );
+			brag_book_log( 'Orphan deletion error: ' . $e->getMessage() );
 			wp_send_json_error( 'Error deleting orphans: ' . $e->getMessage() );
 		}
 	}
@@ -1246,14 +1246,14 @@ class Sync_Ajax_Handler {
 			time() > ( $stored['expires'] ?? 0 ) ||
 			! hash_equals( (string) ( $stored['token'] ?? '' ), $provided_token )
 		) {
-			error_log( 'BRAG book Gallery: Background sync execute — invalid or expired token.' );
+			brag_book_log( 'BRAG book Gallery: Background sync execute — invalid or expired token.' );
 			wp_die( '', '', 403 );
 		}
 
 		// Delete the token immediately so it cannot be replayed.
 		delete_option( 'brag_book_gallery_bg_sync_token' );
 
-		error_log( 'BRAG book Gallery: Background sync execute — token valid, starting sync.' );
+		brag_book_log( 'BRAG book Gallery: Background sync execute — token valid, starting sync.' );
 
 		// Allow the sync to run to completion even if the HTTP client disconnects,
 		// and give it up to 5 minutes of execution time.
@@ -1296,7 +1296,7 @@ class Sync_Ajax_Handler {
 		$stored_token   = get_option( 'brag_book_gallery_sync_batch_token', '' );
 
 		if ( ! $stored_token || ! hash_equals( (string) $stored_token, $provided_token ) ) {
-			error_log( 'BRAG book Gallery: Process-batch request — invalid or stale token.' );
+			brag_book_log( 'BRAG book Gallery: Process-batch request — invalid or stale token.' );
 			wp_die( '', '', 403 );
 		}
 
@@ -1318,7 +1318,7 @@ class Sync_Ajax_Handler {
 		try {
 			self::execute_sync_batch( $provided_token );
 		} catch ( \Throwable $e ) {
-			error_log( 'BRAG book Gallery: Fatal error in batch handler: ' . $e->getMessage() );
+			brag_book_log( 'BRAG book Gallery: Fatal error in batch handler: ' . $e->getMessage() );
 		}
 
 		wp_die( '', '', 200 );
@@ -1339,14 +1339,14 @@ class Sync_Ajax_Handler {
 		$stored_token = get_option( 'brag_book_gallery_sync_batch_token', '' );
 
 		if ( ! $stored_token || ! hash_equals( (string) $stored_token, $batch_token ) ) {
-			error_log( 'BRAG book Gallery: Batch token mismatch — skipping (already processed or sync was cancelled).' );
+			brag_book_log( 'BRAG book Gallery: Batch token mismatch — skipping (already processed or sync was cancelled).' );
 			return;
 		}
 
 		$sync_context = get_option( 'brag_book_gallery_sync_context', [] );
 
 		if ( get_option( 'brag_book_gallery_sync_stop_flag', false ) ) {
-			error_log( 'BRAG book Gallery: Stop flag set — aborting batch chain.' );
+			brag_book_log( 'BRAG book Gallery: Stop flag set — aborting batch chain.' );
 			self::finalize_sync( false, $sync_context, 0, 0, 0, 0, 'Sync cancelled by user.' );
 			return;
 		}
@@ -1377,7 +1377,7 @@ class Sync_Ajax_Handler {
 				self::finalize_sync( true, $sync_context, $created, $updated, $failed, $processed );
 			}
 		} catch ( \Exception $e ) {
-			error_log( 'BRAG book Gallery: Uncaught exception in batch execution: ' . $e->getMessage() );
+			brag_book_log( 'BRAG book Gallery: Uncaught exception in batch execution: ' . $e->getMessage() );
 			self::finalize_sync( false, $sync_context, 0, 0, 0, 0, $e->getMessage() );
 		}
 	}
@@ -1433,7 +1433,7 @@ class Sync_Ajax_Handler {
 			]
 		);
 
-		error_log( 'BRAG book Gallery: Batch dispatched — ' . $processed . '/' . $total . ' processed so far.' );
+		brag_book_log( 'BRAG book Gallery: Batch dispatched — ' . $processed . '/' . $total . ' processed so far.' );
 	}
 
 	/**
@@ -1536,7 +1536,7 @@ class Sync_Ajax_Handler {
 		delete_option( 'brag_book_gallery_sync_context' );
 		delete_option( 'brag_book_gallery_sync_stop_flag' );
 
-		error_log( sprintf(
+		brag_book_log( sprintf(
 			'BRAG book Gallery: Sync finalized (%s) — %d processed, %d created, %d updated, %d failed.',
 			$db_status,
 			$processed,

@@ -38,6 +38,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 require_once 'includes/autoload.php';
+require_once 'includes/functions/log.php';
 
 // Initialize plugin setup and define constants
 Setup::init_plugin( __FILE__ );

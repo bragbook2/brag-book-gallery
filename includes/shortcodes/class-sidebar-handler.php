@@ -116,12 +116,13 @@ class Sidebar_Handler {
 			}
 		}
 
-		// Localize script with necessary data for AJAX and functionality
-		wp_localize_script( 'brag-book-gallery-main', 'bragBookGalleryConfig', [
-			'ajaxUrl' => admin_url( 'admin-ajax.php' ),
-			'nonce'   => wp_create_nonce( 'brag_book_gallery_nonce' ),
-			'sidebarData' => $formatted_sidebar_data,
-		] );
+		// Route through the canonical localizer rather than writing
+		// bragBookGalleryConfig directly. WordPress concatenates repeated
+		// wp_localize_script() calls for the same object into successive var
+		// statements, so a second payload replaces the first outright instead
+		// of merging — a short one here would drop consultation_nonce and the
+		// gallery settings that main-app.js reads.
+		Asset_Manager::localize_gallery_script( [], $formatted_sidebar_data );
 	}
 
 	/**

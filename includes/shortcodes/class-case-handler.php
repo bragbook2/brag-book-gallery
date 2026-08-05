@@ -970,7 +970,7 @@ class Case_Handler {
 		// Get the case post ID from case data (it's already the WordPress post ID)
 		if ( empty( $case_data['id'] ) ) {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( 'BRAG book Gallery: Missing case ID in get_procedure_details_for_card' );
+				brag_book_log( 'BRAG book Gallery: Missing case ID in get_procedure_details_for_card' );
 			}
 			return $html;
 		}
@@ -982,7 +982,7 @@ class Case_Handler {
 
 		if ( empty( $procedure_details_json ) ) {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( "BRAG book Gallery: No procedure details found for post {$post_id}" );
+				brag_book_log( "BRAG book Gallery: No procedure details found for post {$post_id}" );
 			}
 			return $html;
 		}
@@ -991,7 +991,7 @@ class Case_Handler {
 		$procedure_details = json_decode( $procedure_details_json, true );
 		if ( ! is_array( $procedure_details ) || empty( $procedure_details ) ) {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( "BRAG book Gallery: Invalid procedure details JSON for post {$post_id}: " . $procedure_details_json );
+				brag_book_log( "BRAG book Gallery: Invalid procedure details JSON for post {$post_id}: " . $procedure_details_json );
 			}
 			return $html;
 		}
@@ -1036,7 +1036,7 @@ class Case_Handler {
 		}
 
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG && ! empty( $html ) ) {
-			error_log( "BRAG book Gallery: Successfully generated procedure details for post {$post_id}" );
+			brag_book_log( "BRAG book Gallery: Successfully generated procedure details for post {$post_id}" );
 		}
 
 		return $html;
@@ -1592,7 +1592,7 @@ class Case_Handler {
 
 		// Log to WordPress debug log if enabled
 		if ( WP_DEBUG && WP_DEBUG_LOG ) {
-			error_log( sprintf(
+			brag_book_log( sprintf(
 				'BRAG book Gallery: Missing data for post %d, field: %s',
 				$post_id,
 				$field
@@ -1618,13 +1618,13 @@ class Case_Handler {
 
 		// Debug logging
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			error_log( "BRAG book Gallery Debug: Getting procedure details for post {$post_id}" );
-			error_log( "BRAG book Gallery Debug: Raw JSON: " . var_export( $procedure_details_json, true ) );
+			brag_book_log( "BRAG book Gallery Debug: Getting procedure details for post {$post_id}" );
+			brag_book_log( "BRAG book Gallery Debug: Raw JSON: " . var_export( $procedure_details_json, true ) );
 		}
 
 		if ( empty( $procedure_details_json ) ) {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( "BRAG book Gallery Debug: No procedure details JSON found for post {$post_id}" );
+				brag_book_log( "BRAG book Gallery Debug: No procedure details JSON found for post {$post_id}" );
 			}
 			return $attrs;
 		}
@@ -1633,12 +1633,12 @@ class Case_Handler {
 		$procedure_details = json_decode( $procedure_details_json, true );
 
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			error_log( "BRAG book Gallery Debug: Decoded JSON: " . var_export( $procedure_details, true ) );
+			brag_book_log( "BRAG book Gallery Debug: Decoded JSON: " . var_export( $procedure_details, true ) );
 		}
 
 		if ( ! is_array( $procedure_details ) ) {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( "BRAG book Gallery: Invalid procedure details JSON for post {$post_id}: " . $procedure_details_json );
+				brag_book_log( "BRAG book Gallery: Invalid procedure details JSON for post {$post_id}: " . $procedure_details_json );
 			}
 			return $attrs;
 		}
@@ -1647,7 +1647,7 @@ class Case_Handler {
 		foreach ( $procedure_details as $procedure_id => $details ) {
 			if ( ! is_array( $details ) ) {
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-					error_log( "BRAG book Gallery Debug: Procedure ID {$procedure_id} details is not an array" );
+					brag_book_log( "BRAG book Gallery Debug: Procedure ID {$procedure_id} details is not an array" );
 				}
 				continue;
 			}
@@ -1668,13 +1668,13 @@ class Case_Handler {
 				$attrs .= ' data-procedure-detail-' . esc_attr( $attr_name ) . '="' . esc_attr( $attr_value ) . '"';
 
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-					error_log( "BRAG book Gallery Debug: Added attribute data-procedure-detail-{$attr_name}=\"{$attr_value}\"" );
+					brag_book_log( "BRAG book Gallery Debug: Added attribute data-procedure-detail-{$attr_name}=\"{$attr_value}\"" );
 				}
 			}
 		}
 
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			error_log( "BRAG book Gallery Debug: Final attributes for post {$post_id}: " . $attrs );
+			brag_book_log( "BRAG book Gallery Debug: Final attributes for post {$post_id}: " . $attrs );
 		}
 
 		return $attrs;
@@ -1758,7 +1758,7 @@ class Case_Handler {
 
 			if ( empty( $api_tokens ) || empty( $website_property_ids ) ) {
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-					error_log( 'BRAG book Gallery: API configuration missing for view tracking' );
+					brag_book_log( 'BRAG book Gallery: API configuration missing for view tracking' );
 				}
 				return false;
 			}
@@ -1797,7 +1797,7 @@ class Case_Handler {
 			// Check for errors
 			if ( is_wp_error( $response ) ) {
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-					error_log( 'BRAG book Gallery: View tracking API error - ' . $response->get_error_message() );
+					brag_book_log( 'BRAG book Gallery: View tracking API error - ' . $response->get_error_message() );
 				}
 				return false;
 			}
@@ -1806,7 +1806,7 @@ class Case_Handler {
 			$response_code = wp_remote_retrieve_response_code( $response );
 			if ( $response_code < 200 || $response_code >= 300 ) {
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-					error_log( "BRAG book Gallery: View tracking API returned status {$response_code}" );
+					brag_book_log( "BRAG book Gallery: View tracking API returned status {$response_code}" );
 				}
 				return false;
 			}
@@ -1818,19 +1818,19 @@ class Case_Handler {
 			// Check if tracking was successful
 			if ( isset( $response_data['success'] ) && $response_data['success'] ) {
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-					error_log( "BRAG book Gallery: Successfully tracked view for case {$case_id}" );
+					brag_book_log( "BRAG book Gallery: Successfully tracked view for case {$case_id}" );
 				}
 				return true;
 			}
 
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( "BRAG book Gallery: View tracking failed for case {$case_id} - " . wp_json_encode( $response_data ) );
+				brag_book_log( "BRAG book Gallery: View tracking failed for case {$case_id} - " . wp_json_encode( $response_data ) );
 			}
 			return false;
 
 		} catch ( \Exception $e ) {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( 'BRAG book Gallery: View tracking exception - ' . $e->getMessage() );
+				brag_book_log( 'BRAG book Gallery: View tracking exception - ' . $e->getMessage() );
 			}
 			return false;
 		}

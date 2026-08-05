@@ -586,7 +586,8 @@ class Carousel {
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   NudityWarningManager: function() { return /* binding */ NudityWarningManager; },
-/* harmony export */   PhoneFormatter: function() { return /* binding */ PhoneFormatter; }
+/* harmony export */   PhoneFormatter: function() { return /* binding */ PhoneFormatter; },
+/* harmony export */   escapeHtml: function() { return /* binding */ escapeHtml; }
 /* harmony export */ });
 /**
  * Nudity Warning Manager
@@ -746,6 +747,25 @@ class PhoneFormatter {
       input.setCustomValidity('Please enter a complete 10-digit phone number');
     }
   }
+}
+
+/**
+ * Escape a value for interpolation into HTML.
+ *
+ * Escapes quotes as well as angle brackets, so the result is safe in a quoted
+ * attribute value as well as in a text node. Several modules previously each
+ * carried their own copy of this, and the textContent/innerHTML variants among
+ * them left quotes intact — fine in a text node, but able to break out of an
+ * attribute. Use this one everywhere.
+ *
+ * @param {*} value - Value to escape; non-strings are coerced.
+ * @returns {string} Escaped text, or an empty string for null/undefined.
+ */
+function escapeHtml(value) {
+  if (value === null || value === undefined) {
+    return '';
+  }
+  return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 }
 
 

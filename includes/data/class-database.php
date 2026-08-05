@@ -579,7 +579,7 @@ class Database {
 			if ( false !== $result ) {
 				$insert_id = $this->wpdb->insert_id;
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( 'BRAGBook Database: Successfully logged sync operation with ID: ' . $insert_id . ', type: ' . $sync_type . ', source: ' . $sync_source );
+				brag_book_log( 'BRAGBook Database: Successfully logged sync operation with ID: ' . $insert_id . ', type: ' . $sync_type . ', source: ' . $sync_source );
 				$this->clear_sync_caches();
 				return $insert_id;
 			}
@@ -587,9 +587,9 @@ class Database {
 			// Log insert failure
 			$error_msg = 'Failed to insert sync log: ' . $this->wpdb->last_error;
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( 'BRAGBook Database ERROR: ' . $error_msg );
+			brag_book_log( 'BRAGBook Database ERROR: ' . $error_msg );
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log, WordPress.PHP.DevelopmentFunctions.error_log_print_r
-			error_log( 'BRAGBook Database: Data attempted: ' . print_r( $data, true ) );
+			brag_book_log( 'BRAGBook Database: Data attempted: ' . print_r( $data, true ) );
 			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Query Monitor integration hook
 			do_action( 'qm/debug', $error_msg );
 

@@ -634,47 +634,6 @@ class Menu {
 		 */
 
 		/**
-		 * Check if API functionality is available.
-		 *
-		 * Mode-specific settings require API integration to be configured.
-		 * This check prevents showing non-functional menu items when API
-		 * is not set up.
-		 */
-		if ( $this->plugin_state['has_api'] ) {
-
-			/**
-			 * Local Settings Submenu
-			 *
-			 * Configuration options specific to local mode operation.
-			 * Only registered when plugin is operating in local mode with
-			 * API connectivity available.
-			 *
-			 * Status: Currently disabled/coming soon feature
-			 * Visibility: Shown only in local mode (condition = true when in local mode)
-			 */
-			if ( $this->plugin_state['current_mode'] === 'local' ) {
-				$this->menu_config['submenus']['local'] = array(
-					'parent_slug' => 'brag-book-gallery-settings',
-					'page_title'  => __(
-						'Local Settings',
-						'brag-book-gallery'
-					),
-					'menu_title'  => __(
-						'Local',
-						'brag-book-gallery'
-					),
-					'capability'  => 'manage_options',
-					'menu_slug'   => 'brag-book-gallery-local',
-					'callback'    => array(
-						$this->settings_pages['local'],
-						'render'
-					),
-					'condition'   => true, // Visible when in local mode.
-				);
-			}
-		}
-
-		/**
 		 * =========================================================================
 		 * UTILITY AND DOCUMENTATION PAGES
 		 * =========================================================================

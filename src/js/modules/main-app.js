@@ -1,6 +1,6 @@
 import Dialog from './dialog.js';
 import MobileMenu from './mobile-menu.js';
-import { NudityWarningManager, PhoneFormatter } from './utilities.js';
+import { NudityWarningManager, PhoneFormatter, escapeHtml } from './utilities.js';
 import { initGallerySelector } from './gallery-selector.js';
 
 // FilterSystem, FavoritesManager, SearchAutocomplete, and ShareManager are
@@ -590,35 +590,6 @@ class BRAGbookGalleryApp {
 
 		// Store referrer with all IDs
 		window.storeProcedureReferrer(procedureSlug, procedureName, procedureUrl, procedureId, termId, caseId, caseWpId);
-	}
-
-	/**
-	 * Get API token from config
-	 * Handles multiple possible locations for the token
-	 */
-	getApiToken() {
-		const config = window.bragBookGalleryConfig;
-		if (!config) {
-			console.log('BRAGBook: bragBookGalleryConfig not available');
-			return null;
-		}
-
-		// Try different locations where the token might be stored
-		const token = config.api_token ||
-			   config.apiToken ||
-			   (config.api_config && config.api_config.default_token) ||
-			   null;
-
-		if (token) {
-			console.log('BRAGBook: API token found');
-		} else {
-			console.log('BRAGBook: API token not found in config. Available keys:', Object.keys(config));
-			if (config.api_config) {
-				console.log('BRAGBook: api_config keys:', Object.keys(config.api_config));
-			}
-		}
-
-		return token;
 	}
 
 	/**
@@ -3019,17 +2990,6 @@ class BRAGbookGalleryApp {
 
 
 	/**
-	 * Escape HTML characters for safe output
-	 */
-	escapeHtml(text) {
-		if (!text) return '';
-
-		const div = document.createElement('div');
-		div.textContent = text;
-		return div.innerHTML;
-	}
-
-	/**
 	 * Update SEO meta tags for case details
 	 */
 	updateCaseDetailsSEO(caseData, procedureName) {
@@ -3546,10 +3506,10 @@ class BRAGbookGalleryApp {
 
 		// Build data attributes
 		const dataAttrs = [
-			`data-case-id="${this.escapeHtml(caseId)}"`,
+			`data-case-id="${escapeHtml(caseId)}"`,
 			`data-post-id="${postId}"`,
 			`data-procedure-id="${procedureId}"`,
-			`data-procedure-case-id="${this.escapeHtml(procedureCaseId)}"`,
+			`data-procedure-case-id="${escapeHtml(procedureCaseId)}"`,
 			`data-age="${caseData.age || ''}"`,
 			`data-gender="${caseData.gender || ''}"`,
 			`data-ethnicity="${caseData.ethnicity || ''}"`,
@@ -3560,15 +3520,15 @@ class BRAGbookGalleryApp {
 
 		// Build HTML matching the v3 gallery card structure exactly
 		const favoriteItemId = procedureCaseId || caseId;
-		const escapedCaseId = this.escapeHtml(caseId);
-		const escapedCaseUrl = this.escapeHtml(caseUrl);
-		const escapedProcTitle = this.escapeHtml(procedureTitle);
-		const escapedItemId = this.escapeHtml(favoriteItemId);
-		const escapedImageUrl = this.escapeHtml(imageUrl);
+		const escapedCaseId = escapeHtml(caseId);
+		const escapedCaseUrl = escapeHtml(caseUrl);
+		const escapedProcTitle = escapeHtml(procedureTitle);
+		const escapedItemId = escapeHtml(favoriteItemId);
+		const escapedImageUrl = escapeHtml(imageUrl);
 		const escapedProcId = caseData.procedure_id || procedureId || '';
 		// Only emit the pair together — a `sizes` with no `srcset` means nothing.
 		const responsiveAttrs = imageSrcset
-			? ` srcset="${this.escapeHtml(imageSrcset)}" sizes="${this.escapeHtml(imageSizes)}"`
+			? ` srcset="${escapeHtml(imageSrcset)}" sizes="${escapeHtml(imageSizes)}"`
 			: '';
 
 		let html = `<article class="brag-book-gallery-case-card brag-book-gallery-case-card--v3 brag-book-gallery-favorites-card" ${dataAttrs}>`;
@@ -3618,21 +3578,6 @@ class BRAGbookGalleryApp {
 		html += '</article>';
 
 		return html;
-	}
-
-	/**
-	 * Escape HTML to prevent XSS attacks
-	 */
-	escapeHtml(unsafe) {
-		if (typeof unsafe !== 'string') {
-			return String(unsafe || '');
-		}
-		return unsafe
-			.replace(/&/g, "&amp;")
-			.replace(/</g, "&lt;")
-			.replace(/>/g, "&gt;")
-			.replace(/"/g, "&quot;")
-			.replace(/'/g, "&#039;");
 	}
 
 	/**

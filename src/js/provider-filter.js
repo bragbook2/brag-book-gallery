@@ -1,3 +1,5 @@
+import { escapeHtml } from './modules/utilities.js';
+
 /**
  * Provider Filter
  *
@@ -281,18 +283,6 @@
 		if (typeof window.bragBookGalleryUpdateLoadMoreContext === 'function') {
 			window.bragBookGalleryUpdateLoadMoreContext(null);
 		}
-	}
-
-	/**
-	 * Escape a string for safe insertion into HTML text.
-	 *
-	 * @param {string} value Raw string.
-	 * @return {string}
-	 */
-	function escapeHtml(value) {
-		const div = document.createElement('div');
-		div.textContent = String(value);
-		return div.innerHTML;
 	}
 
 	function init() {

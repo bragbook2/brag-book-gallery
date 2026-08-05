@@ -86,6 +86,11 @@ The plugin follows a modular architecture with clear separation of concerns:
   - `Trait_Tools`: Common utility functions
   - `Trait_Api`: API communication utilities
   - `Trait_Sanitizer`: Input sanitization utilities
+  - `Trait_Rate_Limit`: Per-IP throttling for public endpoints
+
+**Global functions** (`includes/functions/`):
+- `brag_book_log()` (`log.php`): debug logging. Use it instead of `error_log()` —
+  it no-ops unless `WP_DEBUG` is on, so sync runs stop flooding production logs.
 
 **Admin** (`includes/admin/`):
 - `Settings_Manager`: Centralized settings management
@@ -99,7 +104,6 @@ The plugin follows a modular architecture with clear separation of concerns:
   - `Dashboard_Page`: Dashboard overview
   - `Communications_Page`: Communication settings
   - `Default_Page`: Default mode settings
-  - `Local_Page`: Local mode settings
   - `Changelog_Page`: Version history
 - Debug Tools (`includes/admin/debug/`):
   - `Debug_Tools`: Main debug tools coordinator
@@ -109,7 +113,6 @@ The plugin follows a modular architecture with clear separation of concerns:
   - `Tabs`: Settings page tab management
   - Traits:
     - `Trait_Ajax_Handler`: AJAX handling utilities
-    - `Trait_Render_Helper`: Rendering helper methods
 
 **Data Layer** (`includes/data/`):
 - `Database`: Database operations and queries with caching

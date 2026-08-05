@@ -481,7 +481,7 @@ final class HTML_Renderer {
 	private static function log_debug( string $message ): void {
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( sprintf( 'BRAG book Gallery: %s', $message ) );
+			brag_book_log( sprintf( 'BRAG book Gallery: %s', $message ) );
 		}
 	}
 
@@ -515,13 +515,13 @@ final class HTML_Renderer {
 
 		if ( $should_debug ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( sprintf( 'Sidebar procedure debug - %s:', $procedure_name ) );
+			brag_book_log( sprintf( 'Sidebar procedure debug - %s:', $procedure_name ) );
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log, WordPress.PHP.DevelopmentFunctions.error_log_print_r
-			error_log( sprintf( '  Procedure IDs: %s', print_r( $procedure_ids, true ) ) );
+			brag_book_log( sprintf( '  Procedure IDs: %s', print_r( $procedure_ids, true ) ) );
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( sprintf( '  Case count: %d', $case_count ) );
+			brag_book_log( sprintf( '  Case count: %d', $case_count ) );
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log, WordPress.PHP.DevelopmentFunctions.error_log_print_r
-			error_log( sprintf( '  Full procedure data: %s', print_r( $procedure, true ) ) );
+			brag_book_log( sprintf( '  Full procedure data: %s', print_r( $procedure, true ) ) );
 		}
 	}
 
