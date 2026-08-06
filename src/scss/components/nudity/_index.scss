@@ -84,6 +84,16 @@
 		transition: filter .5s ease
 	}
 
+	// Global preset: one warning covering the viewport instead of an overlay per
+	// card. Fixed positioning makes its place in the DOM irrelevant, so it can be
+	// printed in the footer or returned inline with an AJAX response.
+	&--global {
+		position: fixed;
+		z-index: 100000;
+		border-radius: 0;
+		container-type: normal;
+	}
+
 	// When the overlay is too short for the stacked title/caption/button to
 	// fit without clipping or overlapping, lay the content out side by side
 	// instead. Once the overlay is tall enough the query stops matching and

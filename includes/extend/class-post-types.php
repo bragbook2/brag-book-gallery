@@ -936,6 +936,7 @@ class Post_Types {
 		// Status flags.
 		$featured        = get_post_meta( $post->ID, 'brag_book_gallery_featured', true );
 		$top_performing  = get_post_meta( $post->ID, 'brag_book_gallery_top_performing', true );
+		$is_nude         = get_post_meta( $post->ID, 'brag_book_gallery_is_nude', true );
 
 		// Patient Info.
 		$age         = get_post_meta( $post->ID, 'brag_book_gallery_patient_age', true );
@@ -1011,6 +1012,19 @@ class Post_Types {
 									   <?php checked( $top_performing, '1' ); ?>/>
 								<label for="brag_book_gallery_top_performing"><?php esc_html_e( 'Mark this case as top performing', 'brag-book-gallery' ); ?></label>
 								<p class="description"><?php esc_html_e( 'Flags this case as top performing.', 'brag-book-gallery' ); ?></p>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row">
+								<label for="brag_book_gallery_is_nude"><?php esc_html_e( 'Contains Nudity', 'brag-book-gallery' ); ?></label>
+							</th>
+							<td>
+								<input type="checkbox" id="brag_book_gallery_is_nude"
+									   name="brag_book_gallery_is_nude"
+									   value="1"
+									   <?php checked( $is_nude, '1' ); ?>/>
+								<label for="brag_book_gallery_is_nude"><?php esc_html_e( 'Show a nudity warning on this case', 'brag-book-gallery' ); ?></label>
+								<p class="description"><?php esc_html_e( 'Synced from the API photo sets. Only used when the nudity warning preset is set to Individualized.', 'brag-book-gallery' ); ?></p>
 							</td>
 						</tr>
 						<tr>
@@ -1627,6 +1641,7 @@ class Post_Types {
 				'brag_book_gallery_postop_revision_surgery',
 				'brag_book_gallery_featured',
 				'brag_book_gallery_top_performing',
+				'brag_book_gallery_is_nude',
 			);
 
 			foreach ( $checkbox_fields as $field ) {
@@ -2173,6 +2188,7 @@ class Post_Types {
 			$photo_set_count    = 0;
 			$image_url_sets     = array();
 			$image_variant_sets = array();
+			$is_nude            = false;
 
 			foreach ( $api_data['photoSets'] as $photo_set ) {
 				++$photo_set_count;
@@ -2276,10 +2292,13 @@ class Post_Types {
 					update_post_meta( $post_id, 'brag_book_gallery_case_high_res_url', $updated_urls );
 				}
 
-				if ( isset( $photo_set['isNude'] ) ) {
-					update_post_meta( $post_id, 'brag_book_gallery_is_nude', $photo_set['isNude'] ? '1' : '0' );
+				// A case counts as nude when ANY of its photo sets is flagged.
+				if ( ! empty( $photo_set['isNude'] ) ) {
+					$is_nude = true;
 				}
 			}
+
+			update_post_meta( $post_id, 'brag_book_gallery_is_nude', $is_nude ? '1' : '0' );
 
 			if ( ! empty( $image_url_sets ) ) {
 				update_post_meta( $post_id, 'brag_book_gallery_image_url_sets', $image_url_sets );

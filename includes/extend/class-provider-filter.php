@@ -21,6 +21,7 @@ namespace BRAGBookGallery\Includes\Extend;
 use BRAGBookGallery\Includes\Core\Settings_Helper;
 use BRAGBookGallery\Includes\Core\Setup;
 use BRAGBookGallery\Includes\Shortcodes\Cases_Handler;
+use BRAGBookGallery\Includes\Shortcodes\HTML_Renderer;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -385,7 +386,7 @@ class Provider_Filter {
 			$html .= Cases_Handler::render_wordpress_case_card(
 				Cases_Handler::build_case_data_from_post( $post ),
 				$image_display_mode,
-				self::case_has_nudity( $case_id ),
+				HTML_Renderer::case_has_nudity( $case_id ),
 				$procedure_name,
 				'',
 				$procedure_term_id
@@ -393,27 +394,5 @@ class Provider_Filter {
 		}
 
 		return $html;
-	}
-
-	/**
-	 * Whether any of a case's procedures are flagged for nudity.
-	 *
-	 * @since 4.8.0
-	 * @param int $case_id The case post ID.
-	 * @return bool
-	 */
-	private static function case_has_nudity( int $case_id ): bool {
-		$term_ids = wp_get_post_terms( $case_id, Taxonomies::TAXONOMY_PROCEDURES, [ 'fields' => 'ids' ] );
-		if ( is_wp_error( $term_ids ) || empty( $term_ids ) ) {
-			return false;
-		}
-
-		foreach ( $term_ids as $term_id ) {
-			if ( 'true' === (string) get_term_meta( $term_id, 'nudity', true ) ) {
-				return true;
-			}
-		}
-
-		return false;
 	}
 }

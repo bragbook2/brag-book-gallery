@@ -526,6 +526,204 @@ final class HTML_Renderer {
 	}
 
 	/**
+	 * Nudity preset: warning overlay per procedure flagged as containing nudity.
+	 *
+	 * @since 3.3.3
+	 * @var string
+	 */
+	public const NUDITY_MODE_DEFAULT = 'default';
+
+	/**
+	 * Nudity preset: one full-screen warning per page instead of card overlays.
+	 *
+	 * @since 3.3.3
+	 * @var string
+	 */
+	public const NUDITY_MODE_GLOBAL = 'global';
+
+	/**
+	 * Nudity preset: warning overlay per case flagged in its own post meta.
+	 *
+	 * @since 3.3.3
+	 * @var string
+	 */
+	public const NUDITY_MODE_INDIVIDUAL = 'individual';
+
+	/**
+	 * Post meta key holding the per-case nudity flag ('1' / '0').
+	 *
+	 * Populated by sync from the API photoSet `isNude` value and editable on the
+	 * case editor.
+	 *
+	 * @since 3.3.3
+	 * @var string
+	 */
+	public const NUDITY_META_KEY = 'brag_book_gallery_is_nude';
+
+	/**
+	 * Per-request memo of the procedure-derived nudity flag, keyed by post ID.
+	 *
+	 * @since 3.3.3
+	 * @var array<int, bool>
+	 */
+	private static array $nudity_term_cache = array();
+
+	/**
+	 * Whether the global warning has already been queued for this request.
+	 *
+	 * @since 3.3.3
+	 * @var bool
+	 */
+	private static bool $nudity_global_queued = false;
+
+	/**
+	 * Get the configured nudity preset
+	 *
+	 * @since 3.3.3
+	 *
+	 * @return string One of the NUDITY_MODE_* constants.
+	 */
+	public static function get_nudity_mode(): string {
+		$mode = (string) get_option( 'brag_book_gallery_nudity_mode', self::NUDITY_MODE_DEFAULT );
+
+		$allowed = array(
+			self::NUDITY_MODE_DEFAULT,
+			self::NUDITY_MODE_GLOBAL,
+			self::NUDITY_MODE_INDIVIDUAL,
+		);
+
+		return in_array( $mode, $allowed, true ) ? $mode : self::NUDITY_MODE_DEFAULT;
+	}
+
+	/**
+	 * Get the configured warning copy
+	 *
+	 * Falls back to the plugin defaults when a field has been left blank.
+	 *
+	 * @since 3.3.3
+	 *
+	 * @return array{title: string, caption: string, button: string} Warning copy.
+	 */
+	public static function get_nudity_text(): array {
+		$title   = trim( (string) get_option( 'brag_book_gallery_nudity_title', '' ) );
+		$caption = trim( (string) get_option( 'brag_book_gallery_nudity_caption', '' ) );
+		$button  = trim( (string) get_option( 'brag_book_gallery_nudity_button', '' ) );
+
+		return array(
+			'title'   => '' !== $title ? $title : __( 'Nudity Warning', 'brag-book-gallery' ),
+			'caption' => '' !== $caption ? $caption : __( 'Click to proceed if you wish to view.', 'brag-book-gallery' ),
+			'button'  => '' !== $button ? $button : __( 'Proceed', 'brag-book-gallery' ),
+		);
+	}
+
+	/**
+	 * Decide whether a case needs a nudity warning
+	 *
+	 * The individualized preset reads the per-case flag only. The default and
+	 * global presets use the procedure flag: either the one the caller already
+	 * resolved for the current procedure context, or — when the caller passes
+	 * null — the flag on any procedure assigned to the case.
+	 *
+	 * @since 3.3.3
+	 *
+	 * @param int       $post_id          Case post ID (0 when unknown).
+	 * @param bool|null $procedure_nudity Resolved procedure flag, or null to auto-detect.
+	 *
+	 * @return bool True when a warning should be shown.
+	 */
+	public static function should_warn( int $post_id, ?bool $procedure_nudity = null ): bool {
+		if ( self::NUDITY_MODE_INDIVIDUAL === self::get_nudity_mode() ) {
+			return $post_id > 0 && '1' === (string) get_post_meta( $post_id, self::NUDITY_META_KEY, true );
+		}
+
+		if ( null !== $procedure_nudity ) {
+			return $procedure_nudity;
+		}
+
+		return self::case_has_nudity( $post_id );
+	}
+
+	/**
+	 * Whether any procedure assigned to a case is flagged for nudity
+	 *
+	 * @since 3.3.3
+	 *
+	 * @param int $post_id Case post ID.
+	 *
+	 * @return bool True when at least one procedure term carries the flag.
+	 */
+	public static function case_has_nudity( int $post_id ): bool {
+		if ( $post_id <= 0 ) {
+			return false;
+		}
+
+		if ( isset( self::$nudity_term_cache[ $post_id ] ) ) {
+			return self::$nudity_term_cache[ $post_id ];
+		}
+
+		$term_ids = wp_get_object_terms(
+			$post_id,
+			\BRAGBookGallery\Includes\Extend\Taxonomies::TAXONOMY_PROCEDURES,
+			array( 'fields' => 'ids' )
+		);
+
+		$flagged = false;
+
+		if ( ! is_wp_error( $term_ids ) ) {
+			foreach ( $term_ids as $term_id ) {
+				if ( 'true' === (string) get_term_meta( (int) $term_id, 'nudity', true ) ) {
+					$flagged = true;
+					break;
+				}
+			}
+		}
+
+		self::$nudity_term_cache[ $post_id ] = $flagged;
+
+		return $flagged;
+	}
+
+	/**
+	 * Render the nudity warning for a case when one is needed
+	 *
+	 * Under the global preset no per-card overlay is emitted; a single
+	 * full-screen warning is queued for the page footer instead.
+	 *
+	 * @since 3.3.3
+	 *
+	 * @param int       $post_id          Case post ID (0 when unknown).
+	 * @param bool|null $procedure_nudity Resolved procedure flag, or null to auto-detect.
+	 *
+	 * @return string Warning HTML, or an empty string when no warning is needed.
+	 */
+	public static function maybe_render_nudity_warning( int $post_id, ?bool $procedure_nudity = null ): string {
+		if ( ! self::should_warn( $post_id, $procedure_nudity ) ) {
+			return '';
+		}
+
+		if ( self::NUDITY_MODE_GLOBAL !== self::get_nudity_mode() ) {
+			return self::render_nudity_warning();
+		}
+
+		// AJAX-appended cards have no footer to hook into, so the full-screen
+		// warning is returned inline the first time flagged content appears in
+		// the response. It is fixed-position, so its place in the DOM is moot.
+		if ( wp_doing_ajax() ) {
+			if ( self::$nudity_global_queued ) {
+				return '';
+			}
+
+			self::$nudity_global_queued = true;
+
+			return self::nudity_warning_markup( 'brag-book-gallery-nudity-warning--global' );
+		}
+
+		self::queue_global_nudity_warning();
+
+		return '';
+	}
+
+	/**
 	 * Render nudity warning overlay
 	 *
 	 * Creates nudity warning element.
@@ -536,11 +734,56 @@ final class HTML_Renderer {
 	 * @return string Warning HTML.
 	 */
 	public static function render_nudity_warning(): string {
+		return self::nudity_warning_markup();
+	}
+
+	/**
+	 * Queue the single full-screen warning for the page footer
+	 *
+	 * @since 3.3.3
+	 *
+	 * @return void
+	 */
+	private static function queue_global_nudity_warning(): void {
+		if ( self::$nudity_global_queued ) {
+			return;
+		}
+
+		self::$nudity_global_queued = true;
+
+		add_action( 'wp_footer', array( self::class, 'render_global_nudity_warning' ), 100 );
+	}
+
+	/**
+	 * Print the full-screen nudity warning
+	 *
+	 * @since 3.3.3
+	 *
+	 * @return void
+	 */
+	public static function render_global_nudity_warning(): void {
+		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Escaped in nudity_warning_markup().
+		echo self::nudity_warning_markup( 'brag-book-gallery-nudity-warning--global' );
+	}
+
+	/**
+	 * Build the warning markup with the configured copy
+	 *
+	 * @since 3.3.3
+	 *
+	 * @param string $extra_class Optional modifier class.
+	 *
+	 * @return string Warning HTML.
+	 */
+	private static function nudity_warning_markup( string $extra_class = '' ): string {
+		$text = self::get_nudity_text();
+
 		return sprintf(
-			'<div class="brag-book-gallery-nudity-warning" data-nudity-warning="true"><div class="brag-book-gallery-nudity-warning-content"><p class="brag-book-gallery-nudity-warning-title">%s</p><p class="brag-book-gallery-nudity-warning-caption">%s</p><button class="brag-book-gallery-nudity-warning-button" type="button">%s</button></div></div>',
-			esc_html__( 'Contains Nudity', 'brag-book-gallery' ),
-			esc_html__( 'Click to proceed if you wish to view', 'brag-book-gallery' ),
-			esc_html__( 'Proceed', 'brag-book-gallery' )
+			'<div class="brag-book-gallery-nudity-warning%1$s" data-nudity-warning="true"><div class="brag-book-gallery-nudity-warning-content"><p class="brag-book-gallery-nudity-warning-title">%2$s</p><p class="brag-book-gallery-nudity-warning-caption">%3$s</p><button class="brag-book-gallery-nudity-warning-button" type="button">%4$s</button></div></div>',
+			'' !== $extra_class ? ' ' . esc_attr( $extra_class ) : '',
+			esc_html( $text['title'] ),
+			esc_html( $text['caption'] ),
+			esc_html( $text['button'] )
 		);
 	}
 

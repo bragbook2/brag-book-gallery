@@ -4696,6 +4696,12 @@ body.brag-book-gallery-hide-filter-counts .brag-book-gallery-nav-count {
   filter: blur(20px);
   transition: filter 0.5s ease;
 }
+.brag-book-gallery-nudity-warning--global {
+  position: fixed;
+  z-index: 100000;
+  border-radius: 0;
+  container-type: normal;
+}
 @container nudity-warning (max-height: 220px) {
   .brag-book-gallery-nudity-warning-content {
     flex-wrap: wrap;

@@ -1277,18 +1277,7 @@ class Case_Handler {
 		$html .= '<div class="brag-book-gallery-case-image-section">';
 		$html .= '<div class="brag-book-gallery-case-image-container">';
 
-		if ( $has_nudity ) {
-			$html .= sprintf(
-				'<div class="brag-book-gallery-nudity-warning" style="display: block;">
-		            <div class="brag-book-gallery-nudity-content">
-		                <p class="brag-book-gallery-nudity-text">%s</p>
-		                <button class="brag-book-gallery-nudity-proceed">%s</button>
-		            </div>
-		        </div>',
-				esc_html__( 'This content contains nudity', 'brag-book-gallery' ),
-				esc_html__( 'Proceed', 'brag-book-gallery' )
-			);
-		}
+		$html .= HTML_Renderer::maybe_render_nudity_warning( $case_post->ID, $has_nudity );
 
 		// Skeleton loader
 		$html .= '<div class="brag-book-gallery-case-skeleton" style="display: none;"></div>';

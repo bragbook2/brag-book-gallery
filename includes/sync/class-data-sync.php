@@ -3635,7 +3635,7 @@ class Data_Sync {
 					'postProcessedImageLocation'           => $images['sideBySide']['standard']['url'] ?? '',
 					'highResPostProcessedImageLocation'    => $images['sideBySide']['highDefinition']['url'] ?? '',
 					'seoAltText'                           => '', // Alt text comes from seoInfo, not photo images
-					'isNude'                               => false,
+					'isNude'                               => ! empty( $photo_set['isNude'] ),
 					// Preserve the nested images node so save_api_response_data() can
 					// capture the per-image small/medium/full variants and alt text.
 					'images'                               => $images,

@@ -17,6 +17,7 @@ namespace BRAGBookGallery\Includes\Admin\Pages;
 use BRAGBookGallery\Includes\Admin\Core\Settings_Base;
 use BRAGBookGallery\Includes\Core\Settings_Helper;
 use BRAGBookGallery\Includes\Core\Updater;
+use BRAGBookGallery\Includes\Shortcodes\HTML_Renderer;
 
 if ( ! defined( 'WPINC' ) ) {
 	die( 'Restricted Access' );
@@ -752,6 +753,13 @@ class General_Page extends Settings_Base {
 		$enable_powered_by   = (bool) get_option( 'brag_book_gallery_enable_powered_by', false );
 		$enable_disclaimer   = (bool) get_option( 'brag_book_gallery_enable_disclaimer', false );
 
+		// Nudity warning settings.
+		$nudity_mode    = HTML_Renderer::get_nudity_mode();
+		$nudity_text    = HTML_Renderer::get_nudity_text();
+		$nudity_title   = (string) get_option( 'brag_book_gallery_nudity_title', '' );
+		$nudity_caption = (string) get_option( 'brag_book_gallery_nudity_caption', '' );
+		$nudity_button  = (string) get_option( 'brag_book_gallery_nudity_button', '' );
+
 		// Current mode (default only)
 		$current_mode = 'default';
 		?>
@@ -1446,6 +1454,93 @@ class General_Page extends Settings_Base {
 				</div>
 			</div>
 
+			<!-- Nudity Warning Settings -->
+			<h3><?php esc_html_e( 'Nudity Warning Settings', 'brag-book-gallery' ); ?></h3>
+
+			<div class="brag-book-gallery-card nudity-settings-card">
+				<div class="gallery-page-settings-field">
+					<label class="gallery-page-settings-field__label">
+						<?php esc_html_e( 'Warning Preset', 'brag-book-gallery' ); ?>
+					</label>
+					<fieldset>
+						<label class="nudity-settings-preset">
+							<input type="radio"
+							       name="brag_book_gallery_nudity_mode"
+							       value="<?php echo esc_attr( HTML_Renderer::NUDITY_MODE_GLOBAL ); ?>"
+							       <?php checked( $nudity_mode, HTML_Renderer::NUDITY_MODE_GLOBAL ); ?> />
+							<strong><?php esc_html_e( 'Global', 'brag-book-gallery' ); ?></strong>
+							<span class="description">
+								<?php esc_html_e( 'One full-screen warning per page instead of a warning on each case.', 'brag-book-gallery' ); ?>
+							</span>
+						</label>
+						<label class="nudity-settings-preset">
+							<input type="radio"
+							       name="brag_book_gallery_nudity_mode"
+							       value="<?php echo esc_attr( HTML_Renderer::NUDITY_MODE_DEFAULT ); ?>"
+							       <?php checked( $nudity_mode, HTML_Renderer::NUDITY_MODE_DEFAULT ); ?> />
+							<strong><?php esc_html_e( 'Default', 'brag-book-gallery' ); ?></strong>
+							<span class="description">
+								<?php esc_html_e( 'Warn on every case whose procedure is flagged as containing nudity.', 'brag-book-gallery' ); ?>
+							</span>
+						</label>
+						<label class="nudity-settings-preset">
+							<input type="radio"
+							       name="brag_book_gallery_nudity_mode"
+							       value="<?php echo esc_attr( HTML_Renderer::NUDITY_MODE_INDIVIDUAL ); ?>"
+							       <?php checked( $nudity_mode, HTML_Renderer::NUDITY_MODE_INDIVIDUAL ); ?> />
+							<strong><?php esc_html_e( 'Individualized', 'brag-book-gallery' ); ?></strong>
+							<span class="description">
+								<?php esc_html_e( 'Warn only on cases flagged individually. The flag syncs from the API and is editable on each case.', 'brag-book-gallery' ); ?>
+							</span>
+						</label>
+					</fieldset>
+				</div>
+
+				<div class="gallery-page-settings-field">
+					<label for="brag_book_gallery_nudity_title" class="gallery-page-settings-field__label">
+						<?php esc_html_e( 'Warning Title', 'brag-book-gallery' ); ?>
+					</label>
+					<input type="text"
+					       id="brag_book_gallery_nudity_title"
+					       name="brag_book_gallery_nudity_title"
+					       value="<?php echo esc_attr( $nudity_title ); ?>"
+					       class="regular-text"
+					       placeholder="<?php echo esc_attr( $nudity_text['title'] ); ?>" />
+					<p class="description">
+						<?php esc_html_e( 'Leave blank to use the default.', 'brag-book-gallery' ); ?>
+					</p>
+				</div>
+
+				<div class="gallery-page-settings-field">
+					<label for="brag_book_gallery_nudity_caption" class="gallery-page-settings-field__label">
+						<?php esc_html_e( 'Warning Text', 'brag-book-gallery' ); ?>
+					</label>
+					<textarea id="brag_book_gallery_nudity_caption"
+					          name="brag_book_gallery_nudity_caption"
+					          rows="2"
+					          class="large-text"
+					          placeholder="<?php echo esc_attr( $nudity_text['caption'] ); ?>"><?php echo esc_textarea( $nudity_caption ); ?></textarea>
+					<p class="description">
+						<?php esc_html_e( 'Leave blank to use the default.', 'brag-book-gallery' ); ?>
+					</p>
+				</div>
+
+				<div class="gallery-page-settings-field">
+					<label for="brag_book_gallery_nudity_button" class="gallery-page-settings-field__label">
+						<?php esc_html_e( 'Button Label', 'brag-book-gallery' ); ?>
+					</label>
+					<input type="text"
+					       id="brag_book_gallery_nudity_button"
+					       name="brag_book_gallery_nudity_button"
+					       value="<?php echo esc_attr( $nudity_button ); ?>"
+					       class="regular-text"
+					       placeholder="<?php echo esc_attr( $nudity_text['button'] ); ?>" />
+					<p class="description">
+						<?php esc_html_e( 'Leave blank to use the default.', 'brag-book-gallery' ); ?>
+					</p>
+				</div>
+			</div>
+
 			<div class="brag-book-gallery-tab-actions">
 				<button type="submit" name="submit" class="button button-primary button-large">
 					<?php esc_html_e( 'Save Display & Gallery Settings', 'brag-book-gallery' ); ?>
@@ -2107,6 +2202,9 @@ class General_Page extends Settings_Base {
 		// Save feature toggles
 		$this->save_feature_toggles();
 
+		// Save nudity warning settings
+		$this->save_nudity_settings();
+
 		// Clear settings cache
 		if ( class_exists( '\BRAGBookGallery\Includes\Core\Settings_Helper' ) ) {
 			\BRAGBookGallery\Includes\Core\Settings_Helper::clear_cache();
@@ -2452,6 +2550,44 @@ class General_Page extends Settings_Base {
 		foreach ( $features as $feature ) {
 			$value = isset( $_POST[ $feature ] ) && '1' === $_POST[ $feature ];
 			update_option( $feature, $value );
+		}
+	}
+
+	/**
+	 * Save nudity warning settings
+	 *
+	 * Stores the preset and the warning copy. Blank copy fields fall back to the
+	 * plugin defaults at render time, so they are stored as-is.
+	 *
+	 * @since 3.3.3
+	 * @return void
+	 */
+	private function save_nudity_settings(): void {
+		if ( isset( $_POST['brag_book_gallery_nudity_mode'] ) ) {
+			$mode    = sanitize_key( wp_unslash( $_POST['brag_book_gallery_nudity_mode'] ) );
+			$allowed = array(
+				HTML_Renderer::NUDITY_MODE_DEFAULT,
+				HTML_Renderer::NUDITY_MODE_GLOBAL,
+				HTML_Renderer::NUDITY_MODE_INDIVIDUAL,
+			);
+
+			if ( in_array( $mode, $allowed, true ) ) {
+				update_option( 'brag_book_gallery_nudity_mode', $mode );
+			}
+		}
+
+		$text_fields = array(
+			'brag_book_gallery_nudity_title'   => 'sanitize_text_field',
+			'brag_book_gallery_nudity_caption' => 'sanitize_textarea_field',
+			'brag_book_gallery_nudity_button'  => 'sanitize_text_field',
+		);
+
+		foreach ( $text_fields as $option => $sanitize_callback ) {
+			if ( ! isset( $_POST[ $option ] ) ) {
+				continue;
+			}
+
+			update_option( $option, call_user_func( $sanitize_callback, wp_unslash( $_POST[ $option ] ) ) );
 		}
 	}
 

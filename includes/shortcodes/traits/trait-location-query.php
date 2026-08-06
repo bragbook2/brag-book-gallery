@@ -194,28 +194,6 @@ trait Trait_Location_Query {
 	}
 
 	/**
-	 * Whether any of a case's procedures are flagged for nudity.
-	 *
-	 * @since 3.3.3
-	 * @param int $case_id The case post ID.
-	 * @return bool
-	 */
-	protected static function case_has_nudity( int $case_id ): bool {
-		$term_ids = wp_get_post_terms( $case_id, Taxonomies::TAXONOMY_PROCEDURES, [ 'fields' => 'ids' ] );
-		if ( is_wp_error( $term_ids ) || empty( $term_ids ) ) {
-			return false;
-		}
-
-		foreach ( $term_ids as $term_id ) {
-			if ( 'true' === (string) get_term_meta( $term_id, 'nudity', true ) ) {
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	/**
 	 * Great-circle distance between two points, in miles (Haversine).
 	 *
 	 * @since 3.3.3

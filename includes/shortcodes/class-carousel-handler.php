@@ -1204,14 +1204,12 @@ final class Carousel_Handler {
 			? sanitize_text_field( $photo['seoAltText'] )
 			: __( 'Before and after procedure result', 'brag-book-gallery' );
 
-		// Check for nudity - either from photo data OR carousel-level override
-		$has_nudity = false;
-		if ( ! empty( $config['nudity'] ) ) {
-			// If carousel nudity parameter is true, always show nudity warning
+		// A carousel-level override or a photo-level flag forces the warning on.
+		// Otherwise stay null so the renderer auto-detects from the case itself,
+		// which is what makes the shortcode parameter optional.
+		$has_nudity = null;
+		if ( ! empty( $config['nudity'] ) || ! empty( $photo['hasNudity'] ) || ! empty( $photo['nudity'] ) ) {
 			$has_nudity = true;
-		} else {
-			// Otherwise, use photo's individual nudity flag
-			$has_nudity = ! empty( $photo['hasNudity'] ) || ! empty( $photo['nudity'] );
 		}
 
 		return array(
@@ -1300,7 +1298,19 @@ final class Carousel_Handler {
 	 */
 	private static function render_slide( array $photo_data, array $case_data, array $slide_data, string $case_url, bool $is_standalone = false, ?int $procedure_id = null, int $slide_index = 0 ): string {
 		$slide_wrapper = self::render_slide_wrapper( $slide_data, $case_data, $procedure_id );
-		$nudity_warning = $photo_data['has_nudity'] ? HTML_Renderer::render_nudity_warning() : '';
+
+		// A null has_nudity means "auto-detect from the case" — the carousel has
+		// no procedure context of its own to hand down.
+		$nudity_warning = HTML_Renderer::maybe_render_nudity_warning(
+			(int) ( $case_data['post_id'] ?? 0 ),
+			$photo_data['has_nudity']
+		);
+
+		// Blur the image only when this slide carries its own overlay; the global
+		// preset covers the whole viewport instead.
+		$photo_data['has_nudity'] = '' !== $nudity_warning
+			&& HTML_Renderer::NUDITY_MODE_GLOBAL !== HTML_Renderer::get_nudity_mode();
+
 		$link_open = ! empty( $case_url ) ? self::render_slide_link_open( $case_url, $photo_data['alt_text'] ) : '';
 		$link_close = ! empty( $case_url ) ? '</a>' : '';
 		$image_element = self::render_slide_image( $photo_data, 0 === $slide_index, (int) ( $case_data['post_id'] ?? 0 ) );

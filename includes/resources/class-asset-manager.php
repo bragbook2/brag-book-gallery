@@ -386,7 +386,7 @@ final class Asset_Manager {
 			(function() {
 				"use strict";
 				try {
-					if (localStorage && localStorage.getItem("brag-book-nudity-accepted") === "true") {
+					if (localStorage && localStorage.getItem("brag-book-gallery-nudity-accepted") === "true") {
 						document.documentElement.classList.add("nudity-accepted-preload");
 						var style = document.createElement("style");
 						style.textContent = ".brag-book-gallery-nudity-warning { display: none !important; } .brag-book-gallery-nudity-blur { filter: none !important; }";

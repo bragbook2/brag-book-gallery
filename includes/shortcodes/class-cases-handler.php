@@ -552,7 +552,7 @@ final class Cases_Handler {
 	 *
 	 * @param array $case Case data.
 	 * @param string $image_display_mode Image display mode.
-	 * @param bool $procedure_nudity Whether procedure has nudity.
+	 * @param bool|null $procedure_nudity Whether the current procedure is flagged for nudity; null auto-detects from the case.
 	 * @param string $procedure_context Procedure context from filter.
 	 * @param string $current_procedure_id Current procedure ID for referrer tracking.
 	 * @param string $current_term_id Current term ID for referrer tracking.
@@ -564,7 +564,7 @@ final class Cases_Handler {
 	public static function render_case_card(
 		array $case,
 		string $image_display_mode,
-		bool $procedure_nudity = false,
+		?bool $procedure_nudity = null,
 		string $procedure_context = '',
 		string $current_procedure_id = '',
 		string $current_term_id = ''
@@ -649,10 +649,8 @@ final class Cases_Handler {
 			}
 		}
 
-		// Add nudity warning only if the current procedure has nudity.
-		if ( $procedure_nudity ) {
-			$html .= self::render_nudity_warning();
-		}
+		// Add nudity warning for the configured preset.
+		$html .= HTML_Renderer::maybe_render_nudity_warning( (int) $post_id, $procedure_nudity );
 
 		// Add case title or provider name based on settings.
 		$show_provider = (bool) get_option( 'brag_book_gallery_show_provider', false );
@@ -909,7 +907,7 @@ final class Cases_Handler {
 	 *
 	 * @param \WP_Post $post WordPress post object.
 	 * @param string $image_display_mode Image display mode (single/before_after).
-	 * @param bool $procedure_nudity Whether procedure has nudity warning.
+	 * @param bool|null $procedure_nudity Whether the current procedure is flagged for nudity; null auto-detects from the case.
 	 * @param string $procedure_context Procedure context for URL generation.
 	 *
 	 * @return string Case card HTML.
@@ -919,7 +917,7 @@ final class Cases_Handler {
 	public static function render_case_card_from_post(
 		\WP_Post $post,
 		string $image_display_mode = 'single',
-		bool $procedure_nudity = false,
+		?bool $procedure_nudity = null,
 		string $procedure_context = ''
 	): string {
 		$html = '';
@@ -1064,19 +1062,8 @@ final class Cases_Handler {
 
 		$html .= '</a>'; // Close case link
 
-		// Add nudity warning if needed.
-		if ( $procedure_nudity ) {
-			$html .= '<div class="brag-book-gallery-nudity-warning" style="display: none;">';
-			$html .= '<div class="brag-book-gallery-nudity-warning-content">';
-			$html .= '<h3>' . esc_html__( 'Content Advisory', 'brag-book-gallery' ) . '</h3>';
-			$html .= '<p>' . esc_html__( 'This content may contain sensitive material. Please proceed with discretion.', 'brag-book-gallery' ) . '</p>';
-			$html .= '<div class="brag-book-gallery-nudity-warning-actions">';
-			$html .= '<button class="brag-book-gallery-button brag-book-gallery-button--secondary" data-action="nudity-cancel">' . esc_html__( 'Cancel', 'brag-book-gallery' ) . '</button>';
-			$html .= '<button class="brag-book-gallery-button brag-book-gallery-button--primary" data-action="nudity-proceed">' . esc_html__( 'Proceed', 'brag-book-gallery' ) . '</button>';
-			$html .= '</div>';
-			$html .= '</div>';
-			$html .= '</div>';
-		}
+		// Add nudity warning for the configured preset.
+		$html .= HTML_Renderer::maybe_render_nudity_warning( $post->ID, $procedure_nudity );
 
 		$html .= '</article>';
 
@@ -1386,7 +1373,7 @@ final class Cases_Handler {
 
 		// Iterate through each post and render its card
 		foreach ( $posts as $post ) {
-			$output .= self::render_case_card_from_post( $post, $image_display_mode, false, $filter_procedure );
+			$output .= self::render_case_card_from_post( $post, $image_display_mode, null, $filter_procedure );
 		}
 
 		return $output;
@@ -1668,38 +1655,6 @@ final class Cases_Handler {
 	}
 
 	/**
-	 * Render nudity warning
-	 *
-	 * Generates HTML for nudity warning overlay.
-	 *
-	 * @return string HTML output.
-	 * @since 3.0.0
-	 *
-	 */
-	private static function render_nudity_warning(): string {
-		ob_start();
-		?>
-		<div class="brag-book-gallery-nudity-warning">
-			<div class="brag-book-gallery-nudity-warning-content">
-				<p class="brag-book-gallery-nudity-warning-title">
-					<?php esc_html_e( 'Nudity Warning', 'brag-book-gallery' ); ?>
-				</p>
-				<p class="brag-book-gallery-nudity-warning-caption">
-					<?php esc_html_e( 'Click to proceed if you wish to view.', 'brag-book-gallery' ); ?>
-				</p>
-				<button class="brag-book-gallery-nudity-warning-button">
-					<?php esc_html_e( 'Proceed', 'brag-book-gallery' ); ?>
-				</button>
-			</div>
-		</div>
-		<?php
-		$output = ob_get_clean();
-
-		// Prevent wpautop from adding unwanted <p> and <br> tags to shortcode output
-		return '<!--brag-book-gallery-start-->' . $output . '<!--brag-book-gallery-end-->';
-	}
-
-	/**
 	 * Get case meta data with missing data logging
 	 *
 	 * @param int $post_id The post ID.
@@ -1883,7 +1838,7 @@ final class Cases_Handler {
 	 *
 	 * @param array $case_data WordPress post-based case data.
 	 * @param string $image_display_mode Display mode for images.
-	 * @param bool $procedure_nudity Whether procedure has nudity warning.
+	 * @param bool|null $procedure_nudity Whether the current procedure is flagged for nudity; null auto-detects from the case.
 	 * @param string $procedure_context Context for case display.
 	 * @param string $current_procedure_id Current procedure API ID, if any.
 	 * @param string $current_term_id Current procedure term ID, if any.
@@ -1896,7 +1851,7 @@ final class Cases_Handler {
 	public static function render_wordpress_case_card(
 		array $case_data,
 		string $image_display_mode = 'single',
-		bool $procedure_nudity = false,
+		?bool $procedure_nudity = null,
 		string $procedure_context = '',
 		string $current_procedure_id = '',
 		string $current_term_id = '',
@@ -2264,10 +2219,9 @@ final class Cases_Handler {
 							</a>
 						<?php endif; ?>
 						<?php
-						// Add nudity warning if needed
-						if ( $procedure_nudity ) {
-							echo self::render_nudity_warning(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Output is pre-escaped in render method.
-						}
+						// Add nudity warning for the configured preset.
+						// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Output is pre-escaped in render method.
+						echo HTML_Renderer::maybe_render_nudity_warning( (int) $post_id, $procedure_nudity );
 						?>
 						<?php if ( 'v2' === $case_card_type || 'v3' === $case_card_type ) : ?>
 							<!-- V2/V3 Card: Overlay with case name and arrow -->
@@ -2605,7 +2559,7 @@ final class Cases_Handler {
 			$html .= self::render_wordpress_case_card(
 				self::build_case_data_from_post( $post ),
 				$image_display_mode,
-				self::case_has_nudity( (int) $post_id ),
+				HTML_Renderer::case_has_nudity( (int) $post_id ),
 				$procedure_name,
 				'',
 				$term_id_attr,
