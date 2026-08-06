@@ -295,7 +295,8 @@ final class Gallery_Handler {
 	 * the same ordered list as every other gallery view.
 	 *
 	 * @param array $atts Shortcode attributes. Supports:
-	 *                    - provider_id: Filter cases by provider API ID.
+	 *                    - provider_id: Filter cases by provider API ID. Defaults
+	 *                      to the queried provider on a provider term archive.
 	 *                    - limit: Cases per load. Defaults to the site's
 	 *                      items-per-page setting when omitted.
 	 *
@@ -315,7 +316,13 @@ final class Gallery_Handler {
 			'brag_book_gallery_procedures'
 		);
 
+		// On a provider term archive the queried provider stands in for an omitted
+		// provider_id, so the grid works with no attributes in a block template.
 		$provider_id = absint( $atts['provider_id'] );
+		if ( 0 === $provider_id ) {
+			$provider_id = self::get_active_provider_id();
+		}
+
 		$limit       = absint( $atts['limit'] );
 		$limit       = $limit > 0 ? $limit : Settings_Helper::get_items_per_page();
 
@@ -392,6 +399,30 @@ final class Gallery_Handler {
 		}
 
 		return absint( get_queried_object_id() );
+	}
+
+	/**
+	 * Resolve the provider API ID for the current provider term archive.
+	 *
+	 * Newer syncs store the API ID as `provider_id` term meta; older syncs may
+	 * only have `provider_member_id`, so both are checked.
+	 *
+	 * @return int Provider API ID, or 0 when not on a provider archive.
+	 * @since 4.9.3
+	 */
+	private static function get_active_provider_id(): int {
+		if ( ! is_tax( Taxonomies::TAXONOMY_PROVIDERS ) ) {
+			return 0;
+		}
+
+		$term_id     = absint( get_queried_object_id() );
+		$provider_id = absint( get_term_meta( $term_id, 'provider_id', true ) );
+
+		if ( $provider_id > 0 ) {
+			return $provider_id;
+		}
+
+		return absint( get_term_meta( $term_id, 'provider_member_id', true ) );
 	}
 
 	/**

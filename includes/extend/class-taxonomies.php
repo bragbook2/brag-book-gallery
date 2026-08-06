@@ -115,12 +115,7 @@ class Taxonomies {
 			'items_list_navigation'      => __( 'Procedures list navigation', 'brag-book-gallery' ),
 		];
 
-		// Get gallery page slug for URL structure
-		$gallery_slug = get_option('brag_book_gallery_page_slug', 'gallery' );
-		// Handle legacy array format
-		if ( is_array( $gallery_slug ) ) {
-			$gallery_slug = $gallery_slug[0] ?? 'gallery';
-		}
+		$gallery_slug = $this->get_gallery_slug();
 
 		$procedures_args = [
 			'labels'                     => $procedures_labels,
@@ -145,6 +140,23 @@ class Taxonomies {
 		if ( $this->is_providers_taxonomy_enabled() ) {
 			$this->register_providers_taxonomy();
 		}
+	}
+
+	/**
+	 * Get the gallery page slug used as the base for taxonomy URLs
+	 *
+	 * @since 4.9.3
+	 * @return string Gallery page slug.
+	 */
+	private function get_gallery_slug(): string {
+		$gallery_slug = get_option( 'brag_book_gallery_page_slug', 'gallery' );
+
+		// Handle legacy array format.
+		if ( is_array( $gallery_slug ) ) {
+			$gallery_slug = $gallery_slug[0] ?? 'gallery';
+		}
+
+		return (string) $gallery_slug;
 	}
 
 	/**
@@ -182,15 +194,18 @@ class Taxonomies {
 		$providers_args = [
 			'labels'             => $providers_labels,
 			'hierarchical'       => false,
-			'public'             => false, // Not publicly queryable - used as information feed for cases.
-			'publicly_queryable' => false, // No front-end archive/term pages.
+			'public'             => true,
+			'publicly_queryable' => true, // Front-end term archive at /{gallery}/providers/{slug}/.
 			'show_ui'            => true,
 			'show_in_menu'       => false,
 			'show_admin_column'  => true,
-			'show_in_nav_menus'  => false, // Not shown in navigation menus.
+			'show_in_nav_menus'  => true,
 			'show_tagcloud'      => false,
 			'show_in_rest'       => true,
-			'rewrite'            => false, // No URL rewrites needed.
+			'rewrite'            => [
+				'slug'       => $this->get_gallery_slug() . '/providers',
+				'with_front' => false,
+			],
 		];
 
 		// Attached to both cases and practices so providers link to each.
@@ -697,7 +712,7 @@ class Taxonomies {
 	 */
 	public function maybe_flush_rewrites(): void {
 		$option_key = 'brag_book_taxonomy_version';
-		$current_version = '3.3.3_brag_book_providers';
+		$current_version = '4.9.3_public_providers';
 		$saved_version = get_option( $option_key, '' );
 
 		// If the taxonomy version has changed, flush rewrites

@@ -133,26 +133,44 @@ class Template_Manager {
 	private function register_templates_modern(): void {
 		$plugin_uri = 'brag-book-gallery';
 
-		// Register taxonomy-brag_book_procedures template
-		register_block_template( $plugin_uri . '//taxonomy-brag_book_procedures', [
-			'title'       => __( 'Procedures', 'brag-book-gallery' ),
-			'description' => __( 'Template for procedure taxonomy pages', 'brag-book-gallery' ),
-			'content'     => $this->get_block_template_content( 'taxonomy-brag_book_procedures' ),
-		] );
+		foreach ( $this->get_templates() as $slug => $template ) {
+			register_block_template( $plugin_uri . '//' . $slug, [
+				'title'       => $template['title'],
+				'description' => $template['description'],
+				'content'     => $this->get_block_template_content( $slug ),
+			] );
+		}
+	}
 
-		// Register single-brag_book_cases template
-		register_block_template( $plugin_uri . '//single-brag_book_cases', [
-			'title'       => __( 'Single Case', 'brag-book-gallery' ),
-			'description' => __( 'Template for individual case posts', 'brag-book-gallery' ),
-			'content'     => $this->get_block_template_content( 'single-brag_book_cases' ),
-		] );
-
-		// Register page-myfavorites template
-		register_block_template( $plugin_uri . '//page-myfavorites', [
-			'title'       => __( 'My Favorites Page', 'brag-book-gallery' ),
-			'description' => __( 'Template for the My Favorites page', 'brag-book-gallery' ),
-			'content'     => $this->get_block_template_content( 'page-myfavorites' ),
-		] );
+	/**
+	 * Get the templates this plugin provides
+	 *
+	 * Keyed by template slug, which matches both the block template file name
+	 * (templates/block-templates/{slug}.html) and the classic PHP template file
+	 * name (templates/{slug}.php).
+	 *
+	 * @since 4.9.3
+	 * @return array<string, array{title: string, description: string}> Template registry.
+	 */
+	private function get_templates(): array {
+		return [
+			'taxonomy-brag_book_procedures' => [
+				'title'       => __( 'Procedures', 'brag-book-gallery' ),
+				'description' => __( 'Template for procedure taxonomy pages', 'brag-book-gallery' ),
+			],
+			'taxonomy-brag_book_providers'  => [
+				'title'       => __( 'Providers', 'brag-book-gallery' ),
+				'description' => __( 'Template for provider taxonomy pages', 'brag-book-gallery' ),
+			],
+			'single-brag_book_cases'        => [
+				'title'       => __( 'Single Case', 'brag-book-gallery' ),
+				'description' => __( 'Template for individual case posts', 'brag-book-gallery' ),
+			],
+			'page-myfavorites'              => [
+				'title'       => __( 'My Favorites Page', 'brag-book-gallery' ),
+				'description' => __( 'Template for the My Favorites page', 'brag-book-gallery' ),
+			],
+		];
 	}
 
 	/**
@@ -164,74 +182,49 @@ class Template_Manager {
 	 * @return void
 	 */
 	private function register_templates_legacy(): void {
-		// Register taxonomy-brag_book_procedures template
-		$taxonomy_template = [
-			'slug'        => 'taxonomy-brag_book_procedures',
-			'title'       => __( 'Procedures', 'brag-book-gallery' ),
-			'description' => __( 'Template for procedure taxonomy pages', 'brag-book-gallery' ),
-			'content'     => $this->get_block_template_content( 'taxonomy-brag_book_procedures' ),
-			'source'      => 'plugin',
-			'type'        => 'wp_template',
-			'theme'       => get_template(),
-			'has_theme_file' => false,
-		];
+		$definitions = [];
 
-		// Register single-brag_book_cases template
-		$single_case_template = [
-			'slug'        => 'single-brag_book_cases',
-			'title'       => __( 'Single Case', 'brag-book-gallery' ),
-			'description' => __( 'Template for individual case posts', 'brag-book-gallery' ),
-			'content'     => $this->get_block_template_content( 'single-brag_book_cases' ),
-			'source'      => 'plugin',
-			'type'        => 'wp_template',
-			'theme'       => get_template(),
-			'has_theme_file' => false,
-		];
-
-		// Register page-myfavorites template
-		$page_myfavorites_template = [
-			'slug'        => 'page-myfavorites',
-			'title'       => __( 'My Favorites Page', 'brag-book-gallery' ),
-			'description' => __( 'Template for the My Favorites page', 'brag-book-gallery' ),
-			'content'     => $this->get_block_template_content( 'page-myfavorites' ),
-			'source'      => 'plugin',
-			'type'        => 'wp_template',
-			'theme'       => get_template(),
-			'has_theme_file' => false,
-		];
+		foreach ( $this->get_templates() as $slug => $template ) {
+			$definitions[ $slug ] = [
+				'slug'           => $slug,
+				'title'          => $template['title'],
+				'description'    => $template['description'],
+				'content'        => $this->get_block_template_content( $slug ),
+				'source'         => 'plugin',
+				'type'           => 'wp_template',
+				'theme'          => get_template(),
+				'has_theme_file' => false,
+			];
+		}
 
 		// Register templates with WordPress using legacy method
-		add_filter( 'get_block_templates', function( $templates, $query ) use ( $taxonomy_template, $single_case_template, $page_myfavorites_template ) {
+		add_filter( 'get_block_templates', function( $templates, $query ) use ( $definitions ) {
 			// Add our templates to the available templates
-			if ( empty( $query['slug'] ) || in_array( $query['slug'], [ 'taxonomy-brag_book_procedures', 'single-brag_book_cases', 'page-myfavorites' ], true ) ) {
-				$templates[] = new \WP_Block_Template( (object) $taxonomy_template );
-				$templates[] = new \WP_Block_Template( (object) $single_case_template );
-				$templates[] = new \WP_Block_Template( (object) $page_myfavorites_template );
+			if ( empty( $query['slug'] ) || isset( $definitions[ $query['slug'] ] ) ) {
+				foreach ( $definitions as $definition ) {
+					$templates[] = new \WP_Block_Template( (object) $definition );
+				}
 			}
 			return $templates;
 		}, 10, 2 );
 
 		// Handle template resolution
-		add_filter( 'get_block_template', function( $template, $id, $template_type ) use ( $taxonomy_template, $single_case_template, $page_myfavorites_template ) {
+		add_filter( 'get_block_template', function( $template, $id, $template_type ) use ( $definitions ) {
 			if ( 'wp_template' !== $template_type ) {
 				return $template;
 			}
 
-			$theme_slug = get_template();
+			$prefix = get_template() . '//';
 
-			if ( $id === $theme_slug . '//taxonomy-brag_book_procedures' ) {
-				return new \WP_Block_Template( (object) $taxonomy_template );
+			if ( ! str_starts_with( $id, $prefix ) ) {
+				return $template;
 			}
 
-			if ( $id === $theme_slug . '//single-brag_book_cases' ) {
-				return new \WP_Block_Template( (object) $single_case_template );
-			}
+			$slug = substr( $id, strlen( $prefix ) );
 
-			if ( $id === $theme_slug . '//page-myfavorites' ) {
-				return new \WP_Block_Template( (object) $page_myfavorites_template );
-			}
-
-			return $template;
+			return isset( $definitions[ $slug ] )
+				? new \WP_Block_Template( (object) $definitions[ $slug ] )
+				: $template;
 		}, 10, 3 );
 	}
 
@@ -251,18 +244,12 @@ class Template_Manager {
 			return $template;
 		}
 
-		// Check if this is one of our templates
-		$plugin_templates = [
-			'taxonomy-brag_book_procedures',
-			'single-brag_book_cases',
-			'page-myfavorites',
-		];
-
 		// Extract template slug from ID (format: theme//template-slug)
 		$id_parts = explode( '//', $id );
 		$template_slug = end( $id_parts );
 
-		if ( ! in_array( $template_slug, $plugin_templates, true ) ) {
+		// Check if this is one of our templates
+		if ( ! isset( $this->get_templates()[ $template_slug ] ) ) {
 			return $template;
 		}
 
@@ -298,13 +285,7 @@ class Template_Manager {
 	 * @return string Template title.
 	 */
 	private function get_template_title( string $slug ): string {
-		$titles = [
-			'taxonomy-brag_book_procedures' => __( 'Procedures', 'brag-book-gallery' ),
-			'single-brag_book_cases' => __( 'Single Case', 'brag-book-gallery' ),
-			'page-myfavorites' => __( 'My Favorites', 'brag-book-gallery' ),
-		];
-
-		return $titles[ $slug ] ?? $slug;
+		return $this->get_templates()[ $slug ]['title'] ?? $slug;
 	}
 
 	/**
@@ -352,18 +333,22 @@ class Template_Manager {
 
 		$plugin_template_dir = dirname( __DIR__, 2 ) . '/templates/';
 
-		// Handle procedures taxonomy
-		if ( is_tax( Taxonomies::TAXONOMY_PROCEDURES ) ) {
+		// Handle procedures and providers taxonomies
+		foreach ( [ Taxonomies::TAXONOMY_PROCEDURES, Taxonomies::TAXONOMY_PROVIDERS ] as $taxonomy ) {
+			if ( ! is_tax( $taxonomy ) ) {
+				continue;
+			}
+
 			$term = get_queried_object();
 
 			// Check for specific term template first
-			$specific_template = $plugin_template_dir . 'taxonomy-brag_book_procedures-' . $term->slug . '.php';
+			$specific_template = $plugin_template_dir . 'taxonomy-' . $taxonomy . '-' . $term->slug . '.php';
 			if ( file_exists( $specific_template ) ) {
 				return $specific_template;
 			}
 
 			// Check for general taxonomy template
-			$general_template = $plugin_template_dir . 'taxonomy-brag_book_procedures.php';
+			$general_template = $plugin_template_dir . 'taxonomy-' . $taxonomy . '.php';
 			if ( file_exists( $general_template ) ) {
 				return $general_template;
 			}
@@ -405,73 +390,4 @@ class Template_Manager {
 		add_theme_support( 'block-template-parts' );
 	}
 
-	/**
-	 * Get available templates
-	 *
-	 * Returns a list of available templates for the current theme type.
-	 *
-	 * @since 3.0.0
-	 * @return array List of available templates.
-	 */
-	public function get_available_templates(): array {
-		$templates = [];
-		$plugin_template_dir = dirname( __DIR__, 2 ) . '/templates/';
-
-		if ( wp_is_block_theme() ) {
-			// Block theme templates
-			$block_template_dir = $plugin_template_dir . 'block-templates/';
-
-			if ( file_exists( $block_template_dir . 'taxonomy-brag_book_procedures.html' ) ) {
-				$templates['taxonomy-brag_book_procedures'] = __( 'Procedures (Block)', 'brag-book-gallery' );
-			}
-
-			if ( file_exists( $block_template_dir . 'single-brag_book_cases.html' ) ) {
-				$templates['single-brag_book_cases'] = __( 'Single Case (Block)', 'brag-book-gallery' );
-			}
-
-			if ( file_exists( $block_template_dir . 'page-myfavorites.html' ) ) {
-				$templates['page-myfavorites'] = __( 'My Favorites Page (Block)', 'brag-book-gallery' );
-			}
-		} else {
-			// Classic theme templates
-			if ( file_exists( $plugin_template_dir . 'taxonomy-brag_book_procedures.php' ) ) {
-				$templates['taxonomy-brag_book_procedures'] = __( 'Procedures (PHP)', 'brag-book-gallery' );
-			}
-
-			if ( file_exists( $plugin_template_dir . 'single-brag_book_cases.php' ) ) {
-				$templates['single-brag_book_cases'] = __( 'Single Case (PHP)', 'brag-book-gallery' );
-			}
-
-			if ( file_exists( $plugin_template_dir . 'page-myfavorites.php' ) ) {
-				$templates['page-myfavorites'] = __( 'My Favorites Page (PHP)', 'brag-book-gallery' );
-			}
-		}
-
-		return $templates;
-	}
-
-	/**
-	 * Check if templates are properly loaded
-	 *
-	 * Diagnostic method to check if templates are available and working.
-	 *
-	 * @since 3.0.0
-	 * @return array Status information about template loading.
-	 */
-	public function get_template_status(): array {
-		$status = [
-			'theme_type' => wp_is_block_theme() ? 'block' : 'classic',
-			'templates_available' => $this->get_available_templates(),
-			'template_directory' => dirname( __DIR__, 2 ) . '/templates/',
-			'current_template' => null,
-		];
-
-		// Check current template if on a procedures page
-		if ( is_tax( 'procedures' ) || is_post_type_archive() ) {
-			global $template;
-			$status['current_template'] = $template;
-		}
-
-		return $status;
-	}
 }
