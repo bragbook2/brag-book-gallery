@@ -622,6 +622,17 @@ final class Gallery_Handler {
 
 				return self::render_full_gallery( $validated_atts );
 
+			case 'taxonomy_provider':
+				// No procedure slug: the grid and load-more scope to the provider.
+				$validated_atts['current_taxonomy'] = $context['taxonomy_term'];
+
+				return self::render_full_gallery( $validated_atts );
+
+			case 'provider_tiles':
+				$validated_atts['current_taxonomy'] = $context['taxonomy_term'];
+
+				return self::handle_procedure_tiles_view( $validated_atts );
+
 			case 'procedure_tiles':
 				// Show tiles view for procedures (no sidebar, mobile header, or overlay)
 				$validated_atts['procedure_slug']   = $context['procedure_slug'];
@@ -732,6 +743,21 @@ final class Gallery_Handler {
 					'type'           => 'taxonomy_procedure',
 					'procedure_slug' => $current_term->slug,
 					'taxonomy_term'  => $current_term,
+				];
+			}
+		}
+
+		// 3.1. Check if we're on a provider taxonomy page. Provider archives reuse
+		// the procedure page structure, including the Procedures View setting;
+		// only the case query differs.
+		if ( is_tax( Taxonomies::TAXONOMY_PROVIDERS ) ) {
+			$current_term = get_queried_object();
+			if ( $current_term instanceof \WP_Term ) {
+				$procedures_view = get_option( 'brag_book_gallery_procedures_view', 'default' );
+
+				return [
+					'type'          => 'tiles' === $procedures_view ? 'provider_tiles' : 'taxonomy_provider',
+					'taxonomy_term' => $current_term,
 				];
 			}
 		}
@@ -1148,6 +1174,7 @@ final class Gallery_Handler {
 						<!-- Filter controls will be added here by JavaScript -->
 						<div class="brag-book-gallery-controls">
 							<div class="brag-book-gallery-controls-left">
+								<?php if ( Taxonomies::TAXONOMY_PROCEDURES === $current_taxonomy->taxonomy ) : ?>
 								<?php
 								// Inline location search, before the filter dropdown.
 								// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- markup escaped within render_search().
@@ -1158,13 +1185,15 @@ final class Gallery_Handler {
 								?>
 								<?php
 								// Provider (doctor) filter, before the procedure filters,
-								// scoped to the current procedure's cases.
+								// scoped to the current procedure's cases. A provider
+								// archive is already one provider, so it is skipped there.
 								// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- markup escaped within render_filter().
 								echo \BRAGBookGallery\Includes\Extend\Provider_Filter::render_filter( [
 									'slug' => $current_taxonomy->slug,
 									'name' => $current_taxonomy->name,
 								] );
 								?>
+								<?php endif; ?>
 								<details
 									class="brag-book-gallery-filter-dropdown"
 									id="procedure-filters-details"
@@ -1701,8 +1730,8 @@ final class Gallery_Handler {
 		$output = preg_replace( '/\n\s*\n\s*\n/', "\n\n", $output );
 		$output = trim( $output );
 
-		// Return clean HTML (wpautop prevention handled by block filter)
-		return $output;
+		// Comments here would be wrapped in <p> by wpautop under a block theme.
+		return self::strip_markup_comments( $output );
 	}
 
 	private static function validate_and_sanitize_shortcode_attributes( array $raw_atts ): array|false {
@@ -2267,7 +2296,7 @@ final class Gallery_Handler {
 	 * @return string Rendered filter bar HTML.
 	 * @since 3.3.2
 	 */
-	public static function render_tiles_filter_bar( bool $show_filters = true, array $procedure = [] ): string {
+	public static function render_tiles_filter_bar( bool $show_filters = true, array $procedure = [], bool $show_provider_filter = true ): string {
 		ob_start();
 
 		// Get favorites URL
@@ -2337,14 +2366,17 @@ final class Gallery_Handler {
 				echo \BRAGBookGallery\Includes\Extend\Location_Search::render_search( $procedure );
 				?>
 				<?php if ( $show_filters ) : ?>
+				<?php if ( $show_provider_filter ) : ?>
 				<?php
 				// Provider (doctor) filter, before the procedure filters. Lists
 				// providers with cases in this context; scoped to the procedure
 				// when one is supplied. Gated with the filters so it only renders
-				// on views that have a case grid to filter.
+				// on views that have a case grid to filter, and skipped entirely on
+				// a provider archive, which is already one provider.
 				// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- markup escaped within render_filter().
 				echo \BRAGBookGallery\Includes\Extend\Provider_Filter::render_filter( $procedure );
 				?>
+				<?php endif; ?>
 				<!-- Procedure Filters -->
 				<details class="brag-book-gallery-filter-dropdown" id="procedure-filters-details" data-initialized="true">
 					<summary class="brag-book-gallery-filter-dropdown__toggle">
@@ -2411,25 +2443,30 @@ final class Gallery_Handler {
 	 * @since 3.3.2
 	 */
 	private static function handle_procedure_tiles_view( array $validated_atts ): string {
-		// Get procedure term from validated attributes
+		// Get the term from validated attributes. Provider archives render the
+		// same tiles layout, so the term may belong to either taxonomy.
 		$procedure_term = $validated_atts['current_taxonomy'] ?? null;
 		$procedure_slug = $validated_atts['procedure_slug'] ?? '';
 
 		// If no term provided, try to get it from current context or slug
 		if ( ! $procedure_term ) {
-			if ( is_tax( Taxonomies::TAXONOMY_PROCEDURES ) ) {
+			if ( is_tax( Taxonomies::TAXONOMY_PROCEDURES ) || is_tax( Taxonomies::TAXONOMY_PROVIDERS ) ) {
 				$procedure_term = get_queried_object();
 			} elseif ( ! empty( $procedure_slug ) ) {
 				$procedure_term = get_term_by( 'slug', $procedure_slug, Taxonomies::TAXONOMY_PROCEDURES );
 			}
 		}
 
-		if ( ! $procedure_term || is_wp_error( $procedure_term ) ) {
+		if ( ! $procedure_term instanceof \WP_Term ) {
 			return sprintf(
 				'<p class="brag-book-gallery-error">%s</p>',
 				esc_html__( 'Procedure not found.', 'brag-book-gallery' )
 			);
 		}
+
+		// A provider archive has no procedure to scope the location search to, and
+		// filtering by provider inside one provider's archive is a no-op.
+		$is_provider_term = Taxonomies::TAXONOMY_PROVIDERS === $procedure_term->taxonomy;
 
 		// Note: Procedure view tracking now handled by JavaScript for console feedback
 		// self::track_procedure_page_view( $procedure_term );
@@ -2459,17 +2496,25 @@ final class Gallery_Handler {
 
 			<div class="brag-book-gallery-tiles-view"
 				 data-view="tiles"
+				 <?php if ( $is_provider_term ) : ?>
+				 data-provider-slug="<?php echo esc_attr( $procedure_term->slug ); ?>"
+				 <?php else : ?>
 				 data-procedure-slug="<?php echo esc_attr( $procedure_term->slug ); ?>"
-				 data-procedure-id="<?php echo esc_attr( $procedure_api_id ); ?>">
+				 data-procedure-id="<?php echo esc_attr( $procedure_api_id ); ?>"
+				 <?php endif; ?>>
 
 				<div class="brag-book-gallery-tiles-container" style="max-width: 1440px; margin: 0 auto; padding: 0 20px;">
 					<!-- Horizontal Filter Bar -->
 					<?php
 					// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Output is escaped in the rendering method
-					echo self::render_tiles_filter_bar( true, [
-						'slug' => $procedure_term->slug,
-						'name' => $procedure_term->name,
-					] );
+					echo self::render_tiles_filter_bar(
+						true,
+						$is_provider_term ? [] : [
+							'slug' => $procedure_term->slug,
+							'name' => $procedure_term->name,
+						],
+						! $is_provider_term
+					);
 					?>
 
 					<!-- Content Title -->
@@ -2600,7 +2645,27 @@ final class Gallery_Handler {
 		</div>
 
 		<?php
-		return ob_get_clean();
+		return self::strip_markup_comments( (string) ob_get_clean() );
+	}
+
+	/**
+	 * Strip authoring HTML comments from rendered gallery markup.
+	 *
+	 * Block themes render the gallery shortcode through core/shortcode, which runs
+	 * the expanded markup back through wpautop. wpautop treats a comment sitting
+	 * between two elements as a text node and wraps it in <p>…<br />, so the notes
+	 * in the card markup turn into stray empty paragraphs in the grid. The comments
+	 * carry no runtime meaning, so they are dropped before the markup leaves here.
+	 * Conditional comments are left alone.
+	 *
+	 * @since 4.9.3
+	 *
+	 * @param string $html Rendered gallery markup.
+	 *
+	 * @return string Markup without authoring comments.
+	 */
+	private static function strip_markup_comments( string $html ): string {
+		return (string) preg_replace( '/<!--(?!\[if)(?:(?!-->).)*-->/s', '', $html );
 	}
 
 	/**
@@ -2621,10 +2686,12 @@ final class Gallery_Handler {
 	 */
 	private static function render_taxonomy_cases( \WP_Term $taxonomy ): array {
 		$per_page = Settings_Helper::get_items_per_page();
-		$context  = [
-			'term_id'        => $taxonomy->term_id,
-			'procedure_slug' => $taxonomy->slug,
-		];
+		$context  = Taxonomies::TAXONOMY_PROVIDERS === $taxonomy->taxonomy
+			? [ 'provider_slug' => $taxonomy->slug ]
+			: [
+				'term_id'        => $taxonomy->term_id,
+				'procedure_slug' => $taxonomy->slug,
+			];
 
 		$page = Cases_Handler::render_context_page( $context, 1, $per_page );
 
@@ -2634,7 +2701,7 @@ final class Gallery_Handler {
 					'<div class="brag-book-gallery-no-cases"><p>%s</p></div>',
 					esc_html(
 						sprintf(
-							/* translators: %s: procedure name. */
+							/* translators: %s: procedure or provider name. */
 							__( 'No cases found for %s.', 'brag-book-gallery' ),
 							$taxonomy->name
 						)

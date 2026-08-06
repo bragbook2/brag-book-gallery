@@ -195,15 +195,18 @@ class Taxonomies {
 			'labels'             => $providers_labels,
 			'hierarchical'       => false,
 			'public'             => true,
-			'publicly_queryable' => true, // Front-end term archive at /{gallery}/providers/{slug}/.
+			'publicly_queryable' => true, // Front-end term archive at /providers/{slug}/.
 			'show_ui'            => true,
 			'show_in_menu'       => false,
 			'show_admin_column'  => true,
 			'show_in_nav_menus'  => true,
 			'show_tagcloud'      => false,
 			'show_in_rest'       => true,
+			// Deliberately outside the gallery slug: the case rule
+			// {gallery}/([^/]+)/([^/]+)/ is registered first and would swallow
+			// {gallery}/providers/{slug} as a procedure + case pair, giving a 404.
 			'rewrite'            => [
-				'slug'       => $this->get_gallery_slug() . '/providers',
+				'slug'       => 'providers',
 				'with_front' => false,
 			],
 		];
@@ -712,7 +715,7 @@ class Taxonomies {
 	 */
 	public function maybe_flush_rewrites(): void {
 		$option_key = 'brag_book_taxonomy_version';
-		$current_version = '4.9.3_public_providers';
+		$current_version = '4.9.3_providers_root_slug';
 		$saved_version = get_option( $option_key, '' );
 
 		// If the taxonomy version has changed, flush rewrites

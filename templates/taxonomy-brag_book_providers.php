@@ -31,7 +31,11 @@ if ( $term instanceof WP_Term ) {
 				</div>
 			<?php endif; ?>
 		</header>
-		<?php echo do_shortcode( '[brag_book_gallery_procedures]' ); ?>
+		<?php
+		// The gallery shortcode auto-detects the provider archive and renders the
+		// same structure as a procedure page, scoped to this provider.
+		echo do_shortcode( '[brag_book_gallery]' );
+		?>
 	</main>
 	<?php
 } else {

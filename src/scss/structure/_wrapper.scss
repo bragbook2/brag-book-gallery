@@ -21,7 +21,11 @@
 	box-sizing: border-box
 }
 
-.brag-book-gallery-wrapper {
+// The global nudity warning is printed in wp_footer, outside the gallery
+// wrapper, so it needs the same custom properties or every var() in it resolves
+// to nothing (an invalid background, white text on white).
+.brag-book-gallery-wrapper,
+.brag-book-gallery-nudity-warning--global {
 	--wp--custom--brag-book-gallery--color--black: #030712;
 	--wp--custom--brag-book-gallery--color--gray: #4a5565;
 	--wp--custom--brag-book-gallery--color--light-gray: #e5e7eb;
@@ -69,7 +73,9 @@
 	--wp--custom--brag-book-gallery--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 	--wp--custom--brag-book-gallery--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
 	--wp--custom--brag-book-gallery--shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
 
+.brag-book-gallery-wrapper {
 	position: relative;
 	width: 100%;
 	min-height: 100vh;
