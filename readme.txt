@@ -92,6 +92,15 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 
 == Changelog ==
 
+= 4.9.2-beta7 =
+* Fixed: Carousels swipe naturally again on phones and tablets. The carousel replaced the browser's own scrolling with its own, so a swipe moved the slides only as far as the finger travelled and stopped the moment it lifted, with no glide and no settling onto a slide. Touch now scrolls the way every other page on the phone does. Grab-and-drag with a mouse is unchanged.
+* Added: Each provider now has its own page at /providers/{provider}/, listing that provider's cases with the same layout, card style and load-more behaviour as a procedure page.
+* Added: The nudity warning's title, body text and button label are editable in the settings, along with a choice of how it appears: one full-screen warning per page, the existing per-procedure overlay, or the per-case flag only. The per-case flag now comes from the synced data and can be changed on the case itself.
+* Fixed: Provider pages returned a "not found" error.
+* Fixed: The full-page nudity warning lost its styling, leaving the button without its background.
+* Fixed: Block themes showed stray empty paragraphs inside gallery cards.
+* Fixed: Accepting the nudity warning was not remembered on the next page.
+
 = 4.9.2-beta5 =
 * Fixed: The small and medium versions of case images were never actually downloaded. They were offered to the browser, but as a list of options the browser was free to ignore — and because the generated versions are much smaller than the original, it always chose the full-size image. Narrow screens are now pointed directly at the smaller versions instead of being given a choice, so phones and tablets download a far smaller file. Desktop screens continue to use the full-size image, which remains the only version large enough for them.
 * Fixed: Images could lose their smaller versions entirely after a re-sync. The gallery matched an image to its smaller versions by comparing the complete web address, including the security signature that changes every time the address is regenerated, so any mismatch silently dropped them. Matching now ignores the signature.

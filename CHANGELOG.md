@@ -4,6 +4,43 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.2-beta7] - 2026-08-07 (Beta Release)
+
+### Added
+
+- **Providers have their own front-end pages**: the providers taxonomy is now
+  public, with a term archive at `/providers/{provider}/` that renders through
+  the gallery and follows the Procedures View setting — same structure, card
+  type, columns, page size and load-more behaviour as a procedure page, scoped
+  to that provider. Both a classic PHP template and a block template ship with
+  it. The location search and provider dropdown are omitted there.
+- **Nudity warning copy is configurable**: a Nudity Warning Settings section on
+  the General settings page sets the title, body text and button label, plus a
+  preset that decides how the warning applies — Global (one full-screen warning
+  per page, only when flagged content rendered), Default (the existing
+  procedure-based overlay) or Individualized (the per-case flag alone). The
+  per-case flag now maps from the v2 `photoSets` `isNude` value across all photo
+  sets and is editable on the case editor.
+
+### Fixed
+
+- **Carousels swipe naturally on phones and tablets again**: the touch handler
+  replaced the browser's own scrolling with a frame-by-frame position update, so
+  a swipe moved the track only as far as the finger travelled and stopped dead
+  on release, with no momentum or snap. Touch and pen now scroll natively; the
+  grab-and-drag behaviour and its cursor stay on mouse-driven devices only.
+- **Provider pages no longer 404**: the term archive had been registered under
+  the gallery slug, where the case rewrite rule matched it as a procedure-plus-
+  case pair.
+- **The global nudity warning renders with its own styling**: it prints in
+  `wp_footer`, outside the wrapper declaring the plugin's custom properties, so
+  every value in it resolved to nothing and the button lost its background.
+- **Block themes no longer show stray paragraphs inside gallery cards**: markup
+  comments were run back through `wpautop` by the shortcode block and wrapped in
+  empty paragraphs.
+- The anti-flash preload script and the frontend wrote different localStorage
+  keys, so an accepted nudity warning was never remembered on the next page load.
+
 ## [4.9.2-beta6] - 2026-08-05 (Beta Release)
 
 ### Security
