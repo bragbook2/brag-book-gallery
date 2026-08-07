@@ -13,7 +13,6 @@
 	scroll-behavior: smooth;
 	scroll-snap-type: x mandatory;
 	padding-block: var(--wp--custom--brag-book-gallery--spacer--lg,16px);
-	cursor: grab;
 	-webkit-overflow-scrolling: touch;
 	scrollbar-width: none;
 	-ms-overflow-style: none;
@@ -24,8 +23,17 @@
 		display: none;
 	}
 
+	// Grab cursors are for pointer devices only — the drag handler ignores
+	// touch, so a touch device must not advertise one.
+	@media (hover: hover) and (pointer: fine) {
+		cursor: grab;
+
+		&.brag-book-gallery-grabbing {
+			cursor: grabbing;
+		}
+	}
+
 	&.brag-book-gallery-grabbing {
-		cursor: grabbing;
 		scroll-behavior: auto;
 		// Stop the drag from selecting slide text as it sweeps across.
 		user-select: none;

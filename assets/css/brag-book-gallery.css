@@ -407,7 +407,6 @@ body.brag-book-gallery-page:not(.disable-custom-font) .brag-book-gallery-favorit
   scroll-behavior: smooth;
   scroll-snap-type: x mandatory;
   padding-block: var(--wp--custom--brag-book-gallery--spacer--lg, 16px);
-  cursor: grab;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -417,8 +416,15 @@ body.brag-book-gallery-page:not(.disable-custom-font) .brag-book-gallery-favorit
 .brag-book-gallery-carousel-track::-webkit-scrollbar {
   display: none;
 }
+@media (hover: hover) and (pointer: fine) {
+  .brag-book-gallery-carousel-track {
+    cursor: grab;
+  }
+  .brag-book-gallery-carousel-track.brag-book-gallery-grabbing {
+    cursor: grabbing;
+  }
+}
 .brag-book-gallery-carousel-track.brag-book-gallery-grabbing {
-  cursor: grabbing;
   scroll-behavior: auto;
   user-select: none;
 }

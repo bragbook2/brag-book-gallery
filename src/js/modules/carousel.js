@@ -202,7 +202,7 @@ class Carousel {
 	 * pointer, and the click that browsers fire after the release is swallowed
 	 * so dragging never navigates by accident.
 	 *
-	 * Touch is skipped here — setupTouchNavigation() owns it.
+	 * Touch is skipped here — the track scrolls natively on touch devices.
 	 */
 	setupTrackDrag = (object) => {
 		if (!object.grid) return;
@@ -224,8 +224,9 @@ class Carousel {
 		let momentumFrame = null;
 
 		const onPointerDown = (e) => {
-			// Left button only, and leave touch to the touch handlers.
-			if (e.button !== 0 || e.pointerType === 'touch') return;
+			// Mouse only. Touch and pen keep the browser's own scrolling, which
+			// already has momentum and rubber-banding a JS drag cannot match.
+			if (e.button !== 0 || e.pointerType !== 'mouse') return;
 
 			pointerId = e.pointerId;
 			startX = e.clientX;
@@ -587,43 +588,6 @@ class Carousel {
 		}, 500);
 	};
 
-	setupTouchEvents = (grid, object) => {
-		let touchStartX;
-		let touchStartY;
-		let initialScrollLeft;
-
-		const handleTouchStart = (e) => {
-			touchStartX = e.touches[0].clientX;
-			touchStartY = e.touches[0].clientY;
-			initialScrollLeft = grid.scrollLeft;
-		};
-
-		const handleTouchMove = (e) => {
-			if (!touchStartX || !touchStartY) return;
-
-			const touchCurrentX = e.touches[0].clientX;
-			const touchCurrentY = e.touches[0].clientY;
-			const deltaX = touchStartX - touchCurrentX;
-			const deltaY = Math.abs(touchStartY - touchCurrentY);
-
-			if (Math.abs(deltaX) > deltaY) {
-				e.preventDefault();
-				grid.scrollLeft = initialScrollLeft + deltaX;
-				this.handleScroll(object);
-			}
-		};
-
-		const handleTouchEnd = () => {
-			touchStartX = null;
-			touchStartY = null;
-			this.snapToClosestSlide(grid);
-		};
-
-		grid.addEventListener('touchstart', handleTouchStart, { passive: true });
-		grid.addEventListener('touchmove', handleTouchMove, { passive: false });
-		grid.addEventListener('touchend', handleTouchEnd);
-	};
-
 	/**
 	 * Snap to whichever slide sits closest to the current scroll position.
 	 *
@@ -689,8 +653,7 @@ class Carousel {
 				passive: true
 			});
 
-			// Initialize both touch and mouse drag
-			this.setupTouchEvents(object.grid, object);
+			// Mouse drag only; touch scrolls natively.
 			this.setupTrackDrag(object);
 
 			if (object.pagination) {
