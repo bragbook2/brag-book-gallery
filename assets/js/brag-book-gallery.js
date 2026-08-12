@@ -2781,6 +2781,9 @@ window.loadMoreCasesFromCache = function (button) {
   const providerSlug = button.getAttribute('data-provider-slug') || '';
   const lat = button.getAttribute('data-lat') || '';
   const lng = button.getAttribute('data-lng') || '';
+  // Seeded shuffle for a randomised grid: the same seed keeps later pages in
+  // the order the first page was drawn from.
+  const randomSeed = button.getAttribute('data-random-seed') || '';
 
   // Get AJAX configuration
   const ajaxUrl = window.bragBookGalleryConfig?.ajaxUrl || '/wp-admin/admin-ajax.php';
@@ -2804,6 +2807,7 @@ window.loadMoreCasesFromCache = function (button) {
   formData.append('provider_slug', providerSlug);
   formData.append('lat', lat);
   formData.append('lng', lng);
+  formData.append('random_seed', randomSeed);
   formData.append('current_procedure_id', currentProcedureId);
   formData.append('current_term_id', currentTermId);
 

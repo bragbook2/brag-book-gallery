@@ -1435,8 +1435,9 @@ final class Cases_Handler {
                 data-provider-slug="%5$s"
                 data-lat="%6$s"
                 data-lng="%7$s"
-                onclick="loadMoreCasesFromCache(this)"%8$s>
-                %9$s
+                data-random-seed="%8$s"
+                onclick="loadMoreCasesFromCache(this)"%9$s>
+                %10$s
             </button>
         </div>',
 			$items_per_page,
@@ -1446,6 +1447,7 @@ final class Cases_Handler {
 			esc_attr( $provider_slug ),
 			esc_attr( $lat ),
 			esc_attr( $lng ),
+			esc_attr( (string) absint( $context['random_seed'] ?? 0 ) ),
 			$display_style,
 			esc_html__( 'Load More', 'brag-book-gallery' )
 		);
@@ -2378,6 +2380,7 @@ final class Cases_Handler {
 			'procedure_slug' => isset( $_POST['procedure_name'] ) ? sanitize_title( wp_unslash( $_POST['procedure_name'] ) ) : '',
 			'lat'            => $lat,
 			'lng'            => $lng,
+			'random_seed'    => isset( $_POST['random_seed'] ) ? absint( $_POST['random_seed'] ) : 0,
 		];
 		// phpcs:enable WordPress.Security.NonceVerification.Missing
 
@@ -2463,11 +2466,43 @@ final class Cases_Handler {
 			$ids = $matched_ids; // Nearest-first, radius-filtered.
 		}
 
+		// A seeded shuffle keeps the order random per page load but stable across
+		// that load's requests, so "load more" continues the same shuffled list
+		// instead of re-drawing and repeating or skipping cases. Nearest-first
+		// ordering is the point of a location search, so it is left alone.
+		$random_seed = absint( $context['random_seed'] ?? 0 );
+		if ( $random_seed > 0 && ! $has_location ) {
+			$ids = self::shuffle_with_seed( $ids, $random_seed );
+		}
+
 		return [
 			'ids'       => array_values( array_map( 'absint', $ids ) ),
 			'distances' => $distances,
 			'radius'    => (int) $radius,
 		];
+	}
+
+	/**
+	 * Shuffle case IDs deterministically from a seed.
+	 *
+	 * Sorting by a hash of seed and id gives the same order for the same seed
+	 * without seeding the global random number generator, which would change
+	 * every other random value in the request.
+	 *
+	 * @since 4.9.3
+	 * @param int[] $ids  Case post IDs.
+	 * @param int   $seed Shuffle seed.
+	 * @return int[] The same IDs in seeded random order.
+	 */
+	private static function shuffle_with_seed( array $ids, int $seed ): array {
+		$keyed = [];
+		foreach ( $ids as $id ) {
+			$keyed[ (int) $id ] = md5( $seed . ':' . $id );
+		}
+
+		asort( $keyed, SORT_STRING );
+
+		return array_keys( $keyed );
 	}
 
 	/**

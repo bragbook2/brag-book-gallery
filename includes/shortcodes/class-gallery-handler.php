@@ -299,6 +299,8 @@ final class Gallery_Handler {
 	 *                      to the queried provider on a provider term archive.
 	 *                    - limit: Cases per load. Defaults to the site's
 	 *                      items-per-page setting when omitted.
+	 *                    - randomize: 'true' to shuffle the cases on every page
+	 *                      load instead of using the curated order.
 	 *
 	 * @return string Rendered cases grid HTML.
 	 * @since 3.3.2
@@ -311,6 +313,7 @@ final class Gallery_Handler {
 			array(
 				'provider_id' => '',
 				'limit'       => 0,
+				'randomize'   => '',
 			),
 			$atts,
 			'brag_book_gallery_procedures'
@@ -345,9 +348,13 @@ final class Gallery_Handler {
 
 		// The shared resolver collapses cases synced under more than one category
 		// and yields no cases for a provider_id that matches no term.
+		// A fresh seed per page load gives a different order each visit; carrying
+		// it on the context (and so on the Load More button) keeps every page of
+		// that visit slicing the same shuffled list.
 		$context = [
 			'provider_id' => $provider_id,
 			'term_id'     => $term_id,
+			'random_seed' => filter_var( $atts['randomize'], FILTER_VALIDATE_BOOLEAN ) ? wp_rand( 1, 999999 ) : 0,
 		];
 
 		$page = Cases_Handler::render_context_page( $context, 1, $limit );

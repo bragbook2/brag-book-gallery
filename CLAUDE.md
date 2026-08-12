@@ -213,9 +213,10 @@ The plugin follows a modular architecture with clear separation of concerns:
 ```
 [brag_book_gallery_procedures provider_id="43" limit="20"]
 ```
-- Parameters: `provider_id`, `limit`
+- Parameters: `provider_id`, `limit`, `randomize`
 - `provider_id`: filters cases to a single provider (matched against the `brag_book_providers` taxonomy assigned to each case); returns every case the provider appears on, whether primary or secondary. Supports AJAX "load more".
 - `limit`: cases per load. Omit it to use the site's global items-per-page setting (the default); an explicit value overrides that setting.
+- `randomize`: `"true"` shuffles the cases on every page load instead of using the curated order. The shuffle is seeded per page load and the seed travels with the Load More button, so later pages continue the same shuffled list rather than re-drawing.
 
 ### Single Case
 ```
