@@ -1,5 +1,19 @@
 === BRAGBook Gallery Changelog ===
 
+= 4.9.2-beta8 (2026-08-12) =
+
+Added:
+* Decline option on the nudity warning - the full-screen (Global preset) warning now renders a decline link beside Proceed that sends the visitor to a configurable URL, defaulting to the site home page; the link text and destination are set in Nudity Warning Settings on the General settings page. The link is Global-only: the per-card overlays cover a single case rather than the page, so navigating the browser away from one would not match what was clicked
+* Reset Nudity Settings button - clears the preset and every copy field, restoring the plugin defaults (the defaults are resolved at render time, so deleting the stored values restores them)
+* Procedure filter on provider archives - the "Choose a Gallery" picker is hidden there, since it navigates away to another procedure, and a procedure filter takes its place listing the procedures that provider has cases in; it reuses the provider filter's component, so it is organised like the gallery picker and styled like the Filters dropdown, and is skipped when fewer than two procedures remain
+* Provider-scoped case navigation - arriving at a case from a provider page walks the previous/next arrows through that provider's cases instead of the procedure's, and wraps, so the last case leads back to the first and the first back to the last; a procedure chosen in the new filter narrows that to the provider's cases in that procedure. Arriving from a procedure page is unchanged, hard ends included
+* randomize attribute on [brag_book_gallery_procedures] - randomize="true" shuffles the cases on every page load instead of using the curated order. The shuffle is seeded per page load and the seed travels with the Load More button, so later pages continue the same shuffled list rather than re-drawing and repeating or skipping cases; location searches keep their nearest-first ordering
+
+Fixed:
+* Provider archive grid dropped its first card - get_the_block_template_html() runs do_shortcode() over a block template's raw markup before do_blocks(), so the core/shortcode block held the expanded gallery HTML by the time it ran wpautop() over it, closing a paragraph at the first blank line and leaving an empty <p> as the grid's first child. That paragraph took the first grid cell, so the first card appeared to be missing and every card after it sat one cell further on with the paragraph's margins showing as extra space; the template now uses a core/html block, which passes its content through untouched
+
+Note: this file was not maintained between 4.6.0-beta4 and 4.9.2-beta8. See readme.txt or CHANGELOG.md for the releases in between.
+
 = 4.6.0-beta4 (2026-06-01) =
 
 Fixed:
