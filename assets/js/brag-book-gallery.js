@@ -1216,8 +1216,11 @@ function fetchAdjacentCases(procedureSlug, termId, currentPostId, callback, prov
 function initializeProcedureReferrerTracking() {
   const currentPath = window.location.pathname;
 
-  // Check if we're on a case detail page (ends with numbers)
-  if (currentPath.match(/\/\d+\/?$/)) {
+  // A case page is identified by the case detail view it renders, not by its
+  // URL: the case slug comes from the API's seoInfo.slug when the account has
+  // one, and only falls back to the numeric case id when it does not. Matching
+  // digits alone left every SEO-slugged site without referrer navigation.
+  if (document.querySelector('.brag-book-gallery-case-detail-view') || currentPath.match(/\/\d+\/?$/)) {
     // Update navigation based on stored referrer
     updateNavigationFromReferrer();
     return;
