@@ -114,5 +114,24 @@ class NudityWarningTest extends WP_UnitTestCase {
 
 		$this->assertStringContainsString( 'Sensitive Content', $html );
 		$this->assertStringContainsString( 'Proceed', $html );
+		$this->assertStringNotContainsString( 'nudity-warning-decline', $html );
+	}
+
+	/**
+	 * The decline link is rendered on the global preset only.
+	 */
+	public function test_decline_link_is_global_only(): void {
+		update_option( 'brag_book_gallery_nudity_mode', HTML_Renderer::NUDITY_MODE_GLOBAL );
+		update_option( 'brag_book_gallery_nudity_decline_url', 'https://example.com/exit' );
+
+		HTML_Renderer::maybe_render_nudity_warning( $this->flagged_procedure_case );
+
+		ob_start();
+		do_action( 'wp_footer' );
+		$footer = (string) ob_get_clean();
+
+		$this->assertStringContainsString( 'brag-book-gallery-nudity-warning-decline', $footer );
+		$this->assertStringContainsString( 'https://example.com/exit', $footer );
+		$this->assertStringContainsString( '>Decline<', $footer );
 	}
 }

@@ -79,6 +79,13 @@
 		}
 	}
 
+	&-decline {
+		color: var(--wp--custom--brag-book-gallery--color--black,#000) !important;
+		font-size: var(--wp--custom--brag-book-gallery--text-xs);
+		text-decoration: underline;
+		cursor: pointer;
+	}
+
 	&-blur {
 		filter: blur(20px);
 		transition: filter .5s ease

@@ -602,18 +602,33 @@ final class HTML_Renderer {
 	 *
 	 * @since 3.3.3
 	 *
-	 * @return array{title: string, caption: string, button: string} Warning copy.
+	 * @return array{title: string, caption: string, button: string, decline: string} Warning copy.
 	 */
 	public static function get_nudity_text(): array {
 		$title   = trim( (string) get_option( 'brag_book_gallery_nudity_title', '' ) );
 		$caption = trim( (string) get_option( 'brag_book_gallery_nudity_caption', '' ) );
 		$button  = trim( (string) get_option( 'brag_book_gallery_nudity_button', '' ) );
+		$decline = trim( (string) get_option( 'brag_book_gallery_nudity_decline', '' ) );
 
 		return array(
 			'title'   => '' !== $title ? $title : __( 'Nudity Warning', 'brag-book-gallery' ),
 			'caption' => '' !== $caption ? $caption : __( 'Click to proceed if you wish to view.', 'brag-book-gallery' ),
 			'button'  => '' !== $button ? $button : __( 'Proceed', 'brag-book-gallery' ),
+			'decline' => '' !== $decline ? $decline : __( 'Decline', 'brag-book-gallery' ),
 		);
+	}
+
+	/**
+	 * Get the URL visitors are sent to when they decline the warning
+	 *
+	 * @since 3.3.3
+	 *
+	 * @return string Absolute URL, defaulting to the site home page.
+	 */
+	public static function get_nudity_decline_url(): string {
+		$url = trim( (string) get_option( 'brag_book_gallery_nudity_decline_url', '' ) );
+
+		return '' !== $url ? $url : home_url( '/' );
 	}
 
 	/**
@@ -778,12 +793,25 @@ final class HTML_Renderer {
 	private static function nudity_warning_markup( string $extra_class = '' ): string {
 		$text = self::get_nudity_text();
 
+		// The decline link only makes sense on the full-screen global warning:
+		// the per-card overlays cover one case, not the whole page.
+		$decline = '';
+
+		if ( self::NUDITY_MODE_GLOBAL === self::get_nudity_mode() ) {
+			$decline = sprintf(
+				'<a class="brag-book-gallery-nudity-warning-decline" href="%1$s" rel="nofollow">%2$s</a>',
+				esc_url( self::get_nudity_decline_url() ),
+				esc_html( $text['decline'] )
+			);
+		}
+
 		return sprintf(
-			'<div class="brag-book-gallery-nudity-warning%1$s" data-nudity-warning="true"><div class="brag-book-gallery-nudity-warning-content"><p class="brag-book-gallery-nudity-warning-title">%2$s</p><p class="brag-book-gallery-nudity-warning-caption">%3$s</p><button class="brag-book-gallery-nudity-warning-button" type="button">%4$s</button></div></div>',
+			'<div class="brag-book-gallery-nudity-warning%1$s" data-nudity-warning="true"><div class="brag-book-gallery-nudity-warning-content"><p class="brag-book-gallery-nudity-warning-title">%2$s</p><p class="brag-book-gallery-nudity-warning-caption">%3$s</p><button class="brag-book-gallery-nudity-warning-button" type="button">%4$s</button>%5$s</div></div>',
 			'' !== $extra_class ? ' ' . esc_attr( $extra_class ) : '',
 			esc_html( $text['title'] ),
 			esc_html( $text['caption'] ),
-			esc_html( $text['button'] )
+			esc_html( $text['button'] ),
+			$decline
 		);
 	}
 

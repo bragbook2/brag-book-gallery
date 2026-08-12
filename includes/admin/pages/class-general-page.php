@@ -86,7 +86,7 @@ class General_Page extends Settings_Base {
 
 		// Handle form submission.
 		if (
-			( isset( $_POST['submit'] ) || isset( $_POST['submit_css'] ) ) &&
+			( isset( $_POST['submit'] ) || isset( $_POST['submit_css'] ) || isset( $_POST['brag_book_gallery_nudity_reset'] ) ) &&
 			$this->save_settings(
 				'brag_book_gallery_general_settings',
 				'brag_book_gallery_general_nonce'
@@ -759,6 +759,8 @@ class General_Page extends Settings_Base {
 		$nudity_title   = (string) get_option( 'brag_book_gallery_nudity_title', '' );
 		$nudity_caption = (string) get_option( 'brag_book_gallery_nudity_caption', '' );
 		$nudity_button  = (string) get_option( 'brag_book_gallery_nudity_button', '' );
+		$nudity_decline = (string) get_option( 'brag_book_gallery_nudity_decline', '' );
+		$decline_url    = (string) get_option( 'brag_book_gallery_nudity_decline_url', '' );
 
 		// Current mode (default only)
 		$current_mode = 'default';
@@ -1537,6 +1539,49 @@ class General_Page extends Settings_Base {
 					       placeholder="<?php echo esc_attr( $nudity_text['button'] ); ?>" />
 					<p class="description">
 						<?php esc_html_e( 'Leave blank to use the default.', 'brag-book-gallery' ); ?>
+					</p>
+				</div>
+
+				<div class="gallery-page-settings-field">
+					<label for="brag_book_gallery_nudity_decline" class="gallery-page-settings-field__label">
+						<?php esc_html_e( 'Decline Label', 'brag-book-gallery' ); ?>
+					</label>
+					<input type="text"
+					       id="brag_book_gallery_nudity_decline"
+					       name="brag_book_gallery_nudity_decline"
+					       value="<?php echo esc_attr( $nudity_decline ); ?>"
+					       class="regular-text"
+					       placeholder="<?php echo esc_attr( $nudity_text['decline'] ); ?>" />
+					<p class="description">
+						<?php esc_html_e( 'Shown with the Global preset only. Leave blank to use the default.', 'brag-book-gallery' ); ?>
+					</p>
+				</div>
+
+				<div class="gallery-page-settings-field">
+					<label for="brag_book_gallery_nudity_decline_url" class="gallery-page-settings-field__label">
+						<?php esc_html_e( 'Decline Redirect URL', 'brag-book-gallery' ); ?>
+					</label>
+					<input type="url"
+					       id="brag_book_gallery_nudity_decline_url"
+					       name="brag_book_gallery_nudity_decline_url"
+					       value="<?php echo esc_attr( $decline_url ); ?>"
+					       class="regular-text"
+					       placeholder="<?php echo esc_attr( home_url( '/' ) ); ?>" />
+					<p class="description">
+						<?php esc_html_e( 'Where visitors go when they decline. Leave blank to use the site home page.', 'brag-book-gallery' ); ?>
+					</p>
+				</div>
+
+				<div class="gallery-page-settings-field">
+					<button type="submit"
+					        name="brag_book_gallery_nudity_reset"
+					        value="1"
+					        class="button"
+					        onclick="return confirm('<?php esc_attr_e( 'Reset all nudity warning settings to their defaults?', 'brag-book-gallery' ); ?>');">
+						<?php esc_html_e( 'Reset Nudity Settings', 'brag-book-gallery' ); ?>
+					</button>
+					<p class="description">
+						<?php esc_html_e( 'Clears the preset and all warning copy, restoring the plugin defaults.', 'brag-book-gallery' ); ?>
 					</p>
 				</div>
 			</div>
@@ -2563,6 +2608,25 @@ class General_Page extends Settings_Base {
 	 * @return void
 	 */
 	private function save_nudity_settings(): void {
+		$options = array(
+			'brag_book_gallery_nudity_mode',
+			'brag_book_gallery_nudity_title',
+			'brag_book_gallery_nudity_caption',
+			'brag_book_gallery_nudity_button',
+			'brag_book_gallery_nudity_decline',
+			'brag_book_gallery_nudity_decline_url',
+		);
+
+		// Deleting the options restores the defaults, which are resolved at render
+		// time rather than stored.
+		if ( isset( $_POST['brag_book_gallery_nudity_reset'] ) ) {
+			foreach ( $options as $option ) {
+				delete_option( $option );
+			}
+
+			return;
+		}
+
 		if ( isset( $_POST['brag_book_gallery_nudity_mode'] ) ) {
 			$mode    = sanitize_key( wp_unslash( $_POST['brag_book_gallery_nudity_mode'] ) );
 			$allowed = array(
@@ -2577,9 +2641,11 @@ class General_Page extends Settings_Base {
 		}
 
 		$text_fields = array(
-			'brag_book_gallery_nudity_title'   => 'sanitize_text_field',
-			'brag_book_gallery_nudity_caption' => 'sanitize_textarea_field',
-			'brag_book_gallery_nudity_button'  => 'sanitize_text_field',
+			'brag_book_gallery_nudity_title'       => 'sanitize_text_field',
+			'brag_book_gallery_nudity_caption'     => 'sanitize_textarea_field',
+			'brag_book_gallery_nudity_button'      => 'sanitize_text_field',
+			'brag_book_gallery_nudity_decline'     => 'sanitize_text_field',
+			'brag_book_gallery_nudity_decline_url' => 'esc_url_raw',
 		);
 
 		foreach ( $text_fields as $option => $sanitize_callback ) {

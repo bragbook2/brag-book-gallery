@@ -679,8 +679,8 @@ class NudityWarningManager {
       }
       // Prevent clicks on nudity warning overlay from bubbling to underlying elements
       else if (e.target.matches('.brag-book-gallery-nudity-warning') || e.target.closest('.brag-book-gallery-nudity-warning')) {
-        // Only prevent if not clicking on the proceed button
-        if (!e.target.matches('.brag-book-gallery-nudity-warning-button') && !e.target.closest('.brag-book-gallery-nudity-warning-button')) {
+        // Only prevent if not clicking the proceed button or decline link
+        if (!e.target.closest('.brag-book-gallery-nudity-warning-button') && !e.target.closest('.brag-book-gallery-nudity-warning-decline')) {
           e.stopPropagation();
           e.preventDefault();
         }
