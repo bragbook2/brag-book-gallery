@@ -2296,14 +2296,19 @@ final class Gallery_Handler {
 	 * @return string Rendered filter bar HTML.
 	 * @since 3.3.2
 	 */
-	public static function render_tiles_filter_bar( bool $show_filters = true, array $procedure = [], bool $show_provider_filter = true ): string {
+	public static function render_tiles_filter_bar( bool $show_filters = true, array $procedure = [], string $provider_slug = '' ): string {
 		ob_start();
+
+		// A provider archive is one provider's whole catalogue, so the gallery
+		// picker and the provider filter are both replaced by a procedure filter.
+		$is_provider_archive = '' !== $provider_slug;
 
 		// Get favorites URL
 		$favorites_url = self::get_favorites_page_url();
 		?>
 		<div class="brag-book-gallery-tiles-filter-bar">
 			<div class="brag-book-gallery-tiles-filter-bar__left">
+				<?php if ( ! $is_provider_archive ) : ?>
 				<!-- Gallery Selector Dropdown -->
 				<details class="brag-book-gallery-gallery-selector" id="gallery-selector-details">
 					<summary class="brag-book-gallery-gallery-selector__toggle">
@@ -2357,6 +2362,7 @@ final class Gallery_Handler {
 						</nav>
 					</div>
 				</details>
+				<?php endif; ?>
 
 				<?php
 				// Inline location search, before the filter dropdown. Renders only
@@ -2366,13 +2372,20 @@ final class Gallery_Handler {
 				echo \BRAGBookGallery\Includes\Extend\Location_Search::render_search( $procedure );
 				?>
 				<?php if ( $show_filters ) : ?>
-				<?php if ( $show_provider_filter ) : ?>
+				<?php if ( $is_provider_archive ) : ?>
+				<?php
+				// Procedure filter, standing in for both the gallery picker and the
+				// provider filter on a provider archive: the provider is fixed, so
+				// the procedure is what is left to narrow by.
+				// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- markup escaped within render_procedure_filter().
+				echo \BRAGBookGallery\Includes\Extend\Provider_Filter::render_procedure_filter( $provider_slug );
+				?>
+				<?php else : ?>
 				<?php
 				// Provider (doctor) filter, before the procedure filters. Lists
 				// providers with cases in this context; scoped to the procedure
 				// when one is supplied. Gated with the filters so it only renders
-				// on views that have a case grid to filter, and skipped entirely on
-				// a provider archive, which is already one provider.
+				// on views that have a case grid to filter.
 				// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- markup escaped within render_filter().
 				echo \BRAGBookGallery\Includes\Extend\Provider_Filter::render_filter( $procedure );
 				?>
@@ -2513,7 +2526,7 @@ final class Gallery_Handler {
 							'slug' => $procedure_term->slug,
 							'name' => $procedure_term->name,
 						],
-						! $is_provider_term
+						$is_provider_term ? $procedure_term->slug : ''
 					);
 					?>
 

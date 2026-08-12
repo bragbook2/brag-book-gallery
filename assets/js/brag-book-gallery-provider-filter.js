@@ -300,7 +300,11 @@ __webpack_require__.r(__webpack_exports__);
    * @param {HTMLElement} root The provider filter container.
    */
   function initWidget(root) {
+    // Procedure mode (a provider archive) fixes the provider and lets the
+    // options pick the procedure; provider mode is the other way round.
+    const isProcedureMode = root.getAttribute('data-filter-mode') === 'procedure';
     const procedure = root.getAttribute('data-procedure-slug') || '';
+    const provider = root.getAttribute('data-provider-slug') || '';
     const label = root.querySelector('.brag-book-gallery-provider-filter__label');
     const toggleIcon = root.querySelector('.brag-book-gallery-provider-filter__toggle-icon');
     const resetBtn = root.querySelector('[data-provider-reset]');
@@ -333,7 +337,7 @@ __webpack_require__.r(__webpack_exports__);
         }
         setActive(options, option);
         updateToggle(ui, option, slug);
-        filter(state, slug, procedure);
+        filter(state, isProcedureMode ? provider : slug, isProcedureMode ? slug : procedure);
       });
     });
     if (resetBtn) {

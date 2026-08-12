@@ -184,6 +184,83 @@ class Provider_Filter {
 	}
 
 	/**
+	 * Render the procedure filter dropdown for a provider archive.
+	 *
+	 * The counterpart of the provider filter: on a provider archive the provider
+	 * is fixed and the procedure is what there is left to choose, so the same
+	 * dropdown lists the procedures that provider has cases in. It shares the
+	 * provider filter's markup, styling and script; only the option meaning and
+	 * the request it builds differ, which the widget reads from
+	 * `data-filter-mode`.
+	 *
+	 * @since 4.9.3
+	 * @param string $provider_slug Providers taxonomy slug of the archive.
+	 * @return string Filter HTML, or empty string when there is nothing to filter.
+	 */
+	public static function render_procedure_filter( string $provider_slug ): string {
+		// The shared script is only enqueued with the providers feature, so
+		// without it the dropdown would render but do nothing.
+		if ( '' === $provider_slug || ! self::is_enabled() ) {
+			return '';
+		}
+
+		$procedures = self::get_procedures( $provider_slug );
+
+		// One procedure filters to what is already on screen.
+		if ( count( $procedures ) < 2 ) {
+			return '';
+		}
+
+		ob_start();
+		?>
+		<details class="brag-book-gallery-filter-dropdown brag-book-gallery-provider-filter brag-book-gallery-procedure-filter" id="procedure-filter-details" data-filter-mode="procedure" data-provider-slug="<?php echo esc_attr( $provider_slug ); ?>">
+			<summary class="brag-book-gallery-filter-dropdown__toggle">
+				<span class="brag-book-gallery-provider-filter__toggle-icon">
+					<svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="currentColor" aria-hidden="true"><path d="M400-240v-80h160v80H400ZM240-440v-80h480v80H240ZM120-640v-80h720v80H120Z"></path></svg>
+				</span>
+				<span class="brag-book-gallery-provider-filter__label" data-default-label="<?php esc_attr_e( 'Procedure', 'brag-book-gallery' ); ?>"><?php esc_html_e( 'Procedure', 'brag-book-gallery' ); ?></span>
+			</summary>
+			<div class="brag-book-gallery-filter-dropdown__panel">
+				<div class="brag-book-gallery-provider-filter__search">
+					<svg class="brag-book-gallery-provider-filter__search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+					<input
+						type="search"
+						class="brag-book-gallery-provider-filter__search-input"
+						placeholder="<?php esc_attr_e( 'Search procedures…', 'brag-book-gallery' ); ?>"
+						aria-label="<?php esc_attr_e( 'Search procedures', 'brag-book-gallery' ); ?>"
+						aria-controls="procedure-filter-list"
+						autocomplete="off"
+					/>
+				</div>
+				<ul class="brag-book-gallery-provider-filter__list" id="procedure-filter-list" role="listbox" aria-label="<?php esc_attr_e( 'Filter by procedure', 'brag-book-gallery' ); ?>">
+					<li>
+						<button type="button" class="brag-book-gallery-provider-filter__option is-active" data-provider-slug="">
+							<?php esc_html_e( 'All Procedures', 'brag-book-gallery' ); ?>
+						</button>
+					</li>
+					<?php foreach ( $procedures as $procedure ) : ?>
+						<li>
+							<button type="button" class="brag-book-gallery-provider-filter__option" data-provider-slug="<?php echo esc_attr( $procedure['slug'] ); ?>" data-provider-name="<?php echo esc_attr( strtolower( $procedure['name'] ) ); ?>">
+								<span class="brag-book-gallery-provider-filter__name"><?php echo esc_html( $procedure['name'] ); ?></span>
+							</button>
+						</li>
+					<?php endforeach; ?>
+					<li class="brag-book-gallery-provider-filter__no-match" hidden>
+						<?php esc_html_e( 'No procedures match your search.', 'brag-book-gallery' ); ?>
+					</li>
+				</ul>
+				<div class="brag-book-gallery-provider-filter__actions">
+					<button type="button" class="brag-book-gallery-button brag-book-gallery-button--clear" data-provider-reset>
+						<?php esc_html_e( 'Reset', 'brag-book-gallery' ); ?>
+					</button>
+				</div>
+			</div>
+		</details>
+		<?php
+		return (string) ob_get_clean();
+	}
+
+	/**
 	 * AJAX handler: return a provider's cases, optionally scoped to a procedure.
 	 *
 	 * @since 4.8.0
@@ -262,6 +339,50 @@ class Provider_Filter {
 		);
 
 		return $providers;
+	}
+
+	/**
+	 * Procedures a provider has cases in, ordered for display.
+	 *
+	 * Cases carry both the procedure and its parent category, so the parents are
+	 * dropped: the filter offers procedures, not the groups they sit in. Terms
+	 * that have no parent are kept when nothing else is left, which is the case
+	 * for a flat procedure list.
+	 *
+	 * @since 4.9.3
+	 * @param string $provider_slug Providers taxonomy slug.
+	 * @return array<int,array{slug:string,name:string}>
+	 */
+	private static function get_procedures( string $provider_slug ): array {
+		$case_ids = self::get_candidate_case_ids( $provider_slug, '' );
+		if ( empty( $case_ids ) ) {
+			return [];
+		}
+
+		$terms = wp_get_object_terms( $case_ids, Taxonomies::TAXONOMY_PROCEDURES );
+		if ( is_wp_error( $terms ) || empty( $terms ) ) {
+			return [];
+		}
+
+		$children = array_filter(
+			$terms,
+			static fn( \WP_Term $term ): bool => $term->parent > 0
+		);
+
+		$procedures = [];
+		foreach ( ( ! empty( $children ) ? $children : $terms ) as $term ) {
+			$procedures[] = [
+				'slug' => $term->slug,
+				'name' => $term->name,
+			];
+		}
+
+		usort(
+			$procedures,
+			static fn( array $a, array $b ): int => strnatcasecmp( $a['name'], $b['name'] )
+		);
+
+		return $procedures;
 	}
 
 	/**
