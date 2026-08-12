@@ -92,6 +92,14 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 
 == Changelog ==
 
+= 4.9.2-beta8 =
+* Added: Visitors can decline the nudity warning. The full-screen warning now shows a decline link next to Proceed, which sends them to a page you choose — the home page by default. The link text and destination are set in the nudity warning settings. It appears on the full-screen warning only, since the per-case overlays cover one case rather than the whole page.
+* Added: A Reset Nudity Settings button that restores the warning's preset and wording to the defaults.
+* Added: Provider pages now offer a procedure filter in place of the gallery picker, listing the procedures that provider has cases in so visitors can narrow the grid to one of them. The picker only led away to another procedure, so it has been hidden there.
+* Added: Opening a case from a provider page now steps the previous/next arrows through that provider's cases instead of the procedure's, and loops from the last case back to the first. Choosing a procedure in the new filter narrows that to the provider's cases in that procedure. Opening a case from a procedure page behaves exactly as before.
+* Added: The `[brag_book_gallery_procedures]` shortcode accepts `randomize="true"`, which shuffles the cases into a different order on every page load. Load More continues the same shuffled order rather than starting again, so no case repeats or goes missing.
+* Fixed: Provider pages left the first card missing and spaced the rest out oddly, because block themes inserted an empty paragraph into the grid where the first card belonged.
+
 = 4.9.2-beta7 =
 * Fixed: Carousels swipe naturally again on phones and tablets. The carousel replaced the browser's own scrolling with its own, so a swipe moved the slides only as far as the finger travelled and stopped the moment it lifted, with no glide and no settling onto a slide. Touch now scrolls the way every other page on the phone does. Grab-and-drag with a mouse is unchanged.
 * Added: Each provider now has its own page at /providers/{provider}/, listing that provider's cases with the same layout, card style and load-more behaviour as a procedure page.

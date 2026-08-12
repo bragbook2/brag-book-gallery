@@ -4,6 +4,46 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.2-beta8] - 2026-08-12 (Beta Release)
+
+### Added
+
+- **The nudity warning can be declined**: the full-screen Global warning now
+  renders a decline link beside Proceed, sending the visitor to a configurable
+  URL that defaults to the site home page. The link text and destination are set
+  on the General settings page, and the link is Global-only — the per-card
+  overlays cover one case, not the page, so navigating the whole browser away
+  from one of them would not match what was clicked.
+- **Reset Nudity Settings**: a button on the same settings section clears the
+  preset and every copy field, restoring the plugin defaults.
+- **Procedure filter on provider archives**: the "Choose a Gallery" picker is
+  hidden there — it navigates away to another procedure and has nothing to do
+  with the provider being viewed — and a procedure filter takes its place,
+  listing the procedures that provider has cases in and narrowing the grid to
+  one of them. It reuses the provider filter's component, so it is organised
+  like the gallery picker and styled like the Filters dropdown.
+- **Case navigation follows the provider**: arriving at a case from a provider
+  page walks the previous/next arrows through that provider's cases rather than
+  the procedure's, and wraps, so the last case leads back to the first. The
+  procedure filter's selection narrows it further when one is active. Arriving
+  from a procedure page is unchanged.
+- **`randomize` attribute on `[brag_book_gallery_procedures]`**: `randomize="true"`
+  shuffles the cases on every page load instead of using the curated order. The
+  shuffle is seeded per page load and the seed travels with the Load More
+  button, so later pages continue the same shuffled list instead of re-drawing
+  and repeating or skipping cases. Location searches keep their nearest-first
+  ordering.
+
+### Fixed
+
+- **The provider archive grid dropped its first card**: `do_shortcode()` runs
+  over a block template's raw markup before `do_blocks()`, so the shortcode
+  block held the expanded gallery HTML by the time it ran `wpautop()` over it,
+  which closed a paragraph at the first blank line and left an empty `<p>` in
+  the case grid. That paragraph took the first grid cell, pushing every card one
+  cell along with its margins showing as extra space. The template now uses a
+  block that passes its content through untouched.
+
 ## [4.9.2-beta7] - 2026-08-07 (Beta Release)
 
 ### Added
