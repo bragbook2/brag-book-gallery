@@ -2681,7 +2681,9 @@ final class Cases_Handler {
 				$procedure_term_id
 			);
 
-			wp_send_json_success( self::resolve_adjacent_urls( $provider_case_ids, $current_post_id ) );
+			// Provider navigation wraps, so the arrows keep cycling through that
+			// provider's cases instead of dead-ending at either edge.
+			wp_send_json_success( self::resolve_adjacent_urls( $provider_case_ids, $current_post_id, true ) );
 			return;
 		}
 
@@ -2747,13 +2749,25 @@ final class Cases_Handler {
 	 * @since 4.9.2
 	 * @param int[] $case_ids        Ordered case post IDs.
 	 * @param int   $current_post_id The case currently being viewed.
+	 * @param bool  $wrap            Whether the ends of the list join up.
 	 * @return array{next: string|null, prev: string|null}
 	 */
-	private static function resolve_adjacent_urls( array $case_ids, int $current_post_id ): array {
+	private static function resolve_adjacent_urls( array $case_ids, int $current_post_id, bool $wrap = false ): array {
+		$case_ids    = array_values( $case_ids );
 		$current_key = array_search( $current_post_id, $case_ids, true );
 
 		if ( false === $current_key ) {
 			return [ 'next' => null, 'prev' => null ];
+		}
+
+		$next_key = $current_key + 1;
+		$prev_key = $current_key - 1;
+
+		// Wrapping needs at least two cases; with one, both links would point at
+		// the case being viewed.
+		if ( $wrap && count( $case_ids ) > 1 ) {
+			$next_key = $next_key % count( $case_ids );
+			$prev_key = ( $prev_key + count( $case_ids ) ) % count( $case_ids );
 		}
 
 		$to_url = static function ( ?int $post_id ): ?string {
@@ -2775,8 +2789,8 @@ final class Cases_Handler {
 		};
 
 		return [
-			'next' => $to_url( $case_ids[ $current_key + 1 ] ?? null ),
-			'prev' => $to_url( $case_ids[ $current_key - 1 ] ?? null ),
+			'next' => $to_url( $case_ids[ $next_key ] ?? null ),
+			'prev' => $to_url( $case_ids[ $prev_key ] ?? null ),
 		];
 	}
 

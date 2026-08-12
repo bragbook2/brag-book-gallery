@@ -17,14 +17,25 @@ import { NudityWarningManager, PhoneFormatter, escapeHtml } from './utilities.js
  * This allows combo procedures to navigate back to the correct procedure
  */
 window.storeProcedureReferrer = function(procedureSlug, procedureName, procedureUrl, procedureId, termId, caseId, caseWpId, providerSlug, providerId) {
-	if (!procedureSlug) return;
-
 	// Capture any active provider filter so the case page can navigate within the
 	// provider. When callers don't pass it explicitly, read it from the current
 	// view so every capture path (grid, carousel, archive) benefits automatically.
 	const providerContext = getActiveProviderContext();
 	const resolvedProviderSlug = (providerSlug !== undefined && providerSlug !== null) ? providerSlug : providerContext.slug;
 	const resolvedProviderId = (providerId !== undefined && providerId !== null) ? providerId : providerContext.id;
+
+	// A provider archive has no procedure in its URL, so callers reading the path
+	// pick up the provider slug instead. The procedure filter's selection, if any,
+	// is the real procedure scope there, and the term id belongs to no procedure.
+	if (getProviderArchiveSlug()) {
+		procedureSlug = getActiveProcedureFilterSlug();
+		procedureName = procedureSlug;
+		termId = null;
+		procedureId = null;
+	}
+
+	// Provider context navigates on its own, so a procedure is not required.
+	if (!procedureSlug && !resolvedProviderSlug && !resolvedProviderId) return;
 
 	const referrer = {
 		'slug': procedureSlug,
@@ -51,9 +62,16 @@ window.storeProcedureReferrer = function(procedureSlug, procedureName, procedure
  * @returns {{slug: string, id: string}}
  */
 function getActiveProviderContext() {
+	// Provider archive: every case listed belongs to this provider.
+	const archiveSlug = getProviderArchiveSlug();
+	if (archiveSlug) {
+		return { slug: archiveSlug, id: '' };
+	}
+
 	// Interactive provider dropdown: the active option carries the slug
-	// (empty for the "All Providers" reset option).
-	const activeOption = document.querySelector('.brag-book-gallery-provider-filter__option.is-active');
+	// (empty for the "All Providers" reset option). The procedure-mode copy of
+	// the same widget is skipped: its options are procedures, not providers.
+	const activeOption = document.querySelector('.brag-book-gallery-provider-filter:not([data-filter-mode="procedure"]) .brag-book-gallery-provider-filter__option.is-active');
 	const dropdownSlug = activeOption ? (activeOption.dataset.providerSlug || '') : '';
 	if (dropdownSlug) {
 		return { slug: dropdownSlug, id: '' };
@@ -68,6 +86,30 @@ function getActiveProviderContext() {
 
 	return { slug: '', id: '' };
 }
+
+/**
+ * Provider slug of the current provider archive, if this is one.
+ *
+ * @returns {string} Provider taxonomy slug, or an empty string.
+ */
+function getProviderArchiveSlug() {
+	const view = document.querySelector('.brag-book-gallery-tiles-view[data-provider-slug]');
+	return view ? (view.dataset.providerSlug || '') : '';
+}
+
+/**
+ * Slug selected in the provider archive's procedure filter, if any.
+ *
+ * @returns {string} Procedure taxonomy slug, or an empty string for "All".
+ */
+function getActiveProcedureFilterSlug() {
+	const option = document.querySelector('[data-filter-mode="procedure"] .brag-book-gallery-provider-filter__option.is-active');
+	return option ? (option.dataset.providerSlug || '') : '';
+}
+
+// Exposed so the card click handlers can tell a provider archive from a
+// procedure archive before deciding what context a case link needs.
+window.bragBookGalleryProviderArchiveSlug = getProviderArchiveSlug;
 
 /**
  * Get the stored procedure referrer
@@ -140,8 +182,8 @@ function updateAdjacentPostLinks(procedureSlug, termId, providerSlug, providerId
 	}
 
 	// Find next/prev links using the correct selectors
-	const nextLink = document.querySelector('.brag-book-gallery-nav-button--next, .brag-book-gallery-next-post, .nav-next a, a[rel="next"]');
-	const prevLink = document.querySelector('.brag-book-gallery-nav-button--prev, .brag-book-gallery-prev-post, .nav-previous a, a[rel="prev"]');
+	let nextLink = document.querySelector('.brag-book-gallery-nav-button--next, .brag-book-gallery-next-post, .nav-next a, a[rel="next"]');
+	let prevLink = document.querySelector('.brag-book-gallery-nav-button--prev, .brag-book-gallery-prev-post, .nav-previous a, a[rel="prev"]');
 
 	// Get current post ID from the page
 	const currentPostId = getCurrentPostId();
@@ -152,6 +194,16 @@ function updateAdjacentPostLinks(procedureSlug, termId, providerSlug, providerId
 
 	// Fetch adjacent cases via AJAX, scoped to the provider when one is active.
 	fetchAdjacentCases(procedureSlug, termId, currentPostId, (adjacentCases) => {
+
+		// The server renders no button at either end of the procedure, but
+		// provider navigation wraps, so a missing button gets built here rather
+		// than dropping the case at an edge it no longer has.
+		if (adjacentCases.next && !nextLink) {
+			nextLink = createCaseNavButton('next');
+		}
+		if (adjacentCases.prev && !prevLink) {
+			prevLink = createCaseNavButton('prev');
+		}
 
 		// Update next link if we have a new URL
 		if (adjacentCases.next && nextLink) {
@@ -165,6 +217,40 @@ function updateAdjacentPostLinks(procedureSlug, termId, providerSlug, providerId
 			prevLink.style.display = '';
 		}
 	}, providerSlug, providerId);
+}
+
+/**
+ * Build a case navigation button matching the server-rendered markup.
+ *
+ * @param {'next'|'prev'} direction Which button to build.
+ * @returns {HTMLElement|null} The inserted link, or null without a container.
+ */
+function createCaseNavButton(direction) {
+	const container = document.querySelector('.brag-book-gallery-case-nav-buttons');
+	if (!container) {
+		return null;
+	}
+
+	const isNext = direction === 'next';
+	const path = isNext
+		? 'm560-240-56-58 142-142H160v-80h486L504-662l56-58 240 240-240 240Z'
+		: 'M400-240 160-480l240-240 56 58-142 142h486v80H314l142 142-56 58Z';
+	const label = isNext ? 'Next case' : 'Previous case';
+	const icon = `<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="${path}"></path></svg>`;
+	const text = `<span class="sr-only">${label}</span>`;
+
+	const link = document.createElement('a');
+	link.className = `brag-book-gallery-nav-button brag-book-gallery-nav-button--${direction}`;
+	link.setAttribute('aria-label', label);
+	link.innerHTML = isNext ? text + icon : icon + text;
+
+	if (isNext) {
+		container.append(link);
+	} else {
+		container.prepend(link);
+	}
+
+	return link;
 }
 
 /**
