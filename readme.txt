@@ -92,6 +92,9 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 
 == Changelog ==
 
+= 4.9.2-beta9 =
+* Fixed: Previous/next navigation ignored the gallery a visitor arrived from on any site whose cases use SEO-friendly web addresses. The case page recognised itself only by an address ending in the case number, so on those sites it never applied the procedure or provider the visitor was browsing and left the default links in place. It now recognises the page by the case view it renders.
+
 = 4.9.2-beta8 =
 * Added: Visitors can decline the nudity warning. The full-screen warning now shows a decline link next to Proceed, which sends them to a page you choose — the home page by default. The link text and destination are set in the nudity warning settings. It appears on the full-screen warning only, since the per-case overlays cover one case rather than the whole page.
 * Added: A Reset Nudity Settings button that restores the warning's preset and wording to the defaults.

@@ -4,6 +4,20 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.2-beta9] - 2026-08-12 (Beta Release)
+
+### Fixed
+
+- **Referrer-based previous/next navigation never ran on SEO-slugged sites**:
+  the case page identified itself by a path ending in digits, but a case slug
+  comes from the API's `seoInfo.slug` whenever the account supplies one and only
+  falls back to the case id when it does not. On those sites the referrer was
+  written when a card was clicked and then never read, so the arrows kept the
+  server-rendered procedure links — procedure combos and the new provider
+  navigation alike. The page is now recognised by the
+  `.brag-book-gallery-case-detail-view` both case views render; the digit match
+  remains as a fallback.
+
 ## [4.9.2-beta8] - 2026-08-12 (Beta Release)
 
 ### Added

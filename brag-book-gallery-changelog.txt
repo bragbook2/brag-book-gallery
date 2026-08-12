@@ -1,5 +1,10 @@
 === BRAGBook Gallery Changelog ===
 
+= 4.9.2-beta9 (2026-08-12) =
+
+Fixed:
+* Referrer-based previous/next navigation never ran on sites whose cases use SEO slugs - initializeProcedureReferrerTracking() identified a case page by a path ending in digits, but generate_case_slug() uses the API's seoInfo.slug whenever the account supplies one and only falls back to the numeric case id when it does not. On those sites the referrer was written when a card was clicked and never read on the case page, so the arrows kept their server-rendered procedure links, affecting procedure combo navigation and the new provider navigation alike. The page is now recognised by the .brag-book-gallery-case-detail-view element that both the default and alternative case views render, with the digit match kept as a fallback
+
 = 4.9.2-beta8 (2026-08-12) =
 
 Added:
