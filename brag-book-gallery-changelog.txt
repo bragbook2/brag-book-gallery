@@ -1,5 +1,12 @@
 === BRAGBook Gallery Changelog ===
 
+= 4.9.2-beta10 (2026-08-13) =
+
+Fixed:
+* Provider navigation only worked when Procedures View was set to Tiles - a provider archive renders as provider_tiles or taxonomy_provider depending on that setting, and only the tiles path emitted data-provider-slug, the marker a case link reads to know it is on a provider page. On any other setting the capture fell back to reading the second path segment as a procedure, which on /providers/{slug}/ is the provider, so the case page navigated by procedure instead. The sidebar layout's gallery wrapper now carries the provider as well and the script reads it from either
+* [brag_book_gallery_procedures provider_id="..."] did not pass its provider to the case page - the script looked for data-provider-id on the procedures wrapper but nothing rendered the attribute, so navigation from those grids fell back to the procedure
+* Card capture no longer requires a procedure term whenever any provider context is present (archive, provider dropdown or provider-scoped grid), rather than only on a provider archive
+
 = 4.9.2-beta9 (2026-08-12) =
 
 Fixed:

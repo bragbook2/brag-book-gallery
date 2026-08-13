@@ -93,7 +93,11 @@ function getActiveProviderContext() {
  * @returns {string} Provider taxonomy slug, or an empty string.
  */
 function getProviderArchiveSlug() {
-	const view = document.querySelector('.brag-book-gallery-tiles-view[data-provider-slug]');
+	// Tiles view carries it on the tiles wrapper; the sidebar view, which a site
+	// gets when Procedures View is not set to tiles, carries it on the gallery
+	// wrapper. Reading only the first left every non-tiles site without provider
+	// navigation.
+	const view = document.querySelector('.brag-book-gallery-tiles-view[data-provider-slug], .brag-book-gallery-wrapper[data-provider-slug]');
 	return view ? (view.dataset.providerSlug || '') : '';
 }
 
@@ -110,6 +114,10 @@ function getActiveProcedureFilterSlug() {
 // Exposed so the card click handlers can tell a provider archive from a
 // procedure archive before deciding what context a case link needs.
 window.bragBookGalleryProviderArchiveSlug = getProviderArchiveSlug;
+
+// Exposed so those handlers can also see a provider that comes from a filter or
+// a provider-scoped grid rather than an archive.
+window.bragBookGalleryActiveProviderContext = getActiveProviderContext;
 
 /**
  * Get the stored procedure referrer

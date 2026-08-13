@@ -92,6 +92,10 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 
 == Changelog ==
 
+= 4.9.2-beta10 =
+* Fixed: Opening a case from a provider page followed the procedure's cases rather than the provider's on any site whose Procedures View is not set to Tiles. Provider pages render two layouts, and only the tiles one told the page which provider was being viewed, so the other layout read the provider's name as a procedure and navigated accordingly. Both layouts now carry it, so previous/next follows the provider whatever the setting.
+* Fixed: A `[brag_book_gallery_procedures provider_id="…"]` grid did not pass its provider on to the case page either, so navigation from one of those grids fell back to the procedure.
+
 = 4.9.2-beta9 =
 * Fixed: Previous/next navigation ignored the gallery a visitor arrived from on any site whose cases use SEO-friendly web addresses. The case page recognised itself only by an address ending in the case number, so on those sites it never applied the procedure or provider the visitor was browsing and left the default links in place. It now recognises the page by the case view it renders.
 

@@ -4,6 +4,26 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.2-beta10] - 2026-08-13 (Beta Release)
+
+### Fixed
+
+- **Provider navigation only worked on the tiles layout**: a provider archive
+  renders through `provider_tiles` or `taxonomy_provider` depending on the
+  Procedures View setting, and only the tiles path emitted
+  `data-provider-slug`, which is what tells a case link it is on a provider
+  page. On every other setting the capture fell back to reading the second path
+  segment as a procedure — the provider's own slug — so the case page navigated
+  by procedure. The sidebar layout's gallery wrapper now carries the provider
+  too, and the script reads it from either.
+- **`[brag_book_gallery_procedures provider_id="…"]` did not pass its provider
+  on**: the script looked for `data-provider-id` on the procedures wrapper, but
+  nothing ever rendered the attribute, so navigation from one of those grids
+  fell back to the procedure. The wrapper now carries it.
+- Card capture no longer requires a procedure term whenever any provider
+  context is present — archive, provider dropdown or provider-scoped grid —
+  rather than only on a provider archive.
+
 ## [4.9.2-beta9] - 2026-08-12 (Beta Release)
 
 ### Fixed

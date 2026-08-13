@@ -511,12 +511,15 @@ class BRAGbookGalleryApp {
 		const caseId = caseCard.dataset.caseId;
 		const caseWpId = caseCard.dataset.postId;
 
-		// A provider archive's cards carry no procedure term, and none is needed:
-		// navigation there runs through the provider instead.
-		const isProviderArchive = typeof window.bragBookGalleryProviderArchiveSlug === 'function'
-			&& window.bragBookGalleryProviderArchiveSlug() !== '';
+		// Cards in a provider context carry no procedure term, and need none:
+		// navigation there runs through the provider instead. That covers a
+		// provider archive in either layout, the provider dropdown and a
+		// provider-scoped grid.
+		const providerContext = typeof window.bragBookGalleryActiveProviderContext === 'function'
+			? window.bragBookGalleryActiveProviderContext()
+			: { slug: '', id: '' };
 
-		if (!termId && !isProviderArchive) {
+		if (!termId && !providerContext.slug && !providerContext.id) {
 			console.warn('storeProcedureReferrerFromCard - No termId found');
 			return;
 		}

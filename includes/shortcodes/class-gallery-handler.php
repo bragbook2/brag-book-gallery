@@ -367,6 +367,7 @@ final class Gallery_Handler {
 		?>
 		<!-- Cases Grid View -->
 		<div class="<?php echo esc_attr( $wrapper_class ); ?> brag-book-gallery-procedures-wrapper"
+			 data-provider-id="<?php echo esc_attr( (string) $provider_id ); ?>"
 			 role="application"
 			 aria-label="Cases Grid">
 
@@ -982,10 +983,18 @@ final class Gallery_Handler {
 		foreach ( $data_attributes as $attr => $value ) {
 			$data_attr_string .= sprintf( ' %s="%s"', $attr, $value );
 		}
+		// A provider archive rendered in this (non-tiles) view has no tiles wrapper
+		// to carry the provider, so the gallery wrapper carries it instead. Case
+		// links read it to navigate within the provider rather than the procedure.
+		$provider_slug_attr = '';
+		if ( $current_taxonomy instanceof \WP_Term && Taxonomies::TAXONOMY_PROVIDERS === $current_taxonomy->taxonomy ) {
+			$provider_slug_attr = sprintf( ' data-provider-slug="%s"', esc_attr( $current_taxonomy->slug ) );
+		}
 		?>
 		<!-- BRAG book Gallery Component Start -->
 		<div class="<?php echo esc_attr( $wrapper_class ); ?>"
 			<?php echo $data_attr_string; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Already escaped in prepare_data_attributes ?>
+			<?php echo $provider_slug_attr; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Escaped above. ?>
 			 role="application"
 			 aria-label="Before and After Gallery">
 			<!-- Skip to gallery content for accessibility -->
