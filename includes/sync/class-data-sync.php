@@ -5484,7 +5484,7 @@ class Data_Sync {
 			if ( $term->name !== $provider_name ) {
 				wp_update_term( $term->term_id, Taxonomies::TAXONOMY_PROVIDERS, [
 					'name' => $provider_name,
-					'slug' => sanitize_title( $provider_name . '-' . $member_id ),
+					'slug' => $this->provider_term_slug( $provider_name, $member_id ),
 				] );
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 				brag_book_log( "BRAG book Gallery Sync: Updated provider term name to '{$provider_name}' (term ID: {$term->term_id})" );
@@ -5503,7 +5503,7 @@ class Data_Sync {
 			$provider_name,
 			Taxonomies::TAXONOMY_PROVIDERS,
 			[
-				'slug'        => sanitize_title( $provider_name . '-' . $member_id ),
+				'slug'        => $this->provider_term_slug( $provider_name, $member_id ),
 				'description' => sprintf(
 					/* translators: %s: provider ID */
 					__( 'Provider profile for provider ID %s', 'brag-book-gallery' ),
@@ -5547,6 +5547,36 @@ class Data_Sync {
 		$this->register_provider_in_registry( $member_id, $term_id );
 
 		return get_term( $term_id, Taxonomies::TAXONOMY_PROVIDERS );
+	}
+
+	/**
+	 * Build a provider term slug from the provider's name
+	 *
+	 * The member id is only appended when the plain name is already taken by a
+	 * different provider, so a URL reads /providers/dr-mi-payne/ rather than
+	 * carrying an id that means nothing to a visitor.
+	 *
+	 * @since 4.9.3
+	 * @param string $provider_name Provider display name.
+	 * @param int    $member_id     API member ID.
+	 * @return string Term slug.
+	 */
+	private function provider_term_slug( string $provider_name, int $member_id ): string {
+		$slug = sanitize_title( $provider_name );
+
+		if ( '' === $slug ) {
+			return sanitize_title( 'provider-' . $member_id );
+		}
+
+		$existing = get_term_by( 'slug', $slug, Taxonomies::TAXONOMY_PROVIDERS );
+
+		if ( $existing instanceof \WP_Term
+			&& absint( get_term_meta( $existing->term_id, 'provider_member_id', true ) ) !== $member_id
+		) {
+			return sanitize_title( $provider_name . '-' . $member_id );
+		}
+
+		return $slug;
 	}
 
 	/**

@@ -714,6 +714,8 @@ class Taxonomies {
 	 * @return void
 	 */
 	public function maybe_flush_rewrites(): void {
+		$this->maybe_shorten_provider_slugs();
+
 		$option_key = 'brag_book_taxonomy_version';
 		$current_version = '4.9.3_providers_root_slug';
 		$saved_version = get_option( $option_key, '' );
@@ -727,6 +729,62 @@ class Taxonomies {
 				brag_book_log( 'BRAGBook: Flushed rewrite rules after taxonomy update to ' . $current_version );
 			}
 		}
+	}
+
+	/**
+	 * Drop the member id from provider slugs synced before 4.9.3
+	 *
+	 * Slugs used to be built as {name}-{member id}, which put an id with no
+	 * meaning to a visitor in the URL. Terms are renamed to the plain name
+	 * wherever that slug is free; where two providers share a name the one that
+	 * gets there first takes it and the other keeps its suffixed slug.
+	 *
+	 * @since 4.9.3
+	 * @return void
+	 */
+	private function maybe_shorten_provider_slugs(): void {
+		$option_key = 'brag_book_provider_slug_version';
+
+		if ( '4.9.3_no_member_id' === get_option( $option_key, '' ) ) {
+			return;
+		}
+
+		$terms = get_terms( [
+			'taxonomy'   => self::TAXONOMY_PROVIDERS,
+			'hide_empty' => false,
+		] );
+
+		if ( is_wp_error( $terms ) ) {
+			return;
+		}
+
+		foreach ( $terms as $term ) {
+			$member_id = absint( get_term_meta( $term->term_id, 'provider_member_id', true ) );
+
+			if ( $member_id <= 0 ) {
+				continue;
+			}
+
+			$short = sanitize_title( $term->name );
+
+			if ( '' === $short || $short === $term->slug ) {
+				continue;
+			}
+
+			// Only the id-suffixed form is rewritten; a slug edited by hand is left alone.
+			if ( $term->slug !== sanitize_title( $term->name . '-' . $member_id ) ) {
+				continue;
+			}
+
+			if ( get_term_by( 'slug', $short, self::TAXONOMY_PROVIDERS ) instanceof \WP_Term ) {
+				continue;
+			}
+
+			wp_update_term( $term->term_id, self::TAXONOMY_PROVIDERS, [ 'slug' => $short ] );
+		}
+
+		update_option( $option_key, '4.9.3_no_member_id' );
+		flush_rewrite_rules( false );
 	}
 
 	/**

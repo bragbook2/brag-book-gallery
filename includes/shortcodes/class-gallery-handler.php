@@ -85,6 +85,146 @@ final class Gallery_Handler {
 	public function __construct() {
 		add_shortcode( 'brag_book_gallery', [ self::class, 'handle' ] );
 		add_shortcode( 'brag_book_gallery_procedures', [ self::class, 'handle_procedures_shortcode' ] );
+		add_shortcode( 'brag_book_gallery_providers', [ self::class, 'handle_providers_shortcode' ] );
+
+		// Runs late so the providers taxonomy is registered by the time the page
+		// that lists it is created.
+		add_action( 'init', [ self::class, 'maybe_create_providers_page' ], 1000 );
+	}
+
+	/**
+	 * Create the /providers/ page listing every provider, once
+	 *
+	 * The taxonomy has term archives but no index of its own, so the listing is
+	 * a normal page carrying the providers shortcode — it renders through the
+	 * active theme like any other page. An existing page on that slug is left
+	 * alone, and the page is only created while the providers feature is on.
+	 *
+	 * @since 4.9.3
+	 * @return void
+	 */
+	public static function maybe_create_providers_page(): void {
+		$option_key = 'brag_book_gallery_providers_page_id';
+
+		if ( ! \BRAGBookGallery\Includes\Extend\Provider_Filter::is_enabled() || get_option( $option_key ) ) {
+			return;
+		}
+
+		$existing = get_page_by_path( 'providers' );
+
+		if ( $existing instanceof \WP_Post ) {
+			update_option( $option_key, $existing->ID );
+
+			return;
+		}
+
+		$page_id = wp_insert_post( [
+			'post_title'   => __( 'Providers', 'brag-book-gallery' ),
+			'post_name'    => 'providers',
+			'post_content' => '[brag_book_gallery_providers]',
+			'post_status'  => 'publish',
+			'post_type'    => 'page',
+		] );
+
+		if ( ! is_wp_error( $page_id ) && $page_id > 0 ) {
+			update_option( $option_key, $page_id );
+			flush_rewrite_rules( false );
+		}
+	}
+
+	/**
+	 * Handle the providers shortcode
+	 *
+	 * Lists every provider that has cases, with their profile photo, linking to
+	 * that provider's gallery page. Providers without cases are left out: their
+	 * archive would be empty.
+	 *
+	 * @since 4.9.3
+	 * @return string Rendered providers grid HTML.
+	 */
+	public static function handle_providers_shortcode(): string {
+		if ( ! \BRAGBookGallery\Includes\Extend\Provider_Filter::is_enabled() ) {
+			return '';
+		}
+
+		$terms = get_terms( [
+			'taxonomy'   => Taxonomies::TAXONOMY_PROVIDERS,
+			'hide_empty' => true,
+			'orderby'    => 'name',
+			'order'      => 'ASC',
+		] );
+
+		if ( is_wp_error( $terms ) || empty( $terms ) ) {
+			return '<p class="brag-book-gallery-no-cases">' . esc_html__( 'No providers available.', 'brag-book-gallery' ) . '</p>';
+		}
+
+		Asset_Manager::enqueue_gallery_assets();
+
+		ob_start();
+		?>
+		<div class="<?php echo esc_attr( self::generate_wrapper_classes() ); ?>">
+			<ul class="brag-book-gallery-provider-list">
+				<?php foreach ( $terms as $term ) : ?>
+					<?php
+					$link = get_term_link( $term );
+
+					if ( is_wp_error( $link ) ) {
+						continue;
+					}
+					?>
+					<li class="brag-book-gallery-provider-list__item">
+						<a class="brag-book-gallery-provider-list__link" href="<?php echo esc_url( $link ); ?>">
+							<?php
+							// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- markup escaped within render_provider_photo().
+							echo self::render_provider_photo( $term );
+							?>
+							<span class="brag-book-gallery-provider-list__name"><?php echo esc_html( $term->name ); ?></span>
+							<span class="brag-book-gallery-provider-list__count">
+								<?php
+								printf(
+									/* translators: %d: number of cases. */
+									esc_html( _n( '%d case', '%d cases', $term->count, 'brag-book-gallery' ) ),
+									(int) $term->count
+								);
+								?>
+							</span>
+						</a>
+					</li>
+				<?php endforeach; ?>
+			</ul>
+		</div>
+		<?php
+		return (string) ob_get_clean();
+	}
+
+	/**
+	 * Provider photo markup for the providers list
+	 *
+	 * @since 4.9.3
+	 * @param \WP_Term $term Provider term.
+	 * @return string Escaped photo or placeholder HTML.
+	 */
+	private static function render_provider_photo( \WP_Term $term ): string {
+		$image_url = (string) get_term_meta( $term->term_id, 'provider_image_url', true );
+
+		if ( '' === $image_url ) {
+			$attachment_id = absint( get_term_meta( $term->term_id, 'provider_profile_photo', true ) );
+			$image_url     = $attachment_id > 0
+				? (string) ( wp_get_attachment_image_url( $attachment_id, [ 200, 200 ] ) ?: '' )
+				: '';
+		}
+
+		if ( '' === $image_url ) {
+			return '<span class="brag-book-gallery-provider-list__photo brag-book-gallery-provider-list__photo--placeholder" aria-hidden="true">'
+				. '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="40" height="40"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>'
+				. '</span>';
+		}
+
+		return sprintf(
+			'<img class="brag-book-gallery-provider-list__photo" src="%1$s" alt="%2$s" width="200" height="200" loading="lazy" decoding="async" />',
+			esc_url( $image_url ),
+			esc_attr( $term->name )
+		);
 	}
 
 	/**
