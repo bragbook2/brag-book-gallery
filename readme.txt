@@ -4,7 +4,7 @@ Tags: gallery, before-after, medical, cosmetic, procedures
 Requires at least: 6.8
 Tested up to: 6.9
 Requires PHP: 8.2
-Stable tag: 4.9.1
+Stable tag: 4.9.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -91,6 +91,25 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 4. Sync management interface
 
 == Changelog ==
+
+= 4.9.2 =
+Provider pages, responsive images and context-aware navigation. The entries below list the beta iterations that led here.
+
+* Added: Every provider has a page of their own at /providers/{provider}/, listing their cases with the same layout, cards and load-more behaviour as a procedure page, and a /providers/ page listing all providers with their profile photos and case counts. A provider's name on a case links through to their page.
+* Added: Provider pages offer a procedure filter in place of the gallery picker, so visitors can narrow a provider's cases to one procedure.
+* Added: Previous/next on a case follows wherever the visitor came from — a provider's cases when they arrived from a provider page or filter, looping from the last case back to the first, and the procedure's cases otherwise.
+* Added: Small and medium image variants are captured from the API and served to the screens that suit them, so phones and tablets download far smaller files than the full-size image. This covers the grid, carousels, favourites, the case detail viewer and related cases.
+* Added: The nudity warning's title, body text, button label and decline link are editable, along with a choice of how it appears: one full-screen warning per page, the per-procedure overlay, or the per-case flag only. Declining sends the visitor to a page of your choosing, and a reset button restores the defaults.
+* Added: The `[brag_book_gallery_procedures]` shortcode accepts `randomize="true"` to shuffle cases on every page load; Load More continues the same shuffled order.
+* Added: A Reset to Default button on the Landing Page Text editor.
+* Changed: Provider web addresses no longer carry the API member id — /providers/dr-mi-payne/ rather than /providers/dr-mi-payne-8/. Existing providers are renamed once; links to the old addresses are not redirected.
+* Changed: "Load More" paginates within the active view everywhere — provider, location and procedure — instead of loading everything or ignoring the filters.
+* Changed: Delete All Synced Data runs in batches with a progress bar and reports what it removed, so large libraries no longer time out mid-delete.
+* Fixed: Carousels swipe naturally on phones and tablets again.
+* Fixed: The gallery page's SEO title and meta description rendered as a single letter.
+* Fixed: Cases in more than one procedure category no longer appear twice in provider grids, Load More results or the previous/next sequence.
+* Fixed: Numerous provider page issues found in testing: the page returning "not found", a missing first card, and stray empty paragraphs in block themes.
+* Security: The API token is no longer printed into the page source, and rate limiting works again on the consultation form, the favourites email lookup and the API client. Rotate your token if the site has been public.
 
 = 4.9.2-beta10 =
 * Fixed: Opening a case from a provider page followed the procedure's cases rather than the provider's on any site whose Procedures View is not set to Tiles. Provider pages render two layouts, and only the tiles one told the page which provider was being viewed, so the other layout read the provider's name as a procedure and navigated accordingly. Both layouts now carry it, so previous/next follows the provider whatever the setting.

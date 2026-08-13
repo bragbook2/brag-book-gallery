@@ -4,6 +4,57 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.2] - 2026-08-13 (Stable Release)
+
+Stable release of the 4.9.2 line. The beta entries below carry the detail; this
+is what changed since 4.9.1, plus the provider work that landed after beta10.
+
+### Added
+
+- **Provider pages**: the providers taxonomy is public, with a term archive at
+  `/providers/{provider}/` rendering through the gallery and following the
+  Procedures View setting. A `/providers/` page lists every provider with their
+  profile photo and case count, built from the new
+  `[brag_book_gallery_providers]` shortcode and created once while the providers
+  feature is on. A provider's name on a case links to their page, preferring it
+  over the API profile URL.
+- **A procedure filter on provider archives**, in place of the gallery picker,
+  scoping a provider's grid to one procedure.
+- **Context-aware previous/next on cases**: arriving from a provider page or
+  filter walks that provider's cases and wraps at both ends; arriving from a
+  procedure keeps procedure navigation.
+- **Responsive image variants** across the grid, carousels, favourites, the case
+  detail viewer and related cases, with narrow screens pointed directly at the
+  smaller renditions.
+- **Configurable nudity warning**: title, body, button label, decline link and
+  destination, three presets, and a reset control.
+- **`randomize="true"`** on `[brag_book_gallery_procedures]`, seeded per page
+  load so Load More continues the same shuffled order.
+
+### Changed
+
+- **Provider slugs drop the API member id**: `/providers/dr-mi-payne/` rather
+  than `/providers/dr-mi-payne-8/`. Terms synced earlier are renamed once, with
+  hand-edited and colliding slugs left alone. Old URLs are not redirected.
+- **Load More paginates within the active view** — provider, location and
+  procedure — through the same ordered result set as the initial render.
+- **Delete All Synced Data** runs in batches with progress reporting.
+- Roughly 1,850 lines of unreachable frontend JavaScript removed.
+
+### Fixed
+
+- Carousel touch scrolling, duplicate cases across procedure categories, the
+  single-letter SEO title and meta description, and the provider page issues
+  found through the beta line: the 404, the displaced first card, the stray
+  block-theme paragraphs, and navigation that ignored the provider on SEO-slugged
+  sites or on any layout other than tiles.
+
+### Security
+
+- The API token is no longer localised into the page source, and rate limiting
+  works again on the consultation form, the favorites email lookup and the API
+  client. Rotate the token if the site has been public.
+
 ## [4.9.2-beta10] - 2026-08-13 (Beta Release)
 
 ### Fixed
