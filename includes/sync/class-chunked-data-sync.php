@@ -1993,7 +1993,7 @@ class Chunked_Data_Sync {
 			if ( $term->name !== $provider_name ) {
 				wp_update_term( $term->term_id, Taxonomies::TAXONOMY_PROVIDERS, [
 					'name' => $provider_name,
-					'slug' => sanitize_title( $provider_name . '-' . $member_id ),
+					'slug' => Taxonomies::provider_term_slug( $provider_name, $member_id ),
 				] );
 				$this->debug_log( "Chunked Sync: Updated provider term name to '{$provider_name}' (term ID: {$term->term_id})" );
 			}
@@ -2012,7 +2012,7 @@ class Chunked_Data_Sync {
 			$provider_name,
 			Taxonomies::TAXONOMY_PROVIDERS,
 			[
-				'slug'        => sanitize_title( $provider_name . '-' . $member_id ),
+				'slug'        => Taxonomies::provider_term_slug( $provider_name, $member_id ),
 				'description' => sprintf(
 					/* translators: %s: provider ID */
 					__( 'Provider profile for provider ID %s', 'brag-book-gallery' ),
@@ -2376,7 +2376,7 @@ class Chunked_Data_Sync {
 		}
 
 		$result = wp_insert_term( $name, Taxonomies::TAXONOMY_PROVIDERS, array(
-			'slug' => sanitize_title( $name . '-' . $member_id ),
+			'slug' => Taxonomies::provider_term_slug( $name, $member_id ),
 		) );
 
 		if ( is_wp_error( $result ) ) {

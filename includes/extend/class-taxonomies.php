@@ -732,6 +732,37 @@ class Taxonomies {
 	}
 
 	/**
+	 * Build a provider term slug from the provider's name
+	 *
+	 * The member id is only appended when the plain name is already taken by a
+	 * different provider, so a URL reads /providers/dr-mi-payne/ rather than
+	 * carrying an id that means nothing to a visitor. Shared by both sync paths
+	 * and every place a provider term is created.
+	 *
+	 * @since 4.9.3
+	 * @param string $provider_name Provider display name.
+	 * @param int    $member_id     API member ID.
+	 * @return string Term slug.
+	 */
+	public static function provider_term_slug( string $provider_name, int $member_id ): string {
+		$slug = sanitize_title( $provider_name );
+
+		if ( '' === $slug ) {
+			return sanitize_title( 'provider-' . $member_id );
+		}
+
+		$existing = get_term_by( 'slug', $slug, self::TAXONOMY_PROVIDERS );
+
+		if ( $existing instanceof \WP_Term
+			&& absint( get_term_meta( $existing->term_id, 'provider_member_id', true ) ) !== $member_id
+		) {
+			return sanitize_title( $provider_name . '-' . $member_id );
+		}
+
+		return $slug;
+	}
+
+	/**
 	 * Drop the member id from provider slugs synced before 4.9.3
 	 *
 	 * Slugs used to be built as {name}-{member id}, which put an id with no
@@ -743,9 +774,10 @@ class Taxonomies {
 	 * @return void
 	 */
 	private function maybe_shorten_provider_slugs(): void {
-		$option_key = 'brag_book_provider_slug_version';
+		$option_key    = 'brag_book_provider_slug_version';
+		$migrated_flag = '4.9.3_no_member_id_v2';
 
-		if ( '4.9.3_no_member_id' === get_option( $option_key, '' ) ) {
+		if ( $migrated_flag === get_option( $option_key, '' ) ) {
 			return;
 		}
 
@@ -771,8 +803,10 @@ class Taxonomies {
 				continue;
 			}
 
-			// Only the id-suffixed form is rewritten; a slug edited by hand is left alone.
-			if ( $term->slug !== sanitize_title( $term->name . '-' . $member_id ) ) {
+			// Only an id-suffixed slug is rewritten. Matching on the suffix alone
+			// rather than rebuilding the whole old slug also catches providers
+			// renamed since their term was created.
+			if ( ! str_ends_with( $term->slug, '-' . $member_id ) ) {
 				continue;
 			}
 
@@ -783,7 +817,7 @@ class Taxonomies {
 			wp_update_term( $term->term_id, self::TAXONOMY_PROVIDERS, [ 'slug' => $short ] );
 		}
 
-		update_option( $option_key, '4.9.3_no_member_id' );
+		update_option( $option_key, $migrated_flag );
 		flush_rewrite_rules( false );
 	}
 
