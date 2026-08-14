@@ -3889,6 +3889,8 @@ details[open] .brag-book-gallery-filter-dropdown__panel .brag-book-gallery-filte
 }
 
 .brag-book-gallery-case-carousel-pagination--thumbnails {
+  position: relative;
+  z-index: 3;
   display: flex;
   align-items: center;
   gap: var(--wp--custom--brag-book-gallery--spacer--sm, 8px);

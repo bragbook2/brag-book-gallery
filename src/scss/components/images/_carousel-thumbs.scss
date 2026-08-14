@@ -7,6 +7,11 @@
 // -----------------------------------------------------------------------------
 
 .brag-book-gallery-case-carousel-pagination--thumbnails {
+	// A V2 card's hover overlay fills the image container at z-index 2, which
+	// would both hide the strip and swallow its clicks. The strip sits above it,
+	// so hovering a V2 card reveals the overlay over the photo alone.
+	position: relative;
+	z-index: 3;
 	display: flex;
 	align-items: center;
 	gap: var(--wp--custom--brag-book-gallery--spacer--sm, 8px);
