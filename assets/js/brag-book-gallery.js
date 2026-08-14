@@ -3126,6 +3126,16 @@ __webpack_require__.r(__webpack_exports__);
 // them, so webpack splits them into separate chunks via dynamic import().
 
 /**
+ * Every anchor that opens a case from a card.
+ *
+ * Which one a card renders depends on the card type and on how many images the
+ * case has: the permalink wraps the image on default and multi-image v2/v3
+ * cards, while a single-image v3 card only has the overlay button. Missing one
+ * means the case page never learns which gallery the visitor came from.
+ */
+const CASE_LINK_SELECTOR = '.brag-book-gallery-case-card-link, .brag-book-gallery-case-permalink, .brag-book-gallery-case-card-overlay-button';
+
+/**
  * Main Application Controller
  * Orchestrates all gallery components including carousels, filters, dialogs, and favorites
  * Manages global state and component communication
@@ -3839,7 +3849,7 @@ class BRAGbookGalleryApp {
       }
 
       // Check if click is on a case link (supports both class names)
-      const caseLink = e.target.closest('.brag-book-gallery-case-card-link, .brag-book-gallery-case-permalink');
+      const caseLink = e.target.closest(CASE_LINK_SELECTOR);
       if (caseLink) {
         const caseCard = caseLink.closest('.brag-book-gallery-case-card');
         this.storeProcedureReferrerFromCard(caseCard);
@@ -3851,7 +3861,7 @@ class BRAGbookGalleryApp {
       // Check if click is on a case card but not on interactive elements (fallback for UX)
       const caseCard = e.target.closest('.brag-book-gallery-case-card');
       if (caseCard && !e.target.closest('button') && !e.target.closest('details')) {
-        const caseLinkInCard = caseCard.querySelector('.brag-book-gallery-case-card-link, .brag-book-gallery-case-permalink');
+        const caseLinkInCard = caseCard.querySelector(CASE_LINK_SELECTOR);
         if (caseLinkInCard && caseLinkInCard.href) {
           this.storeProcedureReferrerFromCard(caseCard);
           // Track the view when clicking on case card
