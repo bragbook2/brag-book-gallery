@@ -2248,8 +2248,16 @@ final class Cases_Handler {
 												/* translators: 1: current image number, 2: total images */
 												echo esc_attr( sprintf( __( 'Show image %1$d of %2$d', 'brag-book-gallery' ), $index + 1, count( $carousel_images ) ) ); ?>"
 												data-slide-index="<?php echo (int) $index; ?>">
-											<img src="<?php echo esc_url( $carousel_url ); ?>"
+											<?php
+											// A thumbnail is 64px square, so it takes the small
+											// rendition where the case has one and the full-size
+											// image only where it does not.
+											$thumb_url = self::get_variant_url_for_url( (int) $post_id, (string) $carousel_url, 'small' );
+											?>
+											<img src="<?php echo esc_url( $thumb_url ); ?>"
 												 alt=""
+												 width="64"
+												 height="64"
 												 loading="lazy"
 												 decoding="async" />
 										</button>
