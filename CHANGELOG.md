@@ -4,6 +4,21 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.3-beta2] - 2026-08-14 (Beta Release)
+
+### Fixed
+
+- **The referrer capture missed a whole card style**: the click handler that
+  records which gallery a case was opened from matched only
+  `.brag-book-gallery-case-card-link` and `.brag-book-gallery-case-permalink`.
+  The permalink is emitted on default cards and on v2/v3 cards with a carousel,
+  but a single-image v3 card carries only
+  `.brag-book-gallery-case-card-overlay-button`, and the whole-card fallback
+  checks for the same two classes before it acts. On those cards nothing was
+  recorded, so the case page kept its server-rendered procedure links and
+  provider navigation appeared broken while working fine on sites whose cases
+  have carousels. All three anchors now come from one selector.
+
 ## [4.9.3-beta1] - 2026-08-14 (Beta Release)
 
 ### Fixed

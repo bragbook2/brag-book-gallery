@@ -92,6 +92,9 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 
 == Changelog ==
 
+= 4.9.3-beta2 =
+* Fixed: Previous/next on a case ignored the provider page a visitor came from wherever cases are shown as single-image cards in the newest card style. Those cards carry a different link to the ones with a photo carousel, and only the carousel one was being watched for, so nothing recorded which gallery the visitor had come from and the buttons kept following the procedure. All case card links are now watched, whatever the card style or number of photos.
+
 = 4.9.3-beta1 =
 * Fixed: Provider web addresses still came back with the member id on the end after a sync — /providers/dr-mi-payne-8/ rather than /providers/dr-mi-payne/. Only one of the six places that create or rename a provider was shortening the address, and not the one a full sync uses. All of them now do, and the one-time clean-up that shortens existing addresses runs again and also catches providers renamed since their page was created.
 * Fixed: Provider pages showed "Provider profile for provider ID 4" beneath the heading. That text was written into every provider as its description when it was first synced; it is no longer written, and existing ones are cleared. A description you write yourself is kept and still shown.
