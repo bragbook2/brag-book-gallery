@@ -6,6 +6,22 @@
 // card title, an arrow either side. Chosen with the Carousel Navigation setting.
 // -----------------------------------------------------------------------------
 
+// The strip's own height, so the V2 hover overlay can stop above it rather than
+// running underneath. Thumbnail + padding either side + the dividing rule.
+$thumb-size: 64px;
+$thumb-padding: var(--wp--custom--brag-book-gallery--spacer--sm, 8px);
+
+.brag-book-gallery-image-container:has(> .brag-book-gallery-case-carousel-pagination--thumbnails) {
+	// Desktop V2 cards fade a panel in over the image, with the provider and the
+	// arrow pinned to its bottom edge. Left full height that edge lands behind
+	// the strip, so the panel ends where the strip begins.
+	.brag-book-gallery-case-card-overlay {
+		@media (hover: hover) and (pointer: fine) {
+			bottom: calc(#{$thumb-size} + 2 * #{$thumb-padding} + 1px);
+		}
+	}
+}
+
 .brag-book-gallery-case-carousel-pagination--thumbnails {
 	// A V2 card's hover overlay fills the image container at z-index 2, which
 	// would both hide the strip and swallow its clicks. The strip sits above it,
@@ -17,7 +33,7 @@
 	gap: var(--wp--custom--brag-book-gallery--spacer--sm, 8px);
 	// Sits between the image and the card's title bar, so it carries the card's
 	// own padding rather than floating under it.
-	padding: var(--wp--custom--brag-book-gallery--spacer--sm, 8px);
+	padding: $thumb-padding;
 	background: var(--wp--custom--brag-book-gallery--color--white, #fff);
 	// Divides the strip from the title bar directly beneath it.
 	border-block-end: 1px solid rgb(0 0 0 / .1);
@@ -26,6 +42,9 @@
 .brag-book-gallery-case-carousel-thumbs {
 	display: flex;
 	flex: 1;
+	// Centred while they fit; `safe` keeps the first thumbnail reachable rather
+	// than overflowing past the start edge once there are too many.
+	justify-content: safe center;
 	gap: var(--wp--custom--brag-book-gallery--spacer--sm, 8px);
 	// More thumbnails than fit scroll rather than shrink to nothing.
 	overflow-x: auto;
@@ -39,8 +58,8 @@
 
 .brag-book-gallery-case-carousel-thumb {
 	flex: 0 0 auto;
-	inline-size: 64px;
-	block-size: 64px;
+	inline-size: $thumb-size;
+	block-size: $thumb-size;
 	padding: 0;
 	border: 2px solid transparent;
 	border-radius: var(--wp--custom--brag-book-gallery--rounded, 4px);
