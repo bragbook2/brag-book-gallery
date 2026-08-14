@@ -1952,6 +1952,17 @@ body.wp-admin {
 
 // Delete confirmation dialog overrides
 #brag-book-delete-all-dialog {
+	// The shared dialog is sized for a sentence and a pair of buttons. This one
+	// carries a list, a confirmation field, a progress bar and up to three
+	// buttons, which the 24rem default clipped.
+	max-inline-size: 34rem;
+
+	.brag-book-gallery-dialog-footer {
+		// Never push a button past the edge: on a narrow screen they stack
+		// instead, still ending flush right.
+		flex-wrap: wrap;
+	}
+
 	.brag-book-gallery-dialog-message {
 		ul {
 			color: var(--slate-700);

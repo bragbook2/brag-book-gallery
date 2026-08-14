@@ -256,7 +256,6 @@ class Sync_Page extends Settings_Base {
 			<div class="brag-book-gallery-dialog-content">
 				<div class="brag-book-gallery-dialog-header">
 					<h3 class="brag-book-gallery-dialog-title">
-						<span class="dashicons dashicons-warning"></span>
 						<?php esc_html_e( 'Delete All Synced Data', 'brag-book-gallery' ); ?>
 					</h3>
 					<button type="button" class="brag-book-gallery-dialog-close" id="brag-book-delete-dialog-close">
@@ -264,10 +263,6 @@ class Sync_Page extends Settings_Base {
 					</button>
 				</div>
 				<div class="brag-book-gallery-dialog-body">
-					<div class="brag-book-gallery-dialog-icon">
-						<span class="dashicons dashicons-trash" id="brag-book-delete-dialog-glyph"></span>
-					</div>
-
 					<!-- Pane 1: confirmation -->
 					<div class="brag-book-gallery-dialog-message" id="brag-book-delete-confirm-pane">
 						<p><strong><?php esc_html_e( 'Are you sure? This action cannot be undone.', 'brag-book-gallery' ); ?></strong></p>
@@ -343,7 +338,6 @@ class Sync_Page extends Settings_Base {
 			var progressPane = document.getElementById('brag-book-delete-progress-pane');
 			var resultPane = document.getElementById('brag-book-delete-result-pane');
 
-			var glyph = document.getElementById('brag-book-delete-dialog-glyph');
 			var progressLabel = document.getElementById('brag-book-delete-progress-label');
 			var progressPercent = document.getElementById('brag-book-delete-progress-percentage');
 			var progressFill = document.getElementById('brag-book-delete-progress-fill');
@@ -474,9 +468,6 @@ class Sync_Page extends Settings_Base {
 			var showResult = function (message, isError) {
 				showPane(resultPane);
 
-				if (glyph) {
-					glyph.className = isError ? 'dashicons dashicons-warning' : 'dashicons dashicons-yes-alt';
-				}
 				if (resultMessage) {
 					resultMessage.textContent = message;
 				}
@@ -557,9 +548,6 @@ class Sync_Page extends Settings_Base {
 			var resetDialog = function () {
 				showPane(confirmPane);
 
-				if (glyph) {
-					glyph.className = 'dashicons dashicons-trash';
-				}
 				if (confirmInput) {
 					confirmInput.value = '';
 				}

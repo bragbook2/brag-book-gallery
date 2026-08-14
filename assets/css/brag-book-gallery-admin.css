@@ -7236,6 +7236,12 @@ body.wp-admin #wpfooter {
   cursor: not-allowed;
 }
 
+#brag-book-delete-all-dialog {
+  max-inline-size: 34rem;
+}
+#brag-book-delete-all-dialog .brag-book-gallery-dialog-footer {
+  flex-wrap: wrap;
+}
 #brag-book-delete-all-dialog .brag-book-gallery-dialog-message ul {
   color: var(--slate-700);
 }
