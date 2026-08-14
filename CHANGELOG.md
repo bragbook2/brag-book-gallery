@@ -4,6 +4,20 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.3-beta3] - 2026-08-14 (Beta Release)
+
+### Changed
+
+- **The referrer records the provider's member id alongside the slug**: only the
+  provider-scoped procedures grid ever rendered an id for the script to read, so
+  `provider-id` was always null. The slug is what the adjacency endpoint
+  prefers, so navigation worked, but nothing was left to fall back on if a slug
+  stopped resolving to a term. Both provider archive layouts and every provider
+  dropdown option now carry `data-provider-id`, and the script reads whichever it
+  finds. The id comes from a single `Taxonomies::provider_member_id()` resolver
+  (`provider_id`, falling back to `provider_member_id`) that the queried-archive
+  lookup now shares rather than repeating.
+
 ## [4.9.3-beta2] - 2026-08-14 (Beta Release)
 
 ### Fixed

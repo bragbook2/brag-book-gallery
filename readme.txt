@@ -92,6 +92,9 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 
 == Changelog ==
 
+= 4.9.3-beta3 =
+* Changed: The record of which provider a visitor came from now stores the provider's ID as well as their web address name. Navigation used the name and worked, but nothing was kept to fall back on if that name ever stopped matching — after a rename, for instance. Both provider page layouts and every entry in the provider dropdown now carry the ID.
+
 = 4.9.3-beta2 =
 * Fixed: Previous/next on a case ignored the provider page a visitor came from wherever cases are shown as single-image cards in the newest card style. Those cards carry a different link to the ones with a photo carousel, and only the carousel one was being watched for, so nothing recorded which gallery the visitor had come from and the buttons kept following the procedure. All case card links are now watched, whatever the card style or number of photos.
 
