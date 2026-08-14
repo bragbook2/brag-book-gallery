@@ -4,6 +4,25 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.3-beta1] - 2026-08-14 (Beta Release)
+
+### Fixed
+
+- **Provider slugs came back with the member id after a sync**: 4.9.2 added a
+  name-only slug builder but wired it into one of the six places that create or
+  rename a provider term — and not the chunked sync, which is the path a full
+  sync runs. Every sync rebuilt `{name}-{member id}` however many times the
+  migration had shortened it. The builder moved to `Taxonomies` and all six call
+  sites use it. The migration also matched a slug against the whole old
+  `{name}-{member id}` form, so a provider renamed since their term was created
+  kept the id; it now shortens any slug ending in `-{member id}` and re-runs on
+  sites where it has already run.
+- **The placeholder term description is gone**: every provider term was created
+  with "Provider profile for provider ID 4" as its description, which the
+  provider's page renders under the heading. The syncs no longer write it and
+  the clean-up clears existing ones, matched on the exact generated wording so a
+  description written by hand survives.
+
 ## [4.9.2] - 2026-08-13 (Stable Release)
 
 Stable release of the 4.9.2 line. The beta entries below carry the detail; this

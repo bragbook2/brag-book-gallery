@@ -1,5 +1,12 @@
 === BRAGBook Gallery Changelog ===
 
+= 4.9.3-beta1 (2026-08-14) =
+
+Fixed:
+* Provider slugs came back with the member id after a sync - 4.9.2 added a name-only slug builder but wired it into one of the six places that create or rename a provider term, and not the chunked sync, which is the path a full sync runs, so every sync rebuilt {name}-{member id} however many times the migration had shortened it. The builder moved to Taxonomies::provider_term_slug() and all six call sites use it
+* The slug migration matched against the whole old {name}-{member id} form, so a provider renamed since their term was created kept the id. It now shortens any slug ending in -{member id}, still skipping hand-edited slugs and names whose shortened form is taken, and re-runs on sites where it has already run
+* Provider terms are no longer created with "Provider profile for provider ID 4" as their description, which the provider's page renders under the heading. Existing placeholders are cleared by the same clean-up, matched on the exact generated wording so a description written by hand survives
+
 = 4.9.2 (2026-08-13) =
 
 Stable release of the 4.9.2 line. The beta entries below carry the detail.

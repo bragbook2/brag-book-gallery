@@ -92,6 +92,10 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 
 == Changelog ==
 
+= 4.9.3-beta1 =
+* Fixed: Provider web addresses still came back with the member id on the end after a sync — /providers/dr-mi-payne-8/ rather than /providers/dr-mi-payne/. Only one of the six places that create or rename a provider was shortening the address, and not the one a full sync uses. All of them now do, and the one-time clean-up that shortens existing addresses runs again and also catches providers renamed since their page was created.
+* Fixed: Provider pages showed "Provider profile for provider ID 4" beneath the heading. That text was written into every provider as its description when it was first synced; it is no longer written, and existing ones are cleared. A description you write yourself is kept and still shown.
+
 = 4.9.2 =
 Provider pages, responsive images and context-aware navigation. The entries below list the beta iterations that led here.
 
