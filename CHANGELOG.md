@@ -4,6 +4,36 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.3-beta4] - 2026-08-14 (Beta Release)
+
+### Added
+
+- **Carousel navigation choice on V2/V3 cards**: the image carousel could only
+  be navigated by the dots over the image, which say how many photos there are
+  but not what they show. A Carousel navigation setting, nested under the
+  carousel toggle it depends on and greyed out while that toggle is off, now
+  offers a thumbnail strip instead. The strip renders between the image and the
+  card's title bar with an arrow either side: arrows step from wherever the
+  carousel sits, a thumbnail selects its slide, and the strip scrolls rather
+  than shrinking when a case has more photos than fit. Thumbnails take the small
+  rendition through the shared variant lookup rather than the full-size file,
+  and a hairline divides the strip from the title beneath it.
+
+### Fixed
+
+- **The delete-all dialog clipped its buttons**: the shared dialog is capped at
+  24rem, sized for a sentence and two buttons, while this one carries a list, a
+  confirmation field, a progress bar and up to three buttons, so the footer ran
+  past the edge and the last button was cut off by the content's overflow. It
+  now sizes to 34rem with a wrapping footer. The warning glyph beside the title
+  and the trash glyph beside the message are gone, along with the script that
+  swapped that glyph as the delete ran.
+
+### Changed
+
+- The radio-and-description layout the nudity presets use is shared under one
+  class rather than copied, now that a second setting uses it.
+
 ## [4.9.3-beta3] - 2026-08-14 (Beta Release)
 
 ### Changed

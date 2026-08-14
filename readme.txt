@@ -92,6 +92,10 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 
 == Changelog ==
 
+= 4.9.3-beta4 =
+* Added: A choice of navigation for the image carousel on V2/V3 cards. Alongside the existing dots over the image, cases can now show a strip of photo thumbnails between the image and the case title, with an arrow either side. The choice sits under the carousel toggle in Display & Gallery Settings. Thumbnails use the small version of each photo, and a strip with more thumbnails than fit scrolls sideways.
+* Fixed: The Delete All Synced Data dialog cut off its buttons. It is wider now, its buttons wrap onto a second row rather than disappearing on a narrow screen, and the warning and bin icons have been removed.
+
 = 4.9.3-beta3 =
 * Changed: The record of which provider a visitor came from now stores the provider's ID as well as their web address name. Navigation used the name and worked, but nothing was kept to fall back on if that name ever stopped matching — after a rename, for instance. Both provider page layouts and every entry in the provider dropdown now carry the ID.
 

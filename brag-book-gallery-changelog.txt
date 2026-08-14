@@ -1,5 +1,16 @@
 === BRAGBook Gallery Changelog ===
 
+= 4.9.3-beta4 (2026-08-14) =
+
+Added:
+* Carousel navigation choice on V2/V3 cards - alongside the dots over the image, cases can show a thumbnail strip between the image and the card's title bar with an arrow either side. Arrows step from wherever the carousel currently sits, a thumbnail selects its slide outright, and the strip scrolls rather than shrinking when a case has more photos than fit. Thumbnails take the small rendition through the shared variant lookup, falling back to the full-size URL where no variant exists, and a 1px rgb(0 0 0 / .1) rule divides the strip from the title beneath it. The setting is nested under the carousel toggle it depends on and greyed out while that toggle is off
+
+Fixed:
+* The Delete All Synced Data dialog clipped its buttons - the shared dialog is capped at 24rem, sized for a sentence and two buttons, while this one carries a list, a confirmation field, a progress bar and up to three buttons, so the footer ran past the edge and the last button was cut off by the content's overflow. It now sizes to 34rem with a wrapping footer, and the warning and trash glyphs are gone along with the script that swapped between them
+
+Changed:
+* The radio-and-description layout used by the nudity presets is shared under one class rather than copied, now that a second setting uses it
+
 = 4.9.3-beta3 (2026-08-14) =
 
 Changed:
