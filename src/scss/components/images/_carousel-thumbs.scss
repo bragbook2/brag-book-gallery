@@ -14,6 +14,8 @@
 	// own padding rather than floating under it.
 	padding: var(--wp--custom--brag-book-gallery--spacer--sm, 8px);
 	background: var(--wp--custom--brag-book-gallery--color--white, #fff);
+	// Divides the strip from the title bar directly beneath it.
+	border-block-end: 1px solid rgb(0 0 0 / .1);
 }
 
 .brag-book-gallery-case-carousel-thumbs {

@@ -3894,6 +3894,7 @@ details[open] .brag-book-gallery-filter-dropdown__panel .brag-book-gallery-filte
   gap: var(--wp--custom--brag-book-gallery--spacer--sm, 8px);
   padding: var(--wp--custom--brag-book-gallery--spacer--sm, 8px);
   background: var(--wp--custom--brag-book-gallery--color--white, #fff);
+  border-block-end: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .brag-book-gallery-case-carousel-thumbs {
