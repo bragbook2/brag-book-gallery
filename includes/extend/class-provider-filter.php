@@ -159,7 +159,7 @@ class Provider_Filter {
 					</li>
 					<?php foreach ( $providers as $provider ) : ?>
 						<li>
-							<button type="button" class="brag-book-gallery-provider-filter__option" data-provider-slug="<?php echo esc_attr( $provider['slug'] ); ?>" data-provider-name="<?php echo esc_attr( strtolower( $provider['name'] ) ); ?>">
+							<button type="button" class="brag-book-gallery-provider-filter__option" data-provider-slug="<?php echo esc_attr( $provider['slug'] ); ?>" data-provider-id="<?php echo esc_attr( (string) $provider['member_id'] ); ?>" data-provider-name="<?php echo esc_attr( strtolower( $provider['name'] ) ); ?>">
 								<?php
 								// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- avatar_markup escapes its output.
 								echo self::avatar_markup( $provider );
@@ -310,7 +310,7 @@ class Provider_Filter {
 	 *
 	 * @since 4.8.0
 	 * @param string $procedure_slug Optional procedures taxonomy slug to scope to.
-	 * @return array<int,array{slug:string,name:string,photo_url:string}>
+	 * @return array<int,array{slug:string,name:string,member_id:int,photo_url:string}>
 	 */
 	private static function get_providers( string $procedure_slug ): array {
 		$case_ids = self::get_candidate_case_ids( '', $procedure_slug );
@@ -328,6 +328,7 @@ class Provider_Filter {
 			$providers[] = [
 				'slug'      => $term->slug,
 				'name'      => $term->name,
+				'member_id' => Taxonomies::provider_member_id( $term->term_id ),
 				'photo_url' => self::provider_photo_url( $term->term_id ),
 			];
 		}

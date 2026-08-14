@@ -62,10 +62,12 @@ window.storeProcedureReferrer = function(procedureSlug, procedureName, procedure
  * @returns {{slug: string, id: string}}
  */
 function getActiveProviderContext() {
-	// Provider archive: every case listed belongs to this provider.
-	const archiveSlug = getProviderArchiveSlug();
-	if (archiveSlug) {
-		return { slug: archiveSlug, id: '' };
+	// Provider archive: every case listed belongs to this provider. The member
+	// id rides along with the slug so navigation still resolves the provider if
+	// the slug ever fails to match a term.
+	const archive = getProviderArchiveElement();
+	if (archive && archive.dataset.providerSlug) {
+		return { slug: archive.dataset.providerSlug, id: archive.dataset.providerId || '' };
 	}
 
 	// Interactive provider dropdown: the active option carries the slug
@@ -74,7 +76,7 @@ function getActiveProviderContext() {
 	const activeOption = document.querySelector('.brag-book-gallery-provider-filter:not([data-filter-mode="procedure"]) .brag-book-gallery-provider-filter__option.is-active');
 	const dropdownSlug = activeOption ? (activeOption.dataset.providerSlug || '') : '';
 	if (dropdownSlug) {
-		return { slug: dropdownSlug, id: '' };
+		return { slug: dropdownSlug, id: (activeOption && activeOption.dataset.providerId) || '' };
 	}
 
 	// Server-rendered provider grid: the wrapper carries the provider API id.
@@ -93,12 +95,22 @@ function getActiveProviderContext() {
  * @returns {string} Provider taxonomy slug, or an empty string.
  */
 function getProviderArchiveSlug() {
-	// Tiles view carries it on the tiles wrapper; the sidebar view, which a site
-	// gets when Procedures View is not set to tiles, carries it on the gallery
-	// wrapper. Reading only the first left every non-tiles site without provider
-	// navigation.
-	const view = document.querySelector('.brag-book-gallery-tiles-view[data-provider-slug], .brag-book-gallery-wrapper[data-provider-slug]');
+	const view = getProviderArchiveElement();
 	return view ? (view.dataset.providerSlug || '') : '';
+}
+
+/**
+ * The element carrying the current provider archive's provider.
+ *
+ * Tiles view carries it on the tiles wrapper; the sidebar view, which a site
+ * gets when Procedures View is not set to tiles, carries it on the gallery
+ * wrapper. Reading only the first left every non-tiles site without provider
+ * navigation.
+ *
+ * @returns {HTMLElement|null}
+ */
+function getProviderArchiveElement() {
+	return document.querySelector('.brag-book-gallery-tiles-view[data-provider-slug], .brag-book-gallery-wrapper[data-provider-slug]');
 }
 
 /**

@@ -732,6 +732,26 @@ class Taxonomies {
 	}
 
 	/**
+	 * API member id stored on a provider term
+	 *
+	 * Newer syncs write `provider_id`; older ones only wrote
+	 * `provider_member_id`, so both are read.
+	 *
+	 * @since 4.9.3
+	 * @param int $term_id Provider term id.
+	 * @return int Member id, or 0 when the term carries neither.
+	 */
+	public static function provider_member_id( int $term_id ): int {
+		$provider_id = absint( get_term_meta( $term_id, 'provider_id', true ) );
+
+		if ( $provider_id > 0 ) {
+			return $provider_id;
+		}
+
+		return absint( get_term_meta( $term_id, 'provider_member_id', true ) );
+	}
+
+	/**
 	 * Build a provider term slug from the provider's name
 	 *
 	 * The member id is only appended when the plain name is already taken by a

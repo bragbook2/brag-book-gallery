@@ -950,12 +950,14 @@ window.storeProcedureReferrer = function (procedureSlug, procedureName, procedur
  * @returns {{slug: string, id: string}}
  */
 function getActiveProviderContext() {
-  // Provider archive: every case listed belongs to this provider.
-  const archiveSlug = getProviderArchiveSlug();
-  if (archiveSlug) {
+  // Provider archive: every case listed belongs to this provider. The member
+  // id rides along with the slug so navigation still resolves the provider if
+  // the slug ever fails to match a term.
+  const archive = getProviderArchiveElement();
+  if (archive && archive.dataset.providerSlug) {
     return {
-      slug: archiveSlug,
-      id: ''
+      slug: archive.dataset.providerSlug,
+      id: archive.dataset.providerId || ''
     };
   }
 
@@ -967,7 +969,7 @@ function getActiveProviderContext() {
   if (dropdownSlug) {
     return {
       slug: dropdownSlug,
-      id: ''
+      id: activeOption && activeOption.dataset.providerId || ''
     };
   }
 
@@ -992,12 +994,22 @@ function getActiveProviderContext() {
  * @returns {string} Provider taxonomy slug, or an empty string.
  */
 function getProviderArchiveSlug() {
-  // Tiles view carries it on the tiles wrapper; the sidebar view, which a site
-  // gets when Procedures View is not set to tiles, carries it on the gallery
-  // wrapper. Reading only the first left every non-tiles site without provider
-  // navigation.
-  const view = document.querySelector('.brag-book-gallery-tiles-view[data-provider-slug], .brag-book-gallery-wrapper[data-provider-slug]');
+  const view = getProviderArchiveElement();
   return view ? view.dataset.providerSlug || '' : '';
+}
+
+/**
+ * The element carrying the current provider archive's provider.
+ *
+ * Tiles view carries it on the tiles wrapper; the sidebar view, which a site
+ * gets when Procedures View is not set to tiles, carries it on the gallery
+ * wrapper. Reading only the first left every non-tiles site without provider
+ * navigation.
+ *
+ * @returns {HTMLElement|null}
+ */
+function getProviderArchiveElement() {
+  return document.querySelector('.brag-book-gallery-tiles-view[data-provider-slug], .brag-book-gallery-wrapper[data-provider-slug]');
 }
 
 /**

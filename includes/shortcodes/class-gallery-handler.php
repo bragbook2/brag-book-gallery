@@ -563,14 +563,7 @@ final class Gallery_Handler {
 			return 0;
 		}
 
-		$term_id     = absint( get_queried_object_id() );
-		$provider_id = absint( get_term_meta( $term_id, 'provider_id', true ) );
-
-		if ( $provider_id > 0 ) {
-			return $provider_id;
-		}
-
-		return absint( get_term_meta( $term_id, 'provider_member_id', true ) );
+		return Taxonomies::provider_member_id( absint( get_queried_object_id() ) );
 	}
 
 	/**
@@ -1128,7 +1121,11 @@ final class Gallery_Handler {
 		// links read it to navigate within the provider rather than the procedure.
 		$provider_slug_attr = '';
 		if ( $current_taxonomy instanceof \WP_Term && Taxonomies::TAXONOMY_PROVIDERS === $current_taxonomy->taxonomy ) {
-			$provider_slug_attr = sprintf( ' data-provider-slug="%s"', esc_attr( $current_taxonomy->slug ) );
+			$provider_slug_attr = sprintf(
+				' data-provider-slug="%s" data-provider-id="%s"',
+				esc_attr( $current_taxonomy->slug ),
+				esc_attr( (string) Taxonomies::provider_member_id( $current_taxonomy->term_id ) )
+			);
 		}
 		?>
 		<!-- BRAG book Gallery Component Start -->
@@ -2667,6 +2664,7 @@ final class Gallery_Handler {
 				 data-view="tiles"
 				 <?php if ( $is_provider_term ) : ?>
 				 data-provider-slug="<?php echo esc_attr( $procedure_term->slug ); ?>"
+				 data-provider-id="<?php echo esc_attr( (string) Taxonomies::provider_member_id( $procedure_term->term_id ) ); ?>"
 				 <?php else : ?>
 				 data-procedure-slug="<?php echo esc_attr( $procedure_term->slug ); ?>"
 				 data-procedure-id="<?php echo esc_attr( $procedure_api_id ); ?>"
