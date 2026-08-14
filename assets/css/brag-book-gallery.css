@@ -3888,6 +3888,72 @@ details[open] .brag-book-gallery-filter-dropdown__panel .brag-book-gallery-filte
   font-style: italic;
 }
 
+.brag-book-gallery-case-carousel-pagination--thumbnails {
+  display: flex;
+  align-items: center;
+  gap: var(--wp--custom--brag-book-gallery--spacer--sm, 8px);
+  margin-block-start: var(--wp--custom--brag-book-gallery--spacer--sm, 8px);
+}
+
+.brag-book-gallery-case-carousel-thumbs {
+  display: flex;
+  flex: 1;
+  gap: var(--wp--custom--brag-book-gallery--spacer--sm, 8px);
+  overflow-x: auto;
+  scrollbar-width: none;
+  scroll-snap-type: x proximity;
+}
+.brag-book-gallery-case-carousel-thumbs::-webkit-scrollbar {
+  display: none;
+}
+
+.brag-book-gallery-case-carousel-thumb {
+  flex: 0 0 auto;
+  inline-size: 64px;
+  block-size: 64px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: var(--wp--custom--brag-book-gallery--rounded, 4px);
+  background: none;
+  cursor: pointer;
+  overflow: hidden;
+  scroll-snap-align: start;
+  opacity: 0.6;
+  transition: opacity 0.2s ease, border-color 0.2s ease;
+}
+.brag-book-gallery-case-carousel-thumb img {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+.brag-book-gallery-case-carousel-thumb:hover, .brag-book-gallery-case-carousel-thumb:focus-visible {
+  opacity: 1;
+}
+.brag-book-gallery-case-carousel-thumb.is-active {
+  opacity: 1;
+  border-color: var(--wp--custom--brag-book-gallery--color--black, #000);
+}
+
+.brag-book-gallery-case-carousel-arrow {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  inline-size: 32px;
+  block-size: 32px;
+  padding: 0;
+  border: 1px solid var(--wp--custom--brag-book-gallery--color--lightest-gray, #e5e7eb);
+  border-radius: 50%;
+  background: var(--wp--custom--brag-book-gallery--color--white, #fff);
+  color: var(--wp--custom--brag-book-gallery--color--black, #000);
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.brag-book-gallery-case-carousel-arrow:hover, .brag-book-gallery-case-carousel-arrow:focus-visible {
+  background: var(--wp--custom--brag-book-gallery--color--lightest-gray, #f4f4f5);
+}
+
 .brag-book-case-image-container {
   position: relative;
   width: 100%;

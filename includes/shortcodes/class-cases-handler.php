@@ -2034,6 +2034,7 @@ final class Cases_Handler {
 		// Get card type setting
 		$case_card_type = get_option( 'brag_book_gallery_case_card_type', 'default' );
 		$case_image_carousel = get_option( 'brag_book_gallery_case_image_carousel', false );
+		$carousel_nav        = 'thumbnails' === get_option( 'brag_book_gallery_case_carousel_nav', 'dots' ) ? 'thumbnails' : 'dots';
 		$card_type_class = '';
 		if ( 'v2' === $case_card_type ) {
 			$card_type_class = ' brag-book-gallery-case-card--v2';
@@ -2143,7 +2144,7 @@ final class Cases_Handler {
 											</picture>
 										<?php endforeach; ?>
 									</a>
-									<?php if ( count( $carousel_images ) > 1 ) : ?>
+									<?php if ( count( $carousel_images ) > 1 && 'dots' === $carousel_nav ) : ?>
 										<nav class="brag-book-gallery-case-carousel-pagination" role="tablist" aria-label="<?php esc_attr_e( 'Carousel image navigation', 'brag-book-gallery' ); ?>">
 											<?php foreach ( $carousel_images as $index => $carousel_url ) : ?>
 												<button type="button"
@@ -2343,6 +2344,43 @@ final class Cases_Handler {
 						</ul>
 					</div>
 				</details>
+			<?php endif; ?>
+
+			<?php if ( 'thumbnails' === $carousel_nav && count( $carousel_images ) > 1 ) : ?>
+				<nav class="brag-book-gallery-case-carousel-pagination brag-book-gallery-case-carousel-pagination--thumbnails"
+					 role="tablist"
+					 aria-label="<?php esc_attr_e( 'Carousel image navigation', 'brag-book-gallery' ); ?>">
+					<button type="button"
+							class="brag-book-gallery-case-carousel-arrow brag-book-gallery-case-carousel-arrow--prev"
+							data-slide-step="-1"
+							aria-label="<?php esc_attr_e( 'Previous image', 'brag-book-gallery' ); ?>">
+						<svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="currentColor" aria-hidden="true"><path d="M560-240 320-480l240-240 56 56-184 184 184 184-56 56Z"/></svg>
+					</button>
+					<div class="brag-book-gallery-case-carousel-thumbs">
+						<?php foreach ( $carousel_images as $index => $carousel_url ) : ?>
+							<button type="button"
+									class="brag-book-gallery-case-carousel-thumb<?php echo 0 === $index ? ' is-active' : ''; ?>"
+									role="tab"
+									aria-selected="<?php echo 0 === $index ? 'true' : 'false'; ?>"
+									aria-controls="case-<?php echo esc_attr( $case_id ); ?>-img-<?php echo (int) $index; ?>"
+									aria-label="<?php
+									/* translators: 1: current image number, 2: total images */
+									echo esc_attr( sprintf( __( 'Show image %1$d of %2$d', 'brag-book-gallery' ), $index + 1, count( $carousel_images ) ) ); ?>"
+									data-slide-index="<?php echo (int) $index; ?>">
+								<img src="<?php echo esc_url( $carousel_url ); ?>"
+									 alt=""
+									 loading="lazy"
+									 decoding="async" />
+							</button>
+						<?php endforeach; ?>
+					</div>
+					<button type="button"
+							class="brag-book-gallery-case-carousel-arrow brag-book-gallery-case-carousel-arrow--next"
+							data-slide-step="1"
+							aria-label="<?php esc_attr_e( 'Next image', 'brag-book-gallery' ); ?>">
+						<svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="currentColor" aria-hidden="true"><path d="M504-480 320-664l56-56 240 240-240 240-56-56 184-184Z"/></svg>
+					</button>
+				</nav>
 			<?php endif; ?>
 		</article>
 		<?php

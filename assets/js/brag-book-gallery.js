@@ -3145,6 +3145,12 @@ __webpack_require__.r(__webpack_exports__);
  * cards, while a single-image v3 card only has the overlay button. Missing one
  * means the case page never learns which gallery the visitor came from.
  */
+/**
+ * Controls that move a case card's carousel: the dots over the image, the
+ * thumbnails under the card, and the arrows either side of those thumbnails.
+ */
+const CAROUSEL_SLIDE_CONTROL_SELECTOR = '.brag-book-gallery-case-carousel-dot, .brag-book-gallery-case-carousel-thumb';
+const CAROUSEL_CONTROL_SELECTOR = `${CAROUSEL_SLIDE_CONTROL_SELECTOR}, .brag-book-gallery-case-carousel-arrow`;
 const CASE_LINK_SELECTOR = '.brag-book-gallery-case-card-link, .brag-book-gallery-case-permalink, .brag-book-gallery-case-card-overlay-button';
 
 /**
@@ -5547,45 +5553,67 @@ class BRAGbookGalleryApp {
    * Handles button clicks to navigate between images in a case carousel
    */
   initializeCaseCarouselPagination() {
-    // Use event delegation for case carousel pagination
+    // Use event delegation for case carousel pagination. Dots sit over the
+    // image; thumbnails sit under the card, so the carousel is resolved from
+    // the card rather than from the control's own container.
     document.addEventListener('click', e => {
-      const dot = e.target.closest('.brag-book-gallery-case-carousel-dot');
-      if (!dot) return;
+      const control = e.target.closest(CAROUSEL_CONTROL_SELECTOR);
+      if (!control) return;
       e.preventDefault();
-      const slideIndex = parseInt(dot.dataset.slideIndex, 10);
-      if (isNaN(slideIndex)) return;
-
-      // Find the carousel container (parent of pagination)
-      const pagination = dot.closest('.brag-book-gallery-case-carousel-pagination');
-      if (!pagination) return;
-      const imageContainer = pagination.closest('.brag-book-gallery-image-container');
-      if (!imageContainer) return;
-      const carousel = imageContainer.querySelector('.brag-book-gallery-case-carousel');
+      const card = control.closest('.brag-book-gallery-case-card');
+      const carousel = card?.querySelector('.brag-book-gallery-case-carousel');
       if (!carousel) return;
-
-      // Get the target image/picture element
       const pictures = carousel.querySelectorAll('picture');
-      const targetPicture = pictures[slideIndex];
-      if (!targetPicture) return;
+      if (!pictures.length) return;
 
-      // Scroll the carousel to show the target image
-      targetPicture.scrollIntoView({
+      // An arrow steps from wherever the carousel currently is; a dot or a
+      // thumbnail names its slide outright.
+      const step = parseInt(control.dataset.slideStep, 10);
+      const slideIndex = isNaN(step) ? parseInt(control.dataset.slideIndex, 10) : this.currentCaseCarouselIndex(carousel) + step;
+      if (isNaN(slideIndex) || slideIndex < 0 || slideIndex >= pictures.length) return;
+      pictures[slideIndex].scrollIntoView({
         behavior: 'smooth',
         block: 'nearest',
         inline: 'start'
       });
-
-      // Update active states
-      const allDots = pagination.querySelectorAll('.brag-book-gallery-case-carousel-dot');
-      allDots.forEach((d, i) => {
-        const isActive = i === slideIndex;
-        d.classList.toggle('is-active', isActive);
-        d.setAttribute('aria-selected', isActive ? 'true' : 'false');
-      });
+      this.setActiveCaseCarouselControl(card, slideIndex);
     });
 
-    // Also handle scroll events to update active dot
+    // Also handle scroll events to update the active control
     this.setupCaseCarouselScrollObserver();
+  }
+
+  /**
+   * The slide a case carousel is currently showing.
+   *
+   * @param {HTMLElement} carousel The case carousel.
+   * @returns {number} Zero-based slide index.
+   */
+  currentCaseCarouselIndex(carousel) {
+    const slidesContainer = carousel.querySelector('.brag-book-gallery-carousel-slides');
+    if (!slidesContainer || slidesContainer.clientWidth === 0) return 0;
+    return Math.round(slidesContainer.scrollLeft / slidesContainer.clientWidth);
+  }
+
+  /**
+   * Mark the control for the active slide, whichever style the card uses.
+   *
+   * @param {HTMLElement} card The case card.
+   * @param {number} activeIndex Zero-based slide index.
+   */
+  setActiveCaseCarouselControl(card, activeIndex) {
+    if (!card) return;
+    card.querySelectorAll(CAROUSEL_SLIDE_CONTROL_SELECTOR).forEach((control, i) => {
+      const isActive = i === activeIndex;
+      control.classList.toggle('is-active', isActive);
+      control.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      if (isActive && control.classList.contains('brag-book-gallery-case-carousel-thumb')) {
+        control.scrollIntoView({
+          block: 'nearest',
+          inline: 'nearest'
+        });
+      }
+    });
   }
 
   /**
@@ -5618,7 +5646,8 @@ class BRAGbookGalleryApp {
     document.querySelectorAll('.brag-book-gallery-case-carousel').forEach(carousel => {
       // Skip carousels we've already wired up (idempotent for AJAX load-more)
       if (carousel.dataset.heightSyncReady === 'true') return;
-      const pagination = carousel.querySelector('.brag-book-gallery-case-carousel-pagination');
+      const card = carousel.closest('.brag-book-gallery-case-card');
+      const pagination = card?.querySelector('.brag-book-gallery-case-carousel-pagination');
       if (!pagination) return;
 
       // The scrollable element is the anchor containing all slides
@@ -5628,17 +5657,11 @@ class BRAGbookGalleryApp {
       if (pictures.length < 2) return;
       let syncTimer = null;
       const updateActiveDot = () => {
-        const scrollLeft = slidesContainer.scrollLeft;
         const containerWidth = slidesContainer.clientWidth;
 
         // Calculate the active index from scroll position
-        const activeIndex = containerWidth > 0 ? Math.round(scrollLeft / containerWidth) : 0;
-        const dots = pagination.querySelectorAll('.brag-book-gallery-case-carousel-dot');
-        dots.forEach((dot, i) => {
-          const isActive = i === activeIndex;
-          dot.classList.toggle('is-active', isActive);
-          dot.setAttribute('aria-selected', isActive ? 'true' : 'false');
-        });
+        const activeIndex = containerWidth > 0 ? Math.round(slidesContainer.scrollLeft / containerWidth) : 0;
+        this.setActiveCaseCarouselControl(card, activeIndex);
 
         // Debounce height sync until scroll settles to avoid mid-swipe jitter
         clearTimeout(syncTimer);

@@ -730,6 +730,7 @@ class General_Page extends Settings_Base {
 		$favorites_view      = sanitize_text_field( get_option( 'brag_book_gallery_favorites_view', 'default' ) );
 		$case_card_type      = sanitize_text_field( get_option( 'brag_book_gallery_case_card_type', 'default' ) );
 		$case_image_carousel = (bool) get_option( 'brag_book_gallery_case_image_carousel', false );
+		$case_carousel_nav   = (string) get_option( 'brag_book_gallery_case_carousel_nav', 'dots' );
 		$items_per_page      = Settings_Helper::get_items_per_page();
 
 		// Landing page content.
@@ -1123,6 +1124,23 @@ class General_Page extends Settings_Base {
 						<span class="brag-book-gallery-toggle-label">
 							<?php esc_html_e( 'Show carousel of high-resolution images on V2/V3 cards', 'brag-book-gallery' ); ?>
 						</span>
+					</div>
+
+					<div class="gallery-page-settings-field">
+						<label for="brag_book_gallery_case_carousel_nav" class="gallery-page-settings-field__label">
+							<?php esc_html_e( 'Carousel Navigation', 'brag-book-gallery' ); ?>
+						</label>
+						<select id="brag_book_gallery_case_carousel_nav" name="brag_book_gallery_case_carousel_nav">
+							<option value="dots" <?php selected( $case_carousel_nav, 'dots' ); ?>>
+								<?php esc_html_e( 'Dots over the image', 'brag-book-gallery' ); ?>
+							</option>
+							<option value="thumbnails" <?php selected( $case_carousel_nav, 'thumbnails' ); ?>>
+								<?php esc_html_e( 'Thumbnails below the card', 'brag-book-gallery' ); ?>
+							</option>
+						</select>
+						<p class="description">
+							<?php esc_html_e( 'Thumbnails sit under the card with an arrow either side. Applies only where the carousel above is on.', 'brag-book-gallery' ); ?>
+						</p>
 					</div>
 				</div>
 
@@ -2457,6 +2475,14 @@ class General_Page extends Settings_Base {
 		$case_image_carousel = isset( $_POST['brag_book_gallery_case_image_carousel'] )
 							   && '1' === $_POST['brag_book_gallery_case_image_carousel'];
 		update_option( 'brag_book_gallery_case_image_carousel', $case_image_carousel );
+
+		$carousel_nav = isset( $_POST['brag_book_gallery_case_carousel_nav'] )
+			? sanitize_key( wp_unslash( $_POST['brag_book_gallery_case_carousel_nav'] ) )
+			: 'dots';
+		update_option(
+			'brag_book_gallery_case_carousel_nav',
+			in_array( $carousel_nav, array( 'dots', 'thumbnails' ), true ) ? $carousel_nav : 'dots'
+		);
 
 		// Google Maps API key (text) — used by the Find a Provider locator.
 		$google_maps_api_key = isset( $_POST['brag_book_gallery_google_maps_api_key'] )
