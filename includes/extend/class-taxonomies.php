@@ -763,19 +763,22 @@ class Taxonomies {
 	}
 
 	/**
-	 * Drop the member id from provider slugs synced before 4.9.3
+	 * Tidy provider terms synced before 4.9.3
 	 *
-	 * Slugs used to be built as {name}-{member id}, which put an id with no
-	 * meaning to a visitor in the URL. Terms are renamed to the plain name
-	 * wherever that slug is free; where two providers share a name the one that
-	 * gets there first takes it and the other keeps its suffixed slug.
+	 * Two clean-ups, both of things a visitor sees. Slugs used to be built as
+	 * {name}-{member id}, putting an id with no meaning to anyone in the URL:
+	 * terms are renamed to the plain name wherever that slug is free, and where
+	 * two providers share a name the one that gets there first takes it. And
+	 * every term was given a placeholder description, "Provider profile for
+	 * provider ID 4", which renders on the provider's page: those are cleared,
+	 * while a description that has been written by hand is kept.
 	 *
 	 * @since 4.9.3
 	 * @return void
 	 */
 	private function maybe_shorten_provider_slugs(): void {
 		$option_key    = 'brag_book_provider_slug_version';
-		$migrated_flag = '4.9.3_no_member_id_v2';
+		$migrated_flag = '4.9.3_no_member_id_v3';
 
 		if ( $migrated_flag === get_option( $option_key, '' ) ) {
 			return;
@@ -795,6 +798,12 @@ class Taxonomies {
 
 			if ( $member_id <= 0 ) {
 				continue;
+			}
+
+			// Only the generated placeholder is cleared, matched on its own
+			// wording so a description written for the provider survives.
+			if ( 1 === preg_match( '/^Provider profile for provider ID \d+$/', trim( $term->description ) ) ) {
+				wp_update_term( $term->term_id, self::TAXONOMY_PROVIDERS, [ 'description' => '' ] );
 			}
 
 			$short = sanitize_title( $term->name );

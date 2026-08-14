@@ -2012,12 +2012,10 @@ class Chunked_Data_Sync {
 			$provider_name,
 			Taxonomies::TAXONOMY_PROVIDERS,
 			[
-				'slug'        => Taxonomies::provider_term_slug( $provider_name, $member_id ),
-				'description' => sprintf(
-					/* translators: %s: provider ID */
-					__( 'Provider profile for provider ID %s', 'brag-book-gallery' ),
-					$member_id
-				),
+				// No placeholder description: the term description renders on the
+				// provider's page, where "Provider profile for provider ID 4"
+				// is noise. A real bio typed into the term is left to show.
+				'slug' => Taxonomies::provider_term_slug( $provider_name, $member_id ),
 			]
 		);
 
