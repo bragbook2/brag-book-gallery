@@ -2,15 +2,18 @@
 
 // -----------------------------------------------------------------------------
 // components / images / carousel thumbnails
-// The alternative to the dots: a thumbnail strip under the card, an arrow
-// either side. Chosen with the Carousel Navigation setting.
+// The alternative to the dots: a thumbnail strip between the image and the
+// card title, an arrow either side. Chosen with the Carousel Navigation setting.
 // -----------------------------------------------------------------------------
 
 .brag-book-gallery-case-carousel-pagination--thumbnails {
 	display: flex;
 	align-items: center;
 	gap: var(--wp--custom--brag-book-gallery--spacer--sm, 8px);
-	margin-block-start: var(--wp--custom--brag-book-gallery--spacer--sm, 8px);
+	// Sits between the image and the card's title bar, so it carries the card's
+	// own padding rather than floating under it.
+	padding: var(--wp--custom--brag-book-gallery--spacer--sm, 8px);
+	background: var(--wp--custom--brag-book-gallery--color--white, #fff);
 }
 
 .brag-book-gallery-case-carousel-thumbs {

@@ -3911,20 +3911,37 @@
 }
 
 /* Nudity Warning preset options - one radio per row with its explanation */
-.nudity-settings-preset {
+.brag-book-gallery-setting-choice {
   display: grid;
   grid-template-columns: auto 1fr;
   gap: var(--space-1) var(--space-2);
   align-items: start;
   padding-block: var(--space-2);
 }
-.nudity-settings-preset input[type=radio] {
+.brag-book-gallery-setting-choice input[type=radio] {
   grid-row: span 2;
   margin-block-start: var(--space-1);
 }
-.nudity-settings-preset .description {
+.brag-book-gallery-setting-choice .description {
   grid-column: 2;
   margin-block-start: 0;
+}
+
+/* Carousel navigation choice, nested under the carousel toggle it depends on */
+.carousel-nav-choice {
+  margin-block-start: var(--space-2);
+  margin-inline-start: calc(var(--space-8) + var(--space-2));
+  padding-inline-start: var(--space-4);
+  border: 0;
+  border-inline-start: 2px solid var(--slate-200, #e2e8f0);
+}
+.carousel-nav-choice__legend {
+  padding: 0;
+  font-weight: 600;
+}
+
+.display-settings-options:has(#brag_book_gallery_case_image_carousel:not(:checked)) .carousel-nav-choice {
+  opacity: 0.5;
 }
 
 /* Gallery Slug Input Row - input + edit button side by side */

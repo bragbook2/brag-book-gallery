@@ -1126,22 +1126,31 @@ class General_Page extends Settings_Base {
 						</span>
 					</div>
 
-					<div class="gallery-page-settings-field">
-						<label for="brag_book_gallery_case_carousel_nav" class="gallery-page-settings-field__label">
-							<?php esc_html_e( 'Carousel Navigation', 'brag-book-gallery' ); ?>
+					<fieldset class="carousel-nav-choice" id="brag-book-gallery-carousel-nav-choice">
+						<legend class="carousel-nav-choice__legend">
+							<?php esc_html_e( 'Carousel navigation', 'brag-book-gallery' ); ?>
+						</legend>
+						<label class="brag-book-gallery-setting-choice">
+							<input type="radio"
+							       name="brag_book_gallery_case_carousel_nav"
+							       value="dots"
+							       <?php checked( $case_carousel_nav, 'dots' ); ?> />
+							<strong><?php esc_html_e( 'Dots over the image', 'brag-book-gallery' ); ?></strong>
+							<span class="description">
+								<?php esc_html_e( 'One dot per photo, sitting on the image itself.', 'brag-book-gallery' ); ?>
+							</span>
 						</label>
-						<select id="brag_book_gallery_case_carousel_nav" name="brag_book_gallery_case_carousel_nav">
-							<option value="dots" <?php selected( $case_carousel_nav, 'dots' ); ?>>
-								<?php esc_html_e( 'Dots over the image', 'brag-book-gallery' ); ?>
-							</option>
-							<option value="thumbnails" <?php selected( $case_carousel_nav, 'thumbnails' ); ?>>
-								<?php esc_html_e( 'Thumbnails below the card', 'brag-book-gallery' ); ?>
-							</option>
-						</select>
-						<p class="description">
-							<?php esc_html_e( 'Thumbnails sit under the card with an arrow either side. Applies only where the carousel above is on.', 'brag-book-gallery' ); ?>
-						</p>
-					</div>
+						<label class="brag-book-gallery-setting-choice">
+							<input type="radio"
+							       name="brag_book_gallery_case_carousel_nav"
+							       value="thumbnails"
+							       <?php checked( $case_carousel_nav, 'thumbnails' ); ?> />
+							<strong><?php esc_html_e( 'Thumbnails below the image', 'brag-book-gallery' ); ?></strong>
+							<span class="description">
+								<?php esc_html_e( 'A strip of photo thumbnails with an arrow either side, shown between the image and the case title.', 'brag-book-gallery' ); ?>
+							</span>
+						</label>
+					</fieldset>
 				</div>
 
 				<!-- Enable Providers Toggle -->
@@ -1483,7 +1492,7 @@ class General_Page extends Settings_Base {
 						<?php esc_html_e( 'Warning Preset', 'brag-book-gallery' ); ?>
 					</label>
 					<fieldset>
-						<label class="nudity-settings-preset">
+						<label class="brag-book-gallery-setting-choice">
 							<input type="radio"
 							       name="brag_book_gallery_nudity_mode"
 							       value="<?php echo esc_attr( HTML_Renderer::NUDITY_MODE_GLOBAL ); ?>"
@@ -1493,7 +1502,7 @@ class General_Page extends Settings_Base {
 								<?php esc_html_e( 'One full-screen warning per page instead of a warning on each case.', 'brag-book-gallery' ); ?>
 							</span>
 						</label>
-						<label class="nudity-settings-preset">
+						<label class="brag-book-gallery-setting-choice">
 							<input type="radio"
 							       name="brag_book_gallery_nudity_mode"
 							       value="<?php echo esc_attr( HTML_Renderer::NUDITY_MODE_DEFAULT ); ?>"
@@ -1503,7 +1512,7 @@ class General_Page extends Settings_Base {
 								<?php esc_html_e( 'Warn on every case whose procedure is flagged as containing nudity.', 'brag-book-gallery' ); ?>
 							</span>
 						</label>
-						<label class="nudity-settings-preset">
+						<label class="brag-book-gallery-setting-choice">
 							<input type="radio"
 							       name="brag_book_gallery_nudity_mode"
 							       value="<?php echo esc_attr( HTML_Renderer::NUDITY_MODE_INDIVIDUAL ); ?>"
