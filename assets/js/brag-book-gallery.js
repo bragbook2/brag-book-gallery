@@ -1068,6 +1068,15 @@ window.updateNavigationFromReferrer = function () {
   const referrer = getProcedureReferrer();
   if (!referrer) return;
 
+  // A visitor who came from a provider is browsing one provider's cases, so
+  // the filter bar - a gallery picker and filters for the whole library -
+  // offers nothing that belongs to that journey.
+  if (referrer['provider-slug'] || referrer['provider-id']) {
+    document.querySelectorAll('.brag-book-gallery-tiles-filter-bar').forEach(bar => {
+      bar.style.display = 'none';
+    });
+  }
+
   // Update "Back to Gallery" button/link URL only (keep text the same)
   const backButton = document.querySelector('.brag-book-gallery-back-link, .brag-book-gallery-back-button, a[href*="/gallery/"][class*="back"]');
   if (backButton && referrer.url) {
