@@ -145,6 +145,18 @@
 		white-space: nowrap;
 	}
 
+	// Case count, trailing each procedure in the provider archive's dropdown.
+	&__count {
+		flex: 0 0 auto;
+		padding-inline: var(--wp--custom--brag-book-gallery--spacer--sm, 8px);
+		border-radius: var(--wp--custom--brag-book-gallery--rounded--full, 9999px);
+		background-color: var(--wp--custom--brag-book-gallery--color--lighter-gray, #f4f4f5);
+		color: var(--wp--custom--brag-book-gallery--color--gray, #6b7280);
+		font-size: var(--wp--custom--brag-book-gallery--text-xs, 12px);
+		font-variant-numeric: tabular-nums;
+		line-height: 1.5;
+	}
+
 	// Reset action, pinned below the provider list inside the panel.
 	&__actions {
 		display: flex;

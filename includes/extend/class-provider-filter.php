@@ -242,6 +242,7 @@ class Provider_Filter {
 						<li>
 							<button type="button" class="brag-book-gallery-provider-filter__option" data-provider-slug="<?php echo esc_attr( $procedure['slug'] ); ?>" data-provider-name="<?php echo esc_attr( strtolower( $procedure['name'] ) ); ?>">
 								<span class="brag-book-gallery-provider-filter__name"><?php echo esc_html( $procedure['name'] ); ?></span>
+								<span class="brag-book-gallery-provider-filter__count"><?php echo esc_html( (string) $procedure['count'] ); ?></span>
 							</button>
 						</li>
 					<?php endforeach; ?>
@@ -360,9 +361,24 @@ class Provider_Filter {
 			return [];
 		}
 
-		$terms = wp_get_object_terms( $case_ids, Taxonomies::TAXONOMY_PROCEDURES );
-		if ( is_wp_error( $terms ) || empty( $terms ) ) {
+		// One row per case/term pairing, so each term can be counted against this
+		// provider's cases rather than the whole library, which is what the
+		// term's own count holds.
+		$rows = wp_get_object_terms(
+			$case_ids,
+			Taxonomies::TAXONOMY_PROCEDURES,
+			[ 'fields' => 'all_with_object_id' ]
+		);
+
+		if ( is_wp_error( $rows ) || empty( $rows ) ) {
 			return [];
+		}
+
+		$terms  = [];
+		$counts = [];
+		foreach ( $rows as $row ) {
+			$terms[ $row->term_id ]  = $row;
+			$counts[ $row->term_id ] = ( $counts[ $row->term_id ] ?? 0 ) + 1;
 		}
 
 		$children = array_filter(
@@ -373,8 +389,9 @@ class Provider_Filter {
 		$procedures = [];
 		foreach ( ( ! empty( $children ) ? $children : $terms ) as $term ) {
 			$procedures[] = [
-				'slug' => $term->slug,
-				'name' => $term->name,
+				'slug'  => $term->slug,
+				'name'  => $term->name,
+				'count' => (int) ( $counts[ $term->term_id ] ?? 0 ),
 			];
 		}
 

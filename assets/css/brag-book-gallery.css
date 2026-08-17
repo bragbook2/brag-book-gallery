@@ -5159,6 +5159,16 @@ body.brag-book-gallery-hide-filter-counts .brag-book-gallery-nav-count {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.brag-book-gallery-provider-filter__count {
+  flex: 0 0 auto;
+  padding-inline: var(--wp--custom--brag-book-gallery--spacer--sm, 8px);
+  border-radius: var(--wp--custom--brag-book-gallery--rounded--full, 9999px);
+  background-color: var(--wp--custom--brag-book-gallery--color--lighter-gray, #f4f4f5);
+  color: var(--wp--custom--brag-book-gallery--color--gray, #6b7280);
+  font-size: var(--wp--custom--brag-book-gallery--text-xs, 12px);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.5;
+}
 .brag-book-gallery-provider-filter__actions {
   display: flex;
   justify-content: flex-end;
