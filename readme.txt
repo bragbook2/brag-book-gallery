@@ -92,6 +92,13 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 
 == Changelog ==
 
+= 4.9.3-beta5 =
+* Added: The consultation dialog can show your own GoHighLevel form instead of the built-in one. Choose the source under the consultation toggle in Display & Gallery Settings and paste the form's address from GoHighLevel; a height field sets how much room it opens at before GoHighLevel resizes it to fit. Requests through the embedded form go straight to GoHighLevel, so the plugin neither stores nor emails them. The built-in form keeps serving requests until an address is filled in.
+* Added: The procedure filter on a provider page now shows how many of that provider's cases sit behind each procedure.
+* Changed: Opening a case from a provider page hides the gallery filter bar, which offers a gallery picker and filters for the whole library rather than the provider being browsed.
+* Fixed: On V2 cards the hover panel covered the thumbnail strip, taking the provider name and arrow with it. The panel now ends where the strip begins, and the thumbnails stay clickable while it is showing.
+* Fixed: The thumbnails now sit centred in their strip rather than starting hard left.
+
 = 4.9.3-beta4 =
 * Added: A choice of navigation for the image carousel on V2/V3 cards. Alongside the existing dots over the image, cases can now show a strip of photo thumbnails between the image and the case title, with an arrow either side. The choice sits under the carousel toggle in Display & Gallery Settings. Thumbnails use the small version of each photo, and a strip with more thumbnails than fit scrolls sideways.
 * Fixed: The Delete All Synced Data dialog cut off its buttons. It is wider now, its buttons wrap onto a second row rather than disappearing on a narrow screen, and the warning and bin icons have been removed.

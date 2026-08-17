@@ -4,6 +4,41 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.3-beta5] - 2026-08-17 (Beta Release)
+
+### Added
+
+- **A GoHighLevel form can replace the built-in consultation form**: a
+  Consultation form choice under the consultation toggle switches between the
+  two, with fields for the form's address and the height it opens at. The embed
+  only stands in once an address is given, so choosing GoHighLevel and leaving
+  the field empty keeps the built-in form serving requests rather than opening an
+  empty dialog. GoHighLevel's embed script is enqueued alongside it, which is
+  what resizes the frame; the setting decides the room it takes until that runs.
+  All three dialogs render through one method, so the two forms cannot drift
+  apart. Requests through the embed go straight to GoHighLevel: the plugin
+  neither stores nor emails them.
+- **Case counts in the provider archive's procedure filter**: each procedure
+  carries the number of that provider's cases in it, tallied from the case/term
+  pairings for the provider's own cases rather than read from the term, whose
+  count covers the whole library and would promise cases the filter cannot show.
+
+### Changed
+
+- **The gallery filter bar is hidden on a case opened from a provider**: it
+  offers a gallery picker and filters for the whole library, which is a different
+  journey from the one the visitor is on. A case reached from a procedure, or
+  directly, keeps it.
+
+### Fixed
+
+- **The V2 hover panel covered the thumbnail strip**: the panel fills the image
+  container and pins the provider and arrow to its bottom edge, which landed
+  behind the strip. It now ends where the strip begins, and the strip stacks
+  above it so thumbnails stay clickable while the panel shows.
+- Thumbnails centre in their strip rather than starting hard left, with `safe`
+  centring so the first stays reachable once the strip scrolls.
+
 ## [4.9.3-beta4] - 2026-08-14 (Beta Release)
 
 ### Added

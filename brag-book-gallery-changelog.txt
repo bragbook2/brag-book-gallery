@@ -1,5 +1,18 @@
 === BRAGBook Gallery Changelog ===
 
+= 4.9.3-beta5 (2026-08-17) =
+
+Added:
+* A GoHighLevel form can replace the built-in consultation form - a Consultation form choice under the consultation toggle switches between the two, with fields for the form's address and the height it opens at. The embed only stands in once an address is given, so choosing GoHighLevel with an empty field keeps the built-in form serving requests. GoHighLevel's form_embed.js is enqueued alongside it to resize the frame to the form's own height. All three consultation dialogs render through one method. Requests through the embed go straight to GoHighLevel: the plugin neither stores nor emails them
+* Case counts in the provider archive's procedure filter, tallied from the case/term pairings for that provider's cases rather than read from the term's own count, which covers the whole library
+
+Changed:
+* The gallery filter bar is hidden on a case opened from a provider; a case reached from a procedure, or directly, keeps it
+
+Fixed:
+* The V2 hover panel covered the thumbnail strip and took the provider name and arrow with it. It now ends where the strip begins, and the strip stacks above it so thumbnails stay clickable while the panel shows
+* Thumbnails centre in their strip rather than starting hard left, with safe centring so the first stays reachable once the strip scrolls
+
 = 4.9.3-beta4 (2026-08-14) =
 
 Added:
