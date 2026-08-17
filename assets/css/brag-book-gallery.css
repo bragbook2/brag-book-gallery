@@ -3595,6 +3595,16 @@ details[open] .brag-book-gallery-filter-dropdown__panel .brag-book-gallery-filte
   margin-bottom: 0;
 }
 
+.brag-book-gallery-external-form {
+  padding: var(--wp--custom--brag-book-gallery--spacer--lg, 16px);
+}
+.brag-book-gallery-external-form iframe {
+  display: block;
+  inline-size: 100%;
+  border: 0;
+  border-radius: var(--wp--custom--brag-book-gallery--rounded, 4px);
+}
+
 .brag-book-gallery-case-grid {
   display: grid;
   gap: var(--wp--custom--brag-book-gallery--spacer--2xl);

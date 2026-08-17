@@ -142,6 +142,44 @@ final class Settings_Helper {
 	}
 
 	/**
+	 * Whether an external consultation form replaces the built-in one
+	 *
+	 * A practice already running its intake through GoHighLevel gets its own
+	 * form embedded in the consultation dialog instead. It only stands in once a
+	 * form address has been given, so choosing the source without filling the
+	 * address in leaves the built-in form serving requests.
+	 *
+	 * @since 4.9.3
+	 * @return bool True when the GoHighLevel form should be embedded.
+	 */
+	public static function uses_external_consultation_form(): bool {
+		return 'gohighlevel' === get_option( 'brag_book_gallery_consultation_form_source', 'builtin' )
+			&& '' !== self::get_external_consultation_form_url();
+	}
+
+	/**
+	 * The GoHighLevel form address to embed
+	 *
+	 * @since 4.9.3
+	 * @return string Form URL, or an empty string when none is set.
+	 */
+	public static function get_external_consultation_form_url(): string {
+		return trim( (string) get_option( 'brag_book_gallery_ghl_form_url', '' ) );
+	}
+
+	/**
+	 * The height the embedded form is given before its own script resizes it
+	 *
+	 * @since 4.9.3
+	 * @return int Height in pixels.
+	 */
+	public static function get_external_consultation_form_height(): int {
+		$height = absint( get_option( 'brag_book_gallery_ghl_form_height', 0 ) );
+
+		return $height > 0 ? $height : 700;
+	}
+
+	/**
 	 * Check if consultation requests functionality is enabled
 	 *
 	 * @since 3.2.4

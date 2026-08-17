@@ -335,6 +335,18 @@ final class Asset_Manager {
 	 * @return void
 	 */
 	public static function ensure_consultation_form_config(): void {
+		// GoHighLevel's embed script resizes the form's frame to its content.
+		// Without it the frame keeps whatever height the setting gave it.
+		if ( Settings_Helper::uses_external_consultation_form() ) {
+			wp_enqueue_script(
+				'brag-book-gallery-ghl-form-embed',
+				'https://link.msgsndr.com/js/form_embed.js',
+				array(),
+				null,
+				true
+			);
+		}
+
 		// Check if the main config has already been localized
 		global $wp_scripts;
 

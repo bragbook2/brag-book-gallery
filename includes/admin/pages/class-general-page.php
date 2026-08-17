@@ -747,6 +747,9 @@ class General_Page extends Settings_Base {
 		$show_filter_counts  = (bool) get_option( 'brag_book_gallery_show_filter_counts', true );
 		$enable_favorites    = (bool) get_option( 'brag_book_gallery_enable_favorites', true );
 		$enable_consultation = (bool) get_option( 'brag_book_gallery_enable_consultation', true );
+		$consultation_source = (string) get_option( 'brag_book_gallery_consultation_form_source', 'builtin' );
+		$ghl_form_url        = (string) get_option( 'brag_book_gallery_ghl_form_url', '' );
+		$ghl_form_height     = absint( get_option( 'brag_book_gallery_ghl_form_height', 0 ) );
 		$show_provider         = (bool) get_option( 'brag_book_gallery_show_provider', false );
 		$enable_providers    = (bool) get_option( 'brag_book_gallery_enable_providers', false );
 		$enable_practices    = (bool) get_option( 'brag_book_gallery_enable_practices', false );
@@ -1459,6 +1462,64 @@ class General_Page extends Settings_Base {
 					<p class="description">
 						<?php esc_html_e( 'When enabled, the "Ready for the next step?" text, "Request a Consultation" button, and consultation dialog will be shown. When disabled, all consultation elements are hidden.', 'brag-book-gallery' ); ?>
 					</p>
+
+					<fieldset class="carousel-nav-choice" id="brag-book-gallery-consultation-source">
+						<legend class="carousel-nav-choice__legend">
+							<?php esc_html_e( 'Consultation form', 'brag-book-gallery' ); ?>
+						</legend>
+						<label class="brag-book-gallery-setting-choice">
+							<input type="radio"
+							       name="brag_book_gallery_consultation_form_source"
+							       value="builtin"
+							       <?php checked( 'gohighlevel' !== $consultation_source ); ?> />
+							<strong><?php esc_html_e( 'Built-in form', 'brag-book-gallery' ); ?></strong>
+							<span class="description">
+								<?php esc_html_e( 'Requests are handled by the plugin and sent on to the practice.', 'brag-book-gallery' ); ?>
+							</span>
+						</label>
+						<label class="brag-book-gallery-setting-choice">
+							<input type="radio"
+							       name="brag_book_gallery_consultation_form_source"
+							       value="gohighlevel"
+							       <?php checked( $consultation_source, 'gohighlevel' ); ?> />
+							<strong><?php esc_html_e( 'GoHighLevel form', 'brag-book-gallery' ); ?></strong>
+							<span class="description">
+								<?php esc_html_e( 'Embeds your own GoHighLevel form in the consultation dialog. Requests go straight to GoHighLevel, so the plugin neither stores nor emails them.', 'brag-book-gallery' ); ?>
+							</span>
+						</label>
+
+						<div class="gallery-page-settings-field">
+							<label for="brag_book_gallery_ghl_form_url" class="gallery-page-settings-field__label">
+								<?php esc_html_e( 'GoHighLevel form URL', 'brag-book-gallery' ); ?>
+							</label>
+							<input type="url"
+							       id="brag_book_gallery_ghl_form_url"
+							       name="brag_book_gallery_ghl_form_url"
+							       value="<?php echo esc_attr( $ghl_form_url ); ?>"
+							       class="regular-text"
+							       placeholder="https://api.leadconnectorhq.com/widget/form/XXXXXXXX" />
+							<p class="description">
+								<?php esc_html_e( 'The src address from the form\'s embed code in GoHighLevel. The built-in form keeps serving requests until this is filled in.', 'brag-book-gallery' ); ?>
+							</p>
+						</div>
+
+						<div class="gallery-page-settings-field">
+							<label for="brag_book_gallery_ghl_form_height" class="gallery-page-settings-field__label">
+								<?php esc_html_e( 'Form height', 'brag-book-gallery' ); ?>
+							</label>
+							<input type="number"
+							       id="brag_book_gallery_ghl_form_height"
+							       name="brag_book_gallery_ghl_form_height"
+							       value="<?php echo esc_attr( (string) $ghl_form_height ); ?>"
+							       min="200"
+							       max="2000"
+							       step="10"
+							       placeholder="700" />
+							<p class="description">
+								<?php esc_html_e( 'Pixels of room the form is given before GoHighLevel\'s own script resizes it to fit. Leave blank for 700.', 'brag-book-gallery' ); ?>
+							</p>
+						</div>
+					</fieldset>
 				</div>
 
 				<!-- Powered By Toggle -->
@@ -2484,6 +2545,30 @@ class General_Page extends Settings_Base {
 		$case_image_carousel = isset( $_POST['brag_book_gallery_case_image_carousel'] )
 							   && '1' === $_POST['brag_book_gallery_case_image_carousel'];
 		update_option( 'brag_book_gallery_case_image_carousel', $case_image_carousel );
+
+		$form_source = isset( $_POST['brag_book_gallery_consultation_form_source'] )
+			? sanitize_key( wp_unslash( $_POST['brag_book_gallery_consultation_form_source'] ) )
+			: 'builtin';
+		update_option(
+			'brag_book_gallery_consultation_form_source',
+			'gohighlevel' === $form_source ? 'gohighlevel' : 'builtin'
+		);
+
+		if ( isset( $_POST['brag_book_gallery_ghl_form_url'] ) ) {
+			update_option(
+				'brag_book_gallery_ghl_form_url',
+				esc_url_raw( trim( wp_unslash( $_POST['brag_book_gallery_ghl_form_url'] ) ) )
+			);
+		}
+
+		if ( isset( $_POST['brag_book_gallery_ghl_form_height'] ) ) {
+			// Kept inside the range the field offers; 0 means "use the default".
+			$height = absint( $_POST['brag_book_gallery_ghl_form_height'] );
+			update_option(
+				'brag_book_gallery_ghl_form_height',
+				$height > 0 ? min( max( $height, 200 ), 2000 ) : 0
+			);
+		}
 
 		$carousel_nav = isset( $_POST['brag_book_gallery_case_carousel_nav'] )
 			? sanitize_key( wp_unslash( $_POST['brag_book_gallery_case_carousel_nav'] ) )

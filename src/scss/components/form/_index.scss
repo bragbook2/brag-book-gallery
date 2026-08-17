@@ -188,3 +188,18 @@
 		}
 	}
 }
+
+// -----------------------------------------------------------------------------
+// Embedded external consultation form (GoHighLevel)
+// -----------------------------------------------------------------------------
+
+.brag-book-gallery-external-form {
+	padding: var(--wp--custom--brag-book-gallery--spacer--lg, 16px);
+
+	iframe {
+		display: block;
+		inline-size: 100%;
+		border: 0;
+		border-radius: var(--wp--custom--brag-book-gallery--rounded, 4px);
+	}
+}

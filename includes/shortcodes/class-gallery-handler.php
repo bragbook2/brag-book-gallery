@@ -428,6 +428,30 @@ final class Gallery_Handler {
 	}
 
 	/**
+	 * Render the embedded GoHighLevel consultation form
+	 *
+	 * The form's own script resizes the frame to its content, so the height set
+	 * here only decides how much room it takes before that script runs.
+	 *
+	 * @since 4.9.3
+	 * @return string Iframe HTML, or an empty string when no form is configured.
+	 */
+	public static function render_external_consultation_form(): string {
+		$url = Settings_Helper::get_external_consultation_form_url();
+
+		if ( '' === $url ) {
+			return '';
+		}
+
+		return sprintf(
+			'<div class="brag-book-gallery-external-form"><iframe src="%1$s" title="%2$s" height="%3$d" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div>',
+			esc_url( $url ),
+			esc_attr__( 'Consultation Request', 'brag-book-gallery' ),
+			Settings_Helper::get_external_consultation_form_height()
+		);
+	}
+
+	/**
 	 * Handle procedures shortcode
 	 *
 	 * Displays cases in a tiles grid layout, paged through the shared
@@ -1698,6 +1722,12 @@ final class Gallery_Handler {
 							<div
 								class="brag-book-gallery-form-message-content"></div>
 						</div>
+						<?php if ( Settings_Helper::uses_external_consultation_form() ) : ?>
+							<?php
+							// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped within render_external_consultation_form().
+							echo self::render_external_consultation_form();
+							?>
+						<?php else : ?>
 						<form class="brag-book-gallery-consultation-form"
 							  data-form="consultation">
 							<div class="brag-book-gallery-form-group">
@@ -1743,6 +1773,7 @@ final class Gallery_Handler {
 								Request
 							</button>
 						</form>
+						<?php endif; ?>
 					</div>
 				</dialog>
 			<?php endif; ?>
@@ -2737,6 +2768,12 @@ final class Gallery_Handler {
 						<div class="brag-book-gallery-form-message hidden" id="consultationMessage">
 							<div class="brag-book-gallery-form-message-content"></div>
 						</div>
+						<?php if ( Settings_Helper::uses_external_consultation_form() ) : ?>
+							<?php
+							// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped within render_external_consultation_form().
+							echo self::render_external_consultation_form();
+							?>
+						<?php else : ?>
 						<form class="brag-book-gallery-consultation-form" data-form="consultation">
 							<div class="brag-book-gallery-form-group">
 								<label class="brag-book-gallery-form-label" for="name">Name *</label>
@@ -2756,6 +2793,7 @@ final class Gallery_Handler {
 							</div>
 							<button type="submit" class="brag-book-gallery-button brag-book-gallery-button--full" data-action="form-submit">Submit Request</button>
 						</form>
+						<?php endif; ?>
 					</div>
 				</dialog>
 			<?php endif; ?>
@@ -3220,6 +3258,12 @@ final class Gallery_Handler {
 					<div class="brag-book-gallery-form-message hidden" id="consultationMessage">
 						<div class="brag-book-gallery-form-message-content"></div>
 					</div>
+					<?php if ( Settings_Helper::uses_external_consultation_form() ) : ?>
+						<?php
+						// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped within render_external_consultation_form().
+						echo self::render_external_consultation_form();
+						?>
+					<?php else : ?>
 					<form class="brag-book-gallery-consultation-form" data-form="consultation">
 						<div class="brag-book-gallery-form-group">
 							<label class="brag-book-gallery-form-label" for="name">Name *</label>
@@ -3239,6 +3283,7 @@ final class Gallery_Handler {
 						</div>
 						<button type="submit" class="brag-book-gallery-button brag-book-gallery-button--full" data-action="form-submit">Submit Request</button>
 					</form>
+					<?php endif; ?>
 				</div>
 			</dialog>
 		<?php endif; ?>
