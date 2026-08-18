@@ -3899,7 +3899,7 @@ details[open] .brag-book-gallery-filter-dropdown__panel .brag-book-gallery-filte
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .brag-book-gallery-image-container:has(> .brag-book-gallery-case-carousel-pagination--thumbnails) .brag-book-gallery-case-card-overlay {
+  .brag-book-gallery-case-card:not(.brag-book-gallery-case-card--v3) .brag-book-gallery-image-container:has(> .brag-book-gallery-case-carousel-pagination--thumbnails) .brag-book-gallery-case-card-overlay {
     bottom: calc(64px + 2 * var(--wp--custom--brag-book-gallery--spacer--sm, 8px) + 1px);
   }
 }

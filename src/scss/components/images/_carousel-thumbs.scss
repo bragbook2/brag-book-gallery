@@ -11,7 +11,9 @@
 $thumb-size: 64px;
 $thumb-padding: var(--wp--custom--brag-book-gallery--spacer--sm, 8px);
 
-.brag-book-gallery-image-container:has(> .brag-book-gallery-case-carousel-pagination--thumbnails) {
+// V3 cards keep their overlay in flow beneath the image, so it never overlaps
+// the strip and needs no offset — this is V2's hover panel only.
+.brag-book-gallery-case-card:not(.brag-book-gallery-case-card--v3) .brag-book-gallery-image-container:has(> .brag-book-gallery-case-carousel-pagination--thumbnails) {
 	// Desktop V2 cards fade a panel in over the image, with the provider and the
 	// arrow pinned to its bottom edge. Left full height that edge lands behind
 	// the strip, so the panel ends where the strip begins.
