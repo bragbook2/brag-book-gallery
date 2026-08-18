@@ -1510,9 +1510,8 @@ class General_Page extends Settings_Base {
 							<input type="number"
 							       id="brag_book_gallery_ghl_form_height"
 							       name="brag_book_gallery_ghl_form_height"
-							       value="<?php echo esc_attr( (string) $ghl_form_height ); ?>"
-							       min="200"
-							       max="2000"
+							       value="<?php echo esc_attr( $ghl_form_height > 0 ? (string) $ghl_form_height : '' ); ?>"
+							       <?php if ( 'gohighlevel' === $consultation_source ) : ?>min="200" max="2000"<?php endif; ?>
 							       step="10"
 							       placeholder="700" />
 							<p class="description">
