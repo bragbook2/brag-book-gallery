@@ -63,14 +63,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Assets {
 
 	/**
-	 * Plugin asset version for cache busting and version control
-	 *
-	 * @since 3.0.0
-	 * @var string
-	 */
-	private const ASSET_VERSION = '4.6.0-beta4';
-
-	/**
 	 * Cache TTL constants for performance optimization
 	 *
 	 * @since 3.0.0
@@ -262,7 +254,7 @@ class Assets {
 				'brag-book-gallery-main',
 				Setup::get_asset_url( 'assets/css/brag-book-gallery' . $suffix . '.css' ),
 				[],
-				$this->get_asset_version()
+				$this->get_asset_version( 'assets/css/brag-book-gallery' . $suffix . '.css' )
 			);
 
 			if ( ! $main_css_result ) {
@@ -293,7 +285,7 @@ class Assets {
 			handle: 'brag-book-gallery-main',
 			src: Setup::get_asset_url( 'assets/js/brag-book-gallery' . $suffix . '.js' ),
 			deps: array(),
-			ver: $this->get_asset_version(),
+			ver: $this->get_asset_version( 'assets/js/brag-book-gallery' . $suffix . '.js' ),
 			args: true
 		);
 
@@ -329,7 +321,7 @@ class Assets {
 			handle: 'brag-book-gallery-admin-style',
 			src: Setup::get_asset_url( asset_path: 'assets/css/brag-book-gallery-admin' . $suffix . '.css' ),
 			deps: array(),
-			ver: $this->get_asset_version()
+			ver: $this->get_asset_version( 'assets/css/brag-book-gallery-admin' . $suffix . '.css' )
 		);
 	}
 
@@ -347,7 +339,7 @@ class Assets {
 			handle: 'brag-book-gallery-admin-script',
 			src: Setup::get_asset_url( 'assets/js/brag-book-gallery-admin' . $suffix . '.js' ),
 			deps: array(),
-			ver: $this->get_asset_version(),
+			ver: $this->get_asset_version( 'assets/js/brag-book-gallery-admin' . $suffix . '.js' ),
 			args: true
 		);
 	}
@@ -491,16 +483,12 @@ class Assets {
 	 * @return string Version string for assets
 	 * @since 3.0.0
 	 */
-	private function get_asset_version(): string {
+	private function get_asset_version( string $asset_path ): string {
 
-		// Use timestamp only when SCRIPT_DEBUG is on so staging sites with
-		// WP_DEBUG enabled still benefit from version-based caching.
-		if ( defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ) {
-			return (string) time();
-		}
-
-		// Use plugin version in production.
-		return self::ASSET_VERSION;
+		// The built file's own modified time, so a rebuilt stylesheet or script
+		// busts the browser cache whether or not anyone remembered to bump a
+		// version constant. Falls back to the constant if the file is missing.
+		return Asset_Manager::get_asset_version( Setup::get_asset_path( $asset_path ) );
 	}
 
 	/**
