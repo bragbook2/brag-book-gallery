@@ -27,6 +27,9 @@ import { escapeHtml } from './modules/utilities.js';
 	const AVATAR_SELECTOR = '.brag-book-gallery-provider-filter__avatar';
 	const SEARCH_INPUT_SELECTOR = '.brag-book-gallery-provider-filter__search-input';
 	const NO_MATCH_SELECTOR = '.brag-book-gallery-provider-filter__no-match';
+	// The emphasised half of the page heading: the provider on a provider page,
+	// which the chosen procedure is appended to.
+	const TITLE_SELECTOR = '.brag-book-gallery-content-title strong';
 
 	/**
 	 * Wire up a single provider filter widget.
@@ -48,12 +51,20 @@ import { escapeHtml } from './modules/utilities.js';
 		// The "All Providers" option has no name to search against, so it's always shown.
 		const searchableOptions = options.filter((option) => option.hasAttribute('data-provider-name'));
 
+		// Only the procedure dropdown narrows a heading that already names its
+		// subject: a provider page's heading is the provider, and the procedure
+		// chosen here narrows it. Choosing a provider on a procedure page leaves
+		// the heading alone, since the procedure is still what the page is.
+		const title = isProcedureMode ? document.querySelector(TITLE_SELECTOR) : null;
+
 		const ui = {
 			label,
 			toggleIcon,
 			options,
+			title,
 			defaultLabel: (label && label.getAttribute('data-default-label')) || config.defaultLabel || 'Provider',
 			defaultIcon: toggleIcon ? toggleIcon.innerHTML : '',
+			defaultTitle: title ? title.textContent.trim() : '',
 		};
 		const state = { originalGrid: null, busy: false };
 
@@ -73,6 +84,7 @@ import { escapeHtml } from './modules/utilities.js';
 
 				setActive(options, option);
 				updateToggle(ui, option, slug);
+				updateTitle(ui, option);
 				filter(
 					state,
 					isProcedureMode ? provider : slug,
@@ -158,6 +170,9 @@ import { escapeHtml } from './modules/utilities.js';
 		if (ui.toggleIcon) {
 			ui.toggleIcon.innerHTML = ui.defaultIcon;
 		}
+		if (ui.title) {
+			ui.title.textContent = ui.defaultTitle;
+		}
 		restoreGrid(state);
 	}
 
@@ -189,6 +204,25 @@ import { escapeHtml } from './modules/utilities.js';
 			const avatar = option.querySelector(AVATAR_SELECTOR);
 			ui.toggleIcon.innerHTML = avatar ? avatar.outerHTML : ui.defaultIcon;
 		}
+	}
+
+	/**
+	 * Narrow the page heading to the chosen procedure.
+	 *
+	 * The heading keeps naming the page's own subject and gains the procedure
+	 * after it, so a provider page reads "Provider - Procedure Before & After
+	 * Gallery" while filtered.
+	 *
+	 * @param {object} ui Cached toggle references.
+	 * @param {HTMLElement} option The selected option.
+	 */
+	function updateTitle(ui, option) {
+		if (!ui.title) {
+			return;
+		}
+		const name = option.querySelector(NAME_SELECTOR);
+		const procedure = name ? name.textContent.trim() : '';
+		ui.title.textContent = procedure ? ui.defaultTitle + ' - ' + procedure : ui.defaultTitle;
 	}
 
 	/**
