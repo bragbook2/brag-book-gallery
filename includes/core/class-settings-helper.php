@@ -180,6 +180,36 @@ final class Settings_Helper {
 	}
 
 	/**
+	 * What a provider is called on the front end, singular
+	 *
+	 * Practices differ on the word: some treat doctors and providers as separate
+	 * things, so the provider filter's wording is theirs to set.
+	 *
+	 * @since 4.9.4
+	 * @return string Singular label, never empty.
+	 */
+	public static function get_provider_label(): string {
+		$label = trim( (string) get_option( 'brag_book_gallery_provider_label', '' ) );
+
+		return '' !== $label ? $label : __( 'Provider', 'brag-book-gallery' );
+	}
+
+	/**
+	 * What providers are called on the front end, plural
+	 *
+	 * Kept separate from the singular because the plural of a label like
+	 * "Doctor or Provider" is not the singular with an "s" on the end.
+	 *
+	 * @since 4.9.4
+	 * @return string Plural label, never empty.
+	 */
+	public static function get_provider_label_plural(): string {
+		$label = trim( (string) get_option( 'brag_book_gallery_provider_label_plural', '' ) );
+
+		return '' !== $label ? $label : __( 'Providers', 'brag-book-gallery' );
+	}
+
+	/**
 	 * Check if consultation requests functionality is enabled
 	 *
 	 * @since 3.2.4

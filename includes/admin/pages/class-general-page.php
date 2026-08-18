@@ -752,6 +752,8 @@ class General_Page extends Settings_Base {
 		$ghl_form_height     = absint( get_option( 'brag_book_gallery_ghl_form_height', 0 ) );
 		$show_provider         = (bool) get_option( 'brag_book_gallery_show_provider', false );
 		$enable_providers    = (bool) get_option( 'brag_book_gallery_enable_providers', false );
+		$provider_label      = (string) get_option( 'brag_book_gallery_provider_label', '' );
+		$provider_label_plural = (string) get_option( 'brag_book_gallery_provider_label_plural', '' );
 		$enable_practices    = (bool) get_option( 'brag_book_gallery_enable_practices', false );
 		$google_maps_api_key = (string) get_option( 'brag_book_gallery_google_maps_api_key', '' );
 		$enable_powered_by   = (bool) get_option( 'brag_book_gallery_enable_powered_by', false );
@@ -1175,6 +1177,36 @@ class General_Page extends Settings_Base {
 					<p class="description">
 						<?php esc_html_e( 'When enabled, the Providers taxonomy is registered and providers are synced from the API and assigned to cases.', 'brag-book-gallery' ); ?>
 					</p>
+
+					<div class="gallery-page-settings-field">
+						<label for="brag_book_gallery_provider_label" class="gallery-page-settings-field__label">
+							<?php esc_html_e( 'What to call a provider', 'brag-book-gallery' ); ?>
+						</label>
+						<input type="text"
+						       id="brag_book_gallery_provider_label"
+						       name="brag_book_gallery_provider_label"
+						       value="<?php echo esc_attr( $provider_label ); ?>"
+						       class="regular-text"
+						       placeholder="<?php esc_attr_e( 'Provider', 'brag-book-gallery' ); ?>" />
+						<p class="description">
+							<?php esc_html_e( 'The word the gallery\'s provider filter uses, for practices that call them something else — "Doctor", "Doctor or Provider". Leave blank for Provider.', 'brag-book-gallery' ); ?>
+						</p>
+					</div>
+
+					<div class="gallery-page-settings-field">
+						<label for="brag_book_gallery_provider_label_plural" class="gallery-page-settings-field__label">
+							<?php esc_html_e( 'What to call them together', 'brag-book-gallery' ); ?>
+						</label>
+						<input type="text"
+						       id="brag_book_gallery_provider_label_plural"
+						       name="brag_book_gallery_provider_label_plural"
+						       value="<?php echo esc_attr( $provider_label_plural ); ?>"
+						       class="regular-text"
+						       placeholder="<?php esc_attr_e( 'Providers', 'brag-book-gallery' ); ?>" />
+						<p class="description">
+							<?php esc_html_e( 'The plural, which the filter uses for its list and its "All" option — "Doctors", "Doctors & Providers". Leave blank for Providers.', 'brag-book-gallery' ); ?>
+						</p>
+					</div>
 				</div>
 
 				<!-- Enable Practices Toggle -->
@@ -2714,6 +2746,17 @@ class General_Page extends Settings_Base {
 		foreach ( $features as $feature ) {
 			$value = isset( $_POST[ $feature ] ) && '1' === $_POST[ $feature ];
 			update_option( $feature, $value );
+		}
+
+		// What the front end calls a provider. Stored as given, blank included:
+		// an empty label falls back to the plugin's own wording at render time.
+		foreach ( array( 'brag_book_gallery_provider_label', 'brag_book_gallery_provider_label_plural' ) as $label_option ) {
+			if ( isset( $_POST[ $label_option ] ) ) {
+				update_option(
+					$label_option,
+					sanitize_text_field( wp_unslash( $_POST[ $label_option ] ) )
+				);
+			}
 		}
 	}
 

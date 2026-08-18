@@ -89,8 +89,12 @@ class Provider_Filter {
 				'ajaxUrl'      => admin_url( 'admin-ajax.php' ),
 				'action'       => self::AJAX_ACTION,
 				'nonce'        => wp_create_nonce( 'brag_book_gallery_nonce' ),
-				'defaultLabel' => __( 'Provider', 'brag-book-gallery' ),
-				'emptyLabel'   => __( 'No cases found for this provider.', 'brag-book-gallery' ),
+				'defaultLabel' => Settings_Helper::get_provider_label(),
+				'emptyLabel'   => sprintf(
+					/* translators: %s: lowercased singular provider label, e.g. "provider". */
+					__( 'No cases found for this %s.', 'brag-book-gallery' ),
+					strtolower( Settings_Helper::get_provider_label() )
+				),
 			]
 		);
 	}
@@ -130,6 +134,12 @@ class Provider_Filter {
 			return '';
 		}
 
+		// Practices differ on what a provider is called, so every word the filter
+		// shows comes from the setting rather than the taxonomy's own name.
+		$label        = Settings_Helper::get_provider_label();
+		$label_plural = Settings_Helper::get_provider_label_plural();
+		$lower_plural = strtolower( $label_plural );
+
 		ob_start();
 		?>
 		<details class="brag-book-gallery-filter-dropdown brag-book-gallery-provider-filter" id="provider-filter-details" data-procedure-slug="<?php echo esc_attr( $procedure_slug ); ?>">
@@ -137,7 +147,7 @@ class Provider_Filter {
 				<span class="brag-book-gallery-provider-filter__toggle-icon">
 					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
 				</span>
-				<span class="brag-book-gallery-provider-filter__label" data-default-label="<?php esc_attr_e( 'Provider', 'brag-book-gallery' ); ?>"><?php esc_html_e( 'Provider', 'brag-book-gallery' ); ?></span>
+				<span class="brag-book-gallery-provider-filter__label" data-default-label="<?php echo esc_attr( $label ); ?>"><?php echo esc_html( $label ); ?></span>
 			</summary>
 			<div class="brag-book-gallery-filter-dropdown__panel">
 				<div class="brag-book-gallery-provider-filter__search">
@@ -145,16 +155,16 @@ class Provider_Filter {
 					<input
 						type="search"
 						class="brag-book-gallery-provider-filter__search-input"
-						placeholder="<?php esc_attr_e( 'Search providers…', 'brag-book-gallery' ); ?>"
-						aria-label="<?php esc_attr_e( 'Search providers', 'brag-book-gallery' ); ?>"
+						placeholder="<?php echo esc_attr( sprintf( /* translators: %s: lowercased plural provider label. */ __( 'Search %s…', 'brag-book-gallery' ), $lower_plural ) ); ?>"
+						aria-label="<?php echo esc_attr( sprintf( /* translators: %s: lowercased plural provider label. */ __( 'Search %s', 'brag-book-gallery' ), $lower_plural ) ); ?>"
 						aria-controls="provider-filter-list"
 						autocomplete="off"
 					/>
 				</div>
-				<ul class="brag-book-gallery-provider-filter__list" id="provider-filter-list" role="listbox" aria-label="<?php esc_attr_e( 'Filter by provider', 'brag-book-gallery' ); ?>">
+				<ul class="brag-book-gallery-provider-filter__list" id="provider-filter-list" role="listbox" aria-label="<?php echo esc_attr( sprintf( /* translators: %s: lowercased singular provider label. */ __( 'Filter by %s', 'brag-book-gallery' ), strtolower( $label ) ) ); ?>">
 					<li>
 						<button type="button" class="brag-book-gallery-provider-filter__option is-active" data-provider-slug="">
-							<?php esc_html_e( 'All Providers', 'brag-book-gallery' ); ?>
+							<?php echo esc_html( sprintf( /* translators: %s: plural provider label. */ __( 'All %s', 'brag-book-gallery' ), $label_plural ) ); ?>
 						</button>
 					</li>
 					<?php foreach ( $providers as $provider ) : ?>
@@ -169,7 +179,7 @@ class Provider_Filter {
 						</li>
 					<?php endforeach; ?>
 					<li class="brag-book-gallery-provider-filter__no-match" hidden>
-						<?php esc_html_e( 'No providers match your search.', 'brag-book-gallery' ); ?>
+						<?php echo esc_html( sprintf( /* translators: %s: lowercased plural provider label. */ __( 'No %s match your search.', 'brag-book-gallery' ), $lower_plural ) ); ?>
 					</li>
 				</ul>
 				<div class="brag-book-gallery-provider-filter__actions">
