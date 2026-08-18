@@ -60,23 +60,29 @@ $thumb-padding: var(--wp--custom--brag-book-gallery--spacer--sm, 8px);
 
 .brag-book-gallery-case-carousel-thumb {
 	flex: 0 0 auto;
-	inline-size: $thumb-size;
+	// Height only: the button takes its width from the photo, so a portrait and a
+	// landscape thumbnail line up along the strip at the same height, each showing
+	// the whole frame rather than a square crop of it.
 	block-size: $thumb-size;
 	padding: 0;
-	border: 2px solid transparent;
+	// The active marker is drawn inside the button rather than as a border, which
+	// would take its width out of the content box and leave the photo short of
+	// the button's edges on every side.
+	border: 0;
+	outline: 2px solid transparent;
+	outline-offset: -2px;
 	border-radius: var(--wp--custom--brag-book-gallery--rounded, 4px);
 	background: none;
 	cursor: pointer;
 	overflow: hidden;
 	scroll-snap-align: start;
 	opacity: .6;
-	transition: opacity .2s ease, border-color .2s ease;
+	transition: opacity .2s ease, outline-color .2s ease;
 
 	img {
 		display: block;
-		inline-size: 100%;
+		inline-size: auto;
 		block-size: 100%;
-		object-fit: cover;
 	}
 
 	&:hover,
@@ -86,7 +92,7 @@ $thumb-padding: var(--wp--custom--brag-book-gallery--spacer--sm, 8px);
 
 	&.is-active {
 		opacity: 1;
-		border-color: var(--wp--custom--brag-book-gallery--color--black, #000);
+		outline-color: var(--wp--custom--brag-book-gallery--color--black, #000);
 	}
 }
 

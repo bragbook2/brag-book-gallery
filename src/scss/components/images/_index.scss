@@ -101,7 +101,12 @@
 }
 
 
-.brag-book-gallery-case-images.single-image img {
+// The case photo itself, whether a bare img on the older card markup or the one
+// inside a <picture> on the newer. Deliberately not every img in the card: the
+// carousel thumbnails and the overlay's provider avatar are sized by their own
+// rules and were being stretched by this one.
+.brag-book-gallery-case-images.single-image > img,
+.brag-book-gallery-case-images.single-image picture img {
 	opacity: 1;
 	width: 100%;
 	height: auto;
@@ -169,7 +174,8 @@
 	z-index: 2
 }
 
-.brag-book-gallery-case-images img {
+.brag-book-gallery-case-images > img,
+.brag-book-gallery-case-images picture img {
 	width: 100%;
 	height: auto;
 	opacity: 0;
