@@ -30,6 +30,7 @@ BRAG book Gallery displays before and after photo galleries for medical and cosm
 = Shortcodes =
 
 * `[brag_book_gallery]` — Main gallery with smart auto-detection of page context
+* `[brag_book_gallery provider="dr-jane-smith"]` — A provider's gallery on any page
 * `[brag_book_gallery_cases]` — Cases grid view
 * `[brag_book_gallery_case case_id="12345"]` — Single case detail
 * `[brag_book_gallery_favorites]` — User favorites page

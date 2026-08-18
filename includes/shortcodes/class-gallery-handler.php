@@ -837,6 +837,58 @@ final class Gallery_Handler {
 	}
 
 	/**
+	 * The page context for a provider, in the view the site is set to show.
+	 *
+	 * Provider archives reuse the procedure page structure, including the
+	 * Procedures View setting; only the case query differs.
+	 *
+	 * @param \WP_Term $term Provider taxonomy term.
+	 *
+	 * @return array{type: string, taxonomy_term: \WP_Term} Context information.
+	 * @since 4.9.4
+	 */
+	private static function provider_context( \WP_Term $term ): array {
+		$procedures_view = get_option( 'brag_book_gallery_procedures_view', 'default' );
+
+		return [
+			'type'          => 'tiles' === $procedures_view ? 'provider_tiles' : 'taxonomy_provider',
+			'taxonomy_term' => $term,
+		];
+	}
+
+	/**
+	 * Resolve the provider named by the shortcode's attributes.
+	 *
+	 * `provider` takes a term slug, `provider_id` the provider's API ID, which
+	 * is what the rest of the plugin's provider attributes take. The slug wins
+	 * when both are given.
+	 *
+	 * @param array $validated_atts Validated shortcode attributes.
+	 *
+	 * @return \WP_Term|null Provider term, or null when neither attribute names one.
+	 * @since 4.9.4
+	 */
+	private static function resolve_provider_term( array $validated_atts ): ?\WP_Term {
+		$slug = (string) ( $validated_atts['provider'] ?? '' );
+
+		if ( '' !== $slug ) {
+			$term = get_term_by( 'slug', $slug, Taxonomies::TAXONOMY_PROVIDERS );
+
+			return $term instanceof \WP_Term ? $term : null;
+		}
+
+		$term_ids = self::get_provider_term_ids( absint( $validated_atts['provider_id'] ?? 0 ) );
+
+		if ( empty( $term_ids ) ) {
+			return null;
+		}
+
+		$term = get_term( $term_ids[0], Taxonomies::TAXONOMY_PROVIDERS );
+
+		return $term instanceof \WP_Term ? $term : null;
+	}
+
+	/**
 	 * Determine the current page context
 	 *
 	 * @param array $validated_atts Validated shortcode attributes.
@@ -890,6 +942,15 @@ final class Gallery_Handler {
 			];
 		}
 
+		// 2.7. A provider named on the shortcode stands in for a provider archive,
+		// so the archive's structure — its procedure and filter dropdowns, its
+		// provider-scoped grid and the provider context case links carry into
+		// navigation — can be placed on any page.
+		$attribute_provider = self::resolve_provider_term( $validated_atts );
+		if ( $attribute_provider instanceof \WP_Term ) {
+			return self::provider_context( $attribute_provider );
+		}
+
 		// 3. Check if we're on a procedure taxonomy page
 		if ( is_tax( Taxonomies::TAXONOMY_PROCEDURES ) ) {
 			$current_term = get_queried_object();
@@ -918,12 +979,7 @@ final class Gallery_Handler {
 		if ( is_tax( Taxonomies::TAXONOMY_PROVIDERS ) ) {
 			$current_term = get_queried_object();
 			if ( $current_term instanceof \WP_Term ) {
-				$procedures_view = get_option( 'brag_book_gallery_procedures_view', 'default' );
-
-				return [
-					'type'          => 'tiles' === $procedures_view ? 'provider_tiles' : 'taxonomy_provider',
-					'taxonomy_term' => $current_term,
-				];
+				return self::provider_context( $current_term );
 			}
 		}
 
@@ -1928,6 +1984,8 @@ final class Gallery_Handler {
 			'data_case_id'        => '',
 			'data_procedure_slug' => '',
 			'view'                => '',
+			'provider'            => '',
+			'provider_id'         => 0,
 			'limit'               => 20,
 			'columns'             => 3,
 		);
@@ -1943,6 +2001,8 @@ final class Gallery_Handler {
 			'data_case_id'        => sanitize_text_field( $atts['data_case_id'] ),
 			'data_procedure_slug' => sanitize_text_field( $atts['data_procedure_slug'] ),
 			'view'                => sanitize_text_field( $atts['view'] ),
+			'provider'            => sanitize_title( $atts['provider'] ),
+			'provider_id'         => absint( $atts['provider_id'] ),
 			'limit'               => max( 1, min( 200, absint( $atts['limit'] ) ) ),
 			'columns'             => max( 1, min( 6, absint( $atts['columns'] ) ) ),
 		);

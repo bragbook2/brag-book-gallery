@@ -189,9 +189,13 @@ The plugin follows a modular architecture with clear separation of concerns:
 ### Main Gallery
 ```
 [brag_book_gallery]
+[brag_book_gallery provider="dr-jane-smith"]
+[brag_book_gallery provider_id="43"]
 ```
 - **Smart Auto-Detection**: Automatically detects page context and shows appropriate view
 - No parameters needed - context is automatically detected
+- `provider`: provider taxonomy slug. Renders the provider archive on any page: the same procedure/filter dropdowns, the provider-scoped case grid and Load More, and the provider context that keeps a case's next/previous links inside that provider.
+- `provider_id`: the provider's API ID, for when the slug isn't to hand. `provider` wins if both are given.
 
 ### Carousel
 ```
