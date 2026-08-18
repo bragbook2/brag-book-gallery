@@ -93,6 +93,9 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 
 == Changelog ==
 
+= 4.9.3-beta9 =
+* Fixed: Carousel thumbnails cut the sides off a photo and sat at different heights when a case mixed portrait and landscape shots. Each thumbnail now shows its whole photo, and they line up along the strip at one height with no white gap around them.
+
 = 4.9.3-beta8 =
 * Changed: On a provider page filtered by procedure, only the provider's name stays bold in the heading — the procedure now sits alongside it in plain text.
 

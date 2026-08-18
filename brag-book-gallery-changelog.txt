@@ -1,5 +1,10 @@
 === BRAGBook Gallery Changelog ===
 
+= 4.9.3-beta9 (2026-08-18) =
+
+Fixed:
+* Carousel thumbnails cropped and mis-sized their photos - .brag-book-gallery-case-images img and its .single-image variant set height: auto on every img in the card, outranking the thumbnail's own block-size, so a thumbnail took its photo's aspect ratio; the 2px active border came out of the content box under box-sizing: border-box, leaving a transparent frame on all four sides; and the fixed inline-size forced a square crop. Both blanket rules now match the case photo alone (> img for the older bare-img markup, picture img for the newer), the active marker is an outline with outline-offset: -2px, and the button is block-size only with the img at inline-size: auto. The width/height !important on .brag-book-gallery-case-card-overlay-provider-avatar existed only to escape those rules and is gone
+
 = 4.9.3-beta8 (2026-08-18) =
 
 Changed:

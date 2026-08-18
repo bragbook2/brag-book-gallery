@@ -4,6 +4,22 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.3-beta9] - 2026-08-18 (Beta Release)
+
+### Fixed
+
+- **A carousel thumbnail shows the whole photo**: three things stood in the way.
+  Two blanket rules on the card's image container set `height: auto` on every
+  image inside the card, thumbnails included, so each took its photo's own shape
+  and a portrait one stood taller than the rest of the strip. The 2px active
+  border came out of the content box, leaving a transparent frame on all four
+  sides. And the fixed width forced a square crop of a photo that is rarely
+  square. The two rules now reach the case photo alone, the active marker is an
+  inset outline that paints over the photo rather than taking room from it, and
+  the button is sized by height alone and takes its width from the photo. The
+  overlay's provider avatar, whose size carried `!important` purely to fight the
+  same rules, no longer needs it.
+
 ## [4.9.3-beta8] - 2026-08-18 (Beta Release)
 
 ### Changed
