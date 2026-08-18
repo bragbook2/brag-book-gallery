@@ -4,6 +4,48 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.3-beta6] - 2026-08-18 (Beta Release)
+
+### Added
+
+- **A provider can be named on the gallery shortcode**: a provider's gallery
+  only existed at its taxonomy archive, so a practice wanting one on a page of
+  its own had nothing to place there. `[brag_book_gallery provider="dr-jane-smith"]`
+  takes the term slug and `[brag_book_gallery provider_id="43"]` the API ID that
+  the other provider attributes take. Either resolves to the same context the
+  archive builds, so the page gets the archive's structure whole: the procedures
+  and filters dropdowns, the provider-scoped grid and its Load More, and the
+  provider carried on the wrapper that keeps a case's next and previous links
+  inside that provider. Resolution runs after the single-case checks, leaving a
+  case URL to open its case.
+- **A practice can name what a provider is called**: Provider read fine until
+  practices turned up who keep doctors and providers apart. Two fields under
+  Enable Providers hold the practice's own wording, singular and plural, and the
+  provider filter takes every word it shows from them — the toggle and its
+  default label, the search box, the listbox, the All option, the no-match line
+  and the empty result the script writes. The plural is stored separately rather
+  than derived, because the plural of a label like "Doctor or Provider" is not
+  the singular with an s on the end. Both fall back to Provider and Providers
+  when left blank.
+
+### Fixed
+
+- **The consultation form height field blocked every save**: it rendered a
+  stored 0 as `value="0"` while carrying `min="200"`, so the browser refused the
+  form even when the built-in form was selected and the height meant nothing. 0
+  stands for "use the default", so it renders blank, which the min attribute
+  leaves alone. The range is only advertised while GoHighLevel is the saved
+  source, and saving still clamps a given height to 200-2000.
+- **Rebuilt stylesheets and scripts reached nobody**: the frontend and admin
+  enqueues carried a hand-written version constant left at 4.6.0-beta4, so every
+  rebuild since shipped under the same query string and browsers kept serving
+  the file they already had — the V2 thumbnail-strip fix among them. They now
+  version by the built file's own modified time, through the resolver the
+  shortcode enqueues already used.
+- The offset that stops the V2 hover panel covering the thumbnail strip no
+  longer applies to V3 cards, which keep their overlay in flow beneath the image
+  where there is nothing to clear.
+
 ## [4.9.3-beta5] - 2026-08-17 (Beta Release)
 
 ### Added

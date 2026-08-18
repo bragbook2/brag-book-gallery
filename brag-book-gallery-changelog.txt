@@ -1,5 +1,16 @@
 === BRAGBook Gallery Changelog ===
 
+= 4.9.3-beta6 (2026-08-18) =
+
+Added:
+* A provider can be named on the gallery shortcode - [brag_book_gallery provider="dr-jane-smith"] takes the providers taxonomy slug and [brag_book_gallery provider_id="43"] the API ID the plugin's other provider attributes take. Either resolves to the context the archive builds, through one method both now share, so the page gets the archive's structure whole: the procedures and filters dropdowns, the provider-scoped grid and its Load More, and data-provider-slug/data-provider-id on the wrapper that the referrer capture reads to keep a case's next and previous inside that provider. Resolution runs after the single-case checks, so a case URL still opens its case
+* Provider label settings - two text fields under Enable Providers hold the practice's wording for a provider, singular and plural, and Provider_Filter::render_filter() takes every string it shows from them: the toggle and its data-default-label, the search placeholder and aria-label, the listbox label, the All option, the no-match line and the localized emptyLabel. The plural is stored separately rather than derived, since the plural of "Doctor or Provider" is not the singular with an s. Settings_Helper::get_provider_label() and get_provider_label_plural() fall back to Provider and Providers on a blank field
+
+Fixed:
+* The GoHighLevel form height field refused every save - a stored 0 rendered as value="0" against min="200", so constraint validation blocked the form even with the built-in source selected. 0 means "use the default 700", so it renders blank, and min/max are only emitted while gohighlevel is the saved source. save_settings() still clamps a supplied height to 200-2000
+* Assets shipped under a stale cache-busting version - Assets::get_asset_version() returned a hand-maintained constant left at 4.6.0-beta4, so every CSS and JS rebuild since went out under the same ?ver= and browsers kept the copy they had, the V2 thumbnail-strip fix included. The frontend and admin enqueues now pass their asset path through Asset_Manager::get_asset_version(), which versions by filemtime, and the unused constant is gone
+* The thumbnail-strip offset applied to V3 cards, whose overlay sits in flow beneath the image with nothing to clear. The rule is now scoped to cards that are not V3
+
 = 4.9.3-beta5 (2026-08-17) =
 
 Added:

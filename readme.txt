@@ -93,6 +93,13 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 
 == Changelog ==
 
+= 4.9.3-beta6 =
+* Added: A provider's gallery can now live on a page of its own. Add [brag_book_gallery provider="dr-jane-smith"] to any page — or [brag_book_gallery provider_id="43"] if you have the ID rather than the web address name — and it works exactly like that provider's own page: the same procedure and filter dropdowns, the same case grid and Load More, and previous/next on a case stays inside that provider.
+* Added: You can now choose what the gallery calls a provider. Two fields under Enable Providers set the word, singular and plural, for practices who say Doctor, or keep doctors and providers apart. The provider filter takes all of its wording from them. Leave them blank and nothing changes.
+* Fixed: The consultation form height field demanded a value on every save, even with the built-in form selected, when it is allowed to be left blank.
+* Fixed: Updates to the gallery's stylesheet and scripts were not reaching visitors whose browser had already cached the old ones, which is why last release's thumbnail strip fix may have looked like it had not worked. Rebuilt files are now recognised as new.
+* Fixed: The fix that stops the hover panel covering the thumbnail strip no longer applies to V3 cards, which show their details below the image and never covered it.
+
 = 4.9.3-beta5 =
 * Added: The consultation dialog can show your own GoHighLevel form instead of the built-in one. Choose the source under the consultation toggle in Display & Gallery Settings and paste the form's address from GoHighLevel; a height field sets how much room it opens at before GoHighLevel resizes it to fit. Requests through the embedded form go straight to GoHighLevel, so the plugin neither stores nor emails them. The built-in form keeps serving requests until an address is filled in.
 * Added: The procedure filter on a provider page now shows how many of that provider's cases sit behind each procedure.
