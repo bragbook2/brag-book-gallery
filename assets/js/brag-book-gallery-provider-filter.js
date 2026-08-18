@@ -293,9 +293,11 @@ __webpack_require__.r(__webpack_exports__);
   const AVATAR_SELECTOR = '.brag-book-gallery-provider-filter__avatar';
   const SEARCH_INPUT_SELECTOR = '.brag-book-gallery-provider-filter__search-input';
   const NO_MATCH_SELECTOR = '.brag-book-gallery-provider-filter__no-match';
-  // The emphasised half of the page heading: the provider on a provider page,
-  // which the chosen procedure is appended to.
+  // The emphasised half of the page heading: the provider on a provider page.
+  // The chosen procedure follows it, unemphasised, ahead of "Before & After
+  // Gallery".
   const TITLE_SELECTOR = '.brag-book-gallery-content-title strong';
+  const TITLE_PROCEDURE_CLASS = 'brag-book-gallery-content-title__procedure';
 
   /**
    * Wire up a single provider filter widget.
@@ -321,15 +323,14 @@ __webpack_require__.r(__webpack_exports__);
     // subject: a provider page's heading is the provider, and the procedure
     // chosen here narrows it. Choosing a provider on a procedure page leaves
     // the heading alone, since the procedure is still what the page is.
-    const title = isProcedureMode ? document.querySelector(TITLE_SELECTOR) : null;
+    const title = isProcedureMode ? titleProcedureSlot() : null;
     const ui = {
       label,
       toggleIcon,
       options,
       title,
       defaultLabel: label && label.getAttribute('data-default-label') || config.defaultLabel || 'Provider',
-      defaultIcon: toggleIcon ? toggleIcon.innerHTML : '',
-      defaultTitle: title ? title.textContent.trim() : ''
+      defaultIcon: toggleIcon ? toggleIcon.innerHTML : ''
     };
     const state = {
       originalGrid: null,
@@ -426,7 +427,7 @@ __webpack_require__.r(__webpack_exports__);
       ui.toggleIcon.innerHTML = ui.defaultIcon;
     }
     if (ui.title) {
-      ui.title.textContent = ui.defaultTitle;
+      ui.title.textContent = '';
     }
     restoreGrid(state);
   }
@@ -462,6 +463,30 @@ __webpack_require__.r(__webpack_exports__);
   }
 
   /**
+   * The element the chosen procedure is written into, created on first use.
+   *
+   * It follows the emphasised provider name and precedes "Before & After
+   * Gallery", so the heading reads as one sentence with only the page's own
+   * subject emphasised. Empty means no procedure is chosen.
+   *
+   * @returns {HTMLElement|null} The procedure slot, or null without a heading.
+   */
+  function titleProcedureSlot() {
+    const strong = document.querySelector(TITLE_SELECTOR);
+    if (!strong) {
+      return null;
+    }
+    const existing = strong.parentNode.querySelector('.' + TITLE_PROCEDURE_CLASS);
+    if (existing) {
+      return existing;
+    }
+    const slot = document.createElement('span');
+    slot.className = TITLE_PROCEDURE_CLASS;
+    strong.insertAdjacentElement('afterend', slot);
+    return slot;
+  }
+
+  /**
    * Narrow the page heading to the chosen procedure.
    *
    * The heading keeps naming the page's own subject and gains the procedure
@@ -477,7 +502,7 @@ __webpack_require__.r(__webpack_exports__);
     }
     const name = option.querySelector(NAME_SELECTOR);
     const procedure = name ? name.textContent.trim() : '';
-    ui.title.textContent = procedure ? ui.defaultTitle + ' - ' + procedure : ui.defaultTitle;
+    ui.title.textContent = procedure ? ' - ' + procedure : '';
   }
 
   /**
