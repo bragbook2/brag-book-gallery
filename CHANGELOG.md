@@ -4,6 +4,19 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.3-beta7] - 2026-08-18 (Beta Release)
+
+### Added
+
+- **A provider page's heading names the procedure chosen in its filter**: the
+  heading names the provider, and kept naming only the provider once the
+  procedure dropdown had narrowed the cases beneath it, so the page said less
+  than it was showing. Choosing a procedure now reads "Provider - Procedure
+  Before & After Gallery", and Reset or All Procedures puts the provider's name
+  back. Only the procedure dropdown does this: choosing a provider on a
+  procedure page leaves the heading alone, since the procedure is still what
+  that page is.
+
 ## [4.9.3-beta6] - 2026-08-18 (Beta Release)
 
 ### Added

@@ -93,6 +93,9 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 
 == Changelog ==
 
+= 4.9.3-beta7 =
+* Added: Filtering a provider page by procedure now says so in the heading — "Prof. Mc Nugget, MD - Breast Augmentation Before & After Gallery". Reset, or All Procedures, puts it back to the provider's name on its own.
+
 = 4.9.3-beta6 =
 * Added: A provider's gallery can now live on a page of its own. Add [brag_book_gallery provider="dr-jane-smith"] to any page — or [brag_book_gallery provider_id="43"] if you have the ID rather than the web address name — and it works exactly like that provider's own page: the same procedure and filter dropdowns, the same case grid and Load More, and previous/next on a case stays inside that provider.
 * Added: You can now choose what the gallery calls a provider. Two fields under Enable Providers set the word, singular and plural, for practices who say Doctor, or keep doctors and providers apart. The provider filter takes all of its wording from them. Leave them blank and nothing changes.

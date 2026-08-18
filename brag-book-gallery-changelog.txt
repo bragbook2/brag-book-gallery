@@ -1,5 +1,10 @@
 === BRAGBook Gallery Changelog ===
 
+= 4.9.3-beta7 (2026-08-18) =
+
+Added:
+* The procedure filter narrows a provider page's heading - the procedure-mode dropdown now writes the chosen procedure into .brag-book-gallery-content-title, reading the heading's own emphasised text as the base so nothing has to be passed in and both archive layouts, tiles and sidebar, are covered by the one element. Reset and the All Procedures option restore it. The provider-mode dropdown leaves the heading alone
+
 = 4.9.3-beta6 (2026-08-18) =
 
 Added:
