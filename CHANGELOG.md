@@ -4,6 +4,16 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.3-beta8] - 2026-08-18 (Beta Release)
+
+### Changed
+
+- **Only the provider stays bold in a provider page's heading**: the procedure
+  chosen in the filter was written into the same emphasis as the provider, so
+  both read as the page's subject. It now sits in its own element between the
+  provider and "Before & After Gallery". The heading reads the same; only what
+  is bold has changed.
+
 ## [4.9.3-beta7] - 2026-08-18 (Beta Release)
 
 ### Added

@@ -1,5 +1,10 @@
 === BRAGBook Gallery Changelog ===
 
+= 4.9.3-beta8 (2026-08-18) =
+
+Changed:
+* The heading's emphasis stays on the provider - the chosen procedure was written into the strong tag along with the provider. It now goes in a span.brag-book-gallery-content-title__procedure between the strong and "Before & After Gallery", inserted on first use and emptied by Reset or All Procedures, so the strong is never rewritten
+
 = 4.9.3-beta7 (2026-08-18) =
 
 Added:

@@ -93,6 +93,9 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 
 == Changelog ==
 
+= 4.9.3-beta8 =
+* Changed: On a provider page filtered by procedure, only the provider's name stays bold in the heading — the procedure now sits alongside it in plain text.
+
 = 4.9.3-beta7 =
 * Added: Filtering a provider page by procedure now says so in the heading — "Prof. Mc Nugget, MD - Breast Augmentation Before & After Gallery". Reset, or All Procedures, puts it back to the provider's name on its own.
 
