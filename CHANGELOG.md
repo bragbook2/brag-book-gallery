@@ -4,6 +4,51 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.3-beta11] - 2026-08-19 (Beta Release)
+
+### Added
+
+- **Settings that depend on another setting now appear only when they apply**:
+  the carousel navigation choice under the carousel toggle, the consultation
+  form choice under consultation and the GoHighLevel fields under that choice,
+  provider naming and Practices under Providers, and the Google Maps key under
+  Practices. Turning Providers off takes the whole branch with it. A hidden
+  field keeps posting its saved value, so nothing you have already entered is
+  lost while it is out of sight.
+- **The settings rail lists the sections on the open tab** and marks the one you
+  are reading, so a long tab can be moved around rather than scrolled through.
+- **The nudity warning has a preview beside its wording**: a drawn stand-in that
+  follows what you type, falls back to the defaults when a field is blank, and
+  changes shape with the preset you pick. It draws a plain tone under the
+  warning rather than loading a case photo into the settings screen.
+
+### Changed
+
+- **The General settings page is laid out in cards**: each group sits in its own
+  card with a titled bar, so where a group starts and ends is unmistakable.
+- **The switches, checkboxes and radio choices are redrawn**: on is the plugin's
+  own red, focus is blue, and off is grey, consistently across all three. The
+  words beside a switch now flip it, so the whole row is clickable rather than
+  the switch alone, and a radio choice is a row you click rather than a dot you
+  have to hit.
+- **Inputs and dropdowns fill their field** instead of stopping halfway across
+  the card, dropdowns are drawn to match the text fields, and a dropdown with a
+  preview button beside it now reads as one control.
+- **The settings menu no longer slides under the page tabs** when you scroll,
+  and the Save bar stays with you down a long tab.
+
+### Fixed
+
+- **A case card with four or more carousel thumbnails no longer widens its
+  column**: the thumbnail strip already scrolled, but the grid column was free
+  to grow to fit every thumbnail, so a row of cards came out at different widths
+  and the strip never had to scroll. Columns now hold one width and the
+  thumbnails scroll within the card.
+- **The view-type settings were quartered in width** by a grid that had been
+  nested inside itself, and the radio choices in the nudity and consultation
+  settings sat flush against each other, both from rules that compiled to
+  selectors which could never match.
+
 ## [4.9.3-beta10] - 2026-08-19 (Beta Release)
 
 ### Changed

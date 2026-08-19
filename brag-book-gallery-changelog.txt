@@ -1,5 +1,23 @@
 === BRAGBook Gallery Changelog ===
 
+= 4.9.3-beta11 (2026-08-19) =
+
+Added:
+* Conditional settings on the General page - dependent fields declare data-bb-requires (with data-bb-requires-value where a specific value is the trigger) and one resolver pass honours chains: carousel nav under the carousel toggle, consultation form choice under consultation, GHL URL/height under that choice, provider labels and Practices under Providers, Google Maps key under Practices. Dependents are hidden with the hidden attribute, never disabled, so their values still post and save_*() cannot write them empty
+* Section navigation in the settings rail, built from the DOM per active tab, with the current card resolved from geometry on a passive scroll listener (not requestAnimationFrame, which does not fire in a background tab). Hides itself when a tab has fewer than two sections
+* Nudity warning preview - a drawn stand-in beside the copy fields using the front-end overlay treatment (rgb(255 255 255 / .75) + blur(16px)) over a flat plate, live-bound to the title/caption/button/decline fields with the shipped defaults as fallback, switching aspect and showing the decline link per preset. No iframe, no case imagery
+
+Changed:
+* General page sections render as cards (.brag-book-gallery-subsection): white, 1px slate-200, 12px radius, title bar bled to the edges and ruled off. Nothing inside a card is another card - the SERP preview became an inset well
+* Switch/checkbox/radio rebuilt on one state language: --brag-book-gallery-primary for on, --blue-500 for focus, --slate-300 for off. The switch label is a <label for> on its input; radio choices are bordered rows read with :has(input:checked)
+* All inputs, selects and textareas are inline-size: 100%; select is drawn with appearance:none at the inputs' 40px height, and a select followed by .display-settings-grid__preview-btn shares one edge with it. Numbers with units use a joined suffix chip
+* --brag-book-gallery-sticky-top token plus an explicit z-order (page tabs z-30, save bar z-20, rail z-10); the rail and the page tab bar previously both stuck at top: 2rem with no z-index
+
+Fixed:
+* .brag-book-gallery-case-grid tracks are minmax(0, 1fr) rather than 1fr. 1fr is minmax(auto, 1fr) and that auto floor is the card's min-content, which a 4+ thumbnail carousel strip drives, so the column grew and overflow-x: auto on the strip never engaged. min-inline-size: 0 on the strip does not help on its own
+* The Layout & Views grid was wrapped in .display-settings-grid twice, nesting a two-column grid inside a two-column grid
+* `& + &` and `& &__x` inside a scoped block compile to selectors containing the wrap class twice, which never match - this is why .brag-book-gallery-setting-choice rows had no gap and the global-preset preview never took its own aspect ratio
+
 = 4.9.3-beta10 (2026-08-19) =
 
 Changed:

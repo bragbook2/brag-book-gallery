@@ -93,6 +93,15 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 
 == Changelog ==
 
+= 4.9.3-beta11 =
+* Added: Settings that depend on another setting now show only when they apply — turn Providers off and its naming, Practices and the Google Maps key go with it. Anything you have already entered is kept.
+* Added: The settings menu now lists the sections on the open tab and marks the one you are reading.
+* Added: The nudity warning settings have a preview beside them that follows what you type and changes with the preset you choose.
+* Changed: The General settings page is laid out in cards, so each group of settings has a clear start and end.
+* Changed: Switches, checkboxes and dropdowns are redrawn to match, the words beside a switch now flip it, and inputs and dropdowns fill their field instead of stopping halfway.
+* Changed: The settings menu no longer slides under the page tabs as you scroll, and the Save button stays with you down a long tab.
+* Fixed: A case card with four or more carousel thumbnails no longer stretches wider than the cards beside it — the thumbnails scroll within the card instead.
+
 = 4.9.3-beta10 =
 * Changed: The General settings screen is organised into named sections instead of one long list, so related settings sit together. Display & Gallery is now eight groups, and the plugin update channel and API environment are set apart at the end.
 * Changed: The Save button stays with you as you scroll a long settings tab, and the settings menu stays in view on wide screens and turns into a row of tabs on narrower ones.
