@@ -3608,7 +3608,7 @@ details[open] .brag-book-gallery-filter-dropdown__panel .brag-book-gallery-filte
 .brag-book-gallery-case-grid {
   display: grid;
   gap: var(--wp--custom--brag-book-gallery--spacer--2xl);
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   grid-auto-rows: auto;
   grid-auto-flow: dense;
   align-items: start;
@@ -3616,31 +3616,30 @@ details[open] .brag-book-gallery-filter-dropdown__panel .brag-book-gallery-filte
 }
 @media (min-width: 576px) {
   .brag-book-gallery-case-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1var --wp--custom--brag-book-gallery--spacer--md;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 @media (min-width: 768px) {
   .brag-book-gallery-case-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--wp--custom--brag-book-gallery--spacer--4xl);
   }
   .brag-book-gallery-case-grid[data-columns="2"] {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .brag-book-gallery-case-grid[data-columns="3"] {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 @media (min-width: 1280px) {
   .brag-book-gallery-case-grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .brag-book-gallery-case-grid[data-columns="2"] {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .brag-book-gallery-case-grid[data-columns="3"] {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 .brag-book-gallery-case-grid .brag-book-gallery-case-description,

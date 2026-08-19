@@ -4,11 +4,15 @@
 // components / grid / index
 // -----------------------------------------------------------------------------
 
+// A case card may hold a thumbnail strip wider than its column. Tracks are
+// minmax(0, 1fr) rather than 1fr so the card cannot push its own column open:
+// `1fr` is minmax(auto, 1fr), and that auto floor is the card's min-content,
+// which the strip drives. With a zero floor the strip scrolls instead.
 .brag-book-gallery-case-grid {
 	display: grid;
 	gap: var(--wp--custom--brag-book-gallery--spacer--2xl);
 	// Mobile first responsive design
-	grid-template-columns: 1fr; // Mobile: 1 column
+	grid-template-columns: minmax(0, 1fr); // Mobile: 1 column
 	grid-auto-rows: auto; // Allow rows to size based on content
 	grid-auto-flow: dense; // Fill in gaps in the grid
 	align-items: start; // Align items to the top of their grid cell
@@ -18,37 +22,39 @@
 
 	// Small screens (landscape phones)
 	@media (min-width: 576px) {
-		grid-template-columns: repeat(2, 1fr); // 2 columns
-		gap: 1var(--wp--custom--brag-book-gallery--spacer--md);
+		grid-template-columns: repeat(2, minmax(0, 1fr)); // 2 columns
+		// A `gap: 1var(...)` sat here: not a length, so it was dropped and this
+		// breakpoint has always used the 24px gap set above. Left as it renders
+		// rather than "fixed" into a 12px gap nobody has seen.
 	}
 
 	// Tablets and up
 	@media (min-width: 768px) {
 		// Default to 2 columns on tablets
-		grid-template-columns: repeat(2, 1fr);
+		grid-template-columns: repeat(2, minmax(0, 1fr));
 		gap: var(--wp--custom--brag-book-gallery--spacer--4xl);
 
 		// Allow manual override with data attribute
 		&[data-columns="2"] {
-			grid-template-columns: repeat(2, 1fr);
+			grid-template-columns: repeat(2, minmax(0, 1fr));
 		}
 
 		&[data-columns="3"] {
-			grid-template-columns: repeat(2, 1fr); // Keep 2 columns at 768px even if data-columns="3"
+			grid-template-columns: repeat(2, minmax(0, 1fr)); // Keep 2 columns at 768px even if data-columns="3"
 		}
 	}
 
 	// Desktop (changed from 1024px to 1280px for 3 columns)
 	@media (min-width: 1280px) {
 		// Default to 3 columns on desktop
-		grid-template-columns: repeat(3, 1fr);
+		grid-template-columns: repeat(3, minmax(0, 1fr));
 
 		&[data-columns="2"] {
-			grid-template-columns: repeat(2, 1fr);
+			grid-template-columns: repeat(2, minmax(0, 1fr));
 		}
 
 		&[data-columns="3"] {
-			grid-template-columns: repeat(3, 1fr);
+			grid-template-columns: repeat(3, minmax(0, 1fr));
 		}
 	}
 
