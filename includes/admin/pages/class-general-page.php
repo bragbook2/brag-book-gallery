@@ -136,11 +136,15 @@ class General_Page extends Settings_Base {
 					e.preventDefault();
 
 					// Remove active class from all tabs and panels
-					tabLinks.forEach(l => l.classList.remove('active'));
+					tabLinks.forEach(l => {
+						l.classList.remove('active');
+						l.setAttribute('aria-selected', 'false');
+					});
 					tabPanels.forEach(p => p.classList.remove('active'));
 
 					// Add active class to clicked tab
 					this.classList.add('active');
+					this.setAttribute('aria-selected', 'true');
 
 					// Show corresponding panel
 					const targetId = this.getAttribute('href').substring(1);
@@ -156,6 +160,7 @@ class General_Page extends Settings_Base {
 			const defaultPanel = document.getElementById('display-settings');
 			if (defaultTab && defaultPanel) {
 				defaultTab.classList.add('active');
+				defaultTab.setAttribute('aria-selected', 'true');
 				defaultPanel.classList.add('active');
 			}
 		});
@@ -195,9 +200,8 @@ class General_Page extends Settings_Base {
 				}
 
 				// Show checking message
-				elements.slugStatus.className = 'slug-status';
+				elements.slugStatus.className = 'slug-status is-checking';
 				elements.slugStatus.textContent = '<?php esc_html_e( 'Checking...', 'brag-book-gallery' ); ?>';
-				elements.slugStatus.style.display = 'block';
 				elements.generateBtn.disabled = true;
 
 				if (typeof ajaxurl === 'undefined') return;
@@ -426,18 +430,16 @@ class General_Page extends Settings_Base {
 				const gallerySlug = elements.gallerySlugInput ? elements.gallerySlugInput.value.trim() : '';
 
 				if (!gallerySlug) {
-					elements.favoritesPageStatus.className = 'slug-status';
+					elements.favoritesPageStatus.className = 'slug-status is-checking';
 					elements.favoritesPageStatus.innerHTML = '<?php esc_html_e( 'Please create the gallery page first.', 'brag-book-gallery' ); ?>';
-					elements.favoritesPageStatus.style.display = 'block';
 					elements.generateFavoritesBtn.disabled = true;
 					canGenerateFavoritesPage = false;
 					return;
 				}
 
 				// Show checking message
-				elements.favoritesPageStatus.className = 'slug-status';
+				elements.favoritesPageStatus.className = 'slug-status is-checking';
 				elements.favoritesPageStatus.textContent = '<?php esc_html_e( 'Checking...', 'brag-book-gallery' ); ?>';
-				elements.favoritesPageStatus.style.display = 'block';
 				elements.generateFavoritesBtn.disabled = true;
 
 				if (typeof ajaxurl === 'undefined') return;
@@ -674,11 +676,11 @@ class General_Page extends Settings_Base {
 	private function render_side_tabs(): void {
 		?>
 		<div class="brag-book-gallery-side-tabs">
-			<ul>
-				<li><a href="#display-settings"><?php esc_html_e( 'Display & Gallery', 'brag-book-gallery' ); ?></a></li>
-				<li><a href="#seo-settings"><?php esc_html_e( 'SEO Settings', 'brag-book-gallery' ); ?></a></li>
-				<li><a href="#performance-settings"><?php esc_html_e( 'Performance', 'brag-book-gallery' ); ?></a></li>
-				<li><a href="#custom-css"><?php esc_html_e( 'Custom CSS', 'brag-book-gallery' ); ?></a></li>
+			<ul role="tablist" aria-orientation="vertical" aria-label="<?php esc_attr_e( 'General settings sections', 'brag-book-gallery' ); ?>">
+				<li role="presentation"><a href="#display-settings" role="tab" id="tab-display-settings" aria-controls="display-settings" aria-selected="false"><?php esc_html_e( 'Display & Gallery', 'brag-book-gallery' ); ?></a></li>
+				<li role="presentation"><a href="#seo-settings" role="tab" id="tab-seo-settings" aria-controls="seo-settings" aria-selected="false"><?php esc_html_e( 'SEO Settings', 'brag-book-gallery' ); ?></a></li>
+				<li role="presentation"><a href="#performance-settings" role="tab" id="tab-performance-settings" aria-controls="performance-settings" aria-selected="false"><?php esc_html_e( 'Performance', 'brag-book-gallery' ); ?></a></li>
+				<li role="presentation"><a href="#custom-css" role="tab" id="tab-custom-css" aria-controls="custom-css" aria-selected="false"><?php esc_html_e( 'Custom CSS', 'brag-book-gallery' ); ?></a></li>
 			</ul>
 		</div>
 		<?php
@@ -693,22 +695,22 @@ class General_Page extends Settings_Base {
 	private function render_tab_content(): void {
 		?>
 		<!-- Display & Gallery Settings Tab -->
-		<div id="display-settings" class="brag-book-gallery-tab-panel">
+		<div id="display-settings" class="brag-book-gallery-tab-panel" role="tabpanel" aria-labelledby="tab-display-settings" tabindex="0">
 			<?php $this->render_display_settings_tab(); ?>
 		</div>
 
 		<!-- SEO Settings Tab -->
-		<div id="seo-settings" class="brag-book-gallery-tab-panel">
+		<div id="seo-settings" class="brag-book-gallery-tab-panel" role="tabpanel" aria-labelledby="tab-seo-settings" tabindex="0">
 			<?php $this->render_seo_settings_tab(); ?>
 		</div>
 
 		<!-- Performance Settings Tab -->
-		<div id="performance-settings" class="brag-book-gallery-tab-panel">
+		<div id="performance-settings" class="brag-book-gallery-tab-panel" role="tabpanel" aria-labelledby="tab-performance-settings" tabindex="0">
 			<?php $this->render_performance_settings_tab(); ?>
 		</div>
 
 		<!-- Custom CSS Tab -->
-		<div id="custom-css" class="brag-book-gallery-tab-panel">
+		<div id="custom-css" class="brag-book-gallery-tab-panel" role="tabpanel" aria-labelledby="tab-custom-css" tabindex="0">
 			<?php $this->render_custom_css_tab(); ?>
 		</div>
 		<?php
@@ -772,8 +774,9 @@ class General_Page extends Settings_Base {
 		$current_mode = 'default';
 		?>
 
-		<h1 style="margin-bottom: 4px; font-weight: bold;"><?php esc_html_e( 'Display & Gallery Settings', 'brag-book-gallery' ); ?></h1>
-		<p class="description" style="margin-top: 0;">
+		<div class="brag-book-gallery-section">
+		<h2><?php esc_html_e( 'Display & Gallery Settings', 'brag-book-gallery' ); ?></h2>
+		<p class="description">
 			<?php esc_html_e( 'Configure how your gallery appears on your website', 'brag-book-gallery' ); ?>
 		</p>
 		<?php settings_errors( $this->page_slug ); ?>
@@ -803,7 +806,7 @@ class General_Page extends Settings_Base {
 				</div>
 			<?php endif; ?>
 
-			<div class="brag-book-gallery-card gallery-page-settings-card">
+			<div class="brag-book-gallery-subsection gallery-page-settings-card">
 				<div class="gallery-page-settings__header">
 					<h3><?php esc_html_e( 'Gallery Page Settings', 'brag-book-gallery' ); ?></h3>
 				</div>
@@ -821,7 +824,7 @@ class General_Page extends Settings_Base {
 						       placeholder="<?php esc_attr_e( 'e.g., gallery, portfolio, before-after', 'brag-book-gallery' ); ?>">
 						<?php if ( $gallery_page && ! empty( $gallery_edit_link ) ) : ?>
 							<a href="<?php echo esc_url( $gallery_edit_link ); ?>"
-							   class="button button-outline-danger"
+							   class="button button-outline-brand"
 							   target="_blank">
 								<?php esc_html_e( 'Edit Page', 'brag-book-gallery' ); ?>
 							</a>
@@ -833,8 +836,7 @@ class General_Page extends Settings_Base {
 					</p>
 					<button type="button"
 					        id="generate-page-btn"
-					        class="button button-secondary"
-					        style="margin-top: 8px;"
+					        class="button button-secondary gallery-page-settings-field__action"
 					        disabled>
 						<?php esc_html_e( 'Generate Page', 'brag-book-gallery' ); ?>
 					</button>
@@ -880,7 +882,7 @@ class General_Page extends Settings_Base {
 							<p class="description">
 								<?php esc_html_e( 'Automatically creates a "My Favorites" child page under your gallery page.', 'brag-book-gallery' ); ?>
 							</p>
-							<div id="favorites-page-status-message" class="<?php echo esc_attr( $initial_status_class ); ?>" style="margin-top: 6px;">
+							<div id="favorites-page-status-message" class="<?php echo esc_attr( $initial_status_class ); ?>">
 								<?php
 								if ( ! empty( $initial_status_message ) ) {
 									$icon = $favorites_exists ? '&#10003;' : ( empty( $gallery_page_slug ) ? '' : '&#10003;' );
@@ -892,14 +894,14 @@ class General_Page extends Settings_Base {
 						<div class="favorites-row__actions">
 							<?php if ( $favorites_exists && ! empty( $favorites_edit_link ) ) : ?>
 								<a href="<?php echo esc_url( $favorites_edit_link ); ?>"
-								   class="button button-outline-danger"
+								   class="button button-outline-brand"
 								   target="_blank">
 									<?php esc_html_e( 'Edit Page', 'brag-book-gallery' ); ?>
 								</a>
 							<?php else : ?>
 								<button type="button"
 								        id="generate-favorites-page-btn"
-								        class="button button-outline-danger"
+								        class="button button-outline-brand"
 								        <?php echo $favorites_button_disabled ? 'disabled' : ''; ?>>
 									<?php echo esc_html( $favorites_button_text ); ?>
 								</button>
@@ -942,9 +944,9 @@ class General_Page extends Settings_Base {
 				</div>
 			</div>
 
-			<!-- Display Settings Section - 2-Column Grid -->
-			<h3><?php esc_html_e( 'Display Settings', 'brag-book-gallery' ); ?></h3>
-
+			<div class="brag-book-gallery-subsection">
+				<h3><?php esc_html_e( 'Layout & Views', 'brag-book-gallery' ); ?></h3>
+				<div class="display-settings-grid">
 			<div class="display-settings-grid">
 				<!-- Row 1: Main Gallery View | Procedures View -->
 				<div class="display-settings-grid__cell">
@@ -1089,33 +1091,53 @@ class General_Page extends Settings_Base {
 					</p>
 				</div>
 			</div>
-
-			<!-- Preview Modal -->
-			<dialog id="display-preview-dialog" class="brag-book-gallery-dialog brag-book-gallery-preview-dialog">
-				<div class="brag-book-gallery-dialog-content">
-					<div class="brag-book-gallery-dialog-header">
-						<h3 class="brag-book-gallery-dialog-title" id="display-preview-title">
-							<?php esc_html_e( 'Preview', 'brag-book-gallery' ); ?>
-						</h3>
-						<button type="button" class="brag-book-gallery-dialog-close" aria-label="<?php esc_attr_e( 'Close', 'brag-book-gallery' ); ?>">
-							<span class="dashicons dashicons-no-alt"></span>
-						</button>
-					</div>
-					<div class="brag-book-gallery-dialog-body brag-book-gallery-preview-body">
-						<img id="display-preview-image"
-						     src=""
-						     alt="<?php esc_attr_e( 'View type preview', 'brag-book-gallery' ); ?>"
-						     class="display-preview-image" />
-						<p id="display-preview-fallback" class="display-preview-fallback" style="display: none;">
-							<?php esc_html_e( 'Preview image not available for this view type.', 'brag-book-gallery' ); ?>
-						</p>
+				</div>
+				<div class="brag-book-gallery-fields">
+				<!-- Gallery Columns -->
+				<div class="brag-book-gallery-field">
+					<label class="brag-book-gallery-field__label">
+						<?php esc_html_e( 'Gallery Columns', 'brag-book-gallery' ); ?>
+					</label>
+					<div class="brag-book-gallery-grid-buttons">
+						<label class="brag-book-gallery-grid-option">
+							<input type="radio" name="brag_book_gallery_columns" value="2" <?php checked( $columns, '2' ); ?> />
+							<div class="brag-book-gallery-grid-btn" aria-label="View in 2 columns">
+								<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+									<rect x="1" y="1" width="6" height="6"></rect>
+									<rect x="9" y="1" width="6" height="6"></rect>
+									<rect x="1" y="9" width="6" height="6"></rect>
+									<rect x="9" y="9" width="6" height="6"></rect>
+								</svg>
+								<span class="sr-only">2 Columns</span>
+							</div>
+						</label>
+						<label class="brag-book-gallery-grid-option">
+							<input type="radio" name="brag_book_gallery_columns" value="3" <?php checked( $columns, '3' ); ?> />
+							<div class="brag-book-gallery-grid-btn" aria-label="View in 3 columns">
+								<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+									<rect x="1" y="1" width="4" height="4"></rect>
+									<rect x="6" y="1" width="4" height="4"></rect>
+									<rect x="11" y="1" width="4" height="4"></rect>
+									<rect x="1" y="6" width="4" height="4"></rect>
+									<rect x="6" y="6" width="4" height="4"></rect>
+									<rect x="11" y="6" width="4" height="4"></rect>
+									<rect x="1" y="11" width="4" height="4"></rect>
+									<rect x="6" y="11" width="4" height="4"></rect>
+									<rect x="11" y="11" width="4" height="4"></rect>
+								</svg>
+								<span class="sr-only">3 Columns</span>
+							</div>
+						</label>
 					</div>
 				</div>
-			</dialog>
+				</div>
+			</div>
 
-			<div class="display-settings-options">
+			<div class="brag-book-gallery-subsection">
+				<h3><?php esc_html_e( 'Case Cards', 'brag-book-gallery' ); ?></h3>
+				<div class="brag-book-gallery-fields">
 				<!-- Carousel Toggle -->
-				<div class="display-settings-option">
+				<div class="brag-book-gallery-field">
 					<div class="brag-book-gallery-toggle-wrapper">
 						<label class="brag-book-gallery-toggle">
 							<input type="hidden" name="brag_book_gallery_case_image_carousel" value="0" />
@@ -1158,120 +1180,8 @@ class General_Page extends Settings_Base {
 					</fieldset>
 				</div>
 
-				<!-- Enable Providers Toggle -->
-				<div class="display-settings-option">
-					<div class="brag-book-gallery-toggle-wrapper">
-						<label class="brag-book-gallery-toggle">
-							<input type="hidden" name="brag_book_gallery_enable_providers" value="0" />
-							<input type="checkbox"
-							       id="brag_book_gallery_enable_providers"
-							       name="brag_book_gallery_enable_providers"
-							       value="1"
-							       <?php checked( $enable_providers, true ); ?> />
-							<span class="brag-book-gallery-toggle-slider"></span>
-						</label>
-						<span class="brag-book-gallery-toggle-label">
-							<?php esc_html_e( 'Enable Providers', 'brag-book-gallery' ); ?>
-						</span>
-					</div>
-					<p class="description">
-						<?php esc_html_e( 'When enabled, the Providers taxonomy is registered and providers are synced from the API and assigned to cases.', 'brag-book-gallery' ); ?>
-					</p>
-
-					<div class="gallery-page-settings-field">
-						<label for="brag_book_gallery_provider_label" class="gallery-page-settings-field__label">
-							<?php esc_html_e( 'What to call a provider', 'brag-book-gallery' ); ?>
-						</label>
-						<input type="text"
-						       id="brag_book_gallery_provider_label"
-						       name="brag_book_gallery_provider_label"
-						       value="<?php echo esc_attr( $provider_label ); ?>"
-						       class="regular-text"
-						       placeholder="<?php esc_attr_e( 'Provider', 'brag-book-gallery' ); ?>" />
-						<p class="description">
-							<?php esc_html_e( 'The word the gallery\'s provider filter uses, for practices that call them something else — "Doctor", "Doctor or Provider". Leave blank for Provider.', 'brag-book-gallery' ); ?>
-						</p>
-					</div>
-
-					<div class="gallery-page-settings-field">
-						<label for="brag_book_gallery_provider_label_plural" class="gallery-page-settings-field__label">
-							<?php esc_html_e( 'What to call them together', 'brag-book-gallery' ); ?>
-						</label>
-						<input type="text"
-						       id="brag_book_gallery_provider_label_plural"
-						       name="brag_book_gallery_provider_label_plural"
-						       value="<?php echo esc_attr( $provider_label_plural ); ?>"
-						       class="regular-text"
-						       placeholder="<?php esc_attr_e( 'Providers', 'brag-book-gallery' ); ?>" />
-						<p class="description">
-							<?php esc_html_e( 'The plural, which the filter uses for its list and its "All" option — "Doctors", "Doctors & Providers". Leave blank for Providers.', 'brag-book-gallery' ); ?>
-						</p>
-					</div>
-				</div>
-
-				<!-- Enable Practices Toggle -->
-				<div class="display-settings-option">
-					<div class="brag-book-gallery-toggle-wrapper">
-						<label class="brag-book-gallery-toggle">
-							<input type="hidden" name="brag_book_gallery_enable_practices" value="0" />
-							<input type="checkbox"
-							       id="brag_book_gallery_enable_practices"
-							       name="brag_book_gallery_enable_practices"
-							       value="1"
-							       <?php checked( $enable_practices, true ); ?> />
-							<span class="brag-book-gallery-toggle-slider"></span>
-						</label>
-						<span class="brag-book-gallery-toggle-label">
-							<?php esc_html_e( 'Enable Practices', 'brag-book-gallery' ); ?>
-						</span>
-					</div>
-					<p class="description">
-						<?php esc_html_e( 'When enabled, each provider\'s practices are synced from the API (requires Providers to be enabled).', 'brag-book-gallery' ); ?>
-					</p>
-				</div>
-
-				<!-- Google Maps API Key -->
-				<div class="display-settings-option">
-					<label class="display-settings-option__label" for="brag_book_gallery_google_maps_api_key">
-						<?php esc_html_e( 'Google Maps API Key', 'brag-book-gallery' ); ?>
-					</label>
-					<div class="api-token-field">
-						<input type="password"
-						       id="brag_book_gallery_google_maps_api_key"
-						       name="brag_book_gallery_google_maps_api_key"
-						       value="<?php echo esc_attr( $google_maps_api_key ); ?>"
-						       class="regular-text brag-book-gallery-api-token"
-						       autocomplete="off" />
-						<button type="button"
-						        class="toggle-api-token"
-						        title="<?php esc_attr_e( 'Toggle visibility', 'brag-book-gallery' ); ?>">
-							<span class="dashicons dashicons-visibility"></span>
-						</button>
-					</div>
-					<p class="description">
-						<?php esc_html_e( 'Required for the "Find a Provider" locator map. Use a key with the Maps JavaScript API and Geocoding API enabled.', 'brag-book-gallery' ); ?>
-					</p>
-				</div>
-				<script>
-					( function () {
-						const field = document.querySelector( '#brag_book_gallery_google_maps_api_key' )?.closest( '.api-token-field' );
-						const button = field?.querySelector( '.toggle-api-token' );
-						if ( ! field || ! button ) {
-							return;
-						}
-						button.addEventListener( 'click', function () {
-							const input = field.querySelector( '.brag-book-gallery-api-token' );
-							const icon = button.querySelector( '.dashicons' );
-							const isPassword = input.type === 'password';
-							input.type = isPassword ? 'text' : 'password';
-							icon.classList.toggle( 'dashicons-visibility', ! isPassword );
-							icon.classList.toggle( 'dashicons-hidden', isPassword );
-						} );
-					} )();
-				</script>
-
 				<!-- Show Provider Toggle -->
-				<div class="display-settings-option">
+				<div class="brag-book-gallery-field">
 					<div class="brag-book-gallery-toggle-wrapper">
 						<label class="brag-book-gallery-toggle">
 							<input type="hidden" name="brag_book_gallery_show_provider" value="0" />
@@ -1290,130 +1200,14 @@ class General_Page extends Settings_Base {
 						<?php esc_html_e( 'When enabled, provider details will be shown in case displays.', 'brag-book-gallery' ); ?>
 					</p>
 				</div>
-
-				<!-- Image Processing Disclaimer Toggle -->
-				<div class="display-settings-option">
-					<div class="brag-book-gallery-toggle-wrapper">
-						<label class="brag-book-gallery-toggle">
-							<input type="hidden" name="brag_book_gallery_enable_disclaimer" value="0" />
-							<input type="checkbox"
-							       id="brag_book_gallery_enable_disclaimer"
-							       name="brag_book_gallery_enable_disclaimer"
-							       value="1"
-							       <?php checked( $enable_disclaimer, true ); ?> />
-							<span class="brag-book-gallery-toggle-slider"></span>
-						</label>
-						<span class="brag-book-gallery-toggle-label">
-							<?php esc_html_e( 'Display image processing disclaimer', 'brag-book-gallery' ); ?>
-						</span>
-					</div>
-					<p class="description">
-						<?php esc_html_e( 'When enabled, a disclaimer about smart device, AI, and standard image enhancements is shown at the bottom of the procedures gallery.', 'brag-book-gallery' ); ?>
-					</p>
 				</div>
+			</div>
 
-				<!-- Gallery Columns -->
-				<div class="display-settings-option">
-					<label class="display-settings-option__label">
-						<?php esc_html_e( 'Gallery Columns', 'brag-book-gallery' ); ?>
-					</label>
-					<div class="brag-book-gallery-grid-buttons">
-						<label class="brag-book-gallery-grid-option">
-							<input type="radio" name="brag_book_gallery_columns" value="2" <?php checked( $columns, '2' ); ?> />
-							<div class="brag-book-gallery-grid-btn" aria-label="View in 2 columns">
-								<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-									<rect x="1" y="1" width="6" height="6"></rect>
-									<rect x="9" y="1" width="6" height="6"></rect>
-									<rect x="1" y="9" width="6" height="6"></rect>
-									<rect x="9" y="9" width="6" height="6"></rect>
-								</svg>
-								<span class="sr-only">2 Columns</span>
-							</div>
-						</label>
-						<label class="brag-book-gallery-grid-option">
-							<input type="radio" name="brag_book_gallery_columns" value="3" <?php checked( $columns, '3' ); ?> />
-							<div class="brag-book-gallery-grid-btn" aria-label="View in 3 columns">
-								<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-									<rect x="1" y="1" width="4" height="4"></rect>
-									<rect x="6" y="1" width="4" height="4"></rect>
-									<rect x="11" y="1" width="4" height="4"></rect>
-									<rect x="1" y="6" width="4" height="4"></rect>
-									<rect x="6" y="6" width="4" height="4"></rect>
-									<rect x="11" y="6" width="4" height="4"></rect>
-									<rect x="1" y="11" width="4" height="4"></rect>
-									<rect x="6" y="11" width="4" height="4"></rect>
-									<rect x="11" y="11" width="4" height="4"></rect>
-								</svg>
-								<span class="sr-only">3 Columns</span>
-							</div>
-						</label>
-					</div>
-				</div>
-
-				<!-- Plugin Update Channel -->
-				<div class="display-settings-option">
-					<label for="brag_book_gallery_release_channel" class="display-settings-option__label">
-						<?php esc_html_e( 'Plugin Update Channel', 'brag-book-gallery' ); ?>
-					</label>
-					<?php $release_channel = get_option( 'brag_book_gallery_release_channel', 'stable' ); ?>
-					<select id="brag_book_gallery_release_channel" name="brag_book_gallery_release_channel">
-						<option value="stable" <?php selected( $release_channel, 'stable' ); ?>>
-							<?php esc_html_e( 'Stable (Recommended)', 'brag-book-gallery' ); ?>
-						</option>
-						<option value="rc" <?php selected( $release_channel, 'rc' ); ?>>
-							<?php esc_html_e( 'Release Candidate', 'brag-book-gallery' ); ?>
-						</option>
-						<option value="beta" <?php selected( $release_channel, 'beta' ); ?>>
-							<?php esc_html_e( 'Beta (Early Testing)', 'brag-book-gallery' ); ?>
-						</option>
-					</select>
-					<p class="description">
-						<?php esc_html_e( 'Choose which plugin updates to receive:', 'brag-book-gallery' ); ?>
-						<br/>
-						<strong><?php esc_html_e( 'Stable:', 'brag-book-gallery' ); ?></strong> <?php esc_html_e( 'Production-ready releases only (recommended for live sites)', 'brag-book-gallery' ); ?>
-						<br/>
-						<strong><?php esc_html_e( 'Release Candidate:', 'brag-book-gallery' ); ?></strong> <?php esc_html_e( 'Near-final versions for testing before stable release', 'brag-book-gallery' ); ?>
-						<br/>
-						<strong><?php esc_html_e( 'Beta:', 'brag-book-gallery' ); ?></strong> <?php esc_html_e( 'Early access to new features (not recommended for production sites)', 'brag-book-gallery' ); ?>
-					</p>
-				</div>
-
-				<!-- API Environment (only for beta/rc builds) -->
-				<?php
-				$is_dev_build = in_array( $release_channel, [ Updater::CHANNEL_BETA, Updater::CHANNEL_RC ], true );
-				if ( $is_dev_build ) :
-					$api_base_url    = get_option( 'brag_book_gallery_api_base_url', '' );
-					if ( ! empty( $api_base_url ) && $api_base_url === 'https://staging.bragbookgallery.com' ) {
-						$current_api_env = 'staging';
-					} elseif ( ! empty( $api_base_url ) && $api_base_url === 'https://dev.bragbookgallery.com' ) {
-						$current_api_env = 'dev';
-					} else {
-						$current_api_env = 'production';
-					}
-				?>
-				<div class="display-settings-option">
-					<label for="brag_book_gallery_api_environment" class="display-settings-option__label">
-						<?php esc_html_e( 'API Environment', 'brag-book-gallery' ); ?>
-					</label>
-					<select id="brag_book_gallery_api_environment" name="brag_book_gallery_api_environment">
-						<option value="production" <?php selected( $current_api_env, 'production' ); ?>>
-							<?php esc_html_e( 'Production (app.bragbookgallery.com)', 'brag-book-gallery' ); ?>
-						</option>
-						<option value="staging" <?php selected( $current_api_env, 'staging' ); ?>>
-							<?php esc_html_e( 'Staging (staging.bragbookgallery.com)', 'brag-book-gallery' ); ?>
-						</option>
-						<option value="dev" <?php selected( $current_api_env, 'dev' ); ?>>
-							<?php esc_html_e( 'Dev (dev.bragbookgallery.com)', 'brag-book-gallery' ); ?>
-						</option>
-					</select>
-					<p class="description">
-						<?php esc_html_e( 'Choose which API server the plugin connects to. Staging data may differ from production.', 'brag-book-gallery' ); ?>
-					</p>
-				</div>
-				<?php endif; ?>
-
+			<div class="brag-book-gallery-subsection">
+				<h3><?php esc_html_e( 'Navigation & Filters', 'brag-book-gallery' ); ?></h3>
+				<div class="brag-book-gallery-fields">
 				<!-- Expand Navigation Menus Toggle -->
-				<div class="display-settings-option">
+				<div class="brag-book-gallery-field">
 					<div class="brag-book-gallery-toggle-wrapper">
 						<label class="brag-book-gallery-toggle">
 							<input type="hidden" name="brag_book_gallery_expand_nav_menus" value="0" />
@@ -1434,7 +1228,7 @@ class General_Page extends Settings_Base {
 				</div>
 
 				<!-- Show Filter Counts Toggle -->
-				<div class="display-settings-option">
+				<div class="brag-book-gallery-field">
 					<div class="brag-book-gallery-toggle-wrapper">
 						<label class="brag-book-gallery-toggle">
 							<input type="hidden" name="brag_book_gallery_show_filter_counts" value="0" />
@@ -1453,9 +1247,14 @@ class General_Page extends Settings_Base {
 						<?php esc_html_e( 'Display the number of available items for each filter category (e.g., "Procedure (15)", "Age Group (8)").', 'brag-book-gallery' ); ?>
 					</p>
 				</div>
+				</div>
+			</div>
 
+			<div class="brag-book-gallery-subsection">
+				<h3><?php esc_html_e( 'Visitor Features', 'brag-book-gallery' ); ?></h3>
+				<div class="brag-book-gallery-fields">
 				<!-- Enable Favorites Toggle -->
-				<div class="display-settings-option">
+				<div class="brag-book-gallery-field">
 					<div class="brag-book-gallery-toggle-wrapper">
 						<label class="brag-book-gallery-toggle">
 							<input type="hidden" name="brag_book_gallery_enable_favorites" value="0" />
@@ -1476,7 +1275,7 @@ class General_Page extends Settings_Base {
 				</div>
 
 				<!-- Enable Consultation Toggle -->
-				<div class="display-settings-option">
+				<div class="brag-book-gallery-field">
 					<div class="brag-book-gallery-toggle-wrapper">
 						<label class="brag-book-gallery-toggle">
 							<input type="hidden" name="brag_book_gallery_enable_consultation" value="0" />
@@ -1553,8 +1352,29 @@ class General_Page extends Settings_Base {
 					</fieldset>
 				</div>
 
+				<!-- Image Processing Disclaimer Toggle -->
+				<div class="brag-book-gallery-field">
+					<div class="brag-book-gallery-toggle-wrapper">
+						<label class="brag-book-gallery-toggle">
+							<input type="hidden" name="brag_book_gallery_enable_disclaimer" value="0" />
+							<input type="checkbox"
+							       id="brag_book_gallery_enable_disclaimer"
+							       name="brag_book_gallery_enable_disclaimer"
+							       value="1"
+							       <?php checked( $enable_disclaimer, true ); ?> />
+							<span class="brag-book-gallery-toggle-slider"></span>
+						</label>
+						<span class="brag-book-gallery-toggle-label">
+							<?php esc_html_e( 'Display image processing disclaimer', 'brag-book-gallery' ); ?>
+						</span>
+					</div>
+					<p class="description">
+						<?php esc_html_e( 'When enabled, a disclaimer about smart device, AI, and standard image enhancements is shown at the bottom of the procedures gallery.', 'brag-book-gallery' ); ?>
+					</p>
+				</div>
+
 				<!-- Powered By Toggle -->
-				<div class="display-settings-option">
+				<div class="brag-book-gallery-field">
 					<div class="brag-book-gallery-toggle-wrapper">
 						<label class="brag-book-gallery-toggle">
 							<input type="hidden" name="brag_book_gallery_enable_powered_by" value="0" />
@@ -1573,12 +1393,131 @@ class General_Page extends Settings_Base {
 						<?php esc_html_e( 'When enabled, a "Powered by BRAG book Gallery" attribution link is shown in the gallery sidebar. Disabled by default.', 'brag-book-gallery' ); ?>
 					</p>
 				</div>
+				</div>
 			</div>
 
+			<div class="brag-book-gallery-subsection">
+				<h3><?php esc_html_e( 'Providers & Locations', 'brag-book-gallery' ); ?></h3>
+				<div class="brag-book-gallery-fields">
+				<!-- Enable Providers Toggle -->
+				<div class="brag-book-gallery-field">
+					<div class="brag-book-gallery-toggle-wrapper">
+						<label class="brag-book-gallery-toggle">
+							<input type="hidden" name="brag_book_gallery_enable_providers" value="0" />
+							<input type="checkbox"
+							       id="brag_book_gallery_enable_providers"
+							       name="brag_book_gallery_enable_providers"
+							       value="1"
+							       <?php checked( $enable_providers, true ); ?> />
+							<span class="brag-book-gallery-toggle-slider"></span>
+						</label>
+						<span class="brag-book-gallery-toggle-label">
+							<?php esc_html_e( 'Enable Providers', 'brag-book-gallery' ); ?>
+						</span>
+					</div>
+					<p class="description">
+						<?php esc_html_e( 'When enabled, the Providers taxonomy is registered and providers are synced from the API and assigned to cases.', 'brag-book-gallery' ); ?>
+					</p>
+
+					<div class="gallery-page-settings-field">
+						<label for="brag_book_gallery_provider_label" class="gallery-page-settings-field__label">
+							<?php esc_html_e( 'What to call a provider', 'brag-book-gallery' ); ?>
+						</label>
+						<input type="text"
+						       id="brag_book_gallery_provider_label"
+						       name="brag_book_gallery_provider_label"
+						       value="<?php echo esc_attr( $provider_label ); ?>"
+						       class="regular-text"
+						       placeholder="<?php esc_attr_e( 'Provider', 'brag-book-gallery' ); ?>" />
+						<p class="description">
+							<?php esc_html_e( 'The word the gallery\'s provider filter uses, for practices that call them something else — "Doctor", "Doctor or Provider". Leave blank for Provider.', 'brag-book-gallery' ); ?>
+						</p>
+					</div>
+
+					<div class="gallery-page-settings-field">
+						<label for="brag_book_gallery_provider_label_plural" class="gallery-page-settings-field__label">
+							<?php esc_html_e( 'What to call them together', 'brag-book-gallery' ); ?>
+						</label>
+						<input type="text"
+						       id="brag_book_gallery_provider_label_plural"
+						       name="brag_book_gallery_provider_label_plural"
+						       value="<?php echo esc_attr( $provider_label_plural ); ?>"
+						       class="regular-text"
+						       placeholder="<?php esc_attr_e( 'Providers', 'brag-book-gallery' ); ?>" />
+						<p class="description">
+							<?php esc_html_e( 'The plural, which the filter uses for its list and its "All" option — "Doctors", "Doctors & Providers". Leave blank for Providers.', 'brag-book-gallery' ); ?>
+						</p>
+					</div>
+				</div>
+
+				<!-- Enable Practices Toggle -->
+				<div class="brag-book-gallery-field">
+					<div class="brag-book-gallery-toggle-wrapper">
+						<label class="brag-book-gallery-toggle">
+							<input type="hidden" name="brag_book_gallery_enable_practices" value="0" />
+							<input type="checkbox"
+							       id="brag_book_gallery_enable_practices"
+							       name="brag_book_gallery_enable_practices"
+							       value="1"
+							       <?php checked( $enable_practices, true ); ?> />
+							<span class="brag-book-gallery-toggle-slider"></span>
+						</label>
+						<span class="brag-book-gallery-toggle-label">
+							<?php esc_html_e( 'Enable Practices', 'brag-book-gallery' ); ?>
+						</span>
+					</div>
+					<p class="description">
+						<?php esc_html_e( 'When enabled, each provider\'s practices are synced from the API (requires Providers to be enabled).', 'brag-book-gallery' ); ?>
+					</p>
+				</div>
+
+				<!-- Google Maps API Key -->
+				<div class="brag-book-gallery-field">
+					<label class="brag-book-gallery-field__label" for="brag_book_gallery_google_maps_api_key">
+						<?php esc_html_e( 'Google Maps API Key', 'brag-book-gallery' ); ?>
+					</label>
+					<div class="api-token-field">
+						<input type="password"
+						       id="brag_book_gallery_google_maps_api_key"
+						       name="brag_book_gallery_google_maps_api_key"
+						       value="<?php echo esc_attr( $google_maps_api_key ); ?>"
+						       class="regular-text brag-book-gallery-api-token"
+						       autocomplete="off" />
+						<button type="button"
+						        class="toggle-api-token"
+						        title="<?php esc_attr_e( 'Toggle visibility', 'brag-book-gallery' ); ?>">
+							<span class="dashicons dashicons-visibility"></span>
+						</button>
+					</div>
+					<p class="description">
+						<?php esc_html_e( 'Required for the "Find a Provider" locator map. Use a key with the Maps JavaScript API and Geocoding API enabled.', 'brag-book-gallery' ); ?>
+					</p>
+				</div>
+				<script>
+					( function () {
+						const field = document.querySelector( '#brag_book_gallery_google_maps_api_key' )?.closest( '.api-token-field' );
+						const button = field?.querySelector( '.toggle-api-token' );
+						if ( ! field || ! button ) {
+							return;
+						}
+						button.addEventListener( 'click', function () {
+							const input = field.querySelector( '.brag-book-gallery-api-token' );
+							const icon = button.querySelector( '.dashicons' );
+							const isPassword = input.type === 'password';
+							input.type = isPassword ? 'text' : 'password';
+							icon.classList.toggle( 'dashicons-visibility', ! isPassword );
+							icon.classList.toggle( 'dashicons-hidden', isPassword );
+						} );
+					} )();
+				</script>
+				</div>
+			</div>
+
+			<div class="brag-book-gallery-subsection">
 			<!-- Nudity Warning Settings -->
 			<h3><?php esc_html_e( 'Nudity Warning Settings', 'brag-book-gallery' ); ?></h3>
 
-			<div class="brag-book-gallery-card nudity-settings-card">
+			<div class="brag-book-gallery-subsection__fields">
 				<div class="gallery-page-settings-field">
 					<label class="gallery-page-settings-field__label">
 						<?php esc_html_e( 'Warning Preset', 'brag-book-gallery' ); ?>
@@ -1704,6 +1643,97 @@ class General_Page extends Settings_Base {
 					</p>
 				</div>
 			</div>
+			</div>
+
+			<div class="brag-book-gallery-subsection brag-book-gallery-subsection--muted">
+				<h3><?php esc_html_e( 'Plugin Updates', 'brag-book-gallery' ); ?></h3>
+				<div class="brag-book-gallery-fields">
+				<!-- Plugin Update Channel -->
+				<div class="brag-book-gallery-field">
+					<label for="brag_book_gallery_release_channel" class="brag-book-gallery-field__label">
+						<?php esc_html_e( 'Plugin Update Channel', 'brag-book-gallery' ); ?>
+					</label>
+					<?php $release_channel = get_option( 'brag_book_gallery_release_channel', 'stable' ); ?>
+					<select id="brag_book_gallery_release_channel" name="brag_book_gallery_release_channel">
+						<option value="stable" <?php selected( $release_channel, 'stable' ); ?>>
+							<?php esc_html_e( 'Stable (Recommended)', 'brag-book-gallery' ); ?>
+						</option>
+						<option value="rc" <?php selected( $release_channel, 'rc' ); ?>>
+							<?php esc_html_e( 'Release Candidate', 'brag-book-gallery' ); ?>
+						</option>
+						<option value="beta" <?php selected( $release_channel, 'beta' ); ?>>
+							<?php esc_html_e( 'Beta (Early Testing)', 'brag-book-gallery' ); ?>
+						</option>
+					</select>
+					<p class="description">
+						<?php esc_html_e( 'Choose which plugin updates to receive:', 'brag-book-gallery' ); ?>
+						<br/>
+						<strong><?php esc_html_e( 'Stable:', 'brag-book-gallery' ); ?></strong> <?php esc_html_e( 'Production-ready releases only (recommended for live sites)', 'brag-book-gallery' ); ?>
+						<br/>
+						<strong><?php esc_html_e( 'Release Candidate:', 'brag-book-gallery' ); ?></strong> <?php esc_html_e( 'Near-final versions for testing before stable release', 'brag-book-gallery' ); ?>
+						<br/>
+						<strong><?php esc_html_e( 'Beta:', 'brag-book-gallery' ); ?></strong> <?php esc_html_e( 'Early access to new features (not recommended for production sites)', 'brag-book-gallery' ); ?>
+					</p>
+				</div>
+
+				<!-- API Environment (only for beta/rc builds) -->
+				<?php
+				$is_dev_build = in_array( $release_channel, [ Updater::CHANNEL_BETA, Updater::CHANNEL_RC ], true );
+				if ( $is_dev_build ) :
+					$api_base_url    = get_option( 'brag_book_gallery_api_base_url', '' );
+					if ( ! empty( $api_base_url ) && $api_base_url === 'https://staging.bragbookgallery.com' ) {
+						$current_api_env = 'staging';
+					} elseif ( ! empty( $api_base_url ) && $api_base_url === 'https://dev.bragbookgallery.com' ) {
+						$current_api_env = 'dev';
+					} else {
+						$current_api_env = 'production';
+					}
+				?>
+				<div class="brag-book-gallery-field">
+					<label for="brag_book_gallery_api_environment" class="brag-book-gallery-field__label">
+						<?php esc_html_e( 'API Environment', 'brag-book-gallery' ); ?>
+					</label>
+					<select id="brag_book_gallery_api_environment" name="brag_book_gallery_api_environment">
+						<option value="production" <?php selected( $current_api_env, 'production' ); ?>>
+							<?php esc_html_e( 'Production (app.bragbookgallery.com)', 'brag-book-gallery' ); ?>
+						</option>
+						<option value="staging" <?php selected( $current_api_env, 'staging' ); ?>>
+							<?php esc_html_e( 'Staging (staging.bragbookgallery.com)', 'brag-book-gallery' ); ?>
+						</option>
+						<option value="dev" <?php selected( $current_api_env, 'dev' ); ?>>
+							<?php esc_html_e( 'Dev (dev.bragbookgallery.com)', 'brag-book-gallery' ); ?>
+						</option>
+					</select>
+					<p class="description">
+						<?php esc_html_e( 'Choose which API server the plugin connects to. Staging data may differ from production.', 'brag-book-gallery' ); ?>
+					</p>
+				</div>
+				<?php endif; ?>
+				</div>
+			</div>
+
+			<!-- Preview Modal -->
+			<dialog id="display-preview-dialog" class="brag-book-gallery-dialog brag-book-gallery-preview-dialog">
+				<div class="brag-book-gallery-dialog-content">
+					<div class="brag-book-gallery-dialog-header">
+						<h3 class="brag-book-gallery-dialog-title" id="display-preview-title">
+							<?php esc_html_e( 'Preview', 'brag-book-gallery' ); ?>
+						</h3>
+						<button type="button" class="brag-book-gallery-dialog-close" aria-label="<?php esc_attr_e( 'Close', 'brag-book-gallery' ); ?>">
+							<span class="dashicons dashicons-no-alt"></span>
+						</button>
+					</div>
+					<div class="brag-book-gallery-dialog-body brag-book-gallery-preview-body">
+						<img id="display-preview-image"
+						     src=""
+						     alt="<?php esc_attr_e( 'View type preview', 'brag-book-gallery' ); ?>"
+						     class="display-preview-image" />
+						<p id="display-preview-fallback" class="display-preview-fallback" hidden>
+							<?php esc_html_e( 'Preview image not available for this view type.', 'brag-book-gallery' ); ?>
+						</p>
+					</div>
+				</div>
+			</dialog>
 
 			<div class="brag-book-gallery-tab-actions">
 				<button type="submit" name="submit" class="button button-primary button-large">
@@ -1711,6 +1741,7 @@ class General_Page extends Settings_Base {
 				</button>
 			</div>
 		</form>
+		</div>
 
 		<?php
 		ob_start();
@@ -1758,16 +1789,16 @@ class General_Page extends Settings_Base {
 
 					if (filename) {
 						previewImage.src = pluginBaseUrl + filename;
-						previewImage.style.display = '';
-						previewFallback.style.display = 'none';
+						previewImage.hidden = false;
+						previewFallback.hidden = true;
 
 						previewImage.onerror = function() {
-							previewImage.style.display = 'none';
-							previewFallback.style.display = '';
+							previewImage.hidden = true;
+							previewFallback.hidden = false;
 						};
 					} else {
-						previewImage.style.display = 'none';
-						previewFallback.style.display = '';
+						previewImage.hidden = true;
+						previewFallback.hidden = false;
 					}
 
 					dialog.showModal();
@@ -1826,6 +1857,7 @@ class General_Page extends Settings_Base {
 		$schema_specialties = \BRAGBookGallery\Includes\SEO\Medical_Schema::get_available_specialties();
 		?>
 
+		<div class="brag-book-gallery-section">
 		<h2><?php esc_html_e( 'SEO Settings', 'brag-book-gallery' ); ?></h2>
 		<p class="description">
 			<?php esc_html_e( 'Configure search engine optimization settings for your gallery pages.', 'brag-book-gallery' ); ?>
@@ -1872,178 +1904,149 @@ class General_Page extends Settings_Base {
 		<form method="post" action="" id="brag-book-gallery-seo-settings-form">
 			<?php wp_nonce_field( 'brag_book_gallery_default_settings', 'brag_book_gallery_default_nonce' ); ?>
 
-			<table class="form-table brag-book-gallery-form-table" role="presentation">
-				<tr>
-					<th scope="row">
-						<label for="brag_book_gallery_seo_title">
-							<?php esc_html_e( 'SEO Page Title', 'brag-book-gallery' ); ?>
-						</label>
-					</th>
-					<td>
-						<input type="text"
-						       id="brag_book_gallery_seo_title"
-						       name="brag_book_gallery_seo_title"
-						       value="<?php echo esc_attr( $seo_title ); ?>"
-						       class="large-text"
-						       maxlength="60">
-						<div class="character-count">
-							<span id="title-char-count">0</span> / 60 <?php esc_html_e( 'characters', 'brag-book-gallery' ); ?>
-							<span id="title-char-warning" class="warning-text" style="display: none;">
-								<?php esc_html_e( 'Title is too long', 'brag-book-gallery' ); ?>
-							</span>
-						</div>
-						<p class="description">
-							<?php esc_html_e( 'Recommended: 50-60 characters. This appears in search engine results.', 'brag-book-gallery' ); ?>
-						</p>
-					</td>
-				</tr>
 
-				<tr>
-					<th scope="row">
-						<label for="brag_book_gallery_seo_description">
-							<?php esc_html_e( 'SEO Meta Description', 'brag-book-gallery' ); ?>
-						</label>
-					</th>
-					<td>
-						<textarea id="brag_book_gallery_seo_description"
-						          name="brag_book_gallery_seo_description"
-						          rows="3"
-						          class="large-text"
-						          maxlength="160"><?php echo esc_textarea( $seo_description ); ?></textarea>
-						<div class="character-count">
-							<span id="desc-char-count">0</span> / 160 <?php esc_html_e( 'characters', 'brag-book-gallery' ); ?>
-							<span id="desc-char-warning" class="warning-text" style="display: none;">
-								<?php esc_html_e( 'Description is too long', 'brag-book-gallery' ); ?>
-							</span>
-						</div>
-						<p class="description">
-							<?php esc_html_e( 'Recommended: 120-160 characters. This is the snippet shown in search results.', 'brag-book-gallery' ); ?>
-						</p>
-					</td>
-				</tr>
-			</table>
+			<div class="brag-book-gallery-subsection">
+				<h3><?php esc_html_e( 'Page Metadata', 'brag-book-gallery' ); ?></h3>
+				<div class="brag-book-gallery-fields">
+				<div class="brag-book-gallery-field">
+					<label class="brag-book-gallery-field__label" for="brag_book_gallery_seo_title">
+					<?php esc_html_e( 'SEO Page Title', 'brag-book-gallery' ); ?>
+					</label>
+				<input type="text"
+				       id="brag_book_gallery_seo_title"
+				       name="brag_book_gallery_seo_title"
+				       value="<?php echo esc_attr( $seo_title ); ?>"
+				       class="large-text"
+				       maxlength="60">
+				<div class="character-count">
+					<span id="title-char-count">0</span> / 60 <?php esc_html_e( 'characters', 'brag-book-gallery' ); ?>
+					<span id="title-char-warning" class="warning-text" hidden>
+						<?php esc_html_e( 'Title is too long', 'brag-book-gallery' ); ?>
+					</span>
+				</div>
+				<p class="description">
+					<?php esc_html_e( 'Recommended: 50-60 characters. This appears in search engine results.', 'brag-book-gallery' ); ?>
+				</p>
+				</div>
+				<div class="brag-book-gallery-field">
+					<label class="brag-book-gallery-field__label" for="brag_book_gallery_seo_description">
+					<?php esc_html_e( 'SEO Meta Description', 'brag-book-gallery' ); ?>
+					</label>
+				<textarea id="brag_book_gallery_seo_description"
+				          name="brag_book_gallery_seo_description"
+				          rows="3"
+				          class="large-text"
+				          maxlength="160"><?php echo esc_textarea( $seo_description ); ?></textarea>
+				<div class="character-count">
+					<span id="desc-char-count">0</span> / 160 <?php esc_html_e( 'characters', 'brag-book-gallery' ); ?>
+					<span id="desc-char-warning" class="warning-text" hidden>
+						<?php esc_html_e( 'Description is too long', 'brag-book-gallery' ); ?>
+					</span>
+				</div>
+				<p class="description">
+					<?php esc_html_e( 'Recommended: 120-160 characters. This is the snippet shown in search results.', 'brag-book-gallery' ); ?>
+				</p>
+				</div>
+				</div>
 
-			<h3><?php esc_html_e( 'Medical Schema (Structured Data)', 'brag-book-gallery' ); ?></h3>
-			<p class="description">
-				<?php esc_html_e( 'Outputs schema.org medical structured data (JSON-LD) on case and gallery views — a medical organization node for your practice, plus Physician and MedicalProcedure nodes on case pages. When Yoast, RankMath, or All in One SEO is active, the data is merged into that plugin\'s schema graph; otherwise it is printed on its own.', 'brag-book-gallery' ); ?>
-			</p>
-
-			<table class="form-table brag-book-gallery-form-table" role="presentation">
-				<tr>
-					<th scope="row"><?php esc_html_e( 'Enable Medical Schema', 'brag-book-gallery' ); ?></th>
-					<td>
-						<label>
-							<input type="checkbox"
-							       name="brag_book_gallery_schema_enabled"
-							       value="1"
-							       <?php checked( $schema_enabled ); ?>>
-							<?php esc_html_e( 'Output medical structured data on case and gallery pages', 'brag-book-gallery' ); ?>
-						</label>
-					</td>
-				</tr>
-
-				<tr>
-					<th scope="row">
-						<label for="brag_book_gallery_schema_type"><?php esc_html_e( 'Organization Type', 'brag-book-gallery' ); ?></label>
-					</th>
-					<td>
-						<select id="brag_book_gallery_schema_type" name="brag_book_gallery_schema_type">
-							<?php foreach ( $schema_types as $type_value => $type_label ) : ?>
-								<option value="<?php echo esc_attr( $type_value ); ?>" <?php selected( $schema_type, $type_value ); ?>>
-									<?php echo esc_html( $type_label ); ?>
-								</option>
-							<?php endforeach; ?>
-						</select>
-						<p class="description">
-							<?php esc_html_e( 'The schema.org type that represents your practice. Medical Clinic is recommended for a practice with a physical location.', 'brag-book-gallery' ); ?>
-						</p>
-					</td>
-				</tr>
-
-				<tr>
-					<th scope="row">
-						<label for="brag_book_gallery_schema_specialty"><?php esc_html_e( 'Medical Specialty', 'brag-book-gallery' ); ?></label>
-					</th>
-					<td>
-						<select id="brag_book_gallery_schema_specialty" name="brag_book_gallery_schema_specialty">
-							<?php foreach ( $schema_specialties as $specialty_value => $specialty_label ) : ?>
-								<option value="<?php echo esc_attr( $specialty_value ); ?>" <?php selected( $schema_specialty, $specialty_value ); ?>>
-									<?php echo esc_html( $specialty_label ); ?>
-								</option>
-							<?php endforeach; ?>
-						</select>
-					</td>
-				</tr>
-
-				<tr>
-					<th scope="row"><?php esc_html_e( 'Provider Schema', 'brag-book-gallery' ); ?></th>
-					<td>
-						<label>
-							<input type="checkbox"
-							       name="brag_book_gallery_schema_include_physician"
-							       value="1"
-							       <?php checked( $schema_physician ); ?>>
-							<?php esc_html_e( 'Include Physician nodes for each provider on case pages', 'brag-book-gallery' ); ?>
-						</label>
-					</td>
-				</tr>
-
-				<tr>
-					<th scope="row">
-						<label for="brag_book_gallery_schema_org_name"><?php esc_html_e( 'Organization Name Override', 'brag-book-gallery' ); ?></label>
-					</th>
-					<td>
-						<input type="text"
-						       id="brag_book_gallery_schema_org_name"
-						       name="brag_book_gallery_schema_org_name"
-						       value="<?php echo esc_attr( $schema_org_name ); ?>"
-						       class="large-text"
-						       placeholder="<?php esc_attr_e( 'Defaults to your primary practice, then the site name', 'brag-book-gallery' ); ?>">
-					</td>
-				</tr>
-
-				<tr>
-					<th scope="row">
-						<label for="brag_book_gallery_schema_org_logo"><?php esc_html_e( 'Organization Logo URL', 'brag-book-gallery' ); ?></label>
-					</th>
-					<td>
-						<input type="url"
-						       id="brag_book_gallery_schema_org_logo"
-						       name="brag_book_gallery_schema_org_logo"
-						       value="<?php echo esc_attr( $schema_org_logo ); ?>"
-						       class="large-text"
-						       placeholder="<?php esc_attr_e( 'Defaults to your theme\'s custom logo', 'brag-book-gallery' ); ?>">
-					</td>
-				</tr>
-			</table>
-
-			<!-- SERP Preview -->
-			<div class="serp-preview-container">
-				<h3><?php esc_html_e( 'Search Result Preview', 'brag-book-gallery' ); ?></h3>
-				<div class="serp-preview">
-					<div class="serp-title" id="serp-title">
-						<?php
-						if ( ! empty( $seo_title ) ) {
-							echo esc_html( $seo_title );
-						} else {
-							echo esc_html( get_bloginfo( 'name' ) . ' - Gallery' );
-						}
-						?>
-					</div>
-					<div class="serp-url">
-						<?php echo esc_url( home_url( '/' . ( $slug ?: 'gallery' ) . '/' ) ); ?>
-					</div>
-					<div class="serp-description" id="serp-description">
-						<?php
-						if ( ! empty( $seo_description ) ) {
-							echo esc_html( $seo_description );
-						} else {
-							echo esc_html( 'View our stunning gallery of before and after transformations. Browse through real patient results and see the amazing outcomes we achieve.' );
-						}
-						?>
-					</div>
+		<!-- SERP Preview -->
+		<div class="serp-preview-container">
+			<h4><?php esc_html_e( 'Search Result Preview', 'brag-book-gallery' ); ?></h4>
+			<div class="serp-preview">
+				<div class="serp-title" id="serp-title">
+					<?php
+					if ( ! empty( $seo_title ) ) {
+						echo esc_html( $seo_title );
+					} else {
+						echo esc_html( get_bloginfo( 'name' ) . ' - Gallery' );
+					}
+					?>
+				</div>
+				<div class="serp-url">
+					<?php echo esc_url( home_url( '/' . ( $slug ?: 'gallery' ) . '/' ) ); ?>
+				</div>
+				<div class="serp-description" id="serp-description">
+					<?php
+					if ( ! empty( $seo_description ) ) {
+						echo esc_html( $seo_description );
+					} else {
+						echo esc_html( 'View our stunning gallery of before and after transformations. Browse through real patient results and see the amazing outcomes we achieve.' );
+					}
+					?>
 				</div>
 			</div>
+		</div>
+		</div>
+
+		<div class="brag-book-gallery-subsection">
+			<h3><?php esc_html_e( 'Medical Schema', 'brag-book-gallery' ); ?></h3>
+				<p class="brag-book-gallery-subsection__intro">
+					<?php esc_html_e( 'Outputs schema.org medical structured data (JSON-LD) on case and gallery views — a medical organization node for your practice, plus Physician and MedicalProcedure nodes on case pages. When Yoast, RankMath, or All in One SEO is active, the data is merged into that plugin\'s schema graph; otherwise it is printed on its own.', 'brag-book-gallery' ); ?>
+				</p>
+				<div class="brag-book-gallery-fields">
+				<div class="brag-book-gallery-field">
+					<span class="brag-book-gallery-field__label"><?php esc_html_e( 'Enable Medical Schema', 'brag-book-gallery' ); ?></span>
+				<label>
+					<input type="checkbox"
+					       name="brag_book_gallery_schema_enabled"
+					       value="1"
+					       <?php checked( $schema_enabled ); ?>>
+					<?php esc_html_e( 'Output medical structured data on case and gallery pages', 'brag-book-gallery' ); ?>
+				</label>
+				</div>
+				<div class="brag-book-gallery-field">
+					<label class="brag-book-gallery-field__label" for="brag_book_gallery_schema_type"><?php esc_html_e( 'Organization Type', 'brag-book-gallery' ); ?></label>
+				<select id="brag_book_gallery_schema_type" name="brag_book_gallery_schema_type">
+					<?php foreach ( $schema_types as $type_value => $type_label ) : ?>
+						<option value="<?php echo esc_attr( $type_value ); ?>" <?php selected( $schema_type, $type_value ); ?>>
+							<?php echo esc_html( $type_label ); ?>
+						</option>
+					<?php endforeach; ?>
+				</select>
+				<p class="description">
+					<?php esc_html_e( 'The schema.org type that represents your practice. Medical Clinic is recommended for a practice with a physical location.', 'brag-book-gallery' ); ?>
+				</p>
+				</div>
+				<div class="brag-book-gallery-field">
+					<label class="brag-book-gallery-field__label" for="brag_book_gallery_schema_specialty"><?php esc_html_e( 'Medical Specialty', 'brag-book-gallery' ); ?></label>
+				<select id="brag_book_gallery_schema_specialty" name="brag_book_gallery_schema_specialty">
+					<?php foreach ( $schema_specialties as $specialty_value => $specialty_label ) : ?>
+						<option value="<?php echo esc_attr( $specialty_value ); ?>" <?php selected( $schema_specialty, $specialty_value ); ?>>
+							<?php echo esc_html( $specialty_label ); ?>
+						</option>
+					<?php endforeach; ?>
+				</select>
+				</div>
+				<div class="brag-book-gallery-field">
+					<span class="brag-book-gallery-field__label"><?php esc_html_e( 'Provider Schema', 'brag-book-gallery' ); ?></span>
+				<label>
+					<input type="checkbox"
+					       name="brag_book_gallery_schema_include_physician"
+					       value="1"
+					       <?php checked( $schema_physician ); ?>>
+					<?php esc_html_e( 'Include Physician nodes for each provider on case pages', 'brag-book-gallery' ); ?>
+				</label>
+				</div>
+				<div class="brag-book-gallery-field">
+					<label class="brag-book-gallery-field__label" for="brag_book_gallery_schema_org_name"><?php esc_html_e( 'Organization Name Override', 'brag-book-gallery' ); ?></label>
+				<input type="text"
+				       id="brag_book_gallery_schema_org_name"
+				       name="brag_book_gallery_schema_org_name"
+				       value="<?php echo esc_attr( $schema_org_name ); ?>"
+				       class="large-text"
+				       placeholder="<?php esc_attr_e( 'Defaults to your primary practice, then the site name', 'brag-book-gallery' ); ?>">
+				</div>
+				<div class="brag-book-gallery-field">
+					<label class="brag-book-gallery-field__label" for="brag_book_gallery_schema_org_logo"><?php esc_html_e( 'Organization Logo URL', 'brag-book-gallery' ); ?></label>
+				<input type="url"
+				       id="brag_book_gallery_schema_org_logo"
+				       name="brag_book_gallery_schema_org_logo"
+				       value="<?php echo esc_attr( $schema_org_logo ); ?>"
+				       class="large-text"
+				       placeholder="<?php esc_attr_e( 'Defaults to your theme\'s custom logo', 'brag-book-gallery' ); ?>">
+				</div>
+			</div>
+		</div>
 
 			<div class="brag-book-gallery-tab-actions">
 				<button type="submit" name="submit_default" class="button button-primary button-large">
@@ -2051,6 +2054,7 @@ class General_Page extends Settings_Base {
 				</button>
 			</div>
 		</form>
+		</div>
 		<?php
 	}
 
@@ -2066,91 +2070,91 @@ class General_Page extends Settings_Base {
 		$lazy_load = get_option( 'brag_book_gallery_lazy_load', 'yes' );
 		?>
 
+		<div class="brag-book-gallery-section">
 		<h2><?php esc_html_e( 'Performance Settings', 'brag-book-gallery' ); ?></h2>
 
 		<form method="post" action="" id="brag-book-gallery-performance-settings-form">
 			<?php wp_nonce_field( 'brag_book_gallery_default_settings', 'brag_book_gallery_default_nonce' ); ?>
 
-			<table class="form-table brag-book-gallery-form-table" role="presentation">
-				<tr>
-					<th scope="row">
-						<label for="ajax_timeout">
-							<?php esc_html_e( 'AJAX Timeout', 'brag-book-gallery' ); ?>
-						</label>
-					</th>
-					<td>
-						<input type="number"
-						       id="ajax_timeout"
-						       name="ajax_timeout"
-						       value="<?php echo esc_attr( $ajax_timeout ); ?>"
-						       min="5"
-						       max="120"
-						       class="small-text">
-						<?php esc_html_e( 'seconds', 'brag-book-gallery' ); ?>
-						<p class="description">
-							<?php esc_html_e( 'Maximum time to wait for API responses.', 'brag-book-gallery' ); ?>
-						</p>
-					</td>
-				</tr>
 
-				<tr>
-					<th scope="row">
-						<label for="cache_duration">
-							<?php esc_html_e( 'Cache Duration', 'brag-book-gallery' ); ?>
-						</label>
-					</th>
-					<td>
-						<input type="number"
-						       id="cache_duration"
-						       name="cache_duration"
-						       value="<?php echo esc_attr( $cache_duration ); ?>"
-						       min="0"
-						       max="86400"
-						       class="small-text">
-						<?php esc_html_e( 'seconds', 'brag-book-gallery' ); ?>
-						<p class="description">
-							<?php esc_html_e( 'How long to cache API responses (0 to disable).', 'brag-book-gallery' ); ?>
-						</p>
-					</td>
-				</tr>
+			<div class="brag-book-gallery-subsection">
+				<h3><?php esc_html_e( 'API & Caching', 'brag-book-gallery' ); ?></h3>
+				<div class="brag-book-gallery-fields">
+				<div class="brag-book-gallery-field">
+					<label class="brag-book-gallery-field__label" for="ajax_timeout">
+					<?php esc_html_e( 'AJAX Timeout', 'brag-book-gallery' ); ?>
+					</label>
+				<input type="number"
+				       id="ajax_timeout"
+				       name="ajax_timeout"
+				       value="<?php echo esc_attr( $ajax_timeout ); ?>"
+				       min="5"
+				       max="120"
+				       class="small-text">
+				<?php esc_html_e( 'seconds', 'brag-book-gallery' ); ?>
+				<p class="description">
+					<?php esc_html_e( 'Maximum time to wait for API responses.', 'brag-book-gallery' ); ?>
+				</p>
+				</div>
+				<div class="brag-book-gallery-field">
+					<label class="brag-book-gallery-field__label" for="cache_duration">
+					<?php esc_html_e( 'Cache Duration', 'brag-book-gallery' ); ?>
+					</label>
+				<input type="number"
+				       id="cache_duration"
+				       name="cache_duration"
+				       value="<?php echo esc_attr( $cache_duration ); ?>"
+				       min="0"
+				       max="86400"
+				       class="small-text">
+				<?php esc_html_e( 'seconds', 'brag-book-gallery' ); ?>
+				<p class="description">
+					<?php esc_html_e( 'How long to cache API responses (0 to disable).', 'brag-book-gallery' ); ?>
+				</p>
+				</div>
+				</div>
+			</div>
 
-				<tr>
-					<th scope="row">
-						<label for="lazy_load">
-							<?php esc_html_e( 'Lazy Load Images', 'brag-book-gallery' ); ?>
-						</label>
-					</th>
-					<td>
-						<div class="brag-book-gallery-toggle-wrapper">
-							<label class="brag-book-gallery-toggle">
-								<input type="hidden" name="lazy_load" value="no" />
-								<input type="checkbox"
-								       id="lazy_load"
-								       name="lazy_load"
-								       value="yes"
-								       <?php checked( $lazy_load, 'yes' ); ?>>
-								<span class="brag-book-gallery-toggle-slider"></span>
-							</label>
-							<span class="brag-book-gallery-toggle-label">
-								<?php esc_html_e( 'Enable lazy loading for gallery images', 'brag-book-gallery' ); ?>
-							</span>
-						</div>
-						<p class="description">
-							<?php esc_html_e( 'Improves page load times by loading images only when they become visible.', 'brag-book-gallery' ); ?>
-						</p>
-					</td>
-				</tr>
-			</table>
+
+			<div class="brag-book-gallery-subsection">
+				<h3><?php esc_html_e( 'Image Loading', 'brag-book-gallery' ); ?></h3>
+				<div class="brag-book-gallery-fields">
+				<div class="brag-book-gallery-field">
+					<label class="brag-book-gallery-field__label" for="lazy_load">
+					<?php esc_html_e( 'Lazy Load Images', 'brag-book-gallery' ); ?>
+					</label>
+				<div class="brag-book-gallery-toggle-wrapper">
+					<label class="brag-book-gallery-toggle">
+						<input type="hidden" name="lazy_load" value="no" />
+						<input type="checkbox"
+						       id="lazy_load"
+						       name="lazy_load"
+						       value="yes"
+						       <?php checked( $lazy_load, 'yes' ); ?>>
+						<span class="brag-book-gallery-toggle-slider"></span>
+					</label>
+					<span class="brag-book-gallery-toggle-label">
+						<?php esc_html_e( 'Enable lazy loading for gallery images', 'brag-book-gallery' ); ?>
+					</span>
+				</div>
+				<p class="description">
+					<?php esc_html_e( 'Improves page load times by loading images only when they become visible.', 'brag-book-gallery' ); ?>
+				</p>
+				</div>
+				</div>
+			</div>
+
 
 			<div class="brag-book-gallery-tab-actions">
 				<button type="submit" name="submit_default" class="button button-primary button-large">
 					<?php esc_html_e( 'Save Performance Settings', 'brag-book-gallery' ); ?>
 				</button>
-				<button type="button" id="clear-cache-btn" class="button button-secondary button-large" style="margin-left: 10px;">
+				<button type="button" id="clear-cache-btn" class="button button-secondary button-large">
 					<?php esc_html_e( 'Clear Gallery Cache', 'brag-book-gallery' ); ?>
 				</button>
 			</div>
 		</form>
+		</div>
 		<?php
 	}
 
@@ -2164,6 +2168,7 @@ class General_Page extends Settings_Base {
 		$custom_css = get_option( 'brag_book_gallery_custom_css', '' );
 		?>
 
+		<div class="brag-book-gallery-section">
 		<h2><?php esc_html_e( 'Custom CSS', 'brag-book-gallery' ); ?></h2>
 		<p class="description">
 			<?php esc_html_e( 'Add custom CSS styles to customize the appearance of your gallery.', 'brag-book-gallery' ); ?>
@@ -2172,34 +2177,33 @@ class General_Page extends Settings_Base {
 		<form method="post" action="" id="brag-book-gallery-css-settings-form">
 			<?php wp_nonce_field( 'brag_book_gallery_general_settings', 'brag_book_gallery_general_nonce' ); ?>
 
-			<table class="form-table">
-				<tr>
-					<th scope="row">
-						<label for="brag_book_gallery_custom_css">
-							<?php esc_html_e( 'Custom CSS', 'brag-book-gallery' ); ?>
-						</label>
-					</th>
-					<td>
-						<textarea id="brag_book_gallery_custom_css"
-						          name="brag_book_gallery_custom_css"
-						          rows="20"
-						          class="brag-book-gallery-code-editor"
-						          style="width:100%;font-family:Consolas,Monaco,'Courier New',monospace;"><?php echo esc_textarea( $custom_css ); ?></textarea>
-						<div class="brag-book-gallery-code-editor__toolbar">
-							<button type="button" id="reset-css" class="button button-secondary">
-								<?php esc_html_e( 'Reset', 'brag-book-gallery' ); ?>
-							</button>
-							<span class="brag-book-gallery-code-editor__status">
-								<span id="css-line-count">0</span> <?php esc_html_e( 'lines', 'brag-book-gallery' ); ?> |
-								<span id="css-char-count">0</span> <?php esc_html_e( 'characters', 'brag-book-gallery' ); ?>
-							</span>
-						</div>
-						<p class="description">
-							<?php esc_html_e( 'Add custom CSS styles to customize your gallery appearance. Provides syntax highlighting and linting.', 'brag-book-gallery' ); ?>
-						</p>
-					</td>
-				</tr>
-			</table>
+
+			<div class="brag-book-gallery-subsection">
+				<div class="brag-book-gallery-fields">
+				<div class="brag-book-gallery-field">
+					<label class="brag-book-gallery-field__label" for="brag_book_gallery_custom_css">
+					<?php esc_html_e( 'Custom CSS', 'brag-book-gallery' ); ?>
+					</label>
+				<textarea id="brag_book_gallery_custom_css"
+				          name="brag_book_gallery_custom_css"
+				          rows="20"
+				          class="brag-book-gallery-code-editor"><?php echo esc_textarea( $custom_css ); ?></textarea>
+				<div class="brag-book-gallery-code-editor__toolbar">
+					<button type="button" id="reset-css" class="button button-secondary">
+						<?php esc_html_e( 'Reset', 'brag-book-gallery' ); ?>
+					</button>
+					<span class="brag-book-gallery-code-editor__status">
+						<span id="css-line-count">0</span> <?php esc_html_e( 'lines', 'brag-book-gallery' ); ?> |
+						<span id="css-char-count">0</span> <?php esc_html_e( 'characters', 'brag-book-gallery' ); ?>
+					</span>
+				</div>
+				<p class="description">
+					<?php esc_html_e( 'Add custom CSS styles to customize your gallery appearance. Provides syntax highlighting and linting.', 'brag-book-gallery' ); ?>
+				</p>
+				</div>
+				</div>
+			</div>
+
 
 			<div class="brag-book-gallery-tab-actions">
 				<button type="submit" name="submit_css" class="button button-primary button-large">
@@ -2207,6 +2211,7 @@ class General_Page extends Settings_Base {
 				</button>
 			</div>
 		</form>
+		</div>
 
 		<?php
 		ob_start();
@@ -2230,16 +2235,8 @@ class General_Page extends Settings_Base {
 				titleCount.textContent = length;
 
 				// Show warning if too long
-				if (length > 60) {
-					titleWarning.style.display = 'inline';
-					titleCount.style.color = '#d63638';
-				} else if (length > 50) {
-					titleWarning.style.display = 'none';
-					titleCount.style.color = '#dba617';
-				} else {
-					titleWarning.style.display = 'none';
-					titleCount.style.color = '#666';
-				}
+				titleWarning.hidden = length <= 60;
+				titleCount.className = length > 60 ? 'is-over' : ( length > 50 ? 'is-near' : '' );
 
 				// Update SERP preview
 				serpTitle.textContent = titleInput.value || '<?php echo esc_js( get_bloginfo( 'name' ) . ' - Gallery' ); ?>';
@@ -2253,16 +2250,8 @@ class General_Page extends Settings_Base {
 				descCount.textContent = length;
 
 				// Show warning if too long
-				if (length > 160) {
-					descWarning.style.display = 'inline';
-					descCount.style.color = '#d63638';
-				} else if (length > 120) {
-					descWarning.style.display = 'none';
-					descCount.style.color = '#00a32a';
-				} else {
-					descWarning.style.display = 'none';
-					descCount.style.color = '#666';
-				}
+				descWarning.hidden = length <= 160;
+				descCount.className = length > 160 ? 'is-over' : ( length > 120 ? 'is-ideal' : '' );
 
 				// Update SERP preview
 				serpDesc.textContent = descInput.value || 'View our stunning gallery of before and after transformations. Browse through real patient results and see the amazing outcomes we achieve.';
@@ -2978,7 +2967,6 @@ class General_Page extends Settings_Base {
 		wp_add_inline_script( 'code-editor', $init_script, 'before' );
 		wp_add_inline_script( 'code-editor', $this->get_code_editor_init_js(), 'after' );
 
-		wp_add_inline_style( 'code-editor', $this->get_code_editor_inline_css() );
 	}
 
 	/**
@@ -3075,17 +3063,6 @@ class General_Page extends Settings_Base {
 	}
 }());
 JS;
-	}
-
-	/**
-	 * Inline CSS for the code editor toolbar
-	 *
-	 * @since 4.4.0
-	 * @return string CSS rules.
-	 */
-	private function get_code_editor_inline_css(): string {
-		return '.brag-book-gallery-code-editor__toolbar{margin-top:10px;display:flex;align-items:center;gap:10px}'
-			. '.brag-book-gallery-code-editor__status{margin-left:auto;color:#666;font-size:12px}';
 	}
 
 }

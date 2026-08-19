@@ -125,14 +125,27 @@
 /* Side Tabbed Section Styles */
 .brag-book-gallery-tabbed-section {
 	display: flex;
-	min-height: 600px;
+	align-items: flex-start;
+	gap: var(--space-8);
+	min-block-size: 600px;
+
+	@media (max-width: 1024px) {
+		flex-direction: column;
+		gap: var(--space-5);
+	}
 }
 
 .brag-book-gallery-side-tabs {
-	width: 196px;
-	background: white;
-	padding: var(--space-2);
+	inline-size: 220px;
 	flex-shrink: 0;
+	padding: var(--space-2) var(--space-2) var(--space-6);
+	background: var(--brag-book-gallery-white);
+	border-inline-end: var(--space-px) solid var(--slate-200);
+
+	// The rail stays with the operator on tabs that scroll for pages.
+	position: sticky;
+	inset-block-start: var(--space-8);
+	align-self: flex-start;
 
 	ul {
 		margin: 0;
@@ -140,7 +153,7 @@
 		list-style: none;
 		display: flex;
 		flex-direction: column;
-		gap: var(--space-1);
+		gap: var(--space-0-5);
 	}
 
 	li {
@@ -148,45 +161,57 @@
 	}
 
 	a {
-		display: block;
-		padding: 10px 14px;
-		text-decoration: none;
-		color: var(--slate-700);
-		font-weight: var(--font-medium);
-		font-size: var(--text-sm);
-		border-radius: var(--rounded-md);
-		transition: all 0.15s ease;
 		position: relative;
+		display: block;
+		padding: var(--space-2-5) var(--space-3);
 		border: none;
+		border-radius: var(--rounded-md);
+		color: var(--slate-600);
+		font-size: var(--text-sm);
+		font-weight: var(--font-medium);
+		line-height: var(--leading-5);
+		text-decoration: none;
+		transition: var(--transition-colors);
 
 		&:hover,
 		&:focus {
-			background: var(--slate-100);
+			background: var(--slate-50);
 			color: var(--slate-900);
 			box-shadow: none;
 		}
 
+		&:focus-visible {
+			outline: 2px solid var(--blue-500);
+			outline-offset: 2px;
+		}
+
+		// Active is the plugin's crimson, carried as a marker and a tint rather
+		// than a solid fill — the rail is orientation, not a call to action.
 		&.active {
-			background: var(--brag-book-gallery-primary);
-			color: white;
+			background: var(--slate-50);
+			color: var(--brag-book-gallery-primary);
 			font-weight: var(--font-semibold);
 
-			&:hover {
+			&::before {
+				content: '';
+				position: absolute;
+				inset-block: var(--space-1-5);
+				inset-inline-start: 0;
+				inline-size: var(--space-0-5);
+				border-radius: var(--rounded-full);
 				background: var(--brag-book-gallery-primary);
-				color: white;
 			}
 
 			.brag-book-gallery-tab-badge {
-				background: white;
-				color: var(--brag-book-gallery-primary);
+				background: var(--brag-book-gallery-primary);
+				color: var(--brag-book-gallery-white);
 			}
 		}
 
-		// Badge styles for side tabs
 		.brag-book-gallery-tab-badge {
 			position: absolute;
-			top: 50%;
-			right: 12px;
+			inset-block-start: 50%;
+			inset-inline-end: var(--space-3);
 			transform: translateY(-50%);
 			display: inline-flex;
 			align-items: center;
@@ -195,18 +220,47 @@
 			block-size: var(--space-5);
 			padding-inline: var(--space-1-5);
 			background: var(--red-500);
-			color: white;
+			color: var(--brag-book-gallery-white);
 			border-radius: var(--rounded-full);
 			font-size: var(--text-xs);
 			font-weight: var(--font-bold);
 			margin: 0;
 		}
 	}
+
+	// Under 1024px the rail lies down and scrolls sideways above the panel.
+	@media (max-width: 1024px) {
+		position: static;
+		inline-size: auto;
+		padding: 0;
+		border-inline-end: 0;
+		border-block-end: var(--space-px) solid var(--slate-200);
+
+		ul {
+			flex-direction: row;
+			overflow-x: auto;
+			scrollbar-width: thin;
+			gap: var(--space-1);
+			padding-block-end: var(--space-2);
+		}
+
+		li {
+			flex: 0 0 auto;
+		}
+
+		a.active::before {
+			inset-block: auto 0;
+			inset-inline: var(--space-3);
+			inline-size: auto;
+			block-size: var(--space-0-5);
+		}
+	}
 }
 
 .brag-book-gallery-tab-content {
 	flex: 1;
-	padding: 0 30px;
+	min-inline-size: 0;
+	padding: 0;
 }
 
 .brag-book-gallery-tab-panel {
@@ -227,8 +281,25 @@
 	}
 }
 
+// The save bar follows the operator down a long settings tab instead of
+// waiting at the bottom of it.
 .brag-book-gallery-tab-actions {
-	margin-top: 30px;
-	padding-top: 20px;
-	border-top: 1px solid #e1e1e1;
+	position: sticky;
+	inset-block-end: 0;
+	z-index: var(--z-20);
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--space-3);
+	margin-block-start: var(--space-8);
+	padding-block: var(--space-4);
+	background: var(--brag-book-gallery-white);
+	border-block-start: var(--space-px) solid var(--slate-200);
+	box-shadow: 0 -4px 6px -4px rgb(0 0 0 / 0.08);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	.brag-book-gallery-tab-actions {
+		transition: var(--transition-shadow);
+	}
 }

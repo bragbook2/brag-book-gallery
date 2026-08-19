@@ -101,25 +101,25 @@
 	height: 44px;
 	border: 2px solid var(--slate-300);
 	border-radius: var(--rounded-md);
-	background: white;
+	background: var(--brag-book-gallery-white);
 	color: var(--slate-600);
-	transition: all 0.2s ease;
+	transition: var(--transition-colors);
 	cursor: pointer;
 }
 
 .brag-book-gallery-grid-btn:hover {
-	border-color: var(--blue-400);
-	color: var(--blue-600);
-	background: var(--blue-50);
+	border-color: var(--slate-400);
+	color: var(--slate-900);
+	background: var(--slate-50);
 }
 
 .brag-book-gallery-grid-option input[type="radio"]:checked + .brag-book-gallery-grid-btn {
-	border-color: var(--blue-500);
-	background: var(--blue-500);
-	color: white;
+	border-color: var(--brag-book-gallery-primary);
+	background: var(--brag-book-gallery-primary);
+	color: var(--brag-book-gallery-white);
 }
 
-.brag-book-gallery-grid-option input[type="radio"]:focus + .brag-book-gallery-grid-btn {
+.brag-book-gallery-grid-option input[type="radio"]:focus-visible + .brag-book-gallery-grid-btn {
 	outline: 2px solid var(--blue-500);
 	outline-offset: 2px;
 }
@@ -143,24 +143,18 @@
 }
 
 /* Gallery Page Settings Section Header */
-.gallery-page-settings__header {
+.brag-book-gallery-admin-wrap .gallery-page-settings__header {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
 
 	h3 {
 		margin: 0;
+		font-size: var(--text-lg);
+		color: var(--slate-800);
 	}
 }
 
-/* Gallery Page Settings Card */
-.gallery-page-settings-card {
-	margin-block: var(--space-4);
-
-	&:hover {
-		box-shadow: var(--shadow); // override card's md hover
-	}
-}
 
 .gallery-page-settings-field {
 	padding-block: var(--space-4);
@@ -184,6 +178,10 @@
 	.description {
 		margin-block-start: var(--space-2);
 	}
+
+	&__action {
+		margin-block-start: var(--space-2);
+	}
 }
 
 /* Nudity Warning preset options - one radio per row with its explanation */
@@ -202,6 +200,7 @@
 	.description {
 		grid-column: 2;
 		margin-block-start: 0;
+		padding-inline-start: 0;
 	}
 }
 
@@ -219,7 +218,7 @@
 	}
 }
 
-.display-settings-options:has(#brag_book_gallery_case_image_carousel:not(:checked)) .carousel-nav-choice {
+.brag-book-gallery-fields:has(#brag_book_gallery_case_image_carousel:not(:checked)) .carousel-nav-choice {
 	opacity: .5;
 }
 
@@ -234,26 +233,32 @@
 		min-width: 0;
 	}
 
-	.button-outline-danger {
+	.button-outline-brand {
 		flex-shrink: 0;
 		white-space: nowrap;
 	}
 }
 
-/* Outline Danger Button - white bg, red border, red on hover */
-.button-outline-danger {
-	background: #fff !important;
-	border: 2px solid #CC0000 !important;
-	color: #CC0000 !important;
-	font-weight: 500;
-	transition: all 0.2s ease;
+/* Outline Brand Button - white fill, crimson outline, inverts on interaction.
+   Scoped to the admin wrap so it outranks the .button rule without !important. */
+.brag-book-gallery-admin-wrap .button-outline-brand {
+	background: var(--brag-book-gallery-white);
+	border: var(--space-px) solid var(--brag-book-gallery-primary);
+	color: var(--brag-book-gallery-primary);
+	font-weight: var(--font-medium);
+	transition: var(--transition-colors);
 
 	&:hover,
 	&:focus,
 	&:active {
-		background: #CC0000 !important;
-		border-color: #CC0000 !important;
-		color: #fff !important;
+		background: var(--brag-book-gallery-primary);
+		border-color: var(--brag-book-gallery-primary);
+		color: var(--brag-book-gallery-white);
+	}
+
+	&:focus-visible {
+		outline: 2px solid var(--blue-500);
+		outline-offset: 2px;
 	}
 
 	&:disabled {
@@ -261,8 +266,8 @@
 		cursor: not-allowed;
 
 		&:hover {
-			background: #fff !important;
-			color: #CC0000 !important;
+			background: var(--brag-book-gallery-white);
+			color: var(--brag-book-gallery-primary);
 		}
 	}
 }
@@ -288,6 +293,10 @@
 		.description {
 			margin-block-start: 0;
 			margin-block-end: 0;
+		}
+
+		.slug-status {
+			margin-block-start: var(--space-1-5);
 		}
 	}
 
@@ -376,6 +385,13 @@
 	max-inline-size: 720px;
 	inline-size: 90vw;
 
+	.brag-book-gallery-dialog-title {
+		margin: 0;
+		font-size: var(--text-lg);
+		font-weight: var(--font-semibold);
+		color: var(--slate-900);
+	}
+
 	.brag-book-gallery-preview-body {
 		padding: var(--space-4);
 		display: flex;
@@ -401,11 +417,11 @@
 }
 
 /* Display Settings Stacked Options (toggles, dropdowns below grid) */
-.display-settings-options {
+.brag-book-gallery-fields {
 	margin-block-start: var(--space-6);
 }
 
-.display-settings-option {
+.brag-book-gallery-field {
 	padding-block: var(--space-4);
 	border-block-start: var(--space-px) solid var(--slate-100);
 
@@ -419,44 +435,50 @@
 
 	.description {
 		margin-block-start: var(--space-2);
-		padding-inline-start: 56px; // align with text after toggle (44px toggle + 12px gap)
 	}
 
-	// For non-toggle options (dropdowns, radio buttons), no indent needed
-	> .description {
-		padding-inline-start: 0;
-	}
-
-	// Description after a select should not indent
-	> select + .description,
-	> .brag-book-gallery-grid-buttons + .description {
-		padding-inline-start: 0;
+	// A description that explains a toggle lines up with the toggle's own text
+	// (44px switch + 12px gap) instead of starting under the switch.
+	> .brag-book-gallery-toggle-wrapper ~ .description {
+		padding-inline-start: 56px;
 	}
 }
 
 /* Character count for SEO fields */
 .character-count {
-	margin-top: 5px;
-	font-size: 13px;
-	color: #666;
-}
+	margin-block-start: var(--space-1);
+	font-size: var(--text-xs);
+	color: var(--slate-500);
 
-.character-count .warning-text {
-	color: #d63638;
-	margin-left: 10px;
+	.is-near {
+		color: var(--amber-600);
+	}
+
+	.is-ideal {
+		color: var(--green-600);
+	}
+
+	.is-over {
+		color: var(--red-600);
+	}
+
+	.warning-text {
+		color: var(--red-600);
+		margin-inline-start: var(--space-2-5);
+	}
 }
 
 /* SERP Preview styling */
-.serp-preview-container {
-	margin-top: 30px;
-	padding: 20px;
-	background: #f0f0f1;
-	border-radius: 4px;
+.brag-book-gallery-admin-wrap .serp-preview-container {
+	margin-block-start: var(--space-8);
+	padding: var(--space-5);
+	background: var(--slate-100);
+	border-radius: var(--rounded-lg);
 
 	h3 {
-		margin-top: 0;
-		margin-bottom: 15px;
-		color: #1d2327;
+		margin-block: 0 var(--space-4);
+		font-size: var(--text-lg);
+		color: var(--slate-800);
 	}
 }
 
@@ -504,22 +526,27 @@
 
 /* Slug status messages */
 .slug-status {
-	margin-top: 5px;
-	font-size: 13px;
+	margin-block-start: var(--space-1);
+	font-size: var(--text-xs);
 	display: none;
 
+	&.is-checking {
+		color: var(--slate-500);
+		display: block;
+	}
+
 	&.warning {
-		color: #dba617;
+		color: var(--amber-600);
 		display: block;
 	}
 
 	&.success {
-		color: #00a32a;
+		color: var(--green-600);
 		display: block;
 	}
 
 	&.error {
-		color: #d63638;
+		color: var(--red-600);
 		display: block;
 	}
 }
@@ -532,6 +559,29 @@
 #generate-page-btn:disabled {
 	opacity: 0.6;
 	cursor: not-allowed;
+}
+
+/* Custom CSS code editor */
+.brag-book-gallery-admin-wrap .brag-book-gallery-code-editor {
+	inline-size: 100%;
+	font-family: Consolas, Monaco, 'Courier New', monospace;
+	font-size: var(--text-sm);
+	line-height: var(--leading-normal);
+	tab-size: 4;
+}
+
+.brag-book-gallery-code-editor__toolbar {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2-5);
+	margin-block-start: var(--space-2-5);
+}
+
+.brag-book-gallery-code-editor__status {
+	margin-inline-start: auto;
+	color: var(--slate-500);
+	font-size: var(--text-xs);
+	font-variant-numeric: tabular-nums;
 }
 
 /* Monaco Editor styling */
@@ -593,4 +643,66 @@
 /* Ensure Monaco Editor integrates well with WordPress admin */
 .monaco-editor {
 	font-family: Consolas, Monaco, 'Courier New', monospace !important;
+}
+
+/* -----------------------------------------------------------------------------
+   Settings field
+   One row primitive for every tab on the General page: label, control, help.
+   Controls are held to a readable width instead of stretching the panel.
+   -------------------------------------------------------------------------- */
+.brag-book-gallery-admin-wrap {
+
+	.brag-book-gallery-field {
+
+		> input[type="text"],
+		> input[type="email"],
+		> input[type="url"],
+		> input[type="password"],
+		> textarea,
+		> select,
+		> .large-text,
+		> .gallery-slug-input-row,
+		> .brag-book-gallery-code-editor {
+			max-inline-size: 34rem;
+			inline-size: 100%;
+		}
+
+		> input[type="number"],
+		> .small-text {
+			inline-size: 7rem;
+		}
+
+		> select {
+			inline-size: auto;
+			min-inline-size: 14rem;
+		}
+
+		> .description,
+		> .character-count {
+			max-inline-size: 68ch;
+		}
+
+		// A checkbox that labels itself sits inline with its text.
+		> label > input[type="checkbox"] {
+			margin-inline-end: var(--space-2);
+		}
+	}
+
+	// The code editor is the exception: it wants the whole panel.
+	.brag-book-gallery-field > .brag-book-gallery-code-editor,
+	.brag-book-gallery-field > .CodeMirror {
+		max-inline-size: none;
+	}
+}
+
+/* Search result preview panel — WordPress admin puts h4 in small caps, which is
+   not a style this system uses; the label is declared outright instead. */
+.brag-book-gallery-admin-wrap .serp-preview-container h4 {
+	margin-block: 0 var(--space-3);
+	font-size: var(--text-sm);
+	font-weight: var(--font-semibold);
+	line-height: var(--leading-5);
+	letter-spacing: normal;
+	text-transform: none;
+	color: var(--slate-700);
 }

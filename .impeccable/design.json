@@ -1,0 +1,473 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-19T12:12:00Z",
+  "title": "Design System: BRAG book Gallery",
+  "extensions": {
+    "colorMeta": {
+      "ink-black": {
+        "role": "primary",
+        "displayName": "Ink Black",
+        "canonical": "#030712",
+        "tonalRamp": [
+          "#030712",
+          "#111827",
+          "#1f2937",
+          "#374151",
+          "#6b7280",
+          "#9ca3af",
+          "#d1d5db",
+          "#f3f4f6"
+        ]
+      },
+      "brag-crimson": {
+        "role": "primary",
+        "displayName": "BRAG Crimson",
+        "canonical": "#CC0000",
+        "tonalRamp": [
+          "#3d0000",
+          "#660000",
+          "#990000",
+          "#CC0000",
+          "#e63333",
+          "#f06666",
+          "#f7a3a3",
+          "#fde1e1"
+        ]
+      },
+      "ink-gray": {
+        "role": "neutral",
+        "displayName": "Ink Gray",
+        "canonical": "#4a5565",
+        "tonalRamp": [
+          "#15181d",
+          "#252b33",
+          "#363e49",
+          "#4a5565",
+          "#7b8798",
+          "#a6b0bd",
+          "#ccd3db",
+          "#eef1f4"
+        ]
+      },
+      "light-gray": {
+        "role": "neutral",
+        "displayName": "Light Gray",
+        "canonical": "#e5e7eb",
+        "tonalRamp": [
+          "#1f2124",
+          "#33363b",
+          "#4c5057",
+          "#6b7078",
+          "#9096a0",
+          "#b8bec7",
+          "#e5e7eb",
+          "#f7f8f9"
+        ]
+      },
+      "lighter-gray": {
+        "role": "neutral",
+        "displayName": "Lighter Gray",
+        "canonical": "#f3f4f6"
+      },
+      "lightest-gray": {
+        "role": "neutral",
+        "displayName": "Lightest Gray",
+        "canonical": "#f9fafb"
+      },
+      "white": {
+        "role": "neutral",
+        "displayName": "White",
+        "canonical": "#FFFFFF"
+      },
+      "slate-900": {
+        "role": "secondary",
+        "displayName": "Slate 900",
+        "canonical": "#0f172a",
+        "tonalRamp": [
+          "#020617",
+          "#0f172a",
+          "#1e293b",
+          "#334155",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#f8fafc"
+        ]
+      },
+      "slate-800": {
+        "role": "secondary",
+        "displayName": "Slate 800",
+        "canonical": "#1e293b"
+      },
+      "slate-700": {
+        "role": "neutral",
+        "displayName": "Slate 700",
+        "canonical": "#334155"
+      },
+      "slate-600": {
+        "role": "neutral",
+        "displayName": "Slate 600",
+        "canonical": "#475569"
+      },
+      "slate-500": {
+        "role": "neutral",
+        "displayName": "Slate 500",
+        "canonical": "#64748b"
+      },
+      "slate-400": {
+        "role": "neutral",
+        "displayName": "Slate 400",
+        "canonical": "#94a3b8"
+      },
+      "slate-300": {
+        "role": "neutral",
+        "displayName": "Slate 300",
+        "canonical": "#cbd5e1"
+      },
+      "slate-200": {
+        "role": "neutral",
+        "displayName": "Slate 200",
+        "canonical": "#e2e8f0"
+      },
+      "slate-100": {
+        "role": "neutral",
+        "displayName": "Slate 100",
+        "canonical": "#f1f5f9"
+      },
+      "slate-50": {
+        "role": "neutral",
+        "displayName": "Slate 50",
+        "canonical": "#f8fafc"
+      },
+      "blue-500": {
+        "role": "secondary",
+        "displayName": "Focus Blue",
+        "canonical": "#3b82f6"
+      },
+      "green-700": {
+        "role": "tertiary",
+        "displayName": "Success Green",
+        "canonical": "#15803d"
+      },
+      "red-600": {
+        "role": "tertiary",
+        "displayName": "Danger Red",
+        "canonical": "#dc2626"
+      },
+      "amber-500": {
+        "role": "tertiary",
+        "displayName": "Warning Amber",
+        "canonical": "#f59e0b"
+      },
+      "skeleton-base": {
+        "role": "neutral",
+        "displayName": "Skeleton Base",
+        "canonical": "#f0f0f0"
+      },
+      "skeleton-sheen": {
+        "role": "neutral",
+        "displayName": "Skeleton Sheen",
+        "canonical": "#e0e0e0"
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Gallery h1. 48px at 1024px and up, 32px below. Weight inherited from the host theme, never asserted."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Gallery h2. 44px at 1024px and up, 28px below."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Gallery h3-h5, all one size. Sidebar and dialog titles."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Gallery case descriptions, filter labels, form copy."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Uppercase 0.05em. Buttons, grid-size selector, badges. The gallery's only typographic ornament."
+      },
+      "admin-body": {
+        "displayName": "Admin Body",
+        "purpose": "WP admin default. One step smaller than the gallery throughout."
+      },
+      "admin-label": {
+        "displayName": "Admin Label",
+        "purpose": "Admin buttons, form table headers, active tab."
+      },
+      "admin-mono": {
+        "displayName": "Admin Mono",
+        "purpose": "The Custom CSS editor textarea. The only monospace in either realm."
+      }
+    },
+    "shadows": [
+      {
+        "name": "sm",
+        "value": "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
+        "purpose": "Admin container, sticky tab bar, Load More at rest."
+      },
+      {
+        "name": "base",
+        "value": "0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)",
+        "purpose": "Admin card at rest."
+      },
+      {
+        "name": "md",
+        "value": "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+        "purpose": "Admin card hover, Load More hover."
+      },
+      {
+        "name": "lg",
+        "value": "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
+        "purpose": "Gallery cards and card summaries at rest, sidebar drawer, dialog, primary-button hover. Resting elevation is how the gallery holds its own plane inside a host theme."
+      },
+      {
+        "name": "xl",
+        "value": "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+        "purpose": "Declared in both realms, effectively unused."
+      },
+      {
+        "name": "sidebar-edge",
+        "value": "inset -1px 0 0 #f3f4f6",
+        "purpose": "The sidebar separator, drawn as a shadow so it never participates in layout."
+      }
+    ],
+    "motion": [
+      {
+        "name": "gallery-transition",
+        "value": "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+        "purpose": "The gallery realm's single transition token. Buttons, checkboxes, filter options, cards, drawer."
+      },
+      {
+        "name": "admin-transition-colors",
+        "value": "color, background-color, border-color, text-decoration-color, fill, stroke 150ms cubic-bezier(0.4, 0, 0.2, 1)",
+        "purpose": "Admin control state changes."
+      },
+      {
+        "name": "admin-transition-shadow",
+        "value": "box-shadow 150ms cubic-bezier(0.4, 0, 0.2, 1)",
+        "purpose": "Admin card hover lift."
+      },
+      {
+        "name": "grid-reflow",
+        "value": "grid-template-columns 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+        "purpose": "Animates a column-count change in the case grid instead of snapping."
+      },
+      {
+        "name": "expand-down",
+        "value": "0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+        "purpose": "Filter group disclosure, to max-height 300px."
+      },
+      {
+        "name": "load-more",
+        "value": "all 0.15s ease",
+        "purpose": "Load More button states."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "xs",
+        "value": "400px"
+      },
+      {
+        "name": "sm",
+        "value": "576px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      },
+      {
+        "name": "xl",
+        "value": "1280px"
+      },
+      {
+        "name": "card-summary",
+        "value": "400px (container query, inline-size)"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Gallery Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The gallery's decision button. Inverts entirely on hover.",
+      "html": "<button class=\"ds-btn-primary\">View Case</button>",
+      "css": ".ds-btn-primary { padding: 16px 24px; background-color: #030712; color: #FFF; border: 2px solid #030712; border-radius: 4px; font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); } .ds-btn-primary:hover { background: #FFF; color: #030712; box-shadow: 0 10px 15px -3px rgba(0,0,0,.1), 0 4px 6px -2px rgba(0,0,0,.05); } .ds-btn-primary:focus-visible { outline: 2px solid #030712; outline-offset: 2px; } .ds-btn-primary:disabled { opacity: .6; cursor: not-allowed; }"
+    },
+    {
+      "name": "Load More Button",
+      "kind": "button",
+      "refersTo": "button-load-more",
+      "description": "Pagination continuation. Deliberately quieter than the primary button.",
+      "html": "<button class=\"ds-btn-load-more\">Load More</button>",
+      "css": ".ds-btn-load-more { display: inline-flex; align-items: center; gap: 8px; padding: 12px 32px; background: #fff; color: #6b7280; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 15px; font-weight: 500; cursor: pointer; transition: all .15s ease; box-shadow: 0 1px 2px 0 rgba(0,0,0,.05); font-family: inherit; } .ds-btn-load-more:hover:not(:disabled) { background: #f9fafb; border-color: #d1d5db; box-shadow: 0 4px 6px -1px rgba(0,0,0,.1), 0 2px 4px -1px rgba(0,0,0,.06); } .ds-btn-load-more:focus-visible { outline: 2px solid #030712; outline-offset: 2px; } .ds-btn-load-more:disabled { opacity: .6; cursor: not-allowed; }"
+    },
+    {
+      "name": "Favorite / Share Icon Button",
+      "kind": "button",
+      "refersTo": "icon-button",
+      "description": "40px transparent circle over card imagery. Favorited state fills the heart red. Note: the shipped component sets outline:none on focus with no replacement; the snippet below shows the intended fixed state.",
+      "html": "<div class=\"ds-icon-btn-bed\"><button class=\"ds-icon-btn\" data-favorited=\"true\" aria-label=\"Favorite this case\"><svg viewBox=\"0 -960 960 960\" width=\"24\" height=\"24\" aria-hidden=\"true\"><path d=\"m480-147-27-24q-100-91-166-157T182-447q-39-53-52-100t-13-95q0-83 56-139t139-56q52 0 100 25t68 68q20-43 68-68t100-25q83 0 139 56t56 139q0 48-13 95t-52 100q-39 53-105 119T507-171l-27 24Z\"/></svg></button></div>",
+      "css": ".ds-icon-btn-bed { background: #4a5565; padding: 8px; border-radius: 4px; display: inline-block; } .ds-icon-btn { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border: 0 none; background: transparent; border-radius: 10em; padding: 0; cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); } .ds-icon-btn svg { width: 24px; height: 24px; fill: #fff; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); } .ds-icon-btn[data-favorited=\"true\"] svg { fill: red; } .ds-icon-btn:hover svg { transform: scale(1.1); } .ds-icon-btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }"
+    },
+    {
+      "name": "Gallery Filter Checkbox",
+      "kind": "input",
+      "refersTo": "case-card-link",
+      "description": "Custom 20px checkbox with an inline SVG tick. The gallery's only form control.",
+      "html": "<li class=\"ds-filter-option\"><input type=\"checkbox\" id=\"ds-cb\" checked><label for=\"ds-cb\">Arm Lift</label></li>",
+      "css": ".ds-filter-option { display: flex; align-items: center; list-style: none; padding: 12px 16px; margin: 0; font-family: 'Poppins', sans-serif; font-size: 16px; color: #030712; } .ds-filter-option:hover label { color: #4a5565; } .ds-filter-option input[type=checkbox] { appearance: none; -webkit-appearance: none; position: relative; margin: 0 12px 0 0; width: 20px; height: 20px; background-color: #FFF; border: 1px solid #f3f4f6; border-radius: 4px; cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); flex-shrink: 0; } .ds-filter-option input[type=checkbox]:hover { border-color: #e5e7eb; } .ds-filter-option input[type=checkbox]:checked { background-color: #030712; border-color: #030712; } .ds-filter-option input[type=checkbox]:checked::after { content: ''; position: absolute; inset: 0; background-image: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 -960 960 960' fill='white'%3E%3Cpath d='M400-318.23 254.23-464 296-505.77l104 104 264-264L705.77-624 400-318.23Z'/%3E%3C/svg%3E\"); background-size: 80%; background-position: center; background-repeat: no-repeat; } .ds-filter-option input[type=checkbox]:focus { outline: none; box-shadow: 0 0 0 3px rgba(17,24,39,.1); }"
+    },
+    {
+      "name": "Nudity Warning Overlay",
+      "kind": "custom",
+      "refersTo": "button-nudity-reveal",
+      "description": "Signature component and a product requirement. Blurred full-bleed overlay over sensitive card imagery; revealing is always the visitor's action.",
+      "html": "<div class=\"ds-nudity-bed\"><div class=\"ds-nudity\"><div class=\"ds-nudity-content\"><p class=\"ds-nudity-title\">Content Warning</p><p class=\"ds-nudity-caption\">This image contains nudity.</p><button class=\"ds-nudity-btn\">Show Image</button></div></div></div>",
+      "css": ".ds-nudity-bed { position: relative; width: 280px; height: 200px; background: linear-gradient(135deg, #9ca3af, #4a5565); border-radius: 4px; } .ds-nudity { position: absolute; inset: 0; color: #030712; background: rgba(255,255,255,.75); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 16px; text-align: center; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-radius: 4px; font-family: 'Poppins', sans-serif; } .ds-nudity-content { display: flex; flex-direction: column; align-items: center; gap: 8px; } .ds-nudity-title { font-size: 18px; font-weight: 600; margin: 0; } .ds-nudity-caption { font-size: 12px; line-height: 1.25; margin: 0; } .ds-nudity-btn { color: #FFF; background: #030712; border: none; padding: 12px 16px; border-radius: 4px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; cursor: pointer; transition: all .3s ease; } .ds-nudity-btn:hover { background: #4a5565; } .ds-nudity-btn:focus-visible { outline: 2px solid #030712; outline-offset: 2px; }"
+    },
+    {
+      "name": "Case Card",
+      "kind": "card",
+      "refersTo": "case-card-link",
+      "description": "The gallery's atomic unit. Resting shadow-lg, 4px corners, container-query summary row.",
+      "html": "<article class=\"ds-case-card\"><a class=\"ds-case-card-link\" href=\"#\"><span class=\"ds-case-card-distance\">2.4 mi</span><div class=\"ds-case-card-image\"></div></a><div class=\"ds-case-card-summary\"><div class=\"ds-case-card-info\"><span class=\"ds-case-card-name\">Arm Lift</span><span class=\"ds-case-card-num\">Case #10428</span></div></div></article>",
+      "css": ".ds-case-card { position: relative; width: 280px; font-family: 'Poppins', sans-serif; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); } .ds-case-card-link { position: relative; z-index: 0; display: block; text-decoration: none; color: inherit; border-radius: 4px; box-shadow: 0 10px 15px -3px rgba(0,0,0,.1), 0 4px 6px -2px rgba(0,0,0,.05); overflow: hidden; cursor: pointer; } .ds-case-card-image { height: 180px; background: linear-gradient(135deg, #e5e7eb, #9ca3af); } .ds-case-card-distance { position: absolute; top: 8px; left: 8px; z-index: 3; display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; background-color: rgba(0,0,0,.75); color: #FFF; font-size: 12px; font-weight: 500; line-height: 1; border-radius: 4px; pointer-events: none; } .ds-case-card-summary { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; border-bottom-left-radius: 4px; border-bottom-right-radius: 4px; container-type: inline-size; box-shadow: 0 10px 15px -3px rgba(0,0,0,.1), 0 4px 6px -2px rgba(0,0,0,.05); padding: 8px 12px; cursor: pointer; } .ds-case-card-info { display: flex; align-items: center; gap: 8px; flex-basis: 100%; padding: 12px; border: 1px solid #e5e7eb; border-top-left-radius: 4px; border-bottom-left-radius: 4px; line-height: 20px; flex-grow: 1; } .ds-case-card-name { font-size: 14px; } .ds-case-card-num { font-size: 12px; font-weight: 400; color: #4a5565; } @container (min-width: 400px) { .ds-case-card-info { flex-basis: auto; } }"
+    },
+    {
+      "name": "Loading Skeleton",
+      "kind": "custom",
+      "refersTo": "case-card-link",
+      "description": "The only gradient the gallery realm permits.",
+      "html": "<div class=\"ds-skeleton\"></div>",
+      "css": ".ds-skeleton { width: 280px; height: 180px; border-radius: 4px; background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: ds-shimmer 1.5s infinite; } @keyframes ds-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }"
+    },
+    {
+      "name": "Admin Primary Button",
+      "kind": "button",
+      "refersTo": "admin-button-primary",
+      "description": "Slate, not crimson. Crimson marks where you are; slate marks what you can do.",
+      "html": "<button class=\"ds-admin-btn\">Run Sync</button>",
+      "css": ".ds-admin-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 16px; font-size: 14px; font-weight: 500; line-height: 1.25rem; border-radius: 6px; border: 1px solid #0f172a; background: #0f172a; color: #fff; cursor: pointer; transition: color, background-color, border-color 150ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-admin-btn:hover { background: #1e293b; border-color: #1e293b; } .ds-admin-btn:focus-visible { outline: 2px solid #3b82f6; outline-offset: 2px; }"
+    },
+    {
+      "name": "Admin Secondary Button",
+      "kind": "button",
+      "refersTo": "admin-button-secondary",
+      "description": "White with a slate border for non-committal admin actions.",
+      "html": "<button class=\"ds-admin-btn-secondary\">Test Connection</button>",
+      "css": ".ds-admin-btn-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 16px; font-size: 14px; font-weight: 500; line-height: 1.25rem; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; color: #334155; cursor: pointer; transition: color, background-color, border-color 150ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-admin-btn-secondary:hover { background: #f8fafc; border-color: #94a3b8; color: #0f172a; } .ds-admin-btn-secondary:focus-visible { outline: 2px solid #3b82f6; outline-offset: 2px; }"
+    },
+    {
+      "name": "Admin Text Field",
+      "kind": "input",
+      "refersTo": "admin-input",
+      "description": "Slate-bordered field with the realm's Blue 500 focus ring drawn at -1px offset.",
+      "html": "<input class=\"ds-admin-input\" type=\"text\" value=\"wpb_1a2b3c4d5e\" aria-label=\"API token\">",
+      "css": ".ds-admin-input { border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px 12px; font-size: 14px; background: #fff; color: #0f172a; transition: color, background-color, border-color 150ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-admin-input:hover { border-color: #94a3b8; } .ds-admin-input:focus { outline: 2px solid #3b82f6; outline-offset: -1px; border-color: #3b82f6; }"
+    },
+    {
+      "name": "Admin Card",
+      "kind": "card",
+      "refersTo": "admin-card",
+      "description": "Admin surface. Flat-ish at rest, lifts on hover — the opposite doctrine from the gallery.",
+      "html": "<div class=\"ds-admin-card\"><h3 class=\"ds-admin-card-title\">Last Sync</h3><p class=\"ds-admin-card-body\">1,284 cases updated 6 hours ago.</p></div>",
+      "css": ".ds-admin-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 24px; box-shadow: 0 1px 3px 0 rgba(0,0,0,.1), 0 1px 2px -1px rgba(0,0,0,.1); transition: box-shadow 150ms cubic-bezier(0.4, 0, 0.2, 1); max-width: 320px; } .ds-admin-card:hover { box-shadow: 0 4px 6px -1px rgba(0,0,0,.1), 0 2px 4px -2px rgba(0,0,0,.1); } .ds-admin-card-title { margin: 0 0 8px; font-size: 16px; font-weight: 600; color: #0f172a; } .ds-admin-card-body { margin: 0; font-size: 14px; line-height: 1.25rem; color: #475569; }"
+    },
+    {
+      "name": "Admin Tabs",
+      "kind": "nav",
+      "refersTo": "admin-tab-active",
+      "description": "Sticky settings navigation. The active tab is the one place BRAG Crimson appears as both label and 2px underline.",
+      "html": "<nav class=\"ds-tabs\"><ul class=\"ds-tab-list\"><li class=\"ds-tab-item active\"><a class=\"ds-tab-link\" href=\"#\">General</a></li><li class=\"ds-tab-item\"><a class=\"ds-tab-link\" href=\"#\">API</a></li><li class=\"ds-tab-item\"><a class=\"ds-tab-link\" href=\"#\">Sync</a></li></ul></nav>",
+      "css": ".ds-tabs { background: #f8fafc; overflow: hidden; box-shadow: 0 1px 2px 0 rgba(0,0,0,.05); border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; } .ds-tab-list { display: flex; margin: 0; padding: 0; list-style: none; } .ds-tab-item { flex: 0 0 auto; margin: 0; position: relative; } .ds-tab-link { position: relative; display: block; padding: 12px 20px; font-size: 14px; font-weight: 500; color: #475569; text-decoration: none; transition: color, background-color 150ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-tab-link:hover { color: #0f172a; } .ds-tab-item.active .ds-tab-link { color: #CC0000; background: #fff; font-weight: 600; } .ds-tab-item.active .ds-tab-link::after { content: ''; position: absolute; inset-inline: 0; inset-block-end: 0; block-size: 2px; background: #CC0000; } .ds-tab-link:focus-visible { outline: 2px solid #3b82f6; outline-offset: -2px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Clinical Portfolio",
+    "overview": "The result photography is the only thing allowed to be loud. Everything else is a museum wall behind it: near-achromatic, evenly lit, dimensionally quiet. A visitor scanning a procedure gallery is comparing clinical outcomes, and any color the interface spends competes directly with skin tone, bruising, and healing — the exact signal they came to read. So the gallery realm holds Ink Black, four grays, and white, and nothing else. That restraint is not minimalism as taste; it is the product working.\n\nThe system is deliberately two realms, and they are not required to converge. The gallery realm (.brag-book-gallery-wrapper, tokens namespaced --wp--custom--brag-book-gallery--*) renders inside an unknown host theme and must be legible against any of them; it self-scopes every custom property, sets box-sizing on its own subtree, and re-declares the same token block on the globally-printed nudity warning so no var() resolves to nothing outside the wrapper. The admin realm (.brag-book-gallery-admin-wrap, tokens --slate-*, --space-*, --text-*) sits inside WordPress admin and is BRAG book's own product surface: confident and branded, with BRAG Crimson carrying identity and active state. Crimson is admin-only by decision, not by accident.\n\nPoppins is loaded and self-hosted for the gallery realm only, and it is defeasible: a .disable-custom-font class on the wrapper hands typography back to the host theme. The admin realm inherits WordPress's own font stack and never loads a webfont.",
+    "keyCharacteristics": [
+      "Achromatic gallery, branded admin — a documented split, not drift.",
+      "Every gallery value is a custom property with an inline fallback, because the host theme cannot be trusted to have loaded anything.",
+      "Four-pixel corner radius throughout the gallery; nothing rounder than a pill on icon buttons.",
+      "Uppercase, letter-spaced labels are the gallery's only typographic ornament.",
+      "Two space scales that happen to share the same numbers: gallery in px, admin in rem."
+    ],
+    "rules": [
+      {
+        "name": "The Achromatic Gallery Rule",
+        "body": "No hue enters the gallery realm. The one exception is the favorited heart, which fills red, and the skeleton sheen, which is gray. If a new gallery element wants color, the answer is weight, size, or space instead.",
+        "section": "colors"
+      },
+      {
+        "name": "The Crimson Stays Home Rule",
+        "body": "BRAG Crimson is admin chrome. It does not cross into .brag-book-gallery-wrapper.",
+        "section": "colors"
+      },
+      {
+        "name": "The Fallback-Or-It-Didn't-Happen Rule",
+        "body": "Every var() in the gallery realm carries an inline fallback, because the wrapper's tokens are scoped to the wrapper and gallery markup can be printed outside it. Known defect: --wp--custom--brag-book-gallery--color--primary is referenced six times and declared nowhere, so only its #CC0000 fallback ever paints — an accidental crimson leak into an achromatic realm.",
+        "section": "colors"
+      },
+      {
+        "name": "The Uppercase-Is-For-Actions Rule",
+        "body": "Uppercase with 0.05em tracking marks something interactive or structural — a button, a grid-size label, a badge. Never a heading, never body copy.",
+        "section": "typography"
+      },
+      {
+        "name": "The Borrowed-Font Rule",
+        "body": "Poppins is a default, not a requirement. .disable-custom-font on the wrapper must leave every layout intact; nothing may depend on Poppins' metrics.",
+        "section": "typography"
+      },
+      {
+        "name": "The Container-Query-First Rule",
+        "body": "A card and its internals respond to their own width, never to the viewport. Only page-level structure — sidebar, grid column count — reads breakpoints.",
+        "section": "layout"
+      },
+      {
+        "name": "The 1280 Rule",
+        "body": "The desktop gallery begins at 1280px, not 1024px. Below it, the sidebar is a drawer and the grid stays at 2 columns.",
+        "section": "layout"
+      },
+      {
+        "name": "The Own-Plane Rule",
+        "body": "Gallery surfaces carry shadow-lg at rest because they must read as the plugin's plane inside a theme that owns everything around them. Flat-at-rest is correct for admin and wrong for the gallery.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Four-Pixel Rule",
+        "body": "Gallery corners are 4px. A new gallery surface does not get a new radius; if it needs to feel softer, it is a pill or it is the dialog.",
+        "section": "shapes"
+      }
+    ],
+    "dos": [
+      "Do scope every new gallery custom property to .brag-book-gallery-wrapper and to any element printed outside it, exactly as _wrapper.scss does for the global nudity warning.",
+      "Do give every gallery var() an inline fallback matching the token's declared value.",
+      "Do reach for a container query when a card or its internals need to respond; reserve media queries for sidebar and grid structure.",
+      "Do keep gallery surfaces at shadow-lg at rest — that resting elevation is how the plugin holds its own plane inside a host theme.",
+      "Do express spacing multiples as calc(N * var(--…--spacer)) rather than minting a new token.",
+      "Do use outline: 2px solid var(--blue-500) at 2px offset for every new admin focus state; the global *:focus-visible rule already establishes it.",
+      "Do treat Poppins as removable — .disable-custom-font must leave layout intact."
+    ],
+    "donts": [
+      "Don't introduce a hue into the gallery realm. Weight, size, and space carry emphasis there.",
+      "Don't use BRAG Crimson outside .brag-book-gallery-admin-wrap.",
+      "Don't reference --wp--custom--brag-book-gallery--color--primary; it is declared nowhere and its #CC0000 fallback is an unintended leak. Remove the reference or declare an achromatic token instead.",
+      "Don't flatten the gallery to a state-driven shadow model. That rule belongs to the admin realm only.",
+      "Don't add a third radius to the gallery. 4px, or the icon-button pill, or the dialog's 12px.",
+      "Don't kill focus with outline: none unless the same rule supplies a replacement ring — the favorite and share buttons currently violate this and should be fixed, not copied.",
+      "Don't set uppercase on headings or body copy; uppercase marks actions and structural labels.",
+      "Don't assume the host theme supplies a reset, a font, a container width, or a heading scale."
+    ]
+  }
+}

@@ -4,7 +4,10 @@
 // admin / section
 // -----------------------------------------------------------------------------
 
-.brag-book-gallery-section {
+// Scoped to the admin wrap so a section outranks the container styling it sits
+// in (.brag-book-gallery-tab-panel also declares h2 at equal specificity, and
+// loads later). Where a section is used, the section owns its headings.
+.brag-book-gallery-admin-wrap .brag-book-gallery-section {
 	margin-block-end: var(--space-6);
 	padding-block-end: var(--space-6);
 
@@ -26,5 +29,75 @@
 		font-size: var(--text-lg);
 		color: var(--slate-800);
 		margin-block: var(--space-4) var(--space-2);
+	}
+}
+
+// -----------------------------------------------------------------------------
+// admin / subsection
+//
+// A settings group inside a tab. Bands, not boxes: a hairline and generous
+// leading space carry the grouping, so a section that contains a card does not
+// become a card inside a card.
+// -----------------------------------------------------------------------------
+
+.brag-book-gallery-admin-wrap .brag-book-gallery-subsection {
+	padding-block: var(--space-7) var(--space-6);
+	border-block-start: var(--space-px) solid var(--slate-200);
+
+	// The first band sits directly under the tab's h2, which already rules off.
+	&:first-of-type {
+		padding-block-start: var(--space-2);
+		border-block-start: 0;
+	}
+
+	> h3,
+	.gallery-page-settings__header h3 {
+		margin-block: 0 var(--space-3);
+		font-size: var(--text-base);
+		font-weight: var(--font-semibold);
+		line-height: var(--leading-6);
+		letter-spacing: -0.01em;
+		color: var(--slate-900);
+	}
+
+
+	&__intro {
+		margin-block: calc(var(--space-3) * -1) var(--space-4);
+		max-inline-size: 68ch;
+		color: var(--slate-500);
+		font-size: var(--text-sm);
+		line-height: var(--leading-normal);
+	}
+	// Maintenance settings that are not part of the visitor-facing design.
+	&--muted {
+		margin-block-start: var(--space-4);
+		padding-inline: var(--space-5);
+		background: var(--slate-50);
+		border: var(--space-px) solid var(--slate-200);
+		border-radius: var(--rounded-lg);
+
+		> h3 {
+			color: var(--slate-700);
+		}
+	}
+
+	// Sections whose fields are a plain stack rather than a grid or option list.
+	&__fields > .gallery-page-settings-field:first-child {
+		padding-block-start: 0;
+	}
+
+	// The option stack already separates its own rows; it does not need to
+	// re-separate itself from the heading above it.
+	.brag-book-gallery-fields {
+		margin-block-start: 0;
+	}
+
+	.brag-book-gallery-field:first-child {
+		padding-block-start: 0;
+		border-block-start: 0;
+	}
+
+	.display-settings-grid + .brag-book-gallery-fields {
+		margin-block-start: var(--space-4);
 	}
 }
