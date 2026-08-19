@@ -223,6 +223,11 @@ function updateAdjacentPostLinks(procedureSlug, termId, providerSlug, providerId
 
 	// Fetch adjacent cases via AJAX, scoped to the provider when one is active.
 	fetchAdjacentCases(procedureSlug, termId, currentPostId, (adjacentCases) => {
+		// A failed lookup says nothing about the referrer's scope, so the
+		// server-rendered links stay as they are rather than being torn out.
+		if (!adjacentCases) {
+			return;
+		}
 
 		// The server renders no button at either end of the procedure, but
 		// provider navigation wraps, so a missing button gets built here rather
@@ -234,18 +239,33 @@ function updateAdjacentPostLinks(procedureSlug, termId, providerSlug, providerId
 			prevLink = createCaseNavButton('prev');
 		}
 
-		// Update next link if we have a new URL
-		if (adjacentCases.next && nextLink) {
-			nextLink.href = adjacentCases.next;
-			nextLink.style.display = '';
-		}
-
-		// Update prev link if we have a new URL
-		if (adjacentCases.prev && prevLink) {
-			prevLink.href = adjacentCases.prev;
-			prevLink.style.display = '';
-		}
+		// The response is the authority on the referrer's scope: the server
+		// rendered these buttons from the case's primary procedure, so a
+		// direction with no case in scope - a provider holding this one case,
+		// for instance - loses its button instead of pointing out of scope.
+		applyAdjacentLink(nextLink, adjacentCases.next);
+		applyAdjacentLink(prevLink, adjacentCases.prev);
 	}, providerSlug, providerId);
+}
+
+/**
+ * Point a navigation button at a case, or remove it when there is none.
+ *
+ * @param {HTMLElement|null} link Existing navigation button, if any.
+ * @param {string|null} url Case URL for this direction within the referrer scope.
+ */
+function applyAdjacentLink(link, url) {
+	if (!link) {
+		return;
+	}
+
+	if (!url) {
+		link.remove();
+		return;
+	}
+
+	link.href = url;
+	link.style.display = '';
 }
 
 /**
@@ -344,12 +364,12 @@ function fetchAdjacentCases(procedureSlug, termId, currentPostId, callback, prov
 			} else {
 				console.error('Failed to fetch adjacent cases:', data);
 				console.error('Error details:', data.data || data);
-				callback({ next: null, prev: null });
+				callback(null);
 			}
 		})
 		.catch(error => {
 			console.error('Error fetching adjacent cases:', error);
-			callback({ next: null, prev: null });
+			callback(null);
 		});
 }
 
