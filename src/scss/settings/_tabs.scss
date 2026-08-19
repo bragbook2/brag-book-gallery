@@ -7,6 +7,7 @@
 .brag-book-gallery-tabs {
 	position: sticky;
 	top: 2rem;
+	z-index: var(--z-30);
 	background: var(--slate-50);
 	overflow: hidden;
 	margin-block-end: var(--space-6);
@@ -138,13 +139,17 @@
 .brag-book-gallery-side-tabs {
 	inline-size: 220px;
 	flex-shrink: 0;
-	padding: var(--space-2) var(--space-2) var(--space-6);
+	padding: var(--space-2);
 	background: var(--brag-book-gallery-white);
-	border-inline-end: var(--space-px) solid var(--slate-200);
+	border: var(--space-px) solid var(--slate-200);
+	border-radius: var(--rounded-xl);
+	box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
 
-	// The rail stays with the operator on tabs that scroll for pages.
+	// The rail stays with the operator on tabs that scroll for pages, clearing
+	// the page tab bar above it rather than sliding underneath it.
 	position: sticky;
-	inset-block-start: var(--space-8);
+	inset-block-start: var(--brag-book-gallery-sticky-top);
+	z-index: var(--z-10);
 	align-self: flex-start;
 
 	ul {
@@ -232,9 +237,7 @@
 	@media (max-width: 1024px) {
 		position: static;
 		inline-size: auto;
-		padding: 0;
-		border-inline-end: 0;
-		border-block-end: var(--space-px) solid var(--slate-200);
+		padding: var(--space-1-5);
 
 		ul {
 			flex-direction: row;
@@ -291,15 +294,147 @@
 	flex-wrap: wrap;
 	align-items: center;
 	gap: var(--space-3);
-	margin-block-start: var(--space-8);
-	padding-block: var(--space-4);
+	margin-block-start: var(--space-5);
+	padding: var(--space-4) var(--space-5);
 	background: var(--brag-book-gallery-white);
-	border-block-start: var(--space-px) solid var(--slate-200);
-	box-shadow: 0 -4px 6px -4px rgb(0 0 0 / 0.08);
+	border: var(--space-px) solid var(--slate-200);
+	border-radius: var(--rounded-xl);
+	box-shadow: 0 -4px 12px -6px rgb(15 23 42 / 0.15);
 }
 
 @media (prefers-reduced-motion: no-preference) {
 	.brag-book-gallery-tab-actions {
 		transition: var(--transition-shadow);
+	}
+}
+
+// A settings workspace: the cards need a ground to read as objects, so this
+// page fills the container's interior with one and lets the container's own
+// white surface disappear behind it. Scoped to the pages that opt in.
+.brag-book-gallery-admin-wrap .brag-book-gallery-tabbed-section--workspace {
+	margin: calc(var(--space-6) * -1);
+	margin-block-start: var(--space-2);
+	padding: var(--space-6);
+	border-block-start: var(--space-px) solid var(--slate-200);
+	border-end-start-radius: 0.8rem;
+	border-end-end-radius: 0.8rem;
+
+	.brag-book-gallery-tab-panel > h2 {
+		margin-block-start: 0;
+	}
+
+	// The bleed always matches the container's own padding; only the inner
+	// gutter tightens on narrow screens.
+	@media (max-width: 1024px) {
+		padding-inline: var(--space-4);
+	}
+}
+
+// -----------------------------------------------------------------------------
+// admin / section navigation
+//
+// The rail's second tier: the cards on the open tab, with the one being read
+// marked. It is built from the DOM, so it lists whatever the tab actually has.
+// -----------------------------------------------------------------------------
+
+.brag-book-gallery-section-nav {
+	margin-block-start: var(--space-3);
+	padding-block-start: var(--space-3);
+	border-block-start: var(--space-px) solid var(--slate-200);
+
+	&[hidden] {
+		display: none;
+	}
+
+	ul {
+		display: flex;
+		flex-direction: column;
+		gap: 0;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	li {
+		margin: 0;
+	}
+
+	a {
+		position: relative;
+		display: block;
+		padding: var(--space-1-5) var(--space-3);
+		border: 0;
+		color: var(--slate-500);
+		font-size: var(--text-xs);
+		line-height: var(--leading-4);
+		text-decoration: none;
+		transition: var(--transition-colors);
+
+		&:hover,
+		&:focus {
+			color: var(--slate-900);
+			box-shadow: none;
+		}
+
+		&:focus-visible {
+			outline: 2px solid var(--blue-500);
+			outline-offset: -2px;
+			border-radius: var(--rounded);
+		}
+
+		// The section being read takes the rail's own marker, one weight down
+		// from the tab above it.
+		&.is-current {
+			color: var(--brag-book-gallery-primary);
+			font-weight: var(--font-medium);
+
+			&::before {
+				content: '';
+				position: absolute;
+				inset-block: var(--space-1);
+				inset-inline-start: 0;
+				inline-size: var(--space-0-5);
+				border-radius: var(--rounded-full);
+				background: var(--brag-book-gallery-primary);
+			}
+		}
+	}
+
+	// Alongside the horizontal tab strip, the section list scrolls with it.
+	@media (max-width: 1024px) {
+		margin-block-start: var(--space-2);
+		padding-block-start: var(--space-2);
+
+		ul {
+			flex-direction: row;
+			gap: var(--space-1);
+			overflow-x: auto;
+			scrollbar-width: thin;
+		}
+
+		li {
+			flex: 0 0 auto;
+		}
+
+		a.is-current::before {
+			inset-block: auto 0;
+			inset-inline: var(--space-3);
+			inline-size: auto;
+			block-size: var(--space-0-5);
+		}
+	}
+}
+
+// A jumped-to card clears the sticky tab bar above it.
+.brag-book-gallery-admin-wrap .brag-book-gallery-subsection {
+	scroll-margin-block-start: var(--brag-book-gallery-sticky-top);
+
+	&:focus {
+		outline: none;
+	}
+
+	&:focus-visible {
+		outline: 2px solid var(--blue-500);
+		outline-offset: 2px;
 	}
 }

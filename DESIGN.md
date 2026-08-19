@@ -9,6 +9,7 @@ colors:
   lightest-gray: "#f9fafb"
   white: "#FFFFFF"
   brag-crimson: "#CC0000"
+  brag-crimson-deep: "#B30000"
   slate-900: "#0f172a"
   slate-800: "#1e293b"
   slate-700: "#334155"
@@ -63,6 +64,7 @@ rounded:
   admin: "4px"
   admin-md: "6px"
   admin-lg: "8px"
+  admin-xl: "12px"
   admin-panel: "0.8rem"
   admin-full: "9999px"
 spacing:
@@ -135,6 +137,16 @@ components:
     textColor: "{colors.slate-700}"
     rounded: "{rounded.admin-lg}"
     padding: "24px"
+  settings-card:
+    backgroundColor: "{colors.white}"
+    textColor: "{colors.slate-700}"
+    rounded: "{rounded.admin-xl}"
+    padding: "20px"
+  settings-card-header:
+    backgroundColor: "{colors.slate-50}"
+    textColor: "{colors.slate-900}"
+    typography: "{typography.admin-label}"
+    padding: "12px 20px"
   admin-input:
     backgroundColor: "{colors.white}"
     textColor: "{colors.slate-900}"
@@ -145,6 +157,26 @@ components:
     backgroundColor: "{colors.white}"
     textColor: "{colors.brag-crimson}"
     typography: "{typography.admin-label}"
+  admin-switch-on:
+    backgroundColor: "{colors.brag-crimson}"
+    rounded: "{rounded.admin-full}"
+    width: "44px"
+    height: "24px"
+  admin-switch-off:
+    backgroundColor: "{colors.slate-300}"
+    rounded: "{rounded.admin-full}"
+    width: "44px"
+    height: "24px"
+  admin-checkbox-checked:
+    backgroundColor: "{colors.brag-crimson}"
+    rounded: "{rounded.admin}"
+    width: "18px"
+    height: "18px"
+  admin-choice-selected:
+    backgroundColor: "{colors.slate-50}"
+    textColor: "{colors.slate-800}"
+    rounded: "{rounded.admin-md}"
+    padding: "12px"
 ---
 
 # Design System: BRAG book Gallery
@@ -174,7 +206,8 @@ Two palettes with no overlap by design: the gallery realm is achromatic, the adm
 ### Primary
 
 - **Ink Black** (`#030712`): The gallery's single working color. Body copy, links (including their hover state — links do not change color), primary button fill and border, checked checkbox fill, nudity-reveal button, sidebar titles. It is not pure black; the slight blue cast keeps it from vibrating against warm imagery.
-- **BRAG Crimson** (`#CC0000`): The admin realm's brand accent. Active tab label and its 2px underline bar, loading spinner arc, section emphasis. It is the plugin identifying itself inside someone else's dashboard.
+- **BRAG Crimson** (`#CC0000`): The admin realm's brand accent, and its *on* state. Active tab label and its 2px underline bar, a switch that is on, a checked checkbox, the selected radio choice and its border, the chosen column count, loading spinner arc. It is the plugin identifying itself inside someone else's dashboard, and the one colour that says a setting is live.
+- **BRAG Crimson Deep** (`#B30000`): One step down, for the hover state of a switch that is already on, so "on" has somewhere to go under the cursor without leaving the brand.
 
 ### Secondary
 
@@ -304,15 +337,46 @@ Checkboxes are fully custom: `appearance: none`, 20px, 4px radius, filled Ink Bl
 - **Case card summary:** A flex row that becomes a stack below its own 400px container width; 1px `light-gray` cell borders, bottom corners rounded to 4px, `8px 12px` padding.
 - **Admin card:** White, 1px Slate 200, 8px radius, 24px padding, `shadow` → `shadow-md` on hover.
 - **Admin container:** `max-inline-size: 1280px`, white, 24px padding, `0.8rem` radius, `shadow-sm`.
+- **Settings card** (the General page's section): white, 1px Slate 200, 12px radius, 20px padding, and a hairline shadow (`0 1px 2px rgb(15 23 42 / 0.04)`) that states an edge without lifting the card off the page. Its title bleeds to the card's edges as a Slate 50 bar ruled off from the body, so a group's extent is unmistakable at a glance. A `--muted` variant takes a Slate 50 body and a Slate 100 bar, which is how maintenance settings are demoted without being hidden.
+- **Settings workspace:** the section cards need a ground to read as objects, so the General page fills its container's interior with Slate 50 (bled out over the container's own padding) and lets the white container disappear behind it. The rail is a card on the same ground.
+
+### Named Rules
+
+**The One-Card-Deep Rule.** A settings group is a card; nothing inside it is another card. Grouping below that level is carried by an inset well (Slate 50, no border, `inset 0 1px 2px`), a bordered choice row, or a hairline — never by a second bordered, shadowed box.
 
 ### Inputs / Fields
 
 - **Gallery checkbox:** Custom 20px control described in Shapes. Focus is a 3px `rgba(17,24,39,.1)` ring via `box-shadow` after `outline: none` — soft, and the gallery's only focus affordance.
-- **Admin fields:** 1px Slate 300, 6px radius, `8px 12px`, 14px, white. Hover deepens the border to Slate 400; focus draws the Blue 500 2px outline at `-1px` offset and shifts the border to match. Selects are `appearance: none` with an inline SVG chevron 12px from the right edge; number spinners are stripped in both engines.
+- **Admin fields:** 1px Slate 300, 6px radius, 40px minimum height, `8px 12px`, 14px, white. Hover deepens the border to Slate 400; focus draws the Blue 500 2px outline at `-1px` offset and shifts the border to match. Number spinners are stripped in both engines.
+- **Select:** drawn here rather than by the platform — `appearance: none`, the same 40px height and 6px radius as the text inputs so a stack of mixed fields shares one silhouette, with a Slate 500 chevron inset 12px from the right edge and a 3× right padding so no option string can run under it. The open list stays the platform's own; only the closed control is ours.
+- **Controls fill their field.** Every input, select and textarea is `inline-size: 100%` of the row it sits in. A control that stops halfway across a card reads as a fragment of the layout rather than the answer to its label. Only help text keeps a measure (68ch).
+- **Number with a unit:** the input flexes to fill the row and the unit rides at its trailing edge as a joined Slate 50 chip (shared border, mirrored radii), rather than floating loose beside a stub of a field.
+
+### Switch, Checkbox and Radio
+
+The three controls share one state language: crimson means on, Blue 500 means focused, Slate 300 means off and available.
+
+- **Switch** (44×24, pill): Slate 300 track at rest, BRAG Crimson when on, Crimson Deep on hover-while-on, a 20px white knob with a 1px shadow travelling 20px over 150ms under `prefers-reduced-motion: no-preference`. The words beside it are a `<label for>` on the same input, so the whole row is the target rather than a 44px sliver.
+- **Checkbox** (18px, 4px radius): rebuilt from `appearance: none`, because the platform's own checkbox ignores this palette. White with a Slate 300 border; crimson fill and an inline white tick when checked.
+- **Radio choice**: a row you click, not a dot you aim at. 1px Slate 200, 6px radius, 12px padding, Slate 50 on hover; selected takes a crimson border, a Slate 50 ground and a crimson ring-dot. Selection is read with `:has(input:checked)` on the row itself, so the row and its control can never disagree.
+
+### Conditional Settings
+
+A setting that depends on another is nested beneath it behind a 2px Slate 200 rule, and is **removed** when its condition is off rather than dimmed. Dependencies are declared in the markup (`data-bb-requires`, plus `data-bb-requires-value` when a specific value is the trigger) and resolved in a pass that honours chains, so switching Providers off also takes away Practices and the Google Maps key beneath it.
+
+### Named Rules
+
+**The Hide, Never Disable Rule.** A conditional field is hidden with the `hidden` attribute, never `disabled`. A hidden input still posts its stored value; a disabled one posts nothing, and a settings form that posts nothing for a field writes that field empty. Hiding protects the saved value; disabling would quietly destroy it.
+
+**The Reveal-On-Intent Rule.** The reveal animation runs only once the operator has changed something (`body.bb-conditional-live`). The first paint is still, so a page that loads with six conditional fields already open does not animate six times before anyone has touched it.
 
 ### Navigation
 
 - **Filter sidebar:** White, 24px padding (16px below 480px), inset right edge. Filter groups are native `<details>`; options animate open via an `expandDown` keyframe to `max-height: 300px` over `0.3s cubic-bezier(0.4, 0, 0.2, 1)`. Options are 12px/16px rows whose label shifts to Ink Gray on hover.
+- **Section rail (second tier):** under the tab list, the rail lists the cards on the open tab and marks the one being read with the same crimson bar the active tab uses, one weight down (12px, Slate 500, crimson when current). It is built from the DOM at load and on every tab change, so a new section needs no wiring, and it hides itself when a tab has fewer than two sections. The current section is resolved from geometry on a passive scroll listener — the last card whose top has passed a 120px line, with the final card claiming the bottom of the page. It deliberately avoids `requestAnimationFrame`, which never fires in a background tab and would leave the tracker stalled.
+- **Drawn preview:** where a setting changes something a visitor will see, the settings screen draws it rather than embedding it. The nudity card carries a stand-in beside its copy fields — a flat-tone plate under the real overlay treatment (`rgb(255 255 255 / 0.75)` + `blur(16px)`), with the front-end's own type sizes, live-bound to the title, caption, button and decline fields and falling back to the shipped defaults when a field is blank. It changes shape with the preset (card for per-case, wide plate for the full-page warning) and shows the decline link only where that preset has one. No iframe and no case photo: a settings screen has no business loading patient imagery.
+- **Joined control group:** a select and its preview button are one control — matching 40px height, a shared 1px edge with no gap, and mirrored radii (the select gives up its trailing corners, the button its leading ones). The button takes a Slate 50 ground so it reads as the control's trailing affordance rather than a separate button that happens to touch.
+- **Sticky order.** Three things stick on this page and they are layered deliberately: the page tab bar at `top: 2rem` (clearing the WP admin bar) on `--z-30`, the settings rail at `--brag-book-gallery-sticky-top` — `2rem + 44px nav + 16px` — on `--z-10`, and the save bar at the foot on `--z-20`. Before that, the rail and the tab bar both stuck at `2rem` with no z-index and collided by exactly the nav's height.
 - **Admin tabs:** Sticky at `top: 2rem`, Slate 50 bar bled to the container edge with 1px Slate 200 top and bottom borders. Active tab goes white with a BRAG Crimson label and a 2px crimson underline drawn as an `::after`. Wraps to 50% items at 768px and full-width at 640px.
 
 ### Nudity Warning

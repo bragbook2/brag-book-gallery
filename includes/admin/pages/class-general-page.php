@@ -115,7 +115,7 @@ class General_Page extends Settings_Base {
 		</div>
 
 		<!-- General Settings with Side Tabs -->
-		<div class="brag-book-gallery-tabbed-section">
+		<div class="brag-book-gallery-tabbed-section brag-book-gallery-tabbed-section--workspace">
 			<?php $this->render_side_tabs(); ?>
 			<div class="brag-book-gallery-tab-content">
 				<?php $this->render_tab_content(); ?>
@@ -126,6 +126,261 @@ class General_Page extends Settings_Base {
 		<?php
 		ob_start();
 		?>
+		// Nudity preview: a drawn stand-in for the warning that follows what is
+		// typed, so the copy can be judged in shape rather than in a text field.
+		(function () {
+			'use strict';
+
+			const preview = document.querySelector( '.brag-book-gallery-nudity-preview' );
+			if ( ! preview ) {
+				return;
+			}
+
+			const notes = {
+				global: '<?php echo esc_js( __( 'One warning covers the whole page.', 'brag-book-gallery' ) ); ?>',
+				default: '<?php echo esc_js( __( 'Shown on every case whose procedure is flagged.', 'brag-book-gallery' ) ); ?>',
+				individual: '<?php echo esc_js( __( 'Shown only on cases flagged one by one.', 'brag-book-gallery' ) ); ?>'
+			};
+
+			const fields = {
+				title: document.getElementById( 'brag_book_gallery_nudity_title' ),
+				caption: document.getElementById( 'brag_book_gallery_nudity_caption' ),
+				button: document.getElementById( 'brag_book_gallery_nudity_button' ),
+				decline: document.getElementById( 'brag_book_gallery_nudity_decline' )
+			};
+
+			const slot = ( name ) => preview.querySelector( '[data-preview="' + name + '"]' );
+
+			const render = () => {
+				Object.keys( fields ).forEach( ( name ) => {
+					const target = slot( name );
+					if ( ! target ) {
+						return;
+					}
+					const typed = fields[ name ] ? fields[ name ].value.trim() : '';
+					target.textContent = typed || preview.getAttribute( 'data-default-' + name ) || '';
+				} );
+
+				const mode = document.querySelector( '[name="brag_book_gallery_nudity_mode"]:checked' );
+				const key = mode ? mode.value : preview.getAttribute( 'data-mode' );
+				preview.setAttribute( 'data-mode', key );
+
+				const note = slot( 'note' );
+				if ( note ) {
+					note.textContent = notes[ key ] || '';
+				}
+
+				// The decline link belongs to the full-page warning only.
+				const decline = slot( 'decline' );
+				if ( decline ) {
+					decline.hidden = 'global' !== key;
+				}
+			};
+
+			Object.keys( fields ).forEach( ( name ) => {
+				if ( fields[ name ] ) {
+					fields[ name ].addEventListener( 'input', render );
+				}
+			} );
+
+			document.querySelectorAll( '[name="brag_book_gallery_nudity_mode"]' ).forEach( ( radio ) => {
+				radio.addEventListener( 'change', render );
+			} );
+
+			render();
+		}());
+
+		// Section navigation: the rail lists the cards on the open tab and marks
+		// the one being read. Built from the DOM so a new section needs no wiring.
+		(function () {
+			'use strict';
+
+			const nav = document.querySelector( '.brag-book-gallery-section-nav' );
+			if ( ! nav ) {
+				return;
+			}
+
+			let onScroll = null;
+
+			const slug = ( text, index ) => {
+				const base = text.toLowerCase().replace( /[^a-z0-9]+/g, '-' ).replace( /^-|-$/g, '' );
+				return 'section-' + ( base || 'group' ) + '-' + index;
+			};
+
+			const build = () => {
+				const panel = document.querySelector( '.brag-book-gallery-tab-panel.active' );
+				nav.innerHTML = '';
+
+				if ( onScroll ) {
+					window.removeEventListener( 'scroll', onScroll );
+					onScroll = null;
+				}
+
+				if ( ! panel ) {
+					nav.hidden = true;
+					return;
+				}
+
+				const sections = Array.from( panel.querySelectorAll( '.brag-book-gallery-subsection' ) )
+					.filter( ( section ) => section.querySelector( ':scope > h3, :scope > .gallery-page-settings__header h3' ) );
+
+				// One section is not a list worth showing.
+				if ( sections.length < 2 ) {
+					nav.hidden = true;
+					return;
+				}
+
+				const list = document.createElement( 'ul' );
+				const links = new Map();
+
+				sections.forEach( ( section, index ) => {
+					const heading = section.querySelector( ':scope > h3, :scope > .gallery-page-settings__header h3' );
+					const title = heading.textContent.trim();
+
+					if ( ! section.id ) {
+						section.id = slug( title, index );
+					}
+
+					const item = document.createElement( 'li' );
+					const link = document.createElement( 'a' );
+					link.href = '#' + section.id;
+					link.textContent = title;
+					link.addEventListener( 'click', ( event ) => {
+						event.preventDefault();
+						section.scrollIntoView( { behavior: 'smooth', block: 'start' } );
+						// Move focus with the view so the keyboard follows the click.
+						section.setAttribute( 'tabindex', '-1' );
+						section.focus( { preventScroll: true } );
+					} );
+
+					item.appendChild( link );
+					list.appendChild( item );
+					links.set( section, link );
+				} );
+
+				nav.appendChild( list );
+				nav.hidden = false;
+
+				const mark = ( section ) => {
+					links.forEach( ( link ) => {
+						link.classList.remove( 'is-current' );
+						link.removeAttribute( 'aria-current' );
+					} );
+					const current = links.get( section );
+					if ( current ) {
+						current.classList.add( 'is-current' );
+						current.setAttribute( 'aria-current', 'true' );
+					}
+				};
+
+				// The current section is the last one whose top has passed the
+				// sticky bar. Read straight from geometry rather than inferred
+				// from intersection events, which drop updates on a fast scroll.
+				// Reading a dozen rects on a passive scroll listener is cheap, and
+				// it does not depend on requestAnimationFrame, which never fires
+				// while the tab is in the background.
+				const resolve = () => {
+					const line = 120;
+					let current = sections[ 0 ];
+
+					sections.forEach( ( section ) => {
+						if ( section.getBoundingClientRect().top <= line ) {
+							current = section;
+						}
+					} );
+
+					// At the very bottom the last section is the one being read,
+					// even if it never reaches the line.
+					if ( window.innerHeight + window.scrollY >= document.body.scrollHeight - 2 ) {
+						current = sections[ sections.length - 1 ];
+					}
+
+					mark( current );
+				};
+
+				onScroll = resolve;
+
+				window.addEventListener( 'scroll', onScroll, { passive: true } );
+				resolve();
+			};
+
+			document.querySelectorAll( '.brag-book-gallery-side-tabs ul[role="tablist"] a' ).forEach( ( tab ) => {
+				tab.addEventListener( 'click', () => window.setTimeout( build, 0 ) );
+			} );
+
+			build();
+		}());
+
+		// Conditional settings: a field marked data-bb-requires only shows while the
+		// setting it names is on. Hidden fields stay in the DOM so their saved
+		// values still post — disabling them would clear the option on save.
+		(function () {
+			'use strict';
+
+			const dependents = Array.from( document.querySelectorAll( '[data-bb-requires]' ) );
+			if ( ! dependents.length ) {
+				return;
+			}
+
+			const controlFor = ( name ) => {
+				const byId = document.getElementById( name );
+				if ( byId && 'hidden' !== byId.type ) {
+					return byId;
+				}
+				return document.querySelector( '[name="' + name + '"]:not([type="hidden"])' );
+			};
+
+			const isSatisfied = ( node ) => {
+				const name = node.getAttribute( 'data-bb-requires' );
+				const wanted = node.getAttribute( 'data-bb-requires-value' );
+				const control = controlFor( name );
+
+				if ( ! control ) {
+					return true;
+				}
+
+				// A dependency of a dependency: a hidden parent hides its children too.
+				const parent = control.closest( '[data-bb-requires]' );
+				if ( parent && parent.hidden ) {
+					return false;
+				}
+
+				if ( null !== wanted ) {
+					if ( 'radio' === control.type ) {
+						const picked = document.querySelector( '[name="' + name + '"]:checked' );
+						return !! picked && picked.value === wanted;
+					}
+					return control.value === wanted;
+				}
+
+				if ( 'checkbox' === control.type ) {
+					return control.checked;
+				}
+
+				return '' !== control.value && '0' !== control.value;
+			};
+
+			const apply = () => {
+				// Two passes so a chain (providers -> practices -> maps key) settles.
+				for ( let pass = 0; pass < 2; pass++ ) {
+					dependents.forEach( ( node ) => {
+						node.hidden = ! isSatisfied( node );
+					} );
+				}
+			};
+
+			document.addEventListener( 'change', ( event ) => {
+				if ( ! event.target.closest( '.brag-book-gallery-admin-wrap' ) ) {
+					return;
+				}
+				// Reveals animate once the operator is driving; the first paint is still.
+				document.body.classList.add( 'bb-conditional-live' );
+				apply();
+			} );
+
+			apply();
+		}());
+
 		document.addEventListener('DOMContentLoaded', function() {
 			// Tab switching functionality
 			const tabLinks = document.querySelectorAll('.brag-book-gallery-side-tabs a');
@@ -682,6 +937,7 @@ class General_Page extends Settings_Base {
 				<li role="presentation"><a href="#performance-settings" role="tab" id="tab-performance-settings" aria-controls="performance-settings" aria-selected="false"><?php esc_html_e( 'Performance', 'brag-book-gallery' ); ?></a></li>
 				<li role="presentation"><a href="#custom-css" role="tab" id="tab-custom-css" aria-controls="custom-css" aria-selected="false"><?php esc_html_e( 'Custom CSS', 'brag-book-gallery' ); ?></a></li>
 			</ul>
+			<nav class="brag-book-gallery-section-nav" aria-label="<?php esc_attr_e( 'Sections on this tab', 'brag-book-gallery' ); ?>" hidden></nav>
 		</div>
 		<?php
 	}
@@ -946,7 +1202,6 @@ class General_Page extends Settings_Base {
 
 			<div class="brag-book-gallery-subsection">
 				<h3><?php esc_html_e( 'Layout & Views', 'brag-book-gallery' ); ?></h3>
-				<div class="display-settings-grid">
 			<div class="display-settings-grid">
 				<!-- Row 1: Main Gallery View | Procedures View -->
 				<div class="display-settings-grid__cell">
@@ -1091,7 +1346,6 @@ class General_Page extends Settings_Base {
 					</p>
 				</div>
 			</div>
-				</div>
 				<div class="brag-book-gallery-fields">
 				<!-- Gallery Columns -->
 				<div class="brag-book-gallery-field">
@@ -1148,12 +1402,13 @@ class General_Page extends Settings_Base {
 							       <?php checked( $case_image_carousel, true ); ?> />
 							<span class="brag-book-gallery-toggle-slider"></span>
 						</label>
-						<span class="brag-book-gallery-toggle-label">
+						<label class="brag-book-gallery-toggle-label" for="brag_book_gallery_case_image_carousel">
 							<?php esc_html_e( 'Show carousel of high-resolution images on V2/V3 cards', 'brag-book-gallery' ); ?>
-						</span>
+						</label>
 					</div>
 
-					<fieldset class="carousel-nav-choice" id="brag-book-gallery-carousel-nav-choice">
+					<fieldset class="carousel-nav-choice" id="brag-book-gallery-carousel-nav-choice"
+						data-bb-requires="brag_book_gallery_case_image_carousel">
 						<legend class="carousel-nav-choice__legend">
 							<?php esc_html_e( 'Carousel navigation', 'brag-book-gallery' ); ?>
 						</legend>
@@ -1192,9 +1447,9 @@ class General_Page extends Settings_Base {
 							       <?php checked( $show_provider, true ); ?> />
 							<span class="brag-book-gallery-toggle-slider"></span>
 						</label>
-						<span class="brag-book-gallery-toggle-label">
+						<label class="brag-book-gallery-toggle-label" for="brag_book_gallery_show_provider">
 							<?php esc_html_e( 'Display provider information in cases', 'brag-book-gallery' ); ?>
-						</span>
+						</label>
 					</div>
 					<p class="description">
 						<?php esc_html_e( 'When enabled, provider details will be shown in case displays.', 'brag-book-gallery' ); ?>
@@ -1218,9 +1473,9 @@ class General_Page extends Settings_Base {
 							       <?php checked( $expand_nav_menus, true ); ?> />
 							<span class="brag-book-gallery-toggle-slider"></span>
 						</label>
-						<span class="brag-book-gallery-toggle-label">
+						<label class="brag-book-gallery-toggle-label" for="brag_book_gallery_expand_nav_menus">
 							<?php esc_html_e( 'Show navigation filter menus expanded by default', 'brag-book-gallery' ); ?>
-						</span>
+						</label>
 					</div>
 					<p class="description">
 						<?php esc_html_e( 'When enabled, all navigation filter menus will be expanded by default when users load the gallery page. If unChecked, sub menu will load the gallery page.', 'brag-book-gallery' ); ?>
@@ -1239,9 +1494,9 @@ class General_Page extends Settings_Base {
 							       <?php checked( $show_filter_counts, true ); ?> />
 							<span class="brag-book-gallery-toggle-slider"></span>
 						</label>
-						<span class="brag-book-gallery-toggle-label">
+						<label class="brag-book-gallery-toggle-label" for="brag_book_gallery_show_filter_counts">
 							<?php esc_html_e( 'Display case counts next to filter categories', 'brag-book-gallery' ); ?>
-						</span>
+						</label>
 					</div>
 					<p class="description">
 						<?php esc_html_e( 'Display the number of available items for each filter category (e.g., "Procedure (15)", "Age Group (8)").', 'brag-book-gallery' ); ?>
@@ -1265,9 +1520,9 @@ class General_Page extends Settings_Base {
 							       <?php checked( $enable_favorites, true ); ?> />
 							<span class="brag-book-gallery-toggle-slider"></span>
 						</label>
-						<span class="brag-book-gallery-toggle-label">
+						<label class="brag-book-gallery-toggle-label" for="brag_book_gallery_enable_favorites">
 							<?php esc_html_e( 'Allow users to save and manage favorite cases', 'brag-book-gallery' ); ?>
-						</span>
+						</label>
 					</div>
 					<p class="description">
 						<?php esc_html_e( 'When enabled, favorite buttons and the My Favorites page will be available. When disabled, all favorites functionality is hidden.', 'brag-book-gallery' ); ?>
@@ -1286,15 +1541,16 @@ class General_Page extends Settings_Base {
 							       <?php checked( $enable_consultation, true ); ?> />
 							<span class="brag-book-gallery-toggle-slider"></span>
 						</label>
-						<span class="brag-book-gallery-toggle-label">
+						<label class="brag-book-gallery-toggle-label" for="brag_book_gallery_enable_consultation">
 							<?php esc_html_e( 'Display consultation request CTA and dialog forms', 'brag-book-gallery' ); ?>
-						</span>
+						</label>
 					</div>
 					<p class="description">
 						<?php esc_html_e( 'When enabled, the "Ready for the next step?" text, "Request a Consultation" button, and consultation dialog will be shown. When disabled, all consultation elements are hidden.', 'brag-book-gallery' ); ?>
 					</p>
 
-					<fieldset class="carousel-nav-choice" id="brag-book-gallery-consultation-source">
+					<fieldset class="carousel-nav-choice" id="brag-book-gallery-consultation-source"
+						data-bb-requires="brag_book_gallery_enable_consultation">
 						<legend class="carousel-nav-choice__legend">
 							<?php esc_html_e( 'Consultation form', 'brag-book-gallery' ); ?>
 						</legend>
@@ -1319,6 +1575,9 @@ class General_Page extends Settings_Base {
 							</span>
 						</label>
 
+						<div class="brag-book-gallery-conditional-group"
+							data-bb-requires="brag_book_gallery_consultation_form_source"
+							data-bb-requires-value="gohighlevel">
 						<div class="gallery-page-settings-field">
 							<label for="brag_book_gallery_ghl_form_url" class="gallery-page-settings-field__label">
 								<?php esc_html_e( 'GoHighLevel form URL', 'brag-book-gallery' ); ?>
@@ -1349,6 +1608,7 @@ class General_Page extends Settings_Base {
 								<?php esc_html_e( 'Pixels of room the form is given before GoHighLevel\'s own script resizes it to fit. Leave blank for 700.', 'brag-book-gallery' ); ?>
 							</p>
 						</div>
+						</div>
 					</fieldset>
 				</div>
 
@@ -1364,9 +1624,9 @@ class General_Page extends Settings_Base {
 							       <?php checked( $enable_disclaimer, true ); ?> />
 							<span class="brag-book-gallery-toggle-slider"></span>
 						</label>
-						<span class="brag-book-gallery-toggle-label">
+						<label class="brag-book-gallery-toggle-label" for="brag_book_gallery_enable_disclaimer">
 							<?php esc_html_e( 'Display image processing disclaimer', 'brag-book-gallery' ); ?>
-						</span>
+						</label>
 					</div>
 					<p class="description">
 						<?php esc_html_e( 'When enabled, a disclaimer about smart device, AI, and standard image enhancements is shown at the bottom of the procedures gallery.', 'brag-book-gallery' ); ?>
@@ -1385,9 +1645,9 @@ class General_Page extends Settings_Base {
 							       <?php checked( $enable_powered_by, true ); ?> />
 							<span class="brag-book-gallery-toggle-slider"></span>
 						</label>
-						<span class="brag-book-gallery-toggle-label">
+						<label class="brag-book-gallery-toggle-label" for="brag_book_gallery_enable_powered_by">
 							<?php esc_html_e( 'Display a "Powered by BRAG book Gallery" link in the gallery', 'brag-book-gallery' ); ?>
-						</span>
+						</label>
 					</div>
 					<p class="description">
 						<?php esc_html_e( 'When enabled, a "Powered by BRAG book Gallery" attribution link is shown in the gallery sidebar. Disabled by default.', 'brag-book-gallery' ); ?>
@@ -1411,15 +1671,15 @@ class General_Page extends Settings_Base {
 							       <?php checked( $enable_providers, true ); ?> />
 							<span class="brag-book-gallery-toggle-slider"></span>
 						</label>
-						<span class="brag-book-gallery-toggle-label">
+						<label class="brag-book-gallery-toggle-label" for="brag_book_gallery_enable_providers">
 							<?php esc_html_e( 'Enable Providers', 'brag-book-gallery' ); ?>
-						</span>
+						</label>
 					</div>
 					<p class="description">
 						<?php esc_html_e( 'When enabled, the Providers taxonomy is registered and providers are synced from the API and assigned to cases.', 'brag-book-gallery' ); ?>
 					</p>
 
-					<div class="gallery-page-settings-field">
+					<div class="gallery-page-settings-field" data-bb-requires="brag_book_gallery_enable_providers">
 						<label for="brag_book_gallery_provider_label" class="gallery-page-settings-field__label">
 							<?php esc_html_e( 'What to call a provider', 'brag-book-gallery' ); ?>
 						</label>
@@ -1434,7 +1694,7 @@ class General_Page extends Settings_Base {
 						</p>
 					</div>
 
-					<div class="gallery-page-settings-field">
+					<div class="gallery-page-settings-field" data-bb-requires="brag_book_gallery_enable_providers">
 						<label for="brag_book_gallery_provider_label_plural" class="gallery-page-settings-field__label">
 							<?php esc_html_e( 'What to call them together', 'brag-book-gallery' ); ?>
 						</label>
@@ -1451,7 +1711,7 @@ class General_Page extends Settings_Base {
 				</div>
 
 				<!-- Enable Practices Toggle -->
-				<div class="brag-book-gallery-field">
+				<div class="brag-book-gallery-field" data-bb-requires="brag_book_gallery_enable_providers">
 					<div class="brag-book-gallery-toggle-wrapper">
 						<label class="brag-book-gallery-toggle">
 							<input type="hidden" name="brag_book_gallery_enable_practices" value="0" />
@@ -1462,9 +1722,9 @@ class General_Page extends Settings_Base {
 							       <?php checked( $enable_practices, true ); ?> />
 							<span class="brag-book-gallery-toggle-slider"></span>
 						</label>
-						<span class="brag-book-gallery-toggle-label">
+						<label class="brag-book-gallery-toggle-label" for="brag_book_gallery_enable_practices">
 							<?php esc_html_e( 'Enable Practices', 'brag-book-gallery' ); ?>
-						</span>
+						</label>
 					</div>
 					<p class="description">
 						<?php esc_html_e( 'When enabled, each provider\'s practices are synced from the API (requires Providers to be enabled).', 'brag-book-gallery' ); ?>
@@ -1472,7 +1732,7 @@ class General_Page extends Settings_Base {
 				</div>
 
 				<!-- Google Maps API Key -->
-				<div class="brag-book-gallery-field">
+				<div class="brag-book-gallery-field" data-bb-requires="brag_book_gallery_enable_practices">
 					<label class="brag-book-gallery-field__label" for="brag_book_gallery_google_maps_api_key">
 						<?php esc_html_e( 'Google Maps API Key', 'brag-book-gallery' ); ?>
 					</label>
@@ -1517,6 +1777,7 @@ class General_Page extends Settings_Base {
 			<!-- Nudity Warning Settings -->
 			<h3><?php esc_html_e( 'Nudity Warning Settings', 'brag-book-gallery' ); ?></h3>
 
+			<div class="brag-book-gallery-split">
 			<div class="brag-book-gallery-subsection__fields">
 				<div class="gallery-page-settings-field">
 					<label class="gallery-page-settings-field__label">
@@ -1642,6 +1903,33 @@ class General_Page extends Settings_Base {
 						<?php esc_html_e( 'Clears the preset and all warning copy, restoring the plugin defaults.', 'brag-book-gallery' ); ?>
 					</p>
 				</div>
+			</div>
+
+			<?php
+			// A drawn stand-in for the warning, not a live gallery: the plate
+			// below the overlay is a flat tone, so nothing here loads a case
+			// photo into the settings screen.
+			?>
+			<aside class="brag-book-gallery-nudity-preview"
+			       data-mode="<?php echo esc_attr( $nudity_mode ); ?>"
+				data-default-title="<?php echo esc_attr( $nudity_text['title'] ); ?>"
+				data-default-caption="<?php echo esc_attr( $nudity_text['caption'] ); ?>"
+				data-default-button="<?php echo esc_attr( $nudity_text['button'] ); ?>"
+				data-default-decline="<?php echo esc_attr( $nudity_text['decline'] ); ?>">
+				<h4 class="brag-book-gallery-nudity-preview__title">
+					<?php esc_html_e( 'Preview', 'brag-book-gallery' ); ?>
+				</h4>
+				<div class="brag-book-gallery-nudity-preview__stage">
+					<div class="brag-book-gallery-nudity-preview__plate" aria-hidden="true"></div>
+					<div class="brag-book-gallery-nudity-preview__overlay">
+						<p class="brag-book-gallery-nudity-preview__heading" data-preview="title"></p>
+						<p class="brag-book-gallery-nudity-preview__caption" data-preview="caption"></p>
+						<span class="brag-book-gallery-nudity-preview__button" data-preview="button"></span>
+						<span class="brag-book-gallery-nudity-preview__decline" data-preview="decline"></span>
+					</div>
+				</div>
+				<p class="brag-book-gallery-nudity-preview__note" data-preview="note"></p>
+			</aside>
 			</div>
 			</div>
 
@@ -2084,14 +2372,15 @@ class General_Page extends Settings_Base {
 					<label class="brag-book-gallery-field__label" for="ajax_timeout">
 					<?php esc_html_e( 'AJAX Timeout', 'brag-book-gallery' ); ?>
 					</label>
-				<input type="number"
-				       id="ajax_timeout"
-				       name="ajax_timeout"
-				       value="<?php echo esc_attr( $ajax_timeout ); ?>"
-				       min="5"
-				       max="120"
-				       class="small-text">
-				<?php esc_html_e( 'seconds', 'brag-book-gallery' ); ?>
+				<div class="brag-book-gallery-input-unit">
+					<input type="number"
+					       id="ajax_timeout"
+					       name="ajax_timeout"
+					       value="<?php echo esc_attr( $ajax_timeout ); ?>"
+					       min="5"
+					       max="120">
+					<span class="brag-book-gallery-input-unit__suffix"><?php esc_html_e( 'seconds', 'brag-book-gallery' ); ?></span>
+				</div>
 				<p class="description">
 					<?php esc_html_e( 'Maximum time to wait for API responses.', 'brag-book-gallery' ); ?>
 				</p>
@@ -2100,14 +2389,15 @@ class General_Page extends Settings_Base {
 					<label class="brag-book-gallery-field__label" for="cache_duration">
 					<?php esc_html_e( 'Cache Duration', 'brag-book-gallery' ); ?>
 					</label>
-				<input type="number"
-				       id="cache_duration"
-				       name="cache_duration"
-				       value="<?php echo esc_attr( $cache_duration ); ?>"
-				       min="0"
-				       max="86400"
-				       class="small-text">
-				<?php esc_html_e( 'seconds', 'brag-book-gallery' ); ?>
+				<div class="brag-book-gallery-input-unit">
+					<input type="number"
+					       id="cache_duration"
+					       name="cache_duration"
+					       value="<?php echo esc_attr( $cache_duration ); ?>"
+					       min="0"
+					       max="86400">
+					<span class="brag-book-gallery-input-unit__suffix"><?php esc_html_e( 'seconds', 'brag-book-gallery' ); ?></span>
+				</div>
 				<p class="description">
 					<?php esc_html_e( 'How long to cache API responses (0 to disable).', 'brag-book-gallery' ); ?>
 				</p>
@@ -2133,9 +2423,9 @@ class General_Page extends Settings_Base {
 						       <?php checked( $lazy_load, 'yes' ); ?>>
 						<span class="brag-book-gallery-toggle-slider"></span>
 					</label>
-					<span class="brag-book-gallery-toggle-label">
+					<label class="brag-book-gallery-toggle-label" for="lazy_load">
 						<?php esc_html_e( 'Enable lazy loading for gallery images', 'brag-book-gallery' ); ?>
-					</span>
+					</label>
 				</div>
 				<p class="description">
 					<?php esc_html_e( 'Improves page load times by loading images only when they become visible.', 'brag-book-gallery' ); ?>

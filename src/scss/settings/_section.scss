@@ -35,24 +35,36 @@
 // -----------------------------------------------------------------------------
 // admin / subsection
 //
-// A settings group inside a tab. Bands, not boxes: a hairline and generous
-// leading space carry the grouping, so a section that contains a card does not
-// become a card inside a card.
+// A settings group is a card: a titled bar over a white body, bordered so the
+// group's edges are unmistakable. Nothing inside a card is another card — an
+// inset well or a bordered choice row carries any grouping below this level.
 // -----------------------------------------------------------------------------
 
 .brag-book-gallery-admin-wrap .brag-book-gallery-subsection {
-	padding-block: var(--space-7) var(--space-6);
-	border-block-start: var(--space-px) solid var(--slate-200);
+	margin-block-end: var(--space-5);
+	padding: var(--space-5);
+	background: var(--brag-book-gallery-white);
+	border: var(--space-px) solid var(--slate-200);
+	border-radius: var(--rounded-xl);
+	box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
 
-	// The first band sits directly under the tab's h2, which already rules off.
-	&:first-of-type {
-		padding-block-start: var(--space-2);
-		border-block-start: 0;
+	&:last-of-type {
+		margin-block-end: 0;
+	}
+
+	// The title bleeds to the card's edges and rules off from its body.
+	> h3,
+	> .gallery-page-settings__header {
+		margin: calc(var(--space-5) * -1) calc(var(--space-5) * -1) var(--space-5);
+		padding: var(--space-3) var(--space-5);
+		background: var(--slate-50);
+		border-block-end: var(--space-px) solid var(--slate-200);
+		border-start-start-radius: var(--rounded-xl);
+		border-start-end-radius: var(--rounded-xl);
 	}
 
 	> h3,
 	.gallery-page-settings__header h3 {
-		margin-block: 0 var(--space-3);
 		font-size: var(--text-base);
 		font-weight: var(--font-semibold);
 		line-height: var(--leading-6);
@@ -60,23 +72,24 @@
 		color: var(--slate-900);
 	}
 
+	.gallery-page-settings__header h3 {
+		margin: 0;
+	}
 
 	&__intro {
-		margin-block: calc(var(--space-3) * -1) var(--space-4);
+		margin-block: 0 var(--space-4);
 		max-inline-size: 68ch;
 		color: var(--slate-500);
 		font-size: var(--text-sm);
 		line-height: var(--leading-normal);
 	}
-	// Maintenance settings that are not part of the visitor-facing design.
+
+	// Maintenance settings, demoted by ground rather than by hiding them.
 	&--muted {
-		margin-block-start: var(--space-4);
-		padding-inline: var(--space-5);
 		background: var(--slate-50);
-		border: var(--space-px) solid var(--slate-200);
-		border-radius: var(--rounded-lg);
 
 		> h3 {
+			background: var(--slate-100);
 			color: var(--slate-700);
 		}
 	}
@@ -86,18 +99,26 @@
 		padding-block-start: 0;
 	}
 
-	// The option stack already separates its own rows; it does not need to
-	// re-separate itself from the heading above it.
+	// The row stack separates its own rows; it does not need to separate itself
+	// from the title bar above it.
 	.brag-book-gallery-fields {
 		margin-block-start: 0;
 	}
 
-	.brag-book-gallery-field:first-child {
+	.brag-book-gallery-field:first-child,
+	.gallery-page-settings-field:first-child {
 		padding-block-start: 0;
 		border-block-start: 0;
 	}
 
+	.brag-book-gallery-field:last-child,
+	.gallery-page-settings-field:last-child {
+		padding-block-end: 0;
+	}
+
 	.display-settings-grid + .brag-book-gallery-fields {
 		margin-block-start: var(--space-4);
+		padding-block-start: var(--space-4);
+		border-block-start: var(--space-px) solid var(--slate-100);
 	}
 }

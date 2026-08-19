@@ -168,6 +168,11 @@
         "role": "neutral",
         "displayName": "Skeleton Sheen",
         "canonical": "#e0e0e0"
+      },
+      "brag-crimson-deep": {
+        "role": "primary",
+        "displayName": "BRAG Crimson Deep",
+        "canonical": "#B30000"
       }
     },
     "typographyMeta": {
@@ -448,6 +453,21 @@
         "name": "The Four-Pixel Rule",
         "body": "Gallery corners are 4px. A new gallery surface does not get a new radius; if it needs to feel softer, it is a pill or it is the dialog.",
         "section": "shapes"
+      },
+      {
+        "name": "The Hide, Never Disable Rule",
+        "body": "A conditional field is hidden with the hidden attribute, never disabled. A hidden input still posts its stored value; a disabled one posts nothing, and a settings form that posts nothing for a field writes that field empty.",
+        "section": "components"
+      },
+      {
+        "name": "The Reveal-On-Intent Rule",
+        "body": "The reveal animation runs only after the operator has changed something. The first paint is still, so a page loading with several conditional fields open does not animate them all before anyone has touched it.",
+        "section": "components"
+      },
+      {
+        "name": "The One-Card-Deep Rule",
+        "body": "A settings group is a card; nothing inside it is another card. Grouping below that level is carried by an inset well, a bordered choice row, or a hairline — never a second bordered, shadowed box.",
+        "section": "components"
       }
     ],
     "dos": [
@@ -457,7 +477,10 @@
       "Do keep gallery surfaces at shadow-lg at rest — that resting elevation is how the plugin holds its own plane inside a host theme.",
       "Do express spacing multiples as calc(N * var(--…--spacer)) rather than minting a new token.",
       "Do use outline: 2px solid var(--blue-500) at 2px offset for every new admin focus state; the global *:focus-visible rule already establishes it.",
-      "Do treat Poppins as removable — .disable-custom-font must leave layout intact."
+      "Do treat Poppins as removable — .disable-custom-font must leave layout intact.",
+      "Do declare a dependent setting with data-bb-requires and let the resolver hide it; never disable it.",
+      "Do use crimson for on, Blue 500 for focus, Slate 300 for off across switch, checkbox and radio alike.",
+      "Do give a settings group a card with a titled bar; keep its interior one card deep."
     ],
     "donts": [
       "Don't introduce a hue into the gallery realm. Weight, size, and space carry emphasis there.",

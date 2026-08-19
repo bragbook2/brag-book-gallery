@@ -220,6 +220,11 @@
   --slate-950: #020617;
   /* Brand Primary (custom dark) */
   --brag-book-gallery-primary: #CC0000;
+  --brag-book-gallery-primary-hover: #B30000;
+  /* Sticky offsets: the page's own tab bar sits under the WP admin bar, and
+     anything else that sticks has to clear both. */
+  --brag-book-gallery-nav-height: 44px;
+  --brag-book-gallery-sticky-top: calc(2rem + var(--brag-book-gallery-nav-height) + var(--space-4));
   --brag-book-gallery-white: #FFF;
   /* Blue (Accent) */
   --blue-50: #eff6ff;
@@ -3748,11 +3753,13 @@
 .brag-book-gallery-admin-wrap select {
   border: var(--space-px) solid var(--slate-300);
   border-radius: var(--rounded-md);
+  min-block-size: 40px;
   padding-block: var(--space-2);
   padding-inline: var(--space-3);
   font-size: var(--text-sm);
+  line-height: var(--leading-5);
   transition: var(--transition-colors);
-  background: white;
+  background: var(--brag-book-gallery-white);
 }
 
 /* Chrome, Safari, Edge, Opera */
@@ -3767,13 +3774,36 @@
   -moz-appearance: textfield;
 }
 
+/* The select is drawn here rather than by the platform: a full-width control
+   with a chevron in the palette's own slate, sized to match the text inputs so
+   a stack of mixed fields shares one silhouette. */
 .brag-book-gallery-admin-wrap select {
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23374151' d='M10.293 3.293L6 7.586 1.707 3.293A1 1 0 00.293 4.707l5 5a1 1 0 001.414 0l5-5a1 1 0 10-1.414-1.414z'/%3E%3C/svg%3E");
+  -webkit-appearance: none;
+  inline-size: 100%;
+  min-block-size: 40px;
+  padding-block: var(--space-2);
+  padding-inline: var(--space-3) calc(var(--space-3) * 3);
+  background-color: var(--brag-book-gallery-white);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 -960 960 960' fill='%2364748b'%3E%3Cpath d='M480-361.85 267.69-574.15h424.62L480-361.85Z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right var(--space-3) center;
-  background-size: var(--space-3);
-  padding-inline-end: calc(var(--space-3) * 3);
+  background-size: 18px;
+  border: var(--space-px) solid var(--slate-300);
+  border-radius: var(--rounded-md);
+  color: var(--slate-900);
+  font-size: var(--text-sm);
+  line-height: var(--leading-5);
+  cursor: pointer;
+  transition: var(--transition-colors);
+}
+.brag-book-gallery-admin-wrap select:disabled {
+  background-color: var(--slate-50);
+  color: var(--slate-400);
+  cursor: not-allowed;
+}
+.brag-book-gallery-admin-wrap select option {
+  color: var(--slate-900);
 }
 
 .brag-book-gallery-admin-wrap input[type=text]:hover,
@@ -3897,11 +3927,22 @@
   font-size: var(--text-sm);
   margin-block-end: var(--space-2);
 }
-.gallery-page-settings-field .large-text {
-  width: 100%;
+.gallery-page-settings-field > input[type=text],
+.gallery-page-settings-field > input[type=email],
+.gallery-page-settings-field > input[type=url],
+.gallery-page-settings-field > input[type=password],
+.gallery-page-settings-field > input[type=number],
+.gallery-page-settings-field > textarea,
+.gallery-page-settings-field > select,
+.gallery-page-settings-field > .regular-text,
+.gallery-page-settings-field > .large-text,
+.gallery-page-settings-field > .small-text {
+  inline-size: 100%;
+  max-inline-size: none;
 }
 .gallery-page-settings-field .description {
   margin-block-start: var(--space-2);
+  max-inline-size: 68ch;
 }
 .gallery-page-settings-field__action {
   margin-block-start: var(--space-2);
@@ -3927,21 +3968,50 @@
 
 /* Carousel navigation choice, nested under the carousel toggle it depends on */
 .carousel-nav-choice {
-  margin-block-start: var(--space-2);
   margin-inline-start: calc(var(--space-8) + var(--space-2));
-  padding-inline-start: var(--space-4);
   border: 0;
-  border-inline-start: 2px solid var(--slate-200, #e2e8f0);
+  border-inline-start: var(--space-0-5) solid var(--slate-200);
 }
 .carousel-nav-choice__legend {
   padding: 0;
-  font-weight: 600;
+  margin-block-end: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--slate-700);
 }
 
-.brag-book-gallery-fields:has(#brag_book_gallery_case_image_carousel:not(:checked)) .carousel-nav-choice {
-  opacity: 0.5;
+/* -----------------------------------------------------------------------------
+   Conditional settings
+   A field that depends on another is nested under it behind a rule, and is
+   removed outright when its condition is off rather than dimmed — a greyed
+   control that cannot be reached is noise, not information. Hidden fields keep
+   posting their saved values, so nothing is lost by hiding them.
+   -------------------------------------------------------------------------- */
+.brag-book-gallery-admin-wrap [data-bb-requires] {
+  margin-block-start: var(--space-3);
+  padding-inline-start: var(--space-4);
+  border-inline-start: var(--space-0-5) solid var(--slate-200);
 }
 
+.brag-book-gallery-admin-wrap [data-bb-requires][hidden] {
+  display: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .bb-conditional-live .brag-book-gallery-admin-wrap [data-bb-requires]:not([hidden]) {
+    animation: bb-conditional-reveal 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+}
+@keyframes bb-conditional-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--space-1) * -1));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
 /* Gallery Slug Input Row - input + edit button side by side */
 .gallery-slug-input-row {
   display: flex;
@@ -4036,44 +4106,50 @@
 }
 .display-settings-grid__control {
   display: flex;
-  align-items: center;
-  gap: var(--space-2);
+  align-items: stretch;
 }
 .display-settings-grid__control select,
 .display-settings-grid__control input[type=number] {
   flex: 1;
-  min-width: 0;
+  min-inline-size: 0;
+}
+.display-settings-grid__control > select:has(+ .display-settings-grid__preview-btn) {
+  border-start-end-radius: 0;
+  border-end-end-radius: 0;
 }
 .display-settings-grid__preview-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 36px;
-  height: 36px;
+  inline-size: 40px;
+  min-block-size: 40px;
   padding: 0;
   border: var(--space-px) solid var(--slate-300);
-  border-radius: var(--rounded-md);
-  background: white;
+  border-inline-start: 0;
+  border-start-start-radius: 0;
+  border-end-start-radius: 0;
+  border-start-end-radius: var(--rounded-md);
+  border-end-end-radius: var(--rounded-md);
+  background: var(--slate-50);
   color: var(--slate-500);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: var(--transition-colors);
 }
 .display-settings-grid__preview-btn .dashicons {
   font-size: 18px;
-  width: 18px;
-  height: 18px;
+  inline-size: 18px;
+  block-size: 18px;
   line-height: 1;
 }
 .display-settings-grid__preview-btn:hover {
-  border-color: var(--blue-400);
-  color: var(--blue-600);
-  background: var(--blue-50);
+  background: var(--slate-100);
+  color: var(--slate-900);
 }
-.display-settings-grid__preview-btn:focus {
+.display-settings-grid__preview-btn:focus-visible {
   outline: 2px solid var(--blue-500);
-  outline-offset: -1px;
-  border-color: var(--blue-500);
+  outline-offset: -2px;
+  z-index: var(--z-10);
 }
 
 /* Preview Dialog */
@@ -4153,10 +4229,11 @@
 
 /* SERP Preview styling */
 .brag-book-gallery-admin-wrap .serp-preview-container {
-  margin-block-start: var(--space-8);
-  padding: var(--space-5);
-  background: var(--slate-100);
+  margin-block-start: var(--space-5);
+  padding: var(--space-4) var(--space-5);
+  background: var(--slate-50);
   border-radius: var(--rounded-lg);
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.05);
 }
 .brag-book-gallery-admin-wrap .serp-preview-container h3 {
   margin-block: 0 var(--space-4);
@@ -4327,21 +4404,16 @@
 .brag-book-gallery-admin-wrap .brag-book-gallery-field > input[type=email],
 .brag-book-gallery-admin-wrap .brag-book-gallery-field > input[type=url],
 .brag-book-gallery-admin-wrap .brag-book-gallery-field > input[type=password],
+.brag-book-gallery-admin-wrap .brag-book-gallery-field > input[type=number],
 .brag-book-gallery-admin-wrap .brag-book-gallery-field > textarea,
 .brag-book-gallery-admin-wrap .brag-book-gallery-field > select,
 .brag-book-gallery-admin-wrap .brag-book-gallery-field > .large-text,
+.brag-book-gallery-admin-wrap .brag-book-gallery-field > .small-text,
 .brag-book-gallery-admin-wrap .brag-book-gallery-field > .gallery-slug-input-row,
+.brag-book-gallery-admin-wrap .brag-book-gallery-field > .api-token-field,
 .brag-book-gallery-admin-wrap .brag-book-gallery-field > .brag-book-gallery-code-editor {
-  max-inline-size: 34rem;
   inline-size: 100%;
-}
-.brag-book-gallery-admin-wrap .brag-book-gallery-field > input[type=number],
-.brag-book-gallery-admin-wrap .brag-book-gallery-field > .small-text {
-  inline-size: 7rem;
-}
-.brag-book-gallery-admin-wrap .brag-book-gallery-field > select {
-  inline-size: auto;
-  min-inline-size: 14rem;
+  max-inline-size: none;
 }
 .brag-book-gallery-admin-wrap .brag-book-gallery-field > .description,
 .brag-book-gallery-admin-wrap .brag-book-gallery-field > .character-count {
@@ -4365,6 +4437,240 @@
   letter-spacing: normal;
   text-transform: none;
   color: var(--slate-700);
+}
+
+/* -----------------------------------------------------------------------------
+   Checkbox and radio
+   Native controls in this realm are drawn by the platform and ignore the
+   palette, so both are rebuilt on the same 18px square/circle with the same
+   crimson selected state as the switch and the same blue focus ring as every
+   other control here.
+   -------------------------------------------------------------------------- */
+.brag-book-gallery-admin-wrap .brag-book-gallery-field input[type=checkbox]:not(.brag-book-gallery-toggle input),
+.brag-book-gallery-admin-wrap .brag-book-gallery-setting-choice input[type=radio],
+.brag-book-gallery-admin-wrap fieldset input[type=radio] {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  flex-shrink: 0;
+  inline-size: 18px;
+  block-size: 18px;
+  margin: 0 var(--space-2) 0 0;
+  background-color: var(--brag-book-gallery-white);
+  border: var(--space-px) solid var(--slate-300);
+  cursor: pointer;
+  transition: var(--transition-colors);
+}
+.brag-book-gallery-admin-wrap .brag-book-gallery-field input[type=checkbox]:not(.brag-book-gallery-toggle input):hover,
+.brag-book-gallery-admin-wrap .brag-book-gallery-setting-choice input[type=radio]:hover,
+.brag-book-gallery-admin-wrap fieldset input[type=radio]:hover {
+  border-color: var(--slate-400);
+}
+.brag-book-gallery-admin-wrap .brag-book-gallery-field input[type=checkbox]:not(.brag-book-gallery-toggle input):focus-visible,
+.brag-book-gallery-admin-wrap .brag-book-gallery-setting-choice input[type=radio]:focus-visible,
+.brag-book-gallery-admin-wrap fieldset input[type=radio]:focus-visible {
+  outline: 2px solid var(--blue-500);
+  outline-offset: 2px;
+}
+.brag-book-gallery-admin-wrap .brag-book-gallery-field input[type=checkbox]:not(.brag-book-gallery-toggle input):disabled,
+.brag-book-gallery-admin-wrap .brag-book-gallery-setting-choice input[type=radio]:disabled,
+.brag-book-gallery-admin-wrap fieldset input[type=radio]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.brag-book-gallery-admin-wrap .brag-book-gallery-field input[type=checkbox]:not(.brag-book-gallery-toggle input) {
+  border-radius: var(--rounded);
+}
+.brag-book-gallery-admin-wrap .brag-book-gallery-field input[type=checkbox]:not(.brag-book-gallery-toggle input):checked {
+  background-color: var(--brag-book-gallery-primary);
+  border-color: var(--brag-book-gallery-primary);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 -960 960 960' fill='white'%3E%3Cpath d='M400-318.23 254.23-464 296-505.77l104 104 264-264L705.77-624 400-318.23Z'/%3E%3C/svg%3E");
+  background-size: 82%;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.brag-book-gallery-admin-wrap .brag-book-gallery-setting-choice input[type=radio],
+.brag-book-gallery-admin-wrap fieldset input[type=radio] {
+  border-radius: var(--rounded-full);
+}
+.brag-book-gallery-admin-wrap .brag-book-gallery-setting-choice input[type=radio]:checked,
+.brag-book-gallery-admin-wrap fieldset input[type=radio]:checked {
+  border-color: var(--brag-book-gallery-primary);
+  border-width: 5px;
+}
+
+/* A radio choice is a row you click, not a dot you aim at. */
+.brag-book-gallery-admin-wrap .brag-book-gallery-setting-choice {
+  padding: var(--space-3);
+  border: var(--space-px) solid var(--slate-200);
+  border-radius: var(--rounded-md);
+  background: var(--brag-book-gallery-white);
+  cursor: pointer;
+  transition: var(--transition-colors);
+}
+.brag-book-gallery-admin-wrap .brag-book-gallery-setting-choice + .brag-book-gallery-setting-choice {
+  margin-block-start: var(--space-3);
+}
+.brag-book-gallery-admin-wrap .brag-book-gallery-setting-choice:hover {
+  border-color: var(--slate-300);
+  background: var(--slate-50);
+}
+.brag-book-gallery-admin-wrap .brag-book-gallery-setting-choice strong {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--slate-800);
+}
+.brag-book-gallery-admin-wrap .brag-book-gallery-setting-choice:has(input:checked) {
+  border-color: var(--brag-book-gallery-primary);
+  background: var(--slate-50);
+}
+.brag-book-gallery-admin-wrap .brag-book-gallery-setting-choice:has(input:focus-visible) {
+  outline: 2px solid var(--blue-500);
+  outline-offset: 2px;
+}
+
+/* A group of fields that share one condition: the nesting rule is drawn once
+   around the group rather than once per field. */
+.brag-book-gallery-admin-wrap .brag-book-gallery-conditional-group > .gallery-page-settings-field:first-child {
+  padding-block-start: 0;
+}
+.brag-book-gallery-admin-wrap .brag-book-gallery-conditional-group > .gallery-page-settings-field + .gallery-page-settings-field {
+  border-block-start: var(--space-px) solid var(--slate-100);
+}
+
+/* A number with a unit: the field still fills its row, and the unit rides at
+   the end of the control instead of floating loose beside it. */
+.brag-book-gallery-admin-wrap .brag-book-gallery-input-unit {
+  display: flex;
+  align-items: stretch;
+  inline-size: 100%;
+}
+.brag-book-gallery-admin-wrap .brag-book-gallery-input-unit input[type=number] {
+  flex: 1;
+  min-inline-size: 0;
+  border-start-end-radius: 0;
+  border-end-end-radius: 0;
+}
+.brag-book-gallery-admin-wrap .brag-book-gallery-input-unit__suffix {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding-inline: var(--space-3);
+  background: var(--slate-50);
+  border: var(--space-px) solid var(--slate-300);
+  border-inline-start: 0;
+  border-start-end-radius: var(--rounded-md);
+  border-end-end-radius: var(--rounded-md);
+  color: var(--slate-500);
+  font-size: var(--text-sm);
+}
+
+/* -----------------------------------------------------------------------------
+   Nudity warning preview
+   A drawn stand-in for the front-end warning, sitting beside the copy fields so
+   the wording can be judged in its real shape. The plate beneath the overlay is
+   a flat tone — a settings screen has no business loading a case photo.
+   -------------------------------------------------------------------------- */
+.brag-book-gallery-admin-wrap .brag-book-gallery-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-6);
+}
+@media (min-width: 1100px) {
+  .brag-book-gallery-admin-wrap .brag-book-gallery-split {
+    grid-template-columns: minmax(0, 1fr) 300px;
+    align-items: start;
+  }
+}
+
+@media (min-width: 1100px) {
+  .brag-book-gallery-admin-wrap .brag-book-gallery-nudity-preview {
+    position: sticky;
+    inset-block-start: calc(var(--brag-book-gallery-sticky-top) + var(--space-4));
+  }
+}
+.brag-book-gallery-admin-wrap .brag-book-gallery-nudity-preview__title {
+  margin-block: 0 var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--slate-500);
+}
+.brag-book-gallery-admin-wrap .brag-book-gallery-nudity-preview__stage {
+  position: relative;
+  isolation: isolate;
+  border-radius: var(--rounded-lg);
+  border: var(--space-px) solid var(--slate-200);
+  overflow: hidden;
+}
+.brag-book-gallery-admin-wrap .brag-book-gallery-nudity-preview__stage {
+  aspect-ratio: 4/5;
+}
+.brag-book-gallery-admin-wrap .brag-book-gallery-nudity-preview[data-mode=global] .brag-book-gallery-nudity-preview__stage {
+  aspect-ratio: 16/10;
+}
+.brag-book-gallery-admin-wrap .brag-book-gallery-nudity-preview[data-mode=global] .brag-book-gallery-nudity-preview__plate {
+  background: linear-gradient(180deg, var(--slate-200) 0 18%, transparent 18%), linear-gradient(135deg, var(--slate-100), var(--slate-300));
+}
+.brag-book-gallery-admin-wrap .brag-book-gallery-nudity-preview__plate {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, var(--slate-200), var(--slate-400));
+}
+.brag-book-gallery-admin-wrap .brag-book-gallery-nudity-preview__overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  text-align: center;
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  color: var(--ink-black, #030712);
+}
+.brag-book-gallery-admin-wrap .brag-book-gallery-nudity-preview__heading {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: var(--leading-6);
+  color: #030712;
+}
+.brag-book-gallery-admin-wrap .brag-book-gallery-nudity-preview__caption {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.25;
+  color: #030712;
+}
+.brag-book-gallery-admin-wrap .brag-book-gallery-nudity-preview__button {
+  display: inline-block;
+  margin-block-start: var(--space-1);
+  padding: 12px 16px;
+  background: #030712;
+  color: #fff;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.brag-book-gallery-admin-wrap .brag-book-gallery-nudity-preview__decline {
+  font-size: 12px;
+  text-decoration: underline;
+  color: #030712;
+}
+.brag-book-gallery-admin-wrap .brag-book-gallery-nudity-preview__decline[hidden] {
+  display: none;
+}
+.brag-book-gallery-admin-wrap .brag-book-gallery-nudity-preview__note {
+  margin-block: var(--space-2) 0;
+  font-size: var(--text-xs);
+  line-height: var(--leading-4);
+  color: var(--slate-500);
 }
 
 .brag-book-gallery-help-content > .brag-book-gallery-accordion-item {
@@ -5528,37 +5834,48 @@
 }
 
 .brag-book-gallery-admin-wrap .brag-book-gallery-subsection {
-  padding-block: var(--space-7) var(--space-6);
-  border-block-start: var(--space-px) solid var(--slate-200);
+  margin-block-end: var(--space-5);
+  padding: var(--space-5);
+  background: var(--brag-book-gallery-white);
+  border: var(--space-px) solid var(--slate-200);
+  border-radius: var(--rounded-xl);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
-.brag-book-gallery-admin-wrap .brag-book-gallery-subsection:first-of-type {
-  padding-block-start: var(--space-2);
-  border-block-start: 0;
+.brag-book-gallery-admin-wrap .brag-book-gallery-subsection:last-of-type {
+  margin-block-end: 0;
+}
+.brag-book-gallery-admin-wrap .brag-book-gallery-subsection > h3,
+.brag-book-gallery-admin-wrap .brag-book-gallery-subsection > .gallery-page-settings__header {
+  margin: calc(var(--space-5) * -1) calc(var(--space-5) * -1) var(--space-5);
+  padding: var(--space-3) var(--space-5);
+  background: var(--slate-50);
+  border-block-end: var(--space-px) solid var(--slate-200);
+  border-start-start-radius: var(--rounded-xl);
+  border-start-end-radius: var(--rounded-xl);
 }
 .brag-book-gallery-admin-wrap .brag-book-gallery-subsection > h3,
 .brag-book-gallery-admin-wrap .brag-book-gallery-subsection .gallery-page-settings__header h3 {
-  margin-block: 0 var(--space-3);
   font-size: var(--text-base);
   font-weight: var(--font-semibold);
   line-height: var(--leading-6);
   letter-spacing: -0.01em;
   color: var(--slate-900);
 }
+.brag-book-gallery-admin-wrap .brag-book-gallery-subsection .gallery-page-settings__header h3 {
+  margin: 0;
+}
 .brag-book-gallery-admin-wrap .brag-book-gallery-subsection__intro {
-  margin-block: calc(var(--space-3) * -1) var(--space-4);
+  margin-block: 0 var(--space-4);
   max-inline-size: 68ch;
   color: var(--slate-500);
   font-size: var(--text-sm);
   line-height: var(--leading-normal);
 }
 .brag-book-gallery-admin-wrap .brag-book-gallery-subsection--muted {
-  margin-block-start: var(--space-4);
-  padding-inline: var(--space-5);
   background: var(--slate-50);
-  border: var(--space-px) solid var(--slate-200);
-  border-radius: var(--rounded-lg);
 }
 .brag-book-gallery-admin-wrap .brag-book-gallery-subsection--muted > h3 {
+  background: var(--slate-100);
   color: var(--slate-700);
 }
 .brag-book-gallery-admin-wrap .brag-book-gallery-subsection__fields > .gallery-page-settings-field:first-child {
@@ -5567,12 +5884,19 @@
 .brag-book-gallery-admin-wrap .brag-book-gallery-subsection .brag-book-gallery-fields {
   margin-block-start: 0;
 }
-.brag-book-gallery-admin-wrap .brag-book-gallery-subsection .brag-book-gallery-field:first-child {
+.brag-book-gallery-admin-wrap .brag-book-gallery-subsection .brag-book-gallery-field:first-child,
+.brag-book-gallery-admin-wrap .brag-book-gallery-subsection .gallery-page-settings-field:first-child {
   padding-block-start: 0;
   border-block-start: 0;
 }
+.brag-book-gallery-admin-wrap .brag-book-gallery-subsection .brag-book-gallery-field:last-child,
+.brag-book-gallery-admin-wrap .brag-book-gallery-subsection .gallery-page-settings-field:last-child {
+  padding-block-end: 0;
+}
 .brag-book-gallery-admin-wrap .brag-book-gallery-subsection .display-settings-grid + .brag-book-gallery-fields {
   margin-block-start: var(--space-4);
+  padding-block-start: var(--space-4);
+  border-block-start: var(--space-px) solid var(--slate-100);
 }
 
 .brag-book-gallery-seo-fields {
@@ -7600,6 +7924,7 @@ body.wp-admin #wpfooter {
 .brag-book-gallery-tabs {
   position: sticky;
   top: 2rem;
+  z-index: var(--z-30);
   background: var(--slate-50);
   overflow: hidden;
   margin-block-end: var(--space-6);
@@ -7728,11 +8053,14 @@ body.wp-admin #wpfooter {
 .brag-book-gallery-side-tabs {
   inline-size: 220px;
   flex-shrink: 0;
-  padding: var(--space-2) var(--space-2) var(--space-6);
+  padding: var(--space-2);
   background: var(--brag-book-gallery-white);
-  border-inline-end: var(--space-px) solid var(--slate-200);
+  border: var(--space-px) solid var(--slate-200);
+  border-radius: var(--rounded-xl);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
   position: sticky;
-  inset-block-start: var(--space-8);
+  inset-block-start: var(--brag-book-gallery-sticky-top);
+  z-index: var(--z-10);
   align-self: flex-start;
 }
 .brag-book-gallery-side-tabs ul {
@@ -7808,9 +8136,7 @@ body.wp-admin #wpfooter {
   .brag-book-gallery-side-tabs {
     position: static;
     inline-size: auto;
-    padding: 0;
-    border-inline-end: 0;
-    border-block-end: var(--space-px) solid var(--slate-200);
+    padding: var(--space-1-5);
   }
   .brag-book-gallery-side-tabs ul {
     flex-direction: row;
@@ -7859,11 +8185,12 @@ body.wp-admin #wpfooter {
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-3);
-  margin-block-start: var(--space-8);
-  padding-block: var(--space-4);
+  margin-block-start: var(--space-5);
+  padding: var(--space-4) var(--space-5);
   background: var(--brag-book-gallery-white);
-  border-block-start: var(--space-px) solid var(--slate-200);
-  box-shadow: 0 -4px 6px -4px rgba(0, 0, 0, 0.08);
+  border: var(--space-px) solid var(--slate-200);
+  border-radius: var(--rounded-xl);
+  box-shadow: 0 -4px 12px -6px rgba(15, 23, 42, 0.15);
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -7871,103 +8198,188 @@ body.wp-admin #wpfooter {
     transition: var(--transition-shadow);
   }
 }
+.brag-book-gallery-admin-wrap .brag-book-gallery-tabbed-section--workspace {
+  margin: calc(var(--space-6) * -1);
+  margin-block-start: var(--space-2);
+  padding: var(--space-6);
+  border-block-start: var(--space-px) solid var(--slate-200);
+  border-end-start-radius: 0.8rem;
+  border-end-end-radius: 0.8rem;
+}
+.brag-book-gallery-admin-wrap .brag-book-gallery-tabbed-section--workspace .brag-book-gallery-tab-panel > h2 {
+  margin-block-start: 0;
+}
+@media (max-width: 1024px) {
+  .brag-book-gallery-admin-wrap .brag-book-gallery-tabbed-section--workspace {
+    padding-inline: var(--space-4);
+  }
+}
+
+.brag-book-gallery-section-nav {
+  margin-block-start: var(--space-3);
+  padding-block-start: var(--space-3);
+  border-block-start: var(--space-px) solid var(--slate-200);
+}
+.brag-book-gallery-section-nav[hidden] {
+  display: none;
+}
+.brag-book-gallery-section-nav ul {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.brag-book-gallery-section-nav li {
+  margin: 0;
+}
+.brag-book-gallery-section-nav a {
+  position: relative;
+  display: block;
+  padding: var(--space-1-5) var(--space-3);
+  border: 0;
+  color: var(--slate-500);
+  font-size: var(--text-xs);
+  line-height: var(--leading-4);
+  text-decoration: none;
+  transition: var(--transition-colors);
+}
+.brag-book-gallery-section-nav a:hover, .brag-book-gallery-section-nav a:focus {
+  color: var(--slate-900);
+  box-shadow: none;
+}
+.brag-book-gallery-section-nav a:focus-visible {
+  outline: 2px solid var(--blue-500);
+  outline-offset: -2px;
+  border-radius: var(--rounded);
+}
+.brag-book-gallery-section-nav a.is-current {
+  color: var(--brag-book-gallery-primary);
+  font-weight: var(--font-medium);
+}
+.brag-book-gallery-section-nav a.is-current::before {
+  content: "";
+  position: absolute;
+  inset-block: var(--space-1);
+  inset-inline-start: 0;
+  inline-size: var(--space-0-5);
+  border-radius: var(--rounded-full);
+  background: var(--brag-book-gallery-primary);
+}
+@media (max-width: 1024px) {
+  .brag-book-gallery-section-nav {
+    margin-block-start: var(--space-2);
+    padding-block-start: var(--space-2);
+  }
+  .brag-book-gallery-section-nav ul {
+    flex-direction: row;
+    gap: var(--space-1);
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+  .brag-book-gallery-section-nav li {
+    flex: 0 0 auto;
+  }
+  .brag-book-gallery-section-nav a.is-current::before {
+    inset-block: auto 0;
+    inset-inline: var(--space-3);
+    inline-size: auto;
+    block-size: var(--space-0-5);
+  }
+}
+
+.brag-book-gallery-admin-wrap .brag-book-gallery-subsection {
+  scroll-margin-block-start: var(--brag-book-gallery-sticky-top);
+}
+.brag-book-gallery-admin-wrap .brag-book-gallery-subsection:focus {
+  outline: none;
+}
+.brag-book-gallery-admin-wrap .brag-book-gallery-subsection:focus-visible {
+  outline: 2px solid var(--blue-500);
+  outline-offset: 2px;
+}
+
 .brag-book-gallery-toggle-wrapper {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .brag-book-gallery-toggle-label {
-  font-weight: 500;
-  color: #2c3338;
   margin: 0;
+  color: var(--slate-800);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  line-height: var(--leading-5);
+  cursor: pointer;
 }
 
 .brag-book-gallery-toggle {
   position: relative;
   display: inline-block;
-  width: 44px;
-  height: 24px;
+  flex-shrink: 0;
+  inline-size: 44px;
+  block-size: 24px;
   cursor: pointer;
   user-select: none;
 }
 .brag-book-gallery-toggle input[type=checkbox] {
   position: absolute;
+  inline-size: 100%;
+  block-size: 100%;
+  margin: 0;
   opacity: 0;
   pointer-events: none;
-  width: 100%;
-  height: 100%;
-  margin: 0;
 }
 .brag-book-gallery-toggle input[type=checkbox]:checked + .brag-book-gallery-toggle-slider {
-  background-color: var(--red-500);
+  background-color: var(--brag-book-gallery-primary);
+  border-color: var(--brag-book-gallery-primary);
 }
 .brag-book-gallery-toggle input[type=checkbox]:checked + .brag-book-gallery-toggle-slider::before {
   transform: translateX(20px);
 }
 .brag-book-gallery-toggle input[type=checkbox]:focus-visible + .brag-book-gallery-toggle-slider {
-  outline: 2px solid var(--red-500);
+  outline: 2px solid var(--blue-500);
   outline-offset: 2px;
 }
 .brag-book-gallery-toggle input[type=checkbox]:disabled + .brag-book-gallery-toggle-slider {
   opacity: 0.5;
   cursor: not-allowed;
 }
-
-.brag-book-toggle-label {
-  font-weight: 500;
-  color: #2c3338;
+.brag-book-gallery-toggle:hover input[type=checkbox]:not(:disabled) + .brag-book-gallery-toggle-slider {
+  border-color: var(--slate-400);
+}
+.brag-book-gallery-toggle:hover input[type=checkbox]:checked:not(:disabled) + .brag-book-gallery-toggle-slider {
+  background-color: var(--brag-book-gallery-primary-hover);
+  border-color: var(--brag-book-gallery-primary-hover);
 }
 
-.brag-book-toggle-switch {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  cursor: pointer;
-  user-select: none;
-}
-.brag-book-toggle-switch input[type=checkbox] {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-}
-.brag-book-toggle-switch input[type=checkbox]:checked + .brag-book-toggle-slider {
-  background-color: var(--red-500);
-}
-.brag-book-toggle-switch input[type=checkbox]:checked + .brag-book-toggle-slider::before {
-  transform: translateX(20px);
-}
-.brag-book-toggle-switch input[type=checkbox]:focus-visible + .brag-book-toggle-slider {
-  outline: 2px solid var(--red-500);
-  outline-offset: 2px;
-}
-.brag-book-toggle-switch input[type=checkbox]:disabled + .brag-book-toggle-slider {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.brag-book-gallery-toggle-slider,
-.brag-book-toggle-slider {
+.brag-book-gallery-toggle-slider {
   position: relative;
   display: block;
-  width: 100%;
-  height: 100%;
-  background-color: #ccc;
-  border-radius: 12px;
-  transition: background-color 0.2s ease;
+  inline-size: 100%;
+  block-size: 100%;
+  background-color: var(--slate-300);
+  border: var(--space-px) solid var(--slate-300);
+  border-radius: var(--rounded-full);
+  transition: var(--transition-colors);
 }
-.brag-book-gallery-toggle-slider::before,
-.brag-book-toggle-slider::before {
+.brag-book-gallery-toggle-slider::before {
   content: "";
   position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 20px;
-  height: 20px;
-  background-color: white;
-  border-radius: 50%;
-  transition: transform 0.2s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  inset-block-start: 1px;
+  inset-inline-start: 1px;
+  inline-size: 20px;
+  block-size: 20px;
+  background-color: var(--brag-book-gallery-white);
+  border-radius: var(--rounded-full);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .brag-book-gallery-toggle-slider::before {
+    transition: transform 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
 }
 
 .opacity-0 {

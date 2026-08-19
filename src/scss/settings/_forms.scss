@@ -18,11 +18,13 @@
 .brag-book-gallery-admin-wrap select {
 	border: var(--space-px) solid var(--slate-300);
 	border-radius: var(--rounded-md);
+	min-block-size: 40px;
 	padding-block: var(--space-2);
 	padding-inline: var(--space-3);
 	font-size: var(--text-sm);
+	line-height: var(--leading-5);
 	transition: var(--transition-colors);
-	background: white;
+	background: var(--brag-book-gallery-white);
 }
 
 /* Chrome, Safari, Edge, Opera */
@@ -37,13 +39,39 @@
 	-moz-appearance: textfield;
 }
 
+/* The select is drawn here rather than by the platform: a full-width control
+   with a chevron in the palette's own slate, sized to match the text inputs so
+   a stack of mixed fields shares one silhouette. */
 .brag-book-gallery-admin-wrap select {
 	appearance: none;
-	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23374151' d='M10.293 3.293L6 7.586 1.707 3.293A1 1 0 00.293 4.707l5 5a1 1 0 001.414 0l5-5a1 1 0 10-1.414-1.414z'/%3E%3C/svg%3E");
+	-webkit-appearance: none;
+	inline-size: 100%;
+	min-block-size: 40px;
+	padding-block: var(--space-2);
+	padding-inline: var(--space-3) calc(var(--space-3) * 3);
+	background-color: var(--brag-book-gallery-white);
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 -960 960 960' fill='%2364748b'%3E%3Cpath d='M480-361.85 267.69-574.15h424.62L480-361.85Z'/%3E%3C/svg%3E");
 	background-repeat: no-repeat;
 	background-position: right var(--space-3) center;
-	background-size: var(--space-3);
-	padding-inline-end: calc(var(--space-3) * 3);
+	background-size: 18px;
+	border: var(--space-px) solid var(--slate-300);
+	border-radius: var(--rounded-md);
+	color: var(--slate-900);
+	font-size: var(--text-sm);
+	line-height: var(--leading-5);
+	cursor: pointer;
+	transition: var(--transition-colors);
+
+	&:disabled {
+		background-color: var(--slate-50);
+		color: var(--slate-400);
+		cursor: not-allowed;
+	}
+
+	// The open list is the platform's own; only the closed control is ours.
+	option {
+		color: var(--slate-900);
+	}
 }
 
 .brag-book-gallery-admin-wrap input[type="text"]:hover,
@@ -171,12 +199,23 @@
 		margin-block-end: var(--space-2);
 	}
 
-	.large-text {
-		width: 100%;
+	> input[type="text"],
+	> input[type="email"],
+	> input[type="url"],
+	> input[type="password"],
+	> input[type="number"],
+	> textarea,
+	> select,
+	> .regular-text,
+	> .large-text,
+	> .small-text {
+		inline-size: 100%;
+		max-inline-size: none;
 	}
 
 	.description {
 		margin-block-start: var(--space-2);
+		max-inline-size: 68ch;
 	}
 
 	&__action {
@@ -206,20 +245,52 @@
 
 /* Carousel navigation choice, nested under the carousel toggle it depends on */
 .carousel-nav-choice {
-	margin-block-start: var(--space-2);
 	margin-inline-start: calc(var(--space-8) + var(--space-2));
-	padding-inline-start: var(--space-4);
 	border: 0;
-	border-inline-start: 2px solid var(--slate-200, #e2e8f0);
+	border-inline-start: var(--space-0-5) solid var(--slate-200);
 
 	&__legend {
 		padding: 0;
-		font-weight: 600;
+		margin-block-end: var(--space-2);
+		font-size: var(--text-sm);
+		font-weight: var(--font-semibold);
+		color: var(--slate-700);
 	}
 }
 
-.brag-book-gallery-fields:has(#brag_book_gallery_case_image_carousel:not(:checked)) .carousel-nav-choice {
-	opacity: .5;
+/* -----------------------------------------------------------------------------
+   Conditional settings
+   A field that depends on another is nested under it behind a rule, and is
+   removed outright when its condition is off rather than dimmed — a greyed
+   control that cannot be reached is noise, not information. Hidden fields keep
+   posting their saved values, so nothing is lost by hiding them.
+   -------------------------------------------------------------------------- */
+.brag-book-gallery-admin-wrap [data-bb-requires] {
+	margin-block-start: var(--space-3);
+	padding-inline-start: var(--space-4);
+	border-inline-start: var(--space-0-5) solid var(--slate-200);
+}
+
+.brag-book-gallery-admin-wrap [data-bb-requires][hidden] {
+	display: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	.bb-conditional-live .brag-book-gallery-admin-wrap [data-bb-requires]:not([hidden]) {
+		animation: bb-conditional-reveal 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
+	}
+}
+
+@keyframes bb-conditional-reveal {
+	from {
+		opacity: 0;
+		transform: translateY(calc(var(--space-1) * -1));
+	}
+
+	to {
+		opacity: 1;
+		transform: none;
+	}
 }
 
 /* Gallery Slug Input Row - input + edit button side by side */
@@ -334,13 +405,19 @@
 
 	&__control {
 		display: flex;
-		align-items: center;
-		gap: var(--space-2);
+		align-items: stretch;
 
 		select,
 		input[type="number"] {
 			flex: 1;
-			min-width: 0;
+			min-inline-size: 0;
+		}
+
+		// A select with a button beside it gives up its trailing corners so the
+		// pair reads as one element rather than two things that happen to touch.
+		> select:has(+ .display-settings-grid__preview-btn) {
+			border-start-end-radius: 0;
+			border-end-end-radius: 0;
 		}
 	}
 
@@ -349,33 +426,36 @@
 		align-items: center;
 		justify-content: center;
 		flex-shrink: 0;
-		width: 36px;
-		height: 36px;
+		inline-size: 40px;
+		min-block-size: 40px;
 		padding: 0;
 		border: var(--space-px) solid var(--slate-300);
-		border-radius: var(--rounded-md);
-		background: white;
+		border-inline-start: 0;
+		border-start-start-radius: 0;
+		border-end-start-radius: 0;
+		border-start-end-radius: var(--rounded-md);
+		border-end-end-radius: var(--rounded-md);
+		background: var(--slate-50);
 		color: var(--slate-500);
 		cursor: pointer;
-		transition: all 0.15s ease;
+		transition: var(--transition-colors);
 
 		.dashicons {
 			font-size: 18px;
-			width: 18px;
-			height: 18px;
+			inline-size: 18px;
+			block-size: 18px;
 			line-height: 1;
 		}
 
 		&:hover {
-			border-color: var(--blue-400);
-			color: var(--blue-600);
-			background: var(--blue-50);
+			background: var(--slate-100);
+			color: var(--slate-900);
 		}
 
-		&:focus {
+		&:focus-visible {
 			outline: 2px solid var(--blue-500);
-			outline-offset: -1px;
-			border-color: var(--blue-500);
+			outline-offset: -2px;
+			z-index: var(--z-10);
 		}
 	}
 }
@@ -469,11 +549,14 @@
 }
 
 /* SERP Preview styling */
+// An inset well inside the metadata card — deliberately not a second card:
+// no border and no shadow, so it reads as a recess in the surface it sits on.
 .brag-book-gallery-admin-wrap .serp-preview-container {
-	margin-block-start: var(--space-8);
-	padding: var(--space-5);
-	background: var(--slate-100);
+	margin-block-start: var(--space-5);
+	padding: var(--space-4) var(--space-5);
+	background: var(--slate-50);
 	border-radius: var(--rounded-lg);
+	box-shadow: inset 0 1px 2px rgb(15 23 42 / 0.05);
 
 	h3 {
 		margin-block: 0 var(--space-4);
@@ -658,25 +741,19 @@
 		> input[type="email"],
 		> input[type="url"],
 		> input[type="password"],
+		> input[type="number"],
 		> textarea,
 		> select,
 		> .large-text,
+		> .small-text,
 		> .gallery-slug-input-row,
+		> .api-token-field,
 		> .brag-book-gallery-code-editor {
-			max-inline-size: 34rem;
 			inline-size: 100%;
+			max-inline-size: none;
 		}
 
-		> input[type="number"],
-		> .small-text {
-			inline-size: 7rem;
-		}
-
-		> select {
-			inline-size: auto;
-			min-inline-size: 14rem;
-		}
-
+		// Help text still reads at a measure; only controls go full width.
 		> .description,
 		> .character-count {
 			max-inline-size: 68ch;
@@ -705,4 +782,272 @@
 	letter-spacing: normal;
 	text-transform: none;
 	color: var(--slate-700);
+}
+
+/* -----------------------------------------------------------------------------
+   Checkbox and radio
+   Native controls in this realm are drawn by the platform and ignore the
+   palette, so both are rebuilt on the same 18px square/circle with the same
+   crimson selected state as the switch and the same blue focus ring as every
+   other control here.
+   -------------------------------------------------------------------------- */
+.brag-book-gallery-admin-wrap {
+
+	.brag-book-gallery-field input[type="checkbox"]:not(.brag-book-gallery-toggle input),
+	.brag-book-gallery-setting-choice input[type="radio"],
+	fieldset input[type="radio"] {
+		appearance: none;
+		-webkit-appearance: none;
+		position: relative;
+		flex-shrink: 0;
+		inline-size: 18px;
+		block-size: 18px;
+		margin: 0 var(--space-2) 0 0;
+		background-color: var(--brag-book-gallery-white);
+		border: var(--space-px) solid var(--slate-300);
+		cursor: pointer;
+		transition: var(--transition-colors);
+
+		&:hover {
+			border-color: var(--slate-400);
+		}
+
+		&:focus-visible {
+			outline: 2px solid var(--blue-500);
+			outline-offset: 2px;
+		}
+
+		&:disabled {
+			opacity: 0.5;
+			cursor: not-allowed;
+		}
+	}
+
+	.brag-book-gallery-field input[type="checkbox"]:not(.brag-book-gallery-toggle input) {
+		border-radius: var(--rounded);
+
+		&:checked {
+			background-color: var(--brag-book-gallery-primary);
+			border-color: var(--brag-book-gallery-primary);
+			background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 -960 960 960' fill='white'%3E%3Cpath d='M400-318.23 254.23-464 296-505.77l104 104 264-264L705.77-624 400-318.23Z'/%3E%3C/svg%3E");
+			background-size: 82%;
+			background-position: center;
+			background-repeat: no-repeat;
+		}
+	}
+
+	.brag-book-gallery-setting-choice input[type="radio"],
+	fieldset input[type="radio"] {
+		border-radius: var(--rounded-full);
+
+		&:checked {
+			border-color: var(--brag-book-gallery-primary);
+			border-width: 5px;
+		}
+	}
+}
+
+/* A radio choice is a row you click, not a dot you aim at. */
+.brag-book-gallery-admin-wrap .brag-book-gallery-setting-choice {
+	padding: var(--space-3);
+	border: var(--space-px) solid var(--slate-200);
+	border-radius: var(--rounded-md);
+	background: var(--brag-book-gallery-white);
+	cursor: pointer;
+	transition: var(--transition-colors);
+
+	+ .brag-book-gallery-setting-choice {
+		margin-block-start: var(--space-3);
+	}
+
+	&:hover {
+		border-color: var(--slate-300);
+		background: var(--slate-50);
+	}
+
+	strong {
+		font-size: var(--text-sm);
+		font-weight: var(--font-semibold);
+		color: var(--slate-800);
+	}
+
+	// :has is safe here — the row and its input share this element.
+	&:has(input:checked) {
+		border-color: var(--brag-book-gallery-primary);
+		background: var(--slate-50);
+	}
+
+	&:has(input:focus-visible) {
+		outline: 2px solid var(--blue-500);
+		outline-offset: 2px;
+	}
+}
+
+/* A group of fields that share one condition: the nesting rule is drawn once
+   around the group rather than once per field. */
+.brag-book-gallery-admin-wrap .brag-book-gallery-conditional-group {
+
+	> .gallery-page-settings-field:first-child {
+		padding-block-start: 0;
+	}
+
+	> .gallery-page-settings-field + .gallery-page-settings-field {
+		border-block-start: var(--space-px) solid var(--slate-100);
+	}
+}
+
+/* A number with a unit: the field still fills its row, and the unit rides at
+   the end of the control instead of floating loose beside it. */
+.brag-book-gallery-admin-wrap .brag-book-gallery-input-unit {
+	display: flex;
+	align-items: stretch;
+	inline-size: 100%;
+
+	input[type="number"] {
+		flex: 1;
+		min-inline-size: 0;
+		border-start-end-radius: 0;
+		border-end-end-radius: 0;
+	}
+
+	&__suffix {
+		display: inline-flex;
+		align-items: center;
+		flex-shrink: 0;
+		padding-inline: var(--space-3);
+		background: var(--slate-50);
+		border: var(--space-px) solid var(--slate-300);
+		border-inline-start: 0;
+		border-start-end-radius: var(--rounded-md);
+		border-end-end-radius: var(--rounded-md);
+		color: var(--slate-500);
+		font-size: var(--text-sm);
+	}
+}
+
+/* -----------------------------------------------------------------------------
+   Nudity warning preview
+   A drawn stand-in for the front-end warning, sitting beside the copy fields so
+   the wording can be judged in its real shape. The plate beneath the overlay is
+   a flat tone — a settings screen has no business loading a case photo.
+   -------------------------------------------------------------------------- */
+.brag-book-gallery-admin-wrap .brag-book-gallery-split {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	gap: var(--space-6);
+
+	@media (min-width: 1100px) {
+		grid-template-columns: minmax(0, 1fr) 300px;
+		align-items: start;
+	}
+}
+
+.brag-book-gallery-admin-wrap .brag-book-gallery-nudity-preview {
+
+	@media (min-width: 1100px) {
+		position: sticky;
+		inset-block-start: calc(var(--brag-book-gallery-sticky-top) + var(--space-4));
+	}
+
+	&__title {
+		margin-block: 0 var(--space-2);
+		font-size: var(--text-xs);
+		font-weight: var(--font-semibold);
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+		color: var(--slate-500);
+	}
+
+	&__stage {
+		position: relative;
+		isolation: isolate;
+		border-radius: var(--rounded-lg);
+		border: var(--space-px) solid var(--slate-200);
+		overflow: hidden;
+	}
+
+	// Per-case warning: the shape of a case card. Full-page warning: a wider,
+	// shallower plate standing for the page behind it. Written out rather than
+	// as `& &__x`, which nests the wrap selector twice and never matches.
+	&__stage {
+		aspect-ratio: 4 / 5;
+	}
+
+	&[data-mode="global"] .brag-book-gallery-nudity-preview__stage {
+		aspect-ratio: 16 / 10;
+	}
+
+	&[data-mode="global"] .brag-book-gallery-nudity-preview__plate {
+		background:
+			linear-gradient(180deg, var(--slate-200) 0 18%, transparent 18%),
+			linear-gradient(135deg, var(--slate-100), var(--slate-300));
+	}
+
+	&__plate {
+		position: absolute;
+		inset: 0;
+		background: linear-gradient(135deg, var(--slate-200), var(--slate-400));
+	}
+
+	&__overlay {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: var(--space-2);
+		padding: var(--space-4);
+		text-align: center;
+		background: rgb(255 255 255 / 0.75);
+		backdrop-filter: blur(16px);
+		-webkit-backdrop-filter: blur(16px);
+		color: var(--ink-black, #030712);
+	}
+
+	// The front-end warning's own type, reproduced at the size it ships at.
+	&__heading {
+		margin: 0;
+		font-size: 18px;
+		font-weight: 600;
+		line-height: var(--leading-6);
+		color: #030712;
+	}
+
+	&__caption {
+		margin: 0;
+		font-size: 12px;
+		line-height: 1.25;
+		color: #030712;
+	}
+
+	&__button {
+		display: inline-block;
+		margin-block-start: var(--space-1);
+		padding: 12px 16px;
+		background: #030712;
+		color: #fff;
+		border-radius: 4px;
+		font-size: 12px;
+		font-weight: 600;
+		letter-spacing: 0.05em;
+		text-transform: uppercase;
+	}
+
+	&__decline {
+		font-size: 12px;
+		text-decoration: underline;
+		color: #030712;
+
+		&[hidden] {
+			display: none;
+		}
+	}
+
+	&__note {
+		margin-block: var(--space-2) 0;
+		font-size: var(--text-xs);
+		line-height: var(--leading-4);
+		color: var(--slate-500);
+	}
 }
