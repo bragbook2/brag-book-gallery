@@ -24,7 +24,7 @@ if ( $term instanceof WP_Term ) {
 	?>
 	<main id="main" class="site-main brag-book-gallery-provider-view">
 		<header class="page-header">
-			<h1 class="page-title"><?php echo esc_html( $term->name ); ?></h1>
+			<h1 class="page-title"><?php echo esc_html( \BRAGBookGallery\Includes\Extend\Taxonomies::provider_display_name( $term->name ) ); ?></h1>
 			<?php if ( ! empty( $term->description ) ) : ?>
 				<div class="taxonomy-description">
 					<?php echo do_shortcode( wp_kses_post( wpautop( $term->description ) ) ); ?>

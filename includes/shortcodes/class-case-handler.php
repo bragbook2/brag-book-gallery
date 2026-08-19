@@ -1934,7 +1934,6 @@ class Case_Handler {
 	private function build_provider_data( \WP_Term $term ): array {
 		$image_url     = get_term_meta( $term->term_id, 'provider_image_url', true );
 		$profile_photo = get_term_meta( $term->term_id, 'provider_profile_photo', true );
-		$profile_url   = get_term_meta( $term->term_id, 'provider_profile_url', true );
 
 		$photo_url = '';
 		if ( ! empty( $image_url ) ) {
@@ -1944,33 +1943,11 @@ class Case_Handler {
 		}
 
 		return [
-			'term_id'     => $term->term_id,
-			'name'        => $term->name,
-			'photo_url'   => $photo_url,
-			'profile_url' => $profile_url ?: '',
-			'archive_url' => self::provider_archive_url( $term ),
+			'term_id'   => $term->term_id,
+			'name'      => Taxonomies::provider_display_name( $term->name ),
+			'photo_url' => $photo_url,
+			'link'      => Taxonomies::provider_link( $term ),
 		];
-	}
-
-	/**
-	 * URL of a provider's own gallery page, when they have one
-	 *
-	 * A provider archive only exists once the taxonomy is public and the
-	 * provider has cases to show, so an empty string means there is no page to
-	 * link to and the caller falls back to the API profile URL.
-	 *
-	 * @since 4.9.3
-	 * @param \WP_Term $term Provider term.
-	 * @return string Archive URL, or an empty string.
-	 */
-	private static function provider_archive_url( \WP_Term $term ): string {
-		if ( ! is_taxonomy_viewable( $term->taxonomy ) || $term->count < 1 ) {
-			return '';
-		}
-
-		$link = get_term_link( $term );
-
-		return is_wp_error( $link ) ? '' : $link;
 	}
 
 	/**
@@ -2008,12 +1985,11 @@ class Case_Handler {
 			}
 			$html .= '</div>';
 
-			// Provider name and link. The provider's own gallery page wins over
-			// the API profile URL: it keeps the visitor in the gallery, browsing
-			// that provider's cases.
+			// Provider name and link, the profile URL on the term first and the
+			// provider's gallery archive when there is none.
 			$html .= '<div class="brag-book-gallery-provider-info">';
 
-			$provider_link = $provider['archive_url'] ?: $provider['profile_url'];
+			$provider_link = $provider['link'];
 
 			if ( ! empty( $provider_link ) ) {
 				$html .= sprintf(

@@ -166,11 +166,13 @@ final class Gallery_Handler {
 			<ul class="brag-book-gallery-provider-list">
 				<?php foreach ( $terms as $term ) : ?>
 					<?php
-					$link = get_term_link( $term );
+					$link = Taxonomies::provider_link( $term );
 
-					if ( is_wp_error( $link ) ) {
+					if ( '' === $link ) {
 						continue;
 					}
+
+					$provider_name = Taxonomies::provider_display_name( $term->name );
 					?>
 					<li class="brag-book-gallery-provider-list__item">
 						<a class="brag-book-gallery-provider-list__link" href="<?php echo esc_url( $link ); ?>">
@@ -178,7 +180,7 @@ final class Gallery_Handler {
 							// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- markup escaped within render_provider_photo().
 							echo self::render_provider_photo( $term );
 							?>
-							<span class="brag-book-gallery-provider-list__name"><?php echo esc_html( $term->name ); ?></span>
+							<span class="brag-book-gallery-provider-list__name"><?php echo esc_html( $provider_name ); ?></span>
 							<span class="brag-book-gallery-provider-list__count">
 								<?php
 								printf(
@@ -223,7 +225,7 @@ final class Gallery_Handler {
 		return sprintf(
 			'<img class="brag-book-gallery-provider-list__photo" src="%1$s" alt="%2$s" width="200" height="200" loading="lazy" decoding="async" />',
 			esc_url( $image_url ),
-			esc_attr( $term->name )
+			esc_attr( Taxonomies::provider_display_name( $term->name ) )
 		);
 	}
 
@@ -571,6 +573,22 @@ final class Gallery_Handler {
 		}
 
 		return absint( get_queried_object_id() );
+	}
+
+	/**
+	 * Display name of an archive term
+	 *
+	 * Provider names carry punctuated initials; procedure names are shown as
+	 * they are stored.
+	 *
+	 * @since 4.9.4
+	 * @param \WP_Term $term Procedure or provider term.
+	 * @return string Name for display.
+	 */
+	private static function term_display_name( \WP_Term $term ): string {
+		return Taxonomies::TAXONOMY_PROVIDERS === $term->taxonomy
+			? Taxonomies::provider_display_name( $term->name )
+			: $term->name;
 	}
 
 	/**
@@ -1394,7 +1412,7 @@ final class Gallery_Handler {
 						?>
 						<div class="brag-book-gallery-content-header">
 							<h1 class="brag-book-gallery-content-title">
-								<strong><?php echo esc_html( $current_taxonomy->name ); ?></strong>
+								<strong><?php echo esc_html( self::term_display_name( $current_taxonomy ) ); ?></strong>
 								Before &amp; After Gallery
 							</h1>
 						</div>
@@ -2777,7 +2795,7 @@ final class Gallery_Handler {
 
 					<!-- Content Title -->
 					<h1 class="brag-book-gallery-content-title">
-						<strong><?php echo esc_html( $procedure_term->name ); ?></strong>
+						<strong><?php echo esc_html( self::term_display_name( $procedure_term ) ); ?></strong>
 						Before &amp; After Gallery
 					</h1>
 
@@ -2968,7 +2986,7 @@ final class Gallery_Handler {
 						sprintf(
 							/* translators: %s: procedure or provider name. */
 							__( 'No cases found for %s.', 'brag-book-gallery' ),
-							$taxonomy->name
+							self::term_display_name( $taxonomy )
 						)
 					)
 				),

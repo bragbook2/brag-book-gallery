@@ -664,7 +664,7 @@ final class Cases_Handler {
 				// Fallback to case data if no post context
 				$provider_name = $case['providerName'] ?? $case['provider_name'] ?? '';
 				if ( ! empty( $provider_name ) ) {
-					$html .= '<h3 class="case-title provider-name">' . esc_html( $provider_name ) . '</h3>';
+					$html .= '<h3 class="case-title provider-name">' . esc_html( Taxonomies::provider_display_name( $provider_name ) ) . '</h3>';
 				}
 			}
 		} elseif ( ! empty( $case_info['seo_headline'] ) ) {
@@ -2988,7 +2988,6 @@ final class Cases_Handler {
 	private static function build_provider_data( \WP_Term $term ): array {
 		$image_url     = get_term_meta( $term->term_id, 'provider_image_url', true );
 		$profile_photo = get_term_meta( $term->term_id, 'provider_profile_photo', true );
-		$profile_url   = get_term_meta( $term->term_id, 'provider_profile_url', true );
 
 		$photo_url = '';
 		if ( ! empty( $image_url ) ) {
@@ -2998,10 +2997,9 @@ final class Cases_Handler {
 		}
 
 		return [
-			'term_id'     => $term->term_id,
-			'name'        => $term->name,
-			'photo_url'   => $photo_url,
-			'profile_url' => $profile_url ?: '',
+			'term_id'   => $term->term_id,
+			'name'      => Taxonomies::provider_display_name( $term->name ),
+			'photo_url' => $photo_url,
 		];
 	}
 
@@ -3023,7 +3021,7 @@ final class Cases_Handler {
 			// Fall back to post meta if taxonomy not available
 			$provider_name = get_post_meta( $post_id, 'brag_book_gallery_provider_name', true );
 			if ( ! empty( $provider_name ) ) {
-				return '<h3 class="case-title provider-name">' . esc_html( $provider_name ) . '</h3>';
+				return '<h3 class="case-title provider-name">' . esc_html( Taxonomies::provider_display_name( $provider_name ) ) . '</h3>';
 			}
 			if ( ! empty( $fallback_name ) ) {
 				return '<h3 class="case-title">' . esc_html( $fallback_name ) . '</h3>';

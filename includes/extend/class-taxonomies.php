@@ -63,6 +63,10 @@ class Taxonomies {
 			add_action( 'create_' . self::TAXONOMY_PROVIDERS, [ $this, 'save_provider_meta' ] );
 			add_filter( 'manage_edit-' . self::TAXONOMY_PROVIDERS . '_columns', [ $this, 'add_provider_columns' ] );
 			add_filter( 'manage_' . self::TAXONOMY_PROVIDERS . '_custom_column', [ $this, 'add_provider_column_content' ], 10, 3 );
+
+			// Punctuate initials in the archive title a theme prints for us,
+			// which a block theme's query-title block does too.
+			add_filter( 'single_term_title', [ $this, 'filter_provider_archive_title' ] );
 		}
 
 		// Enqueue media scripts for taxonomy pages
@@ -749,6 +753,64 @@ class Taxonomies {
 		}
 
 		return absint( get_term_meta( $term_id, 'provider_member_id', true ) );
+	}
+
+	/**
+	 * Punctuate initials in the provider archive title
+	 *
+	 * @since 4.9.4
+	 * @param string $title Term name the theme is about to print.
+	 * @return string Title, punctuated on a provider archive.
+	 */
+	public function filter_provider_archive_title( string $title ): string {
+		return is_tax( self::TAXONOMY_PROVIDERS ) ? self::provider_display_name( $title ) : $title;
+	}
+
+	/**
+	 * Punctuate a provider's name for display
+	 *
+	 * A provider synced as "John A Smith" reads "John A. Smith" wherever the
+	 * name is shown. Initials that already carry a period are left alone, and
+	 * the stored term name is never touched, so slugs and the sync's name
+	 * comparisons keep matching.
+	 *
+	 * @since 4.9.4
+	 * @param string $name Provider name as stored.
+	 * @return string Name with its initials punctuated.
+	 */
+	public static function provider_display_name( string $name ): string {
+		// A capital letter standing alone between spaces is an initial. The
+		// look-behind keeps it from firing inside a word, and requiring a space
+		// after leaves an already-punctuated initial as it is.
+		return (string) preg_replace( '/(?<![\p{L}.])(\p{Lu})(?=\s)/u', '$1.', $name );
+	}
+
+	/**
+	 * Where a provider's name should link to
+	 *
+	 * The profile URL on the term wins: it is the practice's own page for that
+	 * provider, which says more about them than a case list does. Without one
+	 * the visitor goes to the provider's gallery archive, which exists only
+	 * once the taxonomy is public and the provider has cases to show.
+	 *
+	 * @since 4.9.4
+	 * @param \WP_Term $term Provider term.
+	 * @return string URL, or an empty string when there is nowhere to link.
+	 */
+	public static function provider_link( \WP_Term $term ): string {
+		$profile_url = (string) get_term_meta( $term->term_id, 'provider_profile_url', true );
+
+		if ( '' !== $profile_url ) {
+			return $profile_url;
+		}
+
+		if ( ! is_taxonomy_viewable( $term->taxonomy ) || $term->count < 1 ) {
+			return '';
+		}
+
+		$link = get_term_link( $term );
+
+		return is_wp_error( $link ) ? '' : $link;
 	}
 
 	/**

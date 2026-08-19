@@ -338,7 +338,7 @@ class Provider_Filter {
 		foreach ( $terms as $term ) {
 			$providers[] = [
 				'slug'      => $term->slug,
-				'name'      => $term->name,
+				'name'      => Taxonomies::provider_display_name( $term->name ),
 				'member_id' => Taxonomies::provider_member_id( $term->term_id ),
 				'photo_url' => self::provider_photo_url( $term->term_id ),
 			];
