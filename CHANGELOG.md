@@ -4,6 +4,56 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.3-beta10] - 2026-08-19 (Beta Release)
+
+### Changed
+
+- **The General settings page is grouped into named sections**: every tab held a
+  flat run of controls in the order they were written, so Gallery Columns sat
+  between an image disclaimer and the plugin update channel, and the Favorites
+  toggle was nowhere near the Favorites page setting. Display & Gallery is now
+  eight titled groups - Gallery Page, Layout & Views, Case Cards, Navigation &
+  Filters, Visitor Features, Providers & Locations, Nudity Warning and Plugin
+  Updates - with the update channel and API environment set apart at the end as
+  the maintenance settings they are. SEO, Performance and Custom CSS use the
+  same grouping, and the SEO search preview now sits with the title and
+  description it previews instead of below the schema settings. Every field
+  stays in the same form it was in, so saving behaves exactly as before.
+- **The Save button follows you down a long tab**: it waited at the bottom of a
+  page that scrolls for screens. It now stays at the foot of the panel while you
+  work. The settings rail does the same on wide screens, and lies down as a
+  scrolling strip of tabs under 1024px.
+- **The settings rail and its panels announce themselves**: the tabs are marked
+  up as tabs, each panel points back at the tab that opens it, and the selected
+  tab reports itself as selected, so a keyboard or screen reader can tell which
+  panel is showing.
+- **A provider's initials are punctuated, and their name links to their
+  profile**: a provider synced as "John A Smith" now reads "John A. Smith"
+  wherever the name appears - case detail, case cards, the providers grid, the
+  filter dropdown and both archive headings - while the stored term name is left
+  alone so slugs and the sync's name matching keep working. Themes that print the
+  archive title themselves, block themes included, are covered too. The name now
+  links to the provider's profile URL when the term has one, falling back to
+  their gallery archive when it does not.
+
+### Fixed
+
+- **A case's next and previous buttons no longer point outside the provider you
+  came from**: the server draws those buttons from the case's primary procedure,
+  so a visitor who arrived from a provider kept arrows leading to cases that
+  provider does not have - most visibly on a provider holding a single case,
+  where both arrows stayed with nowhere to go. The adjacent-case lookup is now
+  the authority in both directions, and a direction it has nothing for loses its
+  button. A failed request says nothing about scope, so it leaves the server's
+  links alone.
+- **Settings controls no longer style themselves in place**: nine inline styles,
+  a private method that returned CSS as a string, and JavaScript that wrote
+  colours onto the character counters have all moved into the stylesheet, where
+  the admin palette and spacing scale own them. Selecting a column count now
+  marks itself in the plugin's own red rather than a stray blue, and an
+  explanation under a radio choice lines up with the choice instead of the
+  toggle above it.
+
 ## [4.9.3-beta9] - 2026-08-18 (Beta Release)
 
 ### Fixed

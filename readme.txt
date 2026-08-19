@@ -93,6 +93,13 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 
 == Changelog ==
 
+= 4.9.3-beta10 =
+* Changed: The General settings screen is organised into named sections instead of one long list, so related settings sit together. Display & Gallery is now eight groups, and the plugin update channel and API environment are set apart at the end.
+* Changed: The Save button stays with you as you scroll a long settings tab, and the settings menu stays in view on wide screens and turns into a row of tabs on narrower ones.
+* Changed: The SEO search preview now sits beside the title and description it previews.
+* Changed: A provider whose name was synced as "John A Smith" now reads "John A. Smith" everywhere it appears, and their name links to their profile page when they have one.
+* Fixed: Arriving at a case from a provider no longer leaves next and previous arrows pointing at cases that provider does not have.
+
 = 4.9.3-beta9 =
 * Fixed: Carousel thumbnails cut the sides off a photo and sat at different heights when a case mixed portrait and landscape shots. Each thumbnail now shows its whole photo, and they line up along the strip at one height with no white gap around them.
 

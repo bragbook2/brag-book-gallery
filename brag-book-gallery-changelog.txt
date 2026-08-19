@@ -1,5 +1,17 @@
 === BRAGBook Gallery Changelog ===
 
+= 4.9.3-beta10 (2026-08-19) =
+
+Changed:
+* General settings page reorganised - every tab's controls are grouped into named sections. Display & Gallery is eight groups (Gallery Page, Layout & Views, Case Cards, Navigation & Filters, Visitor Features, Providers & Locations, Nudity Warning, Plugin Updates); the release channel and API environment sit in a muted band at the end. SEO, Performance and Custom CSS drop .form-table for the same .brag-book-gallery-field row primitive inside .brag-book-gallery-subsection bands, and the SERP preview moves up beside the title/description fields. All fields stay inside their existing form, so no save_*() handler sees a field it was not sent
+* .brag-book-gallery-tab-actions is position: sticky at the foot of the panel; .brag-book-gallery-side-tabs is sticky on desktop and becomes a horizontally scrolling strip under 1024px, with the active marker moving from a left bar to an underline
+* Side tabs and panels carry role="tablist"/"tab"/"tabpanel", aria-controls, aria-labelledby and aria-selected, kept in step by the existing switcher
+* Provider names render with punctuated initials ("John A Smith" to "John A. Smith") across case detail, case cards, the providers grid, the filter dropdown and both archive headings, including a single_term_title filter for themes that print the title themselves; the stored term name is untouched so slugs and sync name matching are unaffected. The name links to the term's provider_profile_url when set, falling back to the provider archive
+
+Fixed:
+* A case's next/previous buttons kept the server's procedure-wide links when the visitor arrived from a provider, leaving arrows that pointed at cases outside that provider. The adjacent-case response is now authoritative per direction; a direction with no result drops its button, while a failed request leaves the server's links alone
+* Nine inline style attributes, get_code_editor_inline_css() (a private method returning CSS as a concatenated string) and the JS that assigned #d63638/#dba617/#666/#00a32a to the SEO character counters are gone; state classes and the admin tokens carry them. The blanket 56px description indent inside a field no longer reaches nested radio explanations, .brag-book-gallery-grid-btn selection uses --brag-book-gallery-primary instead of --blue-500 (blue stays the focus ring), and .button-outline-danger is renamed .button-outline-brand, scoped to the admin wrap so its seven !important declarations could be dropped
+
 = 4.9.3-beta9 (2026-08-18) =
 
 Fixed:
