@@ -1,5 +1,38 @@
 === BRAGBook Gallery Changelog ===
 
+= 4.9.3 (2026-08-20) =
+
+Stable release of the 4.9.3 line. The beta entries below carry the detail.
+
+Added:
+* A provider's gallery on any page - [brag_book_gallery provider="dr-jane-smith"] or provider_id="43" resolves to the same context the provider archive builds: procedures and filters dropdowns, provider-scoped grid and Load More, and the provider context that keeps a case's next/previous inside that provider. Resolution runs after the single-case checks, so a case URL still opens its case
+* Configurable provider wording, singular and plural, stored separately rather than derived, used by every string the provider filter renders
+* Procedure named in a provider page's heading when the filter narrows it, and per-provider case counts in that filter, tallied from the provider's own case/term pairings rather than the term count
+* GoHighLevel consultation form option with form URL and height; the embed only stands in once a URL is set, all three dialogs render through one method, and requests go straight to GoHighLevel
+* Thumbnail-strip carousel navigation on V2/V3 cards, arrow either side, using the small rendition through the shared variant lookup
+* Conditional settings on the General page via data-bb-requires / data-bb-requires-value, resolved in one pass that honours chains; dependents use the hidden attribute, never disabled, so their values still post and save_*() cannot write them empty
+* Section navigation in the settings rail, built from the DOM per active tab, current card resolved from geometry on a passive scroll listener
+* Nudity warning preview - the front-end overlay treatment over a flat plate, live-bound to the copy fields, switching aspect and decline link per preset. No iframe, no case imagery
+
+Changed:
+* General page rebuilt: eight named card sections per tab (.brag-book-gallery-subsection), .form-table replaced by one field row primitive, SERP preview moved beside the fields it previews and demoted to an inset well
+* Switch/checkbox/radio rebuilt on one state language - --brag-book-gallery-primary on, --blue-500 focus, --slate-300 off; switch labels are <label for>, radio choices are rows read with :has(input:checked)
+* All inputs, selects and textareas at inline-size: 100%; select drawn with appearance:none at the inputs' 40px height; select + preview button share one edge; numbers with units use a joined suffix chip
+* --brag-book-gallery-sticky-top token and explicit z-order (page tabs z-30, save bar z-20, rail z-10); previously the rail and the page tab bar both stuck at top: 2rem with no z-index
+* Provider names render with punctuated initials across case detail, cards, the providers grid, the filter and both archive headings, including a single_term_title filter; stored term names untouched. Names link to provider_profile_url when set, falling back to the archive
+* Provider heading keeps its emphasis on the provider alone; the gallery filter bar is hidden on a case opened from a provider
+* The referrer records provider member id alongside the slug, from a single Taxonomies::provider_member_id() resolver
+
+Fixed:
+* Asset enqueues carried a hand-written version constant left at 4.6.0-beta4, so every rebuilt CSS/JS file shipped under the same query string and browsers served the cached copy. Assets now version by the built file's modified time
+* Provider slugs rebuilt as {name}-{member id} on every sync because the name-only builder reached one of six creation/rename paths, not the chunked sync; the placeholder term description is cleared where generated
+* The referrer click handler matched only two anchor classes, so a single-image V3 card (overlay button only) recorded nothing
+* Adjacent-case navigation kept the server's procedure-wide links when the visitor arrived from a provider; the adjacent-case response is now authoritative per direction
+* Consultation form height rendered a stored 0 as value="0" against min="200", so the browser refused every save
+* .brag-book-gallery-case-grid tracks are minmax(0, 1fr) rather than 1fr - 1fr is minmax(auto, 1fr), and that auto floor is the card's min-content, which a 4+ thumbnail strip drives, so the column grew and overflow-x: auto never engaged
+* Carousel thumbnails took their photo's aspect ratio and were cropped square; the V2 hover panel covered the strip; the V3 offset no longer applies where there is nothing to clear
+* The delete-all dialog sizes to 34rem with a wrapping footer
+
 = 4.9.3-beta11 (2026-08-19) =
 
 Added:

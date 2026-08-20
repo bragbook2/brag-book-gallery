@@ -4,7 +4,7 @@ Tags: gallery, before-after, medical, cosmetic, procedures
 Requires at least: 6.8
 Tested up to: 6.9
 Requires PHP: 8.2
-Stable tag: 4.9.2
+Stable tag: 4.9.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -92,6 +92,29 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 4. Sync management interface
 
 == Changelog ==
+
+= 4.9.3 =
+Provider galleries on any page, a redesigned settings screen, and a long list of fixes. The entries below list the beta iterations that led here.
+
+* Added: A provider's gallery can live on a page of its own — add [brag_book_gallery provider="dr-jane-smith"] to any page and it works exactly like that provider's own page, filters and Load More included.
+* Added: You can choose what a provider is called. If your practice says "Doctor" or "Doctor or Provider", the provider filter uses your wording throughout, singular and plural.
+* Added: Filtering a provider's page by procedure now says so in the heading, and the filter shows how many of that provider's cases sit in each procedure.
+* Added: A GoHighLevel form can replace the built-in consultation form. Requests go straight to GoHighLevel, so the plugin neither stores nor emails them.
+* Added: Case carousels can be navigated by a strip of thumbnails instead of dots, so visitors can see what they are about to open.
+* Added: Settings that depend on another setting now appear only when they apply — turn Providers off and its naming, Practices and the Google Maps key go with it. Anything already entered is kept.
+* Added: The settings menu lists the sections on the open tab and marks the one you are reading.
+* Added: The nudity warning settings have a preview beside them that follows what you type and changes with the preset you choose.
+* Changed: The General settings page is laid out in cards, with settings grouped by what they do rather than the order they were added.
+* Changed: Switches, checkboxes and dropdowns are redrawn to match one another, the words beside a switch now flip it, and inputs and dropdowns fill their field instead of stopping halfway.
+* Changed: A provider whose name was synced as "John A Smith" now reads "John A. Smith" everywhere, and their name links to their profile page when they have one.
+* Fixed: Updated styles and scripts were not reaching visitors. The plugin was labelling every rebuilt file with an old version number, so browsers kept using the copy they had already downloaded. If a previous fix appeared not to work on your site, this was why.
+* Fixed: Provider web addresses picked the member id back up every time a full sync ran, undoing the shortening added in 4.9.2.
+* Fixed: Opening a case from a single-image card lost track of where you came from, so previous/next and the back link behaved as though you had arrived from elsewhere.
+* Fixed: Previous/next on a case no longer points at cases the provider you came from does not have.
+* Fixed: The consultation form's height field could block saving on the settings page.
+* Fixed: A case card with four or more carousel thumbnails no longer stretches wider than the cards beside it — the thumbnails scroll within the card.
+* Fixed: Carousel thumbnails show the whole photo at a consistent height, and the hover panel on a card no longer covers them.
+* Fixed: The Delete All Synced Data dialog no longer cuts off its buttons.
 
 = 4.9.3-beta11 =
 * Added: Settings that depend on another setting now show only when they apply — turn Providers off and its naming, Practices and the Google Maps key go with it. Anything you have already entered is kept.

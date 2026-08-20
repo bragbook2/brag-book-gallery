@@ -4,6 +4,103 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.3] - 2026-08-20 (Stable Release)
+
+Stable release of the 4.9.3 line. The beta entries below carry the detail; this
+is what changed since 4.9.2.
+
+### Added
+
+- **A provider's gallery can live on a page of its own**:
+  `[brag_book_gallery provider="dr-jane-smith"]` takes the term slug and
+  `[brag_book_gallery provider_id="43"]` the API ID. Either builds the same
+  context as the provider archive, so the page gets its structure whole — the
+  procedures and filters dropdowns, the provider-scoped grid and its Load More,
+  and the provider context that keeps a case's next and previous links inside
+  that provider.
+- **A practice can name what a provider is called**: singular and plural fields
+  under Enable Providers, used by every word the provider filter shows. The
+  plural is stored rather than derived, because the plural of "Doctor or
+  Provider" is not the singular with an s on the end.
+- **A provider page's heading names the procedure chosen in its filter**, and
+  the procedure filter carries each procedure's case count for that provider,
+  tallied from the provider's own cases rather than the term's library-wide
+  count.
+- **A GoHighLevel form can replace the built-in consultation form**, with fields
+  for the form's address and opening height. The embed only stands in once an
+  address is given, so an empty field leaves the built-in form serving requests.
+  Requests through the embed go straight to GoHighLevel: the plugin neither
+  stores nor emails them.
+- **A thumbnail strip as an alternative to the carousel dots** on V2/V3 cards,
+  with an arrow either side, taking the small rendition through the shared
+  variant lookup.
+- **Settings that depend on another setting appear only when they apply**:
+  carousel navigation under the carousel toggle, the consultation form choice
+  under consultation, the GoHighLevel fields under that choice, provider naming
+  and Practices under Providers, and the Google Maps key under Practices.
+  Turning Providers off takes the whole branch with it, and a hidden field keeps
+  posting its saved value so nothing already entered is lost.
+- **A section list in the settings rail** naming the cards on the open tab and
+  marking the one being read.
+- **A preview beside the nudity warning's wording**: a drawn stand-in that
+  follows what is typed, falls back to the defaults, and changes shape with the
+  chosen preset. It draws a plain tone under the warning rather than loading a
+  case photo into the settings screen.
+
+### Changed
+
+- **The General settings page is laid out in cards**, each group titled and
+  bounded, replacing one flat run of controls per tab. Settings are grouped by
+  what they do — Gallery Page, Layout & Views, Case Cards, Navigation & Filters,
+  Visitor Features, Providers & Locations, Nudity Warning — with the plugin
+  update channel and API environment set apart as maintenance.
+- **The switches, checkboxes and radio choices are redrawn** on one state
+  language: the plugin's red for on, blue for focus, grey for off. The words
+  beside a switch now flip it, and a radio choice is a row you click rather than
+  a dot you have to hit.
+- **Inputs and dropdowns fill their field** rather than stopping halfway across
+  the card; dropdowns are drawn to match the text fields, and a dropdown with a
+  preview button beside it reads as one control.
+- **The settings menu no longer slides under the page tabs** while scrolling,
+  and the Save bar stays with you down a long tab.
+- **A provider's initials are punctuated** — "John A Smith" reads "John A.
+  Smith" wherever it appears — while the stored term name is left alone so slugs
+  and sync matching keep working. A provider's name links to their profile URL
+  when the term has one, falling back to their gallery archive.
+- **Only the provider stays bold in a provider page's heading**; the procedure
+  sits alongside it in plain text.
+- **The gallery filter bar is hidden on a case opened from a provider**, since
+  it offers a picker and filters for the whole library — a different journey
+  from the one the visitor is on.
+
+### Fixed
+
+- **Rebuilt stylesheets and scripts reached nobody**: the frontend and admin
+  enqueues carried a version constant left at 4.6.0-beta4, so every rebuild
+  since shipped under the same query string and browsers kept serving the file
+  they already had. Assets now version by the built file's own modified time.
+  Sites that appeared not to receive earlier CSS fixes were hitting this.
+- **Provider slugs came back with the member id after a sync**, because the
+  name-only builder was wired into one of the six places that create or rename a
+  provider term — and not the chunked sync a full sync runs. The placeholder
+  "Provider profile for provider ID 4" term description is also gone, cleared
+  where it was written and left alone where a description was written by hand.
+- **A single-image V3 card recorded no referrer**, so a case opened from one
+  kept its server-rendered links and provider navigation appeared broken while
+  working on sites whose cases have carousels.
+- **A case's next and previous buttons pointed outside the provider you came
+  from** — most visibly on a provider holding a single case, where both arrows
+  stayed with nowhere to go.
+- **The consultation form height field blocked every save**: a stored 0 rendered
+  as `value="0"` against `min="200"`, so the browser refused the form even when
+  the built-in form was selected.
+- **A case card with four or more carousel thumbnails widened its own column**,
+  so a row of cards came out at different widths and the strip never scrolled.
+- **Carousel thumbnails cropped and mis-sized their photos**, and the V2 hover
+  panel covered the strip beneath it.
+- **The delete-all dialog clipped its buttons**, sized for a sentence and two
+  buttons while carrying a list, a confirmation field, a progress bar and three.
+
 ## [4.9.3-beta11] - 2026-08-19 (Beta Release)
 
 ### Added
