@@ -211,6 +211,7 @@ class Help_Page extends Settings_Base {
 					<ul>
 						<li><code>case_id</code> - <?php esc_html_e( 'Display a specific case by ID', 'brag-book-gallery' ); ?></li>
 						<li><code>cases_only</code> - <?php esc_html_e( 'Show only the cases grid without sidebar (true/false)', 'brag-book-gallery' ); ?></li>
+						<li><code>tag</code> - <?php esc_html_e( 'Element for the gallery title: h1 (default), h2-h6, p, div or span', 'brag-book-gallery' ); ?></li>
 					</ul>
 
 					<h4><?php esc_html_e( 'Carousel Shortcode', 'brag-book-gallery' ); ?></h4>

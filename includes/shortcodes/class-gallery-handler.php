@@ -74,6 +74,41 @@ final class Gallery_Handler {
 	use Trait_Provider_Query;
 
 	/**
+	 * Elements the shortcode's `tag` attribute may name for the content title.
+	 *
+	 * @since 4.9.4
+	 * @var string[]
+	 */
+	private const ALLOWED_TITLE_TAGS = [ 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'div', 'span' ];
+
+	/**
+	 * Element used for the gallery content title.
+	 *
+	 * Set from the shortcode's `tag` attribute so a page whose theme already
+	 * supplies the <h1> can demote the gallery heading instead of having two.
+	 *
+	 * @since 4.9.4
+	 * @var string
+	 */
+	private static string $title_tag = 'h1';
+
+	/**
+	 * Render the gallery content title in the element the shortcode asked for.
+	 *
+	 * @param string $inner_html Title markup, already escaped by the caller.
+	 *
+	 * @return string Content title HTML.
+	 * @since 4.9.4
+	 */
+	public static function render_content_title( string $inner_html ): string {
+		return sprintf(
+			'<%1$s class="brag-book-gallery-content-title">%2$s</%1$s>',
+			self::$title_tag,
+			$inner_html
+		);
+	}
+
+	/**
 	 * Initialize the gallery handler
 	 *
 	 * Sets up shortcode registration.
@@ -405,8 +440,14 @@ final class Gallery_Handler {
 
 		$validated_atts = self::validate_and_sanitize_shortcode_attributes( $atts );
 
-		// Auto-detect context and show appropriate view
-		return self::auto_detect_and_render( $validated_atts );
+		try {
+			// Auto-detect context and show appropriate view
+			return self::auto_detect_and_render( $validated_atts );
+		} finally {
+			// The title element belongs to this shortcode alone, so a later
+			// shortcode on the same page starts from the default heading again.
+			self::$title_tag = 'h1';
+		}
 	}
 
 	/**
@@ -1411,10 +1452,12 @@ final class Gallery_Handler {
 						// Show procedure-specific content
 						?>
 						<div class="brag-book-gallery-content-header">
-							<h1 class="brag-book-gallery-content-title">
-								<strong><?php echo esc_html( self::term_display_name( $current_taxonomy ) ); ?></strong>
-								Before &amp; After Gallery
-							</h1>
+							<?php
+							// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- title text escaped below, element name from an allowed list.
+							echo self::render_content_title(
+								'<strong>' . esc_html( self::term_display_name( $current_taxonomy ) ) . '</strong> Before &amp; After Gallery'
+							);
+							?>
 						</div>
 						<?php
 						// Location search results banner, shown below the title.
@@ -2006,10 +2049,15 @@ final class Gallery_Handler {
 			'provider_id'         => 0,
 			'limit'               => 20,
 			'columns'             => 3,
+			'tag'                 => 'h1',
 		);
 
 		// Apply WordPress shortcode attribute parsing with defaults
 		$atts = shortcode_atts( $defaults, $raw_atts, 'brag_book_gallery' );
+
+		// The title element is remembered on the class: the views that render it
+		// sit several calls deep, and Case_Handler renders the case title too.
+		self::$title_tag = self::sanitize_title_tag( $atts['tag'] );
 
 		// Validate and sanitize each attribute
 		return array(
@@ -2023,7 +2071,25 @@ final class Gallery_Handler {
 			'provider_id'         => absint( $atts['provider_id'] ),
 			'limit'               => max( 1, min( 200, absint( $atts['limit'] ) ) ),
 			'columns'             => max( 1, min( 6, absint( $atts['columns'] ) ) ),
+			'tag'                 => self::$title_tag,
 		);
+	}
+
+	/**
+	 * Resolve the `tag` attribute to an element name
+	 *
+	 * Anything outside the allowed list falls back to the default heading, so a
+	 * typo or a script tag can never reach the markup.
+	 *
+	 * @param string $tag Raw attribute value.
+	 *
+	 * @return string Element name.
+	 * @since 4.9.4
+	 */
+	private static function sanitize_title_tag( string $tag ): string {
+		$tag = strtolower( trim( $tag ) );
+
+		return in_array( $tag, self::ALLOWED_TITLE_TAGS, true ) ? $tag : 'h1';
 	}
 
 
@@ -2794,10 +2860,12 @@ final class Gallery_Handler {
 					?>
 
 					<!-- Content Title -->
-					<h1 class="brag-book-gallery-content-title">
-						<strong><?php echo esc_html( self::term_display_name( $procedure_term ) ); ?></strong>
-						Before &amp; After Gallery
-					</h1>
+					<?php
+					// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- title text escaped below, element name from an allowed list.
+					echo self::render_content_title(
+						'<strong>' . esc_html( self::term_display_name( $procedure_term ) ) . '</strong> Before &amp; After Gallery'
+					);
+					?>
 
 					<!-- Location search results banner, shown below the title. -->
 					<?php

@@ -518,7 +518,7 @@ class Case_Handler {
 			$formatted_title = preg_replace('/^(.+?)( <span)/', '<strong>$1</strong>$2', $formatted_title);
 		}
 
-		$html .= '<h1 class="brag-book-gallery-content-title">' . $formatted_title . '</h1>';
+		$html .= Gallery_Handler::render_content_title( $formatted_title );
 		$html .= '<div class="brag-book-gallery-case-nav-buttons">';
 		$html .= $this->render_case_navigation_buttons( $case_post, $case_data );
 		$html .= '</div>';
