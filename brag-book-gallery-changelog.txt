@@ -1,5 +1,10 @@
 === BRAGBook Gallery Changelog ===
 
+= 4.9.4-beta1 (2026-08-21) =
+
+Added:
+* tag="" on [brag_book_gallery] picks the element wrapping .brag-book-gallery-content-title, so a page whose theme already prints the <h1> can demote the gallery title instead of shipping a second one. Read against one allowlist (h1-h6, p, div, span) with h1 as the fallback, and held on Gallery_Handler for the length of that shortcode's render - the views that print the title sit several calls deep and Case_Handler renders the case title through the same helper - then reset, so a later shortcode on the page starts from h1 again
+
 = 4.9.3 (2026-08-20) =
 
 Stable release of the 4.9.3 line. The beta entries below carry the detail.

@@ -93,6 +93,9 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 
 == Changelog ==
 
+= 4.9.4-beta1 =
+* Added: The gallery shortcode can now write its title as something other than a heading — [brag_book_gallery tag="p"] uses a paragraph, for pages where the theme already provides the heading. Leave it off and the gallery title stays an <h1> as before.
+
 = 4.9.3 =
 Provider galleries on any page, a redesigned settings screen, and a long list of fixes. The entries below list the beta iterations that led here.
 
