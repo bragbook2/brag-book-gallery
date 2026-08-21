@@ -4,6 +4,19 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.4] - 2026-08-21 (Stable Release)
+
+Stable release of the 4.9.4 line. The beta entry below carries the detail; this
+is what changed since 4.9.3.
+
+### Added
+
+- **The gallery shortcode chooses the element its title is written in**:
+  `[brag_book_gallery tag="p"]` writes the gallery title as a paragraph rather
+  than a heading, for pages whose theme already prints the page's `<h1>` and
+  ended up with two. Any heading level, `p`, `div` or `span` is accepted, and
+  anything else falls back to the `<h1>` the gallery has always used.
+
 ## [4.9.4-beta1] - 2026-08-21 (Beta Release)
 
 ### Added

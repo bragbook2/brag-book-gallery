@@ -1,5 +1,12 @@
 === BRAGBook Gallery Changelog ===
 
+= 4.9.4 (2026-08-21) =
+
+Stable release of the 4.9.4 line. The beta entry below carries the detail.
+
+Added:
+* tag="" on [brag_book_gallery] picks the element wrapping .brag-book-gallery-content-title, so a page whose theme already prints the <h1> can demote the gallery title instead of shipping a second one. Read against one allowlist (h1-h6, p, div, span) with h1 as the fallback, and scoped to that shortcode's render
+
 = 4.9.4-beta1 (2026-08-21) =
 
 Added:

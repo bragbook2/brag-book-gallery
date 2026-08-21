@@ -4,7 +4,7 @@ Tags: gallery, before-after, medical, cosmetic, procedures
 Requires at least: 6.8
 Tested up to: 6.9
 Requires PHP: 8.2
-Stable tag: 4.9.3
+Stable tag: 4.9.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -92,6 +92,9 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 4. Sync management interface
 
 == Changelog ==
+
+= 4.9.4 =
+* Added: The gallery shortcode can now write its title as something other than a heading — [brag_book_gallery tag="p"] uses a paragraph, for pages where the theme already provides the heading. Leave it off and the gallery title stays an <h1> as before.
 
 = 4.9.4-beta1 =
 * Added: The gallery shortcode can now write its title as something other than a heading — [brag_book_gallery tag="p"] uses a paragraph, for pages where the theme already provides the heading. Leave it off and the gallery title stays an <h1> as before.
