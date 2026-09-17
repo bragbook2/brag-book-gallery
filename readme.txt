@@ -4,7 +4,7 @@ Tags: gallery, before-after, medical, cosmetic, procedures
 Requires at least: 6.8
 Tested up to: 6.9
 Requires PHP: 8.2
-Stable tag: 4.9.4
+Stable tag: 4.9.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -92,6 +92,11 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 4. Sync management interface
 
 == Changelog ==
+
+= 4.9.5 =
+* Fixed: Load More keeps your place. New cases append below the ones you are looking at instead of jumping the page back to the top of the gallery.
+* Improved: "Back to gallery" from a case returns you to that case's card in the listing, loading further pages if the card was past the first one.
+* Fixed: My Favorites, filters, search and sharing now load correctly on sites where an optimizer such as SiteGround Speed Optimizer combines or relocates the plugin's JavaScript.
 
 = 4.9.5-beta3 =
 * Fixed: My Favorites, filters, search and sharing now load correctly on sites where an optimizer such as SiteGround Speed Optimizer combines or relocates the plugin's JavaScript. The plugin's on-demand scripts were being requested from the optimizer's folder, where they do not exist.

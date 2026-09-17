@@ -4,6 +4,26 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.5] - 2026-09-17 (Stable Release)
+
+Stable release of the 4.9.5 line. The beta entries below carry the detail;
+this is what changed since 4.9.4.
+
+### Fixed
+
+- **Load More no longer scrolls the page**: new cases append below the
+  current view instead of jumping back to the top of the gallery.
+- **Chunk loading under JS optimizers**: the on-demand filter, favorites,
+  search and share modules load from the plugin's own folder even when
+  SiteGround Speed Optimizer or a similar tool relocates the main bundle, so
+  My Favorites no longer fails with `ChunkLoadError`.
+
+### Changed
+
+- **"Back to gallery" returns to the case you opened**: the listing scrolls
+  to that case's card, loading further pages when the card was past the
+  first one.
+
 ## [4.9.5-beta3] - 2026-09-17 (Beta Release)
 
 ### Fixed

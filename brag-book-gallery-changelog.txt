@@ -1,5 +1,16 @@
 === BRAGBook Gallery Changelog ===
 
+= 4.9.5 (2026-09-17) =
+
+Stable release of the 4.9.5 line. The beta entries below carry the detail.
+
+Fixed:
+* Load More appends new cases without scrolling the window to the gallery wrapper
+* Webpack public path pinned to the plugin's assets/js folder from bragBookGalleryConfig.pluginUrl, so chunks resolve when an optimizer relocates the main bundle
+
+Changed:
+* restoreCasePosition() returns a visitor from a case page to that case's card in the listing, loading pages via Load More until it appears
+
 = 4.9.5-beta3 (2026-09-17) =
 
 Fixed:
