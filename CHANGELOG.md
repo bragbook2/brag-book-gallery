@@ -4,6 +4,10 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.5-beta2] - 2026-09-17 (Beta Release)
+
+Rebuild of 4.9.5-beta1. No code changes; the beta1 entry below carries the detail.
+
 ## [4.9.5-beta1] - 2026-09-17 (Beta Release)
 
 ### Fixed

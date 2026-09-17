@@ -93,6 +93,9 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 
 == Changelog ==
 
+= 4.9.5-beta2 =
+* Rebuild of 4.9.5-beta1 with no code changes.
+
 = 4.9.5-beta1 =
 * Fixed: Load More now keeps your place. New cases append below the ones you are looking at instead of jumping the page back to the top of the gallery.
 * Improved: "Back to gallery" from a case returns you to that case's card in the listing, loading further pages if the card was past the first one, so you can pick up browsing where you left off.

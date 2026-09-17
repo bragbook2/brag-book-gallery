@@ -1,5 +1,9 @@
 === BRAGBook Gallery Changelog ===
 
+= 4.9.5-beta2 (2026-09-17) =
+
+Rebuild of 4.9.5-beta1. No code changes.
+
 = 4.9.5-beta1 (2026-09-17) =
 
 Fixed:
