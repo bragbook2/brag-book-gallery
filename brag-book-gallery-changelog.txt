@@ -1,5 +1,10 @@
 === BRAGBook Gallery Changelog ===
 
+= 4.9.5-beta3 (2026-09-17) =
+
+Fixed:
+* src/js/public-path.js sets __webpack_public_path__ to bragBookGalleryConfig.pluginUrl + 'assets/js/' as the first import of the frontend entry, replacing webpack's document.currentScript-based publicPath 'auto' at runtime. Optimizers that copy the enqueued bundle elsewhere (SiteGround Speed Optimizer Combine JS) no longer send chunk requests to their own folder. Assets::enqueue baseline config now includes pluginUrl so the value exists on pages without a gallery shortcode
+
 = 4.9.5-beta2 (2026-09-17) =
 
 Rebuild of 4.9.5-beta1. No code changes.

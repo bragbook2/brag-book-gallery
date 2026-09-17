@@ -4,6 +4,19 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.5-beta3] - 2026-09-17 (Beta Release)
+
+### Fixed
+
+- **Chunk loading under JS optimizers**: the main bundle loads its filter,
+  favorites, search and share modules as separate webpack chunks. Their base
+  URL came from `document.currentScript.src`, so once SiteGround Speed
+  Optimizer (Combine JS) served the bundle from
+  `uploads/siteground-optimizer-assets/`, the chunks were requested there,
+  404'd with `ChunkLoadError`, and My Favorites stopped working. The bundle
+  now pins its public path to the plugin's `assets/js/` folder from the
+  `pluginUrl` the plugin already localizes, which is now present on every page.
+
 ## [4.9.5-beta2] - 2026-09-17 (Beta Release)
 
 Rebuild of 4.9.5-beta1. No code changes; the beta1 entry below carries the detail.

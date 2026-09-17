@@ -93,6 +93,9 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 
 == Changelog ==
 
+= 4.9.5-beta3 =
+* Fixed: My Favorites, filters, search and sharing now load correctly on sites where an optimizer such as SiteGround Speed Optimizer combines or relocates the plugin's JavaScript. The plugin's on-demand scripts were being requested from the optimizer's folder, where they do not exist.
+
 = 4.9.5-beta2 =
 * Rebuild of 4.9.5-beta1 with no code changes.
 

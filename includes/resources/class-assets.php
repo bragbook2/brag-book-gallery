@@ -298,6 +298,7 @@ class Assets {
 		// gallery pages.
 		wp_localize_script( 'brag-book-gallery-main', 'bragBookGalleryConfig', [
 			'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+			'pluginUrl' => esc_url_raw( Setup::get_plugin_url() ),
 			'nonce'   => wp_create_nonce( 'brag_book_gallery_nonce' ),
 			'consultation_nonce' => wp_create_nonce( 'consultation_form_nonce' ),
 			'itemsPerPage' => Settings_Helper::get_items_per_page(),

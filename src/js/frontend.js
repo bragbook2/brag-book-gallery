@@ -7,4 +7,5 @@
  * via dynamic import() inside main-app.js, so they don't sit in the main
  * bundle.
  */
+import './public-path.js';
 import './modules/global-utilities.js';

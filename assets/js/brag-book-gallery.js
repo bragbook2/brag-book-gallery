@@ -1,5 +1,4 @@
 /******/ (function() { // webpackBootstrap
-/******/ 	"use strict";
 /******/ 	var __webpack_modules__ = ({
 
 /***/ "./src/js/modules/carousel.js":
@@ -8,6 +7,7 @@
   \************************************/
 /***/ (function(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
 
+"use strict";
 __webpack_require__.r(__webpack_exports__);
 /**
  * Carousel Component for BRAGBook Gallery
@@ -627,6 +627,7 @@ class Carousel {
   \**********************************/
 /***/ (function(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
 
+"use strict";
 __webpack_require__.r(__webpack_exports__);
 /**
  * Dialog Component
@@ -785,6 +786,7 @@ class Dialog {
   \********************************************/
 /***/ (function(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
 
+"use strict";
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   initGallerySelector: function() { return /* binding */ initGallerySelector; }
@@ -884,6 +886,7 @@ function showParentCategories(backButton) {
   \********************************************/
 /***/ (function(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
 
+"use strict";
 __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _main_app_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./main-app.js */ "./src/js/modules/main-app.js");
 /* harmony import */ var _carousel_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./carousel.js */ "./src/js/modules/carousel.js");
@@ -3178,6 +3181,7 @@ document.addEventListener('click', function (e) {
   \************************************/
 /***/ (function(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
 
+"use strict";
 __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _dialog_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./dialog.js */ "./src/js/modules/dialog.js");
 /* harmony import */ var _mobile_menu_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./mobile-menu.js */ "./src/js/modules/mobile-menu.js");
@@ -6962,6 +6966,7 @@ window.initializeFavoritesPage = function () {
   \***************************************/
 /***/ (function(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
 
+"use strict";
 __webpack_require__.r(__webpack_exports__);
 /**
  * Mobile Menu Component
@@ -7151,6 +7156,7 @@ class MobileMenu {
   \*************************************/
 /***/ (function(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
 
+"use strict";
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   NudityWarningManager: function() { return /* binding */ NudityWarningManager; },
@@ -7337,6 +7343,31 @@ function escapeHtml(value) {
 }
 
 
+/***/ }),
+
+/***/ "./src/js/public-path.js":
+/*!*******************************!*\
+  !*** ./src/js/public-path.js ***!
+  \*******************************/
+/***/ (function(__unused_webpack_module, __unused_webpack_exports, __webpack_require__) {
+
+/**
+ * Pin webpack's chunk base URL to the plugin's assets folder.
+ *
+ * The main bundle loads its filter, favorites, search and share modules as
+ * separate chunks. With publicPath 'auto', webpack derives the chunk URL from
+ * document.currentScript.src, which is wrong the moment an optimizer such as
+ * SiteGround Speed Optimizer or WP Rocket serves the bundle from its own
+ * combined-assets folder: chunks 404 there with ChunkLoadError.
+ *
+ * Must be the first import of the entry so it runs before any chunk request.
+ */
+/* global __webpack_public_path__:writable */
+const pluginUrl = window.bragBookGalleryConfig && window.bragBookGalleryConfig.pluginUrl;
+if (pluginUrl) {
+  __webpack_require__.p = pluginUrl.replace(/\/+$/, '') + '/assets/js/';
+}
+
 /***/ })
 
 /******/ 	});
@@ -7375,6 +7406,18 @@ function escapeHtml(value) {
 /******/ 	__webpack_require__.m = __webpack_modules__;
 /******/ 	
 /************************************************************************/
+/******/ 	/* webpack/runtime/compat get default export */
+/******/ 	!function() {
+/******/ 		// getDefaultExport function for compatibility with non-harmony modules
+/******/ 		__webpack_require__.n = function(module) {
+/******/ 			var getter = module && module.__esModule ?
+/******/ 				function() { return module['default']; } :
+/******/ 				function() { return module; };
+/******/ 			__webpack_require__.d(getter, { a: getter });
+/******/ 			return getter;
+/******/ 		};
+/******/ 	}();
+/******/ 	
 /******/ 	/* webpack/runtime/define property getters */
 /******/ 	!function() {
 /******/ 		// define getter functions for harmony exports
@@ -7604,13 +7647,16 @@ function escapeHtml(value) {
 /******/ 	
 /************************************************************************/
 var __webpack_exports__ = {};
-// This entry needs to be wrapped in an IIFE because it needs to be isolated against other modules in the chunk.
+// This entry needs to be wrapped in an IIFE because it needs to be in strict mode.
 !function() {
+"use strict";
 /*!****************************!*\
   !*** ./src/js/frontend.js ***!
   \****************************/
 __webpack_require__.r(__webpack_exports__);
-/* harmony import */ var _modules_global_utilities_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./modules/global-utilities.js */ "./src/js/modules/global-utilities.js");
+/* harmony import */ var _public_path_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./public-path.js */ "./src/js/public-path.js");
+/* harmony import */ var _public_path_js__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(_public_path_js__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var _modules_global_utilities_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./modules/global-utilities.js */ "./src/js/modules/global-utilities.js");
 /**
  * BRAG book Gallery - Main Entry Point
  *
@@ -7620,6 +7666,7 @@ __webpack_require__.r(__webpack_exports__);
  * via dynamic import() inside main-app.js, so they don't sit in the main
  * bundle.
  */
+
 
 }();
 /******/ })()
