@@ -1,5 +1,13 @@
 === BRAGBook Gallery Changelog ===
 
+= 4.9.5-beta1 (2026-09-17) =
+
+Fixed:
+* Load More appends new cases without scrolling: processLoadMoreResult and loadMoreCasesFromCache both called scrollToGalleryWrapper() after inserting cards, which scrolled the window to the top of .brag-book-gallery-wrapper. Calls and helper removed
+
+Changed:
+* restoreCasePosition() in global-utilities.js: on a listing whose path matches the stored procedure referrer, scrolls to .brag-book-gallery-case-card[data-case-id] for the referrer's case-id, clicking .brag-book-gallery-button--load-more and re-checking on each grid mutation until the card exists or the button is hidden. Nulls case-id on the referrer first so a reload does not repeat it
+
 = 4.9.4 (2026-08-21) =
 
 Stable release of the 4.9.4 line. The beta entry below carries the detail.

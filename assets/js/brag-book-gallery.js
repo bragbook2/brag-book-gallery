@@ -1252,6 +1252,58 @@ function fetchAdjacentCases(procedureSlug, termId, currentPostId, callback, prov
 }
 
 /**
+ * Scroll back to the case card the visitor clicked before leaving for its detail
+ * page. The card may sit on a page that only Load More reveals, so more pages are
+ * loaded until it appears or the button runs out.
+ */
+function restoreCasePosition() {
+  const referrer = getProcedureReferrer();
+  const caseId = referrer && referrer['case-id'];
+  if (!caseId || !referrer.url) return;
+
+  // Only the listing the card was clicked on can hold it.
+  let referrerPath;
+  try {
+    referrerPath = new URL(referrer.url, window.location.origin).pathname;
+  } catch (e) {
+    console.error('restoreCasePosition: invalid referrer url', referrer.url, e);
+    return;
+  }
+  if (referrerPath.replace(/\/$/, '') !== window.location.pathname.replace(/\/$/, '')) return;
+
+  // One restore per return trip; a reload of the listing should not jump again.
+  referrer['case-id'] = null;
+  localStorage.setItem('brag-book-gallery-procedure-referrer', JSON.stringify(referrer));
+  const grid = document.querySelector('.brag-book-gallery-case-grid, .brag-book-gallery-cases-grid');
+  if (!grid) return;
+  const observer = new MutationObserver(check);
+  function check() {
+    const card = grid.querySelector(`.brag-book-gallery-case-card[data-case-id="${caseId}"]`);
+    if (card) {
+      observer.disconnect();
+      card.scrollIntoView({
+        block: 'center'
+      });
+      return;
+    }
+    const button = document.querySelector('.brag-book-gallery-button--load-more');
+    // No button, or one hidden because the last page is in: nothing left to load.
+    if (!button || button.offsetParent === null) {
+      observer.disconnect();
+      return;
+    }
+    // Disabled means a page is in flight; the next mutation re-checks.
+    if (!button.disabled) {
+      button.click();
+    }
+  }
+  observer.observe(grid, {
+    childList: true
+  });
+  check();
+}
+
+/**
  * Initialize procedure referrer tracking
  * Sets up click handlers on procedure pages and updates navigation on case pages
  */
@@ -1267,6 +1319,10 @@ function initializeProcedureReferrerTracking() {
     updateNavigationFromReferrer();
     return;
   }
+
+  // Back on the listing the visitor left from: return them to the card they
+  // opened rather than the top of the page.
+  restoreCasePosition();
 
   // Get the gallery slug from config (e.g., 'gallery', 'before-after', etc.)
   const gallerySlug = window.bragBookGalleryConfig?.gallerySlug || 'gallery';
@@ -2308,22 +2364,6 @@ function loadMoreCasesViaAjax(button, startPage, procedureIds, procedureName, ha
 }
 
 /**
- * Scroll to gallery wrapper for better user experience
- * Accounts for websites with hero sections that may hide the gallery
- */
-function scrollToGalleryWrapper() {
-  const wrapper = document.querySelector('.brag-book-gallery-wrapper');
-  if (wrapper) {
-    // Use smooth scrolling with some offset for better UX
-    const offsetTop = wrapper.getBoundingClientRect().top + window.pageYOffset - 20;
-    window.scrollTo({
-      top: offsetTop,
-      behavior: 'smooth'
-    });
-  }
-}
-
-/**
  * Process the result from either direct API or AJAX for load more cases
  */
 function processLoadMoreResult(result, button, originalText, startPage) {
@@ -2358,9 +2398,6 @@ function processLoadMoreResult(result, button, originalText, startPage) {
         // If no cards exist, add to the container
         container.insertAdjacentHTML('beforeend', data.html);
       }
-
-      // Scroll to gallery wrapper after loading items
-      scrollToGalleryWrapper();
     } else {
       console.error('No HTML received from server');
     }
@@ -2875,9 +2912,6 @@ window.loadMoreCasesFromCache = function (button) {
         } else {
           container.insertAdjacentHTML('beforeend', result.data.html);
         }
-
-        // Scroll to gallery wrapper after loading items
-        scrollToGalleryWrapper();
 
         // Update button for next page
         const nextPage = parseInt(startPage) + 1;

@@ -4,6 +4,23 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.5-beta1] - 2026-09-17 (Beta Release)
+
+### Fixed
+
+- **Load More no longer scrolls the page**: after new cases arrive the viewport
+  stays where it was and the cards append below. Both load paths, the server
+  request and the cached one, scrolled the window back to the top of the
+  gallery wrapper; that call and its helper are gone.
+
+### Changed
+
+- **"Back to gallery" returns to the case you opened**: the listing scrolls to
+  that case's card and, when the card sat on a page only Load More had shown,
+  loads pages until it appears. It reuses the referrer the card click already
+  stores and clears the case from it once used, so reloading the listing does
+  not jump again.
+
 ## [4.9.4] - 2026-08-21 (Stable Release)
 
 Stable release of the 4.9.4 line. The beta entry below carries the detail; this

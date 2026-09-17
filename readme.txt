@@ -93,6 +93,10 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 
 == Changelog ==
 
+= 4.9.5-beta1 =
+* Fixed: Load More now keeps your place. New cases append below the ones you are looking at instead of jumping the page back to the top of the gallery.
+* Improved: "Back to gallery" from a case returns you to that case's card in the listing, loading further pages if the card was past the first one, so you can pick up browsing where you left off.
+
 = 4.9.4 =
 * Added: The gallery shortcode can now write its title as something other than a heading — [brag_book_gallery tag="p"] uses a paragraph, for pages where the theme already provides the heading. Leave it off and the gallery title stays an <h1> as before.
 
