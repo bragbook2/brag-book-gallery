@@ -4,6 +4,16 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.6] - 2026-09-21 (Stable Release)
+
+### Fixed
+
+- **Elementor Pro Theme Builder no longer replaces plugin templates**: an
+  Archive or Single template with a broad display condition ("All Archives")
+  and its own page layout swapped out the procedure, provider, case and My
+  Favorites templates. The plugin's `template_include` filter now runs at
+  priority 99, after Elementor Pro's (11), so its templates win.
+
 ## [4.9.5] - 2026-09-17 (Stable Release)
 
 Stable release of the 4.9.5 line. The beta entries below carry the detail;

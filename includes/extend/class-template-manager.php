@@ -38,8 +38,10 @@ class Template_Manager {
 		// Register block templates for block themes
 		add_action( 'init', [ $this, 'register_block_templates' ] );
 
-		// Handle template loading for classic themes
-		add_filter( 'template_include', [ $this, 'load_taxonomy_templates' ] );
+		// Handle template loading for classic themes. Priority 99 runs after
+		// Elementor Pro Theme Builder (11), whose "All Archives" templates
+		// would otherwise replace our taxonomy templates.
+		add_filter( 'template_include', [ $this, 'load_taxonomy_templates' ], 99 );
 
 		// Add theme support for block templates
 		add_action( 'after_setup_theme', [ $this, 'add_theme_support' ] );

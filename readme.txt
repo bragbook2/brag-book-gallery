@@ -4,7 +4,7 @@ Tags: gallery, before-after, medical, cosmetic, procedures
 Requires at least: 6.8
 Tested up to: 6.9
 Requires PHP: 8.2
-Stable tag: 4.9.5
+Stable tag: 4.9.6
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -92,6 +92,9 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 4. Sync management interface
 
 == Changelog ==
+
+= 4.9.6 =
+* Fixed: Procedure, provider, case and My Favorites pages keep the plugin's layout on sites where an Elementor Pro Theme Builder archive or single template applies to every archive.
 
 = 4.9.5 =
 * Fixed: Load More keeps your place. New cases append below the ones you are looking at instead of jumping the page back to the top of the gallery.

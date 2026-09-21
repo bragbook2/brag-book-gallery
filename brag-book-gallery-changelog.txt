@@ -1,5 +1,10 @@
 === BRAGBook Gallery Changelog ===
 
+= 4.9.6 (2026-09-21) =
+
+Fixed:
+* Template_Manager hooks template_include at priority 99 instead of 10, so Elementor Pro Theme Builder (priority 11) archive/single templates no longer replace the procedure, provider, case and My Favorites templates
+
 = 4.9.5 (2026-09-17) =
 
 Stable release of the 4.9.5 line. The beta entries below carry the detail.
