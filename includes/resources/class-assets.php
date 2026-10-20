@@ -507,6 +507,16 @@ class Assets {
 			return;
 		}
 
+		// Public version tag so support can identify the active plugin version
+		// from page source without WP admin access.
+		$plugin_header = get_file_data( Setup::get_plugin_file(), [ 'Version' => 'Version' ] );
+		if ( $plugin_header['Version'] !== '' ) {
+			printf(
+				'<meta name="brag-book-gallery-version" content="%s">' . "\n",
+				esc_attr( $plugin_header['Version'] )
+			);
+		}
+
 		$suffix = $this->get_asset_suffix();
 
 		// Preload critical CSS using the same minified path the enqueue uses,

@@ -183,12 +183,105 @@ class Chunked_Data_Sync {
 	}
 
 	/**
+	 * Get the newest file path for today with the given name prefix
+	 *
+	 * File names carry a time suffix so every sync writes a new URL and
+	 * browser/CDN caches never serve a stale copy. Falls back to a fresh
+	 * timestamped path when none exists yet.
+	 *
+	 * @param string $prefix File name prefix, e.g. "manifest".
+	 *
+	 * @return string
+	 */
+	private function get_latest_file( string $prefix ): string {
+		$existing = $this->list_timestamped_files( $prefix, $this->date_string );
+		if ( ! empty( $existing ) ) {
+			sort( $existing );
+			return end( $existing );
+		}
+
+		return $this->new_file_path( $prefix );
+	}
+
+	/**
+	 * List files named "{prefix}-YYYY-MM-DD-HHMMSS.json"
+	 *
+	 * The strict pattern skips the differently named sync-data files written
+	 * by Data_Sync in the same directory.
+	 *
+	 * @param string $prefix File name prefix.
+	 * @param string $date   Optional YYYY-MM-DD to limit to one day.
+	 *
+	 * @return string[]
+	 */
+	private function list_timestamped_files( string $prefix, string $date = '' ): array {
+		$date_glob = $date !== '' ? $date : '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]';
+
+		return glob( $this->sync_dir . '/' . $prefix . '-' . $date_glob . '-[0-9][0-9][0-9][0-9][0-9][0-9].json' ) ?: [];
+	}
+
+	/**
+	 * Human-readable date and time for a sync file, taken from its name
+	 *
+	 * Falls back to the plain date for old date-only names.
+	 *
+	 * @param string $file_path Full file path.
+	 *
+	 * @return string e.g. "2026-10-20 14:30:05 UTC"
+	 */
+	private function get_file_label( string $file_path ): string {
+		if ( preg_match( '/-(\d{4}-\d{2}-\d{2})-(\d{2})(\d{2})(\d{2})\.json$/', $file_path, $m ) ) {
+			return sprintf( '%s %s:%s:%s UTC', $m[1], $m[2], $m[3], $m[4] );
+		}
+
+		return $this->date_string;
+	}
+
+	/**
+	 * Build a new timestamped file path
+	 *
+	 * @param string $prefix File name prefix.
+	 *
+	 * @return string
+	 */
+	private function new_file_path( string $prefix ): string {
+		return $this->sync_dir . '/' . $prefix . '-' . $this->date_string . '-' . gmdate( 'His' ) . '.json';
+	}
+
+	/**
+	 * Write data to a new timestamped file and remove superseded ones,
+	 * including the old date-only names (e.g. manifest-2026-10-20.json)
+	 *
+	 * @param string $prefix File name prefix.
+	 * @param array  $data   Data to encode.
+	 *
+	 * @return void
+	 * @throws Exception If the write fails.
+	 */
+	private function save_timestamped_file( string $prefix, array $data ): void {
+		$legacy        = glob( $this->sync_dir . '/' . $prefix . '-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].json' ) ?: [];
+		$previous      = array_merge( $this->list_timestamped_files( $prefix ), $legacy );
+		$file_path     = $this->new_file_path( $prefix );
+		$bytes_written = file_put_contents( $file_path, wp_json_encode( $data ) );
+
+		if ( $bytes_written === false ) {
+			throw new Exception( 'Failed to save ' . esc_html( $prefix ) . ' to file' );
+		}
+
+		foreach ( $previous as $old_file ) {
+			if ( $old_file !== $file_path ) {
+				wp_delete_file( $old_file );
+			}
+		}
+	}
+
+	/**
 	 * Get sync data file path for today
 	 *
 	 * @return string
 	 */
 	private function get_sync_data_file(): string {
-		return $this->sync_dir . '/sync-data-' . $this->date_string . '.json';
+		return $this->get_latest_file( 'sync-data' );
 	}
 
 	/**
@@ -197,7 +290,7 @@ class Chunked_Data_Sync {
 	 * @return string
 	 */
 	private function get_manifest_file(): string {
-		return $this->sync_dir . '/manifest-' . $this->date_string . '.json';
+		return $this->get_latest_file( 'manifest' );
 	}
 
 	/**
@@ -231,23 +324,23 @@ class Chunked_Data_Sync {
 			'sync_data'     => array(
 				'exists' => $this->sync_data_exists(),
 				'path'   => $this->get_sync_data_file(),
-				'date'   => $this->date_string,
+				'date'   => $this->get_file_label( $this->get_sync_data_file() ),
 			),
 			'manifest'      => array(
 				'exists' => $this->manifest_exists(),
 				'path'   => $this->get_manifest_file(),
-				'date'   => $this->date_string,
+				'date'   => $this->get_file_label( $this->get_manifest_file() ),
 			),
 			'stage3_status' => $this->get_stage3_status(),
 		);
 
 		// Add URLs for existing files
 		if ( $result['sync_data']['exists'] ) {
-			$result['sync_data']['url'] = $base_url . '/sync-data-' . $this->date_string . '.json';
+			$result['sync_data']['url'] = $base_url . '/' . basename( $this->get_sync_data_file() );
 		}
 
 		if ( $result['manifest']['exists'] ) {
-			$result['manifest']['url'] = $base_url . '/manifest-' . $this->date_string . '.json';
+			$result['manifest']['url'] = $base_url . '/' . basename( $this->get_manifest_file() );
 		}
 
 		return $result;
@@ -356,12 +449,7 @@ class Chunked_Data_Sync {
 		}
 
 		// Save to file
-		$file_path     = $this->get_sync_data_file();
-		$bytes_written = file_put_contents( $file_path, wp_json_encode( $data ) );
-
-		if ( $bytes_written === false ) {
-			throw new Exception( 'Failed to save sync data to file' );
-		}
+		$this->save_timestamped_file( 'sync-data', $data );
 
 		return $data;
 	}
@@ -840,14 +928,9 @@ class Chunked_Data_Sync {
 	 * @throws Exception If save fails
 	 */
 	private function save_manifest( array $manifest ): void {
-		$file_path     = $this->get_manifest_file();
-		$bytes_written = file_put_contents( $file_path, wp_json_encode( $manifest ) );
+		$this->save_timestamped_file( 'manifest', $manifest );
 
-		if ( $bytes_written === false ) {
-			throw new Exception( 'Failed to save manifest to file' );
-		}
-
-		$this->debug_log( 'Chunked Sync: Saved manifest to file: ' . basename( $file_path ) );
+		$this->debug_log( 'Chunked Sync: Saved manifest to file: ' . basename( $this->get_manifest_file() ) );
 	}
 
 	/**
@@ -928,7 +1011,7 @@ class Chunked_Data_Sync {
 
 			return [
 				'exists'           => true,
-				'date'             => $this->date_string,
+				'date'             => $this->get_file_label( $this->get_manifest_file() ),
 				'total_procedures' => $total_procedures,
 				'total_cases'      => $total_cases,
 				'preview'          => $preview,
