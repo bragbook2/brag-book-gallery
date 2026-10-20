@@ -4,6 +4,33 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.7-beta1] - 2026-10-20 (Beta Release)
+
+### Added
+
+- **Public version meta tag**: gallery pages now print
+  `<meta name="brag-book-gallery-version" content="...">` in the head, read from
+  the plugin header, so the active plugin version can be found from page source
+  without WP admin access. It only appears on pages the plugin loads on.
+
+### Fixed
+
+- **Search input styles no longer overridden by themes**: the search inputs are
+  `input[type="search"]`, so a theme's `input[type="search"]` rule (0,1,1) beat
+  the plugin's single-class selector (0,1,0) for padding, line-height and
+  min-height. The selectors are now `input[type="search"].brag-book-gallery-search-input`
+  and the mobile equivalent (0,2,1), and the input has a `min-height`.
+- **Sync files no longer served stale from cache**: `sync-data` and `manifest`
+  files were named by date only, so a cached copy lasted until the next day.
+  They are now named `{name}-YYYY-MM-DD-HHMMSS.json`, so each sync writes a new
+  URL. Saving one deletes the superseded files, including the old date-only
+  names, and later stages read the newest file from today.
+
+### Changed
+
+- **Sync page shows date and time**: the sync-data and manifest labels and the
+  manifest preview "Built" line show the time (UTC) taken from the file name.
+
 ## [4.9.6] - 2026-09-21 (Stable Release)
 
 ### Fixed

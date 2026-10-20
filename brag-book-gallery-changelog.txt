@@ -1,5 +1,17 @@
 === BRAGBook Gallery Changelog ===
 
+= 4.9.7-beta1 (2026-10-20) =
+
+Added:
+* Assets::preload_critical_assets() prints <meta name="brag-book-gallery-version"> from the plugin header (get_file_data) on pages where is_bragbook_page() is true
+
+Fixed:
+* Search inputs use input[type="search"].brag-book-gallery-search-input and the mobile equivalent (0,2,1) so theme input[type="search"] rules (0,1,1) cannot override padding, line-height or min-height; min-height added
+* Chunked_Data_Sync names sync-data and manifest files {name}-YYYY-MM-DD-HHMMSS.json so each sync is a new URL; save_timestamped_file() writes the new file then deletes superseded ones, including date-only names; get_latest_file() reads the newest file from today
+
+Changed:
+* Sync page date labels and manifest preview show the time (UTC) from the file name via get_file_label()
+
 = 4.9.6 (2026-09-21) =
 
 Fixed:
