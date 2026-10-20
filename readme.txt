@@ -93,6 +93,11 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 
 == Changelog ==
 
+= 4.9.7-beta1 =
+* Added: Gallery pages now include a small hidden version tag in the page source, so support can tell which plugin version a site is running without logging in.
+* Fixed: The search box keeps its padding, line height and height on themes that style search inputs.
+* Fixed: Sync data and manifest files get a new file name each sync, so browsers and caches no longer show an old copy. Older sync files are cleaned up automatically, and the sync page now shows the time each file was built.
+
 = 4.9.6 =
 * Fixed: Procedure, provider, case and My Favorites pages keep the plugin's layout on sites where an Elementor Pro Theme Builder archive or single template applies to every archive.
 
