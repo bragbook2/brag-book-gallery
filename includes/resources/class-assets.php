@@ -155,6 +155,7 @@ class Assets {
 			add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_admin_assets' ], 10 );
 
 			// Performance optimization hooks
+			add_action( 'wp_head', [ $this, 'print_version_meta' ], 1 );
 			add_action( 'wp_head', [ $this, 'preload_critical_assets' ], 5 );
 			add_filter( 'script_loader_tag', [ $this, 'optimize_script_loading' ], 10, 3 );
 
@@ -493,6 +494,38 @@ class Assets {
 	}
 
 	/**
+	 * Print the plugin version as a meta tag in the page head
+	 *
+	 * Lets support identify the active plugin version from page source without
+	 * WP admin access. Printed on gallery pages: the path starts with the
+	 * gallery page slug, or the page content holds a gallery shortcode.
+	 *
+	 * @return void
+	 */
+	public function print_version_meta(): void {
+		$slugs = array_filter( (array) get_option( 'brag_book_gallery_page_slug', [] ) );
+		$path  = trim( wp_parse_url( $_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH ) ?: '', '/' );
+
+		if (
+			! $this->is_bragbook_page()
+			&& ! $this->path_matches_gallery_slugs( $path, $slugs )
+			&& ! $this->has_gallery_shortcode()
+		) {
+			return;
+		}
+
+		$plugin_header = get_file_data( Setup::get_plugin_file(), [ 'Version' => 'Version' ] );
+		if ( $plugin_header['Version'] === '' ) {
+			return;
+		}
+
+		printf(
+			'<meta name="brag-book-gallery-version" content="%s">' . "\n",
+			esc_attr( $plugin_header['Version'] )
+		);
+	}
+
+	/**
 	 * Preload critical assets
 	 *
 	 * Adds preload hints for critical CSS and fonts to improve
@@ -505,16 +538,6 @@ class Assets {
 
 		if ( ! $this->is_bragbook_page() ) {
 			return;
-		}
-
-		// Public version tag so support can identify the active plugin version
-		// from page source without WP admin access.
-		$plugin_header = get_file_data( Setup::get_plugin_file(), [ 'Version' => 'Version' ] );
-		if ( $plugin_header['Version'] !== '' ) {
-			printf(
-				'<meta name="brag-book-gallery-version" content="%s">' . "\n",
-				esc_attr( $plugin_header['Version'] )
-			);
 		}
 
 		$suffix = $this->get_asset_suffix();
