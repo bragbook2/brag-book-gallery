@@ -4,6 +4,16 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.7-beta2] - 2026-10-21 (Beta Release)
+
+### Fixed
+
+- **Version meta tag now prints on gallery pages**: in beta1 the tag was gated
+  by `is_bragbook_page()`, which reads page slug options that are never saved
+  (the real option is `brag_book_gallery_page_slug`), so it never printed. A
+  dedicated `wp_head` callback now prints it when the path starts with the
+  gallery slug or the page content holds a gallery shortcode.
+
 ## [4.9.7-beta1] - 2026-10-20 (Beta Release)
 
 ### Added
