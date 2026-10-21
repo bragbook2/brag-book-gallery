@@ -1,5 +1,10 @@
 === BRAGBook Gallery Changelog ===
 
+= 4.9.7-beta2 (2026-10-21) =
+
+Fixed:
+* Assets::print_version_meta() on wp_head prints <meta name="brag-book-gallery-version"> when the request path starts with brag_book_gallery_page_slug or the content has a gallery shortcode. Beta1 printed it from preload_critical_assets() behind is_bragbook_page(), which reads slug options that are never saved and always returned false
+
 = 4.9.7-beta1 (2026-10-20) =
 
 Added:

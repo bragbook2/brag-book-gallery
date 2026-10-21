@@ -93,6 +93,9 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 
 == Changelog ==
 
+= 4.9.7-beta2 =
+* Fixed: The hidden version tag in the page source now appears on all gallery pages. In beta1 it did not print.
+
 = 4.9.7-beta1 =
 * Added: Gallery pages now include a small hidden version tag in the page source, so support can tell which plugin version a site is running without logging in.
 * Fixed: The search box keeps its padding, line height and height on themes that style search inputs.
