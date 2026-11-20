@@ -345,9 +345,17 @@ class Provider_Filter {
 		}
 
 		// Alphanumeric order by name, so a long provider list is easy to scan/search.
+		// By surname when the site asks for it, with the full name breaking ties.
+		$by_surname = 'last_name' === get_option( 'brag_book_gallery_provider_sort', 'first_name' );
 		usort(
 			$providers,
-			static fn( array $a, array $b ): int => strnatcasecmp( $a['name'], $b['name'] )
+			static function ( array $a, array $b ) use ( $by_surname ): int {
+				$order = $by_surname
+					? strnatcasecmp( Taxonomies::provider_surname( $a['name'] ), Taxonomies::provider_surname( $b['name'] ) )
+					: 0;
+
+				return 0 !== $order ? $order : strnatcasecmp( $a['name'], $b['name'] );
+			}
 		);
 
 		return $providers;
