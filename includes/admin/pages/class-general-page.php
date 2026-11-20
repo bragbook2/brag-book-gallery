@@ -1012,6 +1012,7 @@ class General_Page extends Settings_Base {
 		$enable_providers    = (bool) get_option( 'brag_book_gallery_enable_providers', false );
 		$provider_label      = (string) get_option( 'brag_book_gallery_provider_label', '' );
 		$provider_label_plural = (string) get_option( 'brag_book_gallery_provider_label_plural', '' );
+		$provider_sort         = (string) get_option( 'brag_book_gallery_provider_sort', 'first_name' );
 		$enable_practices    = (bool) get_option( 'brag_book_gallery_enable_practices', false );
 		$google_maps_api_key = (string) get_option( 'brag_book_gallery_google_maps_api_key', '' );
 		$enable_powered_by   = (bool) get_option( 'brag_book_gallery_enable_powered_by', false );
@@ -1706,6 +1707,19 @@ class General_Page extends Settings_Base {
 						       placeholder="<?php esc_attr_e( 'Providers', 'brag-book-gallery' ); ?>" />
 						<p class="description">
 							<?php esc_html_e( 'The plural, which the filter uses for its list and its "All" option — "Doctors", "Doctors & Providers". Leave blank for Providers.', 'brag-book-gallery' ); ?>
+						</p>
+					</div>
+
+					<div class="gallery-page-settings-field" data-bb-requires="brag_book_gallery_enable_providers">
+						<label for="brag_book_gallery_provider_sort" class="gallery-page-settings-field__label">
+							<?php esc_html_e( 'Sort providers by', 'brag-book-gallery' ); ?>
+						</label>
+						<select id="brag_book_gallery_provider_sort" name="brag_book_gallery_provider_sort">
+							<option value="first_name" <?php selected( $provider_sort, 'first_name' ); ?>><?php esc_html_e( 'First name (A to Z)', 'brag-book-gallery' ); ?></option>
+							<option value="last_name" <?php selected( $provider_sort, 'last_name' ); ?>><?php esc_html_e( 'Surname (A to Z)', 'brag-book-gallery' ); ?></option>
+						</select>
+						<p class="description">
+							<?php esc_html_e( 'The order of the list in the gallery\'s provider filter.', 'brag-book-gallery' ); ?>
 						</p>
 					</div>
 				</div>
@@ -3036,6 +3050,13 @@ class General_Page extends Settings_Base {
 					sanitize_text_field( wp_unslash( $_POST[ $label_option ] ) )
 				);
 			}
+		}
+
+		if ( isset( $_POST['brag_book_gallery_provider_sort'] ) ) {
+			update_option(
+				'brag_book_gallery_provider_sort',
+				'last_name' === $_POST['brag_book_gallery_provider_sort'] ? 'last_name' : 'first_name'
+			);
 		}
 	}
 

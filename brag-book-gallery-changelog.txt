@@ -1,5 +1,15 @@
 === BRAGBook Gallery Changelog ===
 
+= 4.9.7-beta3 (2026-11-20) =
+
+Added:
+* brag_book_gallery_provider_sort option (first_name|last_name) and Taxonomies::provider_surname(); Provider_Filter::get_providers() sorts by surname when set, ties on full name
+* Provider sync (Data_Sync and Chunked_Data_Sync) writes profileUrl to provider_profile_url term meta when it is an absolute http(s) URL and the meta is empty, via Taxonomies::valid_profile_url()
+
+Fixed:
+* Case views: removed click-time JS tracking, Gallery_Handler::track_case_view() (sent the global caseId as caseProcedureId) and the WP-Cron track_case_view_server_side() path; the page-load trackPageView() call is the single source
+* Procedure views: render_gallery_html() adds data-procedure-id to the wrapper on procedure archives, and trackPageView() matches .brag-book-gallery-wrapper[data-procedure-id]
+
 = 4.9.7-beta2 (2026-10-21) =
 
 Fixed:

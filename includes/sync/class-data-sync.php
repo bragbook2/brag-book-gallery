@@ -5430,12 +5430,13 @@ class Data_Sync {
 			return null;
 		}
 
-		$first_name = sanitize_text_field( $provider_data['firstName'] ?? '' );
-		$last_name  = sanitize_text_field( $provider_data['lastName'] ?? '' );
-		$api_name   = sanitize_text_field( $provider_data['name'] ?? '' );
-		$bio        = isset( $provider_data['bio'] ) ? sanitize_textarea_field( (string) $provider_data['bio'] ) : '';
-		$image_url  = isset( $provider_data['imageUrl'] ) ? esc_url_raw( (string) $provider_data['imageUrl'] ) : '';
-		$position   = absint( $provider_data['position'] ?? 0 );
+		$first_name  = sanitize_text_field( $provider_data['firstName'] ?? '' );
+		$last_name   = sanitize_text_field( $provider_data['lastName'] ?? '' );
+		$api_name    = sanitize_text_field( $provider_data['name'] ?? '' );
+		$bio         = isset( $provider_data['bio'] ) ? sanitize_textarea_field( (string) $provider_data['bio'] ) : '';
+		$profile_url = Taxonomies::valid_profile_url( (string) ( $provider_data['profileUrl'] ?? '' ) );
+		$image_url   = isset( $provider_data['imageUrl'] ) ? esc_url_raw( (string) $provider_data['imageUrl'] ) : '';
+		$position    = absint( $provider_data['position'] ?? 0 );
 
 		// TEMP DIAGNOSTIC: reveal the exact provider object the sync receives so we
 		// can confirm whether the detail endpoint includes imageUrl. Debug-gated.
@@ -5455,12 +5456,13 @@ class Data_Sync {
 		}
 
 		$meta = [
-			'member_id'  => $member_id,
-			'first_name' => $first_name,
-			'last_name'  => $last_name,
-			'bio'        => $bio,
-			'image_url'  => $image_url,
-			'position'   => $position,
+			'member_id'   => $member_id,
+			'first_name'  => $first_name,
+			'last_name'   => $last_name,
+			'bio'         => $bio,
+			'profile_url' => $profile_url,
+			'image_url'   => $image_url,
+			'position'    => $position,
 		];
 
 		// Check if term already exists by member ID
@@ -5573,13 +5575,14 @@ class Data_Sync {
 	 * Update provider term meta fields
 	 *
 	 * Writes the fields supplied by the v2 `providers` payload. `provider_member_id`
-	 * stores the provider's API ID for reuse against /v2/practices. The legacy
-	 * `provider_suffix`, `provider_profile_url`, and the manually-uploaded
-	 * `provider_profile_photo` are intentionally left untouched so manual values
-	 * survive re-syncs.
+	 * stores the provider's API ID for reuse against /v2/practices. The API's
+	 * `profileUrl` is written to `provider_profile_url` only while that field
+	 * is empty. The legacy `provider_suffix` and the
+	 * manually-uploaded `provider_profile_photo` are intentionally left
+	 * untouched so manual values survive re-syncs.
 	 *
 	 * @param int   $term_id The term ID.
-	 * @param array $data    Sanitized provider data: member_id, first_name, last_name, bio, image_url, position.
+	 * @param array $data    Sanitized provider data: member_id, first_name, last_name, bio, profile_url, image_url, position.
 	 *
 	 * @return void
 	 * @since 3.3.3
@@ -5597,6 +5600,12 @@ class Data_Sync {
 		// entered in the term editor survive a re-sync when the API omits them.
 		if ( ! empty( $data['bio'] ) ) {
 			update_term_meta( $term_id, 'provider_bio', $data['bio'] );
+		}
+		// The API's profileUrl fills an empty Profile URL only, so a link
+		// entered in the term editor is never overwritten by sync.
+		$profile_url = (string) ( $data['profile_url'] ?? '' );
+		if ( '' !== $profile_url && '' === (string) get_term_meta( $term_id, 'provider_profile_url', true ) ) {
+			update_term_meta( $term_id, 'provider_profile_url', esc_url_raw( $profile_url ) );
 		}
 		// Download the API image into the media library and attach it as the
 		// Profile Photo; falls back to storing the remote URL if the download fails.
