@@ -3760,7 +3760,7 @@ class BRAGbookGalleryApp {
 
     // Look for specific page type indicators
     const caseDetailView = document.querySelector('.brag-book-gallery-case-detail-view');
-    const procedureView = document.querySelector('[data-view="procedure"], [data-view="tiles"], .brag-book-gallery-procedure-template');
+    const procedureView = document.querySelector('[data-view="procedure"], [data-view="tiles"], .brag-book-gallery-procedure-template, .brag-book-gallery-wrapper[data-procedure-id]');
     console.log('BRAGBook: Found elements:', {
       caseDetailView: caseDetailView ? caseDetailView.tagName : null,
       procedureView: procedureView ? procedureView.tagName : null
@@ -3881,38 +3881,6 @@ class BRAGbookGalleryApp {
       console.warn('BRAGBook: ✗ Case view tracking error:', error);
     });
   }
-
-  /**
-   * Track case view from a case card element
-   * @param {HTMLElement} caseCard - The case card element
-   */
-  trackCaseViewFromCard(caseCard) {
-    if (!caseCard) return;
-
-    // Use data-procedure-case-id only — never fall back to data-case-id (global caseId).
-    const procedureCaseId = caseCard.dataset.procedureCaseId;
-    if (procedureCaseId) {
-      console.log(`BRAGBook: Tracking view from card for procedureCaseId ${procedureCaseId}`);
-      this.trackCaseView(procedureCaseId);
-    } else {
-      console.warn('BRAGBook: Case card missing data-procedure-case-id, skipping view tracking');
-    }
-  }
-
-  /**
-   * Track case view from a carousel item element
-   * @param {HTMLElement} carouselItem - The carousel item element
-   */
-  trackCaseViewFromCarousel(carouselItem) {
-    if (!carouselItem) return;
-
-    // Get the procedure case ID (small API ID) from data attribute
-    const procedureCaseId = carouselItem.dataset.procedureCaseId || carouselItem.dataset.caseId;
-    if (procedureCaseId) {
-      console.log(`BRAGBook: Tracking view from carousel for procedureCaseId ${procedureCaseId}`);
-      this.trackCaseView(procedureCaseId);
-    }
-  }
   initializeCaseLinks() {
     // Handle clicks on case links - allow normal navigation instead of AJAX loading
     document.addEventListener('click', e => {
@@ -3921,8 +3889,6 @@ class BRAGbookGalleryApp {
       if (carouselLink) {
         const carouselItem = carouselLink.closest('.brag-book-gallery-carousel-item');
         this.storeProcedureReferrerFromCarousel(carouselItem);
-        // Track the view when clicking on carousel item
-        this.trackCaseViewFromCarousel(carouselItem);
         return;
       }
 
@@ -3931,8 +3897,6 @@ class BRAGbookGalleryApp {
       if (caseLink) {
         const caseCard = caseLink.closest('.brag-book-gallery-case-card');
         this.storeProcedureReferrerFromCard(caseCard);
-        // Track the view when clicking on case card link
-        this.trackCaseViewFromCard(caseCard);
         return;
       }
 
@@ -3942,8 +3906,6 @@ class BRAGbookGalleryApp {
         const caseLinkInCard = caseCard.querySelector(CASE_LINK_SELECTOR);
         if (caseLinkInCard && caseLinkInCard.href) {
           this.storeProcedureReferrerFromCard(caseCard);
-          // Track the view when clicking on case card
-          this.trackCaseViewFromCard(caseCard);
           window.location.href = caseLinkInCard.href;
         }
       }
