@@ -786,6 +786,29 @@ class Taxonomies {
 	}
 
 	/**
+	 * A provider's surname, for sorting a provider list by it
+	 *
+	 * Credentials after the first comma ("Smith, MD") and a generational
+	 * suffix ("Jr.", "III") are dropped; the last word left is the surname.
+	 *
+	 * shortcut: multi-word surnames ("de la Cruz") sort by their last word; add
+	 * a surname term meta if a practice needs them sorted as one.
+	 *
+	 * @since 4.9.7
+	 * @param string $name Provider name as stored on the term.
+	 * @return string Surname, or an empty string for an empty name.
+	 */
+	public static function provider_surname( string $name ): string {
+		$words = preg_split( '/\s+/', trim( explode( ',', $name )[0] ), -1, PREG_SPLIT_NO_EMPTY );
+
+		if ( count( $words ) > 1 && preg_match( '/^(jr|sr|ii|iii|iv)\.?$/i', end( $words ) ) ) {
+			array_pop( $words );
+		}
+
+		return (string) end( $words );
+	}
+
+	/**
 	 * Where a provider's name should link to
 	 *
 	 * The profile URL on the term wins: it is the practice's own page for that
