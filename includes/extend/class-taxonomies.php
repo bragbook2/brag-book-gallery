@@ -809,6 +809,26 @@ class Taxonomies {
 	}
 
 	/**
+	 * A provider's API `profileUrl`, if it is a web link
+	 *
+	 * Anything that is not an absolute http(s) link (free text, other schemes)
+	 * is not a profile URL and is dropped.
+	 *
+	 * @since 4.9.7
+	 * @param string $url The `profileUrl` value from the providers payload.
+	 * @return string The URL, or an empty string when it is not a web link.
+	 */
+	public static function valid_profile_url( string $url ): string {
+		$url = trim( $url );
+
+		if ( ! preg_match( '#^https?://#i', $url ) || false === filter_var( $url, FILTER_VALIDATE_URL ) ) {
+			return '';
+		}
+
+		return $url;
+	}
+
+	/**
 	 * Where a provider's name should link to
 	 *
 	 * The profile URL on the term wins: it is the practice's own page for that
