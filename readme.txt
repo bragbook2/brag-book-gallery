@@ -93,6 +93,12 @@ Uninstalling the plugin removes all plugin settings, custom database tables, tra
 
 == Changelog ==
 
+= 4.9.7-beta3 =
+* Added: You can sort the provider filter by surname. Find it in Settings > General > Providers & Locations.
+* Added: Provider sync fills in a provider's Profile URL when it is empty. It never replaces a URL you entered.
+* Fixed: Each case visit now counts as one view. Before, one visit could count two or three times.
+* Fixed: Procedure pages now record views.
+
 = 4.9.7-beta2 =
 * Fixed: The hidden version tag in the page source now appears on all gallery pages. In beta1 it did not print.
 

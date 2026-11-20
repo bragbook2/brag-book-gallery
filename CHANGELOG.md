@@ -4,6 +4,28 @@ All notable changes to the BRAGBook Gallery plugin will be documented in this fi
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.7-beta3] - 2026-11-20 (Beta Release)
+
+### Added
+
+- **Sort the provider filter by surname**: a new "Sort providers by" setting
+  under Settings → General → Providers & Locations offers first name (the
+  default) or surname. Surname sorting ignores credentials after a comma and
+  generational suffixes (Jr, Sr, II–IV), and breaks ties on the full name.
+- **Provider profile URL from sync**: provider sync now writes the API's
+  `profileUrl` to the provider's Profile URL when it is an http(s) link and
+  the field is empty. A URL entered by hand is never overwritten.
+
+### Fixed
+
+- **Case views counted once**: a single case visit sent up to four views (on
+  card or carousel click, on page load, server-side with the global caseId in
+  the `caseProcedureId` slot, and again from a WP-Cron event). Only the
+  page-load view remains.
+- **Procedure views now register**: procedure archives in the default gallery
+  layout had no marker for the page-view script, so no procedure view was
+  ever sent. The gallery wrapper now carries `data-procedure-id`.
+
 ## [4.9.7-beta2] - 2026-10-21 (Beta Release)
 
 ### Fixed
